@@ -170,6 +170,7 @@ function MainApp() {
   const s3TreeRef = useRef([]);
   const currentFileRef = useRef(null);
   const hasRestoredLastFileRef = useRef(false);
+  const saveFileRef = useRef(null);
 
   useEffect(() => {
     s3TreeRef.current = s3Tree;
@@ -972,12 +973,12 @@ function MainApp() {
           content: editorContent,
           originalLastModified: ts,
         });
-        saveFile(null, { skipSuffixCheck: true }).catch(() => {});
+        saveFileRef.current?.(null, { skipSuffixCheck: true }).catch(() => {});
       } catch (e) {
         console.error('memoDraft save before switch:', e);
       }
     },
-    [editorContent, saveFile]
+    [editorContent]
   );
 
   const handleTreeNodeSelect = useCallback(
@@ -1398,6 +1399,10 @@ function MainApp() {
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    saveFileRef.current = saveFile;
+  }, [saveFile]);
 
   const renameS3File = async (file, newName, contentOverride = null) => {
     const client = getS3Client();
