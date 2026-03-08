@@ -45,6 +45,12 @@ import { runEncodeAndUploadPipeline, getSyncKeyForRecording } from '@/utils/reco
 import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
+import {
+  getDraftKey,
+  saveMemoDraft,
+  getMemoDraft,
+  deleteMemoDraft,
+} from '@/utils/memoDraftsDb';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -755,18 +761,46 @@ function MainApp() {
 
       if (ext === 'md' || ext === 'markdown' || ext === '') {
         try {
-          const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
-          const text = new TextDecoder('utf-8').decode(body);
+          const { body, ContentLength, LastModified } = await getObjectBody(client, s3Creds.bucket, node.path);
+          const serverText = new TextDecoder('utf-8').decode(body);
+          const serverLastModified = LastModified ?? node.lastModified;
+          const serverLastModTs =
+            serverLastModified instanceof Date
+              ? serverLastModified.getTime()
+              : serverLastModified
+                ? new Date(serverLastModified).getTime()
+                : 0;
+
+          const draftKey = getDraftKey('s3', node.path);
+          const draft = await getMemoDraft(draftKey);
+
+          let contentToUse = serverText;
+          if (draft) {
+            if (serverLastModTs > draft.originalLastModified) {
+              const useServer = window.confirm(
+                '서버에 더 최신 버전이 있습니다. 기존 내용을 버리고 서버 버전으로 교체할까요?'
+              );
+              if (useServer) {
+                contentToUse = serverText;
+                await deleteMemoDraft(draftKey);
+              } else {
+                contentToUse = draft.content;
+              }
+            } else {
+              contentToUse = draft.content;
+            }
+          }
+
           setCurrentFile({
             type: 's3',
             id: node.path,
             name: node.name,
-            content: text,
+            content: contentToUse,
             viewer: 'markdown',
             size: typeof ContentLength === 'number' ? ContentLength : null,
-            lastModified: node.lastModified,
+            lastModified: serverLastModified ?? node.lastModified,
           });
-          setEditorContent(text);
+          setEditorContent(contentToUse);
           navigate(`/view/${node.path}`);
         } catch (err) {
           console.error('S3 Read Error:', err);
@@ -878,26 +912,76 @@ function MainApp() {
       navigate(`/view/${node.path}`);
     } else if (type === 'local') {
       const file = await node.handle.getFile();
-      const text = await file.text();
+      const serverText = await file.text();
+      const serverLastModTs = file.lastModified ?? 0;
+
+      const draftKey = getDraftKey('local', node.path);
+      const draft = await getMemoDraft(draftKey);
+
+      let contentToUse = serverText;
+      if (draft) {
+        if (serverLastModTs > draft.originalLastModified) {
+          const useServer = window.confirm(
+            '더 최신 버전이 있습니다. 기존 내용을 버리고 최신 버전으로 교체할까요?'
+          );
+          if (useServer) {
+            contentToUse = serverText;
+            await deleteMemoDraft(draftKey);
+          } else {
+            contentToUse = draft.content;
+          }
+        } else {
+          contentToUse = draft.content;
+        }
+      }
+
       setCurrentFile({
         type: 'local',
         id: node.path,
         name: node.name,
-        content: text,
+        content: contentToUse,
         handle: node.handle,
         parentHandle: node.parentHandle,
         viewer: 'markdown',
         size: typeof file.size === 'number' ? file.size : null,
+        lastModified: file.lastModified,
       });
-      setEditorContent(text);
+      setEditorContent(contentToUse);
       navigate(`/view/${node.path}`);
     }
   };
 
   const toSelectKey = (storageType, path) => `${storageType}:${path}`;
 
+  const saveCurrentMarkdownBeforeSwitch = useCallback(
+    async (storageType, node) => {
+      const cur = currentFileRef.current;
+      if (!cur?.viewer || cur.viewer !== 'markdown') return;
+      if (cur.type === storageType && cur.id === node.path) return;
+      const draftKey = getDraftKey(cur.type, cur.id);
+      const origLastMod = cur.lastModified;
+      const ts =
+        origLastMod instanceof Date
+          ? origLastMod.getTime()
+          : typeof origLastMod === 'number'
+            ? origLastMod
+            : 0;
+      try {
+        await saveMemoDraft({
+          key: draftKey,
+          content: editorContent,
+          originalLastModified: ts,
+        });
+        saveFile(null, { skipSuffixCheck: true }).catch(() => {});
+      } catch (e) {
+        console.error('memoDraft save before switch:', e);
+      }
+    },
+    [editorContent, saveFile]
+  );
+
   const handleTreeNodeSelect = useCallback(
-    (storageType, node, modifiers = {}) => {
+    async (storageType, node, modifiers = {}) => {
       const { ctrlKey = false, metaKey = false, shiftKey = false } = modifiers;
       const isRange = shiftKey;
 
@@ -915,9 +999,9 @@ function MainApp() {
           const anchorIdx = flatPaths.indexOf(lastPath);
           const clickIdx = flatPaths.indexOf(path);
           if (anchorIdx >= 0 && clickIdx >= 0) {
-            const [lo, hi] = anchorIdx <= clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
             setSelectedIds((prev) => {
               const next = new Set(prev);
+              const [lo, hi] = anchorIdx <= clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
               for (let i = lo; i <= hi; i++) {
                 next.add(toSelectKey(storageType, flatPaths[i]));
               }
@@ -926,7 +1010,8 @@ function MainApp() {
             lastSelectedIdRef.current = key;
             if (node.type === 'file') {
               if (isMobile) setSidebarOpen(false);
-              selectFileRaw(storageType, node);
+              await saveCurrentMarkdownBeforeSwitch(storageType, node);
+              await selectFileRaw(storageType, node);
             }
             return;
           }
@@ -948,10 +1033,11 @@ function MainApp() {
 
       if (node.type === 'file') {
         if (isMobile) setSidebarOpen(false);
-        selectFileRaw(storageType, node);
+        await saveCurrentMarkdownBeforeSwitch(storageType, node);
+        await selectFileRaw(storageType, node);
       }
     },
-    [isMobile, s3Tree, localTree, selectFileRaw]
+    [isMobile, s3Tree, localTree, selectFileRaw, saveCurrentMarkdownBeforeSwitch]
   );
 
   const selectFile = useCallback(
@@ -1273,11 +1359,13 @@ function MainApp() {
           Body: editorContent,
           ContentType: contentType,
         });
+        await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
       } else if (fileToSave.type === 'local') {
         const writable = await fileToSave.handle.createWritable();
         await writable.write(editorContent);
         await writable.close();
+        await deleteMemoDraft(getDraftKey('local', fileToSave.id));
         const file = await fileToSave.handle.getFile();
         setCurrentFile((prev) => (
           prev?.id === fileToSave.id

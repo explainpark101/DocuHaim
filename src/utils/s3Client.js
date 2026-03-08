@@ -49,7 +49,7 @@ export async function listObjectsV2(client, bucket, prefix = '') {
  * @param {S3Client} client
  * @param {string} bucket
  * @param {string} key
- * @returns {Promise<{ body: Uint8Array, ContentLength?: number, ContentType?: string }>}
+ * @returns {Promise<{ body: Uint8Array, ContentLength?: number, ContentType?: string, LastModified?: Date }>}
  */
 export async function getObjectBody(client, bucket, key) {
   const command = new GetObjectCommand({
@@ -63,6 +63,7 @@ export async function getObjectBody(client, bucket, key) {
     body,
     ContentLength: response.ContentLength,
     ContentType: response.ContentType,
+    LastModified: response.LastModified,
   };
 }
 

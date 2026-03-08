@@ -6,8 +6,8 @@ import { putObject, headObject } from './s3Client';
 import {
   getPendingUploads,
   deletePendingUpload,
-  deletePendingUploadByKey,
 } from './pendingUploadsDb';
+import { deleteMemoDraft, getDraftKey } from './memoDraftsDb';
 
 /**
  * key에서 suffix(확장자) 추출
@@ -69,6 +69,9 @@ export async function syncPendingUploads(client, bucket, onStatus) {
       });
 
       await deletePendingUpload(item.id);
+      if (uploadKey === item.key) {
+        await deleteMemoDraft(getDraftKey('s3', item.key));
+      }
       synced++;
     } catch (e) {
       console.error('Pending upload sync failed:', item.key, e);
