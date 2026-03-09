@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { IconDownload, IconSettings, IconUpload } from '@/components/icons';
 import { X } from 'lucide-react';
+import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 
 export default function SettingsPage({
   s3Creds,
@@ -19,10 +20,21 @@ export default function SettingsPage({
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [webauthnLoading, setWebauthnLoading] = useState(false);
+  const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported);
 
   useEffect(() => {
     setFormCreds(s3Creds);
   }, [s3Creds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    isWebAuthnAvailableForSave().then((supported) => {
+      if (!cancelled) setWebauthnAvailable(supported);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const showWebAuthnSection = webauthnAvailable && (masterPassword || webauthnStorageOnly);
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-odp-bgSofter min-w-0 max-h-full">
@@ -149,7 +161,7 @@ export default function SettingsPage({
         </div>
 
         {/* WebAuthn: 지문/보안 키로 잠금 해제 또는 연결 정보 저장 */}
-        {webauthnSupported && (masterPassword || webauthnStorageOnly) && (
+        {showWebAuthnSection && (
           <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">지문 / 보안 키</h3>
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
@@ -217,13 +229,6 @@ export default function SettingsPage({
           </label>
         </div>
       </div>
-
-      {/* 비밀번호 안내: WebAuthn 미지원 시에만 */}
-      {!webauthnSupported && !masterPassword && (
-        <div className="px-6 py-3 border-t border-gray-100 dark:border-odp-surface bg-yellow-50 dark:bg-odp-warningSoft text-xs text-yellow-800 dark:text-odp-warningText">
-          이 기기는 보안 키를 지원하지 않습니다. 저장 시 비밀번호를 설정해야 합니다.
-        </div>
-      )}
     </div>
   );
 }
