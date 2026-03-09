@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { IconLock } from '@/components/icons';
+import { IconLock, IconFingerprint } from '@/components/icons';
+import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import Modal from '@/components/modals/Modal';
 
 export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, canUnlockWithWebAuthn, isPasswordMode = true, fileInputRef }) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
+  const webauthnLabel = getWebAuthnEncryptLabel();
 
   // Safari: startAuthentication must run in native click context with no async work before it.
   // Call WebAuthn flow first (sync until credentials.get), then set loading and await.
@@ -13,14 +15,14 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, canUnlockWit
     try {
       promise = onUnlockWithWebAuthn();
     } catch (e) {
-      alert(e?.message || '지문/보안 키 인증에 실패했습니다.');
+      alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
       return;
     }
     setWebauthnLoading(true);
     try {
       await promise;
     } catch (e) {
-      alert(e?.message || '지문/보안 키 인증에 실패했습니다.');
+      alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
     } finally {
       setWebauthnLoading(false);
     }
@@ -35,7 +37,7 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, canUnlockWit
         <h2 className="text-xl font-bold text-gray-800 dark:text-odp-fgStrong mb-2">저장소 잠금 해제</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
           {canUnlockWithWebAuthn
-            ? '등록한 지문/보안 키로 해제하거나, 아래에서 백업 파일을 불러오세요.'
+            ? `등록한 ${webauthnLabel}로 해제하거나, 아래에서 백업 파일을 불러오세요.`
             : '마스터 비밀번호를 입력하거나, 아래에서 백업 파일을 불러오세요.'}
         </p>
 
@@ -44,10 +46,11 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, canUnlockWit
             type="button"
             onClick={handleWebAuthnUnlock}
             disabled={webauthnLoading}
-            className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-3 rounded-lg transition shadow-sm mb-4"
-            aria-label="지문 또는 보안 키로 잠금 해제"
+            className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-3 rounded-lg transition shadow-sm mb-4"
+            aria-label={`${webauthnLabel}(으)로 잠금 해제`}
           >
-            {webauthnLoading ? '인증 중…' : '지문 또는 보안 키로 잠금 해제'}
+            <IconFingerprint className="w-5 h-5 shrink-0" />
+            {webauthnLoading ? '인증 중…' : `${webauthnLabel}(으)로 잠금 해제`}
           </button>
         )}
 

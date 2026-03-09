@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconFile, IconMenu, IconX } from '@/components/icons';
-import { encryptData, decryptData } from '@/utils/crypto';
+import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
   isWebAuthnPRFSupported,
+  browserSupportsWebAuthn,
   getStoredWebAuthn,
   isStoredWithWebAuthn,
   unlockWithWebAuthn,
@@ -125,6 +126,7 @@ function MainApp() {
   const [operationStatus, setOperationStatus] = useState('');
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [webauthnPRFSupported, setWebauthnPRFSupported] = useState(false);
+  const [webauthnAvailable, setWebauthnAvailable] = useState(false);
   const [moveFolderTarget, setMoveFolderTarget] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalContext, setCreateModalContext] = useState(null);
@@ -276,7 +278,10 @@ function MainApp() {
   }, [isUnlocked, setShowAuthModal, setIsUnlocked, navigate]);
 
   useEffect(() => {
-    isWebAuthnPRFSupported().then(setWebauthnPRFSupported);
+    Promise.all([isWebAuthnPRFSupported(), browserSupportsWebAuthn()]).then(([prf, basic]) => {
+      setWebauthnPRFSupported(prf);
+      setWebauthnAvailable(prf || basic);
+    });
   }, []);
 
   // 2. Auth Actions
@@ -286,7 +291,13 @@ function MainApp() {
       if (!stored) throw new Error("저장된 데이터가 없습니다.");
       const encryptedObj = JSON.parse(stored);
       if (encryptedObj?.webauthn) throw new Error("보안 키로 저장된 데이터는 비밀번호로 해제할 수 없습니다.");
-      const decryptedStr = await decryptData(password, encryptedObj);
+      let decryptedStr;
+      if (Array.isArray(encryptedObj.passwordSalt)) {
+        const entropy = await deriveEntropyFromPassword(password, new Uint8Array(encryptedObj.passwordSalt));
+        decryptedStr = await decryptWithEntropy(encryptedObj, entropy);
+      } else {
+        decryptedStr = await decryptData(password, encryptedObj);
+      }
       const creds = JSON.parse(decryptedStr);
       unlock(creds, password);
     } catch (e) {
@@ -310,8 +321,16 @@ function MainApp() {
   const saveEncryptedSettings = async (creds, password, options = {}) => {
     const { stayOnSettings = false } = options;
     try {
-      const encryptedObj = await encryptData(password, JSON.stringify(creds));
-      localStorage.setItem('s3NotesEncrypted', JSON.stringify(encryptedObj));
+      const passwordSalt = window.crypto.getRandomValues(new Uint8Array(16));
+      const entropy = await deriveEntropyFromPassword(password, passwordSalt);
+      const encrypted = await encryptWithEntropy(JSON.stringify(creds), entropy);
+      const stored = {
+        passwordSalt: Array.from(passwordSalt),
+        salt: encrypted.salt,
+        iv: encrypted.iv,
+        cipher: encrypted.cipher,
+      };
+      localStorage.setItem('s3NotesEncrypted', JSON.stringify(stored));
       setS3Creds(creds);
       setMasterPassword(password);
       setShowSetPasswordModal(false);
@@ -2397,7 +2416,7 @@ function MainApp() {
         onUnlock={handleUnlock}
         fileInputRef={fileInputRef}
         canUnlockWithWebAuthn={
-          webauthnPRFSupported &&
+          webauthnAvailable &&
           !!getStoredWebAuthn() &&
           (isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword)
         }

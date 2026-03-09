@@ -301,15 +301,15 @@ export default function Sidebar({
   }, [expandPathsRef, expandPathsForNewItem]);
 
   const filterTree = (nodes, { hideDotFolders } = {}) => {
-    if (!searchTerm) return nodes;
-    const q = searchTerm.toLowerCase();
-
+    const q = searchTerm ? searchTerm.toLowerCase() : '';
     const walk = (node) => {
       if (hideDotFolders && node.type === 'folder' && node.name.startsWith('.')) {
         return null;
       }
       const nameMatch =
-        node.name.toLowerCase().includes(q) || (node.path && node.path.toLowerCase().includes(q));
+        !q ||
+        node.name.toLowerCase().includes(q) ||
+        (node.path && node.path.toLowerCase().includes(q));
       if (node.type === 'folder' && node.children) {
         const children = node.children
           .map(walk)
@@ -332,8 +332,8 @@ export default function Sidebar({
     [s3Tree, searchTerm, showHiddenFolders],
   );
   const filteredLocalTree = useMemo(
-    () => filterTree(localTree, { hideDotFolders: false }),
-    [localTree, searchTerm],
+    () => filterTree(localTree, { hideDotFolders: !showHiddenFolders }),
+    [localTree, searchTerm, showHiddenFolders],
   );
 
   const collectFolderPaths = (nodes) => {

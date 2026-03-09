@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IconKey, IconFingerprint } from '@/components/icons';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
+import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import Modal from '@/components/modals/Modal';
 
 export function SaveMethodModal({
@@ -12,7 +13,17 @@ export function SaveMethodModal({
   onSaveWithPassword,
 }) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
+  const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported ?? false);
   const webauthnLabel = getWebAuthnEncryptLabel();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    isWebAuthnAvailableForSave().then((supported) => {
+      if (!cancelled) setWebauthnAvailable(supported);
+    });
+    return () => { cancelled = true; };
+  }, [isOpen]);
 
   const handleWebAuthnClick = async () => {
     if (!onSaveWithWebAuthn || !creds) return;
@@ -48,7 +59,7 @@ export function SaveMethodModal({
         </p>
 
         <div className="flex flex-col gap-3">
-          {webauthnSupported && (
+          {webauthnAvailable && (
             <button
               type="button"
               onClick={handleWebAuthnClick}
