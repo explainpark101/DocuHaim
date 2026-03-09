@@ -83,6 +83,7 @@ function MainApp() {
     s3Creds,
     setS3Creds,
     unlock,
+    proceedWithoutStoredCreds,
   } = auth;
   const navigate = useNavigate();
   const [theme, setTheme] = useState(() => {
@@ -142,6 +143,9 @@ function MainApp() {
   const [showSuffixChangeConfirmModal, setShowSuffixChangeConfirmModal] = useState(false);
   const [suffixConfirmAction, setSuffixConfirmAction] = useState('renameOnly'); // 'renameOnly' | 'renameAndSave'
   const [showCloseFileConfirmModal, setShowCloseFileConfirmModal] = useState(false);
+  const [showOverwriteCredsConfirmModal, setShowOverwriteCredsConfirmModal] = useState(false);
+  const [pendingWebAuthnSave, setPendingWebAuthnSave] = useState(null);
+  const [pendingPasswordSave, setPendingPasswordSave] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const expandPathsRef = useRef(null);
   const [showDownloadMethodModal, setShowDownloadMethodModal] = useState(false);
@@ -360,6 +364,11 @@ function MainApp() {
   };
 
   const handleSaveWithWebAuthn = async (creds) => {
+    if (typeof localStorage !== 'undefined' && (localStorage.getItem('s3NotesEncrypted') || getStoredWebAuthn())) {
+      setPendingWebAuthnSave(creds);
+      setShowOverwriteCredsConfirmModal(true);
+      return;
+    }
     await saveCredsWithWebAuthn(creds);
     loadS3Files(creds);
     setShowSaveMethodModal(false);
@@ -370,6 +379,40 @@ function MainApp() {
     setShowSaveMethodModal(false);
     setSaveMethodModalCreds(null);
     setShowSetPasswordModal(true);
+  };
+
+  const hasStoredCreds = () =>
+    typeof localStorage !== 'undefined' &&
+    (!!localStorage.getItem('s3NotesEncrypted') || !!getStoredWebAuthn());
+
+  const requestSaveEncryptedSettings = (creds, password, options = {}) => {
+    if (hasStoredCreds()) {
+      setPendingPasswordSave({ creds, password, options });
+      setShowOverwriteCredsConfirmModal(true);
+      return;
+    }
+    saveEncryptedSettings(creds, password, options);
+  };
+
+  const handleOverwriteCredsConfirm = async () => {
+    try {
+      if (pendingWebAuthnSave) {
+        await saveCredsWithWebAuthn(pendingWebAuthnSave);
+        loadS3Files(pendingWebAuthnSave);
+        setShowSaveMethodModal(false);
+        setSaveMethodModalCreds(null);
+        setPendingWebAuthnSave(null);
+      } else if (pendingPasswordSave) {
+        await saveEncryptedSettings(
+          pendingPasswordSave.creds,
+          pendingPasswordSave.password,
+          pendingPasswordSave.options
+        );
+        setPendingPasswordSave(null);
+      }
+    } finally {
+      setShowOverwriteCredsConfirmModal(false);
+    }
   };
 
   const handleExportCreds = () => {
@@ -2415,6 +2458,10 @@ function MainApp() {
         isOpen={showAuthModal}
         onUnlock={handleUnlock}
         fileInputRef={fileInputRef}
+        onCloseWithoutUnlock={() => {
+          proceedWithoutStoredCreds();
+          navigate('/settings');
+        }}
         canUnlockWithWebAuthn={
           webauthnAvailable &&
           !!getStoredWebAuthn() &&
@@ -2716,7 +2763,21 @@ function MainApp() {
         isOpen={showSetPasswordModal}
         masterPassword={masterPassword}
         onCancel={() => setShowSetPasswordModal(false)}
-        onSubmit={(password) => saveEncryptedSettings(s3Creds, password, { stayOnSettings: true })}
+        onSubmit={(password) => requestSaveEncryptedSettings(s3Creds, password, { stayOnSettings: true })}
+      />
+
+      <ConfirmModal
+        isOpen={showOverwriteCredsConfirmModal}
+        title="기존 연결 정보 대체"
+        message="기존에 저장된 연결 정보가 있습니다. 새로 저장하면 기존 정보가 대체됩니다. 계속하시겠습니까?"
+        confirmLabel="계속"
+        cancelLabel="취소"
+        onConfirm={handleOverwriteCredsConfirm}
+        onCancel={() => {
+          setShowOverwriteCredsConfirmModal(false);
+          setPendingWebAuthnSave(null);
+          setPendingPasswordSave(null);
+        }}
       />
 
       <ConfirmModal

@@ -29,6 +29,14 @@ export function AuthProvider({ children }) {
     setShowAuthModal(false);
   }, []);
 
+  /** 잠금 해제 없이 모달만 닫고, 빈 연결정보로 앱 사용(설정에서 새로 입력 가능). 기존 localStorage 저장값은 유지. */
+  const proceedWithoutStoredCreds = useCallback(() => {
+    setS3Creds(initialCreds);
+    setMasterPassword('');
+    setIsUnlocked(true);
+    setShowAuthModal(false);
+  }, []);
+
   const lock = useCallback(() => {
     setIsUnlocked(false);
     setShowAuthModal(true);
@@ -48,6 +56,7 @@ export function AuthProvider({ children }) {
     s3Creds,
     setS3Creds,
     unlock,
+    proceedWithoutStoredCreds,
     lock,
   };
 

@@ -3,7 +3,7 @@ import { IconLock, IconFingerprint } from '@/components/icons';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import Modal from '@/components/modals/Modal';
 
-export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, canUnlockWithWebAuthn, isPasswordMode = true, fileInputRef }) {
+export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, fileInputRef }) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const webauthnLabel = getWebAuthnEncryptLabel();
 
@@ -78,12 +78,24 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, canUnlockWit
           </form>
         )}
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-[#f0f0f0] underline transition"
-        >
-          백업 파일(.json) 불러오기
-        </button>
+        <div className="flex gap-3 justify-center items-center">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-[#f0f0f0] underline transition"
+          >
+            백업 파일(.json) 불러오기
+          </button>
+
+          {onCloseWithoutUnlock && (
+            <button
+              type="button"
+              onClick={onCloseWithoutUnlock}
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-odp-fgStrong underline transition"
+            >
+              로그인 없이 새로 시작
+            </button>
+          )}
+        </div>
       </div>
     </Modal>
   );
