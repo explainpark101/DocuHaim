@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IconLock, IconFingerprint } from '@/components/icons';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import Modal from '@/components/modals/Modal';
@@ -6,6 +6,32 @@ import Modal from '@/components/modals/Modal';
 export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, fileInputRef }) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const webauthnLabel = getWebAuthnEncryptLabel();
+
+  // Android 등에서 사용자 탭 없이 생체인증 창을 바로 띄울 수 있으면, 모달이 열릴 때 자동으로 잠금 해제 시도
+  useEffect(() => {
+    if (!isOpen || !canUnlockWithWebAuthn || !onUnlockWithWebAuthn) return;
+    const timer = setTimeout(() => {
+      setWebauthnLoading(true);
+      let promise;
+      try {
+        promise = onUnlockWithWebAuthn();
+      } catch (e) {
+        setWebauthnLoading(false);
+        if (e?.message && !/cancel|abort|user|denied|dismissed/i.test(String(e.message))) {
+          alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
+        }
+        return;
+      }
+      Promise.resolve(promise)
+        .catch((e) => {
+          if (e?.message && !/cancel|abort|user|denied|dismissed/i.test(String(e.message))) {
+            alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
+          }
+        })
+        .finally(() => setWebauthnLoading(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isOpen, canUnlockWithWebAuthn, onUnlockWithWebAuthn, webauthnLabel]);
 
   // Safari: startAuthentication must run in native click context with no async work before it.
   // Call WebAuthn flow first (sync until credentials.get), then set loading and await.
