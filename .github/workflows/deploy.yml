@@ -47,6 +47,11 @@ jobs:
             exit 1
           fi
 
+      # GitHub Pages: 404 시 404.html을 반환함. SPA 라우트 직접 접근/새로고침 시
+      # 같은 앱을 로드하도록 index.html을 404.html로 복사한다.
+      - name: Add SPA fallback for GitHub Pages
+        run: cp dist/index.html dist/404.html
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: peaceiris/actions-gh-pages@v4
