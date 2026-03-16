@@ -1,14 +1,14 @@
 /**
  * 에디터용 이미지 S3 업로드 — 위키 문법 ![[path]]용 path(S3 Object Key) 반환.
- * Key 형식: images/<md파일경로>/<md파일이름>/<uuid>.<ext>
- * 예: images/고려대학교/고려대학교/a1b2c3d4.png
+ * Key 형식: .images/<md파일경로>/<md파일이름>/<uuid>.<ext>
+ * 예: .images/고려대학교/고려대학교/a1b2c3d4.png
  *
  * @param {import('@aws-sdk/client-s3').S3Client} client
  * @param {string} bucket
  * @param {File} file
  * @param {{ maxSizeBytes?: number, imagePathPrefix?: string }} [options]
  *   - maxSizeBytes: 기본 10MB
- *   - imagePathPrefix: 'images/<md경로>/<md이름>/' 형태. 미지정 시 'images/note/' 사용
+ *   - imagePathPrefix: '.images/<md경로>/<md이름>/' 형태. 미지정 시 '.images/note/' 사용
  * @returns {Promise<string>} S3 Object Key (path)
  */
 export async function uploadEditorImage(client, bucket, file, options = {}) {
@@ -19,7 +19,7 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
 
   const prefix = typeof options.imagePathPrefix === 'string' && options.imagePathPrefix
     ? options.imagePathPrefix.replace(/\/+$/, '') + '/'
-    : 'images/note/';
+    : '.images/note/';
   const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;

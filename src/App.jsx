@@ -576,7 +576,7 @@ function MainApp() {
     }
   }, [getS3Client, s3Creds]);
 
-  /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 images/)에 저장, 반환값은 ![[path]]용 Object Key 배열 */
+  /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 .images/)에 저장, 반환값은 ![[path]]용 Object Key 배열 */
   const handleUploadEditorImage = useCallback(
     async (files) => {
       const client = getS3Client();
@@ -594,9 +594,9 @@ function MainApp() {
               const mdPath = currentFile.id;
               const mdDir = mdPath.includes('/') ? mdPath.replace(/\/[^/]+$/, '/') : '';
               const mdNameNoExt = mdPath.replace(/^.*\//, '').replace(/\.[^.]+$/, '') || 'note';
-              return `images/${mdDir}${mdNameNoExt}`;
+              return `.images/${mdDir}${mdNameNoExt}`;
             })()
-          : 'images/note';
+          : '.images/note';
       const paths = [];
       for (const file of imageFiles) {
         try {
