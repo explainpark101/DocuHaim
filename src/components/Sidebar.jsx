@@ -157,6 +157,8 @@ export default function Sidebar({
     handle: null,
   });
   const [expandedPaths, setExpandedPaths] = useState(loadExpandedPaths);
+  const [isS3Refreshing, setIsS3Refreshing] = useState(false);
+  const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
   const scrollContainerRef = useRef(null);
   const isDraggingRef = useRef(false);
   const autoScrollIntervalRef = useRef(null);
@@ -446,11 +448,34 @@ export default function Sidebar({
             <div className="flex gap-1">
               {onRefreshS3 && s3Bucket && (
                 <button
-                  onClick={() => onRefreshS3()}
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                  onClick={() => {
+                    if (isS3Refreshing) return;
+                    const startedAt = Date.now();
+                    setIsS3Refreshing(true);
+                    Promise.resolve(onRefreshS3()).finally(() => {
+                      const elapsed = Date.now() - startedAt;
+                      const remaining = Math.max(0, 500 - elapsed);
+                      setTimeout(() => {
+                        setIsS3Refreshing(false);
+                        setIsS3SpinFinishing(true);
+                        setTimeout(() => setIsS3SpinFinishing(false), 300);
+                      }, remaining);
+                    });
+                  }}
+                  disabled={isS3Refreshing}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation disabled:pointer-events-none disabled:opacity-70"
                   title="파일 구조 새로고침"
                 >
-                  <IconRefresh size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                  <IconRefresh
+                    size={22}
+                    className={`shrink-0 w-5 h-5 md:w-[14px] md:h-[14px] ${
+                      isS3Refreshing
+                        ? 'animate-spin'
+                        : isS3SpinFinishing
+                          ? 'animate-[spin_0.3s_linear_1]'
+                          : ''
+                    }`}
+                  />
                 </button>
               )}
               <button

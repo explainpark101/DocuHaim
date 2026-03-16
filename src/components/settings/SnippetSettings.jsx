@@ -52,6 +52,7 @@ export default function SnippetSettings({
   onChange,
   onSave,
   isSaving = false,
+  isLoaded = true,
 }) {
   const [localConfig, setLocalConfig] = useState(() => value || { snippets: [] });
   const [recordForSnippetId, setRecordForSnippetId] = useState(null);
@@ -166,7 +167,12 @@ export default function SnippetSettings({
       </div>
 
       <div className="space-y-2">
-        {snippets.length === 0 && (
+        {!isLoaded && (
+          <p className="text-xs text-gray-500 dark:text-odp-muted">
+            스니펫 설정을 불러오는 중입니다…
+          </p>
+        )}
+        {isLoaded && snippets.length === 0 && (
           <p className="text-xs text-gray-500 dark:text-odp-muted">
             아직 등록된 스니펫이 없습니다. 아래 &quot;스니펫 추가&quot; 버튼을 눌러 새 스니펫을 만들어 보세요.
           </p>

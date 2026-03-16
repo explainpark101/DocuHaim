@@ -22,6 +22,7 @@ export default function SettingsPage({
   onChangeSnippetConfig,
   onSaveSnippetConfig,
   isSavingSnippets = false,
+  snippetConfigLoaded = false,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [webauthnLoading, setWebauthnLoading] = useState(false);
@@ -223,14 +224,29 @@ export default function SettingsPage({
         {/* Hidden Folders Option */}
         <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
-          <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-odp-fg">
-            <input
-              type="checkbox"
-              checked={showHiddenFolders}
-              onChange={onToggleHiddenFolders}
-              className="w-3 h-3 accent-blue-500"
-            />
-            <span>숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더)</span>
+          <label
+            className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
+          >
+            <button
+              type="button"
+              onClick={onToggleHiddenFolders}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                showHiddenFolders
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={showHiddenFolders}
+              aria-label="숨김 폴더 보기 토글"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  showHiddenFolders ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더)
+            </span>
           </label>
         </div>
 
@@ -240,6 +256,7 @@ export default function SettingsPage({
           onChange={onChangeSnippetConfig}
           onSave={onSaveSnippetConfig}
           isSaving={isSavingSnippets}
+          isLoaded={snippetConfigLoaded}
         />
       </div>
     </div>
