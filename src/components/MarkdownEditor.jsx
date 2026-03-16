@@ -261,7 +261,9 @@ export default function MarkdownEditor({
           );
           if (entry) {
             e.preventDefault();
+            e.stopPropagation();
             view.dispatch(view.state.replaceSelection(entry.body));
+            return false;
           }
         },
       });
@@ -272,6 +274,33 @@ export default function MarkdownEditor({
       return () => clearTimeout(id);
     }
   }, [previewOnly, onUploadImage, isUploadingEditorImage]);
+
+  // 스니펫 단축키를 에디터 기본 단축키(cmd+[, cmd+] 등)보다 우선 적용: document 캡처로 최우선 처리
+  useEffect(() => {
+    if (previewOnly) return;
+    const handleKeyDownCapture = (e) => {
+      const keyCombo = getKeyComboFromEvent(e);
+      if (!keyCombo || keyCombo === 'mod+s') return;
+      const config = snippetConfigRef.current;
+      const snippets = config?.snippets || [];
+      const normalizedCombo = normalizeShortcutForMatch(keyCombo);
+      const entry = snippets.find(
+        (s) => normalizeShortcutForMatch(s.prefix) === normalizedCombo && (s.body || '').trim(),
+      );
+      if (!entry) return;
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getView?.();
+      if (!view) return;
+      const container = containerRef.current;
+      const target = e.target;
+      if (!container?.contains(target) && !view.dom?.contains(target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      view.dispatch(view.state.replaceSelection(entry.body));
+    };
+    document.addEventListener('keydown', handleKeyDownCapture, true);
+    return () => document.removeEventListener('keydown', handleKeyDownCapture, true);
+  }, [previewOnly, snippetConfig]);
 
   useEffect(() => {
     const el = containerRef.current;
