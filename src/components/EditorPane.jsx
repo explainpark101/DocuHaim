@@ -50,6 +50,7 @@ export default function EditorPane({
   onUploadImage,
   isUploadingEditorImage = false,
   onResolveWikiImageUrl,
+  snippetConfig = { snippets: [] },
 }) {
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
   const pdfIframeRef = useRef(null);
@@ -321,6 +322,7 @@ export default function EditorPane({
                   onUploadImage={onUploadImage}
                   isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
+                  snippetConfig={snippetConfig}
                 />
               )}
             </div>

@@ -12,6 +12,32 @@ import { getCachedWikiImageUrl, setCachedWikiImageUrl } from '@/utils/wikiImageC
 const PRESIGNED_EXPIRES_IN_S = 3600;
 const DEBUG_WIKI_IMAGE = true;
 
+/** Windows: Ctrl, Mac: Cmd 를 mod 로 통일한 키 조합 문자열 반환 (keydown 매칭용) */
+function getKeyComboFromEvent(e) {
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  const parts = [];
+  if (isMac ? e.metaKey : e.ctrlKey) parts.push('mod');
+  if (e.altKey) parts.push('alt');
+  if (e.shiftKey) parts.push('shift');
+  const key = (e.key || '').toLowerCase();
+  if (!key || key === 'shift' || key === 'control' || key === 'alt' || key === 'meta') {
+    return null;
+  }
+  parts.push(key);
+  if (parts.length <= 1) return null;
+  return parts.join('+');
+}
+
+/** 저장된 shortcut 문자열의 ctrl/meta 를 mod 로 정규화 (비교용) */
+function normalizeShortcutForMatch(shortcut) {
+  if (!shortcut || typeof shortcut !== 'string') return '';
+  return shortcut
+    .toLowerCase()
+    .replace(/\bctrl\b/g, 'mod')
+    .replace(/\bmeta\b/g, 'mod')
+    .trim();
+}
+
 config({
   editorConfig: {
     languageUserDefined: {
@@ -27,7 +53,7 @@ config({
       },
     ];
   },
-  markdownItPlugins(plugins, opts) {
+  markdownItPlugins(plugins) {
     return [
       ...plugins,
       { type: 'wiki_image', plugin: wikiImagePlugin, options: {} },
@@ -83,9 +109,23 @@ function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
   return p;
 }
 
-export default function MarkdownEditor({ value, onChange, onSave, theme = 'light', previewOnly = false, onUploadImage, isUploadingEditorImage = false, onResolveWikiImageUrl }) {
+export default function MarkdownEditor({
+  value,
+  onChange,
+  onSave,
+  theme = 'light',
+  previewOnly = false,
+  onUploadImage,
+  isUploadingEditorImage = false,
+  onResolveWikiImageUrl,
+  snippetConfig = { snippets: [] },
+}) {
   const editorRef = useRef(null);
   const containerRef = useRef(null);
+  const snippetConfigRef = useRef(snippetConfig);
+  useEffect(() => {
+    snippetConfigRef.current = snippetConfig || { snippets: [] };
+  }, [snippetConfig]);
 
   useEffect(() => {
     if (!onResolveWikiImageUrl || !value) {
@@ -203,6 +243,25 @@ export default function MarkdownEditor({ value, onChange, onSave, theme = 'light
             e.preventDefault();
             view.dispatch(view.state.replaceSelection(text));
             return false;
+          }
+        },
+        keydown: (e, view) => {
+          if (!view) return;
+
+          const keyCombo = getKeyComboFromEvent(e);
+          if (!keyCombo) return;
+
+          if (keyCombo === 'mod+s') return;
+
+          const config = snippetConfigRef.current;
+          const snippets = config?.snippets || [];
+          const normalizedCombo = normalizeShortcutForMatch(keyCombo);
+          const entry = snippets.find(
+            (s) => normalizeShortcutForMatch(s.prefix) === normalizedCombo && (s.body || '').trim(),
+          );
+          if (entry) {
+            e.preventDefault();
+            view.dispatch(view.state.replaceSelection(entry.body));
           }
         },
       });

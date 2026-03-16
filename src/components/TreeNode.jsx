@@ -11,6 +11,7 @@ import {
   IconVideo,
   IconFolder,
   IconTrash,
+  IconSettings,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine } from 'lucide-react';
 
@@ -75,7 +76,13 @@ export default function TreeNode({
 
   const getFileIcon = () => {
     if (node.type === 'folder') {
-      // .images 및 하위 이미지 폴더는 전용 아이콘 사용
+      // .settings 및 .images 폴더는 특수 아이콘 사용
+      const isSettingsFolder =
+        node.name === '.settings' ||
+        node.path.endsWith('/.settings') ||
+        node.path.includes('/.settings/');
+      if (isSettingsFolder) return IconSettings;
+
       const isImagesFolder =
         node.name === '.images' ||
         node.path.endsWith('/.images') ||
@@ -101,6 +108,11 @@ export default function TreeNode({
   const getIconColorClass = () => {
     if (node.type === 'folder') {
       if (isTrashRoot) return 'text-red-600 dark:text-red-400';
+      const isSettingsFolder =
+        node.name === '.settings' ||
+        node.path.endsWith('/.settings') ||
+        node.path.includes('/.settings/');
+      if (isSettingsFolder) return 'text-blue-600 dark:text-blue-300';
       const isImagesFolder =
         node.name === '.images' ||
         node.path.endsWith('/.images') ||
@@ -354,7 +366,7 @@ export default function TreeNode({
             {node.type === 'folder'
               ? isTrashRoot
                 ? <IconTrash />
-                : <IconFolder />
+                : <FileIconComponent />
               : <FileIconComponent />}
           </span>
           {isRenaming && !isTrashRoot && (node.type === 'file' || node.type === 'folder') ? (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { IconDownload, IconSettings, IconUpload } from '@/components/icons';
+import SnippetSettings from '@/components/settings/SnippetSettings';
 import { X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 
@@ -17,6 +18,10 @@ export default function SettingsPage({
   webauthnStorageOnly = false,
   onEnableWebAuthn,
   onDisableWebAuthn,
+  snippetConfig,
+  onChangeSnippetConfig,
+  onSaveSnippetConfig,
+  isSavingSnippets = false,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [webauthnLoading, setWebauthnLoading] = useState(false);
@@ -228,6 +233,14 @@ export default function SettingsPage({
             <span>숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더)</span>
           </label>
         </div>
+
+        {/* Snippet Settings */}
+        <SnippetSettings
+          value={snippetConfig}
+          onChange={onChangeSnippetConfig}
+          onSave={onSaveSnippetConfig}
+          isSaving={isSavingSnippets}
+        />
       </div>
     </div>
   );

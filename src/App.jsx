@@ -155,6 +155,10 @@ function MainApp() {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const lastSelectedIdRef = useRef(null);
 
+  // Snippet settings (VSCode-style JSON, synced to .settings/snippets.json)
+  const [snippetConfig, setSnippetConfig] = useState({ snippets: [] });
+  const [isSavingSnippets, setIsSavingSnippets] = useState(false);
+
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
   );
@@ -575,6 +579,54 @@ function MainApp() {
       console.error("S3 Load Error:", err);
     }
   }, [getS3Client, s3Creds]);
+
+  const loadSnippetConfigFromS3 = useCallback(
+    async (creds = s3Creds) => {
+      const client = getS3Client(creds);
+      if (!client || !creds?.bucket) return;
+      try {
+        const head = await headObject(client, creds.bucket, '.settings/snippets.json');
+        if (!head) return;
+        const { body } = await getObjectBody(client, creds.bucket, '.settings/snippets.json');
+        const text = new TextDecoder('utf-8').decode(body);
+        const parsed = JSON.parse(text);
+        if (parsed && Array.isArray(parsed.snippets)) {
+          setSnippetConfig({ snippets: parsed.snippets });
+        }
+      } catch (e) {
+        console.error('Snippet settings load from S3 failed:', e);
+      }
+    },
+    [getS3Client, s3Creds],
+  );
+
+  const loadSnippetConfigFromLocal = useCallback(async () => {
+    if (!localRootHandle) return;
+    try {
+      const settingsDir = await localRootHandle.getDirectoryHandle('.settings', { create: false });
+      const fileHandle = await settingsDir.getFileHandle('snippets.json', { create: false });
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (parsed && Array.isArray(parsed.snippets)) {
+        setSnippetConfig({ snippets: parsed.snippets });
+      }
+    } catch (e) {
+      // 없으면 무시
+    }
+  }, [localRootHandle]);
+
+  useEffect(() => {
+    if (scriptsLoaded && isUnlocked && s3Creds.bucket) {
+      loadSnippetConfigFromS3();
+    }
+  }, [scriptsLoaded, isUnlocked, s3Creds.bucket, loadSnippetConfigFromS3]);
+
+  useEffect(() => {
+    if (localRootHandle) {
+      loadSnippetConfigFromLocal();
+    }
+  }, [localRootHandle, loadSnippetConfigFromLocal]);
 
   const editorImageUploadInProgressRef = useRef(false);
   const [isUploadingEditorImage, setIsUploadingEditorImage] = useState(false);
@@ -1368,6 +1420,59 @@ function MainApp() {
         alert('다운로드에 실패했습니다.');
       }
       setShowDownloadMethodModal(false);
+    }
+  };
+
+  const saveSnippetConfigToS3 = useCallback(
+    async (config) => {
+      const client = getS3Client();
+      if (!client || !s3Creds.bucket) return;
+      try {
+        await putObject(client, {
+          Bucket: s3Creds.bucket,
+          Key: '.settings/snippets.json',
+          Body: JSON.stringify(config ?? { snippets: [] }, null, 2),
+          ContentType: 'application/json',
+          CacheControl: 'no-cache, no-store, must-revalidate',
+        });
+      } catch (e) {
+        console.error('Snippet settings save to S3 failed:', e);
+        throw e;
+      }
+    },
+    [getS3Client, s3Creds],
+  );
+
+  const saveSnippetConfigToLocal = useCallback(
+    async (config) => {
+      if (!localRootHandle) return;
+      try {
+        const settingsDir = await localRootHandle.getDirectoryHandle('.settings', { create: true });
+        const fileHandle = await settingsDir.getFileHandle('snippets.json', { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(config ?? { snippets: [] }, null, 2));
+        await writable.close();
+      } catch (e) {
+        console.error('Snippet settings save to local failed:', e);
+      }
+    },
+    [localRootHandle],
+  );
+
+  const handleChangeSnippetConfig = (nextConfig) => {
+    setSnippetConfig(nextConfig ?? { snippets: [] });
+  };
+
+  const handleSaveSnippetConfig = async (config) => {
+    const toSave = config ?? snippetConfig;
+    setIsSavingSnippets(true);
+    try {
+      await Promise.all([saveSnippetConfigToS3(toSave), saveSnippetConfigToLocal(toSave)]);
+      setOperationStatus('스니펫 설정이 저장되었습니다.');
+    } catch (e) {
+      alert('스니펫 설정 저장에 실패했습니다: ' + (e?.message || e));
+    } finally {
+      setIsSavingSnippets(false);
     }
   };
 
@@ -2656,6 +2761,10 @@ function MainApp() {
                   webauthnStorageOnly={isStoredWithWebAuthn()}
                   onEnableWebAuthn={enableWebAuthnUnlock}
                   onDisableWebAuthn={disableWebAuthnUnlock}
+                  snippetConfig={snippetConfig}
+                  onChangeSnippetConfig={handleChangeSnippetConfig}
+                  onSaveSnippetConfig={handleSaveSnippetConfig}
+                  isSavingSnippets={isSavingSnippets}
                 />
               }
             />
@@ -2693,6 +2802,7 @@ function MainApp() {
                   onUploadImage={handleUploadEditorImage}
                   isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
+                  snippetConfig={snippetConfig}
                   onRequestDelete={() =>
                     setDeleteTarget({
                       node: {
@@ -2742,6 +2852,7 @@ function MainApp() {
                   onUploadImage={handleUploadEditorImage}
                   isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
+                  snippetConfig={snippetConfig}
                   onRequestDelete={() =>
                     setDeleteTarget(
                       currentFile
