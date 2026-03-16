@@ -19,6 +19,7 @@ import {
   createS3Client,
   listObjectsV2,
   getObjectBody,
+  headObject,
   putObject,
   deleteObject,
   deleteObjects,
@@ -157,7 +158,8 @@ function MainApp() {
 
   // Snippet settings (VSCode-style JSON, synced to .settings/snippets.json)
   const [snippetConfig, setSnippetConfig] = useState({ snippets: [] });
-  const [snippetConfigLoaded, setSnippetConfigLoaded] = useState(false);
+  const [snippetLoadedFromS3, setSnippetLoadedFromS3] = useState(false);
+  const [snippetLoadedFromLocal, setSnippetLoadedFromLocal] = useState(false);
   const [isSavingSnippets, setIsSavingSnippets] = useState(false);
 
   const [isMobile, setIsMobile] = useState(() =>
@@ -588,7 +590,7 @@ function MainApp() {
       try {
         const head = await headObject(client, creds.bucket, '.settings/snippets.json');
         if (!head) {
-          setSnippetConfigLoaded(true);
+          setSnippetLoadedFromS3(true);
           return;
         }
         const { body } = await getObjectBody(client, creds.bucket, '.settings/snippets.json');
@@ -597,10 +599,10 @@ function MainApp() {
         if (parsed && Array.isArray(parsed.snippets)) {
           setSnippetConfig({ snippets: parsed.snippets });
         }
-        setSnippetConfigLoaded(true);
+        setSnippetLoadedFromS3(true);
       } catch (e) {
         console.error('Snippet settings load from S3 failed:', e);
-        setSnippetConfigLoaded(true);
+        setSnippetLoadedFromS3(true);
       }
     },
     [getS3Client, s3Creds],
@@ -617,24 +619,25 @@ function MainApp() {
       if (parsed && Array.isArray(parsed.snippets)) {
         setSnippetConfig({ snippets: parsed.snippets });
       }
-      setSnippetConfigLoaded(true);
+      setSnippetLoadedFromLocal(true);
     } catch (e) {
       // 없으면 무시
-      setSnippetConfigLoaded(true);
+      setSnippetLoadedFromLocal(true);
     }
   }, [localRootHandle]);
 
+  // Snippet 설정 자동 로딩: S3 우선, 없으면(또는 S3 미설정이면) 로컬에서 시도
   useEffect(() => {
-    if (scriptsLoaded && isUnlocked && s3Creds.bucket && !snippetConfigLoaded) {
+    if (!snippetLoadedFromS3 && scriptsLoaded && isUnlocked && s3Creds.bucket) {
       loadSnippetConfigFromS3();
     }
-  }, [scriptsLoaded, isUnlocked, s3Creds.bucket, snippetConfigLoaded, loadSnippetConfigFromS3]);
+  }, [snippetLoadedFromS3, scriptsLoaded, isUnlocked, s3Creds.bucket, loadSnippetConfigFromS3]);
 
   useEffect(() => {
-    if (localRootHandle && !snippetConfigLoaded) {
+    if (!snippetLoadedFromLocal && !s3Creds.bucket && localRootHandle) {
       loadSnippetConfigFromLocal();
     }
-  }, [localRootHandle, snippetConfigLoaded, loadSnippetConfigFromLocal]);
+  }, [snippetLoadedFromLocal, s3Creds.bucket, localRootHandle, loadSnippetConfigFromLocal]);
 
   const editorImageUploadInProgressRef = useRef(false);
   const [isUploadingEditorImage, setIsUploadingEditorImage] = useState(false);
@@ -2773,7 +2776,7 @@ function MainApp() {
                   onChangeSnippetConfig={handleChangeSnippetConfig}
                   onSaveSnippetConfig={handleSaveSnippetConfig}
                   isSavingSnippets={isSavingSnippets}
-                  snippetConfigLoaded={snippetConfigLoaded}
+                  snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal}
                 />
               }
             />
