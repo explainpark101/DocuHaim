@@ -209,6 +209,53 @@ const isCacheValid = (item: ImageCacheItem) => {
 > - API 호출 함수 (`fetchPresignedUrls(paths: string[])`)  
 > 를 프로젝트 코드에 맞게 구체화한다.
 
+### 4.3 img onerror: 로드 실패 시 새 signed URL 요청
+
+- 캐시된 URL이 만료되었거나(403 등), 네트워크 오류로 이미지 로드가 실패할 수 있다.
+- **각 `img`에 `onerror` 핸들러를 붙여**, 로드 실패 시 서버에서 **해당 path에 대한 새 signed URL**을 받아 `src`를 갱신하고 재시도한다.
+
+**패턴 요약**
+
+1. Hydration 시 `img.src`를 설정한 뒤, 해당 `img`에 `onerror`를 등록한다.
+2. `onerror` 발생 시 `data-wiki-path`에서 path를 읽는다.
+3. 서버 API로 해당 path 하나에 대한 새 Pre-signed URL을 요청한다. (예: `fetchPresignedUrls([path])` 또는 단일 path 전용 API)
+4. 응답으로 받은 URL을 IndexedDB에 저장(덮어쓰기)하고, `img.src`에 넣는다. 브라우저가 자동으로 재요청한다.
+5. **무한 루프 방지**: 한 번 onerror로 새 URL을 설정한 뒤 다시 실패하면 재시도 횟수를 제한하거나, `onerror`를 제거해 추가 요청을 막는다.
+
+```ts
+// Hydration 시 각 img에 적용하는 예시
+function bindWikiImage(img: HTMLImageElement, path: string) {
+  const MAX_RETRIES = 1;
+  let retryCount = 0;
+
+  const setSrc = (url: string) => {
+    img.src = url;
+  };
+
+  const loadWithFreshUrl = async () => {
+    if (retryCount >= MAX_RETRIES) return;
+    retryCount += 1;
+
+    const [item] = await fetchPresignedUrls([path]); // 단일 path 배열로 호출
+    if (item?.url) {
+      await saveToImageCache(item); // IndexedDB 갱신
+      setSrc(item.url);
+    }
+  };
+
+  img.onerror = () => {
+    loadWithFreshUrl();
+  };
+
+  // 최초 Hydration: 캐시/API로 받은 url을 setSrc로 설정한 뒤, 위 onerror가 실패 시 재시도 담당
+  resolveUrl(path).then((url) => {
+    if (url) setSrc(url);
+  });
+}
+```
+
+- **중복 요청**: 동일 path에 대해 `onerror`가 여러 img에서 동시에 발생할 수 있으므로, `fetchPresignedUrls` 내부에서 in-flight 맵으로 단일 요청만 보내도록 한다.
+
 ---
 
 ## 5. Race Condition 및 성능 고려
@@ -237,6 +284,7 @@ const isCacheValid = (item: ImageCacheItem) => {
 - [ ] `markdown-it` 커스텀 룰로 `![[path]]` 를 인식해 `data-wiki-path` 를 가진 `img` 또는 전용 토큰으로 변환한다.
 - [ ] Hydration 단계에서 DOM을 스캔해 `data-wiki-path` 목록을 수집하고, IndexedDB 캐시를 먼저 확인한다.
 - [ ] 캐시가 없거나 만료된 path는 서버에 일괄 요청해 Pre-signed URL을 받아 캐시에 저장하고, 이미지를 업데이트한다.
+- [ ] **img `onerror`**: 로드 실패 시 `data-wiki-path`로 서버에서 새 signed URL을 받아 `src`에 설정하고, 캐시를 갱신한다. 재시도 횟수 제한으로 무한 루프를 방지한다.
 - [ ] 동일 path에 대한 중복 API 호출을 막기 위해 Promise 큐잉 또는 in-flight 요청 맵을 사용한다.
 - [ ] IndexedDB 용량 관리를 위해 오래된 항목을 정리하거나, 덮어쓰기 정책을 적용한다.
 
