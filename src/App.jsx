@@ -46,6 +46,7 @@ import { runEncodeAndUploadPipeline, getSyncKeyForRecording } from '@/utils/reco
 import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
+import { uploadEditorImage } from '@/utils/editorImageUpload';
 import {
   getDraftKey,
   saveMemoDraft,
@@ -574,6 +575,62 @@ function MainApp() {
       console.error("S3 Load Error:", err);
     }
   }, [getS3Client, s3Creds]);
+
+  /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 images/)에 저장, 반환값은 ![[path]]용 Object Key 배열 */
+  const handleUploadEditorImage = useCallback(
+    async (files) => {
+      const client = getS3Client();
+      if (!client || !s3Creds.bucket) {
+        setOperationStatus('이미지 업로드는 S3 연결 후 사용할 수 있습니다.');
+        return [];
+      }
+      const imageFiles = Array.from(files).filter(
+        (f) => f && f.type && f.type.startsWith('image/')
+      );
+      if (!imageFiles.length) return [];
+      const imagePathPrefix =
+        currentFile?.type === 's3' && currentFile?.id
+          ? (() => {
+              const mdPath = currentFile.id;
+              const mdDir = mdPath.includes('/') ? mdPath.replace(/\/[^/]+$/, '/') : '';
+              const mdNameNoExt = mdPath.replace(/^.*\//, '').replace(/\.[^.]+$/, '') || 'note';
+              return `images/${mdDir}${mdNameNoExt}`;
+            })()
+          : 'images/note';
+      const paths = [];
+      for (const file of imageFiles) {
+        try {
+          const path = await uploadEditorImage(client, s3Creds.bucket, file, { imagePathPrefix });
+          paths.push(path);
+        } catch (err) {
+          setOperationStatus('이미지 업로드 실패: ' + (err.message || String(err)));
+          break;
+        }
+      }
+      return paths;
+    },
+    [getS3Client, s3Creds, currentFile]
+  );
+
+  /** Preview용 ![[path]] 이미지 Pre-signed URL 반환 (캐시는 호출 측에서 처리) */
+  const getPresignedUrlForPath = useCallback(
+    async (path) => {
+      const client = getS3Client();
+      if (!client || !s3Creds.bucket) {
+        console.log('[wiki-image] getPresignedUrlForPath: no client or bucket', { path });
+        return null;
+      }
+      try {
+        const url = await getSignedGetUrl(client, s3Creds.bucket, path, 3600);
+        console.log('[wiki-image] getPresignedUrlForPath: ok', { path, urlLength: url?.length });
+        return url;
+      } catch (err) {
+        console.warn('[wiki-image] getPresignedUrlForPath: failed', { path, err });
+        return null;
+      }
+    },
+    [getS3Client, s3Creds]
+  );
 
   useEffect(() => {
     if (!scriptsLoaded || !isUnlocked || !s3Creds.bucket) return;
@@ -2619,6 +2676,8 @@ function MainApp() {
                   onSelectRecording={setSelectedRecordingKey}
                   recordingAudioUrl={recordingAudioUrl}
                   recordingSyncData={recordingSyncData}
+                  onUploadImage={handleUploadEditorImage}
+                  onResolveWikiImageUrl={getPresignedUrlForPath}
                   onRequestDelete={() =>
                     setDeleteTarget({
                       node: {
@@ -2665,6 +2724,8 @@ function MainApp() {
                   onSelectRecording={setSelectedRecordingKey}
                   recordingAudioUrl={recordingAudioUrl}
                   recordingSyncData={recordingSyncData}
+                  onUploadImage={handleUploadEditorImage}
+                  onResolveWikiImageUrl={getPresignedUrlForPath}
                   onRequestDelete={() =>
                     setDeleteTarget(
                       currentFile

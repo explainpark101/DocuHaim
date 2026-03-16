@@ -210,5 +210,5 @@ export async function getSignedGetUrl(client, bucket, key, expiresIn = 60) {
     ResponseCacheControl: 'no-cache, no-store, must-revalidate',
   });
   const url = await getSignedUrl(client, command, { expiresIn });
-  return `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`;
+  return url;
 }
