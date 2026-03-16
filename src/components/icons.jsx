@@ -32,6 +32,7 @@ import {
   Eye,
   Loader2,
   PenLine,
+  ImageUp,
 } from 'lucide-react';
 
 export const IconFolder = ({ size = 16, ...props }) => <Folder size={size} {...props} />;
@@ -53,6 +54,7 @@ export const IconFingerprint = ({ size = 16, ...props }) => <Fingerprint size={s
 export const IconSun = ({ size = 16, ...props }) => <Sun size={size} {...props} />;
 export const IconMoon = ({ size = 16, ...props }) => <Moon size={size} {...props} />;
 export const IconImage = ({ size = 14, ...props }) => <ImageIcon size={size} {...props} />;
+export const IconImageFolder = ({ size = 14, ...props }) => <ImageUp size={size} {...props} />;
 export const IconVideo = ({ size = 14, ...props }) => <VideoIcon size={size} {...props} />;
 export const IconFileCode = ({ size = 14, ...props }) => <FileCode size={size} {...props} />;
 export const IconFileJson = ({ size = 14, ...props }) => <FileJson size={size} {...props} />;

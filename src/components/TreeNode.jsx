@@ -6,6 +6,7 @@ import {
   IconFileCode,
   IconFileJson,
   IconImage,
+  IconImageFolder,
   IconMusic,
   IconVideo,
   IconFolder,
@@ -73,6 +74,14 @@ export default function TreeNode({
     node.type === 'folder' && focusedFolderPath && node.path === focusedFolderPath;
 
   const getFileIcon = () => {
+    if (node.type === 'folder') {
+      // .images 및 하위 이미지 폴더는 전용 아이콘 사용
+      const isImagesFolder =
+        node.name === '.images' ||
+        node.path.endsWith('/.images') ||
+        node.path.includes('/.images/');
+      return isImagesFolder ? IconImageFolder : IconFolder;
+    }
     if (node.type !== 'file') return IconFile;
     const lower = node.name.toLowerCase();
     const lastDot = lower.lastIndexOf('.');
@@ -92,6 +101,11 @@ export default function TreeNode({
   const getIconColorClass = () => {
     if (node.type === 'folder') {
       if (isTrashRoot) return 'text-red-600 dark:text-red-400';
+      const isImagesFolder =
+        node.name === '.images' ||
+        node.path.endsWith('/.images') ||
+        node.path.includes('/.images/');
+      if (isImagesFolder) return 'text-green-600 dark:text-green-400';
       return 'text-yellow-600 dark:text-yellow-400';
     }
     const lower = node.name.toLowerCase();

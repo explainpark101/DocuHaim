@@ -576,7 +576,10 @@ function MainApp() {
     }
   }, [getS3Client, s3Creds]);
 
-  /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 .images/)에 저장, 반환값은 ![[path]]용 Object Key 배열 */
+  const editorImageUploadInProgressRef = useRef(false);
+  const [isUploadingEditorImage, setIsUploadingEditorImage] = useState(false);
+
+  /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 .images/)에 저장, 반환값은 ![[path]]용 Object Key 배열. 업로드 중에는 중복 호출 무시 */
   const handleUploadEditorImage = useCallback(
     async (files) => {
       const client = getS3Client();
@@ -588,6 +591,14 @@ function MainApp() {
         (f) => f && f.type && f.type.startsWith('image/')
       );
       if (!imageFiles.length) return [];
+      if (editorImageUploadInProgressRef.current) return [];
+      editorImageUploadInProgressRef.current = true;
+      setIsUploadingEditorImage(true);
+      const indicatorId = addIndicator({
+        id: 'editor-image-upload',
+        type: ActivityTypes.FILE_UPLOAD,
+        label: '이미지 업로드 중',
+      });
       const imagePathPrefix =
         currentFile?.type === 's3' && currentFile?.id
           ? (() => {
@@ -598,18 +609,21 @@ function MainApp() {
             })()
           : '.images/note';
       const paths = [];
-      for (const file of imageFiles) {
-        try {
+      try {
+        for (const file of imageFiles) {
           const path = await uploadEditorImage(client, s3Creds.bucket, file, { imagePathPrefix });
           paths.push(path);
-        } catch (err) {
-          setOperationStatus('이미지 업로드 실패: ' + (err.message || String(err)));
-          break;
         }
+      } catch (err) {
+        setOperationStatus('이미지 업로드 실패: ' + (err.message || String(err)));
+      } finally {
+        editorImageUploadInProgressRef.current = false;
+        setIsUploadingEditorImage(false);
+        removeIndicator(indicatorId);
       }
       return paths;
     },
-    [getS3Client, s3Creds, currentFile]
+    [getS3Client, s3Creds, currentFile, addIndicator, removeIndicator]
   );
 
   /** Preview용 ![[path]] 이미지 Pre-signed URL 반환 (캐시는 호출 측에서 처리) */
@@ -2677,6 +2691,7 @@ function MainApp() {
                   recordingAudioUrl={recordingAudioUrl}
                   recordingSyncData={recordingSyncData}
                   onUploadImage={handleUploadEditorImage}
+                  isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
                   onRequestDelete={() =>
                     setDeleteTarget({
@@ -2725,6 +2740,7 @@ function MainApp() {
                   recordingAudioUrl={recordingAudioUrl}
                   recordingSyncData={recordingSyncData}
                   onUploadImage={handleUploadEditorImage}
+                  isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
                   onRequestDelete={() =>
                     setDeleteTarget(

@@ -48,6 +48,7 @@ export default function EditorPane({
   recordingAudioUrl = '',
   recordingSyncData = [],
   onUploadImage,
+  isUploadingEditorImage = false,
   onResolveWikiImageUrl,
 }) {
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
@@ -318,6 +319,7 @@ export default function EditorPane({
                   theme={theme}
                   previewOnly={previewOnly}
                   onUploadImage={onUploadImage}
+                  isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
                 />
               )}

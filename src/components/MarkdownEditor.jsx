@@ -5,6 +5,7 @@ import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import ExportPDF from '@/components/ExportPDF';
 import { lineNumbers } from '@codemirror/view';
+import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { getCachedWikiImageUrl, setCachedWikiImageUrl } from '@/utils/wikiImageCacheDb';
 
@@ -82,7 +83,7 @@ function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
   return p;
 }
 
-export default function MarkdownEditor({ value, onChange, onSave, theme = 'light', previewOnly = false, onUploadImage, onResolveWikiImageUrl }) {
+export default function MarkdownEditor({ value, onChange, onSave, theme = 'light', previewOnly = false, onUploadImage, isUploadingEditorImage = false, onResolveWikiImageUrl }) {
   const editorRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -181,6 +182,10 @@ export default function MarkdownEditor({ value, onChange, onSave, theme = 'light
           }
 
           if (imageFiles.length && typeof onUploadImage === 'function') {
+            if (isUploadingEditorImage) {
+              e.preventDefault();
+              return false;
+            }
             e.preventDefault();
             const pasteView = view;
             onUploadImage(imageFiles).then((paths) => {
@@ -207,7 +212,7 @@ export default function MarkdownEditor({ value, onChange, onSave, theme = 'light
       const id = setTimeout(registerPasteHandler, 100);
       return () => clearTimeout(id);
     }
-  }, [previewOnly, onUploadImage]);
+  }, [previewOnly, onUploadImage, isUploadingEditorImage]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -242,13 +247,23 @@ export default function MarkdownEditor({ value, onChange, onSave, theme = 'light
   const onUploadImg = useMemo(() => {
     if (typeof onUploadImage !== 'function') return undefined;
     return async (files, callback) => {
+      if (isUploadingEditorImage) return;
       const paths = await onUploadImage(files);
       if (paths?.length) callback(paths.map((p) => `![[${p}]]`));
     };
-  }, [onUploadImage]);
+  }, [onUploadImage, isUploadingEditorImage]);
 
   return (
-    <div ref={containerRef} className="h-full w-full flex flex-col">
+    <div ref={containerRef} className="h-full w-full flex flex-col relative">
+      {isUploadingEditorImage && (
+        <div
+          className="absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center gap-2 py-2 text-sm bg-blue-300/40 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 border-b border-blue-500/20"
+          aria-live="polite"
+        >
+          <Loader2 size={16} className="animate-spin shrink-0" />
+          <span>이미지 업로드 중…</span>
+        </div>
+      )}
       <MdEditor
         ref={editorRef}
         modelValue={value}
