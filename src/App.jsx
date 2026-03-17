@@ -48,6 +48,7 @@ import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
 import { uploadEditorImage } from '@/utils/editorImageUpload';
+import { setPrintSettingsStore } from '@/utils/printSettingsStore';
 import {
   getDraftKey,
   saveMemoDraft,
@@ -572,6 +573,10 @@ function MainApp() {
 
   // 3. S3 Actions (using @aws-sdk/client-s3)
   const getS3Client = useCallback((creds = s3Creds) => createS3Client(creds), [s3Creds]);
+
+  useEffect(() => {
+    setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle });
+  }, [getS3Client, s3Creds, localRootHandle]);
 
   const loadS3Files = useCallback(async (creds = s3Creds) => {
     const client = getS3Client(creds);
