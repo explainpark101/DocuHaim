@@ -101,13 +101,15 @@ export function MoveFileModal({
   localTree,
   localRootHandle,
   currentFile,
+  fileToMove,
   onClose,
   onConfirm,
   onRequestCreateFolder,
   selectPathAfterCreate,
   onSelectPathAfterCreateApplied,
 }) {
-  if (!currentFile) return null;
+  const effectiveFile = fileToMove || currentFile;
+  if (!effectiveFile) return null;
 
   const isS3 = storageType === 's3';
   const tree = isS3 ? s3Tree : localTree;
@@ -136,7 +138,7 @@ export function MoveFileModal({
       return;
     }
 
-    const parentPath = getParentFolderPath(currentFile.id);
+    const parentPath = getParentFolderPath(effectiveFile.id);
     if (!parentPath) {
       setSelectedRoot(true);
       setSelectedFolder(null);
@@ -151,7 +153,7 @@ export function MoveFileModal({
       }
     }
     hasInitializedRef.current = true;
-  }, [isOpen, selectPathAfterCreate, tree, currentFile?.id, onSelectPathAfterCreateApplied]);
+  }, [isOpen, selectPathAfterCreate, tree, effectiveFile?.id, onSelectPathAfterCreateApplied]);
 
   const pathToExpand = selectPathAfterCreate || selectedFolder?.path;
   const expandedPaths = pathToExpand
@@ -220,7 +222,7 @@ export function MoveFileModal({
         <p className="text-xs text-gray-500 dark:text-odp-muted">
           이동할 대상 폴더를 선택하세요. 현재 파일:{' '}
           <span className="font-mono text-[11px]">
-            {currentFile.name}
+            {effectiveFile.name}
           </span>
         </p>
         <div className="border border-gray-200 dark:border-odp-borderSoft rounded-lg overflow-hidden bg-gray-50 dark:bg-odp-bgSoft text-sm flex-1 min-h-[200px] max-h-[320px] flex flex-col">

@@ -131,6 +131,7 @@ function MainApp() {
   const [webauthnPRFSupported, setWebauthnPRFSupported] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(false);
   const [moveFolderTarget, setMoveFolderTarget] = useState(null);
+  const [moveFileTarget, setMoveFileTarget] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalContext, setCreateModalContext] = useState(null);
   const [moveModalSelectPath, setMoveModalSelectPath] = useState(null);
@@ -1558,6 +1559,221 @@ function MainApp() {
     }
   };
 
+  const handleDownloadNode = async (storageType, node) => {
+    if (node.type === 'folder') {
+      alert('폴더 다운로드는 추후 지원됩니다.');
+      return;
+    }
+    if (storageType === 's3') {
+      try {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        const { body } = await getObjectBody(client, s3Creds.bucket, node.path);
+        const blob = new Blob([body]);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = node.name || node.path.split('/').filter(Boolean).pop() || 'download';
+        a.click();
+        URL.revokeObjectURL(url);
+        setOperationStatus(`다운로드: ${node.name}`);
+      } catch (e) {
+        console.error('S3 다운로드 실패:', e);
+        alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
+      }
+    } else if (storageType === 'local' && node.handle) {
+      try {
+        const file = await node.handle.getFile();
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = node.name || file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        setOperationStatus(`다운로드: ${node.name}`);
+      } catch (e) {
+        console.error('로컬 파일 다운로드 실패:', e);
+        alert('다운로드에 실패했습니다.');
+      }
+    }
+  };
+
+  const getParentPath = (path) => {
+    const trimmed = (path || '').replace(/\/$/, '');
+    const parts = trimmed.split('/').filter(Boolean);
+    parts.pop();
+    return parts.length ? parts.join('/') + '/' : '';
+  };
+
+  const handleDuplicateNode = async (storageType, node) => {
+    const parentPath = getParentPath(node.path);
+    const copySuffix = ' (복사본)';
+    try {
+      if (node.type === 'file') {
+        if (storageType === 's3') {
+          const client = getS3Client();
+          if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+          const lastDot = (node.name || '').lastIndexOf('.');
+          const baseName = lastDot > 0 ? node.name.slice(0, lastDot) : node.name || 'file';
+          const ext = lastDot > 0 ? node.name.slice(lastDot) : '.md';
+          let newName = baseName + copySuffix + ext;
+          let newPath = parentPath + newName;
+          const bucket = s3Creds.bucket;
+          const contents = await listObjectsV2(client, bucket, parentPath);
+          const existingNames = new Set((contents || []).map((c) => c.Key?.replace(parentPath, '').replace(/\/$/, '')).filter(Boolean));
+          let counter = 1;
+          while (existingNames.has(newName)) {
+            newName = baseName + copySuffix + ` (${counter})` + ext;
+            newPath = parentPath + newName;
+            counter++;
+          }
+          const { body } = await getObjectBody(client, bucket, node.path);
+          await putObject(client, { Bucket: bucket, Key: newPath, Body: body });
+          loadS3Files();
+          const parentPaths = parentPath ? [parentPath.replace(/\/$/, '')].filter(Boolean).map((p) => p + '/') : [];
+          expandPathsRef.current?.(storageType, parentPaths);
+          setOperationStatus(`복제 완료: ${newName}`);
+        } else if (storageType === 'local') {
+          const pHandle = node.parentHandle || localRootHandle;
+          if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const lastDot = (node.name || '').lastIndexOf('.');
+          const baseName = lastDot > 0 ? node.name.slice(0, lastDot) : node.name || 'file';
+          const ext = lastDot > 0 ? node.name.slice(lastDot) : '.md';
+          let newName = baseName + copySuffix + ext;
+          try {
+            await pHandle.getFileHandle(newName);
+            let counter = 1;
+            while (true) {
+              newName = baseName + copySuffix + ` (${counter})` + ext;
+              try {
+                await pHandle.getFileHandle(newName);
+                counter++;
+              } catch {
+                break;
+              }
+            }
+          } catch {
+            // name is free
+          }
+          const file = await node.handle.getFile();
+          const newFileHandle = await pHandle.getFileHandle(newName, { create: true });
+          const writable = await newFileHandle.createWritable();
+          await writable.write(await file.arrayBuffer());
+          await writable.close();
+          await refreshLocalTree();
+          setOperationStatus(`복제 완료: ${newName}`);
+        }
+      } else if (node.type === 'folder') {
+        if (storageType === 's3') {
+          const client = getS3Client();
+          if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+          const bucket = s3Creds.bucket;
+          const prefix = node.path;
+          const folderName = (node.name || '').replace(/\/$/, '');
+          let destFolderName = folderName + copySuffix;
+          const parentContents = await listObjectsV2(client, bucket, parentPath);
+          const existingDirs = new Set(
+            (parentContents || [])
+              .filter((c) => c.Key?.endsWith('/'))
+              .map((c) => c.Key?.slice(parentPath.length).split('/')[0])
+              .filter(Boolean)
+          );
+          let counter = 1;
+          while (existingDirs.has(destFolderName)) {
+            destFolderName = folderName + copySuffix + ` (${counter})`;
+            counter++;
+          }
+          const destPrefix = parentPath + destFolderName + '/';
+          await putObject(client, { Bucket: bucket, Key: destPrefix, Body: '' });
+          const contents = await listObjectsV2(client, bucket, prefix);
+          for (const { Key } of contents) {
+            const relative = Key.slice(prefix.length);
+            const newKey = destPrefix + relative;
+            await copyObject(client, bucket, Key, newKey);
+          }
+          loadS3Files();
+          expandPathsRef.current?.(storageType, [parentPath.replace(/\/$/, '')].filter(Boolean).map((p) => p + '/'));
+          setOperationStatus(`폴더 복제 완료: ${destFolderName}`);
+        } else if (storageType === 'local') {
+          const pHandle = node.parentHandle || localRootHandle;
+          if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const folderName = node.name || 'folder';
+          let destFolderName = folderName + copySuffix;
+          try {
+            await pHandle.getDirectoryHandle(destFolderName);
+            let counter = 1;
+            while (true) {
+              destFolderName = folderName + copySuffix + ` (${counter})`;
+              try {
+                await pHandle.getDirectoryHandle(destFolderName);
+                counter++;
+              } catch {
+                break;
+              }
+            }
+          } catch {
+            // name is free
+          }
+          const newDirHandle = await pHandle.getDirectoryHandle(destFolderName, { create: true });
+          const copyDirRecursive = async (srcHandle, destHandle) => {
+            for await (const entry of srcHandle.values()) {
+              if (entry.kind === 'file') {
+                const file = await entry.getFile();
+                const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
+                const writable = await newFileHandle.createWritable();
+                await writable.write(await file.arrayBuffer());
+                await writable.close();
+              } else if (entry.kind === 'directory') {
+                const newSubDir = await destHandle.getDirectoryHandle(entry.name, { create: true });
+                await copyDirRecursive(entry, newSubDir);
+              }
+            }
+          };
+          await copyDirRecursive(node.handle, newDirHandle);
+          await refreshLocalTree();
+          setOperationStatus(`폴더 복제 완료: ${destFolderName}`);
+        }
+      }
+    } catch (e) {
+      alert('복제 실패: ' + (e?.message || e));
+    }
+  };
+
+  const handleRequestMoveFileFromSidebar = (node, storageType) => {
+    setMoveFileTarget({ node, storageType });
+    setIsMoveModalOpen(true);
+  };
+
+  const handleConfirmMoveFileFromSidebar = async (dest) => {
+    if (!moveFileTarget || !dest) return;
+    const { node, storageType } = moveFileTarget;
+    const fileToMove =
+      storageType === 's3'
+        ? { id: node.path, name: node.name }
+        : { ...node, handle: node.handle, parentHandle: node.parentHandle || localRootHandle };
+    try {
+      if (storageType === 's3') {
+        await moveS3FileToFolder(fileToMove, dest.path || '');
+        if (currentFile?.type === 's3' && currentFile.id === node.path) {
+          setCurrentFile((prev) =>
+            prev && prev.id === node.path ? { ...prev, id: (dest.path || '') + node.name } : prev,
+          );
+        }
+      } else {
+        const updated = await moveLocalFileToFolder(fileToMove, dest.handle || localRootHandle, dest.path || '');
+        if (currentFile?.type === 'local' && currentFile.id === node.path) {
+          setCurrentFile(updated);
+        }
+      }
+      setMoveFileTarget(null);
+      setIsMoveModalOpen(false);
+      setOperationStatus(`파일 이동 완료: ${node.name}`);
+    } catch (e) {
+      alert('파일 이동 실패: ' + e.message);
+      setOperationStatus(`파일 이동 실패: ${e.message}`);
+    }
+  };
+
   const isAbortOrNetworkError = (e) => {
     if (!e) return false;
     const name = (e?.name || '').toLowerCase();
@@ -1611,6 +1827,10 @@ function MainApp() {
         });
         await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
+        const savedByteLength = new TextEncoder().encode(editorContent).length;
+        setCurrentFile((prev) =>
+          prev?.id === fileToSave.id ? { ...prev, content: editorContent, size: savedByteLength } : prev
+        );
       } else if (fileToSave.type === 'local') {
         const writable = await fileToSave.handle.createWritable();
         await writable.write(editorContent);
@@ -1625,7 +1845,6 @@ function MainApp() {
         setIsSaving(false);
         return;
       }
-      setCurrentFile((prev) => (prev?.id === fileToSave.id ? { ...prev, content: editorContent } : prev));
     } catch (e) {
       if (fileToSave.type === 's3' && isAbortOrNetworkError(e)) {
         try {
@@ -2728,6 +2947,9 @@ function MainApp() {
                 isDeletingFolder={isDeletingFolder}
                 expandPathsRef={expandPathsRef}
                 onRefreshS3={loadS3Files}
+                onDownloadNode={handleDownloadNode}
+                onDuplicateNode={handleDuplicateNode}
+                onRequestMoveFile={handleRequestMoveFileFromSidebar}
               />
             </div>
             {!isMobile && (
@@ -3052,24 +3274,27 @@ function MainApp() {
         isProcessing={isDeleting}
       />
 
-      {/* Move File Modal */}
+      {/* Move File Modal (editor current file or sidebar-selected file) */}
       <MoveFileModal
         isOpen={isMoveModalOpen}
-        storageType={currentFile?.type}
+        storageType={moveFileTarget ? moveFileTarget.storageType : currentFile?.type}
         s3Tree={s3Tree}
         localTree={localTree}
         localRootHandle={localRootHandle}
-        currentFile={currentFile}
+        currentFile={moveFileTarget ? null : currentFile}
+        fileToMove={moveFileTarget?.node}
         onClose={() => {
           setIsMoveModalOpen(false);
           setMoveModalSelectPath(null);
+          setMoveFileTarget(null);
         }}
-        onConfirm={handleConfirmMove}
+        onConfirm={moveFileTarget ? handleConfirmMoveFileFromSidebar : handleConfirmMove}
         onRequestCreateFolder={
-          currentFile
+          (moveFileTarget || currentFile)
             ? (parentPath, parentDirHandle) => {
+                const st = moveFileTarget ? moveFileTarget.storageType : currentFile.type;
                 setCreateModalContext({
-                  storageType: currentFile.type,
+                  storageType: st,
                   parentPath,
                   parentDirHandle,
                   type: 'folder',

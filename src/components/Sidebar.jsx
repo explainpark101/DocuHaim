@@ -42,10 +42,11 @@ import {
   IconRefresh,
 } from '@/components/icons';
 import { ArrowRightToLine } from 'lucide-react';
+import SidebarContextMenu from '@/components/SidebarContextMenu';
 
 const DATA_TRANSFER_TYPE = 'application/x-s3haim-tree-node';
 
-function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget }) {
+function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget, onContextMenu }) {
   const rootNode = {
     path: '',
     type: 'folder',
@@ -53,6 +54,11 @@ function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget
     handle: storageType === 'local' ? localRootHandle : null,
   };
   const isDropTarget = dropTarget?.storageType === storageType && dropTarget?.folderPath === '';
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    if (onContextMenu) onContextMenu(e, rootNode);
+  };
 
   const handleDragOver = (e) => {
     const dt = e.dataTransfer;
@@ -105,6 +111,7 @@ function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget
     <div
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onContextMenu={handleContextMenu}
       className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-default ${
         isDropTarget
           ? 'bg-blue-100 dark:bg-blue-900/40 rounded'
@@ -149,6 +156,9 @@ export default function Sidebar({
   dropTarget,
   expandPathsRef,
   onRefreshS3,
+  onDownloadNode,
+  onDuplicateNode,
+  onRequestMoveFile,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState('');
@@ -157,6 +167,8 @@ export default function Sidebar({
     handle: null,
   });
   const [expandedPaths, setExpandedPaths] = useState(loadExpandedPaths);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
   const scrollContainerRef = useRef(null);
@@ -373,8 +385,42 @@ export default function Sidebar({
     return null;
   }, [selectedIds, s3Tree, localTree]);
 
+  const contextMenuNode = contextMenu?.node;
+  const contextMenuStorageType = contextMenu?.storageType;
+
   return (
     <div className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col">
+      {contextMenu && contextMenuNode && (
+        <SidebarContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          node={contextMenuNode}
+          storageType={contextMenuStorageType}
+          isTrashRoot={contextMenuNode.path === '.trash/'}
+          onClose={() => setContextMenu(null)}
+          onCreateFile={
+            contextMenuNode.type === 'folder'
+              ? () => onCreateItem(contextMenuStorageType, contextMenuNode.path, contextMenuNode.handle, 'file')
+              : undefined
+          }
+          onCreateFolder={
+            contextMenuNode.type === 'folder'
+              ? () => onCreateItem(contextMenuStorageType, contextMenuNode.path, contextMenuNode.handle, 'folder')
+              : undefined
+          }
+          onDownload={onDownloadNode ? () => onDownloadNode(contextMenuStorageType, contextMenuNode) : undefined}
+          onRename={() => setRenameTarget({ storageType: contextMenuStorageType, node: contextMenuNode })}
+          onDelete={() => onSetDeleteTarget({ node: contextMenuNode, type: contextMenuStorageType })}
+          onDuplicate={onDuplicateNode ? () => onDuplicateNode(contextMenuStorageType, contextMenuNode) : undefined}
+          onMove={() => {
+            if (contextMenuNode.type === 'folder') {
+              onRequestMoveFolder?.(contextMenuNode, contextMenuStorageType);
+            } else {
+              onRequestMoveFile?.(contextMenuNode, contextMenuStorageType);
+            }
+          }}
+        />
+      )}
       <div className="p-4 border-b border-gray-200 dark:border-odp-bgSofter flex flex-col gap-3 bg-gray-50 dark:bg-odp-surface shrink-0">
         <div className="flex justify-between items-center">
           <h1 className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong">S3 Haim</h1>
@@ -527,6 +573,14 @@ export default function Sidebar({
                 localRootHandle={null}
                 onDropOnFolder={onDropOnFolder}
                 dropTarget={dropTarget}
+                onContextMenu={(e, rootNode) =>
+                  setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    node: rootNode,
+                    storageType: 's3',
+                  })
+                }
               />
               {filteredS3Tree.length > 0 ? (
                 filteredS3Tree.map((node) => (
@@ -556,6 +610,16 @@ export default function Sidebar({
                     onDragStartNode={handleDragStartNode}
                     onDragEndNode={handleDragEndNode}
                     dropTarget={dropTarget}
+                    onOpenContextMenu={(e, n) =>
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        node: n,
+                        storageType: 's3',
+                      })
+                    }
+                    renameTarget={renameTarget}
+                    onClearRenameTarget={() => setRenameTarget(null)}
                   />
                 ))
               ) : (
@@ -646,6 +710,14 @@ export default function Sidebar({
               localRootHandle={localRootHandle}
               onDropOnFolder={onDropOnFolder}
               dropTarget={dropTarget}
+              onContextMenu={(e, rootNode) =>
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  node: rootNode,
+                  storageType: 'local',
+                })
+              }
             />
             {filteredLocalTree.map((node) => (
               <TreeNode
@@ -682,6 +754,16 @@ export default function Sidebar({
                 onDragStartNode={handleDragStartNode}
                 onDragEndNode={handleDragEndNode}
                 dropTarget={dropTarget}
+                onOpenContextMenu={(e, n) =>
+                  setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    node: n,
+                    storageType: 'local',
+                  })
+                }
+                renameTarget={renameTarget}
+                onClearRenameTarget={() => setRenameTarget(null)}
               />
             ))}
           </div>

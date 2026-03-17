@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   IconChevronDown,
   IconChevronRight,
@@ -40,7 +40,18 @@ export default function TreeNode({
   onDropOnFolder,
   dropTarget,
   rootDropNode,
+  onOpenContextMenu,
+  renameTarget,
+  onClearRenameTarget,
 }) {
+  useEffect(() => {
+    if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
+      setIsRenaming(true);
+      setTempName(node.type === 'file' ? (node.name?.includes('.') ? node.name.slice(0, node.name.lastIndexOf('.')) : node.name) : node.name);
+      onClearRenameTarget();
+    }
+  }, [renameTarget, storageType, node.path, node.type, node.name, onClearRenameTarget]);
+
   const isOpen =
     node.type === 'folder'
       ? isSearching
@@ -357,6 +368,17 @@ export default function TreeNode({
         } ${showDropHighlight ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}
         style={{ paddingLeft }}
         onClick={handleToggle}
+        onContextMenu={
+          onOpenContextMenu
+            ? (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isTrashRoot && !isUnderDeletingFolder) {
+                  onOpenContextMenu(e, node);
+                }
+              }
+            : undefined
+        }
       >
         <div className="flex items-center gap-1.5 overflow-hidden">
           <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
@@ -402,7 +424,7 @@ export default function TreeNode({
           )}
         </div>
 
-        <div className="opacity-100 flex items-center gap-1 shrink-0 transition-opacity">
+        <div className="hidden opacity-100 flex items-center gap-1 shrink-0 transition-opacity">
           {node.type === 'folder' && !isTrashRoot && onRequestMoveFolder && (
             <button
               onClick={(e) => {
@@ -480,6 +502,9 @@ export default function TreeNode({
             onDropOnFolder={onDropOnFolder}
             dropTarget={dropTarget}
             rootDropNode={rootDropNode}
+            onOpenContextMenu={onOpenContextMenu}
+            renameTarget={renameTarget}
+            onClearRenameTarget={onClearRenameTarget}
           />
         ))}
     </div>
