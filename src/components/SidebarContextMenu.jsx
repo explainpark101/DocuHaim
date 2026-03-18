@@ -5,12 +5,12 @@ import {
   IconDownload,
   IconTrash,
 } from '@/components/icons';
-import { PencilIcon, ArrowRightToLine, Copy } from 'lucide-react';
+import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucide-react';
 
 /**
  * 우클릭 시 표시되는 사이드바 컨텍스트 메뉴.
  * 폴더: 파일 추가, 폴더 추가, 다운로드, 이름 수정, 삭제, 복제, 이동
- * 파일: 다운로드, 이름 수정, 삭제, 복제, 이동
+ * 파일: 새 창에서 열기, 다운로드, 이름 수정, 삭제, 복제, 이동
  */
 export default function SidebarContextMenu({
   x,
@@ -26,6 +26,7 @@ export default function SidebarContextMenu({
   onDelete,
   onDuplicate,
   onMove,
+  onOpenInNewWindow,
 }) {
   const menuRef = useRef(null);
 
@@ -86,6 +87,19 @@ export default function SidebarContextMenu({
         >
           <IconFolderPlus className={iconClass} />
           폴더 추가
+        </button>
+      )}
+      {!isFolder && node.type === 'file' && onOpenInNewWindow && (
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            onOpenInNewWindow(storageType, node);
+            onClose();
+          }}
+        >
+          <SquareArrowOutUpRight className={iconClass} size={14} />
+          새 창에서 열기
         </button>
       )}
       {onDownload && (isFolder || node.type === 'file') && (

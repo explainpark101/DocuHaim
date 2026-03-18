@@ -159,6 +159,7 @@ export default function Sidebar({
   onDownloadNode,
   onDuplicateNode,
   onRequestMoveFile,
+  onOpenInNewWindow,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState('');
@@ -419,6 +420,7 @@ export default function Sidebar({
               onRequestMoveFile?.(contextMenuNode, contextMenuStorageType);
             }
           }}
+          onOpenInNewWindow={onOpenInNewWindow}
         />
       )}
       <div className="p-4 border-b border-gray-200 dark:border-odp-bgSofter flex flex-col gap-3 bg-gray-50 dark:bg-odp-surface shrink-0">

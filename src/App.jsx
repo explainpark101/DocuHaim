@@ -186,6 +186,7 @@ function MainApp() {
   const s3TreeRef = useRef([]);
   const currentFileRef = useRef(null);
   const hasRestoredLastFileRef = useRef(false);
+  const hasProcessedOpenFromUrlRef = useRef(false);
   const saveFileRef = useRef(null);
 
   useEffect(() => {
@@ -1250,6 +1251,13 @@ function MainApp() {
     [handleTreeNodeSelect]
   );
 
+  const handleOpenInNewWindow = useCallback((storageType, node) => {
+    if (node?.type !== 'file' || !node?.path) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('open', `${storageType}:${node.path}`);
+    window.open(url.toString(), '_blank');
+  }, []);
+
   // Persist last opened file (S3 or local) for restore on next load
   useEffect(() => {
     if (!isUnlocked || !currentFile) return;
@@ -1259,9 +1267,35 @@ function MainApp() {
     } catch (_) {}
   }, [isUnlocked, currentFile]);
 
+  // Open file from URL ?open=storageType:path (e.g. from "새 창에서 열기")
+  useEffect(() => {
+    if (!isUnlocked || hasProcessedOpenFromUrlRef.current) return;
+    const openParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('open') : null;
+    if (!openParam) return;
+    const colonIdx = openParam.indexOf(':');
+    const type = colonIdx >= 0 ? openParam.slice(0, colonIdx) : null;
+    const path = colonIdx >= 0 ? openParam.slice(colonIdx + 1) : null;
+    if ((type !== 's3' && type !== 'local') || !path) {
+      hasProcessedOpenFromUrlRef.current = true;
+      return;
+    }
+    const tree = type === 's3' ? s3Tree : localTree;
+    if (!tree || tree.length === 0) return;
+    const node = findFileNodeByPath(tree, path);
+    if (node) {
+      selectFile(type, node);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('open');
+      const replace = url.search ? url.pathname + '?' + url.searchParams.toString() : url.pathname;
+      window.history.replaceState(null, '', replace);
+    }
+    hasProcessedOpenFromUrlRef.current = true;
+  }, [isUnlocked, s3Tree, localTree, selectFile]);
+
   // Restore last opened file once trees are loaded
   useEffect(() => {
     if (!isUnlocked || hasRestoredLastFileRef.current) return;
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('open')) return;
     let saved;
     try {
       saved = localStorage.getItem('s3haim_lastFile');
@@ -2955,6 +2989,7 @@ function MainApp() {
                 onDownloadNode={handleDownloadNode}
                 onDuplicateNode={handleDuplicateNode}
                 onRequestMoveFile={handleRequestMoveFileFromSidebar}
+                onOpenInNewWindow={handleOpenInNewWindow}
               />
             </div>
             {!isMobile && (
