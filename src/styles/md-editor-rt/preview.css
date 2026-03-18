@@ -2375,6 +2375,7 @@ svg.md-editor-icon {
   display: flow-root;
   padding-block: calc(var(--spacing) * 2.5);
   padding-inline: calc(var(--spacing) * 5);
+  padding-bottom: 50vh;
 }
 .md-editor-modal-container {
   --md-color: #3f4a54;

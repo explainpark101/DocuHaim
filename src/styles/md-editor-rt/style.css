@@ -3478,7 +3478,8 @@ svg.md-editor-icon {
   overflow-wrap: break-word;
   display: flow-root;
   padding-block: 10px;
-  padding-inline: 20px
+  padding-inline: 20px;
+  padding-bottom: 50vh
 }
 
 .md-editor-modal-container {
