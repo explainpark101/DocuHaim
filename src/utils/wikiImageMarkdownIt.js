@@ -65,6 +65,133 @@ export function wikiImagePlugin(md) {
     }
   });
 
+  // 이미지 바로 아랫줄 텍스트를 캡션으로 묶는 토큰 변환
+  // 패턴:
+  // paragraph_open
+  //   inline (children: wiki_image)
+  // paragraph_close
+  // paragraph_open
+  //   inline (children: text/softbreak ...)
+  // paragraph_close
+  //
+  // 위 6개 토큰을 하나의 figure 블록으로 변환한다.
+  md.core.ruler.after('wiki-image', 'wiki-image-caption', (state) => {
+    const tokens = state.tokens;
+    if (!tokens || tokens.length < 6) return;
+
+    const newTokens = [];
+
+    for (let i = 0; i < tokens.length; i += 1) {
+      const t0 = tokens[i];
+      const t1 = tokens[i + 1];
+      const t2 = tokens[i + 2];
+      const t3 = tokens[i + 3];
+      const t4 = tokens[i + 4];
+      const t5 = tokens[i + 5];
+
+      const canTransform =
+        t0 &&
+        t1 &&
+        t2 &&
+        t3 &&
+        t4 &&
+        t5 &&
+        t0.type === 'paragraph_open' &&
+        t1.type === 'inline' &&
+        t2.type === 'paragraph_close' &&
+        t3.type === 'paragraph_open' &&
+        t4.type === 'inline' &&
+        t5.type === 'paragraph_close';
+
+      if (!canTransform) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      const imageChildren = t1.children || [];
+      if (
+        imageChildren.length !== 1 ||
+        imageChildren[0].type !== 'wiki_image'
+      ) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      const captionTokens = t4.children || [];
+      const captionText = captionTokens
+        .filter((ct) => ct.type === 'text' && ct.content && ct.content.trim())
+        .map((ct) => ct.content)
+        .join('')
+        .trim();
+
+      if (!captionText) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      // figure_open
+      const figureOpen = new state.Token('figure_open', 'figure', 1);
+      figureOpen.block = true;
+      figureOpen.map = t0.map ? [...t0.map] : null;
+
+      // 이미지 inline (그대로 재사용)
+      const imageInline = new state.Token('inline', '', 0);
+      imageInline.children = imageChildren;
+      imageInline.level = (t0.level || 0) + 1;
+
+      // figcaption_open
+      const figcaptionOpen = new state.Token(
+        'figcaption_open',
+        'figcaption',
+        1,
+      );
+      figcaptionOpen.block = true;
+      figcaptionOpen.level = (t0.level || 0) + 1;
+
+      // figcaption 내용
+      const figcaptionInline = new state.Token('inline', '', 0);
+      const captionTextToken = new state.Token('text', '', 0);
+      captionTextToken.content = captionText;
+      figcaptionInline.children = [captionTextToken];
+      figcaptionInline.level = (t0.level || 0) + 2;
+
+      // figcaption_close
+      const figcaptionClose = new state.Token(
+        'figcaption_close',
+        'figcaption',
+        -1,
+      );
+      figcaptionClose.block = true;
+      figcaptionClose.level = (t0.level || 0) + 1;
+
+      // figure_close
+      const figureClose = new state.Token('figure_close', 'figure', -1);
+      figureClose.block = true;
+      figureClose.level = t0.level || 0;
+
+      newTokens.push(
+        figureOpen,
+        imageInline,
+        figcaptionOpen,
+        figcaptionInline,
+        figcaptionClose,
+        figureClose,
+      );
+
+      i += 5;
+    }
+
+    if (newTokens.length && newTokens.length !== tokens.length) {
+      if (DEBUG_WIKI_IMAGE_PLUGIN) {
+        console.log('[wiki-image] caption plugin: transformed tokens', {
+          before: tokens.length,
+          after: newTokens.length,
+        });
+      }
+      state.tokens = newTokens;
+    }
+  });
+
   md.renderer.rules.wiki_image = (tokens, idx, options, env, self) => {
     const token = tokens[idx];
     return '<img ' + self.renderAttrs(token) + '>';
