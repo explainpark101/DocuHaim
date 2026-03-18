@@ -3,6 +3,13 @@ import { IconDownload, IconSettings, IconUpload } from '@/components/icons';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import { X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
+import {
+  loadWikiImageCacheMode,
+  saveWikiImageCacheMode,
+  WIKI_IMAGE_CACHE_MODE_BLOB,
+  WIKI_IMAGE_CACHE_MODE_URL,
+} from '@/utils/wikiImageSettings';
+import { setWikiImageCacheMode } from '@/utils/wikiImageRuntime';
 
 export default function SettingsPage({
   s3Creds,
@@ -27,6 +34,7 @@ export default function SettingsPage({
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported);
+  const [wikiImageCacheMode, setWikiImageCacheMode] = useState(() => loadWikiImageCacheMode());
 
   useEffect(() => {
     setFormCreds(s3Creds);
@@ -248,6 +256,49 @@ export default function SettingsPage({
               숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더)
             </span>
           </label>
+        </div>
+
+        {/* Wiki 이미지 캐싱 방식 */}
+        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">위키 이미지 캐싱 방식</h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
+            md 문서의 <code className="px-1 mx-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">![[path]]</code>{' '}
+            이미지에 대해 어떤 방식으로 캐싱할지 선택합니다.
+          </p>
+          <div className="space-y-1 text-xs text-gray-700 dark:text-odp-fg">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="wikiImageCacheMode"
+                value={WIKI_IMAGE_CACHE_MODE_BLOB}
+                checked={wikiImageCacheMode === WIKI_IMAGE_CACHE_MODE_BLOB}
+                onChange={() => {
+                  setWikiImageCacheMode(WIKI_IMAGE_CACHE_MODE_BLOB);
+                  saveWikiImageCacheMode(WIKI_IMAGE_CACHE_MODE_BLOB);
+                }}
+              />
+              <span className="font-semibold">Blob 캐시 (권장)</span>
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted">
+                S3에서 이미지를 Blob으로 받아 IndexedDB에 저장합니다. 만료 후에도 로컬에서 바로 불러올 수 있어 트래픽이 줄어듭니다.
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="wikiImageCacheMode"
+                value={WIKI_IMAGE_CACHE_MODE_URL}
+                checked={wikiImageCacheMode === WIKI_IMAGE_CACHE_MODE_URL}
+                onChange={() => {
+                  setWikiImageCacheMode(WIKI_IMAGE_CACHE_MODE_URL);
+                  saveWikiImageCacheMode(WIKI_IMAGE_CACHE_MODE_URL);
+                }}
+              />
+              <span className="font-semibold">Presigned URL 캐시</span>
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted">
+                Presigned URL과 만료 시각만 저장합니다. Blob은 캐싱하지 않지만, URL이 유효한 동안에는 재요청 없이 빠르게 표시됩니다.
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Snippet Settings */}

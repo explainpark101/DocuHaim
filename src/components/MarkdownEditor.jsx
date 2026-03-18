@@ -7,9 +7,14 @@ import ExportPDF from '@/components/ExportPDF';
 import { lineNumbers } from '@codemirror/view';
 import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
-import { getCachedWikiImageUrl, setCachedWikiImageUrl } from '@/utils/wikiImageCacheDb';
-
-const PRESIGNED_EXPIRES_IN_S = 3600;
+import {
+  getCachedWikiImageObjectUrl,
+  setCachedWikiImageBlob,
+  getCachedWikiImageUrl,
+  setCachedWikiImageUrl,
+} from '@/utils/wikiImageCacheDb';
+import { WIKI_IMAGE_CACHE_MODE_URL } from '@/utils/wikiImageSettings';
+import { getWikiImageCacheMode } from '@/utils/wikiImageRuntime';
 const DEBUG_WIKI_IMAGE = true;
 
 /** Windows: Ctrl, Mac: Cmd 를 mod 로 통일한 키 조합 문자열 반환 (keydown 매칭용) */
@@ -67,7 +72,9 @@ const inFlight = new Map();
 /**
  * @param {string} path
  * @param {(path: string) => Promise<string|null>} getPresignedUrl
- * @param {{ skipCache?: boolean }} [opts] skipCache true면 캐시 무시하고 새 presigned URL 요청 (onerror 재시도용)
+ *   - path에 대한 S3 Pre-signed GET URL을 반환하는 함수
+ * @param {{ skipCache?: boolean }} [opts]
+ *   - skipCache true면 Blob 캐시를 무시하고 새로 다운로드 (onerror 재시도용)
  */
 function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
   if (!path || typeof getPresignedUrl !== 'function') {
@@ -81,29 +88,72 @@ function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
     return inFlight.get(inFlightKey);
   }
   const fetchFresh = () =>
-    getPresignedUrl(path).then((url) => {
-      if (url) {
-        const expiresAt = Date.now() + PRESIGNED_EXPIRES_IN_S * 1000;
-        setCachedWikiImageUrl({ path, url, expiresAt }).catch(() => {});
-      } else if (DEBUG_WIKI_IMAGE) {
-        console.log('[wiki-image] resolveWikiImageUrl: presigned URL was null', { path });
+    getPresignedUrl(path).then(async (url) => {
+      if (!url) {
+        if (DEBUG_WIKI_IMAGE) {
+          console.log('[wiki-image] resolveWikiImageUrl: presigned URL was null', { path });
+        }
+        return null;
       }
-      return url;
+      const mode = getWikiImageCacheMode();
+      // URL 모드: presigned URL 자체를 캐시에 저장
+      if (mode === WIKI_IMAGE_CACHE_MODE_URL) {
+        const expiresAt = Date.now() + 3600 * 1000;
+        await setCachedWikiImageUrl({ path, url, expiresAt });
+        if (DEBUG_WIKI_IMAGE) {
+          console.log('[wiki-image] resolveWikiImageUrl: stored presigned URL in cache', { path });
+        }
+        return url;
+      }
+      // Blob 모드(기본): presigned URL로 Blob을 받아 IndexedDB에 저장
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          if (DEBUG_WIKI_IMAGE) {
+            console.log('[wiki-image] resolveWikiImageUrl: fetch failed', { path, status: res.status });
+          }
+          return null;
+        }
+        const blob = await res.blob();
+        await setCachedWikiImageBlob({ path, blob });
+        const objectUrl = URL.createObjectURL(blob);
+        if (DEBUG_WIKI_IMAGE) {
+          console.log('[wiki-image] resolveWikiImageUrl: fetched & cached blob', { path });
+        }
+        return objectUrl;
+      } catch (err) {
+        if (DEBUG_WIKI_IMAGE) {
+          console.log('[wiki-image] resolveWikiImageUrl: fetch error', { path, err });
+        }
+        return null;
+      }
     });
 
   const p = skipCache
     ? (() => {
-        if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: skipCache=true, requesting fresh presigned URL', { path });
+        if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: skipCache=true, requesting fresh presigned URL', { path, mode: getWikiImageCacheMode() });
         return fetchFresh();
       })()
-    : getCachedWikiImageUrl(path).then((cached) => {
-        if (cached) {
-          if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: cache hit', { path });
-          return cached;
+    : (async () => {
+        // 캐시 확인: 모드에 따라 Blob 또는 URL 캐시를 먼저 본다.
+        const mode = getWikiImageCacheMode();
+        if (mode === WIKI_IMAGE_CACHE_MODE_URL) {
+          const cachedUrl = await getCachedWikiImageUrl(path);
+          if (cachedUrl) {
+            if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: cache hit (url)', { path });
+            return cachedUrl;
+          }
+          if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: cache miss (url), requesting fresh presigned URL', { path });
+          return fetchFresh();
         }
-        if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: cache miss, requesting presigned URL', { path });
+        const cachedObjectUrl = await getCachedWikiImageObjectUrl(path);
+        if (cachedObjectUrl) {
+          if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: cache hit (blob)', { path });
+          return cachedObjectUrl;
+        }
+        if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] resolveWikiImageUrl: cache miss (blob), requesting fresh presigned URL', { path });
         return fetchFresh();
-      });
+      })();
   inFlight.set(inFlightKey, p);
   p.finally(() => { inFlight.delete(inFlightKey); });
   return p;
