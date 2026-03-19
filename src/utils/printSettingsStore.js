@@ -1,4 +1,4 @@
-import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
+import { getObjectBody, headObject, putObject, getSignedGetUrl } from '@/utils/s3Client';
 
 const PRINT_JSON_KEY = '.settings/print.json';
 const LOCAL_STORAGE_KEY = 's3haim_print_fonts';
@@ -15,6 +15,17 @@ const store = {
   s3Creds: null,
   localRootHandle: null,
 };
+
+/**
+ * ExportPDFPage 등에서 wiki 이미지용 Pre-signed URL resolver를 가져올 때 사용.
+ * @returns {((path: string) => Promise<string|null>) | null}
+ */
+export function getPresignedUrlResolver() {
+  const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
+  const bucket = store.s3Creds?.bucket;
+  if (!client || !bucket) return null;
+  return (path) => getSignedGetUrl(client, bucket, path, 3600);
+}
 
 /**
  * MainApp에서 S3/로컬 접근을 주입합니다.

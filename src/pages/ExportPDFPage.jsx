@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import { ArrowLeft, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
-import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
+import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
+import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 
 const EDITOR_ID = 'export-pdf-preview';
 
@@ -41,6 +42,10 @@ export default function ExportPDFPage() {
   const { value = '' } = location.state ?? {};
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
   const [fontModalOpen, setFontModalOpen] = useState(false);
+  const previewContainerRef = useRef(null);
+  const getPresignedUrl = useMemo(() => getPresignedUrlResolver(), []);
+
+  useWikiImageHydration(previewContainerRef, value, getPresignedUrl ?? undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,15 +121,17 @@ export default function ExportPDFPage() {
         </div>
       </div>
 
-      <MdPreview
-        id={EDITOR_ID}
-        theme="light"
-        language="ko-KR"
-        value={value}
-        mdHeadingId={headingId}
-        codeFoldable={false}
-        showCodeRowNumber={false}
-      />
+      <div ref={previewContainerRef} className="flex-1 overflow-auto min-h-0">
+        <MdPreview
+          id={EDITOR_ID}
+          theme="light"
+          language="ko-KR"
+          value={value}
+          mdHeadingId={headingId}
+          codeFoldable={false}
+          showCodeRowNumber={false}
+        />
+      </div>
 
       <PrintFontOptionsModal
         isOpen={fontModalOpen}
