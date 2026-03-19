@@ -50,6 +50,7 @@ import { syncPendingUploads } from '@/utils/syncPendingUploads';
 import { uploadEditorImage } from '@/utils/editorImageUpload';
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
+import { getRecordingQueueStats } from '@/utils/recordingDb';
 import {
   getDraftKey,
   saveMemoDraft,
@@ -179,6 +180,7 @@ function MainApp() {
   } = useRecording();
 
   const [recordingPipelineStatus, setRecordingPipelineStatus] = useState('');
+  const [recordingQueueStats, setRecordingQueueStats] = useState({ pending: 0, uploading: 0, failed: 0 });
   const [recordingsList, setRecordingsList] = useState([]);
   const [selectedRecordingKey, setSelectedRecordingKey] = useState(null);
   const [recordingAudioUrl, setRecordingAudioUrl] = useState('');
@@ -583,15 +585,25 @@ function MainApp() {
     const bucket = s3Creds.bucket;
     if (!client || !bucket) return;
 
+    const refreshStats = () => getRecordingQueueStats().then(setRecordingQueueStats).catch(() => {});
+
     const kick = () =>
       drainRecordingUploadQueue({ client, bucket }).then((r) => {
+        refreshStats();
         if (r?.processed > 0) loadS3Files();
+      }).catch(() => {
+        refreshStats();
       });
 
+    refreshStats();
     kick();
     const onOnline = () => kick();
     window.addEventListener('online', onOnline);
-    return () => window.removeEventListener('online', onOnline);
+    const pollId = window.setInterval(refreshStats, 2000);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.clearInterval(pollId);
+    };
   }, [isUnlocked, getS3Client, s3Creds.bucket, loadS3Files]);
 
   useEffect(() => {
@@ -3202,6 +3214,26 @@ function MainApp() {
         <div className="h-6 md:h-7 border-t border-gray-200 dark:border-odp-borderSoft bg-white/90 dark:bg-odp-bgSoft/95 text-[10px] md:text-[11px] px-2 md:px-3 flex items-center justify-between gap-2 md:gap-3 shrink-0">
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 overflow-hidden">
             <ActivityIndicatorBar />
+            {(recordingQueueStats.pending > 0 ||
+              recordingQueueStats.uploading > 0 ||
+              recordingQueueStats.failed > 0) && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSofter text-gray-700 dark:text-odp-fgStrong text-[10px] md:text-[11px] shrink-0"
+                title={`녹음 업로드 큐 - 대기 ${recordingQueueStats.pending}, 업로드중 ${recordingQueueStats.uploading}, 실패 ${recordingQueueStats.failed}`}
+              >
+                <span className="truncate max-w-[160px] md:max-w-[220px]">
+                  녹음 업로드:{" "}
+                  {recordingQueueStats.uploading > 0 || recordingPipelineStatus === '업로드 중'
+                    ? "업로드 중"
+                    : recordingQueueStats.pending > 0
+                      ? `대기 ${recordingQueueStats.pending}`
+                      : "재시도 대기"}
+                </span>
+                <span className="text-gray-500 dark:text-odp-muted shrink-0">
+                  실패 {recordingQueueStats.failed}
+                </span>
+              </span>
+            )}
             <span className="truncate shrink-0 max-w-12 md:max-w-none" title={currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}>
               <span className="md:hidden">{currentFile?.type === 's3' ? 'S3' : currentFile?.type === 'local' ? '로컬' : '없음'}</span>
               <span className="hidden md:inline">저장소: {currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}</span>

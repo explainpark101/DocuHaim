@@ -125,3 +125,16 @@ export async function deleteRecordingsByNoteKey(noteKey) {
 export async function deleteRecordingById(id) {
   return db.recordings.delete(id);
 }
+
+/**
+ * 녹음 업로드 큐 통계
+ * @returns {Promise<{ pending: number, uploading: number, failed: number }>}
+ */
+export async function getRecordingQueueStats() {
+  const [pending, uploading, failed] = await Promise.all([
+    db.recordings.where('status').equals('pending').count(),
+    db.recordings.where('status').equals('uploading').count(),
+    db.recordings.where('status').equals('failed').count(),
+  ]);
+  return { pending, uploading, failed };
+}
