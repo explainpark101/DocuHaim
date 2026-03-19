@@ -1251,12 +1251,46 @@ function MainApp() {
     [handleTreeNodeSelect]
   );
 
-  const handleOpenInNewWindow = useCallback((storageType, node) => {
-    if (node?.type !== 'file' || !node?.path) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('open', `${storageType}:${node.path}`);
-    window.open(url.toString(), '_blank');
-  }, []);
+  const handleOpenInNewWindow = useCallback(
+    async (storageType, node) => {
+      if (node?.type !== 'file' || !node?.path) return;
+
+      const path = node.path;
+      const ext = (path.split('.').pop() || '').toLowerCase();
+
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+      const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
+      const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
+      const isS3Media = storageType === 's3' && (ext === 'pdf' || imageExts.includes(ext) || videoExts.includes(ext) || audioExts.includes(ext));
+
+      // Popup blocker 방지를 위해 signedURL 요청 전에 새 창을 먼저 띄웁니다.
+      if (isS3Media) {
+        const win = window.open('about:blank', '_blank');
+        if (!win) {
+          alert('팝업이 차단되어 새 창을 열 수 없습니다.');
+          return;
+        }
+
+        try {
+          const client = getS3Client();
+          const bucket = s3Creds.bucket;
+          if (!client || !bucket) throw new Error('S3 클라이언트 또는 버킷이 초기화되지 않았습니다.');
+
+          const signedUrl = await getSignedGetUrl(client, bucket, path, 3600);
+          win.location.href = signedUrl.toString();
+        } catch (e) {
+          console.error('Open media signedURL failed:', e);
+          alert('미디어 열기에 실패했습니다.');
+        }
+        return;
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('open', `${storageType}:${path}`);
+      window.open(url.toString(), '_blank');
+    },
+    [getS3Client, s3Creds.bucket]
+  );
 
   // Persist last opened file (S3 or local) for restore on next load
   useEffect(() => {
@@ -1284,10 +1318,6 @@ function MainApp() {
     const node = findFileNodeByPath(tree, path);
     if (node) {
       selectFile(type, node);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('open');
-      const replace = url.search ? url.pathname + '?' + url.searchParams.toString() : url.pathname;
-      window.history.replaceState(null, '', replace);
     }
     hasProcessedOpenFromUrlRef.current = true;
   }, [isUnlocked, s3Tree, localTree, selectFile]);
@@ -1295,6 +1325,7 @@ function MainApp() {
   // Restore last opened file once trees are loaded
   useEffect(() => {
     if (!isUnlocked || hasRestoredLastFileRef.current) return;
+    if (hasProcessedOpenFromUrlRef.current) return;
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('open')) return;
     let saved;
     try {

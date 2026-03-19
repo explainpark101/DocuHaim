@@ -94,7 +94,7 @@ export default function SidebarContextMenu({
           type="button"
           className={itemClass}
           onClick={() => {
-            onOpenInNewWindow(storageType, node);
+            void onOpenInNewWindow(storageType, node);
             onClose();
           }}
         >
