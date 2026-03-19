@@ -578,6 +578,17 @@ function MainApp() {
   // 3. S3 Actions (using @aws-sdk/client-s3)
   const getS3Client = useCallback((creds = s3Creds) => createS3Client(creds), [s3Creds]);
 
+  const loadS3Files = useCallback(async (creds = s3Creds) => {
+    const client = getS3Client(creds);
+    if (!client || !creds.bucket) return;
+    try {
+      const contents = await listObjectsV2(client, creds.bucket, '');
+      setS3Tree(buildS3Tree(contents));
+    } catch (err) {
+      console.error("S3 Load Error:", err);
+    }
+  }, [getS3Client, s3Creds]);
+
   // IndexedDB에 저장된 녹음 업로드 재시도: 앱 시작/인터넷 복구 시
   useEffect(() => {
     if (!isUnlocked) return;
@@ -609,17 +620,6 @@ function MainApp() {
   useEffect(() => {
     setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle });
   }, [getS3Client, s3Creds, localRootHandle]);
-
-  const loadS3Files = useCallback(async (creds = s3Creds) => {
-    const client = getS3Client(creds);
-    if (!client || !creds.bucket) return;
-    try {
-      const contents = await listObjectsV2(client, creds.bucket, '');
-      setS3Tree(buildS3Tree(contents));
-    } catch (err) {
-      console.error("S3 Load Error:", err);
-    }
-  }, [getS3Client, s3Creds]);
 
   const loadSnippetConfigFromS3 = useCallback(
     async (creds = s3Creds) => {
