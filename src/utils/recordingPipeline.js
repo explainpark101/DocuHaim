@@ -85,11 +85,16 @@ export async function runEncodeAndUploadPipeline({
   bucket,
   recordId,
   onStatus,
+  timestamp,
 }) {
   const { audioBlob, syncData, noteKey } = recording;
-  const timestamp = Date.now();
-  const audioKey = getAudioKey(noteKey, audioBlob?.type, timestamp);
-  const syncKey = getSyncKey(noteKey, timestamp);
+  const fixedTs =
+    timestamp ??
+    recording?.recordingTs ??
+    recording?.createdAt ??
+    Date.now();
+  const audioKey = getAudioKey(noteKey, audioBlob?.type, fixedTs);
+  const syncKey = getSyncKey(noteKey, fixedTs);
 
   if (!audioKey) throw new Error('유효한 noteKey가 필요합니다.');
 

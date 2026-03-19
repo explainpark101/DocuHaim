@@ -43,11 +43,12 @@ import { DownloadMethodModal } from '@/components/modals/DownloadMethodModal';
 import SettingsPage from '@/pages/SettingsPage';
 import ExportPDFPage from '@/pages/ExportPDFPage';
 import { useRecording } from '@/hooks/useRecording';
-import { runEncodeAndUploadPipeline, getSyncKeyForRecording } from '@/utils/recordingPipeline';
+import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
 import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
 import { uploadEditorImage } from '@/utils/editorImageUpload';
+import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
 import {
   getDraftKey,
@@ -574,6 +575,24 @@ function MainApp() {
 
   // 3. S3 Actions (using @aws-sdk/client-s3)
   const getS3Client = useCallback((creds = s3Creds) => createS3Client(creds), [s3Creds]);
+
+  // IndexedDB에 저장된 녹음 업로드 재시도: 앱 시작/인터넷 복구 시
+  useEffect(() => {
+    if (!isUnlocked) return;
+    const client = getS3Client();
+    const bucket = s3Creds.bucket;
+    if (!client || !bucket) return;
+
+    const kick = () =>
+      drainRecordingUploadQueue({ client, bucket }).then((r) => {
+        if (r?.processed > 0) loadS3Files();
+      });
+
+    kick();
+    const onOnline = () => kick();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [isUnlocked, getS3Client, s3Creds.bucket, loadS3Files]);
 
   useEffect(() => {
     setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle });
@@ -2843,11 +2862,9 @@ function MainApp() {
           });
           try {
             setRecordingPipelineStatus('업로드 중');
-            await runEncodeAndUploadPipeline({
-              recording: result,
+            await drainRecordingUploadQueue({
               client,
               bucket: s3Creds.bucket,
-              recordId: result.id ?? undefined,
               onStatus: setRecordingPipelineStatus,
             });
             loadS3Files();

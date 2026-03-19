@@ -6,9 +6,9 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('s3haim-recordings');
 
-db.version(1).stores({
+db.version(2).stores({
   recordings:
-    '++id, noteKey, createdAt, status',
+    '++id, noteKey, createdAt, status, nextAttemptAt',
 });
 
 /**
@@ -19,7 +19,13 @@ db.version(1).stores({
  * @property {string} markdown - 녹음 시점 마크다운
  * @property {Array<{time: number, line: number, text: string}>} syncData - 필기 트래킹
  * @property {number} createdAt - timestamp
+ * @property {number} recordingTs - 녹음/저장 기준 timestamp (S3 키 고정용)
  * @property {'pending'|'encoding'|'uploading'|'uploaded'|'failed'} status
+ * @property {number} [attempts]
+ * @property {number} [lastAttemptAt]
+ * @property {number} [nextAttemptAt]
+ * @property {string} [audioKey]
+ * @property {string} [syncKey]
  * @property {string} [error]
  */
 
@@ -33,13 +39,20 @@ db.version(1).stores({
  * @returns {Promise<number>} id
  */
 export async function saveRecording({ noteKey, audioBlob, markdown, syncData }) {
+  const now = Date.now();
   return db.recordings.add({
     noteKey,
     audioBlob,
     markdown: markdown ?? '',
     syncData: syncData ?? [],
-    createdAt: Date.now(),
+    createdAt: now,
+    recordingTs: now,
     status: 'pending',
+    attempts: 0,
+    lastAttemptAt: null,
+    nextAttemptAt: now,
+    audioKey: null,
+    syncKey: null,
   });
 }
 
@@ -59,6 +72,36 @@ export async function getPendingRecording(noteKey) {
 }
 
 /**
+ * 업로드 대기/실패 녹음 목록 조회 (nextAttemptAt 기준)
+ * @param {Object} [params]
+ * @param {number} [params.now]
+ * @param {number} [params.limit]
+ * @returns {Promise<RecordingRecord[]>}
+ */
+export async function listUploadableRecordings(params = {}) {
+  const now = params.now ?? Date.now();
+  const limit = params.limit ?? 10;
+  const list = await db.recordings
+    .where('status')
+    .anyOf(['pending', 'failed'])
+    .filter((r) => r.nextAttemptAt == null || r.nextAttemptAt <= now)
+    .toArray();
+  return list
+    .sort((a, b) => (a.nextAttemptAt ?? 0) - (b.nextAttemptAt ?? 0))
+    .slice(0, limit);
+}
+
+/**
+ * ID로 녹음 조회
+ * @param {number} id
+ * @returns {Promise<RecordingRecord|null>}
+ */
+export async function getRecordingById(id) {
+  const r = await db.recordings.get(id);
+  return r ?? null;
+}
+
+/**
  * 녹음 상태 업데이트
  * @param {number} id
  * @param {Partial<RecordingRecord>} updates
@@ -73,4 +116,12 @@ export async function updateRecordingStatus(id, updates) {
  */
 export async function deleteRecordingsByNoteKey(noteKey) {
   return db.recordings.where('noteKey').equals(noteKey).delete();
+}
+
+/**
+ * 녹음 1건 삭제 (업로드 성공 후 원본 정리)
+ * @param {number} id
+ */
+export async function deleteRecordingById(id) {
+  return db.recordings.delete(id);
 }
