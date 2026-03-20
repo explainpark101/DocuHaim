@@ -7,6 +7,7 @@ import ExportPDF from '@/components/ExportPDF';
 import { lineNumbers } from '@codemirror/view';
 import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
+import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 const DEBUG_WIKI_IMAGE = true;
 
@@ -52,9 +53,15 @@ config({
     ];
   },
   markdownItPlugins(plugins) {
+    let next = plugins;
     // wiki_image는 @/config/mdEditorConfig에서 전역 등록됨. 여기서는 중복 추가 방지.
-    if (plugins.some((p) => p.type === 'wiki_image')) return plugins;
-    return [...plugins, { type: 'wiki_image', plugin: wikiImagePlugin, options: {} }];
+    if (!next.some((p) => p.type === 'wiki_image')) {
+      next = [...next, { type: 'wiki_image', plugin: wikiImagePlugin, options: {} }];
+    }
+    if (!next.some((p) => p.type === 'preview_link_target_blank')) {
+      next = [...next, { type: 'preview_link_target_blank', plugin: previewLinkTargetBlankPlugin, options: {} }];
+    }
+    return next;
   },
 });
 
