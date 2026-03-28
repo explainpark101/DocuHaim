@@ -8,6 +8,7 @@ import { lineNumbers } from '@codemirror/view';
 import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
+import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 const DEBUG_WIKI_IMAGE = true;
 
@@ -162,20 +163,7 @@ export default function MarkdownEditor({
           const clipboardData = e.clipboardData;
           if (!clipboardData || !view) return;
 
-          const imageFiles = [];
-          if (clipboardData.files?.length) {
-            for (const f of clipboardData.files) {
-              if (f.type?.startsWith('image/')) imageFiles.push(f);
-            }
-          }
-          if (!imageFiles.length && clipboardData.items) {
-            for (const item of clipboardData.items) {
-              if (item.kind === 'file' && item.type?.startsWith('image/')) {
-                const file = item.getAsFile();
-                if (file) imageFiles.push(file);
-              }
-            }
-          }
+          const imageFiles = collectClipboardImageFiles(clipboardData);
 
           if (imageFiles.length && typeof onUploadImage === 'function') {
             if (isUploadingEditorImage) {

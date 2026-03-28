@@ -1,3 +1,53 @@
+import { dbgClipboard } from '@/utils/clipboardImageDebug';
+
+/**
+ * 파일 앞부분 바이트로 image/* MIME 추정 (클립보드 File.type 비어 있을 때 사용)
+ * @param {File} file
+ * @returns {Promise<string>} 예: 'image/png', 없으면 ''
+ */
+export async function sniffImageMimeFromFile(file) {
+  if (file.type?.startsWith('image/')) return file.type;
+  const buf = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  if (buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return 'image/png';
+  }
+  if (buf.length >= 4 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return 'image/gif';
+  if (
+    buf.length >= 12 &&
+    buf[0] === 0x52 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x46 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50
+  ) {
+    return 'image/webp';
+  }
+  dbgClipboard('sniff:noMatch', {
+    size: file.size,
+    head: buf.length
+      ? [...buf.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join(' ')
+      : '(empty)',
+  });
+  return '';
+}
+
+/** @param {File} file */
+export async function isFileProbablyImage(file) {
+  const mime = await sniffImageMimeFromFile(file);
+  const ok = Boolean(mime);
+  dbgClipboard('sniff:isFileProbablyImage', {
+    type: file.type || '(empty)',
+    size: file.size,
+    probablyImage: ok,
+    inferredMime: mime || '(none)',
+  });
+  return ok;
+}
+
 /**
  * 에디터용 이미지 S3 업로드 — 위키 문법 ![[path]]용 path(S3 Object Key) 반환.
  * Key 형식: .images/<md파일경로>/<md파일이름>/<uuid>.<ext>
@@ -23,18 +73,35 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
   const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const ext = getExtensionFromMime(file.type);
+  let mime = file.type;
+  if (!mime || mime === 'application/octet-stream') {
+    mime = (await sniffImageMimeFromFile(file)) || mime;
+  }
+  const ext = getExtensionFromMime(mime);
   const key = `${prefix}${uuid}${ext}`;
+
+  dbgClipboard('upload:start', {
+    bucket,
+    imagePathPrefix: prefix,
+    key,
+    fileSize: file.size,
+    fileType: file.type || '(empty)',
+    resolvedMime: mime || '(empty)',
+    ext,
+  });
 
   const { putObject } = await import('@/utils/s3Client');
   const body = new Uint8Array(await file.arrayBuffer());
+  const contentType =
+    mime && mime.startsWith('image/') ? mime : 'application/octet-stream';
   await putObject(client, {
     Bucket: bucket,
     Key: key,
     Body: body,
-    ContentType: file.type || 'application/octet-stream',
+    ContentType: contentType,
   });
 
+  dbgClipboard('upload:done', { key, contentType, bodyBytes: body.byteLength });
   return key;
 }
 

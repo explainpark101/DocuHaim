@@ -14,12 +14,14 @@ import {
 import AudioLevelIndicator from '@/components/AudioLevelIndicator';
 import RecordingDropdownButton from '@/components/RecordingDropdownButton';
 import MarkdownEditor from '@/components/MarkdownEditor';
+import NovelMarkdownEditor from '@/components/NovelMarkdownEditor';
+import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import MonacoTextEditor from '@/components/MonacoTextEditor';
 import Button from '@/components/Button';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import { X } from 'lucide-react';
+import { ListTree, PenLine, X } from 'lucide-react';
 
 export default function EditorPane({
   currentFile,
@@ -51,7 +53,9 @@ export default function EditorPane({
   isUploadingEditorImage = false,
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
+  editorType,
 }) {
+  const effectiveEditorType = editorType ?? loadEditorType();
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
   const pdfIframeRef = useRef(null);
   const [recordingViewMode, setRecordingViewMode] = useState(false);
@@ -59,6 +63,7 @@ export default function EditorPane({
   const recordingAudioRef = useRef(null);
   const [fileManagementOpen, setFileManagementOpen] = useState(false);
   const fileManagementRef = useRef(null);
+  const [novelTocVisible, setNovelTocVisible] = useState(true);
 
   useEffect(() => {
     if (!fileManagementOpen) return;
@@ -304,6 +309,37 @@ export default function EditorPane({
                 )}
               </div>
             )}
+            {effectiveEditorType === EDITOR_TYPE_NOVEL && !recordingViewMode && (
+              <div
+                className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50/90 dark:bg-odp-bgSoft/90"
+                role="toolbar"
+                aria-label="Markdown 편집기"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-white dark:bg-odp-surface px-2 py-0.5 text-xs font-semibold text-gray-800 dark:text-odp-fgStrong border border-gray-200 dark:border-odp-borderSoft shadow-sm shrink-0">
+                    <PenLine className="size-3.5 opacity-85" aria-hidden />
+                    Markdown
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-odp-muted truncate hidden sm:inline">
+                    `/` 로 커맨드 입력
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
+                    novelTocVisible
+                      ? 'border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong'
+                  }`}
+                  onClick={() => setNovelTocVisible((v) => !v)}
+                  title={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+                  aria-pressed={novelTocVisible}
+                  aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+                >
+                  <ListTree className="size-4" aria-hidden />
+                </button>
+              </div>
+            )}
             <div className="flex-1 min-h-0">
               {recordingViewMode && recordingAudioUrl ? (
                 <RecordingSyncView
@@ -311,6 +347,20 @@ export default function EditorPane({
                   syncData={recordingSyncData}
                   audioRef={recordingAudioRef}
                   theme={theme}
+                />
+              ) : effectiveEditorType === EDITOR_TYPE_NOVEL ? (
+                <NovelMarkdownEditor
+                  key={currentFile?.id ?? 'novel-md'}
+                  documentKey={currentFile?.id ?? ''}
+                  value={editorContent}
+                  onChange={onChangeEditor}
+                  onSave={onSave}
+                  theme={theme}
+                  previewOnly={previewOnly}
+                  tocVisible={novelTocVisible}
+                  onUploadImage={onUploadImage}
+                  isUploadingEditorImage={isUploadingEditorImage}
+                  onResolveWikiImageUrl={onResolveWikiImageUrl}
                 />
               ) : (
                 <MarkdownEditor
