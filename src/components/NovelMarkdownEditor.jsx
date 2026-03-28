@@ -37,9 +37,11 @@ import {
   wikiImageWithCaptionBlocksDocFromPaths,
 } from '@/utils/wikiImageHtmlInject';
 import { buildNovelSlashSuggestionItems } from '@/config/novelSlashSuggestionItems';
+import NovelEditorToc, { NOVEL_TOC_MD_PADDING_CLASS } from '@/components/NovelEditorToc';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import { useNavigate } from 'react-router';
 import '@/styles/novel-editor.css';
 
 const DEBUG_WIKI_IMAGE = false;
@@ -155,11 +157,14 @@ export default function NovelMarkdownEditor({
   onSave,
   theme = 'light',
   previewOnly = false,
+  /** 상위(EditorPane)에서 목차 패널 표시 여부 */
+  tocVisible = true,
   onUploadImage,
   isUploadingEditorImage = false,
   documentKey,
   onResolveWikiImageUrl,
 }) {
+  const navigate = useNavigate();
   const debounceTimerRef = useRef(null);
   const lastEmittedRef = useRef(null);
   const skipNextUpdateRef = useRef(true);
@@ -170,9 +175,29 @@ export default function NovelMarkdownEditor({
 
   const [initialHtml, setInitialHtml] = useState(() => markdownToNovelEditorHtml(value ?? ''));
 
+  /** `ExportPDF`(md-editor 툴바)와 동일: `/export-pdf` + state `{ value, theme }` */
+  const openExportPdfPage = useCallback(
+    (editor) => {
+      let md = '';
+      try {
+        const merged = mergeWikiCaptionPairsForTurndown(editor.getHTML());
+        md = turndown.turndown(merged);
+      } catch {
+        md = '';
+      }
+      navigate('/export-pdf', { state: { value: md, theme } });
+    },
+    [navigate, theme],
+  );
+
   const slashSuggestionItems = useMemo(
-    () => buildNovelSlashSuggestionItems({ onUploadImage }),
-    [onUploadImage],
+    () =>
+      buildNovelSlashSuggestionItems({
+        onUploadImage,
+        onExportPdf: openExportPdfPage,
+        onSave,
+      }),
+    [onUploadImage, openExportPdfPage, onSave],
   );
 
   useEffect(() => {
@@ -185,6 +210,7 @@ export default function NovelMarkdownEditor({
       StarterKit.configure({
         horizontalRule: false,
         paragraph: false,
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
         dropcursor: { color: '#3b82f6', width: 3 },
       }),
       NovelParagraph,
@@ -557,9 +583,13 @@ export default function NovelMarkdownEditor({
       )}
       <EditorRoot key={documentKey ?? 'novel'}>
         <EditorContent
-          className="flex h-full min-h-0 w-full flex-1 flex-col"
+          className="relative flex h-full min-h-0 w-full flex-1 flex-col"
           editorContainerProps={{
-            className: 'flex min-h-0 flex-1 flex-col overflow-y-auto',
+            className: [
+              'flex min-h-0 flex-1 flex-col overflow-y-auto novel-editor-scroll-area',
+              'transition-[padding] duration-300 ease-out motion-reduce:transition-none',
+              tocVisible ? NOVEL_TOC_MD_PADDING_CLASS : 'md:pr-0',
+            ].join(' '),
           }}
           initialContent={initialHtml}
           extensions={extensions}
@@ -581,6 +611,7 @@ export default function NovelMarkdownEditor({
             },
           }}
         >
+          <NovelEditorToc theme={theme} open={tocVisible} />
           <NovelImagePasteBridge
             previewOnly={previewOnly}
             onUploadImage={onUploadImage}

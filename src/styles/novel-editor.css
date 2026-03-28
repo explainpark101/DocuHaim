@@ -261,3 +261,19 @@
 .novel-editor-surface tr:nth-child(2n) {
   background-color: var(--novel-table-stripe);
 }
+
+/* 우측 목차 패널 */
+.novel-editor-toc-list {
+  scrollbar-width: thin;
+}
+.novel-editor-toc-list::-webkit-scrollbar {
+  width: 4px;
+}
+.novel-editor-toc--dark .novel-editor-toc-list::-webkit-scrollbar-thumb {
+  background: var(--color-odp-borderStrong, #343a45);
+  border-radius: 4px;
+}
+.novel-editor-toc:not(.novel-editor-toc--dark) .novel-editor-toc-list::-webkit-scrollbar-thumb {
+  background: var(--novel-border);
+  border-radius: 4px;
+}

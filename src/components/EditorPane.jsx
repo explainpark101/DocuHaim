@@ -21,7 +21,7 @@ import RecordingPlayer from '@/components/RecordingPlayer';
 import MonacoTextEditor from '@/components/MonacoTextEditor';
 import Button from '@/components/Button';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import { PenLine, X } from 'lucide-react';
+import { ListTree, PenLine, X } from 'lucide-react';
 
 export default function EditorPane({
   currentFile,
@@ -56,11 +56,6 @@ export default function EditorPane({
   editorType,
 }) {
   const effectiveEditorType = editorType ?? loadEditorType();
-  const saveKeyHint =
-    typeof navigator !== 'undefined' &&
-    /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent || navigator.platform || '')
-      ? '⌘S'
-      : 'Ctrl+S';
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
   const pdfIframeRef = useRef(null);
   const [recordingViewMode, setRecordingViewMode] = useState(false);
@@ -68,6 +63,7 @@ export default function EditorPane({
   const recordingAudioRef = useRef(null);
   const [fileManagementOpen, setFileManagementOpen] = useState(false);
   const fileManagementRef = useRef(null);
+  const [novelTocVisible, setNovelTocVisible] = useState(true);
 
   useEffect(() => {
     if (!fileManagementOpen) return;
@@ -325,12 +321,23 @@ export default function EditorPane({
                     Markdown
                   </span>
                   <span className="text-xs text-gray-500 dark:text-odp-muted truncate hidden sm:inline">
-                    `/` 로 제목·목록·이미지 등 삽입
+                    `/` 로 커맨드 입력
                   </span>
                 </div>
-                <span className="text-[11px] text-gray-400 dark:text-odp-muted shrink-0 hidden md:inline tabular-nums">
-                  저장 {saveKeyHint}
-                </span>
+                <button
+                  type="button"
+                  className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
+                    novelTocVisible
+                      ? 'border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong'
+                  }`}
+                  onClick={() => setNovelTocVisible((v) => !v)}
+                  title={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+                  aria-pressed={novelTocVisible}
+                  aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+                >
+                  <ListTree className="size-4" aria-hidden />
+                </button>
               </div>
             )}
             <div className="flex-1 min-h-0">
@@ -350,6 +357,7 @@ export default function EditorPane({
                   onSave={onSave}
                   theme={theme}
                   previewOnly={previewOnly}
+                  tocVisible={novelTocVisible}
                   onUploadImage={onUploadImage}
                   isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
