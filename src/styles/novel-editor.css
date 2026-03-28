@@ -135,6 +135,110 @@
   display: list-item;
 }
 
+/* Tiptap TaskList / NovelTaskItem — 큰 터치 영역·커스텀 체크 UI */
+.novel-editor-surface ul[data-type='taskList'] {
+  list-style: none;
+  padding-inline-start: 0;
+  margin-block: 1em 0;
+}
+
+.novel-editor-surface ul[data-type='taskList'] > li.novel-task-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.65rem;
+  list-style: none;
+  margin-block: 0.4em;
+  min-height: 1.5em;
+}
+
+/* 첫 줄 텍스트와 체크 박스를 한 줄에 맞춤 (본문은 옆으로 이어짐) */
+.novel-editor-surface ul[data-type='taskList'] > li.novel-task-item .novel-task-item-content {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0.12em;
+}
+
+.novel-editor-surface ul[data-type='taskList'] > li.novel-task-item .novel-task-item-content > p {
+  margin: 0;
+  line-height: inherit;
+}
+
+.novel-editor-surface ul[data-type='taskList'] > li.novel-task-item .novel-task-item-content > p + p {
+  margin-top: 0.5em;
+}
+
+/* 넓은 클릭 영역 (최소 44×44) + 보이는 박스는 안쪽에 */
+.novel-editor-surface .novel-task-checkbox-hit {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.35rem 0 -0.35rem -0.25rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.novel-editor-surface .novel-task-checkbox-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.novel-editor-surface .novel-task-checkbox-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  box-sizing: border-box;
+  border: 2px solid var(--novel-border);
+  border-radius: 0.4rem;
+  background: var(--novel-code-bg);
+  pointer-events: none;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.novel-editor-surface .novel-task-checkbox-hit:hover .novel-task-checkbox-face {
+  border-color: var(--novel-link);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--novel-link) 22%, transparent);
+}
+
+.novel-editor-surface .novel-task-checkbox-input:focus-visible + .novel-task-checkbox-face {
+  outline: 2px solid var(--novel-link);
+  outline-offset: 2px;
+}
+
+.novel-editor-surface .novel-task-checkbox-input:checked + .novel-task-checkbox-face {
+  background: var(--novel-link);
+  border-color: var(--novel-link);
+  box-shadow: none;
+}
+
+.novel-editor-surface .novel-task-checkbox-input:checked + .novel-task-checkbox-face::after {
+  content: '';
+  display: block;
+  width: 0.32rem;
+  height: 0.55rem;
+  margin-bottom: 0.1rem;
+  border: solid #fff;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+
+
 .novel-editor-surface blockquote {
   margin: 1em 0;
   padding: 0 1em;

@@ -220,11 +220,86 @@ export function mergeWikiCaptionPairsForTurndown(html) {
   return wrap.innerHTML;
 }
 
+/**
+ * marked GFM 체크리스트 HTML(`<ul><li><input type="checkbox">…`)을
+ * Tiptap TaskList/TaskItem이 파싱하는 형태로 변환한다.
+ * @param {string} html
+ */
+export function convertMarkedTaskListsToTiptapHtml(html) {
+  if (typeof document === 'undefined' || !html || typeof html !== 'string') return html;
+  try {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = html;
+    const uls = wrap.querySelectorAll('ul:not([data-type="taskList"])');
+    uls.forEach((ul) => {
+      const items = [...ul.children].filter((el) => el.tagName === 'LI');
+      if (items.length === 0) return;
+      const markers = items.map((li) => findMarkedTaskCheckbox(li));
+      if (!markers.every(Boolean)) return;
+
+      ul.setAttribute('data-type', 'taskList');
+      ul.className = 'not-prose pl-2';
+
+      items.forEach((li, i) => {
+        const { input, checked } = markers[i];
+        input.remove();
+
+        let innerHtml = li.innerHTML.trim();
+        if (!innerHtml) {
+          innerHtml = '<p></p>';
+        } else if (!innerHtml.startsWith('<')) {
+          const p = document.createElement('p');
+          p.textContent = innerHtml;
+          innerHtml = p.outerHTML;
+        }
+
+        li.innerHTML = '';
+        li.setAttribute('data-type', 'taskItem');
+        li.setAttribute('data-checked', checked ? 'true' : 'false');
+
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        if (checked) cb.setAttribute('checked', 'checked');
+        const span = document.createElement('span');
+        label.appendChild(cb);
+        label.appendChild(span);
+
+        const div = document.createElement('div');
+        div.innerHTML = innerHtml;
+
+        li.appendChild(label);
+        li.appendChild(div);
+      });
+    });
+    return wrap.innerHTML;
+  } catch {
+    return html;
+  }
+}
+
+/** @param {HTMLElement} li */
+function findMarkedTaskCheckbox(li) {
+  const direct = li.querySelector(':scope > input[type="checkbox"]');
+  if (direct) {
+    return { input: direct, checked: direct.hasAttribute('checked') };
+  }
+  const p = li.querySelector(':scope > p');
+  if (p) {
+    const inp = p.querySelector(':scope > input[type="checkbox"]');
+    if (inp) {
+      return { input: inp, checked: inp.hasAttribute('checked') };
+    }
+  }
+  return null;
+}
+
 /** 마크다운 전체 → novel 초기 HTML (marked + 위키 img + 캡션 쌍) */
 export function markdownToNovelEditorHtml(md) {
   try {
     const raw = marked.parse(md ?? '', { async: false });
-    return annotateWikiImageCaptionPairs(injectWikiImagesIntoHtml(raw));
+    const withTasks = convertMarkedTaskListsToTiptapHtml(raw);
+    return annotateWikiImageCaptionPairs(injectWikiImagesIntoHtml(withTasks));
   } catch {
     return '<p></p>';
   }

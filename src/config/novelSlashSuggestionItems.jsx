@@ -64,7 +64,16 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
     {
       title: '할 일',
       description: '체크리스트',
-      searchTerms: ['todo', 'task', 'list', 'check', 'checkbox'],
+      searchTerms: ['todo', 'task', 'list', 'check'],
+      icon: <CheckSquare className="h-4 w-4" />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleTaskList().run();
+      },
+    },
+    {
+      title: '/checkbox',
+      description: '체크리스트 (할 일과 동일)',
+      searchTerms: ['checkbox', '/checkbox', '체크박스'],
       icon: <CheckSquare className="h-4 w-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleTaskList().run();

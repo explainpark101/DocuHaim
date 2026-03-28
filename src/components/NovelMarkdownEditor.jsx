@@ -17,7 +17,6 @@ import {
   ImageResizer,
   Placeholder,
   StarterKit,
-  TaskItem,
   TaskList,
   TiptapLink,
   TiptapUnderline,
@@ -31,6 +30,7 @@ import 'tippy.js/dist/tippy.css';
 import { Loader2 } from 'lucide-react';
 import { WikiImage } from '@/extensions/wikiImageTiptap';
 import { NovelParagraph } from '@/extensions/novelParagraph';
+import { NovelTaskItem } from '@/extensions/novelTaskItem';
 import {
   markdownToNovelEditorHtml,
   mergeWikiCaptionPairsForTurndown,
@@ -78,6 +78,31 @@ turndown.addRule('wikiFigureCaption', {
     const cap = node.querySelector('figcaption')?.textContent?.trim() ?? '';
     return cap ? `![[${path}]]\n\n${cap}` : `![[${path}]]`;
   },
+});
+
+turndown.addRule('tiptapTaskList', {
+  filter: (node) =>
+    node.nodeName === 'UL' && node.getAttribute('data-type') === 'taskList',
+  replacement: (_content, node) => {
+    const items = [...node.querySelectorAll(':scope > li[data-type="taskItem"]')];
+    const lines = items.map((li) => {
+      const checked = li.getAttribute('data-checked') === 'true';
+      const div = li.querySelector(':scope > div');
+      let body = '';
+      if (div) {
+        body = turndown.turndown(div.innerHTML).trim();
+      }
+      return `${checked ? '- [x]' : '- [ ]'} ${body}`;
+    });
+    return lines.length ? `${lines.join('\n')}\n\n` : '';
+  },
+});
+
+/** 부모 taskList 안의 li는 위 규칙에서만 처리 — 기본 listItem·체크박스 잔여 출력 방지 */
+turndown.addRule('tiptapTaskItem', {
+  filter: (node) =>
+    node.nodeName === 'LI' && node.getAttribute('data-type') === 'taskItem',
+  replacement: () => '',
 });
 
 /**
@@ -236,9 +261,9 @@ export default function NovelMarkdownEditor({
       TaskList.configure({
         HTMLAttributes: { class: 'not-prose pl-2' },
       }),
-      TaskItem.configure({
+      NovelTaskItem.configure({
         nested: true,
-        HTMLAttributes: { class: 'flex gap-2 items-start my-1' },
+        HTMLAttributes: { class: 'novel-task-item' },
       }),
       HighlightExtension,
       CharacterCount.configure(),

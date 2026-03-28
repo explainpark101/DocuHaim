@@ -14,6 +14,7 @@ import {
   IconSettings,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine } from 'lucide-react';
+import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 
 const DATA_TRANSFER_TYPE = 'application/x-s3haim-tree-node';
 
@@ -43,6 +44,7 @@ export default function TreeNode({
   onOpenContextMenu,
   renameTarget,
   onClearRenameTarget,
+  recordingBasePathSet = null,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -141,7 +143,15 @@ export default function TreeNode({
     if (videoExts.includes(ext)) return 'text-orange-600 dark:text-orange-400';
     if (audioExts.includes(ext)) return 'text-purple-600 dark:text-purple-400';
     if (ext === 'pdf') return 'text-red-500 dark:text-red-400';
-    if (ext === 'md' || ext === 'markdown' || ext === 'mdx') return 'text-gray-600 dark:text-gray-100';
+    if (ext === 'md' || ext === 'markdown' || ext === 'mdx') {
+      if (recordingBasePathSet?.size && node.path) {
+        const base = getFilePathBaseForRecordingLookup(node.path);
+        if (base && recordingBasePathSet.has(base)) {
+          return 'text-teal-600 dark:text-teal-400';
+        }
+      }
+      return 'text-gray-600 dark:text-gray-100';
+    }
     return 'text-blue-600 dark:text-blue-400';
   };
 
@@ -505,6 +515,7 @@ export default function TreeNode({
             onOpenContextMenu={onOpenContextMenu}
             renameTarget={renameTarget}
             onClearRenameTarget={onClearRenameTarget}
+            recordingBasePathSet={recordingBasePathSet}
           />
         ))}
     </div>

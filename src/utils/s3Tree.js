@@ -117,6 +117,48 @@ export const getRecordingKeysFromTree = (nodes, noteKey) => {
 };
 
 /**
+ * 노트 파일 경로에서 확장자를 뺀 베이스 (`notes/a.md` → `notes/a`, 녹음 키 prefix와 동일)
+ * @param {string} filePath
+ */
+export function getFilePathBaseForRecordingLookup(filePath) {
+  if (!filePath || typeof filePath !== 'string') return '';
+  const lastDot = filePath.lastIndexOf('.');
+  return lastDot <= 0 ? filePath : filePath.slice(0, lastDot);
+}
+
+/**
+ * 트리에 있는 녹음 오디오 파일(`…-rec-{ts}.m4a|webm|mp4`)을 스캔해 베이스 경로 Set
+ * @param {Array} nodes
+ * @returns {Set<string>}
+ */
+export function buildRecordingBasePathSet(nodes) {
+  const set = new Set();
+  const walk = (list) => {
+    if (!list?.length) return;
+    for (const node of list) {
+      if (node.type === 'file' && node.path) {
+        const m = node.path.match(/^(.*)-rec-\d+\.(m4a|webm|mp4)$/i);
+        if (m) set.add(m[1]);
+      }
+      if (node.children?.length) walk(node.children);
+    }
+  };
+  walk(nodes);
+  return set;
+}
+
+/**
+ * S3 + 로컬 트리에서 녹음이 연결된 노트 베이스 경로 합집합
+ */
+export function buildRecordingBasePathSetFromTrees(s3Nodes, localNodes) {
+  const set = buildRecordingBasePathSet(s3Nodes || []);
+  for (const base of buildRecordingBasePathSet(localNodes || [])) {
+    set.add(base);
+  }
+  return set;
+}
+
+/**
  * 녹음 동반 S3/로컬 파일인지 (트리에서 숨김 처리용)
  * 오디오: …-rec-{ts}.m4a|webm|mp4
  * 필기 동기화: …-rec-{ts}.sync.pb|.sync.json

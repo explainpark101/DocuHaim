@@ -1,6 +1,10 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import TreeNode from '@/components/TreeNode';
-import { findNodeByPath, isRecordingCompanionFileKey } from '@/utils/s3Tree';
+import {
+  findNodeByPath,
+  isRecordingCompanionFileKey,
+  buildRecordingBasePathSetFromTrees,
+} from '@/utils/s3Tree';
 
 const EXPANDED_FOLDERS_KEY = 's3haim_expandedFolders';
 
@@ -364,6 +368,12 @@ export default function Sidebar({
     [localTree, searchTerm, showHiddenFolders, hideRecordingCompanions],
   );
 
+  /** 필터 전 원본 트리 기준 — 숨김 옵션과 무관하게 녹음 연결 여부 표시 */
+  const recordingBasePathSet = useMemo(
+    () => buildRecordingBasePathSetFromTrees(s3Tree, localTree),
+    [s3Tree, localTree],
+  );
+
   const collectFolderPaths = (nodes) => {
     const paths = new Set();
     const walk = (n) => {
@@ -648,6 +658,7 @@ export default function Sidebar({
                     }
                     renameTarget={renameTarget}
                     onClearRenameTarget={() => setRenameTarget(null)}
+                    recordingBasePathSet={recordingBasePathSet}
                   />
                 ))
               ) : (
@@ -792,6 +803,7 @@ export default function Sidebar({
                 }
                 renameTarget={renameTarget}
                 onClearRenameTarget={() => setRenameTarget(null)}
+                recordingBasePathSet={recordingBasePathSet}
               />
             ))}
           </div>
