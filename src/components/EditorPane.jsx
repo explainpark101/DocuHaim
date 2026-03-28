@@ -54,6 +54,7 @@ export default function EditorPane({
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
   editorType,
+  hideRecordingCompanions = false,
 }) {
   const effectiveEditorType = editorType ?? loadEditorType();
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
@@ -75,6 +76,12 @@ export default function EditorPane({
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [fileManagementOpen]);
+
+  useEffect(() => {
+    if (!hideRecordingCompanions) return;
+    setShowRecordingToolbar(false);
+    setRecordingViewMode(false);
+  }, [hideRecordingCompanions]);
 
   const formatRecordingLabel = (r) => {
     const d = new Date(r.timestamp);
@@ -139,8 +146,8 @@ export default function EditorPane({
   
   return (
     <div className="flex-1 flex flex-col min-w-0 max-h-full">
-      <div className="h-14 border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-surface flex items-center justify-between px-6 shrink-0 w-full gap-2">
-        <div className="flex items-center gap-3 text-gray-700 dark:text-odp-fgStrong font-medium min-w-0 w-full">
+      <div className="min-h-14 border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-surface flex items-center justify-between px-3 sm:px-6 shrink-0 w-full gap-2 relative z-50">
+        <div className="flex items-center gap-2 sm:gap-3 text-gray-700 dark:text-odp-fgStrong font-medium min-w-0 flex-1">
           {isRecording ? (
             <AudioLevelIndicator level={audioLevel} size={16} />
           ) : currentFile.type === 's3' ? (
@@ -159,8 +166,8 @@ export default function EditorPane({
             />
           </div>
         </div>
-        <div className="flex items-center gap-2 justify-end shrink-0">
-          {typeof onToggleRecording === 'function' && (
+        <div className="flex items-center gap-2 justify-end shrink-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
+          {typeof onToggleRecording === 'function' && !hideRecordingCompanions && (
             <RecordingDropdownButton
               isRecording={isRecording}
               audioLevel={audioLevel}
@@ -245,6 +252,7 @@ export default function EditorPane({
             onClick={onSave}
             disabled={isSaving || !isEditableViewer}
             title={isSaving ? '저장 중...' : '저장'}
+            className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"
           >
             <IconSave />
             <span className="hidden md:inline"> {isSaving ? '저장 중...' : '저장'}</span>

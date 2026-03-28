@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import TreeNode from '@/components/TreeNode';
-import { findNodeByPath } from '@/utils/s3Tree';
+import { findNodeByPath, isRecordingCompanionFileKey } from '@/utils/s3Tree';
 
 const EXPANDED_FOLDERS_KEY = 's3haim_expandedFolders';
 
@@ -41,7 +41,7 @@ import {
   IconUpload,
   IconRefresh,
 } from '@/components/icons';
-import { ArrowRightToLine } from 'lucide-react';
+import { ArrowRightToLine, ChevronsLeft } from 'lucide-react';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 
 const DATA_TRANSFER_TYPE = 'application/x-s3haim-tree-node';
@@ -149,6 +149,8 @@ export default function Sidebar({
   onToggleTheme,
   onRenameItem,
   showHiddenFolders,
+  hideRecordingCompanions = false,
+  onRequestCollapseSidebar,
   deletingFolderPath,
   isDeletingFolder,
   onDropOnFolder,
@@ -315,10 +317,13 @@ export default function Sidebar({
     }
   }, [expandPathsRef, expandPathsForNewItem]);
 
-  const filterTree = (nodes, { hideDotFolders } = {}) => {
+  const filterTree = (nodes, { hideDotFolders, hideRecordingCompanionFiles } = {}) => {
     const q = searchTerm ? searchTerm.toLowerCase() : '';
     const walk = (node) => {
       if (hideDotFolders && node.type === 'folder' && node.name.startsWith('.')) {
+        return null;
+      }
+      if (node.type === 'file' && hideRecordingCompanionFiles && isRecordingCompanionFileKey(node.path)) {
         return null;
       }
       const nameMatch =
@@ -343,12 +348,20 @@ export default function Sidebar({
   };
 
   const filteredS3Tree = useMemo(
-    () => filterTree(s3Tree, { hideDotFolders: !showHiddenFolders }),
-    [s3Tree, searchTerm, showHiddenFolders],
+    () =>
+      filterTree(s3Tree, {
+        hideDotFolders: !showHiddenFolders,
+        hideRecordingCompanionFiles: hideRecordingCompanions,
+      }),
+    [s3Tree, searchTerm, showHiddenFolders, hideRecordingCompanions],
   );
   const filteredLocalTree = useMemo(
-    () => filterTree(localTree, { hideDotFolders: !showHiddenFolders }),
-    [localTree, searchTerm, showHiddenFolders],
+    () =>
+      filterTree(localTree, {
+        hideDotFolders: !showHiddenFolders,
+        hideRecordingCompanionFiles: hideRecordingCompanions,
+      }),
+    [localTree, searchTerm, showHiddenFolders, hideRecordingCompanions],
   );
 
   const collectFolderPaths = (nodes) => {
@@ -424,8 +437,21 @@ export default function Sidebar({
         />
       )}
       <div className="p-4 border-b border-gray-200 dark:border-odp-bgSofter flex flex-col gap-3 bg-gray-50 dark:bg-odp-surface shrink-0">
-        <div className="flex justify-between items-center">
-          <h1 className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong">S3 Haim</h1>
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex items-center gap-1 min-w-0">
+            {typeof onRequestCollapseSidebar === 'function' && (
+              <button
+                type="button"
+                onClick={onRequestCollapseSidebar}
+                className="hidden md:inline-flex p-1.5 shrink-0 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+                title="사이드바 접기"
+                aria-label="사이드바 접기"
+              >
+                <ChevronsLeft size={18} />
+              </button>
+            )}
+            <h1 className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate">S3 Haim</h1>
+          </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={onToggleTheme}

@@ -117,6 +117,20 @@ export const getRecordingKeysFromTree = (nodes, noteKey) => {
 };
 
 /**
+ * 녹음 동반 S3/로컬 파일인지 (트리에서 숨김 처리용)
+ * 오디오: …-rec-{ts}.m4a|webm|mp4
+ * 필기 동기화: …-rec-{ts}.sync.pb|.sync.json
+ * @param {string} path
+ */
+export function isRecordingCompanionFileKey(path) {
+  if (!path || typeof path !== 'string') return false;
+  return (
+    /-rec-\d+\.(m4a|webm|mp4)$/i.test(path) ||
+    /-rec-\d+\.sync\.(pb|json)$/i.test(path)
+  );
+}
+
+/**
  * Find a file node by path in the tree.
  * @param {Array} nodes
  * @param {string} path

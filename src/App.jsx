@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconFile, IconMenu, IconX } from '@/components/icons';
+import { ChevronsRight } from 'lucide-react';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
   isWebAuthnPRFSupported,
@@ -53,6 +54,7 @@ import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
 import { getRecordingQueueStats } from '@/utils/recordingDb';
 import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
+import { loadHideRecordingCompanions, saveHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
 import {
   getDraftKey,
   saveMemoDraft,
@@ -173,6 +175,14 @@ function MainApp() {
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage.getItem('s3haim_sidebar_collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [hideRecordingCompanions, setHideRecordingCompanions] = useState(() => loadHideRecordingCompanions());
 
   const {
     isRecording,
@@ -240,6 +250,18 @@ function MainApp() {
     mql.addEventListener('change', handler);
     return () => mql.removeEventListener('change', handler);
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('s3haim_sidebar_collapsed', sidebarCollapsed ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    saveHideRecordingCompanions(hideRecordingCompanions);
+  }, [hideRecordingCompanions]);
 
   const handleSidebarResizeMouseDown = (e) => {
     e.preventDefault();
@@ -810,6 +832,13 @@ function MainApp() {
 
   // 녹음 목록 및 선택된 녹음 URL/sync 로드
   useEffect(() => {
+    if (hideRecordingCompanions) {
+      setRecordingsList([]);
+      setSelectedRecordingKey(null);
+      setRecordingAudioUrl('');
+      setRecordingSyncData([]);
+      return;
+    }
     if (!currentFile || currentFile.type !== 's3' || currentFile.viewer !== 'markdown') {
       setRecordingsList([]);
       setSelectedRecordingKey(null);
@@ -821,7 +850,7 @@ function MainApp() {
     const list = getRecordingKeysFromTree(s3Tree, noteKey);
     setRecordingsList(list);
     setSelectedRecordingKey(list.length > 0 ? list[0].key : null);
-  }, [currentFile?.id, currentFile?.type, currentFile?.viewer, s3Tree]);
+  }, [currentFile?.id, currentFile?.type, currentFile?.viewer, s3Tree, hideRecordingCompanions]);
 
   useEffect(() => {
     if (!selectedRecordingKey || !s3Creds.bucket) {
@@ -3033,10 +3062,19 @@ function MainApp() {
               z-40 flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter
               md:relative md:h-full md:shrink-0
               fixed top-0 left-0 right-0 w-full h-dvh md:max-h-none
-              transition-transform duration-300 ease-out md:transition-none
+              max-md:transition-transform max-md:duration-300 max-md:ease-out
+              md:transition-[width] md:duration-300 md:ease-in-out
+              ${!isMobile && sidebarCollapsed ? 'md:overflow-hidden md:border-r-0' : ''}
               ${isMobile && !sidebarOpen ? '-translate-y-full' : 'translate-y-0'}
             `}
-            style={isMobile ? undefined : { width: `${sidebarWidth}px` }}
+            style={
+              isMobile
+                ? undefined
+                : {
+                    width: sidebarCollapsed ? 0 : sidebarWidth,
+                    minWidth: 0,
+                  }
+            }
           >
             {isMobile && (
               <div className="flex justify-end p-2 border-b border-gray-200 dark:border-odp-bgSofter shrink-0 md:hidden">
@@ -3076,6 +3114,8 @@ function MainApp() {
                 }
                 onRenameItem={renameTreeItem}
                 showHiddenFolders={showHiddenFolders}
+                hideRecordingCompanions={hideRecordingCompanions}
+                onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
                 deletingFolderPath={deletingFolderPath}
                 isDeletingFolder={isDeletingFolder}
                 expandPathsRef={expandPathsRef}
@@ -3086,13 +3126,31 @@ function MainApp() {
                 onOpenInNewWindow={handleOpenInNewWindow}
               />
             </div>
-            {!isMobile && (
+            {!isMobile && !sidebarCollapsed && (
               <div
                 className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-400/30 dark:hover:bg-blue-400/30"
                 onMouseDown={handleSidebarResizeMouseDown}
               />
             )}
           </div>
+
+          {!isMobile && (
+            <button
+              type="button"
+              aria-label="사이드바 펼치기"
+              title="사이드바 펼치기"
+              onClick={() => setSidebarCollapsed(false)}
+              className={`hidden md:flex absolute left-0 top-1/2 z-50 -translate-y-1/2 flex-col items-center justify-center w-9 min-h-28 rounded-r-lg border border-l-0 border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft text-gray-600 dark:text-odp-fg shadow-md hover:bg-gray-50 dark:hover:bg-odp-focusBg transition-all duration-300 ease-in-out ${
+                sidebarCollapsed
+                  ? 'opacity-100 translate-x-0 pointer-events-auto'
+                  : 'opacity-0 -translate-x-2 pointer-events-none'
+              }`}
+              tabIndex={sidebarCollapsed ? 0 : -1}
+              aria-hidden={!sidebarCollapsed}
+            >
+              <ChevronsRight size={20} aria-hidden />
+            </button>
+          )}
 
           {/* Mobile: menu button to open sidebar (only when closed) */}
           {isMobile && !sidebarOpen && (
@@ -3121,6 +3179,10 @@ function MainApp() {
                   showHiddenFolders={showHiddenFolders}
                   onToggleHiddenFolders={() =>
                     setShowHiddenFolders((prev) => !prev)
+                  }
+                  hideRecordingCompanions={hideRecordingCompanions}
+                  onToggleHideRecordingCompanions={() =>
+                    setHideRecordingCompanions((prev) => !prev)
                   }
                   onRequestClose={handleSettingsClose}
                   webauthnSupported={webauthnPRFSupported}
@@ -3161,6 +3223,7 @@ function MainApp() {
                   onRequestDownload={handleRequestDownload}
                   theme={theme}
                   previewOnly={isMobile}
+                  hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}
                   onToggleRecording={handleToggleRecording}
@@ -3212,6 +3275,7 @@ function MainApp() {
                   onRequestDownload={handleRequestDownload}
                   theme={theme}
                   previewOnly={isMobile}
+                  hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}
                   onToggleRecording={handleToggleRecording}
@@ -3252,9 +3316,10 @@ function MainApp() {
         <div className="h-6 md:h-7 border-t border-gray-200 dark:border-odp-borderSoft bg-white/90 dark:bg-odp-bgSoft/95 text-[10px] md:text-[11px] px-2 md:px-3 flex items-center justify-between gap-2 md:gap-3 shrink-0">
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 overflow-hidden">
             <ActivityIndicatorBar />
-            {(recordingQueueStats.pending > 0 ||
-              recordingQueueStats.uploading > 0 ||
-              recordingQueueStats.failed > 0) && (
+            {!hideRecordingCompanions &&
+              (recordingQueueStats.pending > 0 ||
+                recordingQueueStats.uploading > 0 ||
+                recordingQueueStats.failed > 0) && (
               <span
                 className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSofter text-gray-700 dark:text-odp-fgStrong text-[10px] md:text-[11px] shrink-0"
                 title={`녹음 업로드 큐 - 대기 ${recordingQueueStats.pending}, 업로드중 ${recordingQueueStats.uploading}, 실패 ${recordingQueueStats.failed}`}
