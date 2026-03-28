@@ -47,10 +47,12 @@ import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
 import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
-import { uploadEditorImage } from '@/utils/editorImageUpload';
+import { isFileProbablyImage, uploadEditorImage } from '@/utils/editorImageUpload';
+import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
 import { getRecordingQueueStats } from '@/utils/recordingDb';
+import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
 import {
   getDraftKey,
   saveMemoDraft,
@@ -115,6 +117,7 @@ function MainApp() {
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState(null);
   const [lastAutoSyncAt, setLastAutoSyncAt] = useState(null);
   const [showHiddenFolders, setShowHiddenFolders] = useState(false);
+  const [editorType, setEditorType] = useState(() => loadEditorType());
 
   const fileInputRef = useRef(null);
   const uploadFileInputRef = useRef(null);
@@ -191,6 +194,11 @@ function MainApp() {
   const hasRestoredLastFileRef = useRef(false);
   const hasProcessedOpenFromUrlRef = useRef(false);
   const saveFileRef = useRef(null);
+
+  const handleEditorTypeChange = useCallback((next) => {
+    saveEditorType(next);
+    setEditorType(next);
+  }, []);
 
   useEffect(() => {
     s3TreeRef.current = s3Tree;
@@ -683,16 +691,40 @@ function MainApp() {
   /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 .images/)에 저장, 반환값은 ![[path]]용 Object Key 배열. 업로드 중에는 중복 호출 무시 */
   const handleUploadEditorImage = useCallback(
     async (files) => {
+      dbgClipboard('app:upload:start', {
+        rawCount: files?.length ?? 0,
+        files: fileSummaries(files),
+        currentFileId: currentFile?.id ?? null,
+      });
       const client = getS3Client();
       if (!client || !s3Creds.bucket) {
+        dbgClipboard('app:upload:abort', { reason: 'no S3 client or bucket' });
         setOperationStatus('이미지 업로드는 S3 연결 후 사용할 수 있습니다.');
         return [];
       }
-      const imageFiles = Array.from(files).filter(
-        (f) => f && f.type && f.type.startsWith('image/')
-      );
-      if (!imageFiles.length) return [];
-      if (editorImageUploadInProgressRef.current) return [];
+      const candidates = Array.from(files).filter((f) => f && f.size > 0);
+      const imageFiles = [];
+      for (const f of candidates) {
+        if (f.type?.startsWith('image/')) {
+          imageFiles.push(f);
+          continue;
+        }
+        if (!f.type || f.type === 'application/octet-stream') {
+          if (await isFileProbablyImage(f)) imageFiles.push(f);
+        }
+      }
+      dbgClipboard('app:upload:afterFilter', {
+        candidates: fileSummaries(candidates),
+        imageFiles: fileSummaries(imageFiles),
+      });
+      if (!imageFiles.length) {
+        dbgClipboard('app:upload:empty', { reason: 'no image files after filter' });
+        return [];
+      }
+      if (editorImageUploadInProgressRef.current) {
+        dbgClipboard('app:upload:skipped', { reason: 'editorImageUploadInProgressRef' });
+        return [];
+      }
       editorImageUploadInProgressRef.current = true;
       setIsUploadingEditorImage(true);
       const indicatorId = addIndicator({
@@ -716,12 +748,14 @@ function MainApp() {
           paths.push(path);
         }
       } catch (err) {
+        dbgClipboard('app:upload:error', { message: err?.message ?? String(err) });
         setOperationStatus('이미지 업로드 실패: ' + (err.message || String(err)));
       } finally {
         editorImageUploadInProgressRef.current = false;
         setIsUploadingEditorImage(false);
         removeIndicator(indicatorId);
       }
+      dbgClipboard('app:upload:return', { paths, pathCount: paths.length });
       return paths;
     },
     [getS3Client, s3Creds, currentFile, addIndicator, removeIndicator]
@@ -3099,6 +3133,8 @@ function MainApp() {
                   onSaveSnippetConfig={handleSaveSnippetConfig}
                   isSavingSnippets={isSavingSnippets}
                   snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal}
+                  editorType={editorType}
+                  onEditorTypeChange={handleEditorTypeChange}
                 />
               }
             />
@@ -3107,6 +3143,7 @@ function MainApp() {
               element={
                 <EditorPane
                   currentFile={currentFile}
+                  editorType={editorType}
                   editorContent={editorContent}
                   onChangeEditor={handleEditorChange}
                   onSave={saveFile}
@@ -3157,6 +3194,7 @@ function MainApp() {
               element={
                 <EditorPane
                   currentFile={currentFile}
+                  editorType={editorType}
                   editorContent={editorContent}
                   onChangeEditor={handleEditorChange}
                   onSave={saveFile}

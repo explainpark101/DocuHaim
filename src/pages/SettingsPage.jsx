@@ -10,6 +10,12 @@ import {
   WIKI_IMAGE_CACHE_MODE_URL,
 } from '@/utils/wikiImageSettings';
 import { setWikiImageCacheMode } from '@/utils/wikiImageRuntime';
+import {
+  EDITOR_TYPE_MD_EDITOR_RT,
+  EDITOR_TYPE_NOVEL,
+  loadEditorType,
+  saveEditorType,
+} from '@/utils/editorTypeSettings';
 
 export default function SettingsPage({
   s3Creds,
@@ -30,15 +36,22 @@ export default function SettingsPage({
   onSaveSnippetConfig,
   isSavingSnippets = false,
   snippetConfigLoaded = false,
+  editorType: editorTypeProp,
+  onEditorTypeChange,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported);
   const [wikiImageCacheMode, setWikiImageCacheMode] = useState(() => loadWikiImageCacheMode());
+  const [editorType, setEditorType] = useState(() => editorTypeProp ?? loadEditorType());
 
   useEffect(() => {
     setFormCreds(s3Creds);
   }, [s3Creds]);
+
+  useEffect(() => {
+    if (editorTypeProp !== undefined) setEditorType(editorTypeProp);
+  }, [editorTypeProp]);
 
   useEffect(() => {
     let cancelled = false;
@@ -228,6 +241,65 @@ export default function SettingsPage({
             )}
           </div>
         )}
+
+        {/* Markdown 에디터 종류 */}
+        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">마크다운 에디터</h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
+            .md 파일을 편집할 때 사용할 에디터를 고릅니다.
+          </p>
+          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="editorType"
+                value={EDITOR_TYPE_MD_EDITOR_RT}
+                checked={editorType === EDITOR_TYPE_MD_EDITOR_RT}
+                onChange={() => {
+                  setEditorType(EDITOR_TYPE_MD_EDITOR_RT);
+                  saveEditorType(EDITOR_TYPE_MD_EDITOR_RT);
+                  onEditorTypeChange?.(EDITOR_TYPE_MD_EDITOR_RT);
+                }}
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                <span className="font-semibold">md-editor-rt</span>
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                  기본 에디터. 미리보기, 위키 이미지 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code>, 스니펫 단축키 등이 이 구성에 맞춰져 있습니다.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="editorType"
+                value={EDITOR_TYPE_NOVEL}
+                checked={editorType === EDITOR_TYPE_NOVEL}
+                onChange={() => {
+                  setEditorType(EDITOR_TYPE_NOVEL);
+                  saveEditorType(EDITOR_TYPE_NOVEL);
+                  onEditorTypeChange?.(EDITOR_TYPE_NOVEL);
+                }}
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                <span className="font-semibold">novel</span>
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                  Notion 스타일 리치 텍스트 편집기입니다. HTML을 거쳐 마크다운으로 변환하므로 문법·공백이 바뀔 수 있고, 위키 이미지 미리보기·스니펫·일부 단축키는 기대와 다르게 동작할 수 있습니다.
+                </span>
+              </span>
+            </label>
+          </div>
+          {editorType === EDITOR_TYPE_NOVEL && (
+            <p className="mt-3 text-[11px] text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded px-2 py-1.5">
+              novel 선택 시:{' '}
+              <span className="font-semibold">
+                일부 동작이 의도와 다르게 보이거나 저장 결과가 달라질 수 있습니다.
+              </span>{' '}
+              중요한 노트는 md-editor-rt 사용을 권장합니다.
+            </p>
+          )}
+        </div>
 
         {/* Hidden Folders Option */}
         <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">

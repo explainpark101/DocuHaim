@@ -1,0 +1,263 @@
+/*
+ * novel (Tiptap) 편집 영역 — md-editor-rt .md-editor-preview 톤·제목 단계·본문 서식 참고
+ * 부모에 .novel-editor-surface, 다크는 .novel-editor-surface--dark
+ */
+
+.novel-editor-surface {
+  --novel-text: #1f2937;
+  --novel-muted: #6b7280;
+  --novel-border: #e5e7eb;
+  --novel-code-bg: #f3f4f6;
+  --novel-pre-bg: #f3f4f6;
+  --novel-pre-border: #e5e7eb;
+  --novel-quote-border: #d1d5db;
+  --novel-quote-bg: transparent;
+  --novel-link: #2563eb;
+  --novel-link-hover: #1d4ed8;
+  --novel-hr: #e5e7eb;
+  --novel-heading: #111827;
+  --novel-mark-bg: #fef08a;
+  --novel-table-border: #e5e7eb;
+  --novel-table-stripe: #f9fafb;
+}
+
+.novel-editor-surface.novel-editor-surface--dark {
+  --novel-text: var(--color-odp-fg, #abb2bf);
+  --novel-muted: var(--color-odp-muted, #7f848e);
+  --novel-border: var(--color-odp-borderSoft, #23272e);
+  --novel-code-bg: var(--color-odp-bgSoft, #1e2227);
+  --novel-pre-bg: var(--color-odp-bgSoft, #1e2227);
+  --novel-pre-border: var(--color-odp-borderStrong, #343a45);
+  --novel-quote-border: var(--color-odp-borderStrong, #343a45);
+  --novel-quote-bg: transparent;
+  --novel-link: var(--color-odp-accentBlue, #61afef);
+  --novel-link-hover: var(--color-odp-accentPurple, #c678dd);
+  --novel-hr: var(--color-odp-border, #3e4452);
+  --novel-heading: var(--color-odp-fgStrong, #d7dae0);
+  --novel-mark-bg: rgba(229, 192, 123, 0.35);
+  --novel-table-border: var(--color-odp-border, #3e4452);
+  --novel-table-stripe: var(--color-odp-bg, #23272e);
+}
+
+.novel-editor-surface {
+  color: var(--novel-text);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+/* 제목 — md-editor-preview h1~h6 과 동일한 상대 크기 */
+.novel-editor-surface h1,
+.novel-editor-surface h2,
+.novel-editor-surface h3,
+.novel-editor-surface h4,
+.novel-editor-surface h5,
+.novel-editor-surface h6 {
+  position: relative;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  margin: 1em 0 0.8em;
+  font-weight: 700;
+  color: var(--novel-heading);
+}
+
+.novel-editor-surface h1 {
+  font-size: 2em;
+}
+.novel-editor-surface h2 {
+  font-size: 1.5em;
+}
+.novel-editor-surface h3 {
+  font-size: 1.25em;
+}
+.novel-editor-surface h4 {
+  font-size: 1em;
+}
+.novel-editor-surface h5 {
+  font-size: 0.875em;
+}
+.novel-editor-surface h6 {
+  font-size: 0.85em;
+}
+
+.novel-editor-surface p {
+  margin: 0.75em 0;
+}
+
+/* 본문 단락 기본 좌측 정렬 (이미지/캡션 전용 단락은 아래에서 중앙) */
+.novel-editor-surface p:not(.novel-wiki-image-line):not(.novel-wiki-caption-line) {
+  text-align: start;
+}
+
+.novel-editor-surface hr {
+  height: 1px;
+  margin: 10px 0;
+  border: none;
+  border-block-start: 1px solid var(--novel-hr);
+}
+
+.novel-editor-surface a {
+  color: var(--novel-link);
+  text-decoration: none;
+  transition: color 0.1s;
+}
+.novel-editor-surface a:hover {
+  color: var(--novel-link-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.novel-editor-surface ul {
+  list-style-type: disc;
+  padding-inline-start: 2em;
+  margin-block: 1em 0;
+}
+.novel-editor-surface ol {
+  list-style-type: decimal;
+  padding-inline-start: 2em;
+  margin-block: 1em 0;
+}
+.novel-editor-surface ul ul,
+.novel-editor-surface ol ul {
+  list-style-type: circle;
+  margin-block: 0;
+}
+.novel-editor-surface ul ul ul,
+.novel-editor-surface ol ul ul {
+  list-style-type: square;
+}
+.novel-editor-surface ol ol,
+.novel-editor-surface ul ol {
+  list-style-type: lower-roman;
+  margin-block: 0;
+}
+.novel-editor-surface li {
+  margin-block: 0.5em;
+  display: list-item;
+}
+
+.novel-editor-surface blockquote {
+  margin: 1em 0;
+  padding: 0 1em;
+  border-inline-start: 4px solid var(--novel-quote-border);
+  color: var(--novel-muted);
+  background-color: var(--novel-quote-bg);
+}
+
+.novel-editor-surface code {
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 0.9em;
+  padding: 0.125em 0.35em;
+  border-radius: 4px;
+  background: var(--novel-code-bg);
+}
+
+.novel-editor-surface pre {
+  margin: 1em 0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--novel-pre-border);
+  background: var(--novel-pre-bg);
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+.novel-editor-surface pre code {
+  padding: 0;
+  background: transparent;
+  font-size: inherit;
+}
+
+.novel-editor-surface img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+.novel-editor-surface img.novel-wiki-image {
+  display: inline-block;
+  margin: 0.25em 0;
+  border-radius: 6px;
+  border: 1px solid var(--novel-border);
+  min-height: 2rem;
+  min-width: 2rem;
+  background: var(--novel-code-bg);
+}
+
+/* md-editor figure/figcaption 에 가깝게: 위키 이미지 전용 단락 + 바로 아래 캡션 단락 */
+.novel-editor-surface p.novel-wiki-image-line {
+  margin: 0.75em 0 0.15em;
+  text-align: center;
+}
+
+.novel-editor-surface p.novel-wiki-image-line img.novel-wiki-image {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.novel-editor-surface p.novel-wiki-caption-line {
+  margin: 0 0 1em;
+  font-size: 0.875em;
+  color: var(--novel-muted);
+  text-align: center;
+  line-height: 1.45;
+  min-height: 1.5em;
+}
+
+.novel-editor-surface u {
+  text-underline-offset: 2px;
+}
+
+.novel-editor-surface mark {
+  background-color: var(--novel-mark-bg);
+  color: inherit;
+  padding: 0.05em 0.15em;
+  border-radius: 2px;
+}
+
+.novel-editor-surface s,
+.novel-editor-surface del {
+  color: var(--novel-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.novel-editor-surface strong {
+  font-weight: 700;
+}
+
+.novel-editor-surface em {
+  font-style: italic;
+}
+
+/* Task list — md-editor 과 유사 */
+.novel-editor-surface ul[data-type='taskList'],
+.novel-editor-surface ul[data-type='taskList'] {
+  list-style: none;
+  padding-inline-start: 0;
+}
+.novel-editor-surface li[data-type='taskItem'] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  list-style: none;
+}
+.novel-editor-surface li[data-type='taskItem'] > label {
+  flex-shrink: 0;
+  margin-top: 0.2em;
+}
+
+.novel-editor-surface table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  font-size: 0.95em;
+}
+.novel-editor-surface th,
+.novel-editor-surface td {
+  border: 1px solid var(--novel-table-border);
+  padding: 0.4em 0.65em;
+}
+.novel-editor-surface tr:nth-child(2n) {
+  background-color: var(--novel-table-stripe);
+}
