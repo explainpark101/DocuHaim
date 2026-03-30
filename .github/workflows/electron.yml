@@ -6,8 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Release 자산 업로드에 contents: write 필요. job만 write로 두면 워크플로의 read 한도를 넘지 못함.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: electron-${{ github.workflow }}-${{ github.ref }}
@@ -26,6 +27,8 @@ jobs:
           - os: windows-latest
             slug: win
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,12 +73,25 @@ jobs:
           pattern: electron-*
           merge-multiple: true
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
-          files: release-assets/**/*
+      - name: List downloaded files
+        run: find release-assets -type f -print || (echo "::error::release-assets 비어 있음" && ls -laR && exit 1)
+
+      - name: Publish GitHub Release with build artifacts
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mapfile -t assets < <(find release-assets -type f)
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::error::업로드할 파일이 없습니다."
+            exit 1
+          fi
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          printf 'Uploading %s file(s):\n' "${#assets[@]}"
+          printf ' - %s\n' "${assets[@]}"
+          if gh release view "$TAG" --repo "$REPO" &>/dev/null; then
+            gh release upload "$TAG" "${assets[@]}" --clobber --repo "$REPO"
+          else
+            gh release create "$TAG" "${assets[@]}" --generate-notes --repo "$REPO"
+          fi
