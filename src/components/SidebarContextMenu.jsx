@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   IconFilePlus,
   IconFolderPlus,
@@ -57,10 +58,11 @@ export default function SidebarContextMenu({
     'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fg hover:bg-gray-100 dark:hover:bg-odp-focusBg disabled:opacity-50 disabled:pointer-events-none';
   const iconClass = 'shrink-0 w-4 h-4 text-gray-500 dark:text-odp-muted';
 
-  return (
+  /* body로 포털: App 레이아웃에서 메인(z-50)이 사이드바(z-40)보다 위라, fixed 메뉴가 에디터/설정 영역과 겹치면 가려짐 */
+  return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[9999] min-w-[180px] py-1 rounded-lg border border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shadow-lg"
+      className="fixed z-100 min-w-[180px] py-1 rounded-lg border border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shadow-lg"
       style={{ left: x, top: y }}
     >
       {canAdd && onCreateFile && (
@@ -167,6 +169,7 @@ export default function SidebarContextMenu({
           이동
         </button>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

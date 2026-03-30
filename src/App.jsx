@@ -3146,7 +3146,7 @@ function MainApp() {
               aria-label="사이드바 펼치기"
               title="사이드바 펼치기"
               onClick={() => setSidebarCollapsed(false)}
-              className={`hidden md:flex absolute left-0 top-1/2 z-[55] -translate-y-1/2 flex-col items-center justify-center w-9 min-h-28 rounded-r-lg border border-l-0 border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft text-gray-600 dark:text-odp-fg shadow-md hover:bg-gray-50 dark:hover:bg-odp-focusBg transition-all duration-300 ease-in-out ${
+              className={`hidden md:flex absolute left-0 top-1/2 z-55 -translate-y-1/2 flex-col items-center justify-center w-9 min-h-28 rounded-r-lg border border-l-0 border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft text-gray-600 dark:text-odp-fg shadow-md hover:bg-gray-50 dark:hover:bg-odp-focusBg transition-all duration-300 ease-in-out ${
                 sidebarCollapsed
                   ? 'opacity-100 translate-x-0 pointer-events-auto'
                   : 'opacity-0 -translate-x-2 pointer-events-none'

@@ -133,6 +133,54 @@ function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget
   );
 }
 
+function filterTree(
+  nodes,
+  { hideDotFolders, hideRecordingCompanionFiles, searchTerm } = {},
+) {
+  const q = searchTerm ? searchTerm.toLowerCase() : '';
+  const walk = (node) => {
+    if (hideDotFolders && node.type === 'folder' && node.name.startsWith('.')) {
+      return null;
+    }
+    if (node.type === 'file' && hideRecordingCompanionFiles && isRecordingCompanionFileKey(node.path)) {
+      return null;
+    }
+    const nameMatch =
+      !q ||
+      node.name.toLowerCase().includes(q) ||
+      (node.path && node.path.toLowerCase().includes(q));
+    if (node.type === 'folder' && node.children) {
+      const children = node.children
+        .map(walk)
+        .filter(Boolean);
+      if (children.length || nameMatch) {
+        return { ...node, children };
+      }
+      return null;
+    }
+    return nameMatch ? node : null;
+  };
+
+  return nodes
+    .map(walk)
+    .filter(Boolean);
+}
+
+function getSelectedFolderForMove(selectedIds, s3Tree, localTree) {
+  if (!selectedIds?.size) return null;
+  for (const key of selectedIds) {
+    const colonIdx = key.indexOf(':');
+    const storageType = colonIdx >= 0 ? key.slice(0, colonIdx) : 's3';
+    const path = colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
+    const tree = storageType === 's3' ? s3Tree : localTree;
+    const node = findNodeByPath(tree, path);
+    if (node?.type === 'folder' && path !== '.trash/') {
+      return { node, storageType };
+    }
+  }
+  return null;
+}
+
 export default function Sidebar({
   s3Tree,
   s3Bucket,
@@ -216,6 +264,7 @@ export default function Sidebar({
     document.addEventListener('wheel', onWheel, { passive: false });
     return () => document.removeEventListener('wheel', onWheel);
   }, []);
+
 
   useEffect(() => {
     const onDragEnd = () => {
@@ -321,41 +370,12 @@ export default function Sidebar({
     }
   }, [expandPathsRef, expandPathsForNewItem]);
 
-  const filterTree = (nodes, { hideDotFolders, hideRecordingCompanionFiles } = {}) => {
-    const q = searchTerm ? searchTerm.toLowerCase() : '';
-    const walk = (node) => {
-      if (hideDotFolders && node.type === 'folder' && node.name.startsWith('.')) {
-        return null;
-      }
-      if (node.type === 'file' && hideRecordingCompanionFiles && isRecordingCompanionFileKey(node.path)) {
-        return null;
-      }
-      const nameMatch =
-        !q ||
-        node.name.toLowerCase().includes(q) ||
-        (node.path && node.path.toLowerCase().includes(q));
-      if (node.type === 'folder' && node.children) {
-        const children = node.children
-          .map(walk)
-          .filter(Boolean);
-        if (children.length || nameMatch) {
-          return { ...node, children };
-        }
-        return null;
-      }
-      return nameMatch ? node : null;
-    };
-
-    return nodes
-      .map(walk)
-      .filter(Boolean);
-  };
-
   const filteredS3Tree = useMemo(
     () =>
       filterTree(s3Tree, {
         hideDotFolders: !showHiddenFolders,
         hideRecordingCompanionFiles: hideRecordingCompanions,
+        searchTerm,
       }),
     [s3Tree, searchTerm, showHiddenFolders, hideRecordingCompanions],
   );
@@ -364,6 +384,7 @@ export default function Sidebar({
       filterTree(localTree, {
         hideDotFolders: !showHiddenFolders,
         hideRecordingCompanionFiles: hideRecordingCompanions,
+        searchTerm,
       }),
     [localTree, searchTerm, showHiddenFolders, hideRecordingCompanions],
   );
@@ -394,20 +415,7 @@ export default function Sidebar({
     [searchTerm, filteredLocalTree, expandedPaths.local],
   );
 
-  const selectedFolderForMove = useMemo(() => {
-    if (!selectedIds?.size) return null;
-    for (const key of selectedIds) {
-      const colonIdx = key.indexOf(':');
-      const storageType = colonIdx >= 0 ? key.slice(0, colonIdx) : 's3';
-      const path = colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
-      const tree = storageType === 's3' ? s3Tree : localTree;
-      const node = findNodeByPath(tree, path);
-      if (node?.type === 'folder' && path !== '.trash/') {
-        return { node, storageType };
-      }
-    }
-    return null;
-  }, [selectedIds, s3Tree, localTree]);
+  const selectedFolderForMove = getSelectedFolderForMove(selectedIds, s3Tree, localTree);
 
   const contextMenuNode = contextMenu?.node;
   const contextMenuStorageType = contextMenu?.storageType;
