@@ -3158,7 +3158,7 @@ function MainApp() {
               type="button"
               aria-label="사이드바 열기"
               onClick={() => setSidebarOpen(true)}
-              className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-white dark:bg-odp-bgSoft border border-gray-200 dark:border-odp-borderSoft text-gray-600 dark:text-odp-fg shadow-md hover:bg-gray-50 dark:hover:bg-odp-focusBg transition md:hidden"
+              className="fixed top-3 left-3 z-60 p-2 rounded-lg bg-white dark:bg-odp-bgSoft border border-gray-200 dark:border-odp-borderSoft text-gray-600 dark:text-odp-fg shadow-md hover:bg-gray-50 dark:hover:bg-odp-focusBg transition md:hidden"
             >
               <IconMenu size={22} />
             </button>
