@@ -2,13 +2,14 @@
   "name": "s3haim",
   "private": true,
   "version": "0.1.1",
+  "author": "S3 Haim <explainpark101@gmail.com>",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "electron:icon": "node scripts/rasterize-electron-icon.mjs",
-    "build:app": "node scripts/rasterize-electron-icon.mjs && cross-env VITE_ELECTRON=true VITE_BASE_PATH=./ vite build && electron-builder",
+    "build:app": "node scripts/rasterize-electron-icon.mjs && cross-env VITE_ELECTRON=true VITE_BASE_PATH=./ vite build && electron-builder --publish never",
     "lint": "eslint .",
     "preview": "VITE_BASE_PATH=/s3haim vite build && VITE_BASE_PATH=/s3haim vite preview"
   },
@@ -53,6 +54,7 @@
     "vite-plugin-pwa": "^1.2.0"
   },
   "build": {
+    "publish": "never",
     "appId": "com.s3haim.app",
     "productName": "S3 Haim",
     "icon": "build/icon.png",
