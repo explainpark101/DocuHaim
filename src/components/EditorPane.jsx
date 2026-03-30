@@ -40,6 +40,9 @@ export default function EditorPane({
   onRequestDownload,
   theme = 'light',
   previewOnly = false,
+  isMobileLayout = false,
+  sidebarOpen = true,
+  onOpenSidebar,
   isRecording = false,
   audioLevel = 0,
   onToggleRecording,
@@ -73,8 +76,13 @@ export default function EditorPane({
         setFileManagementOpen(false);
       }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    const t = window.setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, [fileManagementOpen]);
 
   useEffect(() => {
@@ -99,11 +107,28 @@ export default function EditorPane({
     return lastDot > 0 ? fileName.slice(lastDot) : '';
   };
 
+  const showMobileSidebarOpen =
+    isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function';
+
   if (!currentFile) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-        <IconFolder />
-        <p className="mt-4">사이드바에서 파일을 선택하거나 새 파일을 생성하세요.</p>
+      <div className="flex min-h-0 flex-1 flex-col text-gray-400">
+        {showMobileSidebarOpen && (
+          <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 py-2 dark:border-odp-bgSofter dark:bg-odp-surface">
+            <button
+              type="button"
+              aria-label="사이드바 열기"
+              onClick={onOpenSidebar}
+              className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
+            >
+              <IconMenu size={22} />
+            </button>
+          </div>
+        )}
+        <div className="flex flex-1 flex-col items-center justify-center px-4">
+          <IconFolder />
+          <p className="mt-4 text-center">사이드바에서 파일을 선택하거나 새 파일을 생성하세요.</p>
+        </div>
       </div>
     );
   }
@@ -146,8 +171,18 @@ export default function EditorPane({
   
   return (
     <div className="flex-1 flex flex-col min-w-0 max-h-full">
-      <div className="min-h-14 border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-surface flex items-center justify-between px-3 sm:px-6 shrink-0 w-full gap-2 relative z-50">
-        <div className="flex items-center gap-2 sm:gap-3 text-gray-700 dark:text-odp-fgStrong font-medium min-w-0 flex-1">
+      <div className="relative z-10100 flex min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 dark:border-odp-bgSofter dark:bg-odp-surface sm:px-6 pointer-events-auto">
+        <div className="flex min-w-0 flex-1 items-center gap-2 font-medium text-gray-700 dark:text-odp-fgStrong sm:gap-3">
+          {showMobileSidebarOpen && (
+            <button
+              type="button"
+              aria-label="사이드바 열기"
+              onClick={onOpenSidebar}
+              className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
+            >
+              <IconMenu size={22} />
+            </button>
+          )}
           {isRecording ? (
             <AudioLevelIndicator level={audioLevel} size={16} />
           ) : currentFile.type === 's3' ? (
@@ -155,10 +190,10 @@ export default function EditorPane({
           ) : (
             <IconFolder />
           )}
-          <div className="flex items-baseline min-w-0 flex-1 gap-1">
+          <div className="flex min-w-0 flex-1 items-baseline gap-1">
             {hasUnsavedChanges && <span className="text-red-500 text-xl leading-none shrink-0">*</span>}
             <input
-              className="bg-transparent border-none outline-none text-sm md:text-base font-medium placeholder:text-gray-400 dark:placeholder:text-gray-500 min-w-[3em] w-full"
+              className="min-w-[3em] w-full border-none bg-transparent text-sm font-medium outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500 md:text-base"
               value={editedFileName ?? ''}
               onChange={(e) => setEditedFileName?.(e.target.value)}
               onBlur={handleFileNameBlur}
@@ -166,8 +201,8 @@ export default function EditorPane({
             />
           </div>
         </div>
-        <div className="flex items-center gap-2 justify-end shrink-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
-          {typeof onToggleRecording === 'function' && !hideRecordingCompanions && (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 overflow-visible touch-manipulation">
+          {typeof onToggleRecording === 'function' && (
             <RecordingDropdownButton
               isRecording={isRecording}
               audioLevel={audioLevel}
@@ -204,7 +239,7 @@ export default function EditorPane({
             </Button>
             {fileManagementOpen && (
               <div
-                className="absolute right-0 top-full mt-1 py-1 min-w-[140px] rounded-md shadow-lg border border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-surface z-50"
+                className="absolute right-0 top-full z-100 mt-1 min-w-[140px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
                 role="menu"
               >
                 <button

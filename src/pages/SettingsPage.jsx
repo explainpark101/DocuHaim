@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { IconDownload, IconSettings, IconUpload } from '@/components/icons';
+import { IconDownload, IconMenu, IconSettings, IconUpload } from '@/components/icons';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import { X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
@@ -40,6 +40,9 @@ export default function SettingsPage({
   snippetConfigLoaded = false,
   editorType: editorTypeProp,
   onEditorTypeChange,
+  isMobileLayout = false,
+  sidebarOpen = true,
+  onOpenSidebar,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [webauthnLoading, setWebauthnLoading] = useState(false);
@@ -67,10 +70,22 @@ export default function SettingsPage({
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-odp-bgSofter min-w-0 max-h-full">
-      <div className="px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center bg-gray-50 dark:bg-odp-surface shrink-0">
-        <h2 className="font-bold text-gray-700 dark:text-odp-fgStrong flex items-center gap-2">
-          <IconSettings /> 설정 및 암호화
-        </h2>
+      <div className="px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function' && (
+            <button
+              type="button"
+              aria-label="사이드바 열기"
+              onClick={onOpenSidebar}
+              className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
+            >
+              <IconMenu size={22} />
+            </button>
+          )}
+          <h2 className="font-bold text-gray-700 dark:text-odp-fgStrong flex min-w-0 items-center gap-2">
+            <IconSettings /> 설정 및 암호화
+          </h2>
+        </div>
         <button
           type="button"
           onClick={() => onRequestClose?.(formCreds)}

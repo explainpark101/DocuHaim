@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
-import { IconFile, IconMenu, IconX } from '@/components/icons';
+import { IconFile, IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -247,6 +247,7 @@ function MainApp() {
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 768px)');
     const handler = () => setIsMobile(mql.matches);
+    handler();
     mql.addEventListener('change', handler);
     return () => mql.removeEventListener('change', handler);
   }, []);
@@ -830,15 +831,8 @@ function MainApp() {
     run();
   }, [scriptsLoaded, isUnlocked, s3Creds.bucket, loadS3Files, getS3Client, addIndicator, removeIndicator]);
 
-  // 녹음 목록 및 선택된 녹음 URL/sync 로드
+  // 녹음 목록 및 선택된 녹음 URL/sync 로드 (hideRecordingCompanions는 사이드바 표시용이므로 목록 비우지 않음)
   useEffect(() => {
-    if (hideRecordingCompanions) {
-      setRecordingsList([]);
-      setSelectedRecordingKey(null);
-      setRecordingAudioUrl('');
-      setRecordingSyncData([]);
-      return;
-    }
     if (!currentFile || currentFile.type !== 's3' || currentFile.viewer !== 'markdown') {
       setRecordingsList([]);
       setSelectedRecordingKey(null);
@@ -850,7 +844,7 @@ function MainApp() {
     const list = getRecordingKeysFromTree(s3Tree, noteKey);
     setRecordingsList(list);
     setSelectedRecordingKey(list.length > 0 ? list[0].key : null);
-  }, [currentFile?.id, currentFile?.type, currentFile?.viewer, s3Tree, hideRecordingCompanions]);
+  }, [currentFile?.id, currentFile?.type, currentFile?.viewer, s3Tree]);
 
   useEffect(() => {
     if (!selectedRecordingKey || !s3Creds.bucket) {
@@ -3051,15 +3045,16 @@ function MainApp() {
             <button
               type="button"
               aria-label="사이드바 닫기"
-              className="fixed inset-0 z-30 bg-black/30 md:hidden"
+              className="fixed inset-0 z-55 bg-black/30 md:hidden"
               onClick={() => setSidebarOpen(false)}
             />
           )}
 
-          {/* Sidebar: overlay from top on mobile, in-flow on desktop */}
+          {/* Sidebar: mobile open z-60 above main z-50; closed z-40 + pointer-events-none */}
           <div
             className={`
-              z-40 flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter
+              flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter
+              ${isMobile && sidebarOpen ? 'z-60' : 'z-40'}
               md:relative md:h-full md:shrink-0
               fixed top-0 left-0 right-0 w-full h-dvh md:max-h-none
               max-md:transition-transform max-md:duration-300 max-md:ease-out
@@ -3077,12 +3072,12 @@ function MainApp() {
             }
           >
             {isMobile && (
-              <div className="flex justify-end p-2 border-b border-gray-200 dark:border-odp-bgSofter shrink-0 md:hidden">
+              <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
                 <button
                   type="button"
                   aria-label="사이드바 닫기"
                   onClick={() => setSidebarOpen(false)}
-                  className="p-2 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+                  className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
                 >
                   <IconX size={22} />
                 </button>
@@ -3107,7 +3102,10 @@ function MainApp() {
                 dropTarget={dropTarget}
                 onOpenLocalFolder={openLocalFolder}
                 onSetDeleteTarget={setDeleteTarget}
-                onOpenSettings={() => navigate('/settings')}
+                onOpenSettings={() => {
+                  if (isMobile) setSidebarOpen(false);
+                  navigate('/settings');
+                }}
                 theme={theme}
                 onToggleTheme={() =>
                   setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
@@ -3152,20 +3150,8 @@ function MainApp() {
             </button>
           )}
 
-          {/* Mobile: menu button to open sidebar (only when closed) */}
-          {isMobile && !sidebarOpen && (
-            <button
-              type="button"
-              aria-label="사이드바 열기"
-              onClick={() => setSidebarOpen(true)}
-              className="fixed top-3 left-3 z-60 p-2 rounded-lg bg-white dark:bg-odp-bgSoft border border-gray-200 dark:border-odp-borderSoft text-gray-600 dark:text-odp-fg shadow-md hover:bg-gray-50 dark:hover:bg-odp-focusBg transition md:hidden"
-            >
-              <IconMenu size={22} />
-            </button>
-          )}
-
-          {/* Main Content Routes */}
-          <div className="flex-1 min-w-0 flex flex-col">
+          {/* Main Content Routes (z-50: above closed mobile sidebar z-40 so toolbar buttons receive taps) */}
+          <div className="relative z-50 flex flex-1 min-w-0 flex-col">
           <Routes>
             <Route
               path="/settings"
@@ -3197,6 +3183,9 @@ function MainApp() {
                   snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal}
                   editorType={editorType}
                   onEditorTypeChange={handleEditorTypeChange}
+                  isMobileLayout={isMobile}
+                  sidebarOpen={sidebarOpen}
+                  onOpenSidebar={() => setSidebarOpen(true)}
                 />
               }
             />
@@ -3222,7 +3211,10 @@ function MainApp() {
                   onViewUnsupportedAsText={handleViewUnsupportedAsText}
                   onRequestDownload={handleRequestDownload}
                   theme={theme}
-                  previewOnly={isMobile}
+                  previewOnly={false}
+                  isMobileLayout={isMobile}
+                  sidebarOpen={sidebarOpen}
+                  onOpenSidebar={() => setSidebarOpen(true)}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}
@@ -3274,7 +3266,10 @@ function MainApp() {
                   onViewUnsupportedAsText={handleViewUnsupportedAsText}
                   onRequestDownload={handleRequestDownload}
                   theme={theme}
-                  previewOnly={isMobile}
+                  previewOnly={false}
+                  isMobileLayout={isMobile}
+                  sidebarOpen={sidebarOpen}
+                  onOpenSidebar={() => setSidebarOpen(true)}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}
