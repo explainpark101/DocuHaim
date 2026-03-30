@@ -184,6 +184,12 @@ export default function NovelMarkdownEditor({
   previewOnly = false,
   /** 상위(EditorPane)에서 목차 패널 표시 여부 */
   tocVisible = true,
+  /** 모바일 목차 드로어·백드롭 닫기 */
+  onTocRequestClose,
+  /** 모바일에서 목차·백드롭이 시작할 뷰포트 상단 오프셋(px) — 상단 크롬 아래 */
+  mobileTocOverlayTopPx = null,
+  /** 저장 버튼 등에서 디바운스 전에 부모 onChange를 동기 반영하기 위한 플러시 콜백 등록 */
+  onRegisterFlushBeforeSave,
   onUploadImage,
   isUploadingEditorImage = false,
   documentKey,
@@ -315,6 +321,22 @@ export default function NovelMarkdownEditor({
     },
     [emitMarkdown],
   );
+
+  const flushPendingMarkdown = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    const ed = editorRef.current;
+    if (!ed || ed.isDestroyed) return;
+    emitMarkdown(ed.getHTML());
+  }, [emitMarkdown]);
+
+  useEffect(() => {
+    if (typeof onRegisterFlushBeforeSave !== 'function') return undefined;
+    onRegisterFlushBeforeSave(flushPendingMarkdown);
+    return () => onRegisterFlushBeforeSave(null);
+  }, [onRegisterFlushBeforeSave, flushPendingMarkdown]);
 
   useEffect(() => {
     return () => {
@@ -588,12 +610,13 @@ export default function NovelMarkdownEditor({
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
+        flushPendingMarkdown();
         onSave();
       }
     };
     el.addEventListener('keydown', handleKeyDown, true);
     return () => el.removeEventListener('keydown', handleKeyDown, true);
-  }, [onSave]);
+  }, [onSave, flushPendingMarkdown]);
 
   return (
     <div ref={containerRef} className="relative flex h-full min-h-0 w-full flex-1 flex-col">
@@ -636,7 +659,12 @@ export default function NovelMarkdownEditor({
             },
           }}
         >
-          <NovelEditorToc theme={theme} open={tocVisible} />
+          <NovelEditorToc
+            theme={theme}
+            open={tocVisible}
+            onRequestClose={onTocRequestClose}
+            mobileOverlayTopPx={mobileTocOverlayTopPx}
+          />
           <NovelImagePasteBridge
             previewOnly={previewOnly}
             onUploadImage={onUploadImage}

@@ -113,6 +113,8 @@ function MainApp() {
   // Editor State
   const [currentFile, setCurrentFile] = useState(null);
   const [editorContent, setEditorContent] = useState('');
+  /** 저장 시점의 최신 문자열 (Novel 디바운스 onChange 직후에도 동기 반영) */
+  const editorContentRef = useRef('');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [lastInputAt, setLastInputAt] = useState(null);
@@ -1971,6 +1973,7 @@ function MainApp() {
       label: '필기 저장 중',
       detail: fileToSave.name,
     });
+    const textToSave = editorContentRef.current;
     try {
       if (fileToSave.type === 's3') {
         const client = getS3Client();
@@ -1980,24 +1983,24 @@ function MainApp() {
         await putObject(client, {
           Bucket: s3Creds.bucket,
           Key: fileToSave.id,
-          Body: editorContent,
+          Body: textToSave,
           ContentType: contentType,
         });
         await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
-        const savedByteLength = new TextEncoder().encode(editorContent).length;
+        const savedByteLength = new TextEncoder().encode(textToSave).length;
         setCurrentFile((prev) =>
-          prev?.id === fileToSave.id ? { ...prev, content: editorContent, size: savedByteLength } : prev
+          prev?.id === fileToSave.id ? { ...prev, content: textToSave, size: savedByteLength } : prev
         );
       } else if (fileToSave.type === 'local') {
         const writable = await fileToSave.handle.createWritable();
-        await writable.write(editorContent);
+        await writable.write(textToSave);
         await writable.close();
         await deleteMemoDraft(getDraftKey('local', fileToSave.id));
         const file = await fileToSave.handle.getFile();
         setCurrentFile((prev) => (
           prev?.id === fileToSave.id
-            ? { ...prev, content: editorContent, size: typeof file.size === 'number' ? file.size : prev?.size ?? null }
+            ? { ...prev, content: textToSave, size: typeof file.size === 'number' ? file.size : prev?.size ?? null }
             : prev
         ));
         setIsSaving(false);
@@ -2008,7 +2011,7 @@ function MainApp() {
         try {
           await savePendingUpload({
             key: fileToSave.id,
-            content: editorContent,
+            content: textToSave,
             modifiedAt: inputModifiedAt ?? Date.now(),
             contentType: viewer === 'json' ? 'application/json' : viewer === 'raw' ? 'text/plain' : 'text/markdown',
           });
@@ -2889,10 +2892,15 @@ function MainApp() {
   const prevEditorContentRef = useRef('');
 
   useEffect(() => {
+    editorContentRef.current = editorContent;
+  }, [editorContent]);
+
+  useEffect(() => {
     if (currentFile?.id) prevEditorContentRef.current = editorContent;
   }, [currentFile?.id]);
 
   const handleEditorChange = (value) => {
+    editorContentRef.current = value;
     if (isRecording && currentFile?.viewer === 'markdown') {
       const prevLines = prevEditorContentRef.current.split('\n');
       const newLines = value.split('\n');
@@ -3035,11 +3043,11 @@ function MainApp() {
 
       {/* Main UI (Blurred if locked) */}
       <div
-        className={`flex flex-1 w-full flex-col transition-all duration-300 ${
+        className={`flex min-h-0 flex-1 w-full flex-col overflow-hidden transition-all duration-300 ${
           !isUnlocked ? 'blur-md pointer-events-none select-none' : ''
         }`}
       >
-        <div className="flex flex-1 min-h-0 relative">
+        <div className="relative flex min-h-0 flex-1">
           {/* Mobile: backdrop when sidebar open */}
           {isMobile && sidebarOpen && (
             <button
@@ -3151,7 +3159,7 @@ function MainApp() {
           )}
 
           {/* Main Content Routes (z-50: above closed mobile sidebar z-40 so toolbar buttons receive taps) */}
-          <div className="relative z-50 flex flex-1 min-w-0 flex-col">
+          <div className="relative z-50 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
             <Route
               path="/settings"
@@ -3307,8 +3315,8 @@ function MainApp() {
           </div>
         </div>
 
-        {/* Status Bar */}
-        <div className="h-6 md:h-7 border-t border-gray-200 dark:border-odp-borderSoft bg-white/90 dark:bg-odp-bgSoft/95 text-[10px] md:text-[11px] px-2 md:px-3 flex items-center justify-between gap-2 md:gap-3 shrink-0">
+        {/* Status Bar — z above editor chrome (z-10100) so novel/md layers do not cover it on mobile */}
+        <div className="relative z-10200 flex h-6 shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white/90 px-2 pb-[max(0px,env(safe-area-inset-bottom))] text-[10px] dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 md:h-7 md:gap-3 md:px-3 md:text-[11px]">
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 overflow-hidden">
             <ActivityIndicatorBar />
             {!hideRecordingCompanions &&

@@ -23,9 +23,15 @@ export const NOVEL_TOC_MD_PADDING_CLASS = 'md:pr-[14rem]';
 
 /**
  * 문서 내 제목을 우측에 표시. 부모는 `position: relative` 여야 한다.
- * @param {{ theme?: string; open?: boolean }} props
+ * 모바일: `open`일 때 우측 고정 드로어 + 백드롭 (`onRequestClose`).
+ * @param {{ theme?: string; open?: boolean; onRequestClose?: () => void; mobileOverlayTopPx?: number | null }} props
  */
-export default function NovelEditorToc({ theme = 'light', open = true }) {
+export default function NovelEditorToc({
+  theme = 'light',
+  open = true,
+  onRequestClose,
+  mobileOverlayTopPx = null,
+}) {
   const { editor } = useEditor();
   const [items, setItems] = useState([]);
 
@@ -53,13 +59,47 @@ export default function NovelEditorToc({ theme = 'light', open = true }) {
 
   const isDark = theme === 'dark';
 
+  const isNarrow = () =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+
+  const handleHeadingClick = (pos) => {
+    if (!editor || editor.isDestroyed) return;
+    editor.chain().focus().setTextSelection(pos + 1).scrollIntoView().run();
+    if (isNarrow()) onRequestClose?.();
+  };
+
+  const mobileTopPx =
+    typeof mobileOverlayTopPx === 'number' && Number.isFinite(mobileOverlayTopPx)
+      ? mobileOverlayTopPx
+      : null;
+  const mobileBackdropStyle =
+    mobileTopPx !== null ? { top: mobileTopPx, left: 0, right: 0, bottom: 0 } : undefined;
+  const mobileShellStyle = mobileTopPx !== null ? { top: mobileTopPx, bottom: 0 } : undefined;
+
   return (
-    <div
-      className={`novel-editor-toc-shell absolute inset-y-0 right-0 z-[6] hidden max-h-full overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none md:block ${
-        open ? `${NOVEL_TOC_WIDTH_CLASS} pointer-events-auto` : 'w-0 pointer-events-none'
-      }`}
-      aria-hidden={!open}
-    >
+    <>
+      {open && typeof onRequestClose === 'function' && (
+        <button
+          type="button"
+          className={`fixed z-10080 bg-black/35 md:hidden ${
+            mobileTopPx !== null ? 'left-0 right-0 bottom-0' : 'inset-0'
+          }`}
+          style={mobileBackdropStyle}
+          aria-label="목차 닫기"
+          onClick={onRequestClose}
+        />
+      )}
+      <div
+        className={`novel-editor-toc-shell max-h-full overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none ${
+          open
+            ? `max-md:fixed max-md:right-0 max-md:z-10090 max-md:flex max-md:flex-col max-md:shadow-2xl ${
+                mobileTopPx !== null ? 'max-md:bottom-0' : 'max-md:inset-y-0'
+              } ${NOVEL_TOC_WIDTH_CLASS} pointer-events-auto md:absolute md:inset-y-0 md:right-0 md:z-6 md:block`
+            : 'max-md:hidden md:absolute md:inset-y-0 md:right-0 md:z-6 md:block md:w-0 md:pointer-events-none'
+        }`}
+        style={mobileShellStyle}
+        aria-hidden={!open}
+      >
       <aside
         className={`novel-editor-toc novel-editor-toc-panel ${NOVEL_TOC_WIDTH_CLASS} flex h-full flex-col border-l py-2.5 pl-2.5 pr-1.5 text-base leading-snug ${
           isDark
@@ -93,10 +133,7 @@ export default function NovelEditorToc({ theme = 'light', open = true }) {
                     : 'text-gray-700 ring-gray-300 hover:text-gray-900'
                 }`}
                 title={item.text}
-                onClick={() => {
-                  if (!editor || editor.isDestroyed) return;
-                  editor.chain().focus().setTextSelection(item.pos + 1).scrollIntoView().run();
-                }}
+                onClick={() => handleHeadingClick(item.pos)}
               >
                 {item.text}
               </button>
@@ -106,5 +143,6 @@ export default function NovelEditorToc({ theme = 'light', open = true }) {
       </ul>
     </aside>
     </div>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   IconCloud,
   IconChevronDown,
@@ -68,6 +68,45 @@ export default function EditorPane({
   const [fileManagementOpen, setFileManagementOpen] = useState(false);
   const fileManagementRef = useRef(null);
   const [novelTocVisible, setNovelTocVisible] = useState(true);
+  const editorTopChromeRef = useRef(null);
+  const novelFlushBeforeSaveRef = useRef(null);
+  const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
+
+  const handleToolbarSave = useCallback(() => {
+    novelFlushBeforeSaveRef.current?.();
+    onSave?.();
+  }, [onSave]);
+
+  useLayoutEffect(() => {
+    if (!isMobileLayout) return;
+    const el = editorTopChromeRef.current;
+    if (!el) return;
+    const update = () => {
+      const node = editorTopChromeRef.current;
+      if (!node) return;
+      const r = node.getBoundingClientRect();
+      setMobileTocOverlayTopPx(r.bottom);
+    };
+    update();
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [
+    isMobileLayout,
+    currentFile?.viewer,
+    showRecordingToolbar,
+    recordingsList.length,
+    recordingViewMode,
+    effectiveEditorType,
+    novelTocVisible,
+    currentFile?.id,
+  ]);
 
   useEffect(() => {
     if (!fileManagementOpen) return;
@@ -170,7 +209,8 @@ export default function EditorPane({
   };
   
   return (
-    <div className="flex-1 flex flex-col min-w-0 max-h-full">
+    <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden">
+      <div ref={editorTopChromeRef} className="shrink-0 flex flex-col">
       <div className="relative z-10100 flex min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 dark:border-odp-bgSofter dark:bg-odp-surface sm:px-6 pointer-events-auto">
         <div className="flex min-w-0 flex-1 items-center gap-2 font-medium text-gray-700 dark:text-odp-fgStrong sm:gap-3">
           {showMobileSidebarOpen && (
@@ -284,7 +324,7 @@ export default function EditorPane({
             type="button"
             variant="primary"
             size="sm"
-            onClick={onSave}
+            onClick={handleToolbarSave}
             disabled={isSaving || !isEditableViewer}
             title={isSaving ? '저장 중...' : '저장'}
             className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"
@@ -306,83 +346,84 @@ export default function EditorPane({
           )}
         </div>
       </div>
+      {viewer === 'markdown' && showRecordingToolbar && recordingsList.length > 0 && (
+        <div className="shrink-0 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50 dark:bg-odp-bgSoft flex flex-wrap items-center gap-2 w-full">
+          <button
+            type="button"
+            className="text-gray-500 hover:text-gray-700 dark:hover:text-odp-fgStrong p-1 shrink-0"
+            onClick={() => {
+              setShowRecordingToolbar(false);
+              setRecordingViewMode(false);
+            }}
+            title="툴바 닫기"
+            aria-label="녹음 툴바 닫기"
+          >
+            <X size={16} />
+          </button>
+          <select
+            className="text-sm rounded border border-gray-300 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft px-2 py-1 shrink-0"
+            value={selectedRecordingKey ?? ''}
+            onChange={(e) => onSelectRecording?.(e.target.value || null)}
+          >
+            {recordingsList.map((r) => (
+              <option key={r.key} value={r.key}>
+                {formatRecordingLabel(r)}
+              </option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            variant={recordingViewMode ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setRecordingViewMode((v) => !v)}
+            title={recordingViewMode ? '편집 모드' : '녹음 동기화 보기'}
+            className="shrink-0"
+          >
+            <IconEye size={14} />
+            <span className="hidden md:inline">
+              {recordingViewMode ? '편집' : '동기화 보기'}
+            </span>
+          </Button>
+          {recordingViewMode && recordingAudioUrl && (
+            <RecordingPlayer audioUrl={recordingAudioUrl} audioRef={recordingAudioRef} />
+          )}
+        </div>
+      )}
+      {viewer === 'markdown' && effectiveEditorType === EDITOR_TYPE_NOVEL && !recordingViewMode && (
+        <div
+          className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50/90 dark:bg-odp-bgSoft/90"
+          role="toolbar"
+          aria-label="Markdown 편집기"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-white dark:bg-odp-surface px-2 py-0.5 text-xs font-semibold text-gray-800 dark:text-odp-fgStrong border border-gray-200 dark:border-odp-borderSoft shadow-sm shrink-0">
+              <PenLine className="size-3.5 opacity-85" aria-hidden />
+              Markdown
+            </span>
+            <span className="text-xs text-gray-500 dark:text-odp-muted truncate hidden sm:inline">
+              `/` 로 커맨드 입력
+            </span>
+          </div>
+          <button
+            type="button"
+            className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
+              novelTocVisible
+                ? 'border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong'
+            }`}
+            onClick={() => setNovelTocVisible((v) => !v)}
+            title={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+            aria-pressed={novelTocVisible}
+            aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+          >
+            <ListTree className="size-4" aria-hidden />
+          </button>
+        </div>
+      )}
+      </div>
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-odp-surface h-full">
         {viewer === 'markdown' ? (
           <>
-            {showRecordingToolbar && recordingsList.length > 0 && (
-              <div className="shrink-0 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50 dark:bg-odp-bgSoft flex flex-wrap items-center gap-2 w-full">
-                <button
-                  type="button"
-                  className="text-gray-500 hover:text-gray-700 dark:hover:text-odp-fgStrong p-1 shrink-0"
-                  onClick={() => {
-                    setShowRecordingToolbar(false);
-                    setRecordingViewMode(false);
-                  }}
-                  title="툴바 닫기"
-                  aria-label="녹음 툴바 닫기"
-                >
-                  <X size={16} />
-                </button>
-                <select
-                  className="text-sm rounded border border-gray-300 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft px-2 py-1 shrink-0"
-                  value={selectedRecordingKey ?? ''}
-                  onChange={(e) => onSelectRecording?.(e.target.value || null)}
-                >
-                  {recordingsList.map((r) => (
-                    <option key={r.key} value={r.key}>
-                      {formatRecordingLabel(r)}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant={recordingViewMode ? 'primary' : 'secondary'}
-                  size="sm"
-                  onClick={() => setRecordingViewMode((v) => !v)}
-                  title={recordingViewMode ? '편집 모드' : '녹음 동기화 보기'}
-                  className="shrink-0"
-                >
-                  <IconEye size={14} />
-                  <span className="hidden md:inline">
-                    {recordingViewMode ? '편집' : '동기화 보기'}
-                  </span>
-                </Button>
-                {recordingViewMode && recordingAudioUrl && (
-                  <RecordingPlayer audioUrl={recordingAudioUrl} audioRef={recordingAudioRef} />
-                )}
-              </div>
-            )}
-            {effectiveEditorType === EDITOR_TYPE_NOVEL && !recordingViewMode && (
-              <div
-                className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50/90 dark:bg-odp-bgSoft/90"
-                role="toolbar"
-                aria-label="Markdown 편집기"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-white dark:bg-odp-surface px-2 py-0.5 text-xs font-semibold text-gray-800 dark:text-odp-fgStrong border border-gray-200 dark:border-odp-borderSoft shadow-sm shrink-0">
-                    <PenLine className="size-3.5 opacity-85" aria-hidden />
-                    Markdown
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-odp-muted truncate hidden sm:inline">
-                    `/` 로 커맨드 입력
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
-                    novelTocVisible
-                      ? 'border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong'
-                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong'
-                  }`}
-                  onClick={() => setNovelTocVisible((v) => !v)}
-                  title={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
-                  aria-pressed={novelTocVisible}
-                  aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
-                >
-                  <ListTree className="size-4" aria-hidden />
-                </button>
-              </div>
-            )}
             <div className="flex-1 min-h-0">
               {recordingViewMode && recordingAudioUrl ? (
                 <RecordingSyncView
@@ -401,6 +442,11 @@ export default function EditorPane({
                   theme={theme}
                   previewOnly={previewOnly}
                   tocVisible={novelTocVisible}
+                  onTocRequestClose={() => setNovelTocVisible(false)}
+                  mobileTocOverlayTopPx={isMobileLayout ? mobileTocOverlayTopPx : null}
+                  onRegisterFlushBeforeSave={(fn) => {
+                    novelFlushBeforeSaveRef.current = fn;
+                  }}
                   onUploadImage={onUploadImage}
                   isUploadingEditorImage={isUploadingEditorImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
