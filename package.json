@@ -54,7 +54,7 @@
     "vite-plugin-pwa": "^1.2.0"
   },
   "build": {
-    "publish": "never",
+    "publish": null,
     "appId": "com.s3haim.app",
     "productName": "S3 Haim",
     "icon": "build/icon.png",

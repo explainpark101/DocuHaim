@@ -51,6 +51,7 @@ jobs:
           CI: true
           # 서명 인증서 없을 때 mac에서 불필요한 탐색 생략
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
