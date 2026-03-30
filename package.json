@@ -2,7 +2,7 @@
   "name": "s3haim",
   "private": true,
   "version": "0.1.1",
-  "author": "S3 Haim <explainpark101@gmail.com>",
+  "author": "Jaehyung Park <explainpark101@gmail.com>",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -80,6 +80,7 @@
       ]
     },
     "linux": {
+      "maintainer": "Jaehyung Park <explainpark101@gmail.com>",
       "target": [
         "AppImage",
         "deb"
