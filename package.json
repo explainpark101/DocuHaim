@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:app": "cross-env VITE_ELECTRON=true VITE_BASE_PATH=./ vite build && electron-builder",
+    "electron:icon": "node scripts/rasterize-electron-icon.mjs",
+    "build:app": "node scripts/rasterize-electron-icon.mjs && cross-env VITE_ELECTRON=true VITE_BASE_PATH=./ vite build && electron-builder",
     "lint": "eslint .",
     "preview": "VITE_BASE_PATH=/s3haim vite build && VITE_BASE_PATH=/s3haim vite preview"
   },
@@ -46,6 +47,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0"
@@ -53,8 +55,10 @@
   "build": {
     "appId": "com.s3haim.app",
     "productName": "S3 Haim",
+    "icon": "build/icon.png",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
