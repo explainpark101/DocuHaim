@@ -5,7 +5,13 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'release']),
+  {
+    files: ['electron/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
   {
     files: ['vite.config.js'],
     languageOptions: {

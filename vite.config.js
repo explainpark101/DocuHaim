@@ -4,9 +4,15 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
-  base: process.env.VITE_BASE_PATH || '/',
-  plugins: [react(), tailwindcss(),
+const isElectron = process.env.VITE_ELECTRON === 'true';
+
+const plugins = [
+  react(),
+  tailwindcss(),
+];
+
+if (!isElectron) {
+  plugins.push(
     VitePWA({
       injectRegister: 'auto',
       registerType: 'autoUpdate',
@@ -35,7 +41,12 @@ export default defineConfig({
         navigateFallback: (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '') + '/index.html',
       }
     })
-  ],
+  );
+}
+
+export default defineConfig({
+  base: process.env.VITE_BASE_PATH || '/',
+  plugins,
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
