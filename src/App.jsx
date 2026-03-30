@@ -3065,7 +3065,7 @@ function MainApp() {
               max-md:transition-transform max-md:duration-300 max-md:ease-out
               md:transition-[width] md:duration-300 md:ease-in-out
               ${!isMobile && sidebarCollapsed ? 'md:overflow-hidden md:border-r-0' : ''}
-              ${isMobile && !sidebarOpen ? '-translate-y-full' : 'translate-y-0'}
+              ${isMobile && !sidebarOpen ? '-translate-y-full pointer-events-none' : 'translate-y-0'}
             `}
             style={
               isMobile
