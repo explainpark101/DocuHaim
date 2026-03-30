@@ -62,7 +62,7 @@ export default function SidebarContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-100 min-w-[180px] py-1 rounded-lg border border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shadow-lg"
+      className="fixed z-100 min-w-[180px] rounded-lg border border-gray-200 dark:border-gray-500 bg-white dark:bg-odp-bgSoft shadow-lg overflow-clip"
       style={{ left: x, top: y }}
     >
       {canAdd && onCreateFile && (
