@@ -22,6 +22,7 @@ import MonacoTextEditor from '@/components/MonacoTextEditor';
 import Button from '@/components/Button';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { ListTree, PenLine, X } from 'lucide-react';
+import PrintButton from '@/components/PrintButton';
 
 export default function EditorPane({
   currentFile,
@@ -404,20 +405,26 @@ export default function EditorPane({
               `/` 로 커맨드 입력
             </span>
           </div>
-          <button
-            type="button"
-            className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
-              novelTocVisible
-                ? 'border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong'
-            }`}
-            onClick={() => setNovelTocVisible((v) => !v)}
-            title={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
-            aria-pressed={novelTocVisible}
-            aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
-          >
-            <ListTree className="size-4" aria-hidden />
-          </button>
+          <div className="flex items-center gap-2">
+            <PrintButton
+              value={editorContent}
+              theme={theme}
+            />
+            <button
+              type="button"
+              className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
+                novelTocVisible
+                  ? 'border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong'
+              }`}
+              onClick={() => setNovelTocVisible((v) => !v)}
+              title={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+              aria-pressed={novelTocVisible}
+              aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
+            >
+              <ListTree className="size-4" aria-hidden />
+            </button>
+          </div>
         </div>
       )}
       </div>
