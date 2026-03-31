@@ -34,6 +34,15 @@ const printFontStyles = `
   #export-pdf-preview .md-editor-preview .md-editor-code pre code {
     font-family: var(--print-font-code, inherit);
   }
+  #export-pdf-preview .md-editor-preview figure {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    margin: 0 0 1em;
+  }
+  #export-pdf-preview .md-editor-preview figure figcaption {
+    text-align: left;
+  }
 `;
 
 export default function ExportPDFPage() {
