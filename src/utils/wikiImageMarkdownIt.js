@@ -137,9 +137,8 @@ export function wikiImagePlugin(md) {
       figcaptionOpen.level = (t0.level || 0) + 1;
 
       const figcaptionInline = new state.Token('inline', '', 0);
-      const captionTextToken = new state.Token('text', '', 0);
-      captionTextToken.content = captionText;
-      figcaptionInline.children = [captionTextToken];
+      const captionParsed = md.parseInline(captionText);
+      figcaptionInline.children = captionParsed[0]?.children || [new state.Token('text', '', 0)];
       figcaptionInline.level = (t0.level || 0) + 2;
 
       const figcaptionClose = new state.Token(
@@ -262,9 +261,8 @@ export function wikiImagePlugin(md) {
 
       // figcaption 내용
       const figcaptionInline = new state.Token('inline', '', 0);
-      const captionTextToken = new state.Token('text', '', 0);
-      captionTextToken.content = captionText;
-      figcaptionInline.children = [captionTextToken];
+      const captionParsed = md.parseInline(captionText);
+      figcaptionInline.children = captionParsed[0]?.children || [new state.Token('text', '', 0)];
       figcaptionInline.level = (t0.level || 0) + 2;
 
       // figcaption_close
