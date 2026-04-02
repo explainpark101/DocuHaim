@@ -732,9 +732,10 @@
 }
 .md-editor-preview figure {
   margin: 0 0 1em;
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   text-align: center;
+  align-items: center;
 }
 .md-editor-preview figure figcaption {
   color: var(--md-theme-color);
