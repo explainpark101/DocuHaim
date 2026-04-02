@@ -109,15 +109,13 @@ export function wikiImagePlugin(md) {
         continue;
       }
 
-      const captionTokens = children.slice(2).filter(
+      const allCaptionTokens = children.slice(2);
+      
+      // 캡션이 비어있지 않은지 확인 (text 타입 토큰이 있고, content가 있는지)
+      const hasContent = allCaptionTokens.some(
         (ct) => ct.type === 'text' && ct.content && ct.content.trim(),
       );
-      const captionText = captionTokens
-        .map((ct) => ct.content)
-        .join('')
-        .trim();
-
-      if (!captionText) {
+      if (!hasContent) {
         newTokens.push(t0);
         continue;
       }
@@ -139,8 +137,8 @@ export function wikiImagePlugin(md) {
       figcaptionOpen.level = (t0.level || 0) + 1;
 
       const figcaptionInline = new state.Token('inline', '', 0);
-      const captionParsed = md.parseInline(captionText);
-      figcaptionInline.children = captionParsed[0]?.children || [new state.Token('text', '', 0)];
+      // 이미 파싱된 마크다운 토큰들을 그대로 사용 (bold, strong, code 등 포함)
+      figcaptionInline.children = allCaptionTokens;
       figcaptionInline.level = (t0.level || 0) + 2;
 
       const figcaptionClose = new state.Token(
@@ -230,14 +228,13 @@ export function wikiImagePlugin(md) {
         continue;
       }
 
-      const captionTokens = t4.children || [];
-      const captionText = captionTokens
-        .filter((ct) => ct.type === 'text' && ct.content && ct.content.trim())
-        .map((ct) => ct.content)
-        .join('')
-        .trim();
-
-      if (!captionText) {
+      const allCaptionTokens = t4.children || [];
+      
+      // 캡션이 비어있지 않은지 확인
+      const hasContent = allCaptionTokens.some(
+        (ct) => ct.type === 'text' && ct.content && ct.content.trim(),
+      );
+      if (!hasContent) {
         newTokens.push(t0);
         continue;
       }
@@ -261,10 +258,9 @@ export function wikiImagePlugin(md) {
       figcaptionOpen.block = true;
       figcaptionOpen.level = (t0.level || 0) + 1;
 
-      // figcaption 내용
+      // figcaption 내용 - 이미 파싱된 마크다운 토큰들을 그대로 사용
       const figcaptionInline = new state.Token('inline', '', 0);
-      const captionParsed = md.parseInline(captionText);
-      figcaptionInline.children = captionParsed[0]?.children || [new state.Token('text', '', 0)];
+      figcaptionInline.children = allCaptionTokens;
       figcaptionInline.level = (t0.level || 0) + 2;
 
       // figcaption_close
