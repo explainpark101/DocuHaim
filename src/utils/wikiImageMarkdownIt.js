@@ -1,5 +1,6 @@
 /**
- * markdown-it 플러그인: ![[path]] 를 data-wiki-path 를 가진 img 로 변환.
+ * markdown-it 플러그인: ![[path]] 또는 ![[path|caption]] 을 data-wiki-path 를 가진 img 로 변환.
+ * caption이 있으면 markdown으로 파싱하여 figcaption으로 처리.
  * Preview Hydration 단계에서 src 에 Pre-signed URL 이 채워짐.
  * src 에는 1x1 투명 placeholder 를 넣어 두어, sanitizer/빈 img 제거를 피함.
  *
@@ -9,7 +10,8 @@ const DEBUG_WIKI_IMAGE_PLUGIN = true;
 const PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
 
 export function wikiImagePlugin(md) {
-  const WIKI_IMAGE_RE = /!\[\[([^[\]]+)\]\]/g;
+  // ![[path]] 또는 ![[path|caption]] 형식 지원
+  const WIKI_IMAGE_RE = /!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
 
   md.core.ruler.push('wiki-image', (state) => {
     let replaced = 0;
@@ -41,10 +43,16 @@ export function wikiImagePlugin(md) {
           }
 
           const path = match[1].trim();
+          const caption = match[2]?.trim() || '';
+          
           const imgToken = new state.Token('wiki_image', 'img', 0);
           imgToken.attrSet('data-wiki-path', path);
           imgToken.attrSet('src', PLACEHOLDER_SRC);
-          imgToken.attrSet('alt', '');
+          // caption이 있으면 마크다운 파싱을 위해 data 속성에 저장
+          if (caption) {
+            imgToken.attrSet('data-wiki-caption', caption);
+          }
+          imgToken.attrSet('alt', caption);
           children.push(imgToken);
 
           lastIndex = match.index + match[0].length;
@@ -65,9 +73,113 @@ export function wikiImagePlugin(md) {
     }
   });
 
+  // ![[path|caption]] 형식: data-wiki-caption 속성이 있는 wiki_image를 처리
+  // 이 이미지를 inline에서 꺼내서 figure로 변환
+  md.core.ruler.after('wiki-image', 'wiki-image-inline-caption', (state) => {
+    const tokens = state.tokens;
+    if (!tokens || tokens.length < 3) return;
+
+    const newTokens = [];
+
+    for (let i = 0; i < tokens.length; i += 1) {
+      const t0 = tokens[i];
+      const t1 = tokens[i + 1];
+      const t2 = tokens[i + 2];
+
+      if (!t0 || !t1 || !t2) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      if (
+        t0.type !== 'paragraph_open' ||
+        t1.type !== 'inline' ||
+        t2.type !== 'paragraph_close'
+      ) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      const children = t1.children || [];
+      if (children.length === 0) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      const first = children[0];
+      // data-wiki-caption을 가진 wiki_image가 inline의 첫 요소인지 확인
+      if (first?.type !== 'wiki_image' || !first.attrGet('data-wiki-caption')) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      const captionText = first.attrGet('data-wiki-caption') || '';
+      if (!captionText) {
+        newTokens.push(t0);
+        continue;
+      }
+
+      // figure로 변환
+      const figureOpen = new state.Token('figure_open', 'figure', 1);
+      figureOpen.block = true;
+      figureOpen.map = t0.map ? [...t0.map] : null;
+
+      const imageInline = new state.Token('inline', '', 0);
+      imageInline.children = [first];
+      imageInline.level = (t0.level || 0) + 1;
+
+      const figcaptionOpen = new state.Token(
+        'figcaption_open',
+        'figcaption',
+        1,
+      );
+      figcaptionOpen.block = true;
+      figcaptionOpen.level = (t0.level || 0) + 1;
+
+      const figcaptionInline = new state.Token('inline', '', 0);
+      // caption 텍스트를 markdown으로 파싱
+      const captionParsed = md.parseInline(captionText);
+      figcaptionInline.children = captionParsed[0]?.children || [new state.Token('text', '', 0)];
+      figcaptionInline.level = (t0.level || 0) + 2;
+
+      const figcaptionClose = new state.Token(
+        'figcaption_close',
+        'figcaption',
+        -1,
+      );
+      figcaptionClose.block = true;
+      figcaptionClose.level = (t0.level || 0) + 1;
+
+      const figureClose = new state.Token('figure_close', 'figure', -1);
+      figureClose.block = true;
+      figureClose.level = t0.level || 0;
+
+      newTokens.push(
+        figureOpen,
+        imageInline,
+        figcaptionOpen,
+        figcaptionInline,
+        figcaptionClose,
+        figureClose,
+      );
+
+      i += 2;
+    }
+
+    if (newTokens.length && newTokens.length !== tokens.length) {
+      if (DEBUG_WIKI_IMAGE_PLUGIN) {
+        console.log('[wiki-image] inline-caption plugin: transformed tokens', {
+          before: tokens.length,
+          after: newTokens.length,
+        });
+      }
+      state.tokens = newTokens;
+    }
+  });
+
   // 이미지 + softbreak/hardbreak + 캡션이 같은 단락에 있을 때 figure로 변환 (br 없이)
   // 패턴: paragraph_open / inline (wiki_image, softbreak|hardbreak, text) / paragraph_close
-  md.core.ruler.after('wiki-image', 'wiki-image-caption-inline', (state) => {
+  md.core.ruler.after('wiki-image-inline-caption', 'wiki-image-caption-inline', (state) => {
     const tokens = state.tokens;
     if (!tokens || tokens.length < 3) return;
 
