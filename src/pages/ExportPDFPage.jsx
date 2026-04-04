@@ -43,6 +43,10 @@ const printFontStyles = `
   #export-pdf-preview .md-editor-preview figure figcaption {
     text-align: left;
   }
+  #export-pdf-preview img {
+    max-height: 100vh;
+    object-fit: contain;
+  }
 `;
 
 export default function ExportPDFPage() {
