@@ -644,8 +644,18 @@ function MainApp() {
     const onOnline = () => kick();
     window.addEventListener('online', onOnline);
     const pollId = window.setInterval(refreshStats, 2000);
+    
+    // 페이지 언로드 전 최종 업로드 시도
+    const beforeUnload = () => {
+      try {
+        drainRecordingUploadQueue({ client, bucket }).catch(() => {});
+      } catch (_) {}
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    
     return () => {
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('beforeunload', beforeUnload);
       window.clearInterval(pollId);
     };
   }, [isUnlocked, getS3Client, s3Creds.bucket, loadS3Files]);

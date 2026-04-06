@@ -4,6 +4,7 @@ import {
   getRecordingById,
   listUploadableRecordings,
   updateRecordingStatus,
+  deleteRecordingFragments,
 } from './recordingDb';
 
 const DEFAULT_MAX_PER_DRAIN = 5;
@@ -77,6 +78,7 @@ export async function drainRecordingUploadQueue({
           nextAttemptAt: null,
         });
 
+        await deleteRecordingFragments(id);
         await deleteRecordingById(id);
         processed += 1;
       } catch (e) {

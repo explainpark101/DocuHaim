@@ -6,9 +6,11 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('s3haim-recordings');
 
-db.version(2).stores({
+db.version(3).stores({
   recordings:
     '++id, noteKey, createdAt, status, nextAttemptAt',
+  fragments:
+    '++id, recordingId, chunkIndex',
 });
 
 /**
@@ -137,4 +139,49 @@ export async function getRecordingQueueStats() {
     db.recordings.where('status').equals('failed').count(),
   ]);
   return { pending, uploading, failed };
+}
+
+/**
+ * @typedef {Object} RecordingFragment
+ * @property {number} [id]
+ * @property {number} recordingId - 녹음 record id
+ * @property {number} chunkIndex - 청크 순서
+ * @property {Blob} data - 오디오 청크 데이터
+ * @property {number} createdAt - 저장 시각
+ */
+
+/**
+ * 녹음 중 오디오 청크를 fragment로 저장
+ * @param {number} recordingId
+ * @param {number} chunkIndex
+ * @param {Blob} chunk
+ * @returns {Promise<number>}
+ */
+export async function saveRecordingFragment(recordingId, chunkIndex, chunk) {
+  return db.fragments.add({
+    recordingId,
+    chunkIndex,
+    data: chunk,
+    createdAt: Date.now(),
+  });
+}
+
+/**
+ * 녹음에 대한 모든 fragment 조회
+ * @param {number} recordingId
+ * @returns {Promise<RecordingFragment[]>}
+ */
+export async function getRecordingFragments(recordingId) {
+  return db.fragments
+    .where('recordingId')
+    .equals(recordingId)
+    .sortBy('chunkIndex');
+}
+
+/**
+ * 녹음의 모든 fragment 삭제
+ * @param {number} recordingId
+ */
+export async function deleteRecordingFragments(recordingId) {
+  return db.fragments.where('recordingId').equals(recordingId).delete();
 }
