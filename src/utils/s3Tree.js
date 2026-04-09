@@ -33,7 +33,7 @@ export const buildS3Tree = (contents) => {
     nodes.sort((a, b) => {
       if (a.type === 'folder' && b.type !== 'folder') return -1;
       if (a.type !== 'folder' && b.type === 'folder') return 1;
-      return a.name.localeCompare(b.name);
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
     });
     nodes.forEach((n) => {
       if (n.children && n.children.length > 0) {
