@@ -3560,6 +3560,8 @@ function MainApp() {
       <CreateItemModal
         isOpen={createModalOpen}
         type={createModalContext?.type}
+        storageType={createModalContext?.storageType}
+        parentPath={createModalContext?.parentPath || ''}
         parentLabel={
           createModalContext
             ? createModalContext.storageType === 's3'

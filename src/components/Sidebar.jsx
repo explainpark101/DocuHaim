@@ -50,6 +50,15 @@ import SidebarContextMenu from '@/components/SidebarContextMenu';
 
 const DATA_TRANSFER_TYPE = 'application/x-s3haim-tree-node';
 
+function getParentPathFromFilePath(filePath) {
+  if (!filePath || typeof filePath !== 'string') return '';
+  const normalized = filePath.replace(/\/+$/, '');
+  if (!normalized) return '';
+  const lastSlashIndex = normalized.lastIndexOf('/');
+  if (lastSlashIndex < 0) return '';
+  return normalized.slice(0, lastSlashIndex + 1);
+}
+
 function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget, onContextMenu }) {
   const rootNode = {
     path: '',
@@ -419,6 +428,39 @@ export default function Sidebar({
 
   const contextMenuNode = contextMenu?.node;
   const contextMenuStorageType = contextMenu?.storageType;
+  const getCreateTargetForStorage = useCallback(
+    (storageType) => {
+      if (storageType === 's3') {
+        if (lastFocusedS3FolderPath) {
+          return { parentPath: lastFocusedS3FolderPath, parentDirHandle: null };
+        }
+        if (currentFile?.type === 's3' && currentFile.id) {
+          return {
+            parentPath: getParentPathFromFilePath(currentFile.id),
+            parentDirHandle: null,
+          };
+        }
+        return { parentPath: '', parentDirHandle: null };
+      }
+
+      if (lastFocusedLocalFolder.path && lastFocusedLocalFolder.handle) {
+        return {
+          parentPath: lastFocusedLocalFolder.path,
+          parentDirHandle: lastFocusedLocalFolder.handle,
+        };
+      }
+
+      if (currentFile?.type === 'local' && currentFile.id) {
+        return {
+          parentPath: getParentPathFromFilePath(currentFile.id),
+          parentDirHandle: currentFile.parentHandle || localRootHandle || null,
+        };
+      }
+
+      return { parentPath: '', parentDirHandle: localRootHandle || null };
+    },
+    [currentFile, lastFocusedLocalFolder, lastFocusedS3FolderPath, localRootHandle],
+  );
 
   return (
     <div className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col">
@@ -592,8 +634,8 @@ export default function Sidebar({
               </button>
               <button
                 onClick={() => {
-                  const targetPath = lastFocusedS3FolderPath || '';
-                  onCreateItem('s3', targetPath, null, 'file');
+                  const target = getCreateTargetForStorage('s3');
+                  onCreateItem('s3', target.parentPath, target.parentDirHandle, 'file');
                 }}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                 title="선택된 폴더에 파일 생성"
@@ -602,8 +644,8 @@ export default function Sidebar({
               </button>
               <button
                 onClick={() => {
-                  const targetPath = lastFocusedS3FolderPath || '';
-                  onCreateItem('s3', targetPath, null, 'folder');
+                  const target = getCreateTargetForStorage('s3');
+                  onCreateItem('s3', target.parentPath, target.parentDirHandle, 'folder');
                 }}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                 title="선택된 폴더에 폴더 생성"
@@ -714,11 +756,8 @@ export default function Sidebar({
                 </button>
                 <button
                   onClick={() => {
-                    const target =
-                      lastFocusedLocalFolder.path && lastFocusedLocalFolder.handle
-                        ? lastFocusedLocalFolder
-                        : { path: '', handle: localRootHandle };
-                    onCreateItem('local', target.path, target.handle, 'file');
+                    const target = getCreateTargetForStorage('local');
+                    onCreateItem('local', target.parentPath, target.parentDirHandle, 'file');
                   }}
                   className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                   title="선택된 폴더에 파일 생성"
@@ -727,11 +766,8 @@ export default function Sidebar({
                 </button>
                 <button
                   onClick={() => {
-                    const target =
-                      lastFocusedLocalFolder.path && lastFocusedLocalFolder.handle
-                        ? lastFocusedLocalFolder
-                        : { path: '', handle: localRootHandle };
-                    onCreateItem('local', target.path, target.handle, 'folder');
+                    const target = getCreateTargetForStorage('local');
+                    onCreateItem('local', target.parentPath, target.parentDirHandle, 'folder');
                   }}
                   className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                   title="선택된 폴더에 폴더 생성"

@@ -6,6 +6,8 @@ export function CreateItemModal({
   isOpen,
   type,
   parentLabel,
+  parentPath = '',
+  storageType,
   onClose,
   onSubmit,
   isSubmitting = false,
@@ -29,6 +31,14 @@ export function CreateItemModal({
   const isFolder = type === 'folder';
   const title = isFolder ? '새 폴더' : '새 파일';
   const Icon = isFolder ? IconFolderPlus : IconFilePlus;
+  const trimmedName = name.trim();
+  const previewName = isFolder
+    ? trimmedName || '새 폴더'
+    : trimmedName
+      ? (trimmedName.endsWith('.md') ? trimmedName : `${trimmedName}.md`)
+      : '새 파일.md';
+  const rootLabel = storageType === 'local' ? '로컬: ' : 'S3: ';
+  const previewPath = `${rootLabel}${parentPath || ''}${previewName}${isFolder ? '/' : ''}`;
 
   return (
     <Modal isOpen={isOpen}>
@@ -43,6 +53,9 @@ export function CreateItemModal({
               위치: {parentLabel}
             </p>
           )}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            예상 경로: <span className="font-mono">{previewPath}</span>
+          </p>
           <input
             type="text"
             value={name}
