@@ -17,6 +17,8 @@ import { PencilIcon, ArrowRightToLine } from 'lucide-react';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 
 const DATA_TRANSFER_TYPE = 'application/x-s3haim-tree-node';
+const INDENT_SIZE = 12;
+const BASE_LEFT_PADDING = 8;
 
 export default function TreeNode({
   node,
@@ -64,7 +66,8 @@ export default function TreeNode({
   const [tempName, setTempName] = useState(node.name);
   const selectKey = storageType && node.path ? `${storageType}:${node.path}` : node.path;
   const isSelected = selectedIds && selectedIds.has && selectedIds.has(selectKey);
-  const paddingLeft = `${level * 12 + 8}px`;
+  const paddingLeft = `${level * INDENT_SIZE + BASE_LEFT_PADDING}px`;
+  const guideLineOffsets = Array.from({ length: level }, (_, depth) => INDENT_SIZE/2 + BASE_LEFT_PADDING + depth * INDENT_SIZE);
 
   const isTrashRoot = node.path === '.trash/';
   const displayName = isTrashRoot ? '쓰레기통' : node.name;
@@ -367,7 +370,7 @@ export default function TreeNode({
         onDragEnd={handleDragEnd}
         onDragOver={canAcceptDrop ? handleDragOver : undefined}
         onDrop={canAcceptDrop ? handleDrop : undefined}
-        className={`group flex items-center justify-between py-1.5 pr-2 transition-colors ${
+        className={`group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${
           isSelected
             ? 'bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong'
             : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg'
@@ -390,6 +393,17 @@ export default function TreeNode({
             : undefined
         }
       >
+        {guideLineOffsets.length > 0 && (
+          <div className="pointer-events-none absolute inset-y-0 left-0">
+            {guideLineOffsets.map((offset) => (
+              <span
+                key={`guide-${node.path}-${offset}`}
+                className="absolute inset-y-0 w-px bg-gray-300 dark:bg-gray-600/80"
+                style={{ left: `${offset}px` }}
+              />
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-1.5 overflow-hidden">
           <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
             {node.type === 'folder' ? (isOpen ? <IconChevronDown /> : <IconChevronRight />) : null}
