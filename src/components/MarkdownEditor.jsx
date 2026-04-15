@@ -71,6 +71,7 @@ export default function MarkdownEditor({
   onChange,
   onSave,
   theme = 'light',
+  currentFile = null,
   previewOnly = false,
   onUploadImage,
   isUploadingEditorImage = false,
@@ -264,9 +265,10 @@ export default function MarkdownEditor({
       key="export-pdf"
       value={value}
       theme={theme}
+      currentFile={currentFile}
       language="ko-KR"
     />,
-  ], [value, theme]);
+  ], [value, theme, currentFile]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
@@ -312,4 +314,3 @@ export default function MarkdownEditor({
     </div>
   );
 }
-

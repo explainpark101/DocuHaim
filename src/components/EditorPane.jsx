@@ -409,6 +409,7 @@ export default function EditorPane({
             <PrintButton
               value={editorContent}
               theme={theme}
+              currentFile={currentFile}
             />
             <button
               type="button"
@@ -447,6 +448,7 @@ export default function EditorPane({
                   onChange={onChangeEditor}
                   onSave={onSave}
                   theme={theme}
+                  currentFile={currentFile}
                   previewOnly={previewOnly}
                   tocVisible={novelTocVisible}
                   onTocRequestClose={() => setNovelTocVisible(false)}
@@ -464,6 +466,7 @@ export default function EditorPane({
                   onChange={onChangeEditor}
                   onSave={onSave}
                   theme={theme}
+                  currentFile={currentFile}
                   previewOnly={previewOnly}
                   onUploadImage={onUploadImage}
                   isUploadingEditorImage={isUploadingEditorImage}
@@ -564,4 +567,3 @@ export default function EditorPane({
     </div>
   );
 }
-

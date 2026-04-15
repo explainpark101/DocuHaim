@@ -55,6 +55,7 @@ import { setPrintSettingsStore } from '@/utils/printSettingsStore';
 import { getRecordingQueueStats } from '@/utils/recordingDb';
 import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
 import { loadHideRecordingCompanions, saveHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
+import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import {
   getDraftKey,
   saveMemoDraft,
@@ -205,7 +206,9 @@ function MainApp() {
   const currentFileRef = useRef(null);
   const hasRestoredLastFileRef = useRef(false);
   const hasProcessedOpenFromUrlRef = useRef(false);
+  const hasRestoredFromPrintRef = useRef(false);
   const saveFileRef = useRef(null);
+  const prevEditorContentRef = useRef('');
 
   const handleEditorTypeChange = useCallback((next) => {
     saveEditorType(next);
@@ -1391,6 +1394,24 @@ function MainApp() {
     },
     [getS3Client, s3Creds.bucket]
   );
+
+  useEffect(() => {
+    if (!isUnlocked || hasRestoredFromPrintRef.current) return;
+    const pending = consumePendingPrintReturnState();
+    hasRestoredFromPrintRef.current = true;
+    if (!pending) return;
+
+    hasProcessedOpenFromUrlRef.current = true;
+    hasRestoredLastFileRef.current = true;
+
+    const nextContent = typeof pending.editorContent === 'string' ? pending.editorContent : '';
+    if (pending.currentFile && typeof pending.currentFile === 'object') {
+      setCurrentFile(pending.currentFile);
+    }
+    prevEditorContentRef.current = nextContent;
+    editorContentRef.current = nextContent;
+    setEditorContent(nextContent);
+  }, [isUnlocked]);
 
   // Persist last opened file (S3 or local) for restore on next load
   useEffect(() => {
@@ -2898,8 +2919,6 @@ function MainApp() {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFile, editorContent, lastInputAt]);
-
-  const prevEditorContentRef = useRef('');
 
   useEffect(() => {
     editorContentRef.current = editorContent;

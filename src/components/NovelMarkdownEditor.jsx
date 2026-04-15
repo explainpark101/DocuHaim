@@ -42,6 +42,7 @@ import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { useNavigate } from 'react-router';
+import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import '@/styles/novel-editor.css';
 
 const DEBUG_WIKI_IMAGE = false;
@@ -181,6 +182,7 @@ export default function NovelMarkdownEditor({
   onChange,
   onSave,
   theme = 'light',
+  currentFile = null,
   previewOnly = false,
   /** 상위(EditorPane)에서 목차 패널 표시 여부 */
   tocVisible = true,
@@ -216,9 +218,10 @@ export default function NovelMarkdownEditor({
       } catch {
         md = '';
       }
+      setPendingPrintReturnState({ currentFile, editorContent: md });
       navigate('/export-pdf', { state: { value: md, theme } });
     },
-    [navigate, theme],
+    [navigate, theme, currentFile],
   );
 
   const slashSuggestionItems = useMemo(
