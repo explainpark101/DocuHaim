@@ -820,6 +820,41 @@ html {
   border-block-start: 1px solid var(--md-theme-border-color)
 }
 
+/* `<pgbr/>` — screen: HR-like; print: block .md-pgbr gets page break (unwrap from <p>) */
+.md-editor-preview .md-pgbr {
+  display: block;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-block-start: 1px solid var(--md-theme-border-color);
+  background: transparent;
+}
+
+.md-editor-preview .md-pgbr + :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 0;
+}
+
+h1 + :is(h2, h3, h4, h5, h6, ul, ol) {
+  margin-top: 0;
+}
+h2 + :is(h3, h4, h5, h6, ul, ol) {
+  margin-top: 0;
+}
+h3 + :is(h4, h5, h6, ul, ol) {
+  margin-top: 0;
+}
+h4 + :is(h5, h6, ul, ol) {
+  margin-top: 0;
+}
+h5 + :is(h6, ul, ol) {
+  margin-top: 0;
+}
+
+#export-pdf-preview-preview :is(ol, ul) li {
+  margin: .25em 0;
+}
+
 .md-editor-preview a {
   color: var(--md-theme-link-color);
   text-decoration: none;
@@ -3588,5 +3623,38 @@ svg.md-editor-icon {
 
   #export-pdf-preview {
     visibility: visible !important;
+  }
+
+  .md-editor-preview-wrapper {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* wiki ![[path]] + caption figure: keep image and caption on the same page when possible */
+  .md-editor-preview figure:has(img[data-wiki-path]) {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* break-after: following content starts on a new sheet */
+  .md-editor-preview .md-pgbr {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    height: 1px !important;
+    max-height: 1px !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: block !important;
+    overflow: visible !important;
+    position: relative !important;
+    float: none !important;
   }
 }

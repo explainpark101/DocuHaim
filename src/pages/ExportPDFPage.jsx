@@ -49,6 +49,20 @@ const printFontStyles = `
     max-height: 100vh;
     object-fit: contain;
   }
+  @media print {
+    .export-pdf-preview-scroll {
+      overflow: visible !important;
+      max-height: none !important;
+    }
+    .export-pdf-page {
+      display: block !important;
+      overflow: visible !important;
+    }
+    #export-pdf-preview .md-editor-preview-wrapper {
+      overflow: visible !important;
+      max-height: none !important;
+    }
+  }
 `;
 
 export default function ExportPDFPage() {
@@ -136,7 +150,10 @@ export default function ExportPDFPage() {
         </div>
       </div>
 
-      <div ref={previewContainerRef} className="flex-1 overflow-auto min-h-0 bg-white text-gray-900">
+      <div
+        ref={previewContainerRef}
+        className="export-pdf-preview-scroll flex-1 overflow-auto min-h-0 bg-white text-gray-900"
+      >
         <MdPreview
           id={EDITOR_ID}
           theme="light"

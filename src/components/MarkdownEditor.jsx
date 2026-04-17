@@ -4,10 +4,12 @@ import { MdEditor, config } from 'md-editor-rt';
 import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import ExportPDF from '@/components/ExportPDF';
+import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import { lineNumbers } from '@codemirror/view';
 import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
+import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 const DEBUG_WIKI_IMAGE = true;
@@ -61,6 +63,9 @@ config({
     }
     if (!next.some((p) => p.type === 'preview_link_target_blank')) {
       next = [...next, { type: 'preview_link_target_blank', plugin: previewLinkTargetBlankPlugin, options: {} }];
+    }
+    if (!next.some((p) => p.type === 'pgbr')) {
+      next = [...next, { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} }];
     }
     return next;
   },
@@ -177,7 +182,7 @@ export default function MarkdownEditor({
               if (!paths?.length) return;
               const markdown = paths.map((p) => `![[${p}]]`).join('\n');
               const api2 = editorRef.current?.value ?? editorRef.current;
-              const v = api2?.getView?.() ?? pasteView;
+              const v = api2?.getEditorView?.() ?? pasteView;
               if (v) v.dispatch(v.state.replaceSelection(markdown));
             });
             return false;
@@ -234,7 +239,7 @@ export default function MarkdownEditor({
       );
       if (!entry) return;
       const api = editorRef.current?.value ?? editorRef.current;
-      const view = api?.getView?.();
+      const view = api?.getEditorView?.();
       if (!view) return;
       const container = containerRef.current;
       const target = e.target;
@@ -268,12 +273,13 @@ export default function MarkdownEditor({
       currentFile={currentFile}
       language="ko-KR"
     />,
+    <MarkdownPageBreakToolbar key="insert-pgbr" editorRef={editorRef} />,
   ], [value, theme, currentFile]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
-    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', '-',
+    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, '-',
     'revoke', 'next', 0, '=',
     'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
   ], []);
