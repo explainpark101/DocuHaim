@@ -41,8 +41,15 @@ import NovelEditorToc, { NOVEL_TOC_MD_PADDING_CLASS } from '@/components/NovelEd
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import {
+  getWikiImageAttrsFromElement,
+  getWikiImageOccurrenceInContainer,
+  updateWikiImageSizeInMarkdown,
+  wikiImageMarkupFromAttrs,
+} from '@/utils/wikiImageSyntax';
 import { useNavigate } from 'react-router';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import '@/styles/novel-editor.css';
 
 const DEBUG_WIKI_IMAGE = false;
@@ -61,7 +68,12 @@ turndown.addRule('wikiImageData', {
   },
   replacement: (_content, node) => {
     const path = node.getAttribute('data-wiki-path');
-    return path ? `![[${path}]]` : '';
+    if (!path) return '';
+    return wikiImageMarkupFromAttrs({
+      path,
+      width: node.getAttribute('data-wiki-width'),
+      height: node.getAttribute('data-wiki-height'),
+    });
   },
 });
 
@@ -76,8 +88,14 @@ turndown.addRule('wikiFigureCaption', {
   replacement: (_content, node) => {
     const path = node.querySelector('img[data-wiki-path]')?.getAttribute('data-wiki-path');
     if (!path) return '';
+    const img = node.querySelector('img[data-wiki-path]');
     const cap = node.querySelector('figcaption')?.textContent?.trim() ?? '';
-    return cap ? `![[${path}]]\n\n${cap}` : `![[${path}]]`;
+    const wiki = wikiImageMarkupFromAttrs({
+      path,
+      width: img?.getAttribute('data-wiki-width'),
+      height: img?.getAttribute('data-wiki-height'),
+    });
+    return cap ? `${wiki}\n\n${cap}` : wiki;
   },
 });
 
@@ -205,6 +223,7 @@ export default function NovelMarkdownEditor({
   /** 이미지 붙여넣기 업로드가 끝나기 전 중복 paste·onUploadImage 호출 방지 */
   const pasteImageUploadLockRef = useRef(false);
   const [hydrateTick, setHydrateTick] = useState(0);
+  const [wikiImageModalState, setWikiImageModalState] = useState(null);
 
   const [initialHtml, setInitialHtml] = useState(() => markdownToNovelEditorHtml(value ?? ''));
 
@@ -219,7 +238,7 @@ export default function NovelMarkdownEditor({
         md = '';
       }
       setPendingPrintReturnState({ currentFile, editorContent: md });
-      navigate('/export-pdf', { state: { value: md, theme } });
+      navigate('/export-pdf', { state: { value: md, theme, currentFile } });
     },
     [navigate, theme, currentFile],
   );
@@ -621,6 +640,77 @@ export default function NovelMarkdownEditor({
     return () => el.removeEventListener('keydown', handleKeyDown, true);
   }, [onSave, flushPendingMarkdown]);
 
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    const onContextMenu = (event) => {
+      const img = event.target?.closest?.('img[data-wiki-path]');
+      if (!img || !root.contains(img)) return;
+      const attrs = getWikiImageAttrsFromElement(img);
+      if (!attrs.path) return;
+      event.preventDefault();
+      const occurrence = getWikiImageOccurrenceInContainer(root, img, attrs.path);
+      let nodePos = null;
+      const view = editorRef.current?.view;
+      if (view) {
+        try {
+          const pos = view.posAtDOM(img, 0);
+          const node = view.state.doc.nodeAt(pos);
+          if (node?.type?.name === 'wikiImage') nodePos = pos;
+        } catch {
+          nodePos = null;
+        }
+      }
+      setWikiImageModalState({
+        path: attrs.path,
+        width: attrs.width,
+        height: attrs.height,
+        occurrence,
+        nodePos,
+      });
+    };
+    root.addEventListener('contextmenu', onContextMenu);
+    return () => root.removeEventListener('contextmenu', onContextMenu);
+  }, []);
+
+  const handleApplyWikiImageSize = useCallback(
+    ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.path) return;
+
+      const ed = editorRef.current;
+      const view = ed?.view;
+      const pos = modal.nodePos;
+      if (view && Number.isInteger(pos)) {
+        const node = view.state.doc.nodeAt(pos);
+        if (node?.type?.name === 'wikiImage') {
+          const nextAttrs = {
+            ...node.attrs,
+            width: width || null,
+            height: height || null,
+          };
+          view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, nextAttrs, node.marks));
+          setHydrateTick((t) => t + 1);
+          flushPendingMarkdown();
+          return;
+        }
+      }
+
+      if (typeof onChange === 'function') {
+        const next = updateWikiImageSizeInMarkdown(value, {
+          path: modal.path,
+          occurrence: modal.occurrence ?? 0,
+          width,
+          height,
+        });
+        if (next.updated && next.markdown !== value) {
+          onChange(next.markdown);
+        }
+      }
+    },
+    [flushPendingMarkdown, onChange, value, wikiImageModalState],
+  );
+
   return (
     <div ref={containerRef} className="relative flex h-full min-h-0 w-full flex-1 flex-col">
       {isUploadingEditorImage && (
@@ -704,6 +794,19 @@ export default function NovelMarkdownEditor({
           <ImageResizer />
         </EditorContent>
       </EditorRoot>
+      <WikiImageSizeModal
+        key={
+          wikiImageModalState
+            ? `${wikiImageModalState.path}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}|${wikiImageModalState.nodePos ?? -1}`
+            : 'wiki-image-size-modal'
+        }
+        isOpen={Boolean(wikiImageModalState)}
+        onClose={() => setWikiImageModalState(null)}
+        path={wikiImageModalState?.path ?? ''}
+        initialWidth={wikiImageModalState?.width ?? ''}
+        initialHeight={wikiImageModalState?.height ?? ''}
+        onApply={handleApplyWikiImageSize}
+      />
     </div>
   );
 }

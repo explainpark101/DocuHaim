@@ -824,8 +824,8 @@ html {
 .md-editor-preview .md-pgbr {
   display: block;
   height: 1px;
-  margin: 0;
-  padding: 0;
+  margin: 14px 0;
+  padding: 16px 0;
   border: none;
   border-block-start: 1px solid var(--md-theme-border-color);
   background: transparent;

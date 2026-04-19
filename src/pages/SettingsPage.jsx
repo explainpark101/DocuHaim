@@ -282,7 +282,7 @@ export default function SettingsPage({
               <span>
                 <span className="font-semibold">md-editor-rt</span>
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  기본 에디터. 미리보기, 위키 이미지 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code>, 스니펫 단축키 등이 이 구성에 맞춰져 있습니다.
+                  기본 에디터. 미리보기, 위키 이미지 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> / <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>, 스니펫 단축키 등이 이 구성에 맞춰져 있습니다.
                 </span>
               </span>
             </label>
@@ -378,7 +378,7 @@ export default function SettingsPage({
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">위키 이미지 캐싱 방식</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
             md 문서의 <code className="px-1 mx-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">![[path]]</code>{' '}
-            이미지에 대해 어떤 방식으로 캐싱할지 선택합니다.
+            / <code className="px-1 mx-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">![[path|320x200]]</code> 이미지에 대해 어떤 방식으로 캐싱할지 선택합니다.
           </p>
           <div className="space-y-1 text-xs text-gray-700 dark:text-odp-fg">
             <label className="flex items-center gap-2 cursor-pointer">

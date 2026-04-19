@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MdEditor, config } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
@@ -12,6 +12,12 @@ import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMark
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
+import {
+  getWikiImageAttrsFromElement,
+  getWikiImageOccurrenceInContainer,
+  updateWikiImageSizeInMarkdown,
+} from '@/utils/wikiImageSyntax';
 const DEBUG_WIKI_IMAGE = true;
 
 /** Windows: Ctrl, Mac: Cmd 를 mod 로 통일한 키 조합 문자열 반환 (keydown 매칭용) */
@@ -38,6 +44,17 @@ function normalizeShortcutForMatch(shortcut) {
     .replace(/\bctrl\b/g, 'mod')
     .replace(/\bmeta\b/g, 'mod')
     .trim();
+}
+
+function insertLineAboveInEditorView(view) {
+  if (!view?.state) return;
+  const head = view.state.selection?.main?.head;
+  if (typeof head !== 'number') return;
+  const line = view.state.doc.lineAt(head);
+  view.dispatch({
+    changes: { from: line.from, to: line.from, insert: '\n' },
+    selection: { anchor: line.from },
+  });
 }
 
 config({
@@ -86,6 +103,7 @@ export default function MarkdownEditor({
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
+  const [wikiImageModalState, setWikiImageModalState] = useState(null);
   useEffect(() => {
     snippetConfigRef.current = snippetConfig || { snippets: [] };
   }, [snippetConfig]);
@@ -201,6 +219,13 @@ export default function MarkdownEditor({
           const keyCombo = getKeyComboFromEvent(e);
           if (!keyCombo) return;
 
+          if (keyCombo === 'mod+shift+enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            insertLineAboveInEditorView(view);
+            return false;
+          }
+
           if (keyCombo === 'mod+s') return;
 
           const config = snippetConfigRef.current;
@@ -265,6 +290,44 @@ export default function MarkdownEditor({
     return () => el.removeEventListener('keydown', handleKeyDown, true);
   }, [onSave]);
 
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    const onContextMenu = (event) => {
+      const img = event.target?.closest?.('img[data-wiki-path]');
+      if (!img || !root.contains(img)) return;
+      const attrs = getWikiImageAttrsFromElement(img);
+      if (!attrs.path) return;
+      event.preventDefault();
+      const occurrence = getWikiImageOccurrenceInContainer(root, img, attrs.path);
+      setWikiImageModalState({
+        path: attrs.path,
+        width: attrs.width,
+        height: attrs.height,
+        occurrence,
+      });
+    };
+    root.addEventListener('contextmenu', onContextMenu);
+    return () => root.removeEventListener('contextmenu', onContextMenu);
+  }, []);
+
+  const handleApplyWikiImageSize = useCallback(
+    ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.path || typeof onChange !== 'function') return;
+      const next = updateWikiImageSizeInMarkdown(value, {
+        path: modal.path,
+        occurrence: modal.occurrence ?? 0,
+        width,
+        height,
+      });
+      if (next.updated && next.markdown !== value) {
+        onChange(next.markdown);
+      }
+    },
+    [wikiImageModalState, onChange, value],
+  );
+
   const defToolbars = useMemo(() => [
     <ExportPDF
       key="export-pdf"
@@ -316,6 +379,19 @@ export default function MarkdownEditor({
         toolbars={toolbars}
         defToolbars={defToolbars}
         onUploadImg={onUploadImg}
+      />
+      <WikiImageSizeModal
+        key={
+          wikiImageModalState
+            ? `${wikiImageModalState.path}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
+            : 'wiki-image-size-modal'
+        }
+        isOpen={Boolean(wikiImageModalState)}
+        onClose={() => setWikiImageModalState(null)}
+        path={wikiImageModalState?.path ?? ''}
+        initialWidth={wikiImageModalState?.width ?? ''}
+        initialHeight={wikiImageModalState?.height ?? ''}
+        onApply={handleApplyWikiImageSize}
       />
     </div>
   );

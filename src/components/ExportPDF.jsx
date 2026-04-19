@@ -15,7 +15,7 @@ export default function ExportPDF({
   const open = useCallback(() => {
     if (disabled) return;
     setPendingPrintReturnState({ currentFile, editorContent: value });
-    navigate('/export-pdf', { state: { value, theme } });
+    navigate('/export-pdf', { state: { value, theme, currentFile } });
   }, [navigate, value, theme, disabled, currentFile]);
 
   return (

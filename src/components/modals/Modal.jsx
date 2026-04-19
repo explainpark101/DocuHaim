@@ -2,25 +2,50 @@ import { useEffect, useState } from 'react';
 
 const ANIMATION_DURATION_MS = 200;
 
-export default function Modal({ isOpen, children }) {
+export default function Modal({ isOpen, onClose, onConfirm, children }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setMounted(true);
-      setVisible(false);
       const raf = requestAnimationFrame(() => {
+        setMounted(true);
+        setVisible(false);
         requestAnimationFrame(() => setVisible(true));
       });
       return () => cancelAnimationFrame(raf);
     }
     if (mounted) {
-      setVisible(false);
+      const raf = requestAnimationFrame(() => setVisible(false));
       const timer = setTimeout(() => setMounted(false), ANIMATION_DURATION_MS);
-      return () => clearTimeout(timer);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
     }
   }, [isOpen, mounted]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        if (typeof onClose === 'function') {
+          event.preventDefault();
+          onClose();
+        }
+        return;
+      }
+      if (event.key !== 'Enter' || typeof onConfirm !== 'function') return;
+      if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+      const targetTag = event.target?.tagName?.toLowerCase?.() ?? '';
+      if (targetTag === 'textarea') return;
+      if (event.target?.isContentEditable) return;
+      event.preventDefault();
+      onConfirm();
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, onClose, onConfirm]);
 
   if (!mounted) return null;
 
@@ -41,4 +66,3 @@ export default function Modal({ isOpen, children }) {
     </div>
   );
 }
-

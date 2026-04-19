@@ -15,6 +15,7 @@ export default function MonacoTextEditor({
   className = '',
 }) {
   const containerRef = useRef(null);
+  const editorRef = useRef(null);
   const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
   const options = useMemo(
     () => ({
@@ -33,6 +34,11 @@ export default function MonacoTextEditor({
     const el = containerRef.current;
     if (!el || typeof onSave !== 'function' || readOnly) return;
     const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        editorRef.current?.trigger('keyboard', 'editor.action.insertLineBefore', null);
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         onSave();
@@ -52,6 +58,9 @@ export default function MonacoTextEditor({
         theme={monacoTheme}
         options={options}
         onChange={onChange}
+        onMount={(editor) => {
+          editorRef.current = editor;
+        }}
         loading={null}
       />
     </div>

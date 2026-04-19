@@ -1,5 +1,10 @@
+import {
+  buildWikiImageStyle,
+  parseWikiImageInner,
+} from '@/utils/wikiImageSyntax';
+
 /**
- * markdown-it 플러그인: ![[path]] 를 data-wiki-path 를 가진 img 로 변환.
+ * markdown-it 플러그인: ![[path]] / ![[path|size]] 를 data-wiki-path 를 가진 img 로 변환.
  * Preview Hydration 단계에서 src 에 Pre-signed URL 이 채워짐.
  * src 에는 1x1 투명 placeholder 를 넣어 두어, sanitizer/빈 img 제거를 피함.
  *
@@ -9,7 +14,7 @@ const DEBUG_WIKI_IMAGE_PLUGIN = true;
 const PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
 
 export function wikiImagePlugin(md) {
-  // ![[path]] 형식만 지원
+  // ![[path]] 또는 ![[path|size]] 형식 지원
   const WIKI_IMAGE_RE = /!\[\[([^[\]]+)\]\]/g;
 
   md.core.ruler.push('wiki-image', (state) => {
@@ -41,9 +46,25 @@ export function wikiImagePlugin(md) {
             children.push(t);
           }
 
-          const path = match[1].trim();
+          const parsed = parseWikiImageInner(match[1]);
+          const path = parsed?.path;
+          if (!path) {
+            const t = new state.Token('text', '', 0);
+            t.content = match[0];
+            children.push(t);
+            lastIndex = match.index + match[0].length;
+            continue;
+          }
           const imgToken = new state.Token('wiki_image', 'img', 0);
           imgToken.attrSet('data-wiki-path', path);
+          if (parsed?.width) {
+            imgToken.attrSet('data-wiki-width', parsed.width);
+          }
+          if (parsed?.height) {
+            imgToken.attrSet('data-wiki-height', parsed.height);
+          }
+          const style = buildWikiImageStyle(parsed ?? {});
+          if (style) imgToken.attrSet('style', style);
           imgToken.attrSet('src', PLACEHOLDER_SRC);
           imgToken.attrSet('alt', '');
           children.push(imgToken);

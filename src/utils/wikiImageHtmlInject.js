@@ -1,14 +1,18 @@
 /**
  * marked HTML → novel 에디터용:
- * 1) ![[path]] → wiki img
+ * 1) ![[path]] / ![[path|size]] → wiki img
  * 2) md-editor wikiImageMarkdownIt 과 같이 «이미지 단락 + 바로 아래 텍스트 단락»을 캡션 쌍으로 표시
  *    (같은 단락에서 img + br + 나머지 도 분리)
  */
 
 import { marked } from 'marked';
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
+import {
+  buildWikiImageStyle,
+  parseWikiImageInner,
+} from '@/utils/wikiImageSyntax';
 
-const WIKI_IMG_RE = /!\[\[([^\]]*)\]\]/g;
+const WIKI_IMG_RE = /!\[\[([^[\]]+)\]\]/g;
 
 function escapeAttr(s) {
   return String(s)
@@ -89,10 +93,20 @@ export function isParagraphOnlyWikiImage(p) {
 
 export function injectWikiImagesIntoHtml(html) {
   if (!html || typeof html !== 'string') return html;
-  return html.replace(WIKI_IMG_RE, (_, rawPath) => {
-    const path = String(rawPath ?? '').trim();
+  return html.replace(WIKI_IMG_RE, (_, rawInner) => {
+    const parsed = parseWikiImageInner(rawInner);
+    const path = parsed?.path;
     if (!path) return '![[]]';
-    return `<img data-wiki-path="${escapeAttr(path)}" alt="" class="novel-wiki-image" />`;
+    const attrs = [
+      `data-wiki-path="${escapeAttr(path)}"`,
+      'alt=""',
+      'class="novel-wiki-image"',
+    ];
+    if (parsed?.width) attrs.push(`data-wiki-width="${escapeAttr(parsed.width)}"`);
+    if (parsed?.height) attrs.push(`data-wiki-height="${escapeAttr(parsed.height)}"`);
+    const style = buildWikiImageStyle(parsed ?? {});
+    if (style) attrs.push(`style="${escapeAttr(style)}"`);
+    return `<img ${attrs.join(' ')} />`;
   });
 }
 

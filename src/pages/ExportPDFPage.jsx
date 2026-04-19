@@ -6,10 +6,103 @@ import { ArrowLeft, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
+import Modal from '@/components/modals/Modal';
+import {
+  getWikiImageAttrsFromElement,
+  getWikiImageOccurrenceInContainer,
+  updateWikiImageSizeInMarkdown,
+} from '@/utils/wikiImageSyntax';
 
 const EDITOR_ID = 'export-pdf-preview';
 
 const headingId = ({ index }) => `pdf-ex-heading-${index}`;
+const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
+
+function isFenceStart(line) {
+  return /^\s*(```+|~~~+)/.test(line);
+}
+
+function collectHeadingLineIndexes(markdown) {
+  const lines = String(markdown ?? '').split('\n');
+  const indexes = [];
+  let inFence = false;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (isFenceStart(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+
+    if (/^\s{0,3}#{1,6}\s+\S/.test(line)) {
+      indexes.push(i);
+      continue;
+    }
+    const next = lines[i + 1] ?? '';
+    if (
+      line.trim() &&
+      /^\s{0,3}(=+|-+)\s*$/.test(next)
+    ) {
+      indexes.push(i);
+    }
+  }
+
+  return { lines, indexes };
+}
+
+function insertPgbrBeforeHeading(markdown, headingIndex) {
+  if (!Number.isInteger(headingIndex) || headingIndex < 0) {
+    return { markdown, updated: false };
+  }
+  const { lines, indexes } = collectHeadingLineIndexes(markdown);
+  const lineIndex = indexes[headingIndex];
+  if (!Number.isInteger(lineIndex)) return { markdown, updated: false };
+
+  let prevIdx = lineIndex - 1;
+  while (prevIdx >= 0 && !lines[prevIdx].trim()) prevIdx -= 1;
+  if (prevIdx >= 0 && PG_BR_RE.test(lines[prevIdx].trim())) {
+    return { markdown, updated: false };
+  }
+
+  const insertion = ['<pgbr/>', ''];
+  if (lineIndex > 0 && lines[lineIndex - 1].trim() !== '') {
+    insertion.unshift('');
+  }
+  lines.splice(lineIndex, 0, ...insertion);
+  return { markdown: lines.join('\n'), updated: true };
+}
+
+function removePgbrByOccurrence(markdown, targetOccurrence) {
+  if (!Number.isInteger(targetOccurrence) || targetOccurrence < 0) {
+    return { markdown, updated: false };
+  }
+  const source = String(markdown ?? '');
+  const lines = source.split('\n');
+  let inFence = false;
+  let occurrence = -1;
+  let updated = false;
+
+  const nextLines = lines.map((line) => {
+    if (isFenceStart(line)) {
+      inFence = !inFence;
+      return line;
+    }
+    if (inFence) return line;
+    if (!/<pgbr\s*\/?\s*>/i.test(line)) return line;
+    return line.replace(/<pgbr\s*\/?\s*>/gi, (m) => {
+      occurrence += 1;
+      if (occurrence !== targetOccurrence) return m;
+      updated = true;
+      return '';
+    });
+  });
+
+  if (!updated) return { markdown, updated: false };
+  return { markdown: nextLines.join('\n'), updated: true };
+}
 
 const printFontStyles = `
   #export-pdf-preview,
@@ -45,6 +138,15 @@ const printFontStyles = `
   #export-pdf-preview .md-editor-preview figure figcaption {
     text-align: left;
   }
+  #export-pdf-preview .md-editor-preview .md-pgbr,
+  #export-pdf-preview .md-editor-preview h1,
+  #export-pdf-preview .md-editor-preview h2,
+  #export-pdf-preview .md-editor-preview h3,
+  #export-pdf-preview .md-editor-preview h4,
+  #export-pdf-preview .md-editor-preview h5,
+  #export-pdf-preview .md-editor-preview h6 {
+    cursor: pointer;
+  }
   #export-pdf-preview img {
     max-height: 100vh;
     object-fit: contain;
@@ -68,13 +170,17 @@ const printFontStyles = `
 export default function ExportPDFPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { value = '' } = location.state ?? {};
+  const { value = '', currentFile = null } = location.state ?? {};
+  const [previewValue, setPreviewValue] = useState(() => value);
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
   const [fontModalOpen, setFontModalOpen] = useState(false);
+  const [wikiImageModalState, setWikiImageModalState] = useState(null);
+  const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
+  const [pgbrDeleteModalState, setPgbrDeleteModalState] = useState(null);
   const previewContainerRef = useRef(null);
   const getPresignedUrl = useMemo(() => getPresignedUrlResolver(), []);
 
-  useWikiImageHydration(previewContainerRef, value, getPresignedUrl ?? undefined);
+  useWikiImageHydration(previewContainerRef, previewValue, getPresignedUrl ?? undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +196,10 @@ export default function ExportPDFPage() {
     }
   }, [location.state, navigate]);
 
+  useEffect(() => {
+    setPreviewValue(value);
+  }, [value]);
+
   const handleBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
@@ -99,6 +209,102 @@ export default function ExportPDFPage() {
     if (!target) return;
     window.print();
   }, []);
+
+  useEffect(() => {
+    const root = previewContainerRef.current;
+    if (!root) return;
+    const onContextMenu = (event) => {
+      const pgbr = event.target?.closest?.('.md-pgbr[data-md-pgbr="1"], .md-pgbr');
+      if (pgbr && root.contains(pgbr)) {
+        event.preventDefault();
+        const pgbrs = [...root.querySelectorAll('.md-pgbr[data-md-pgbr="1"], .md-pgbr')];
+        const occurrence = pgbrs.findIndex((el) => el === pgbr);
+        if (occurrence < 0) return;
+        setPgbrDeleteModalState({ occurrence });
+        return;
+      }
+
+      const img = event.target?.closest?.('img[data-wiki-path]');
+      if (img && root.contains(img)) {
+        const attrs = getWikiImageAttrsFromElement(img);
+        if (!attrs.path) return;
+        event.preventDefault();
+        const occurrence = getWikiImageOccurrenceInContainer(root, img, attrs.path);
+        setWikiImageModalState({
+          path: attrs.path,
+          width: attrs.width,
+          height: attrs.height,
+          occurrence,
+        });
+        return;
+      }
+
+      const heading = event.target?.closest?.('h1, h2, h3, h4, h5, h6');
+      if (!heading || !root.contains(heading)) return;
+      event.preventDefault();
+      const headings = [...root.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+      const index = headings.findIndex((h) => h === heading);
+      if (!Number.isInteger(index) || index < 0) return;
+      setHeadingPgbrModalState({
+        headingIndex: index,
+        headingText: heading.textContent?.trim() || '',
+      });
+    };
+    root.addEventListener('contextmenu', onContextMenu);
+    return () => root.removeEventListener('contextmenu', onContextMenu);
+  }, []);
+
+  const handleApplyWikiImageSize = useCallback(
+    ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.path) return;
+      const next = updateWikiImageSizeInMarkdown(previewValue, {
+        path: modal.path,
+        occurrence: modal.occurrence ?? 0,
+        width,
+        height,
+      });
+      if (!next.updated || next.markdown === previewValue) return;
+      setPreviewValue(next.markdown);
+      setPendingPrintReturnState({
+        currentFile,
+        editorContent: next.markdown,
+      });
+    },
+    [currentFile, previewValue, wikiImageModalState],
+  );
+
+  const handleInsertPgbrBeforeHeading = useCallback(() => {
+    const modal = headingPgbrModalState;
+    if (!modal || !Number.isInteger(modal.headingIndex)) return;
+    const next = insertPgbrBeforeHeading(previewValue, modal.headingIndex);
+    if (!next.updated || next.markdown === previewValue) {
+      setHeadingPgbrModalState(null);
+      return;
+    }
+    setPreviewValue(next.markdown);
+    setPendingPrintReturnState({
+      currentFile,
+      editorContent: next.markdown,
+    });
+    setHeadingPgbrModalState(null);
+  }, [currentFile, headingPgbrModalState, previewValue]);
+
+  const handleDeletePgbr = useCallback(() => {
+    const modal = pgbrDeleteModalState;
+    if (!modal || !Number.isInteger(modal.occurrence)) return;
+    const next = removePgbrByOccurrence(previewValue, modal.occurrence);
+    if (!next.updated || next.markdown === previewValue) {
+      setPgbrDeleteModalState(null);
+      return;
+    }
+    setPreviewValue(next.markdown);
+    setPendingPrintReturnState({
+      currentFile,
+      editorContent: next.markdown,
+    });
+    setPgbrDeleteModalState(null);
+  }, [currentFile, pgbrDeleteModalState, previewValue]);
 
   const fontStyleVars = {
     '--print-font-body': fonts.body || 'inherit',
@@ -158,7 +364,7 @@ export default function ExportPDFPage() {
           id={EDITOR_ID}
           theme="light"
           language="ko-KR"
-          value={value}
+          value={previewValue}
           mdHeadingId={headingId}
           codeFoldable={false}
           showCodeRowNumber={false}
@@ -171,6 +377,82 @@ export default function ExportPDFPage() {
         fonts={fonts}
         onFontsChange={(next) => setFonts(next)}
       />
+      <WikiImageSizeModal
+        key={
+          wikiImageModalState
+            ? `${wikiImageModalState.path}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
+            : 'wiki-image-size-modal'
+        }
+        isOpen={Boolean(wikiImageModalState)}
+        onClose={() => setWikiImageModalState(null)}
+        path={wikiImageModalState?.path ?? ''}
+        initialWidth={wikiImageModalState?.width ?? ''}
+        initialHeight={wikiImageModalState?.height ?? ''}
+        onApply={handleApplyWikiImageSize}
+      />
+      <Modal
+        isOpen={Boolean(headingPgbrModalState)}
+        onClose={() => setHeadingPgbrModalState(null)}
+        onConfirm={handleInsertPgbrBeforeHeading}
+      >
+        <div className="p-6 flex flex-col gap-4">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
+            페이지 나누기 삽입
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-odp-muted">
+            아래 heading 앞에 <code className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<pgbr/>'}</code> 를 삽입합니다.
+          </p>
+          <p className="text-sm text-gray-700 dark:text-odp-fg break-all">
+            {headingPgbrModalState?.headingText || '(제목 텍스트 없음)'}
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setHeadingPgbrModalState(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleInsertPgbrBeforeHeading}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition"
+            >
+              삽입
+            </button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={Boolean(pgbrDeleteModalState)}
+        onClose={() => setPgbrDeleteModalState(null)}
+        onConfirm={handleDeletePgbr}
+      >
+        <div className="p-6 flex flex-col gap-4">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
+            페이지 나누기 삭제
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-odp-muted">
+            선택한 <code className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<pgbr/>'}</code> 를 삭제합니다.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPgbrDeleteModalState(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleDeletePgbr}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
