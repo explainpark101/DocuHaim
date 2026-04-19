@@ -57,6 +57,25 @@ function insertLineAboveInEditorView(view) {
   });
 }
 
+function wrapSelectionWithInlineCode(view) {
+  if (!view?.state) return false;
+  const selection = view.state.selection?.main;
+  if (!selection || selection.empty) return false;
+  const selectedText = view.state.doc.sliceString(selection.from, selection.to);
+  if (!selectedText) return false;
+  let fence = '`';
+  while (selectedText.includes(fence)) fence += '`';
+  const wrapped = `${fence}${selectedText}${fence}`;
+  view.dispatch({
+    changes: { from: selection.from, to: selection.to, insert: wrapped },
+    selection: {
+      anchor: selection.from + fence.length,
+      head: selection.from + fence.length + selectedText.length,
+    },
+  });
+  return true;
+}
+
 config({
   editorConfig: {
     languageUserDefined: {
@@ -215,6 +234,15 @@ export default function MarkdownEditor({
         },
         keydown: (e, view) => {
           if (!view) return;
+
+          if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '`' || e.key === '₩')) {
+            const wrapped = wrapSelectionWithInlineCode(view);
+            if (wrapped) {
+              e.preventDefault();
+              e.stopPropagation();
+              return false;
+            }
+          }
 
           const keyCombo = getKeyComboFromEvent(e);
           if (!keyCombo) return;
