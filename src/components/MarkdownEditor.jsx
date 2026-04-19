@@ -5,7 +5,10 @@ import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
-import { lineNumbers } from '@codemirror/view';
+import { lineNumbers, keymap } from '@codemirror/view';
+import { EditorState, Prec } from '@codemirror/state';
+import { addCursorAbove, addCursorBelow } from '@codemirror/commands';
+import { highlightSelectionMatches, selectNextOccurrence } from '@codemirror/search';
 import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
@@ -88,6 +91,34 @@ config({
       {
         type: 'lineNumbers',
         extension: lineNumbers(),
+      },
+      {
+        type: 'allowMultipleSelections',
+        extension: EditorState.allowMultipleSelections.of(true),
+      },
+      {
+        type: 'multiCursorPreview',
+        extension: highlightSelectionMatches({
+          minSelectionLength: 1,
+          maxMatches: 300,
+        }),
+      },
+      {
+        type: 'multiCursorKeymap',
+        extension: Prec.highest(
+          keymap.of([
+            {
+              key: 'Mod-Shift-d',
+              preventDefault: true,
+              run: (view) => {
+                selectNextOccurrence(view);
+                return true;
+              },
+            },
+            { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
+            { key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
+          ]),
+        ),
       },
     ];
   },
@@ -247,6 +278,13 @@ export default function MarkdownEditor({
           const keyCombo = getKeyComboFromEvent(e);
           if (!keyCombo) return;
 
+          if (keyCombo === 'mod+shift+d') {
+            e.preventDefault();
+            e.stopPropagation();
+            selectNextOccurrence(view);
+            return false;
+          }
+
           if (keyCombo === 'mod+shift+enter') {
             e.preventDefault();
             e.stopPropagation();
@@ -284,6 +322,21 @@ export default function MarkdownEditor({
     const handleKeyDownCapture = (e) => {
       const keyCombo = getKeyComboFromEvent(e);
       if (!keyCombo || keyCombo === 'mod+s') return;
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view) return;
+      const container = containerRef.current;
+      const target = e.target;
+      if (!container?.contains(target) && !view.dom?.contains(target)) return;
+
+      if (keyCombo === 'mod+shift+d') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        selectNextOccurrence(view);
+        return;
+      }
+
       const config = snippetConfigRef.current;
       const snippets = config?.snippets || [];
       const normalizedCombo = normalizeShortcutForMatch(keyCombo);
@@ -291,14 +344,9 @@ export default function MarkdownEditor({
         (s) => normalizeShortcutForMatch(s.prefix) === normalizedCombo && (s.body || '').trim(),
       );
       if (!entry) return;
-      const api = editorRef.current?.value ?? editorRef.current;
-      const view = api?.getEditorView?.();
-      if (!view) return;
-      const container = containerRef.current;
-      const target = e.target;
-      if (!container?.contains(target) && !view.dom?.contains(target)) return;
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation?.();
       view.dispatch(view.state.replaceSelection(entry.body));
     };
     document.addEventListener('keydown', handleKeyDownCapture, true);
