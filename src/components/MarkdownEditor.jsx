@@ -6,7 +6,7 @@ import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import { lineNumbers, keymap } from '@codemirror/view';
-import { EditorState, Prec } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
 import { addCursorAbove, addCursorBelow } from '@codemirror/commands';
 import { highlightSelectionMatches, selectNextOccurrence } from '@codemirror/search';
 import { Loader2 } from 'lucide-react';
@@ -85,9 +85,31 @@ config({
       'ko-KR': KO_KR,
     },
   },
-  codeMirrorExtensions(extensions) {
-    return [
-      ...extensions,
+  codeMirrorExtensions(extensions, { keyBindings }) {
+    const nextExtensions = [...extensions].filter((item) => item.type !== 'keymap');
+
+    const baseKeyBindings = (keyBindings || []).filter((binding) => {
+      const key = String(binding?.key || '').toLowerCase();
+      const mac = String(binding?.mac || '').toLowerCase();
+      return key !== 'ctrl-d' && key !== 'mod-d' && mac !== 'cmd-d';
+    });
+
+    const multiCursorKeyBindings = [
+      {
+        key: 'Ctrl-d',
+        mac: 'Cmd-d',
+        preventDefault: true,
+        run: (view) => {
+          selectNextOccurrence(view);
+          return true;
+        },
+      },
+      { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
+      { key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
+      ...baseKeyBindings,
+    ];
+
+    nextExtensions.push(
       {
         type: 'lineNumbers',
         extension: lineNumbers(),
@@ -104,23 +126,12 @@ config({
         }),
       },
       {
-        type: 'multiCursorKeymap',
-        extension: Prec.highest(
-          keymap.of([
-            {
-              key: 'Mod-Shift-d',
-              preventDefault: true,
-              run: (view) => {
-                selectNextOccurrence(view);
-                return true;
-              },
-            },
-            { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
-            { key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
-          ]),
-        ),
+        type: 'keymap',
+        extension: keymap.of(multiCursorKeyBindings),
       },
-    ];
+    );
+
+    return nextExtensions;
   },
   markdownItPlugins(plugins) {
     let next = plugins;
@@ -278,13 +289,6 @@ export default function MarkdownEditor({
           const keyCombo = getKeyComboFromEvent(e);
           if (!keyCombo) return;
 
-          if (keyCombo === 'mod+shift+d') {
-            e.preventDefault();
-            e.stopPropagation();
-            selectNextOccurrence(view);
-            return false;
-          }
-
           if (keyCombo === 'mod+shift+enter') {
             e.preventDefault();
             e.stopPropagation();
@@ -328,14 +332,6 @@ export default function MarkdownEditor({
       const container = containerRef.current;
       const target = e.target;
       if (!container?.contains(target) && !view.dom?.contains(target)) return;
-
-      if (keyCombo === 'mod+shift+d') {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation?.();
-        selectNextOccurrence(view);
-        return;
-      }
 
       const config = snippetConfigRef.current;
       const snippets = config?.snippets || [];
