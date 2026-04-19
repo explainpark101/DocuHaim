@@ -53,12 +53,60 @@ function collectHeadingLineIndexes(markdown) {
   return { lines, indexes };
 }
 
+function collectHrLineIndexes(markdown) {
+  const lines = String(markdown ?? '').split('\n');
+  const indexes = [];
+  let inFence = false;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (isFenceStart(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const t = line.trim();
+    if (!t) continue;
+    if (/^<hr\b[^>]*\/?>$/i.test(t)) {
+      indexes.push(i);
+      continue;
+    }
+    if (/^(\*\s*){3,}$/.test(t) || /^(-\s*){3,}$/.test(t) || /^(_\s*){3,}$/.test(t)) {
+      indexes.push(i);
+    }
+  }
+
+  return { lines, indexes };
+}
+
 function insertPgbrBeforeHeading(markdown, headingIndex) {
   if (!Number.isInteger(headingIndex) || headingIndex < 0) {
     return { markdown, updated: false };
   }
   const { lines, indexes } = collectHeadingLineIndexes(markdown);
   const lineIndex = indexes[headingIndex];
+  if (!Number.isInteger(lineIndex)) return { markdown, updated: false };
+
+  let prevIdx = lineIndex - 1;
+  while (prevIdx >= 0 && !lines[prevIdx].trim()) prevIdx -= 1;
+  if (prevIdx >= 0 && PG_BR_RE.test(lines[prevIdx].trim())) {
+    return { markdown, updated: false };
+  }
+
+  const insertion = ['<pgbr/>', ''];
+  if (lineIndex > 0 && lines[lineIndex - 1].trim() !== '') {
+    insertion.unshift('');
+  }
+  lines.splice(lineIndex, 0, ...insertion);
+  return { markdown: lines.join('\n'), updated: true };
+}
+
+function insertPgbrBeforeHr(markdown, hrIndex) {
+  if (!Number.isInteger(hrIndex) || hrIndex < 0) {
+    return { markdown, updated: false };
+  }
+  const { lines, indexes } = collectHrLineIndexes(markdown);
+  const lineIndex = indexes[hrIndex];
   if (!Number.isInteger(lineIndex)) return { markdown, updated: false };
 
   let prevIdx = lineIndex - 1;
@@ -139,6 +187,7 @@ const printFontStyles = `
     text-align: left;
   }
   #export-pdf-preview .md-editor-preview .md-pgbr,
+  #export-pdf-preview .md-editor-preview hr,
   #export-pdf-preview .md-editor-preview h1,
   #export-pdf-preview .md-editor-preview h2,
   #export-pdf-preview .md-editor-preview h3,
@@ -176,6 +225,7 @@ export default function ExportPDFPage() {
   const [fontModalOpen, setFontModalOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
+  const [hrPgbrModalState, setHrPgbrModalState] = useState(null);
   const [pgbrDeleteModalState, setPgbrDeleteModalState] = useState(null);
   const previewContainerRef = useRef(null);
   const getPresignedUrl = useMemo(() => getPresignedUrlResolver(), []);
@@ -240,15 +290,25 @@ export default function ExportPDFPage() {
       }
 
       const heading = event.target?.closest?.('h1, h2, h3, h4, h5, h6');
-      if (!heading || !root.contains(heading)) return;
+      if (heading && root.contains(heading)) {
+        event.preventDefault();
+        const headings = [...root.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+        const index = headings.findIndex((h) => h === heading);
+        if (!Number.isInteger(index) || index < 0) return;
+        setHeadingPgbrModalState({
+          headingIndex: index,
+          headingText: heading.textContent?.trim() || '',
+        });
+        return;
+      }
+
+      const hr = event.target?.closest?.('hr');
+      if (!hr || !root.contains(hr)) return;
       event.preventDefault();
-      const headings = [...root.querySelectorAll('h1, h2, h3, h4, h5, h6')];
-      const index = headings.findIndex((h) => h === heading);
+      const hrs = [...root.querySelectorAll('hr')];
+      const index = hrs.findIndex((el) => el === hr);
       if (!Number.isInteger(index) || index < 0) return;
-      setHeadingPgbrModalState({
-        headingIndex: index,
-        headingText: heading.textContent?.trim() || '',
-      });
+      setHrPgbrModalState({ hrIndex: index });
     };
     root.addEventListener('contextmenu', onContextMenu);
     return () => root.removeEventListener('contextmenu', onContextMenu);
@@ -305,6 +365,22 @@ export default function ExportPDFPage() {
     });
     setPgbrDeleteModalState(null);
   }, [currentFile, pgbrDeleteModalState, previewValue]);
+
+  const handleInsertPgbrBeforeHr = useCallback(() => {
+    const modal = hrPgbrModalState;
+    if (!modal || !Number.isInteger(modal.hrIndex)) return;
+    const next = insertPgbrBeforeHr(previewValue, modal.hrIndex);
+    if (!next.updated || next.markdown === previewValue) {
+      setHrPgbrModalState(null);
+      return;
+    }
+    setPreviewValue(next.markdown);
+    setPendingPrintReturnState({
+      currentFile,
+      editorContent: next.markdown,
+    });
+    setHrPgbrModalState(null);
+  }, [currentFile, hrPgbrModalState, previewValue]);
 
   const fontStyleVars = {
     '--print-font-body': fonts.body || 'inherit',
@@ -449,6 +525,36 @@ export default function ExportPDFPage() {
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition"
             >
               삭제
+            </button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={Boolean(hrPgbrModalState)}
+        onClose={() => setHrPgbrModalState(null)}
+        onConfirm={handleInsertPgbrBeforeHr}
+      >
+        <div className="p-6 flex flex-col gap-4">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
+            페이지 나누기 삽입
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-odp-muted">
+            선택한 구분선(HR) 앞에 <code className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<pgbr/>'}</code> 를 삽입합니다.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setHrPgbrModalState(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleInsertPgbrBeforeHr}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition"
+            >
+              삽입
             </button>
           </div>
         </div>
