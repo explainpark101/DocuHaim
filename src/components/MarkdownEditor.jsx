@@ -60,6 +60,15 @@ function insertLineAboveInEditorView(view) {
   });
 }
 
+/** Mac KO/US 등에서 `·₩·\ 문자 또는 물리 키(Backquote/IntlBackslash)로 인라인 코드 감싸기 시도 */
+function isInlineCodeFenceTriggerKey(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  const { key, code } = e;
+  if (key === '`' || key === '₩' || key === '\\') return true;
+  if (code === 'Backquote' || code === 'IntlBackslash') return true;
+  return false;
+}
+
 function wrapSelectionWithInlineCode(view) {
   if (!view?.state) return false;
   const selection = view.state.selection?.main;
@@ -277,12 +286,13 @@ export default function MarkdownEditor({
         keydown: (e, view) => {
           if (!view) return;
 
-          if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '`' || e.key === '₩')) {
+          if (!view.composing && isInlineCodeFenceTriggerKey(e)) {
             const wrapped = wrapSelectionWithInlineCode(view);
             if (wrapped) {
               e.preventDefault();
               e.stopPropagation();
-              return false;
+              // CodeMirror: handled event must return true so later handlers / default are skipped
+              return true;
             }
           }
 
