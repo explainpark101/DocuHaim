@@ -245,7 +245,7 @@ function MainApp() {
       updateIndicator(indicatorId, { progress: 100 });
     }
 
-    const zipBlob = buildZipBlob(entries);
+    const zipBlob = await buildZipBlob(entries);
     triggerBlobDownload(zipBlob, `${folderName}.zip`);
   }, [localRootHandle, s3Creds, triggerBlobDownload, updateIndicator]);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
