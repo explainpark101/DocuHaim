@@ -33,6 +33,7 @@ function writeUint32LE(view, offset, value) {
  */
 export function buildZipBlob(entries) {
   const encoder = new TextEncoder();
+  const UTF8_FILENAME_FLAG = 0x0800;
   const localParts = [];
   const centralParts = [];
   let offset = 0;
@@ -48,7 +49,7 @@ export function buildZipBlob(entries) {
     const localView = new DataView(localHeader.buffer);
     writeUint32LE(localView, 0, 0x04034b50);
     writeUint16LE(localView, 4, 20);
-    writeUint16LE(localView, 6, 0);
+    writeUint16LE(localView, 6, UTF8_FILENAME_FLAG);
     writeUint16LE(localView, 8, 0);
     writeUint16LE(localView, 10, 0);
     writeUint16LE(localView, 12, 0);
@@ -65,7 +66,7 @@ export function buildZipBlob(entries) {
     writeUint32LE(centralView, 0, 0x02014b50);
     writeUint16LE(centralView, 4, 20);
     writeUint16LE(centralView, 6, 20);
-    writeUint16LE(centralView, 8, 0);
+    writeUint16LE(centralView, 8, UTF8_FILENAME_FLAG);
     writeUint16LE(centralView, 10, 0);
     writeUint16LE(centralView, 12, 0);
     writeUint16LE(centralView, 14, 0);
