@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/components/modals/Modal';
 import { normalizeSizeValue } from '@/utils/wikiImageSyntax';
 
@@ -25,10 +25,18 @@ export default function WikiImageSizeModal({
   initialWidth,
   initialHeight,
   onApply,
+  onStartFreeTransform,
 }) {
   const [widthInput, setWidthInput] = useState(() => formatInputSize(initialWidth));
   const [heightInput, setHeightInput] = useState(() => formatInputSize(initialHeight));
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setWidthInput(formatInputSize(initialWidth));
+    setHeightInput(formatInputSize(initialHeight));
+    setError('');
+  }, [isOpen, initialWidth, initialHeight]);
 
   const previewText = useMemo(() => {
     if (!path) return '';
@@ -104,6 +112,16 @@ export default function WikiImageSizeModal({
         ) : null}
 
         <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              onStartFreeTransform?.();
+              onClose?.();
+            }}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+          >
+            자유변형
+          </button>
           <button
             type="button"
             onClick={onClose}

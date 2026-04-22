@@ -9,6 +9,7 @@ import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import Modal from '@/components/modals/Modal';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   getMarkdownImageOccurrenceInContainer,
   getResizableImageAttrsFromElement,
@@ -233,6 +234,10 @@ export default function ExportPDFPage() {
   const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
   const [hrPgbrModalState, setHrPgbrModalState] = useState(null);
   const [pgbrDeleteModalState, setPgbrDeleteModalState] = useState(null);
+  const [freeTransformState, setFreeTransformState] = useState(null);
+  const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
+  const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
+  const activeTransformRef = useRef(null);
   const headerRef = useRef(null);
   const previewContainerRef = useRef(null);
   const tocListRef = useRef(null);
@@ -498,6 +503,195 @@ export default function ExportPDFPage() {
     [currentFile, previewValue, wikiImageModalState],
   );
 
+  const findResizableImageElement = useCallback((target) => {
+    const root = previewContainerRef.current;
+    if (!root || !target?.kind || !target?.key) return null;
+    const selector =
+      target.kind === 'wiki' ? 'img[data-wiki-path]' : 'img[data-md-src]';
+    const images = [...root.querySelectorAll(selector)];
+    const matched = images.filter((img) => {
+      const key =
+        target.kind === 'wiki'
+          ? img.getAttribute('data-wiki-path')
+          : img.getAttribute('data-md-src');
+      return key === target.key;
+    });
+    return matched[target.occurrence ?? 0] ?? null;
+  }, []);
+
+  const startFreeTransform = useCallback(() => {
+    const modal = wikiImageModalState;
+    if (!modal?.kind || !modal?.key) return;
+    const img = findResizableImageElement(modal);
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const widthPx = Math.max(24, Math.round(rect.width));
+    const heightPx = Math.max(24, Math.round(rect.height));
+    const next = {
+      kind: modal.kind,
+      key: modal.key,
+      occurrence: modal.occurrence ?? 0,
+      widthPx,
+      heightPx,
+      originalWidthPx: widthPx,
+      originalHeightPx: heightPx,
+    };
+    img.style.width = `${widthPx}px`;
+    img.style.height = `${heightPx}px`;
+    activeTransformRef.current = next;
+    setFreeTransformState(next);
+    setFreeTransformConfirmOpen(false);
+  }, [findResizableImageElement, wikiImageModalState]);
+
+  useEffect(() => {
+    if (!freeTransformState) {
+      setFreeTransformOverlayRect(null);
+      return undefined;
+    }
+    const img = findResizableImageElement(freeTransformState);
+    if (!img) {
+      setFreeTransformState(null);
+      setFreeTransformOverlayRect(null);
+      return undefined;
+    }
+    let rafId = 0;
+    const updateRect = () => {
+      const rect = img.getBoundingClientRect();
+      setFreeTransformOverlayRect({
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+      rafId = requestAnimationFrame(updateRect);
+    };
+    rafId = requestAnimationFrame(updateRect);
+    return () => cancelAnimationFrame(rafId);
+  }, [freeTransformState, findResizableImageElement]);
+
+  useEffect(() => {
+    if (!freeTransformState) return undefined;
+    const target = findResizableImageElement(freeTransformState);
+    if (!target) return undefined;
+
+    const onHandleDown = (event) => {
+      const handle = event.target?.closest?.('[data-transform-handle]');
+      if (!handle) return;
+      event.preventDefault();
+      const dir = handle.getAttribute('data-transform-handle');
+      if (!dir) return;
+      const isTouchResize = event.pointerType === 'touch';
+      const start = activeTransformRef.current || freeTransformState;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const baseRatio =
+        start.heightPx > 0 ? start.widthPx / start.heightPx : 1;
+
+      const onMove = (moveEvent) => {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        let width = start.widthPx;
+        let height = start.heightPx;
+        if (dir.includes('e')) width = start.widthPx + dx;
+        if (dir.includes('w')) width = start.widthPx - dx;
+        if (dir.includes('s')) height = start.heightPx + dy;
+        if (dir.includes('n')) height = start.heightPx - dy;
+        width = Math.max(24, width);
+        height = Math.max(24, height);
+
+        const keepAspect = isTouchResize || moveEvent.shiftKey;
+        if (keepAspect) {
+          const widthChangeRate = Math.abs((width - start.widthPx) / Math.max(1, start.widthPx));
+          const heightChangeRate = Math.abs((height - start.heightPx) / Math.max(1, start.heightPx));
+          if (widthChangeRate >= heightChangeRate) {
+            height = Math.max(24, width / Math.max(0.0001, baseRatio));
+          } else {
+            width = Math.max(24, height * baseRatio);
+          }
+        }
+
+        width = Math.max(24, Math.round(width));
+        height = Math.max(24, Math.round(height));
+        target.style.width = `${width}px`;
+        target.style.height = `${height}px`;
+        const next = { ...(activeTransformRef.current || start), widthPx: width, heightPx: height };
+        activeTransformRef.current = next;
+        setFreeTransformState(next);
+      };
+      const onUp = () => {
+        document.removeEventListener('pointermove', onMove, true);
+        document.removeEventListener('pointerup', onUp, true);
+      };
+      document.addEventListener('pointermove', onMove, true);
+      document.addEventListener('pointerup', onUp, true);
+    };
+
+    const onOutsidePointerDown = (event) => {
+      const clickedHandle = event.target?.closest?.('[data-transform-handle]');
+      const clickedImage = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
+      if (clickedHandle || clickedImage === target) return;
+      setFreeTransformConfirmOpen(true);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        setFreeTransformConfirmOpen(true);
+      }
+    };
+    document.addEventListener('pointerdown', onHandleDown, true);
+    document.addEventListener('pointerdown', onOutsidePointerDown, true);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', onHandleDown, true);
+      document.removeEventListener('pointerdown', onOutsidePointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [freeTransformState, findResizableImageElement]);
+
+  const handleConfirmTransformApply = useCallback(() => {
+    const active = activeTransformRef.current || freeTransformState;
+    if (!active?.key) return;
+    const width = `${Math.round(active.widthPx)}px`;
+    const height = `${Math.round(active.heightPx)}px`;
+    const next =
+      active.kind === 'wiki'
+        ? updateWikiImageSizeInMarkdown(previewValue, {
+            path: active.key,
+            occurrence: active.occurrence ?? 0,
+            width,
+            height,
+          })
+        : updateMarkdownImageSizeInMarkdown(previewValue, {
+            src: active.key,
+            occurrence: active.occurrence ?? 0,
+            width,
+            height,
+          });
+    if (next.updated && next.markdown !== previewValue) {
+      setPreviewValue(next.markdown);
+      setPendingPrintReturnState({
+        currentFile,
+        editorContent: next.markdown,
+      });
+    }
+    setFreeTransformState(null);
+    activeTransformRef.current = null;
+    setFreeTransformConfirmOpen(false);
+  }, [currentFile, freeTransformState, previewValue]);
+
+  const handleConfirmTransformReset = useCallback(() => {
+    const active = activeTransformRef.current || freeTransformState;
+    if (!active) return;
+    const img = findResizableImageElement(active);
+    if (img) {
+      img.style.width = `${active.originalWidthPx}px`;
+      img.style.height = `${active.originalHeightPx}px`;
+    }
+    setFreeTransformState(null);
+    activeTransformRef.current = null;
+    setFreeTransformConfirmOpen(false);
+  }, [findResizableImageElement, freeTransformState]);
+
   const handleInsertPgbrBeforeHeading = useCallback(() => {
     const modal = headingPgbrModalState;
     if (!modal || !Number.isInteger(modal.headingIndex)) return;
@@ -701,6 +895,59 @@ export default function ExportPDFPage() {
         initialWidth={wikiImageModalState?.width ?? ''}
         initialHeight={wikiImageModalState?.height ?? ''}
         onApply={handleApplyWikiImageSize}
+        onStartFreeTransform={startFreeTransform}
+      />
+      {freeTransformState && freeTransformOverlayRect && (
+        <div
+          className="fixed z-70 pointer-events-none border-2 border-blue-500"
+          style={{
+            left: `${freeTransformOverlayRect.left}px`,
+            top: `${freeTransformOverlayRect.top}px`,
+            width: `${freeTransformOverlayRect.width}px`,
+            height: `${freeTransformOverlayRect.height}px`,
+          }}
+        >
+          {['nw', 'ne', 'sw', 'se'].map((dir) => (
+            <button
+              key={dir}
+              type="button"
+              data-transform-handle={dir}
+              className="absolute pointer-events-auto h-3 w-3 rounded-full bg-blue-600 border border-white"
+              style={{
+                left: dir.includes('w') ? '-7px' : 'auto',
+                right: dir.includes('e') ? '-7px' : 'auto',
+                top: dir.includes('n') ? '-7px' : 'auto',
+                bottom: dir.includes('s') ? '-7px' : 'auto',
+                cursor:
+                  dir === 'nw' || dir === 'se' ? 'nwse-resize' : 'nesw-resize',
+              }}
+              aria-label={`transform-${dir}`}
+            />
+          ))}
+        </div>
+      )}
+      {freeTransformState && (
+        <button
+          type="button"
+          onClick={() => setFreeTransformConfirmOpen(true)}
+          className="fixed z-70 bottom-4 left-1/2 -translate-x-1/2 max-w-[min(92vw,680px)] rounded-lg border border-blue-300/60 bg-blue-950/85 px-3 py-2 text-left text-[11px] leading-4 text-blue-50 shadow-lg backdrop-blur-sm print:hidden"
+        >
+          <span className="block font-semibold mb-1">이미지 자유변형 안내</span>
+          <span className="block">- Shift + 드래그: 원본 비율 유지 / 일반 드래그: 비율 무시</span>
+          <span className="block">- 터치 드래그: 원본 비율 유지</span>
+          <span className="block">- 다른 곳 클릭(이 토스트 포함): 변형 완료 확인</span>
+        </button>
+      )}
+      <ConfirmModal
+        isOpen={freeTransformConfirmOpen}
+        title="자유변형 저장"
+        message="현재 변형을 어떻게 처리할까요?"
+        confirmLabel="적용"
+        cancelLabel="계속 수정"
+        discardLabel="변형 초기화"
+        onConfirm={handleConfirmTransformApply}
+        onCancel={() => setFreeTransformConfirmOpen(false)}
+        onDiscard={handleConfirmTransformReset}
       />
       <Modal
         isOpen={Boolean(headingPgbrModalState)}
