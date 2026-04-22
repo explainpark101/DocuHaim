@@ -26,6 +26,19 @@ function writeUint32LE(view, offset, value) {
   view.setUint32(offset, value >>> 0, true);
 }
 
+function buildUnicodePathExtraField(fileNameBytes) {
+  const payloadSize = 1 + 4 + fileNameBytes.length;
+  const field = new Uint8Array(2 + 2 + payloadSize);
+  const view = new DataView(field.buffer);
+  // 0x7075: Info-ZIP Unicode Path Extra Field
+  writeUint16LE(view, 0, 0x7075);
+  writeUint16LE(view, 2, payloadSize);
+  field[4] = 1; // version
+  writeUint32LE(view, 5, crc32(fileNameBytes));
+  field.set(fileNameBytes, 9);
+  return field;
+}
+
 /**
  * Build an uncompressed ZIP archive in browser.
  * @param {{ path: string, data: Uint8Array }[]} entries
@@ -42,10 +55,11 @@ export function buildZipBlob(entries) {
     const normalizedPath = (entry.path || '').replace(/^\/+/, '').replace(/\\/g, '/');
     if (!normalizedPath) continue;
     const fileNameBytes = encoder.encode(normalizedPath);
+    const unicodePathExtra = buildUnicodePathExtraField(fileNameBytes);
     const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data || []);
     const checksum = crc32(data);
 
-    const localHeader = new Uint8Array(30 + fileNameBytes.length);
+    const localHeader = new Uint8Array(30 + fileNameBytes.length + unicodePathExtra.length);
     const localView = new DataView(localHeader.buffer);
     writeUint32LE(localView, 0, 0x04034b50);
     writeUint16LE(localView, 4, 20);
@@ -57,11 +71,12 @@ export function buildZipBlob(entries) {
     writeUint32LE(localView, 18, data.length);
     writeUint32LE(localView, 22, data.length);
     writeUint16LE(localView, 26, fileNameBytes.length);
-    writeUint16LE(localView, 28, 0);
+    writeUint16LE(localView, 28, unicodePathExtra.length);
     localHeader.set(fileNameBytes, 30);
+    localHeader.set(unicodePathExtra, 30 + fileNameBytes.length);
     localParts.push(localHeader, data);
 
-    const centralHeader = new Uint8Array(46 + fileNameBytes.length);
+    const centralHeader = new Uint8Array(46 + fileNameBytes.length + unicodePathExtra.length);
     const centralView = new DataView(centralHeader.buffer);
     writeUint32LE(centralView, 0, 0x02014b50);
     writeUint16LE(centralView, 4, 20);
@@ -74,13 +89,14 @@ export function buildZipBlob(entries) {
     writeUint32LE(centralView, 20, data.length);
     writeUint32LE(centralView, 24, data.length);
     writeUint16LE(centralView, 28, fileNameBytes.length);
-    writeUint16LE(centralView, 30, 0);
+    writeUint16LE(centralView, 30, unicodePathExtra.length);
     writeUint16LE(centralView, 32, 0);
     writeUint16LE(centralView, 34, 0);
     writeUint16LE(centralView, 36, 0);
     writeUint32LE(centralView, 38, 0);
     writeUint32LE(centralView, 42, offset);
     centralHeader.set(fileNameBytes, 46);
+    centralHeader.set(unicodePathExtra, 46 + fileNameBytes.length);
     centralParts.push(centralHeader);
 
     offset += localHeader.length + data.length;

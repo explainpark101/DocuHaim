@@ -2035,7 +2035,10 @@ function MainApp() {
           }
 
           setOperationStatus(`폴더 다운로드 완료: ${folderName}`);
-          showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
+          const fallbackNotice = shouldUseZipFallback
+            ? '\n\n브라우저 제한으로 폴더를 ZIP 파일로 대체 다운로드했습니다.'
+            : '';
+          showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}${fallbackNotice}`);
         } finally {
           removeIndicator(indicatorId);
         }
@@ -2053,7 +2056,10 @@ function MainApp() {
             try {
               await downloadFolderAsZip(storageType, node, folderName, indicatorId);
               setOperationStatus(`폴더 다운로드 완료: ${folderName}`);
-              showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
+              showDownloadCompleteModal(
+                '다운로드 완료',
+                `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}\n\n브라우저 제한으로 폴더를 ZIP 파일로 대체 다운로드했습니다.`
+              );
             } finally {
               removeIndicator(indicatorId);
             }
