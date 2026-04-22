@@ -25,6 +25,12 @@ import {
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 const DEBUG_WIKI_IMAGE = true;
+const buildPreviewHeadingId = (arg1, _arg2, arg3) => {
+  const fallbackIndex = Number.isInteger(arg3) ? arg3 : 0;
+  const objectIndex = typeof arg1 === 'object' && arg1 !== null ? Number(arg1.index) : NaN;
+  const index = Number.isInteger(objectIndex) ? objectIndex : fallbackIndex;
+  return `md-preview-heading-${index}`;
+};
 
 /** Windows: Ctrl, Mac: Cmd 를 mod 로 통일한 키 조합 문자열 반환 (keydown 매칭용) */
 function getKeyComboFromEvent(e) {
@@ -669,6 +675,7 @@ export default function MarkdownEditor({
         ref={editorRef}
         modelValue={value}
         onChange={onChange}
+        mdHeadingId={buildPreviewHeadingId}
         className="h-full! max-h-dvh"
         theme={theme}
         language="ko-KR"

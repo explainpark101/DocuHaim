@@ -831,6 +831,10 @@ html {
   background: transparent;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  scroll-margin-top: 72px;
+}
+
 .md-editor-preview .md-pgbr + :is(h1, h2, h3, h4, h5, h6) {
   margin-top: 0;
 }
