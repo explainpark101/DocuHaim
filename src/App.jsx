@@ -63,6 +63,7 @@ import {
   getMemoDraft,
   deleteMemoDraft,
 } from '@/utils/memoDraftsDb';
+import { buildZipBlob } from '@/utils/zipBuilder';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -185,6 +186,67 @@ function MainApp() {
       message: '이 브라우저에서 폴더 다운로드는 지원하지 않습니다',
     });
   }, []);
+  const isAndroidBrowser = useCallback(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /Android/i.test(navigator.userAgent || '');
+  }, []);
+  const triggerBlobDownload = useCallback((blob, fileName) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+  const downloadFolderAsZip = useCallback(async (storageType, node, folderName, indicatorId) => {
+    const entries = [];
+
+    if (storageType === 's3') {
+      const client = createS3Client(s3Creds);
+      if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+      const bucket = s3Creds.bucket;
+      const prefix = node.path || '';
+      const contents = await listObjectsV2(client, bucket, prefix);
+      const fileObjects = (contents || []).filter((item) => item.Key && !item.Key.endsWith('/'));
+      const totalFiles = fileObjects.length;
+      let completed = 0;
+      for (const { Key } of fileObjects) {
+        const relativeKey = prefix ? Key.slice(prefix.length) : Key;
+        if (!relativeKey) continue;
+        const { body } = await getObjectBody(client, bucket, Key);
+        entries.push({
+          path: `${folderName}/${relativeKey}`.replace(/\\/g, '/'),
+          data: body,
+        });
+        completed += 1;
+        updateIndicator(indicatorId, {
+          progress: totalFiles ? Math.min(100, Math.round((completed / totalFiles) * 100)) : 100,
+          detail: `${completed}/${totalFiles}`,
+        });
+      }
+    } else if (storageType === 'local') {
+      const sourceDirHandle = node.handle || (node.path === '' ? localRootHandle : null);
+      if (!sourceDirHandle) throw new Error('원본 폴더 핸들을 찾을 수 없습니다.');
+      const collectLocalFiles = async (dirHandle, basePath = '') => {
+        for await (const entry of dirHandle.values()) {
+          if (entry.kind === 'file') {
+            const file = await entry.getFile();
+            entries.push({
+              path: `${folderName}/${basePath}${entry.name}`.replace(/\\/g, '/'),
+              data: new Uint8Array(await file.arrayBuffer()),
+            });
+          } else if (entry.kind === 'directory') {
+            await collectLocalFiles(entry, `${basePath}${entry.name}/`);
+          }
+        }
+      };
+      await collectLocalFiles(sourceDirHandle);
+      updateIndicator(indicatorId, { progress: 100 });
+    }
+
+    const zipBlob = buildZipBlob(entries);
+    triggerBlobDownload(zipBlob, `${folderName}.zip`);
+  }, [localRootHandle, s3Creds, triggerBlobDownload, updateIndicator]);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const lastSelectedIdRef = useRef(null);
 
@@ -1782,10 +1844,7 @@ function MainApp() {
     };
 
     if (node.type === 'folder') {
-      if (!('showDirectoryPicker' in window)) {
-        openUnsupportedFolderDownloadModal();
-        return;
-      }
+      const shouldUseZipFallback = isAndroidBrowser() || !('showDirectoryPicker' in window);
       const ensureDirReadWritePermission = async (dirHandle) => {
         if (!dirHandle?.queryPermission || !dirHandle?.requestPermission) return;
         const permissionDesc = { mode: 'readwrite' };
@@ -1797,79 +1856,84 @@ function MainApp() {
         }
       };
       try {
-        const selectedDirHandle = await window.showDirectoryPicker();
-        await ensureDirReadWritePermission(selectedDirHandle);
         const fallbackRootName = storageType === 's3' ? 's3-root' : 'local-root';
         const folderName = (node.name || '').trim() || fallbackRootName;
-        const targetRootDirHandle = await selectedDirHandle.getDirectoryHandle(folderName, { create: true });
-        await ensureDirReadWritePermission(targetRootDirHandle);
         const indicatorId = addIndicator({
           type: ActivityTypes.DOWNLOAD,
           label: `폴더 다운로드 중: ${folderName}`,
         });
 
         try {
-          if (storageType === 's3') {
-            const client = getS3Client();
-            if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-            const bucket = s3Creds.bucket;
-            const prefix = node.path || '';
-            const contents = await listObjectsV2(client, bucket, prefix);
-            const fileObjects = (contents || []).filter((item) => item.Key && !item.Key.endsWith('/'));
-            const totalFiles = fileObjects.length;
-            if (totalFiles === 0) {
-              setOperationStatus(`다운로드 완료: ${folderName} (빈 폴더)`);
-              showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
-              return;
-            }
+          if (shouldUseZipFallback) {
+            await downloadFolderAsZip(storageType, node, folderName, indicatorId);
+          } else {
+            const selectedDirHandle = await window.showDirectoryPicker();
+            await ensureDirReadWritePermission(selectedDirHandle);
+            const targetRootDirHandle = await selectedDirHandle.getDirectoryHandle(folderName, { create: true });
+            await ensureDirReadWritePermission(targetRootDirHandle);
 
-            let completed = 0;
-            for (const { Key } of fileObjects) {
-              const relativeKey = prefix ? Key.slice(prefix.length) : Key;
-              if (!relativeKey) continue;
-
-              const segments = relativeKey.split('/').filter(Boolean);
-              if (segments.length === 0) continue;
-
-              const fileName = segments.pop();
-              let currentDirHandle = targetRootDirHandle;
-              for (const seg of segments) {
-                currentDirHandle = await currentDirHandle.getDirectoryHandle(seg, { create: true });
+            if (storageType === 's3') {
+              const client = getS3Client();
+              if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+              const bucket = s3Creds.bucket;
+              const prefix = node.path || '';
+              const contents = await listObjectsV2(client, bucket, prefix);
+              const fileObjects = (contents || []).filter((item) => item.Key && !item.Key.endsWith('/'));
+              const totalFiles = fileObjects.length;
+              if (totalFiles === 0) {
+                setOperationStatus(`다운로드 완료: ${folderName} (빈 폴더)`);
+                showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
+                return;
               }
 
-              const { body } = await getObjectBody(client, bucket, Key);
-              const fileHandle = await currentDirHandle.getFileHandle(fileName, { create: true });
-              const writable = await fileHandle.createWritable();
-              await writable.write(body);
-              await writable.close();
+              let completed = 0;
+              for (const { Key } of fileObjects) {
+                const relativeKey = prefix ? Key.slice(prefix.length) : Key;
+                if (!relativeKey) continue;
 
-              completed += 1;
-              updateIndicator(indicatorId, {
-                progress: Math.min(100, Math.round((completed / totalFiles) * 100)),
-                detail: `${completed}/${totalFiles}`,
-              });
-            }
-          } else if (storageType === 'local') {
-            const sourceDirHandle = node.handle || (node.path === '' ? localRootHandle : null);
-            if (!sourceDirHandle) throw new Error('원본 폴더 핸들을 찾을 수 없습니다.');
+                const segments = relativeKey.split('/').filter(Boolean);
+                if (segments.length === 0) continue;
 
-            const copyLocalDirRecursive = async (srcDirHandle, destDirHandle) => {
-              for await (const entry of srcDirHandle.values()) {
-                if (entry.kind === 'file') {
-                  const file = await entry.getFile();
-                  const destFileHandle = await destDirHandle.getFileHandle(entry.name, { create: true });
-                  const writable = await destFileHandle.createWritable();
-                  await writable.write(await file.arrayBuffer());
-                  await writable.close();
-                } else if (entry.kind === 'directory') {
-                  const childDestDir = await destDirHandle.getDirectoryHandle(entry.name, { create: true });
-                  await copyLocalDirRecursive(entry, childDestDir);
+                const fileName = segments.pop();
+                let currentDirHandle = targetRootDirHandle;
+                for (const seg of segments) {
+                  currentDirHandle = await currentDirHandle.getDirectoryHandle(seg, { create: true });
                 }
-              }
-            };
 
-            await copyLocalDirRecursive(sourceDirHandle, targetRootDirHandle);
-            updateIndicator(indicatorId, { progress: 100 });
+                const { body } = await getObjectBody(client, bucket, Key);
+                const fileHandle = await currentDirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(body);
+                await writable.close();
+
+                completed += 1;
+                updateIndicator(indicatorId, {
+                  progress: Math.min(100, Math.round((completed / totalFiles) * 100)),
+                  detail: `${completed}/${totalFiles}`,
+                });
+              }
+            } else if (storageType === 'local') {
+              const sourceDirHandle = node.handle || (node.path === '' ? localRootHandle : null);
+              if (!sourceDirHandle) throw new Error('원본 폴더 핸들을 찾을 수 없습니다.');
+
+              const copyLocalDirRecursive = async (srcDirHandle, destDirHandle) => {
+                for await (const entry of srcDirHandle.values()) {
+                  if (entry.kind === 'file') {
+                    const file = await entry.getFile();
+                    const destFileHandle = await destDirHandle.getFileHandle(entry.name, { create: true });
+                    const writable = await destFileHandle.createWritable();
+                    await writable.write(await file.arrayBuffer());
+                    await writable.close();
+                  } else if (entry.kind === 'directory') {
+                    const childDestDir = await destDirHandle.getDirectoryHandle(entry.name, { create: true });
+                    await copyLocalDirRecursive(entry, childDestDir);
+                  }
+                }
+              };
+
+              await copyLocalDirRecursive(sourceDirHandle, targetRootDirHandle);
+              updateIndicator(indicatorId, { progress: 100 });
+            }
           }
 
           setOperationStatus(`폴더 다운로드 완료: ${folderName}`);
@@ -1879,6 +1943,28 @@ function MainApp() {
         }
       } catch (e) {
         if (e?.name === 'AbortError') return;
+        const message = String(e?.message || e || '');
+        if (message.toLowerCase().includes('state chached') || message.toLowerCase().includes('state cached')) {
+          try {
+            const fallbackRootName = storageType === 's3' ? 's3-root' : 'local-root';
+            const folderName = (node.name || '').trim() || fallbackRootName;
+            const indicatorId = addIndicator({
+              type: ActivityTypes.DOWNLOAD,
+              label: `폴더 다운로드 중: ${folderName}`,
+            });
+            try {
+              await downloadFolderAsZip(storageType, node, folderName, indicatorId);
+              setOperationStatus(`폴더 다운로드 완료: ${folderName}`);
+              showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
+            } finally {
+              removeIndicator(indicatorId);
+            }
+            return;
+          } catch (_) {
+            openUnsupportedFolderDownloadModal();
+            return;
+          }
+        }
         console.error('폴더 다운로드 실패:', e);
         alert('폴더 다운로드에 실패했습니다: ' + (e?.message || e));
       }
