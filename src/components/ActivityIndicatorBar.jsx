@@ -4,7 +4,7 @@
  * - useActivityIndicator 훅으로 등록된 항목만 렌더링
  */
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
-import { IconUpload, IconMic, IconPenLine, IconImage, IconLoader } from '@/components/icons';
+import { IconUpload, IconMic, IconPenLine, IconImage, IconLoader, IconDownload } from '@/components/icons';
 
 const typeConfig = {
   [ActivityTypes.FILE_UPLOAD]: {
@@ -22,6 +22,10 @@ const typeConfig = {
   [ActivityTypes.PHOTO_UPLOAD]: {
     icon: IconImage,
     label: '사진 업로드',
+  },
+  [ActivityTypes.DOWNLOAD]: {
+    icon: IconDownload,
+    label: '다운로드',
   },
 };
 

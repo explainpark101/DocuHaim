@@ -37,6 +37,7 @@ import { ExportPasswordModal } from '@/components/modals/ExportPasswordModal';
 import { ImportPasswordModal } from '@/components/modals/ImportPasswordModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import Modal from '@/components/modals/Modal';
 import { MoveFileModal } from '@/components/modals/MoveFileModal';
 import { MoveFolderModal } from '@/components/modals/MoveFolderModal';
 import { CreateItemModal } from '@/components/modals/CreateItemModal';
@@ -79,7 +80,7 @@ export default function App() {
 }
 
 function MainApp() {
-  const { addIndicator, removeIndicator } = useActivityIndicator();
+  const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
   const auth = useAuth();
   const {
     isUnlocked,
@@ -165,6 +166,25 @@ function MainApp() {
   const [showDownloadMethodModal, setShowDownloadMethodModal] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadComplete, setDownloadComplete] = useState(false);
+  const [downloadResultModal, setDownloadResultModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
+  const closeDownloadResultModal = useCallback(() => {
+    setDownloadResultModal({
+      isOpen: false,
+      title: '',
+      message: '',
+    });
+  }, []);
+  const openUnsupportedFolderDownloadModal = useCallback(() => {
+    setDownloadResultModal({
+      isOpen: true,
+      title: '폴더 다운로드',
+      message: '이 브라우저에서 폴더 다운로드는 지원하지 않습니다',
+    });
+  }, []);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const lastSelectedIdRef = useRef(null);
 
@@ -1685,7 +1705,7 @@ function MainApp() {
     if (currentFile.type === 's3') {
       try {
         if (!('showDirectoryPicker' in window)) {
-          alert('이 브라우저는 폴더 선택을 지원하지 않습니다. Chrome, Edge를 사용해 주세요.');
+          openUnsupportedFolderDownloadModal();
           setShowDownloadMethodModal(false);
           return;
         }
@@ -1717,7 +1737,7 @@ function MainApp() {
     } else if (currentFile.type === 'local' && currentFile.handle) {
       try {
         if (!('showDirectoryPicker' in window)) {
-          alert('이 브라우저는 폴더 선택을 지원하지 않습니다. Chrome, Edge를 사용해 주세요.');
+          openUnsupportedFolderDownloadModal();
           setShowDownloadMethodModal(false);
           return;
         }
@@ -1751,8 +1771,117 @@ function MainApp() {
   };
 
   const handleDownloadNode = async (storageType, node) => {
+    const downloadedName =
+      node?.name || node?.path?.split('/').filter(Boolean).pop() || (node?.type === 'folder' ? '폴더' : '파일');
+    const showDownloadCompleteModal = (title, message) => {
+      setDownloadResultModal({
+        isOpen: true,
+        title,
+        message,
+      });
+    };
+
     if (node.type === 'folder') {
-      alert('폴더 다운로드는 추후 지원됩니다.');
+      if (!('showDirectoryPicker' in window)) {
+        openUnsupportedFolderDownloadModal();
+        return;
+      }
+      const ensureDirReadWritePermission = async (dirHandle) => {
+        if (!dirHandle?.queryPermission || !dirHandle?.requestPermission) return;
+        const permissionDesc = { mode: 'readwrite' };
+        const current = await dirHandle.queryPermission(permissionDesc);
+        if (current === 'granted') return;
+        const requested = await dirHandle.requestPermission(permissionDesc);
+        if (requested !== 'granted') {
+          throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
+        }
+      };
+      try {
+        const selectedDirHandle = await window.showDirectoryPicker();
+        await ensureDirReadWritePermission(selectedDirHandle);
+        const fallbackRootName = storageType === 's3' ? 's3-root' : 'local-root';
+        const folderName = (node.name || '').trim() || fallbackRootName;
+        const targetRootDirHandle = await selectedDirHandle.getDirectoryHandle(folderName, { create: true });
+        await ensureDirReadWritePermission(targetRootDirHandle);
+        const indicatorId = addIndicator({
+          type: ActivityTypes.DOWNLOAD,
+          label: `폴더 다운로드 중: ${folderName}`,
+        });
+
+        try {
+          if (storageType === 's3') {
+            const client = getS3Client();
+            if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+            const bucket = s3Creds.bucket;
+            const prefix = node.path || '';
+            const contents = await listObjectsV2(client, bucket, prefix);
+            const fileObjects = (contents || []).filter((item) => item.Key && !item.Key.endsWith('/'));
+            const totalFiles = fileObjects.length;
+            if (totalFiles === 0) {
+              setOperationStatus(`다운로드 완료: ${folderName} (빈 폴더)`);
+              showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
+              return;
+            }
+
+            let completed = 0;
+            for (const { Key } of fileObjects) {
+              const relativeKey = prefix ? Key.slice(prefix.length) : Key;
+              if (!relativeKey) continue;
+
+              const segments = relativeKey.split('/').filter(Boolean);
+              if (segments.length === 0) continue;
+
+              const fileName = segments.pop();
+              let currentDirHandle = targetRootDirHandle;
+              for (const seg of segments) {
+                currentDirHandle = await currentDirHandle.getDirectoryHandle(seg, { create: true });
+              }
+
+              const { body } = await getObjectBody(client, bucket, Key);
+              const fileHandle = await currentDirHandle.getFileHandle(fileName, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(body);
+              await writable.close();
+
+              completed += 1;
+              updateIndicator(indicatorId, {
+                progress: Math.min(100, Math.round((completed / totalFiles) * 100)),
+                detail: `${completed}/${totalFiles}`,
+              });
+            }
+          } else if (storageType === 'local') {
+            const sourceDirHandle = node.handle || (node.path === '' ? localRootHandle : null);
+            if (!sourceDirHandle) throw new Error('원본 폴더 핸들을 찾을 수 없습니다.');
+
+            const copyLocalDirRecursive = async (srcDirHandle, destDirHandle) => {
+              for await (const entry of srcDirHandle.values()) {
+                if (entry.kind === 'file') {
+                  const file = await entry.getFile();
+                  const destFileHandle = await destDirHandle.getFileHandle(entry.name, { create: true });
+                  const writable = await destFileHandle.createWritable();
+                  await writable.write(await file.arrayBuffer());
+                  await writable.close();
+                } else if (entry.kind === 'directory') {
+                  const childDestDir = await destDirHandle.getDirectoryHandle(entry.name, { create: true });
+                  await copyLocalDirRecursive(entry, childDestDir);
+                }
+              }
+            };
+
+            await copyLocalDirRecursive(sourceDirHandle, targetRootDirHandle);
+            updateIndicator(indicatorId, { progress: 100 });
+          }
+
+          setOperationStatus(`폴더 다운로드 완료: ${folderName}`);
+          showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
+        } finally {
+          removeIndicator(indicatorId);
+        }
+      } catch (e) {
+        if (e?.name === 'AbortError') return;
+        console.error('폴더 다운로드 실패:', e);
+        alert('폴더 다운로드에 실패했습니다: ' + (e?.message || e));
+      }
       return;
     }
     if (storageType === 's3') {
@@ -1767,7 +1896,8 @@ function MainApp() {
         a.download = node.name || node.path.split('/').filter(Boolean).pop() || 'download';
         a.click();
         URL.revokeObjectURL(url);
-        setOperationStatus(`다운로드: ${node.name}`);
+        setOperationStatus(`다운로드: ${downloadedName}`);
+        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
       } catch (e) {
         console.error('S3 다운로드 실패:', e);
         alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
@@ -1781,7 +1911,8 @@ function MainApp() {
         a.download = node.name || file.name;
         a.click();
         URL.revokeObjectURL(url);
-        setOperationStatus(`다운로드: ${node.name}`);
+        setOperationStatus(`다운로드: ${downloadedName}`);
+        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
       } catch (e) {
         console.error('로컬 파일 다운로드 실패:', e);
         alert('다운로드에 실패했습니다.');
@@ -3519,6 +3650,30 @@ function MainApp() {
           setDownloadComplete(false);
         }}
       />
+
+      <Modal
+        isOpen={downloadResultModal.isOpen}
+        onClose={closeDownloadResultModal}
+        onConfirm={closeDownloadResultModal}
+      >
+        <div className="p-6">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2">
+            {downloadResultModal.title || '다운로드 완료'}
+          </h2>
+          <p className="text-sm whitespace-pre-line text-gray-600 dark:text-gray-400 mb-4">
+            {downloadResultModal.message}
+          </p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={closeDownloadResultModal}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 rounded transition"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Modal */}
       <DeleteConfirmModal

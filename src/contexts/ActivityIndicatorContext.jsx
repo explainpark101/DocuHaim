@@ -10,12 +10,13 @@
  */
 import { createContext, useContext, useReducer, useCallback } from 'react';
 
-/** @type {'file-upload'|'recording'|'note-processing'|'photo-upload'} */
+/** @type {'file-upload'|'recording'|'note-processing'|'photo-upload'|'download'} */
 export const ActivityTypes = {
   FILE_UPLOAD: 'file-upload',
   RECORDING: 'recording',
   NOTE_PROCESSING: 'note-processing',
   PHOTO_UPLOAD: 'photo-upload',
+  DOWNLOAD: 'download',
 };
 
 /** @type {'pending'|'processing'|'done'|'error'} */
