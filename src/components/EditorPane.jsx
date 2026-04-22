@@ -55,6 +55,8 @@ export default function EditorPane({
   recordingSyncData = [],
   onUploadImage,
   isUploadingEditorImage = false,
+  uploadImagePercent = 0,
+  onCancelUploadImage,
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
   editorType,
@@ -458,6 +460,8 @@ export default function EditorPane({
                   }}
                   onUploadImage={onUploadImage}
                   isUploadingEditorImage={isUploadingEditorImage}
+                  uploadImagePercent={uploadImagePercent}
+                  onCancelUploadImage={onCancelUploadImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
                 />
               ) : (
@@ -470,6 +474,8 @@ export default function EditorPane({
                   previewOnly={previewOnly}
                   onUploadImage={onUploadImage}
                   isUploadingEditorImage={isUploadingEditorImage}
+                  uploadImagePercent={uploadImagePercent}
+                  onCancelUploadImage={onCancelUploadImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
                   snippetConfig={snippetConfig}
                 />

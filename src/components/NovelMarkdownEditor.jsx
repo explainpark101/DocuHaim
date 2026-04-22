@@ -212,6 +212,8 @@ export default function NovelMarkdownEditor({
   onRegisterFlushBeforeSave,
   onUploadImage,
   isUploadingEditorImage = false,
+  uploadImagePercent = 0,
+  onCancelUploadImage,
   documentKey,
   onResolveWikiImageUrl,
 }) {
@@ -719,7 +721,16 @@ export default function NovelMarkdownEditor({
           aria-live="polite"
         >
           <Loader2 size={16} className="animate-spin shrink-0" />
-          <span>이미지 업로드 중…</span>
+          <span>이미지 업로드 중… {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
+          {typeof onCancelUploadImage === 'function' && (
+            <button
+              type="button"
+              onClick={onCancelUploadImage}
+              className="ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950"
+            >
+              취소
+            </button>
+          )}
         </div>
       )}
       <EditorRoot key={documentKey ?? 'novel'}>

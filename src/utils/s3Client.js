@@ -107,6 +107,92 @@ export async function putObject(client, params) {
 }
 
 /**
+ * Generate a presigned PUT URL for an object.
+ * @param {S3Client} client
+ * @param {{ Bucket: string, Key: string, ContentType?: string, CacheControl?: string }} params
+ * @param {number} expiresIn seconds
+ * @returns {Promise<string>}
+ */
+export async function getSignedPutUrl(client, params, expiresIn = 300) {
+  const command = new PutObjectCommand({
+    ...params,
+    CacheControl: params.CacheControl ?? 'max-age=30',
+  });
+  return getSignedUrl(client, command, { expiresIn });
+}
+
+/**
+ * Put object with upload progress and abort support.
+ * @param {S3Client} client
+ * @param {{ Bucket: string, Key: string, Body: string | Uint8Array, ContentType?: string, CacheControl?: string }} params
+ * @param {{ onProgress?: (percent: number) => void, signal?: AbortSignal }} [options]
+ */
+export async function putObjectWithProgress(client, params, options = {}) {
+  const signedUrl = await getSignedPutUrl(
+    client,
+    {
+      Bucket: params.Bucket,
+      Key: params.Key,
+      ContentType: params.ContentType,
+      CacheControl: params.CacheControl,
+    },
+    300,
+  );
+  const body = params.Body;
+  const totalBytes =
+    typeof body === 'string'
+      ? new TextEncoder().encode(body).byteLength
+      : body?.byteLength ?? 0;
+
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', signedUrl, true);
+    if (params.ContentType) xhr.setRequestHeader('Content-Type', params.ContentType);
+    if (params.CacheControl) xhr.setRequestHeader('Cache-Control', params.CacheControl);
+
+    const abortBySignal = () => xhr.abort();
+    if (options.signal) {
+      if (options.signal.aborted) {
+        reject(new DOMException('Aborted', 'AbortError'));
+        return;
+      }
+      options.signal.addEventListener('abort', abortBySignal, { once: true });
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!options.onProgress) return;
+      if (event.lengthComputable && event.total > 0) {
+        options.onProgress(Math.min(100, (event.loaded / event.total) * 100));
+        return;
+      }
+      if (totalBytes > 0) {
+        options.onProgress(Math.min(100, (event.loaded / totalBytes) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (options.signal) options.signal.removeEventListener('abort', abortBySignal);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (options.onProgress) options.onProgress(100);
+        resolve();
+      } else {
+        reject(new Error(`PUT upload failed with status ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => {
+      if (options.signal) options.signal.removeEventListener('abort', abortBySignal);
+      reject(new Error('PUT upload failed due to network error'));
+    };
+    xhr.onabort = () => {
+      if (options.signal) options.signal.removeEventListener('abort', abortBySignal);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+
+    xhr.send(body);
+  });
+}
+
+/**
  * Delete a single object.
  */
 export async function deleteObject(client, bucket, key) {

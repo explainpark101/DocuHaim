@@ -67,6 +67,7 @@ import { buildZipBlob } from '@/utils/zipBuilder';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
   const location = useLocation();
@@ -283,6 +284,21 @@ function MainApp() {
   const [selectedRecordingKey, setSelectedRecordingKey] = useState(null);
   const [recordingAudioUrl, setRecordingAudioUrl] = useState('');
   const [recordingSyncData, setRecordingSyncData] = useState([]);
+  const [swRegistration, setSwRegistration] = useState(null);
+  const [isApplyingPwaUpdate, setIsApplyingPwaUpdate] = useState(false);
+  const [hidePwaUpdateToast, setHidePwaUpdateToast] = useState(false);
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    immediate: true,
+    onRegisteredSW(_swUrl, registration) {
+      if (registration) setSwRegistration(registration);
+    },
+    onRegisterError(error) {
+      console.error('PWA service worker registration error:', error);
+    },
+  });
 
   const s3TreeRef = useRef([]);
   const currentFileRef = useRef(null);
@@ -338,6 +354,33 @@ function MainApp() {
     mql.addEventListener('change', handler);
     return () => mql.removeEventListener('change', handler);
   }, []);
+
+  useEffect(() => {
+    if (!swRegistration) return undefined;
+    const interval = setInterval(() => {
+      swRegistration.update().catch((error) => {
+        console.warn('PWA update check failed:', error);
+      });
+    }, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [swRegistration]);
+
+  useEffect(() => {
+    if (needRefresh) {
+      setHidePwaUpdateToast(false);
+      setIsApplyingPwaUpdate(false);
+    }
+  }, [needRefresh]);
+
+  const handleApplyPwaUpdate = useCallback(async () => {
+    try {
+      setIsApplyingPwaUpdate(true);
+      await updateServiceWorker(true);
+    } catch (error) {
+      console.error('PWA update apply failed:', error);
+      setIsApplyingPwaUpdate(false);
+    }
+  }, [updateServiceWorker]);
 
   useEffect(() => {
     try {
@@ -806,7 +849,27 @@ function MainApp() {
   }, [snippetLoadedFromLocal, s3Creds.bucket, localRootHandle, loadSnippetConfigFromLocal]);
 
   const editorImageUploadInProgressRef = useRef(false);
+  const editorImageUploadAbortControllerRef = useRef(null);
+  const editorImageUploadCancelRequestedRef = useRef(false);
   const [isUploadingEditorImage, setIsUploadingEditorImage] = useState(false);
+  const [editorImageUploadPercent, setEditorImageUploadPercent] = useState(0);
+
+  const cancelEditorImageUpload = useCallback(() => {
+    if (!editorImageUploadInProgressRef.current) return false;
+    editorImageUploadCancelRequestedRef.current = true;
+    if (editorImageUploadAbortControllerRef.current) {
+      editorImageUploadAbortControllerRef.current.abort();
+    }
+    return true;
+  }, []);
+
+  const confirmAndCancelEditorImageUpload = useCallback(() => {
+    if (!editorImageUploadInProgressRef.current) return true;
+    const confirmed = window.confirm('이미지 업로드를 취소하시겠습니까?');
+    if (!confirmed) return false;
+    cancelEditorImageUpload();
+    return true;
+  }, [cancelEditorImageUpload]);
 
   /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 .images/)에 저장, 반환값은 ![[path]]용 Object Key 배열. 업로드 중에는 중복 호출 무시 */
   const handleUploadEditorImage = useCallback(
@@ -846,7 +909,9 @@ function MainApp() {
         return [];
       }
       editorImageUploadInProgressRef.current = true;
+      editorImageUploadCancelRequestedRef.current = false;
       setIsUploadingEditorImage(true);
+      setEditorImageUploadPercent(0);
       const indicatorId = addIndicator({
         id: 'editor-image-upload',
         type: ActivityTypes.FILE_UPLOAD,
@@ -862,23 +927,54 @@ function MainApp() {
             })()
           : '.images/note';
       const paths = [];
+      const totalBytes = imageFiles.reduce((acc, file) => acc + (file.size || 0), 0);
+      let uploadedBytes = 0;
       try {
         for (const file of imageFiles) {
-          const path = await uploadEditorImage(client, s3Creds.bucket, file, { imagePathPrefix });
+          if (editorImageUploadCancelRequestedRef.current) break;
+          const uploadController = new AbortController();
+          editorImageUploadAbortControllerRef.current = uploadController;
+          const path = await uploadEditorImage(client, s3Creds.bucket, file, {
+            imagePathPrefix,
+            signal: uploadController.signal,
+            onProgress: (percent) => {
+              const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
+              const overallPercent =
+                totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
+              const normalized = Math.max(0, Math.min(100, Math.round(overallPercent)));
+              setEditorImageUploadPercent(normalized);
+              updateIndicator(indicatorId, {
+                progress: normalized,
+                detail: `${normalized}%`,
+              });
+            },
+          });
+          uploadedBytes += file.size || 0;
+          editorImageUploadAbortControllerRef.current = null;
+          const committedPercent = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 100;
+          setEditorImageUploadPercent(Math.max(0, Math.min(100, committedPercent)));
           paths.push(path);
         }
       } catch (err) {
-        dbgClipboard('app:upload:error', { message: err?.message ?? String(err) });
-        setOperationStatus('이미지 업로드 실패: ' + (err.message || String(err)));
+        if (err?.name === 'AbortError') {
+          dbgClipboard('app:upload:cancelled', { message: err?.message ?? 'aborted' });
+          setOperationStatus('이미지 업로드가 취소되었습니다.');
+        } else {
+          dbgClipboard('app:upload:error', { message: err?.message ?? String(err) });
+          setOperationStatus('이미지 업로드 실패: ' + (err.message || String(err)));
+        }
       } finally {
+        editorImageUploadAbortControllerRef.current = null;
         editorImageUploadInProgressRef.current = false;
+        editorImageUploadCancelRequestedRef.current = false;
         setIsUploadingEditorImage(false);
+        setEditorImageUploadPercent(0);
         removeIndicator(indicatorId);
       }
       dbgClipboard('app:upload:return', { paths, pathCount: paths.length });
       return paths;
     },
-    [getS3Client, s3Creds, currentFile, addIndicator, removeIndicator]
+    [getS3Client, s3Creds, currentFile, addIndicator, removeIndicator, updateIndicator]
   );
 
   /** Preview용 ![[path]] 이미지 Pre-signed URL 반환 (캐시는 호출 측에서 처리) */
@@ -1398,6 +1494,7 @@ function MainApp() {
             });
             lastSelectedIdRef.current = key;
             if (node.type === 'file') {
+              if (!confirmAndCancelEditorImageUpload()) return;
               if (isMobile) setSidebarOpen(false);
               await saveCurrentMarkdownBeforeSwitch(storageType, node);
               await selectFileRaw(storageType, node);
@@ -1421,12 +1518,13 @@ function MainApp() {
       }
 
       if (node.type === 'file') {
+        if (!confirmAndCancelEditorImageUpload()) return;
         if (isMobile) setSidebarOpen(false);
         await saveCurrentMarkdownBeforeSwitch(storageType, node);
         await selectFileRaw(storageType, node);
       }
     },
-    [isMobile, s3Tree, localTree, selectFileRaw, saveCurrentMarkdownBeforeSwitch]
+    [isMobile, s3Tree, localTree, selectFileRaw, saveCurrentMarkdownBeforeSwitch, confirmAndCancelEditorImageUpload]
   );
 
   const selectFile = useCallback(
@@ -3269,6 +3367,47 @@ function MainApp() {
         className="hidden"
       />
 
+      {needRefresh && !hidePwaUpdateToast && (
+        <div className="fixed right-3 bottom-10 z-11000 w-[min(92vw,360px)] rounded-xl border border-blue-200 bg-white p-3 shadow-xl dark:border-blue-900/60 dark:bg-odp-bgSoft md:right-4 md:bottom-12">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-odp-fgStrong">
+                새 버전이 준비되었습니다
+              </p>
+              <p className="mt-1 text-xs text-gray-600 dark:text-odp-muted">
+                저장 중인 작업을 확인한 뒤 업데이트를 적용하세요.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fg"
+              aria-label="업데이트 토스트 닫기"
+              onClick={() => setHidePwaUpdateToast(true)}
+            >
+              <IconX size={16} />
+            </button>
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-md px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg"
+              onClick={() => setHidePwaUpdateToast(true)}
+              disabled={isApplyingPwaUpdate}
+            >
+              나중에
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-600 dark:hover:bg-blue-700"
+              onClick={handleApplyPwaUpdate}
+              disabled={isApplyingPwaUpdate}
+            >
+              {isApplyingPwaUpdate ? '업데이트 중...' : '지금 업데이트'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Auth Modal (Lock Screen) */}
       <AuthModal
         isOpen={showAuthModal}
@@ -3481,6 +3620,8 @@ function MainApp() {
                   recordingSyncData={recordingSyncData}
                   onUploadImage={handleUploadEditorImage}
                   isUploadingEditorImage={isUploadingEditorImage}
+                  uploadImagePercent={editorImageUploadPercent}
+                  onCancelUploadImage={cancelEditorImageUpload}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
                   snippetConfig={snippetConfig}
                   onRequestDelete={() =>
@@ -3536,6 +3677,8 @@ function MainApp() {
                   recordingSyncData={recordingSyncData}
                   onUploadImage={handleUploadEditorImage}
                   isUploadingEditorImage={isUploadingEditorImage}
+                  uploadImagePercent={editorImageUploadPercent}
+                  onCancelUploadImage={cancelEditorImageUpload}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
                   snippetConfig={snippetConfig}
                   onRequestDelete={() =>

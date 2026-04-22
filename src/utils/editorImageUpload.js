@@ -56,7 +56,7 @@ export async function isFileProbablyImage(file) {
  * @param {import('@aws-sdk/client-s3').S3Client} client
  * @param {string} bucket
  * @param {File} file
- * @param {{ maxSizeBytes?: number, imagePathPrefix?: string }} [options]
+ * @param {{ maxSizeBytes?: number, imagePathPrefix?: string, onProgress?: (percent: number) => void, signal?: AbortSignal }} [options]
  *   - maxSizeBytes: 기본 10MB
  *   - imagePathPrefix: '.images/<md경로>/<md이름>/' 형태. 미지정 시 '.images/note/' 사용
  * @returns {Promise<string>} S3 Object Key (path)
@@ -90,16 +90,23 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
     ext,
   });
 
-  const { putObject } = await import('@/utils/s3Client');
+  const { putObjectWithProgress } = await import('@/utils/s3Client');
   const body = new Uint8Array(await file.arrayBuffer());
   const contentType =
     mime && mime.startsWith('image/') ? mime : 'application/octet-stream';
-  await putObject(client, {
-    Bucket: bucket,
-    Key: key,
-    Body: body,
-    ContentType: contentType,
-  });
+  await putObjectWithProgress(
+    client,
+    {
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    },
+    {
+      onProgress: options.onProgress,
+      signal: options.signal,
+    }
+  );
 
   dbgClipboard('upload:done', { key, contentType, bodyBytes: body.byteLength });
   return key;
