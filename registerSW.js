@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/s3haim/sw.js', { scope: '/s3haim/' })})}
