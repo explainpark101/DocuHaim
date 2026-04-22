@@ -17,8 +17,10 @@ import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import {
-  getWikiImageAttrsFromElement,
+  getMarkdownImageOccurrenceInContainer,
+  getResizableImageAttrsFromElement,
   getWikiImageOccurrenceInContainer,
+  updateMarkdownImageSizeInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 const DEBUG_WIKI_IMAGE = true;
@@ -376,14 +378,18 @@ export default function MarkdownEditor({
     const root = containerRef.current;
     if (!root) return;
     const onContextMenu = (event) => {
-      const img = event.target?.closest?.('img[data-wiki-path]');
+      const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
       if (!img || !root.contains(img)) return;
-      const attrs = getWikiImageAttrsFromElement(img);
-      if (!attrs.path) return;
+      const attrs = getResizableImageAttrsFromElement(img);
+      if (!attrs.kind || !attrs.key) return;
       event.preventDefault();
-      const occurrence = getWikiImageOccurrenceInContainer(root, img, attrs.path);
+      const occurrence =
+        attrs.kind === 'wiki'
+          ? getWikiImageOccurrenceInContainer(root, img, attrs.key)
+          : getMarkdownImageOccurrenceInContainer(root, img, attrs.key);
       setWikiImageModalState({
-        path: attrs.path,
+        kind: attrs.kind,
+        key: attrs.key,
         width: attrs.width,
         height: attrs.height,
         occurrence,
@@ -396,13 +402,21 @@ export default function MarkdownEditor({
   const handleApplyWikiImageSize = useCallback(
     ({ width, height }) => {
       const modal = wikiImageModalState;
-      if (!modal?.path || typeof onChange !== 'function') return;
-      const next = updateWikiImageSizeInMarkdown(value, {
-        path: modal.path,
-        occurrence: modal.occurrence ?? 0,
-        width,
-        height,
-      });
+      if (!modal?.key || typeof onChange !== 'function') return;
+      const next =
+        modal.kind === 'wiki'
+          ? updateWikiImageSizeInMarkdown(value, {
+              path: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              width,
+              height,
+            })
+          : updateMarkdownImageSizeInMarkdown(value, {
+              src: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              width,
+              height,
+            });
       if (next.updated && next.markdown !== value) {
         onChange(next.markdown);
       }
@@ -465,12 +479,13 @@ export default function MarkdownEditor({
       <WikiImageSizeModal
         key={
           wikiImageModalState
-            ? `${wikiImageModalState.path}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
+            ? `${wikiImageModalState.kind}|${wikiImageModalState.key}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
             : 'wiki-image-size-modal'
         }
         isOpen={Boolean(wikiImageModalState)}
         onClose={() => setWikiImageModalState(null)}
-        path={wikiImageModalState?.path ?? ''}
+        path={wikiImageModalState?.key ?? ''}
+        kind={wikiImageModalState?.kind ?? 'wiki'}
         initialWidth={wikiImageModalState?.width ?? ''}
         initialHeight={wikiImageModalState?.height ?? ''}
         onApply={handleApplyWikiImageSize}

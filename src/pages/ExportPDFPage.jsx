@@ -10,8 +10,10 @@ import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import Modal from '@/components/modals/Modal';
 import {
-  getWikiImageAttrsFromElement,
+  getMarkdownImageOccurrenceInContainer,
+  getResizableImageAttrsFromElement,
   getWikiImageOccurrenceInContainer,
+  updateMarkdownImageSizeInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 
@@ -424,14 +426,18 @@ export default function ExportPDFPage() {
         return;
       }
 
-      const img = event.target?.closest?.('img[data-wiki-path]');
+      const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
       if (img && root.contains(img)) {
-        const attrs = getWikiImageAttrsFromElement(img);
-        if (!attrs.path) return;
+        const attrs = getResizableImageAttrsFromElement(img);
+        if (!attrs.kind || !attrs.key) return;
         event.preventDefault();
-        const occurrence = getWikiImageOccurrenceInContainer(root, img, attrs.path);
+        const occurrence =
+          attrs.kind === 'wiki'
+            ? getWikiImageOccurrenceInContainer(root, img, attrs.key)
+            : getMarkdownImageOccurrenceInContainer(root, img, attrs.key);
         setWikiImageModalState({
-          path: attrs.path,
+          kind: attrs.kind,
+          key: attrs.key,
           width: attrs.width,
           height: attrs.height,
           occurrence,
@@ -467,13 +473,21 @@ export default function ExportPDFPage() {
   const handleApplyWikiImageSize = useCallback(
     ({ width, height }) => {
       const modal = wikiImageModalState;
-      if (!modal?.path) return;
-      const next = updateWikiImageSizeInMarkdown(previewValue, {
-        path: modal.path,
-        occurrence: modal.occurrence ?? 0,
-        width,
-        height,
-      });
+      if (!modal?.key) return;
+      const next =
+        modal.kind === 'wiki'
+          ? updateWikiImageSizeInMarkdown(previewValue, {
+              path: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              width,
+              height,
+            })
+          : updateMarkdownImageSizeInMarkdown(previewValue, {
+              src: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              width,
+              height,
+            });
       if (!next.updated || next.markdown === previewValue) return;
       setPreviewValue(next.markdown);
       setPendingPrintReturnState({
@@ -677,12 +691,13 @@ export default function ExportPDFPage() {
       <WikiImageSizeModal
         key={
           wikiImageModalState
-            ? `${wikiImageModalState.path}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
+            ? `${wikiImageModalState.kind}|${wikiImageModalState.key}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
             : 'wiki-image-size-modal'
         }
         isOpen={Boolean(wikiImageModalState)}
         onClose={() => setWikiImageModalState(null)}
-        path={wikiImageModalState?.path ?? ''}
+        path={wikiImageModalState?.key ?? ''}
+        kind={wikiImageModalState?.kind ?? 'wiki'}
         initialWidth={wikiImageModalState?.width ?? ''}
         initialHeight={wikiImageModalState?.height ?? ''}
         onApply={handleApplyWikiImageSize}

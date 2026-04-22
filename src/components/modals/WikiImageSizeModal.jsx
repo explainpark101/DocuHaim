@@ -21,6 +21,7 @@ export default function WikiImageSizeModal({
   isOpen,
   onClose,
   path,
+  kind = 'wiki',
   initialWidth,
   initialHeight,
   onApply,
@@ -33,11 +34,17 @@ export default function WikiImageSizeModal({
     if (!path) return '';
     const w = validateSizeInput(widthInput).normalized;
     const h = validateSizeInput(heightInput).normalized;
+    if (kind === 'markdown') {
+      const size = [];
+      if (w) size.push(`w=${w}`);
+      if (h) size.push(`h=${h}`);
+      return size.length ? `![](${path}){${size.join(' ')}}` : `![](${path})`;
+    }
     const size = [];
     if (w) size.push(`w=${w}`);
     if (h) size.push(`h=${h}`);
     return size.length ? `![[${path}|${size.join(' ')}]]` : `![[${path}]]`;
-  }, [path, widthInput, heightInput]);
+  }, [path, kind, widthInput, heightInput]);
 
   const handleApply = () => {
     const w = validateSizeInput(widthInput);
@@ -58,7 +65,7 @@ export default function WikiImageSizeModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} onConfirm={handleApply}>
       <div className="p-6 flex flex-col gap-4">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">위키 이미지 크기</h2>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">이미지 크기</h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted break-all">
           {path || ''}
         </p>

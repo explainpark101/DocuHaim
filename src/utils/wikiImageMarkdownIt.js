@@ -1,5 +1,6 @@
 import {
   buildWikiImageStyle,
+  parseMarkdownImageAttrsBlock,
   parseWikiImageInner,
 } from '@/utils/wikiImageSyntax';
 
@@ -319,6 +320,51 @@ export function wikiImagePlugin(md) {
       }
       state.tokens = newTokens;
     }
+  });
+
+  md.core.ruler.after('wiki-image-caption', 'markdown-image-size-attrs', (state) => {
+    state.tokens.forEach((blockToken) => {
+      if (blockToken.type !== 'inline' || !blockToken.children?.length) return;
+      const nextChildren = [];
+      const children = blockToken.children;
+      for (let i = 0; i < children.length; i += 1) {
+        const token = children[i];
+        if (token.type !== 'image') {
+          nextChildren.push(token);
+          continue;
+        }
+
+        const src = token.attrGet('src');
+        if (src) token.attrSet('data-md-src', src);
+
+        const nextToken = children[i + 1];
+        if (nextToken?.type === 'text') {
+          const raw = nextToken.content || '';
+          const attrMatch = raw.match(/^\{([^}\n]+)\}/);
+          if (attrMatch) {
+            const parsed = parseMarkdownImageAttrsBlock(`{${attrMatch[1]}}`);
+            if (parsed.width) token.attrSet('data-md-width', parsed.width);
+            if (parsed.height) token.attrSet('data-md-height', parsed.height);
+            const style = buildWikiImageStyle(parsed);
+            if (style) token.attrSet('style', style);
+
+            const remain = raw.slice(attrMatch[0].length);
+            if (remain) {
+              const t = new state.Token('text', '', 0);
+              t.content = remain;
+              nextChildren.push(token, t);
+            } else {
+              nextChildren.push(token);
+            }
+            i += 1;
+            continue;
+          }
+        }
+
+        nextChildren.push(token);
+      }
+      blockToken.children = nextChildren;
+    });
   });
 
   md.renderer.rules.wiki_image = (tokens, idx, options, env, self) => {
