@@ -27,6 +27,8 @@ export default function SettingsPage({
   onToggleHiddenFolders,
   hideRecordingCompanions = false,
   onToggleHideRecordingCompanions,
+  treeStickyFolderPathEnabled = true,
+  onToggleTreeStickyFolderPath,
   onRequestClose,
   webauthnSupported = false,
   webauthnEnabled = false,
@@ -368,6 +370,32 @@ export default function SettingsPage({
               </button>
               <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
                 녹음·필기 동기화 파일 숨기기 (사이드바 목록·녹음 UI·동기화 보기에서 제외)
+              </span>
+            </label>
+          )}
+          {typeof onToggleTreeStickyFolderPath === 'function' && (
+            <label
+              className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
+            >
+              <button
+                type="button"
+                onClick={onToggleTreeStickyFolderPath}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                  treeStickyFolderPathEnabled
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={treeStickyFolderPathEnabled}
+                aria-label="트리 폴더 경로 sticky 표시"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    treeStickyFolderPathEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                트리에서 열린 폴더 경로 sticky 표시 (스크롤 시 현재 경로 고정)
               </span>
             </label>
           )}

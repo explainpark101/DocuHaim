@@ -211,6 +211,7 @@ export default function Sidebar({
   onRenameItem,
   showHiddenFolders,
   hideRecordingCompanions = false,
+  treeStickyFolderPathEnabled = true,
   onRequestCollapseSidebar,
   deletingFolderPath,
   isDeletingFolder,
@@ -224,6 +225,7 @@ export default function Sidebar({
   onRequestMoveFile,
   onOpenInNewWindow,
 }) {
+  const TREE_STICKY_SECTION_TOP = 33;
   const [searchTerm, setSearchTerm] = useState('');
   const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState('');
   const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState({
@@ -575,7 +577,7 @@ export default function Sidebar({
       >
         {/* S3 Section */}
         <div>
-          <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-10 border-b border-gray-100 dark:border-odp-surface">
+          <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
             <span className="flex items-center gap-1">
               <IconCloud /> S3
             </span>
@@ -709,6 +711,8 @@ export default function Sidebar({
                     renameTarget={renameTarget}
                     onClearRenameTarget={() => setRenameTarget(null)}
                     recordingBasePathSet={recordingBasePathSet}
+                    stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                    stickyTopOffset={TREE_STICKY_SECTION_TOP}
                   />
                 ))
               ) : (
@@ -722,7 +726,7 @@ export default function Sidebar({
 
         {/* Local Section */}
         <div>
-          <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-10 border-b border-gray-100 dark:border-odp-surface">
+          <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
             <span className="flex items-center gap-1">
               <IconFolder /> Local Folder
             </span>
@@ -848,6 +852,8 @@ export default function Sidebar({
                 renameTarget={renameTarget}
                 onClearRenameTarget={() => setRenameTarget(null)}
                 recordingBasePathSet={recordingBasePathSet}
+                stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                stickyTopOffset={TREE_STICKY_SECTION_TOP}
               />
             ))}
           </div>

@@ -56,6 +56,10 @@ import { setPrintSettingsStore } from '@/utils/printSettingsStore';
 import { getRecordingQueueStats } from '@/utils/recordingDb';
 import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
 import { loadHideRecordingCompanions, saveHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
+import {
+  loadTreeStickyFolderPathEnabled,
+  saveTreeStickyFolderPathEnabled,
+} from '@/utils/treeStickySettings';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import {
   getDraftKey,
@@ -269,6 +273,9 @@ function MainApp() {
     }
   });
   const [hideRecordingCompanions, setHideRecordingCompanions] = useState(() => loadHideRecordingCompanions());
+  const [treeStickyFolderPathEnabled, setTreeStickyFolderPathEnabled] = useState(() =>
+    loadTreeStickyFolderPathEnabled(),
+  );
 
   const {
     isRecording,
@@ -393,6 +400,10 @@ function MainApp() {
   useEffect(() => {
     saveHideRecordingCompanions(hideRecordingCompanions);
   }, [hideRecordingCompanions]);
+
+  useEffect(() => {
+    saveTreeStickyFolderPathEnabled(treeStickyFolderPathEnabled);
+  }, [treeStickyFolderPathEnabled]);
 
   const handleSidebarResizeMouseDown = (e) => {
     e.preventDefault();
@@ -3512,6 +3523,7 @@ function MainApp() {
                 onRenameItem={renameTreeItem}
                 showHiddenFolders={showHiddenFolders}
                 hideRecordingCompanions={hideRecordingCompanions}
+                treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
                 onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
                 deletingFolderPath={deletingFolderPath}
                 isDeletingFolder={isDeletingFolder}
@@ -3566,8 +3578,12 @@ function MainApp() {
                     setShowHiddenFolders((prev) => !prev)
                   }
                   hideRecordingCompanions={hideRecordingCompanions}
+                  treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
                   onToggleHideRecordingCompanions={() =>
                     setHideRecordingCompanions((prev) => !prev)
+                  }
+                  onToggleTreeStickyFolderPath={() =>
+                    setTreeStickyFolderPathEnabled((prev) => !prev)
                   }
                   onRequestClose={handleSettingsClose}
                   webauthnSupported={webauthnPRFSupported}

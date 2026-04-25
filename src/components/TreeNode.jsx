@@ -47,6 +47,8 @@ export default function TreeNode({
   renameTarget,
   onClearRenameTarget,
   recordingBasePathSet = null,
+  stickyFoldersEnabled = true,
+  stickyTopOffset = 0,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -64,6 +66,7 @@ export default function TreeNode({
       : false;
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempName, setTempName] = useState(node.name);
+  const [isStickyPinned, setIsStickyPinned] = useState(false);
   const selectKey = storageType && node.path ? `${storageType}:${node.path}` : node.path;
   const isSelected = selectedIds && selectedIds.has && selectedIds.has(selectKey);
   const paddingLeft = `${level * INDENT_SIZE + BASE_LEFT_PADDING}px`;
@@ -80,6 +83,7 @@ export default function TreeNode({
     : '';
 
   const titleContainerRef = useRef(null);
+  const rowRef = useRef(null);
   const scrollTimerRef = useRef(null);
   const scrollDirectionRef = useRef(1);
 
@@ -360,10 +364,74 @@ export default function TreeNode({
   const canAcceptDrop =
     (node.type === 'folder' || (node.type === 'file' && isRootLevel && rootDropNode)) &&
     !isTrashRoot;
+  const shouldShowStickyFolder =
+    stickyFoldersEnabled &&
+    node.type === 'folder' &&
+    isOpen &&
+    !isSearching &&
+    Array.isArray(node.children) &&
+    node.children.length > 0;
+  const stickyRowStyle = shouldShowStickyFolder
+    ? {
+        paddingLeft,
+        top: `${stickyTopOffset + level * 30}px`,
+        zIndex: 1000 - level,
+      }
+    : { paddingLeft };
+
+  useEffect(() => {
+    if (!shouldShowStickyFolder) {
+      setIsStickyPinned(false);
+      return;
+    }
+
+    const rowEl = rowRef.current;
+    if (!rowEl) return;
+
+    const findScrollParent = (el) => {
+      let current = el.parentElement;
+      while (current) {
+        const style = window.getComputedStyle(current);
+        const overflowY = style.overflowY || '';
+        if (overflowY === 'auto' || overflowY === 'scroll') return current;
+        current = current.parentElement;
+      }
+      return window;
+    };
+
+    const scrollParent = findScrollParent(rowEl);
+    let rafId = null;
+    const updatePinnedState = () => {
+      const nodeEl = rowRef.current;
+      if (!nodeEl) return;
+      const nodeTop = nodeEl.getBoundingClientRect().top;
+      const threshold = stickyTopOffset + level * 30;
+      setIsStickyPinned(nodeTop <= threshold + 0.5);
+    };
+
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updatePinnedState();
+      });
+    };
+
+    updatePinnedState();
+    scrollParent.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      scrollParent.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [shouldShowStickyFolder, stickyTopOffset, level]);
 
   return (
-    <div>
+    <div className={shouldShowStickyFolder ? 'relative' : ''}>
       <div
+        ref={rowRef}
         data-tree-node-row
         draggable={canDrag}
         onDragStart={handleDragStart}
@@ -378,8 +446,16 @@ export default function TreeNode({
           isFocusedFolder
             ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
             : ''
-        } ${showDropHighlight ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}
-        style={{ paddingLeft }}
+        } ${showDropHighlight ? 'bg-blue-100 dark:bg-blue-900/40' : ''} ${
+          shouldShowStickyFolder
+            ? 'sticky bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-[1px] border-b border-gray-200/80 dark:border-odp-borderSoft'
+            : ''
+        } ${
+          shouldShowStickyFolder && isStickyPinned && !isSelected && !showDropHighlight
+            ? 'bg-gray-50 dark:bg-odp-surface'
+            : ''
+        }`}
+        style={stickyRowStyle}
         onClick={handleToggle}
         onContextMenu={
           onOpenContextMenu
@@ -530,6 +606,8 @@ export default function TreeNode({
             renameTarget={renameTarget}
             onClearRenameTarget={onClearRenameTarget}
             recordingBasePathSet={recordingBasePathSet}
+            stickyFoldersEnabled={stickyFoldersEnabled}
+            stickyTopOffset={stickyTopOffset}
           />
         ))}
     </div>
