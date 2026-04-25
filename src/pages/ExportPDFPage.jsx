@@ -856,6 +856,13 @@ export default function ExportPDFPage() {
                         type="button"
                         data-toc-id={item.id}
                         onClick={() => handleTocItemClick(item.id)}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          setHeadingPgbrModalState({
+                            headingIndex: i,
+                            headingText: item.text || '',
+                          });
+                        }}
                         className={`group relative w-full text-left truncate rounded px-1.5 py-1 text-sm transition ${
                           visibleHeadingIds.includes(item.id)
                             ? 'font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-odp-focusBg'
