@@ -180,6 +180,10 @@ const printFontStyles = `
   #export-pdf-preview .md-editor-preview .md-editor-code pre code {
     font-family: var(--print-font-code, inherit);
   }
+  #export-pdf-preview .md-editor-preview :not(pre) > code {
+    background-color: rgba(135, 131, 120, 0.15);
+    color: #eb5757;
+  }
   #export-pdf-preview .md-editor-preview figure {
     display: flex;
     flex-direction: column;
