@@ -43,6 +43,7 @@ export default function EditorPane({
   previewOnly = false,
   isMobileLayout = false,
   sidebarOpen = true,
+  sidebarCollapsed = false,
   onOpenSidebar,
   isRecording = false,
   audioLevel = 0,
@@ -151,6 +152,8 @@ export default function EditorPane({
 
   const showMobileSidebarOpen =
     isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function';
+  const desktopCollapsedTopBarPaddingClass =
+    !isMobileLayout && sidebarCollapsed ? 'md:pl-14' : '';
 
   if (!currentFile) {
     return (
@@ -214,7 +217,7 @@ export default function EditorPane({
   return (
     <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden">
       <div ref={editorTopChromeRef} className="shrink-0 flex flex-col">
-      <div className="relative z-10100 flex min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 dark:border-odp-bgSofter dark:bg-odp-surface sm:px-6 pointer-events-auto">
+      <div className={`relative z-10100 flex min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 dark:border-odp-bgSofter dark:bg-odp-surface sm:px-6 pointer-events-auto transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2 font-medium text-gray-700 dark:text-odp-fgStrong sm:gap-3">
           {showMobileSidebarOpen && (
             <button

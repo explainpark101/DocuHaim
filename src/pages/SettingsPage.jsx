@@ -53,6 +53,7 @@ export default function SettingsPage({
   onSaveWebdavConfig,
   isMobileLayout = false,
   sidebarOpen = true,
+  sidebarCollapsed = false,
   onOpenSidebar,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
@@ -93,9 +94,12 @@ export default function SettingsPage({
 
   const showWebAuthnSection = webauthnAvailable && (masterPassword || webauthnStorageOnly);
 
+  const desktopCollapsedTopBarPaddingClass =
+    !isMobileLayout && sidebarCollapsed ? 'md:pl-14' : '';
+
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-odp-bgSofter min-w-0 max-h-full">
-      <div className="px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0">
+      <div className={`px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0 transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function' && (
             <button

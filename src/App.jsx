@@ -3593,7 +3593,7 @@ function MainApp() {
               aria-label="사이드바 펼치기"
               title="사이드바 펼치기"
               onClick={() => setSidebarCollapsed(false)}
-              className={`hidden md:flex absolute left-0 top-1/2 z-55 -translate-y-1/2 flex-col items-center justify-center w-9 min-h-28 rounded-r-lg border border-l-0 border-gray-200 dark:border-odp-borderSoft bg-white/70 dark:bg-odp-bgSoft/70 text-gray-600 dark:text-odp-fg shadow-md hover:bg-gray-50 dark:hover:bg-odp-focusBg transition-all duration-300 ease-in-out ${
+              className={`hidden md:inline-flex absolute left-3 top-3 z-55 p-1.5 shrink-0 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition-all duration-300 ease-in-out ${
                 sidebarCollapsed
                   ? 'opacity-100 translate-x-0 pointer-events-auto'
                   : 'opacity-0 -translate-x-2 pointer-events-none'
@@ -3601,7 +3601,7 @@ function MainApp() {
               tabIndex={sidebarCollapsed ? 0 : -1}
               aria-hidden={!sidebarCollapsed}
             >
-              <ChevronsRight size={20} aria-hidden />
+              <ChevronsRight size={18} aria-hidden />
             </button>
           )}
 
@@ -3651,6 +3651,7 @@ function MainApp() {
                   onEditorTypeChange={handleEditorTypeChange}
                   isMobileLayout={isMobile}
                   sidebarOpen={sidebarOpen}
+                  sidebarCollapsed={sidebarCollapsed}
                   onOpenSidebar={() => setSidebarOpen(true)}
                 />
               }
@@ -3680,6 +3681,7 @@ function MainApp() {
                   previewOnly={false}
                   isMobileLayout={isMobile}
                   sidebarOpen={sidebarOpen}
+                  sidebarCollapsed={sidebarCollapsed}
                   onOpenSidebar={() => setSidebarOpen(true)}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
@@ -3737,6 +3739,7 @@ function MainApp() {
                   previewOnly={false}
                   isMobileLayout={isMobile}
                   sidebarOpen={sidebarOpen}
+                  sidebarCollapsed={sidebarCollapsed}
                   onOpenSidebar={() => setSidebarOpen(true)}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
