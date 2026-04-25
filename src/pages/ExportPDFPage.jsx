@@ -182,7 +182,7 @@ const printFontStyles = `
   }
   #export-pdf-preview .md-editor-preview :not(pre) > code {
     background-color: #e5e7eb;
-    color: #111827;
+    color: #eb5757;
     border: 1px solid #9ca3af;
   }
   #export-pdf-preview .md-editor-preview figure {
@@ -809,7 +809,7 @@ export default function ExportPDFPage() {
       <div className="relative flex-1 min-h-0">
         <div
           ref={previewContainerRef}
-          className={`export-pdf-preview-scroll flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full ${tocVisible ? 'md:pr-56' : ''}`}
+          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full ${tocVisible ? 'md:pr-56' : ''}`}
         >
           <MdPreview
             id={EDITOR_ID}
