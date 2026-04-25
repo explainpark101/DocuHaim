@@ -86,6 +86,7 @@ export default function App() {
 }
 
 function MainApp() {
+  const LAST_FILE_KEY = 's3haim_lastFile';
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
   const auth = useAuth();
   const {
@@ -314,6 +315,36 @@ function MainApp() {
   const hasRestoredFromPrintRef = useRef(false);
   const saveFileRef = useRef(null);
   const prevEditorContentRef = useRef('');
+
+  const saveLastOpenedFile = useCallback((value) => {
+    try {
+      const serialized = JSON.stringify(value);
+      window.sessionStorage.setItem(LAST_FILE_KEY, serialized);
+      // Backward compatibility for older tabs/windows.
+      window.localStorage.setItem(LAST_FILE_KEY, serialized);
+    } catch (_) {}
+  }, []);
+
+  const loadLastOpenedFile = useCallback(() => {
+    try {
+      const sessionValue = window.sessionStorage.getItem(LAST_FILE_KEY);
+      if (sessionValue) return JSON.parse(sessionValue);
+    } catch (_) {}
+    try {
+      const localValue = window.localStorage.getItem(LAST_FILE_KEY);
+      if (localValue) return JSON.parse(localValue);
+    } catch (_) {}
+    return null;
+  }, []);
+
+  const clearLastOpenedFile = useCallback(() => {
+    try {
+      window.sessionStorage.removeItem(LAST_FILE_KEY);
+    } catch (_) {}
+    try {
+      window.localStorage.removeItem(LAST_FILE_KEY);
+    } catch (_) {}
+  }, []);
 
   const handleEditorTypeChange = useCallback((next) => {
     saveEditorType(next);
@@ -722,9 +753,7 @@ function MainApp() {
 
   const closeCurrentFile = () => {
     setCurrentFile(null);
-    try {
-      localStorage.removeItem('s3haim_lastFile');
-    } catch (_) {}
+    clearLastOpenedFile();
     navigate('/');
   };
 
@@ -1608,10 +1637,8 @@ function MainApp() {
   useEffect(() => {
     if (!isUnlocked || !currentFile) return;
     if (currentFile.type !== 's3' && currentFile.type !== 'local') return;
-    try {
-      localStorage.setItem('s3haim_lastFile', JSON.stringify({ type: currentFile.type, path: currentFile.id }));
-    } catch (_) {}
-  }, [isUnlocked, currentFile]);
+    saveLastOpenedFile({ type: currentFile.type, path: currentFile.id });
+  }, [isUnlocked, currentFile, saveLastOpenedFile]);
 
   // Open file from URL ?open=storageType:path (e.g. from "새 창에서 열기")
   useEffect(() => {
@@ -1639,12 +1666,9 @@ function MainApp() {
     if (!isUnlocked || hasRestoredLastFileRef.current) return;
     if (hasProcessedOpenFromUrlRef.current) return;
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('open')) return;
-    let saved;
-    try {
-      saved = localStorage.getItem('s3haim_lastFile');
-      if (!saved) return;
-      saved = JSON.parse(saved);
-    } catch (_) {
+    const saved = loadLastOpenedFile();
+    if (!saved) return;
+    if (typeof saved !== 'object' || saved == null) {
       hasRestoredLastFileRef.current = true;
       return;
     }
@@ -1661,7 +1685,7 @@ function MainApp() {
     const node = findFileNodeByPath(tree, path);
     if (node) selectFile(type, node);
     hasRestoredLastFileRef.current = true;
-  }, [isUnlocked, s3Tree, localTree, selectFile]);
+  }, [isUnlocked, s3Tree, localTree, selectFile, loadLastOpenedFile]);
 
   const moveS3FileToFolder = async (file, destFolderPath) => {
     const client = getS3Client();
