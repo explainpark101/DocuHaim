@@ -6,7 +6,7 @@ import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import { lineNumbers, keymap } from '@codemirror/view';
+import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { addCursorAbove, addCursorBelow } from '@codemirror/commands';
 import { highlightSelectionMatches, selectNextOccurrence } from '@codemirror/search';
@@ -97,6 +97,77 @@ function wrapSelectionWithInlineCode(view) {
   return true;
 }
 
+function toggleBoldForSelection(view) {
+  if (!view?.state) return false;
+
+  const selection = view.state.selection?.main;
+  if (!selection) return false;
+
+  const boldMark = '**';
+  const boldMarkLength = boldMark.length;
+  const { from, to, empty } = selection;
+  const selectedText = view.state.doc.sliceString(from, to);
+
+  if (empty) {
+    const inserted = `${boldMark}${boldMark}`;
+    view.dispatch({
+      changes: { from, to, insert: inserted },
+      selection: { anchor: from + boldMarkLength },
+    });
+    return true;
+  }
+
+  // 선택 영역 자체가 **text** 형태면 언래핑
+  if (
+    selectedText.length >= boldMarkLength * 2 &&
+    selectedText.startsWith(boldMark) &&
+    selectedText.endsWith(boldMark)
+  ) {
+    const unwrapped = selectedText.slice(boldMarkLength, -boldMarkLength);
+    view.dispatch({
+      changes: { from, to, insert: unwrapped },
+      selection: {
+        anchor: from,
+        head: from + unwrapped.length,
+      },
+    });
+    return true;
+  }
+
+  // 선택 영역 바깥이 ** | ** 로 감싸져 있으면 언래핑
+  const doc = view.state.doc;
+  const leftMarkFrom = Math.max(0, from - boldMarkLength);
+  const rightMarkTo = Math.min(doc.length, to + boldMarkLength);
+  const leftMark = doc.sliceString(leftMarkFrom, from);
+  const rightMark = doc.sliceString(to, rightMarkTo);
+
+  if (leftMark === boldMark && rightMark === boldMark) {
+    view.dispatch({
+      changes: {
+        from: leftMarkFrom,
+        to: rightMarkTo,
+        insert: selectedText,
+      },
+      selection: {
+        anchor: leftMarkFrom,
+        head: leftMarkFrom + selectedText.length,
+      },
+    });
+    return true;
+  }
+
+  // 그 외에는 볼드 래핑
+  const wrapped = `${boldMark}${selectedText}${boldMark}`;
+  view.dispatch({
+    changes: { from, to, insert: wrapped },
+    selection: {
+      anchor: from + boldMarkLength,
+      head: from + boldMarkLength + selectedText.length,
+    },
+  });
+  return true;
+}
+
 config({
   editorConfig: {
     languageUserDefined: {
@@ -109,7 +180,14 @@ config({
     const baseKeyBindings = (keyBindings || []).filter((binding) => {
       const key = String(binding?.key || '').toLowerCase();
       const mac = String(binding?.mac || '').toLowerCase();
-      return key !== 'ctrl-d' && key !== 'mod-d' && mac !== 'cmd-d';
+      return (
+        key !== 'ctrl-d' &&
+        key !== 'mod-d' &&
+        mac !== 'cmd-d' &&
+        key !== 'ctrl-b' &&
+        key !== 'mod-b' &&
+        mac !== 'cmd-b'
+      );
     });
 
     const multiCursorKeyBindings = [
@@ -121,6 +199,12 @@ config({
           selectNextOccurrence(view);
           return true;
         },
+      },
+      {
+        key: 'Ctrl-b',
+        mac: 'Cmd-b',
+        preventDefault: true,
+        run: toggleBoldForSelection,
       },
       { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
       { key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
@@ -135,6 +219,13 @@ config({
       {
         type: 'allowMultipleSelections',
         extension: EditorState.allowMultipleSelections.of(true),
+      },
+      {
+        type: 'clickAddsSelectionRange',
+        extension: EditorView.clickAddsSelectionRange.of((event) => {
+          const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+          return event.altKey || (isMac ? event.metaKey : event.ctrlKey);
+        }),
       },
       {
         type: 'multiCursorPreview',
