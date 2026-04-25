@@ -181,8 +181,9 @@ const printFontStyles = `
     font-family: var(--print-font-code, inherit);
   }
   #export-pdf-preview .md-editor-preview :not(pre) > code {
-    background-color: rgba(135, 131, 120, 0.15);
-    color: #eb5757;
+    background-color: #e5e7eb;
+    color: #111827;
+    border: 1px solid #9ca3af;
   }
   #export-pdf-preview .md-editor-preview figure {
     display: flex;
