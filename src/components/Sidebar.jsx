@@ -191,6 +191,8 @@ function getSelectedFolderForMove(selectedIds, s3Tree, localTree) {
 }
 
 export default function Sidebar({
+  appName = 'S3 Haim',
+  storageMode = 's3',
   s3Tree,
   s3Bucket,
   localTree,
@@ -464,6 +466,10 @@ export default function Sidebar({
     [currentFile, lastFocusedLocalFolder, lastFocusedS3FolderPath, localRootHandle],
   );
 
+  const isS3Mode = storageMode === 's3';
+  const isLocalMode = storageMode === 'local';
+  const isWebdavMode = storageMode === 'webdav';
+
   return (
     <div className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col">
       {contextMenu && contextMenuNode && (
@@ -512,7 +518,7 @@ export default function Sidebar({
                 <ChevronsLeft size={18} />
               </button>
             )}
-            <h1 className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate">S3 Haim</h1>
+            <h1 className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate">{appName}</h1>
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -535,7 +541,7 @@ export default function Sidebar({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="파일명 검색 (S3/Local)"
+                placeholder={isWebdavMode ? '파일명 검색 (WebDAV)' : '파일명 검색'}
             className="w-full bg-transparent border-none outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
@@ -576,6 +582,7 @@ export default function Sidebar({
         role="presentation"
       >
         {/* S3 Section */}
+        {isS3Mode && (
         <div>
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
             <span className="flex items-center gap-1">
@@ -723,8 +730,10 @@ export default function Sidebar({
             <p className="text-xs text-gray-400 px-4 py-2">설정에서 연동하세요.</p>
           )}
         </div>
+        )}
 
         {/* Local Section */}
+        {isLocalMode && (
         <div>
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
             <span className="flex items-center gap-1">
@@ -858,6 +867,15 @@ export default function Sidebar({
             ))}
           </div>
         </div>
+        )}
+
+        {isWebdavMode && (
+          <div className="px-4 py-3">
+            <p className="text-xs text-gray-500 dark:text-odp-muted">
+              WebDAV 모드가 선택되었습니다. 설정 페이지에서 WebDAV 연결 정보를 저장해 주세요.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -16,6 +16,11 @@ import {
   loadEditorType,
   saveEditorType,
 } from '@/utils/editorTypeSettings';
+import {
+  STORAGE_MODE_LOCAL,
+  STORAGE_MODE_S3,
+  STORAGE_MODE_WEBDAV,
+} from '@/utils/storageSettings';
 
 export default function SettingsPage({
   s3Creds,
@@ -42,11 +47,21 @@ export default function SettingsPage({
   snippetConfigLoaded = false,
   editorType: editorTypeProp,
   onEditorTypeChange,
+  storageMode = STORAGE_MODE_S3,
+  onStorageModeChange,
+  webdavConfig,
+  onSaveWebdavConfig,
   isMobileLayout = false,
   sidebarOpen = true,
   onOpenSidebar,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
+  const [webdavForm, setWebdavForm] = useState(webdavConfig ?? {
+    endpoint: '',
+    username: '',
+    password: '',
+    basePath: '',
+  });
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported);
   const [wikiImageCacheMode, setWikiImageCacheMode] = useState(() => loadWikiImageCacheMode());
@@ -55,6 +70,14 @@ export default function SettingsPage({
   useEffect(() => {
     setFormCreds(s3Creds);
   }, [s3Creds]);
+  useEffect(() => {
+    setWebdavForm(webdavConfig ?? {
+      endpoint: '',
+      username: '',
+      password: '',
+      basePath: '',
+    });
+  }, [webdavConfig]);
 
   useEffect(() => {
     if (editorTypeProp !== undefined) setEditorType(editorTypeProp);
@@ -98,6 +121,45 @@ export default function SettingsPage({
       </div>
 
       <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">기본 저장소 선택 (3중 택1)</h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+            앱에서 기본으로 동작할 저장소를 선택합니다. 선택은 저장되어 다음 접속 시 자동 복원됩니다.
+          </p>
+          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="storageMode"
+                value={STORAGE_MODE_S3}
+                checked={storageMode === STORAGE_MODE_S3}
+                onChange={() => onStorageModeChange?.(STORAGE_MODE_S3)}
+              />
+              <span className="font-semibold">S3 Haim</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="storageMode"
+                value={STORAGE_MODE_LOCAL}
+                checked={storageMode === STORAGE_MODE_LOCAL}
+                onChange={() => onStorageModeChange?.(STORAGE_MODE_LOCAL)}
+              />
+              <span className="font-semibold">Local Haim</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="storageMode"
+                value={STORAGE_MODE_WEBDAV}
+                checked={storageMode === STORAGE_MODE_WEBDAV}
+                onChange={() => onStorageModeChange?.(STORAGE_MODE_WEBDAV)}
+              />
+              <span className="font-semibold">WebDAV Haim</span>
+            </label>
+          </div>
+        </div>
+
         {/* S3 Form */}
         <form
           onSubmit={(e) => {
@@ -183,6 +245,66 @@ export default function SettingsPage({
               className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
             >
               저장
+            </button>
+          </div>
+        </form>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSaveWebdavConfig?.(webdavForm);
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <h3 className="text-sm font-bold text-gray-700 border-b pb-2 mb-3">WebDAV 연결 정보</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Endpoint URL</label>
+                <input
+                  type="text"
+                  placeholder="https://webdav.example.com"
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  value={webdavForm.endpoint}
+                  onChange={(e) => setWebdavForm((p) => ({ ...p, endpoint: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Username</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  value={webdavForm.username}
+                  onChange={(e) => setWebdavForm((p) => ({ ...p, username: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Password</label>
+                <input
+                  type="password"
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  value={webdavForm.password}
+                  onChange={(e) => setWebdavForm((p) => ({ ...p, password: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Base Path (선택)</label>
+                <input
+                  type="text"
+                  placeholder="/remote.php/dav/files/username/"
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  value={webdavForm.basePath}
+                  onChange={(e) => setWebdavForm((p) => ({ ...p, basePath: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            >
+              WebDAV 저장
             </button>
           </div>
         </form>

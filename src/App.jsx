@@ -55,6 +55,14 @@ import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
 import { getRecordingQueueStats } from '@/utils/recordingDb';
 import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
+import {
+  DEFAULT_STORAGE_MODE,
+  getAppNameByStorageMode,
+  loadStorageMode,
+  loadWebdavConfig,
+  saveStorageMode,
+  saveWebdavConfig,
+} from '@/utils/storageSettings';
 import { loadHideRecordingCompanions, saveHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
 import {
   loadTreeStickyFolderPathEnabled,
@@ -131,6 +139,8 @@ function MainApp() {
   const [lastAutoSyncAt, setLastAutoSyncAt] = useState(null);
   const [showHiddenFolders, setShowHiddenFolders] = useState(false);
   const [editorType, setEditorType] = useState(() => loadEditorType());
+  const [storageMode, setStorageMode] = useState(() => loadStorageMode());
+  const [webdavConfig, setWebdavConfig] = useState(() => loadWebdavConfig());
 
   const fileInputRef = useRef(null);
   const uploadFileInputRef = useRef(null);
@@ -295,6 +305,7 @@ function MainApp() {
   const [swRegistration, setSwRegistration] = useState(null);
   const [isApplyingPwaUpdate, setIsApplyingPwaUpdate] = useState(false);
   const [hidePwaUpdateToast, setHidePwaUpdateToast] = useState(false);
+  const appName = getAppNameByStorageMode(storageMode || DEFAULT_STORAGE_MODE);
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
@@ -363,11 +374,18 @@ function MainApp() {
       const fileName = currentFile.name
         || (typeof currentFile.id === 'string' && currentFile.id.split('/').filter(Boolean).pop())
         || 'Untitled';
-      document.title = `s3Haim - ${fileName}`;
+      document.title = `${appName} - ${fileName}`;
     } else {
-      document.title = 's3Haim';
+      document.title = appName;
     }
-  }, [currentFile]);
+  }, [appName, currentFile]);
+
+  useEffect(() => {
+    saveStorageMode(storageMode);
+    setSelectedIds(new Set());
+    setCurrentFile(null);
+    setEditorContent('');
+  }, [storageMode]);
 
   useEffect(() => {
     setEditedFileName(currentFile?.name ?? '');
@@ -3519,6 +3537,8 @@ function MainApp() {
             )}
             <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
               <Sidebar
+                appName={appName}
+                storageMode={storageMode}
                 s3Tree={s3Tree}
                 s3Bucket={s3Creds.bucket}
                 localTree={localTree}
@@ -3595,6 +3615,13 @@ function MainApp() {
                   s3Creds={s3Creds}
                   masterPassword={masterPassword}
                   onSaveS3Creds={handleSaveS3Creds}
+                  storageMode={storageMode}
+                  onStorageModeChange={setStorageMode}
+                  webdavConfig={webdavConfig}
+                  onSaveWebdavConfig={(next) => {
+                    setWebdavConfig(next);
+                    saveWebdavConfig(next);
+                  }}
                   onExportCreds={handleExportCreds}
                   onImportClick={() => fileInputRef.current?.click()}
                   showHiddenFolders={showHiddenFolders}
