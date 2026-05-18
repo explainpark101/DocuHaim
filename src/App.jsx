@@ -85,7 +85,7 @@ export default function App() {
   const location = useLocation();
   if (location.pathname === '/export-pdf') {
     return (
-      <div className="export-pdf-layout min-h-screen max-w-screen bg-white dark:bg-odp-bgSofter print:bg-white">
+      <div className="export-pdf-layout min-h-screen print:min-h-0 max-w-screen bg-white dark:bg-odp-bgSofter print:bg-white print:dark:bg-white">
         <ExportPDFPage />
       </div>
     );

@@ -180,10 +180,48 @@ const printFontStyles = `
   #export-pdf-preview .md-editor-preview .md-editor-code pre code {
     font-family: var(--print-font-code, inherit);
   }
+  #export-pdf-preview .md-editor-preview .md-editor-code {
+    --md-theme-code-block-color: #0f172a;
+    --md-theme-code-block-bg-color: #f1f5f9;
+    --md-theme-code-before-bg-color: #e2e8f0;
+    margin: 1.25em 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    background-color: #f1f5f9;
+  }
+  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head {
+    background-color: #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
+    color: #475569;
+  }
+  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-lang,
+  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-flag span,
+  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-action {
+    color: #475569;
+  }
+  #export-pdf-preview .md-editor-preview .md-editor-code pre {
+    margin: 0;
+    background-color: #f8fafc;
+  }
+  #export-pdf-preview .md-editor-preview .md-editor-code pre code {
+    background-color: #f8fafc;
+    color: #0f172a;
+    border: none;
+    border-radius: 0;
+    padding: 1em 1.2em;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   #export-pdf-preview .md-editor-preview :not(pre) > code {
-    background-color: #e5e7eb;
+    background-color: rgba(135, 131, 120, 0.15);
     color: #eb5757;
-    border: 1px solid #9ca3af;
+    border: none;
+    border-radius: 4px;
+    padding: 0.2em 0.4em;
+    font-size: 0.92em;
   }
   #export-pdf-preview .md-editor-preview figure {
     display: flex;
@@ -758,7 +796,7 @@ export default function ExportPDFPage() {
 
   return (
     <div
-      className="export-pdf-page flex flex-col min-h-full bg-white dark:bg-odp-bgSofter print:bg-white min-w-0"
+      className="export-pdf-page flex flex-col min-h-full print:min-h-0 bg-white dark:bg-odp-bgSofter print:bg-white min-w-0"
       style={fontStyleVars}
     >
       <style>{printFontStyles}</style>
@@ -809,7 +847,7 @@ export default function ExportPDFPage() {
       <div className="relative flex-1 min-h-0">
         <div
           ref={previewContainerRef}
-          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full ${tocVisible ? 'md:pr-56' : ''}`}
+          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full print:h-auto print:max-h-none print:overflow-visible ${tocVisible ? 'md:pr-56' : ''}`}
         >
           <MdPreview
             id={EDITOR_ID}

@@ -859,6 +859,70 @@ h5 + :is(h6, ul, ol) {
   margin: .25em 0;
 }
 
+/* Export PDF page: do not stretch preview/code to viewport height (fixes empty tall code blocks) */
+#export-pdf-preview.md-editor,
+#export-pdf-preview .md-editor-content,
+#export-pdf-preview .md-editor-preview-wrapper {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+.export-pdf-preview-scroll #export-pdf-preview .md-editor-preview-wrapper {
+  overflow: visible !important;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code {
+  line-height: 1.6;
+  margin: 1.25em 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  background-color: #f1f5f9;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head {
+  background-color: #e2e8f0;
+  border-bottom: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code pre {
+  margin: 0;
+  background-color: #f8fafc;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code pre code {
+  background-color: #f8fafc;
+  color: #0f172a;
+  padding: 1em 1.2em;
+  border-radius: 0;
+}
+
+#export-pdf-preview .md-editor-preview :not(pre) > code {
+  background-color: rgba(135, 131, 120, 0.15);
+  color: #eb5757;
+  border: none;
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+  font-size: 0.92em;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code pre,
+#export-pdf-preview .md-editor-preview .md-editor-code pre code,
+#export-pdf-preview .md-editor-preview .md-editor-code pre code .md-editor-code-block {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code pre code .md-editor-code-block {
+  display: block !important;
+  width: auto !important;
+}
+
 .md-editor-preview a {
   color: var(--md-theme-link-color);
   text-decoration: none;
@@ -3633,6 +3697,97 @@ svg.md-editor-icon {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
+  }
+
+  .export-pdf-layout,
+  .export-pdf-page,
+  .export-pdf-preview-scroll {
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #export-pdf-preview .md-editor,
+  #export-pdf-preview .md-editor-content {
+    height: auto !important;
+  }
+
+  .md-editor-preview .md-editor-code .md-editor-code-head {
+    position: static !important;
+  }
+
+  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head,
+  .export-pdf-modal .md-editor-preview .md-editor-code .md-editor-code-head {
+    display: none !important;
+  }
+
+  .md-editor-preview .md-editor-code,
+  .md-editor-preview .md-editor-code pre,
+  .md-editor-preview .md-editor-code pre code,
+  .md-editor-preview .md-editor-code pre code .md-editor-code-block {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .md-editor-preview .md-editor-code pre code .md-editor-code-block {
+    display: block !important;
+    width: auto !important;
+  }
+
+  #export-pdf-preview .md-editor-preview .md-editor-code,
+  .export-pdf-modal .md-editor-preview .md-editor-code {
+    --md-theme-code-block-color: #0f172a;
+    --md-theme-code-block-bg-color: #f1f5f9;
+    --md-theme-code-before-bg-color: #e2e8f0;
+    margin: 1.25em 0 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+    background-color: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head,
+  .export-pdf-modal .md-editor-preview .md-editor-code .md-editor-code-head {
+    background-color: #e2e8f0 !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    color: #475569 !important;
+  }
+
+  #export-pdf-preview .md-editor-preview .md-editor-code pre,
+  .export-pdf-modal .md-editor-preview .md-editor-code pre {
+    margin: 0 !important;
+    background-color: #f8fafc !important;
+  }
+
+  #export-pdf-preview .md-editor-preview .md-editor-code pre code,
+  .export-pdf-modal .md-editor-preview .md-editor-code pre code {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 1em 1.2em !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #export-pdf-preview .md-editor-preview :not(pre) > code,
+  .export-pdf-modal .md-editor-preview :not(pre) > code {
+    background-color: rgba(135, 131, 120, 0.15) !important;
+    color: #eb5757 !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 0.2em 0.4em !important;
+    font-size: 0.92em !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* wiki ![[path]] + caption figure: keep image and caption on the same page when possible */
