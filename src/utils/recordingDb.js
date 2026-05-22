@@ -13,11 +13,37 @@ db.version(3).stores({
     '++id, recordingId, chunkIndex',
 });
 
+// v4: 오디오를 별도 스토어에 ArrayBuffer로 저장 (Safari stale Blob 업데이트 오류 방지)
+db.version(4).stores({
+  recordings:
+    '++id, noteKey, createdAt, status, nextAttemptAt',
+  recordingAudio: 'recordingId',
+  fragments:
+    '++id, recordingId, chunkIndex',
+}).upgrade(async (tx) => {
+  const rows = await tx.table('recordings').toArray();
+  for (const row of rows) {
+    if (row.id == null || !row.audioBlob) continue;
+    try {
+      const audioBuffer = await row.audioBlob.arrayBuffer();
+      await tx.table('recordingAudio').put({
+        recordingId: row.id,
+        audioBuffer,
+        audioMimeType: row.audioBlob.type || 'audio/webm',
+      });
+      const { audioBlob: _removed, ...meta } = row;
+      await tx.table('recordings').put(meta);
+    } catch (_) {
+      // stale blob — 업로드 실패 시 사용자가 재녹음 필요
+    }
+  }
+});
+
 /**
  * @typedef {Object} RecordingRecord
  * @property {number} [id]
  * @property {string} noteKey - S3 경로 (예: notes/회의록.md)
- * @property {Blob} audioBlob - 원본 webm/opus Blob
+ * @property {Blob} [audioBlob] - 런타임 조회 시 recordingAudio에서 복원
  * @property {string} markdown - 녹음 시점 마크다운
  * @property {Array<{time: number, line: number, text: string}>} syncData - 필기 트래킹
  * @property {number} createdAt - timestamp
@@ -40,11 +66,32 @@ db.version(3).stores({
  * @param {Array<{time: number, line: number, text: string}>} params.syncData
  * @returns {Promise<number>} id
  */
+async function persistRecordingAudio(recordingId, audioBlob) {
+  const audioBuffer = await audioBlob.arrayBuffer();
+  await db.recordingAudio.put({
+    recordingId,
+    audioBuffer,
+    audioMimeType: audioBlob.type || 'audio/webm',
+  });
+}
+
+async function attachAudioBlob(record) {
+  if (!record) return null;
+  if (record.audioBlob instanceof Blob) return record;
+  const audio = await db.recordingAudio.get(record.id);
+  if (!audio?.audioBuffer) return record;
+  return {
+    ...record,
+    audioBlob: new Blob([audio.audioBuffer], {
+      type: audio.audioMimeType || 'audio/webm',
+    }),
+  };
+}
+
 export async function saveRecording({ noteKey, audioBlob, markdown, syncData }) {
   const now = Date.now();
-  return db.recordings.add({
+  const id = await db.recordings.add({
     noteKey,
-    audioBlob,
     markdown: markdown ?? '',
     syncData: syncData ?? [],
     createdAt: now,
@@ -56,6 +103,8 @@ export async function saveRecording({ noteKey, audioBlob, markdown, syncData }) 
     audioKey: null,
     syncKey: null,
   });
+  await persistRecordingAudio(id, audioBlob);
+  return id;
 }
 
 /**
@@ -100,7 +149,8 @@ export async function listUploadableRecordings(params = {}) {
  */
 export async function getRecordingById(id) {
   const r = await db.recordings.get(id);
-  return r ?? null;
+  if (!r) return null;
+  return attachAudioBlob(r);
 }
 
 /**
@@ -109,6 +159,21 @@ export async function getRecordingById(id) {
  * @param {Partial<RecordingRecord>} updates
  */
 export async function updateRecordingStatus(id, updates) {
+  const row = await db.recordings.get(id);
+  if (!row) return 0;
+  if (row.audioBlob instanceof Blob) {
+    const existingAudio = await db.recordingAudio.get(id);
+    if (!existingAudio) {
+      try {
+        await persistRecordingAudio(id, row.audioBlob);
+      } catch (_) {
+        // stale blob — 메타만 갱신 시도
+      }
+    }
+    const { audioBlob: _removed, ...meta } = row;
+    await db.recordings.put({ ...meta, ...updates });
+    return 1;
+  }
   return db.recordings.update(id, updates);
 }
 
@@ -117,6 +182,10 @@ export async function updateRecordingStatus(id, updates) {
  * @param {string} noteKey
  */
 export async function deleteRecordingsByNoteKey(noteKey) {
+  const rows = await db.recordings.where('noteKey').equals(noteKey).toArray();
+  await Promise.all(
+    rows.map((r) => (r.id != null ? db.recordingAudio.delete(r.id) : Promise.resolve()))
+  );
   return db.recordings.where('noteKey').equals(noteKey).delete();
 }
 
@@ -125,6 +194,7 @@ export async function deleteRecordingsByNoteKey(noteKey) {
  * @param {number} id
  */
 export async function deleteRecordingById(id) {
+  await db.recordingAudio.delete(id);
   return db.recordings.delete(id);
 }
 
@@ -158,10 +228,12 @@ export async function getRecordingQueueStats() {
  * @returns {Promise<number>}
  */
 export async function saveRecordingFragment(recordingId, chunkIndex, chunk) {
+  const data = await chunk.arrayBuffer();
   return db.fragments.add({
     recordingId,
     chunkIndex,
-    data: chunk,
+    data,
+    mimeType: chunk.type || 'audio/webm',
     createdAt: Date.now(),
   });
 }
