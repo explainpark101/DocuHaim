@@ -1,31 +1,97 @@
+function folderPathFromParts(parts, index) {
+  return `${parts.slice(0, index + 1).join('/')}/`;
+}
+
+function upgradeNodeToFolder(node, folderPath) {
+  if (node.type === 'folder') {
+    if (!node.children) node.children = [];
+    return node;
+  }
+  node.type = 'folder';
+  node.path = folderPath;
+  node.children = [];
+  delete node.lastModified;
+  delete node.size;
+  return node;
+}
+
+function ensureFolderPath(root, key) {
+  const parts = key.replace(/\/$/, '').split('/').filter(Boolean);
+  if (!parts.length) return;
+
+  let current = root;
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const folderPath = folderPathFromParts(parts, i);
+    if (!current.children) current.children = [];
+
+    let child = current.children.find((c) => c.name === part);
+    if (!child) {
+      child = {
+        name: part,
+        type: 'folder',
+        path: folderPath,
+        children: [],
+        key,
+      };
+      current.children.push(child);
+    } else {
+      upgradeNodeToFolder(child, folderPath);
+    }
+    current = child;
+  }
+}
+
 export const buildS3Tree = (contents) => {
   const root = { name: 'root', type: 'folder', path: '', children: [] };
 
   contents.forEach((item) => {
+    if (!item?.Key) return;
     const parts = item.Key.split('/').filter(Boolean);
+    if (!parts.length) return;
+
     let current = root;
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       const isFolder = i < parts.length - 1 || item.Key.endsWith('/');
+      const nodePath = parts.slice(0, i + 1).join('/') + (isFolder ? '/' : '');
+
+      if (!current.children) current.children = [];
 
       let child = current.children.find((c) => c.name === part);
       if (!child) {
         child = {
           name: part,
           type: isFolder ? 'folder' : 'file',
-          path: parts.slice(0, i + 1).join('/') + (isFolder ? '/' : ''),
+          path: nodePath,
           children: isFolder ? [] : undefined,
           key: item.Key,
-          ...(isFolder ? {} : {
-            lastModified: item.LastModified,
-            size: item.Size,
-          }),
+          ...(isFolder
+            ? {}
+            : {
+                lastModified: item.LastModified,
+                size: item.Size,
+              }),
         };
         current.children.push(child);
+      } else if (isFolder && child.type === 'file') {
+        upgradeNodeToFolder(child, nodePath);
+      } else if (!isFolder && child.type === 'file') {
+        child.lastModified = item.LastModified;
+        child.size = item.Size;
+        child.key = item.Key;
+      } else if (isFolder && child.type === 'folder' && !child.children) {
+        child.children = [];
       }
 
       current = child;
+    }
+  });
+
+  contents.forEach((item) => {
+    if (item?.Key?.endsWith('/')) {
+      ensureFolderPath(root, item.Key);
     }
   });
 

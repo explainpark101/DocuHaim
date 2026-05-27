@@ -19,6 +19,8 @@ import { buildS3Tree, getFileLastModifiedMap, findFileNodeByPath, findNodeByPath
 import {
   createS3Client,
   listObjectsV2,
+  collectS3DirectoryMarkersFromUpload,
+  putS3FolderMarkers,
   getObjectBody,
   headObject,
   putObject,
@@ -1718,7 +1720,7 @@ function MainApp() {
     await copyObject(client, bucket, oldKey, newKey);
     await deleteObject(client, bucket, oldKey);
 
-    loadS3Files();
+    await loadS3Files();
 
     return { ...file, id: newKey };
   };
@@ -1729,8 +1731,9 @@ function MainApp() {
     if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
 
     const fileName = file.name;
-    const oldPath = file.id;
+    const oldPath = file.id ?? file.path;
     const newPath = `${destDirPath || ''}${fileName}`;
+    if (!oldPath) throw new Error('원본 파일 경로를 찾을 수 없습니다.');
     if (newPath === oldPath) return file;
 
     const srcFile = await file.handle.getFile();
@@ -1752,21 +1755,36 @@ function MainApp() {
     };
   };
 
-  const moveS3FolderToFolder = async (folderNode, destPath) => {
+  const moveS3FolderToFolder = async (folderNode, destParentPath, newFolderName) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
     const bucket = s3Creds.bucket;
     const prefix = folderNode.path;
+    if (!prefix) return;
+
+    const folderName = newFolderName ?? folderNode.name;
+    const destPrefix = destParentPath || '';
+    const newFolderPrefix = `${destPrefix}${folderName}/`;
+    if (newFolderPrefix === prefix) return;
+    if (newFolderPrefix.startsWith(prefix) || prefix.startsWith(newFolderPrefix)) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 이동할 수 없습니다.');
+    }
+
     const contents = await listObjectsV2(client, bucket, prefix);
     if (contents.length === 0) return;
-    const destPrefix = destPath || '';
+
+    const keysToDelete = [];
     for (const { Key } of contents) {
       const relative = Key.slice(prefix.length);
-      const newKey = destPrefix + relative;
+      const newKey = newFolderPrefix + relative;
+      if (newKey === Key) continue;
       await copyObject(client, bucket, Key, newKey);
+      keysToDelete.push({ Key });
     }
-    await deleteObjects(client, bucket, contents.map(({ Key }) => ({ Key })));
-    loadS3Files();
+    if (keysToDelete.length > 0) {
+      await deleteObjects(client, bucket, keysToDelete);
+    }
+    await loadS3Files();
   };
 
   const moveLocalFolderToFolder = async (folderNode, destDirHandle, destDirPath, newFolderName) => {
@@ -1774,6 +1792,15 @@ function MainApp() {
     if (!sourceDir) throw new Error('원본 폴더를 찾을 수 없습니다.');
     if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
     const nameToUse = newFolderName != null ? newFolderName : folderNode.name;
+    const destFolderPath = `${destDirPath || ''}${nameToUse}/`;
+    if (destFolderPath === folderNode.path) return;
+    if (
+      folderNode.path &&
+      (destFolderPath.startsWith(folderNode.path) || folderNode.path.startsWith(destFolderPath))
+    ) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 이동할 수 없습니다.');
+    }
+
     const newFolderHandle = await destDirHandle.getDirectoryHandle(nameToUse, { create: true });
     const copyDirRecursive = async (srcHandle, destHandle) => {
       for await (const entry of srcHandle.values()) {
@@ -2688,6 +2715,10 @@ function MainApp() {
       if (storageType === 's3') {
         const client = getS3Client();
         if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        const dirMarkers = collectS3DirectoryMarkersFromUpload(parentPath, files);
+        if (dirMarkers.length) {
+          await putS3FolderMarkers(client, s3Creds.bucket, dirMarkers);
+        }
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const relPath = file.webkitRelativePath || file.name;
@@ -2954,7 +2985,7 @@ function MainApp() {
           const prefix = node.path;
           const parentPath = prefix.slice(0, prefix.length - (node.name?.length ?? 0) - 1);
           const destPrefix = `${parentPath}${trimmed}/`;
-          await moveS3FolderToFolder(node, destPrefix);
+          await moveS3FolderToFolder(node, parentPath, trimmed);
           await loadS3Files();
           if (currentFile && currentFile.type === 's3' && currentFile.id.startsWith(node.path)) {
             const newPath = currentFile.id.replace(prefix, destPrefix);
@@ -3064,13 +3095,25 @@ function MainApp() {
 
       const tree = srcStorageType === 's3' ? s3Tree : localTree;
       const srcNode = findNodeByPath(tree, srcPath);
-      if (!srcNode) return;
+      if (!srcNode) {
+        alert('이동할 항목을 트리에서 찾을 수 없습니다. 목록을 새로고침한 뒤 다시 시도해 주세요.');
+        return;
+      }
+
+      if (nodeType === 'file') {
+        const destFilePath = `${destPath || ''}${srcNode.name}`;
+        if (destFilePath === srcPath) return;
+      } else if (nodeType === 'folder') {
+        const destFolderPrefix = `${destPath || ''}${srcNode.name}/`;
+        if (destFolderPrefix === srcPath) return;
+        if (destFolderPrefix.startsWith(srcPath) || srcPath.startsWith(destFolderPrefix)) return;
+      }
 
       try {
         if (nodeType === 'file') {
           const fileNode = srcStorageType === 's3'
             ? { id: srcPath, name: srcNode.name }
-            : srcNode;
+            : { ...srcNode, id: srcNode.path };
           if (srcStorageType === 's3') {
             await moveS3FileToFolder(fileNode, destPath);
             if (currentFile?.type === 's3' && currentFile.id === srcPath) {

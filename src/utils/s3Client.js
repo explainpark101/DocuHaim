@@ -39,9 +39,54 @@ export function createS3Client(creds) {
  * @returns {Promise<{ Key: string, LastModified?: Date, Size?: number }[]>}
  */
 export async function listObjectsV2(client, bucket, prefix = '') {
-  const command = new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix });
-  const data = await client.send(command);
-  return (data.Contents || []).filter((item) => !!item.Key);
+  const contents = [];
+  let continuationToken;
+
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: bucket,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    });
+    const data = await client.send(command);
+    if (data.Contents?.length) {
+      contents.push(...data.Contents.filter((item) => !!item.Key));
+    }
+    continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return contents;
+}
+
+/**
+ * Collect S3 folder marker keys (`…/`) for all parent directories in uploaded relative paths.
+ * @param {string} parentPath
+ * @param {FileList | File[]} files
+ * @returns {string[]}
+ */
+export function collectS3DirectoryMarkersFromUpload(parentPath, files) {
+  const dirs = new Set();
+  const fileList = Array.from(files);
+  for (const file of fileList) {
+    const relPath = (file.webkitRelativePath || file.name).replace(/\\/g, '/');
+    const parts = relPath.replace(/\/$/, '').split('/').filter(Boolean);
+    for (let j = 1; j < parts.length; j++) {
+      dirs.add(`${parentPath}${parts.slice(0, j).join('/')}/`);
+    }
+  }
+  return [...dirs];
+}
+
+/**
+ * Create zero-byte folder marker objects in S3.
+ * @param {S3Client} client
+ * @param {string} bucket
+ * @param {string[]} keys
+ */
+export async function putS3FolderMarkers(client, bucket, keys) {
+  for (const key of keys) {
+    await putObject(client, { Bucket: bucket, Key: key, Body: '' });
+  }
 }
 
 /**

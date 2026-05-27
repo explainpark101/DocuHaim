@@ -59,7 +59,15 @@ function getParentPathFromFilePath(filePath) {
   return normalized.slice(0, lastSlashIndex + 1);
 }
 
-function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget, onContextMenu }) {
+function RootDropZone({
+  storageType,
+  localRootHandle,
+  onDropOnFolder,
+  dropTarget,
+  onContextMenu,
+  onFocusRoot,
+  isFocused,
+}) {
   const rootNode = {
     path: '',
     type: 'folder',
@@ -67,6 +75,12 @@ function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget
     handle: storageType === 'local' ? localRootHandle : null,
   };
   const isDropTarget = dropTarget?.storageType === storageType && dropTarget?.folderPath === '';
+
+  const handleClick = (e) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    onFocusRoot?.();
+  };
 
   const handleContextMenu = (e) => {
     e.preventDefault();
@@ -122,13 +136,18 @@ function RootDropZone({ storageType, localRootHandle, onDropOnFolder, dropTarget
 
   return (
     <div
+      onClick={handleClick}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onContextMenu={handleContextMenu}
-      className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-default ${
+      className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer ${
         isDropTarget
           ? 'bg-blue-100 dark:bg-blue-900/40 rounded'
           : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-odp-focusBg rounded'
+      } ${
+        isFocused
+          ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
+          : ''
       }`}
       style={{ paddingLeft: '8px' }}
     >
@@ -229,11 +248,10 @@ export default function Sidebar({
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
   const [searchTerm, setSearchTerm] = useState('');
-  const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState('');
-  const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState({
-    path: '',
-    handle: null,
-  });
+  /** null = no explicit folder; '' = bucket/project root selected */
+  const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState(null);
+  /** null = no explicit folder; { path: '', handle } = project root */
+  const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState(null);
   const [expandedPaths, setExpandedPaths] = useState(loadExpandedPaths);
   const [contextMenu, setContextMenu] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
@@ -435,7 +453,7 @@ export default function Sidebar({
   const getCreateTargetForStorage = useCallback(
     (storageType) => {
       if (storageType === 's3') {
-        if (lastFocusedS3FolderPath) {
+        if (lastFocusedS3FolderPath !== null) {
           return { parentPath: lastFocusedS3FolderPath, parentDirHandle: null };
         }
         if (currentFile?.type === 's3' && currentFile.id) {
@@ -447,7 +465,7 @@ export default function Sidebar({
         return { parentPath: '', parentDirHandle: null };
       }
 
-      if (lastFocusedLocalFolder.path && lastFocusedLocalFolder.handle) {
+      if (lastFocusedLocalFolder !== null) {
         return {
           parentPath: lastFocusedLocalFolder.path,
           parentDirHandle: lastFocusedLocalFolder.handle,
@@ -623,8 +641,8 @@ export default function Sidebar({
               )}
               <button
                 onClick={() => {
-                  const targetPath = lastFocusedS3FolderPath || '';
-                  onRequestUploadFile?.('s3', targetPath, null);
+                  const { parentPath } = getCreateTargetForStorage('s3');
+                  onRequestUploadFile?.('s3', parentPath, null);
                 }}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                 title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
@@ -633,8 +651,8 @@ export default function Sidebar({
               </button>
               <button
                 onClick={() => {
-                  const targetPath = lastFocusedS3FolderPath || '';
-                  onRequestUploadFolder?.('s3', targetPath, null);
+                  const { parentPath } = getCreateTargetForStorage('s3');
+                  onRequestUploadFolder?.('s3', parentPath, null);
                 }}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                 title="선택된 폴더에 폴더 업로드 (폴더 전체)"
@@ -670,14 +688,17 @@ export default function Sidebar({
                 localRootHandle={null}
                 onDropOnFolder={onDropOnFolder}
                 dropTarget={dropTarget}
-                onContextMenu={(e, rootNode) =>
+                isFocused={lastFocusedS3FolderPath === ''}
+                onFocusRoot={() => setLastFocusedS3FolderPath('')}
+                onContextMenu={(e, rootNode) => {
+                  setLastFocusedS3FolderPath('');
                   setContextMenu({
                     x: e.clientX,
                     y: e.clientY,
                     node: rootNode,
                     storageType: 's3',
-                  })
-                }
+                  });
+                }}
               />
               {filteredS3Tree.length > 0 ? (
                 filteredS3Tree.map((node) => (
@@ -700,9 +721,9 @@ export default function Sidebar({
                     expandedPaths={effectiveExpandedS3}
                     onExpandedChange={handleExpandedChange}
                     onFolderFocus={(node) =>
-                      setLastFocusedS3FolderPath(node ? node.path || '' : '')
+                      setLastFocusedS3FolderPath(node ? node.path || '' : null)
                     }
-                    focusedFolderPath={lastFocusedS3FolderPath}
+                    focusedFolderPath={lastFocusedS3FolderPath ?? undefined}
                     onDropOnFolder={onDropOnFolder}
                     onDragStartNode={handleDragStartNode}
                     onDragEndNode={handleDragEndNode}
@@ -743,11 +764,8 @@ export default function Sidebar({
               <div className="flex gap-1">
                 <button
                   onClick={() => {
-                    const target =
-                      lastFocusedLocalFolder.path && lastFocusedLocalFolder.handle
-                        ? lastFocusedLocalFolder
-                        : { path: '', handle: localRootHandle };
-                    onRequestUploadFile?.('local', target.path, target.handle);
+                    const { parentPath, parentDirHandle } = getCreateTargetForStorage('local');
+                    onRequestUploadFile?.('local', parentPath, parentDirHandle);
                   }}
                   className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                   title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
@@ -756,11 +774,8 @@ export default function Sidebar({
                 </button>
                 <button
                   onClick={() => {
-                    const target =
-                      lastFocusedLocalFolder.path && lastFocusedLocalFolder.handle
-                        ? lastFocusedLocalFolder
-                        : { path: '', handle: localRootHandle };
-                    onRequestUploadFolder?.('local', target.path, target.handle);
+                    const { parentPath, parentDirHandle } = getCreateTargetForStorage('local');
+                    onRequestUploadFolder?.('local', parentPath, parentDirHandle);
                   }}
                   className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
                   title="선택된 폴더에 폴더 업로드 (폴더 전체)"
@@ -806,14 +821,23 @@ export default function Sidebar({
               localRootHandle={localRootHandle}
               onDropOnFolder={onDropOnFolder}
               dropTarget={dropTarget}
-              onContextMenu={(e, rootNode) =>
+              isFocused={
+                lastFocusedLocalFolder !== null &&
+                lastFocusedLocalFolder.path === '' &&
+                lastFocusedLocalFolder.handle === localRootHandle
+              }
+              onFocusRoot={() =>
+                setLastFocusedLocalFolder({ path: '', handle: localRootHandle })
+              }
+              onContextMenu={(e, rootNode) => {
+                setLastFocusedLocalFolder({ path: '', handle: localRootHandle });
                 setContextMenu({
                   x: e.clientX,
                   y: e.clientY,
                   node: rootNode,
                   storageType: 'local',
-                })
-              }
+                });
+              }}
             />
             {filteredLocalTree.map((node) => (
               <TreeNode
@@ -840,12 +864,10 @@ export default function Sidebar({
                 onExpandedChange={handleExpandedChange}
                 onFolderFocus={(node) =>
                   setLastFocusedLocalFolder(
-                    node
-                      ? { path: node.path || '', handle: node.handle }
-                      : { path: '', handle: null },
+                    node ? { path: node.path || '', handle: node.handle } : null,
                   )
                 }
-                focusedFolderPath={lastFocusedLocalFolder.path}
+                focusedFolderPath={lastFocusedLocalFolder?.path ?? undefined}
                 onDropOnFolder={onDropOnFolder}
                 onDragStartNode={handleDragStartNode}
                 onDragEndNode={handleDragEndNode}
