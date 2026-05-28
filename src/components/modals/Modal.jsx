@@ -51,7 +51,7 @@ export default function Modal({ isOpen, onClose, onConfirm, children }) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-200 ease-out ${
+      className={`fixed inset-0 z-100000 flex items-center justify-center p-4 transition-opacity duration-200 ease-out ${
         visible ? 'opacity-100 bg-black/40' : 'opacity-0 bg-black/0'
       }`}
       aria-hidden={!visible}
