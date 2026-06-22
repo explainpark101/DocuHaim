@@ -44,6 +44,7 @@ export default function TreeNode({
   dropTarget,
   rootDropNode,
   onOpenContextMenu,
+  onActivate,
   renameTarget,
   onClearRenameTarget,
   recordingBasePathSet = null,
@@ -268,6 +269,10 @@ export default function TreeNode({
   const handleToggle = (e) => {
     e.stopPropagation();
     if (isUnderDeletingFolder) return;
+
+    if (typeof onActivate === 'function') {
+      onActivate(node);
+    }
 
     const modifiers = { ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey };
     const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey;
@@ -603,6 +608,7 @@ export default function TreeNode({
             dropTarget={dropTarget}
             rootDropNode={rootDropNode}
             onOpenContextMenu={onOpenContextMenu}
+            onActivate={onActivate}
             renameTarget={renameTarget}
             onClearRenameTarget={onClearRenameTarget}
             recordingBasePathSet={recordingBasePathSet}

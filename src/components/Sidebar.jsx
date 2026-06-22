@@ -59,6 +59,19 @@ function getParentPathFromFilePath(filePath) {
   return normalized.slice(0, lastSlashIndex + 1);
 }
 
+function isRenameableTreeNode(node) {
+  if (!node || node.path === '.trash/' || node.path === '') return false;
+  return node.type === 'file' || node.type === 'folder';
+}
+
+function isTypingElement(target) {
+  if (!target || typeof target !== 'object') return false;
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
+
 function RootDropZone({
   storageType,
   localRootHandle,
@@ -255,6 +268,7 @@ export default function Sidebar({
   const [expandedPaths, setExpandedPaths] = useState(loadExpandedPaths);
   const [contextMenu, setContextMenu] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
+  const [lastActivatedNode, setLastActivatedNode] = useState(null);
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
   const scrollContainerRef = useRef(null);
@@ -488,6 +502,28 @@ export default function Sidebar({
   const isLocalMode = storageMode === 'local';
   const isWebdavMode = storageMode === 'webdav';
 
+  const activateTreeNode = useCallback((storageType, node) => {
+    setLastActivatedNode({ storageType, node });
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== 'F2' || e.defaultPrevented) return;
+      if (isTypingElement(e.target)) return;
+      if (isWebdavMode || !lastActivatedNode) return;
+
+      const { storageType, node } = lastActivatedNode;
+      if ((isS3Mode && storageType !== 's3') || (isLocalMode && storageType !== 'local')) return;
+      if (!isRenameableTreeNode(node)) return;
+
+      e.preventDefault();
+      setRenameTarget({ storageType, node });
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isWebdavMode, isS3Mode, isLocalMode, lastActivatedNode]);
+
   return (
     <div className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col">
       {contextMenu && contextMenuNode && (
@@ -692,6 +728,7 @@ export default function Sidebar({
                 onFocusRoot={() => setLastFocusedS3FolderPath('')}
                 onContextMenu={(e, rootNode) => {
                   setLastFocusedS3FolderPath('');
+                  activateTreeNode('s3', rootNode);
                   setContextMenu({
                     x: e.clientX,
                     y: e.clientY,
@@ -728,14 +765,16 @@ export default function Sidebar({
                     onDragStartNode={handleDragStartNode}
                     onDragEndNode={handleDragEndNode}
                     dropTarget={dropTarget}
-                    onOpenContextMenu={(e, n) =>
+                    onOpenContextMenu={(e, n) => {
+                      activateTreeNode('s3', n);
                       setContextMenu({
                         x: e.clientX,
                         y: e.clientY,
                         node: n,
                         storageType: 's3',
-                      })
-                    }
+                      });
+                    }}
+                    onActivate={(n) => activateTreeNode('s3', n)}
                     renameTarget={renameTarget}
                     onClearRenameTarget={() => setRenameTarget(null)}
                     recordingBasePathSet={recordingBasePathSet}
@@ -831,6 +870,7 @@ export default function Sidebar({
               }
               onContextMenu={(e, rootNode) => {
                 setLastFocusedLocalFolder({ path: '', handle: localRootHandle });
+                activateTreeNode('local', rootNode);
                 setContextMenu({
                   x: e.clientX,
                   y: e.clientY,
@@ -872,14 +912,16 @@ export default function Sidebar({
                 onDragStartNode={handleDragStartNode}
                 onDragEndNode={handleDragEndNode}
                 dropTarget={dropTarget}
-                onOpenContextMenu={(e, n) =>
+                onOpenContextMenu={(e, n) => {
+                  activateTreeNode('local', n);
                   setContextMenu({
                     x: e.clientX,
                     y: e.clientY,
                     node: n,
                     storageType: 'local',
-                  })
-                }
+                  });
+                }}
+                onActivate={(n) => activateTreeNode('local', n)}
                 renameTarget={renameTarget}
                 onClearRenameTarget={() => setRenameTarget(null)}
                 recordingBasePathSet={recordingBasePathSet}
