@@ -41,6 +41,55 @@ export default function LlmAssistModal({
   const [geminiModel, setGeminiModel] = useGeminiModelState();
 
   const dragRef = useRef({ active: false, startX: 0, startY: 0, startLeftVw: 0, startTopVh: 0 });
+  const DRAG_THRESHOLD_PX = 5;
+
+  const startPositionDrag = useCallback((e, { onTap } = {}) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragged = false;
+
+    dragRef.current = {
+      active: true,
+      startX,
+      startY,
+      startLeftVw: position.leftVw,
+      startTopVh: position.topVh,
+    };
+
+    const onMove = (ev) => {
+      if (!dragRef.current.active) return;
+      if (
+        Math.hypot(ev.clientX - startX, ev.clientY - startY) > DRAG_THRESHOLD_PX
+      ) {
+        dragged = true;
+      }
+      const vw = window.innerWidth || 1;
+      const vh = window.innerHeight || 1;
+      const dxVw = ((ev.clientX - dragRef.current.startX) / vw) * 100;
+      const dyVh = ((ev.clientY - dragRef.current.startY) / vh) * 100;
+      setPosition({
+        leftVw: Math.min(92, Math.max(0, dragRef.current.startLeftVw + dxVw)),
+        topVh: Math.min(90, Math.max(0, dragRef.current.startTopVh + dyVh)),
+      });
+    };
+
+    const onUp = () => {
+      if (!dragRef.current.active) return;
+      dragRef.current.active = false;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      setPosition((prev) => {
+        saveLlmModalPosition(prev);
+        return prev;
+      });
+      if (!dragged) onTap?.();
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }, [position.leftVw, position.topVh]);
 
   const refreshSelection = useCallback(() => {
     const { text, from, to } = getEditorSelectionFromRef(editorRef);
@@ -71,44 +120,6 @@ export default function LlmAssistModal({
     const interval = setInterval(onSelectionChange, 600);
     return () => clearInterval(interval);
   }, [open, hidden, refreshSelection]);
-
-  const handlePointerDownHeader = (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    dragRef.current = {
-      active: true,
-      startX: e.clientX,
-      startY: e.clientY,
-      startLeftVw: position.leftVw,
-      startTopVh: position.topVh,
-    };
-
-    const onMove = (ev) => {
-      if (!dragRef.current.active) return;
-      const vw = window.innerWidth || 1;
-      const vh = window.innerHeight || 1;
-      const dxVw = ((ev.clientX - dragRef.current.startX) / vw) * 100;
-      const dyVh = ((ev.clientY - dragRef.current.startY) / vh) * 100;
-      setPosition({
-        leftVw: Math.min(92, Math.max(0, dragRef.current.startLeftVw + dxVw)),
-        topVh: Math.min(90, Math.max(0, dragRef.current.startTopVh + dyVh)),
-      });
-    };
-
-    const onUp = () => {
-      if (!dragRef.current.active) return;
-      dragRef.current.active = false;
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      setPosition((prev) => {
-        saveLlmModalPosition(prev);
-        return prev;
-      });
-    };
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-  };
 
   const handleHide = () => {
     setHidden(true);
@@ -207,17 +218,24 @@ export default function LlmAssistModal({
 
   if (hidden) {
     return (
-      <button
-        type="button"
-        onClick={handleShow}
-        className="fixed z-80 flex items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95"
+      <div
+        role="button"
+        tabIndex={0}
+        onPointerDown={(e) => startPositionDrag(e, { onTap: handleShow })}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleShow();
+          }
+        }}
+        className="fixed z-80 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
         style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
-        title="AI 도우미 표시"
+        title="드래그: 이동 · 클릭: AI 도우미 표시"
         aria-label="AI 도우미 표시"
       >
         <Sparkles size={14} aria-hidden />
         AI
-      </button>
+      </div>
     );
   }
 
@@ -231,7 +249,7 @@ export default function LlmAssistModal({
     >
       <div
         className="flex cursor-grab active:cursor-grabbing items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
-        onPointerDown={handlePointerDownHeader}
+        onPointerDown={(e) => startPositionDrag(e)}
       >
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
@@ -241,6 +259,7 @@ export default function LlmAssistModal({
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={handleHide}
             className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
             title="숨기기"
@@ -250,6 +269,7 @@ export default function LlmAssistModal({
           </button>
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={handleClose}
             className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
             title="닫기"
