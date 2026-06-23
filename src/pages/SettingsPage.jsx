@@ -17,6 +17,10 @@ import {
   saveEditorType,
 } from '@/utils/editorTypeSettings';
 import {
+  loadAltVimNavigationEnabled,
+  saveAltVimNavigationEnabled,
+} from '@/utils/altVimNavigationSettings';
+import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
@@ -67,6 +71,9 @@ export default function SettingsPage({
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported);
   const [wikiImageCacheMode, setWikiImageCacheMode] = useState(() => loadWikiImageCacheMode());
   const [editorType, setEditorType] = useState(() => editorTypeProp ?? loadEditorType());
+  const [altVimNavigationEnabled, setAltVimNavigationEnabled] = useState(() =>
+    loadAltVimNavigationEnabled(),
+  );
 
   useEffect(() => {
     setFormCreds(s3Creds);
@@ -444,6 +451,74 @@ export default function SettingsPage({
               중요한 노트는 md-editor-rt 사용을 권장합니다.
             </p>
           )}
+        </div>
+
+        {/* Navigation */}
+        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">네비게이션</h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
+            키보드로 에디터 안의 커서 위치를 조절하거나, 열린 파일 사이를 이동하는 옵션입니다.
+            앞으로 여러 파일을 탭으로 동시에 열어 두고 빠르게 전환할 수 있는 기능이 추가될 예정이며,
+            아래 설정은 그 흐름에 맞춰 정리됩니다.
+          </p>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !altVimNavigationEnabled;
+                  setAltVimNavigationEnabled(next);
+                  saveAltVimNavigationEnabled(next);
+                }}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
+                  altVimNavigationEnabled
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={altVimNavigationEnabled}
+                aria-label="Alt+Vim 커서 이동"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    altVimNavigationEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                Alt + H/J/K/L Vim 커서 이동
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                  md-editor-rt 편집 중 H·L은 한 글자씩, J·K는 위·아래 줄로 커서만 이동합니다.
+                  줄 단위 선택·이동(Alt+화살표)과는 다릅니다.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-not-allowed opacity-60">
+              <button
+                type="button"
+                disabled
+                className="relative inline-flex h-5 w-9 shrink-0 cursor-not-allowed items-center rounded-full border border-gray-300 bg-gray-300 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                aria-pressed={false}
+                aria-disabled="true"
+                aria-label="탭 기능 (준비 중)"
+              >
+                <span className="inline-block h-4 w-4 translate-x-0.5 transform rounded-full bg-white shadow" />
+              </button>
+              <span className="select-none">
+                탭 기능 (개발중)
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                  여러 파일을 탭으로 동시에 열어 둘 수 있습니다.{' '}
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Ctrl+Tab</kbd>
+                  {' / '}
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Ctrl+Shift+Tab</kbd>
+                  으로 다음·이전 탭으로 이동하고,{' '}
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Ctrl+W</kbd>
+                  (Mac:{' '}
+                  <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Cmd+W</kbd>
+                  )로 현재 탭을 닫을 수 있습니다.
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Hidden Folders Option */}

@@ -8,7 +8,15 @@ import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
-import { addCursorAbove, addCursorBelow } from '@codemirror/commands';
+import {
+  addCursorAbove,
+  addCursorBelow,
+  cursorCharLeft,
+  cursorCharRight,
+  cursorLineDown,
+  cursorLineUp,
+} from '@codemirror/commands';
+import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
 import { highlightSelectionMatches, selectNextOccurrence } from '@codemirror/search';
 import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
@@ -168,6 +176,34 @@ function toggleBoldForSelection(view) {
   return true;
 }
 
+function runAltVimNavigation(view, command) {
+  if (!loadAltVimNavigationEnabled()) return false;
+  return command(view);
+}
+
+const ALT_VIM_NAVIGATION_KEY_BINDINGS = [
+  {
+    key: 'Alt-h',
+    preventDefault: true,
+    run: (view) => runAltVimNavigation(view, cursorCharLeft),
+  },
+  {
+    key: 'Alt-j',
+    preventDefault: true,
+    run: (view) => runAltVimNavigation(view, cursorLineDown),
+  },
+  {
+    key: 'Alt-k',
+    preventDefault: true,
+    run: (view) => runAltVimNavigation(view, cursorLineUp),
+  },
+  {
+    key: 'Alt-l',
+    preventDefault: true,
+    run: (view) => runAltVimNavigation(view, cursorCharRight),
+  },
+];
+
 config({
   editorConfig: {
     languageUserDefined: {
@@ -191,6 +227,7 @@ config({
     });
 
     const multiCursorKeyBindings = [
+      ...ALT_VIM_NAVIGATION_KEY_BINDINGS,
       {
         key: 'Ctrl-d',
         mac: 'Cmd-d',
