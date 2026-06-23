@@ -765,11 +765,22 @@ function MainApp() {
     }
   };
 
-  const hasUnsavedEditorChanges = () => {
-    if (!currentFile) return false;
-    const editable = ['markdown', 'json', 'raw'].includes(currentFile.viewer || 'markdown');
-    return editable && currentFile.content !== editorContent;
-  };
+  const hasUnsavedEditorChanges = useCallback(() => {
+    const file = currentFileRef.current;
+    if (!file) return false;
+    const editable = ['markdown', 'json', 'raw'].includes(file.viewer || 'markdown');
+    return editable && file.content !== editorContentRef.current;
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (!hasUnsavedEditorChanges()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedEditorChanges]);
 
   const closeCurrentFile = () => {
     setCurrentFile(null);
@@ -2421,20 +2432,28 @@ function MainApp() {
         await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
         const savedByteLength = new TextEncoder().encode(textToSave).length;
-        setCurrentFile((prev) =>
-          prev?.id === fileToSave.id ? { ...prev, content: textToSave, size: savedByteLength } : prev
-        );
+        setCurrentFile((prev) => {
+          if (prev?.id !== fileToSave.id) return prev;
+          const next = { ...prev, content: textToSave, size: savedByteLength };
+          currentFileRef.current = next;
+          return next;
+        });
       } else if (fileToSave.type === 'local') {
         const writable = await fileToSave.handle.createWritable();
         await writable.write(textToSave);
         await writable.close();
         await deleteMemoDraft(getDraftKey('local', fileToSave.id));
         const file = await fileToSave.handle.getFile();
-        setCurrentFile((prev) => (
-          prev?.id === fileToSave.id
-            ? { ...prev, content: textToSave, size: typeof file.size === 'number' ? file.size : prev?.size ?? null }
-            : prev
-        ));
+        setCurrentFile((prev) => {
+          if (prev?.id !== fileToSave.id) return prev;
+          const next = {
+            ...prev,
+            content: textToSave,
+            size: typeof file.size === 'number' ? file.size : prev?.size ?? null,
+          };
+          currentFileRef.current = next;
+          return next;
+        });
         setIsSaving(false);
         return;
       }
