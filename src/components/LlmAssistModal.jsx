@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { GripHorizontal, Loader2, Sparkles, X, EyeOff, RefreshCw, Replace } from 'lucide-react';
+import { GripHorizontal, Sparkles, X, EyeOff, SquareArrowOutUpRight } from 'lucide-react';
 import {
   createEmptyLlmPromptTemplate,
   deleteLlmPromptTemplate,
@@ -15,9 +15,18 @@ import {
   saveLlmModalPosition,
 } from '@/utils/llmModalPosition';
 import { getEditorSelectionFromRef, replaceEditorRange } from '@/utils/editorSelection';
-import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModelSelect';
+import { useGeminiModelState } from '@/components/GeminiModelSelect';
 import { loadLastUsedGeminiModel, saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
+import {
+  getLlmAssistPopoutUrl,
+  isLlmAssistMessage,
+  LLM_ASSIST_MSG,
+  LLM_ASSIST_POPOUT_FEATURES,
+  LLM_ASSIST_POPOUT_NAME,
+  postLlmAssistMessage,
+} from '@/utils/llmAssistBridge';
+import LlmAssistPanel from '@/components/LlmAssistPanel';
 
 export default function LlmAssistModal({
   editorRef,
@@ -25,13 +34,16 @@ export default function LlmAssistModal({
   getGeminiApiKey,
   open,
   onOpenChange,
+  theme = 'light',
 }) {
   const [position, setPosition] = useState(() => loadLlmModalPosition());
   const [hidden, setHidden] = useState(() => loadLlmModalHidden());
+  const [popoutActive, setPopoutActive] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
   const [instruction, setInstruction] = useState('');
   const [result, setResult] = useState('');
+  const [resultViewMode, setResultViewMode] = useState('text');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [templates, setTemplates] = useState([]);
@@ -40,8 +52,61 @@ export default function LlmAssistModal({
   const [editingTemplateId, setEditingTemplateId] = useState(null);
   const [geminiModel, setGeminiModel] = useGeminiModelState();
 
+  const popoutRef = useRef(null);
   const dragRef = useRef({ active: false, startX: 0, startY: 0, startLeftVw: 0, startTopVh: 0 });
   const DRAG_THRESHOLD_PX = 5;
+
+  const buildSyncPayload = useCallback(
+    () => ({
+      selectedText,
+      selectionRange,
+      instruction,
+      result,
+      resultViewMode,
+      loading,
+      error,
+      templates,
+      selectedTemplateId,
+      templateName,
+      editingTemplateId,
+      geminiModel,
+      theme,
+    }),
+    [
+      selectedText,
+      selectionRange,
+      instruction,
+      result,
+      resultViewMode,
+      loading,
+      error,
+      templates,
+      selectedTemplateId,
+      templateName,
+      editingTemplateId,
+      geminiModel,
+      theme,
+    ],
+  );
+
+  const syncToPopout = useCallback(() => {
+    const win = popoutRef.current;
+    if (!win || win.closed) return;
+    postLlmAssistMessage(win, LLM_ASSIST_MSG.SYNC, { state: buildSyncPayload() });
+  }, [buildSyncPayload]);
+
+  const closePopout = useCallback(() => {
+    const win = popoutRef.current;
+    if (win && !win.closed) {
+      try {
+        win.close();
+      } catch {
+        // ignore
+      }
+    }
+    popoutRef.current = null;
+    setPopoutActive(false);
+  }, []);
 
   const startPositionDrag = useCallback((e, { onTap } = {}) => {
     if (e.button !== 0) return;
@@ -60,9 +125,7 @@ export default function LlmAssistModal({
 
     const onMove = (ev) => {
       if (!dragRef.current.active) return;
-      if (
-        Math.hypot(ev.clientX - startX, ev.clientY - startY) > DRAG_THRESHOLD_PX
-      ) {
+      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > DRAG_THRESHOLD_PX) {
         dragged = true;
       }
       const vw = window.innerWidth || 1;
@@ -115,28 +178,51 @@ export default function LlmAssistModal({
   }, [open, refreshSelection, loadTemplates, setGeminiModel]);
 
   useEffect(() => {
-    if (!open || hidden) return undefined;
+    if (!open || hidden || popoutActive) return undefined;
     const onSelectionChange = () => refreshSelection();
     const interval = setInterval(onSelectionChange, 600);
     return () => clearInterval(interval);
-  }, [open, hidden, refreshSelection]);
+  }, [open, hidden, popoutActive, refreshSelection]);
 
-  const handleHide = () => {
-    setHidden(true);
-    saveLlmModalHidden(true);
-  };
+  useEffect(() => {
+    syncToPopout();
+  }, [syncToPopout]);
 
-  const handleShow = () => {
-    setHidden(false);
-    saveLlmModalHidden(false);
-    refreshSelection();
-  };
+  useEffect(() => {
+    if (!popoutActive) return undefined;
+    const interval = setInterval(() => {
+      const win = popoutRef.current;
+      if (!win || win.closed) {
+        popoutRef.current = null;
+        setPopoutActive(false);
+      }
+    }, 400);
+    return () => clearInterval(interval);
+  }, [popoutActive]);
 
-  const handleClose = () => {
-    onOpenChange?.(false);
-  };
+  useEffect(() => {
+    if (!open) {
+      closePopout();
+      return undefined;
+    }
 
-  const handleRun = async () => {
+    const onBeforeUnload = () => {
+      const win = popoutRef.current;
+      if (win && !win.closed) {
+        postLlmAssistMessage(win, LLM_ASSIST_MSG.PARENT_CLOSING);
+        try {
+          win.close();
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [open, closePopout]);
+
+  const handleRun = useCallback(async () => {
     setError('');
     setLoading(true);
     try {
@@ -157,9 +243,9 @@ export default function LlmAssistModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [refreshSelection, geminiModel, getGeminiApiKey, instruction]);
 
-  const handleApplyResult = () => {
+  const handleApplyResult = useCallback(() => {
     if (!result) return;
     const { view } = getEditorSelectionFromRef(editorRef);
     const { from, to } = selectionRange;
@@ -169,19 +255,22 @@ export default function LlmAssistModal({
       return;
     }
     refreshSelection();
-  };
+  }, [result, editorRef, selectionRange, onChange, refreshSelection]);
 
-  const handleLoadTemplate = (id) => {
-    setSelectedTemplateId(id);
-    const tpl = templates.find((t) => t.id === id);
-    if (tpl) {
-      setInstruction(tpl.instruction);
-      setTemplateName(tpl.name);
-      setEditingTemplateId(tpl.id);
-    }
-  };
+  const handleLoadTemplate = useCallback(
+    (id) => {
+      setSelectedTemplateId(id);
+      const tpl = templates.find((t) => t.id === id);
+      if (tpl) {
+        setInstruction(tpl.instruction);
+        setTemplateName(tpl.name);
+        setEditingTemplateId(tpl.id);
+      }
+    },
+    [templates],
+  );
 
-  const handleSaveTemplate = async () => {
+  const handleSaveTemplate = useCallback(async () => {
     const name = templateName.trim();
     const inst = instruction.trim();
     if (!name || !inst) {
@@ -197,32 +286,187 @@ export default function LlmAssistModal({
     setEditingTemplateId(saved.id);
     setSelectedTemplateId(saved.id);
     await loadTemplates();
-  };
+  }, [templateName, instruction, editingTemplateId, loadTemplates]);
 
-  const handleNewTemplate = () => {
+  const handleNewTemplate = useCallback(() => {
     setEditingTemplateId(null);
     setSelectedTemplateId('');
     setTemplateName('');
     setInstruction('');
-  };
+  }, []);
 
-  const handleDeleteTemplate = async () => {
+  const handleDeleteTemplate = useCallback(async () => {
     if (!editingTemplateId) return;
     if (!window.confirm('이 지시사항 템플릿을 삭제할까요?')) return;
     await deleteLlmPromptTemplate(editingTemplateId);
     handleNewTemplate();
     await loadTemplates();
+  }, [editingTemplateId, handleNewTemplate, loadTemplates]);
+
+  const handlePopoutAction = useCallback(
+    async (action, payload = {}) => {
+      switch (action) {
+        case 'refresh-selection':
+          refreshSelection();
+          break;
+        case 'run':
+          await handleRun();
+          break;
+        case 'apply-result':
+          handleApplyResult();
+          break;
+        case 'set-instruction':
+          setInstruction(typeof payload.value === 'string' ? payload.value : '');
+          break;
+        case 'set-result':
+          setResult(typeof payload.value === 'string' ? payload.value : '');
+          break;
+        case 'set-gemini-model':
+          if (typeof payload.value === 'string') setGeminiModel(payload.value);
+          break;
+        case 'load-template':
+          handleLoadTemplate(payload.id ?? '');
+          break;
+        case 'save-template':
+          await handleSaveTemplate();
+          break;
+        case 'new-template':
+          handleNewTemplate();
+          break;
+        case 'delete-template':
+          await handleDeleteTemplate();
+          break;
+        case 'set-template-name':
+          setTemplateName(typeof payload.value === 'string' ? payload.value : '');
+          break;
+        case 'set-result-view-mode':
+          if (payload.value === 'preview' || payload.value === 'text') {
+            setResultViewMode(payload.value);
+          }
+          break;
+        case 'close':
+          onOpenChange?.(false);
+          break;
+        default:
+          break;
+      }
+    },
+    [
+      refreshSelection,
+      handleRun,
+      handleApplyResult,
+      setGeminiModel,
+      handleLoadTemplate,
+      handleSaveTemplate,
+      handleNewTemplate,
+      handleDeleteTemplate,
+      onOpenChange,
+    ],
+  );
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const onMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (!isLlmAssistMessage(event.data)) return;
+
+      if (event.data.type === LLM_ASSIST_MSG.READY) {
+        if (event.source && typeof event.source.postMessage === 'function') {
+          popoutRef.current = event.source;
+          setPopoutActive(true);
+          postLlmAssistMessage(event.source, LLM_ASSIST_MSG.SYNC, { state: buildSyncPayload() });
+        }
+        return;
+      }
+
+      if (event.data.type === LLM_ASSIST_MSG.ACTION) {
+        handlePopoutAction(event.data.action, event.data.payload);
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [open, buildSyncPayload, handlePopoutAction]);
+
+  const handleHide = () => {
+    setHidden(true);
+    saveLlmModalHidden(true);
+  };
+
+  const handleShow = () => {
+    setHidden(false);
+    saveLlmModalHidden(false);
+    refreshSelection();
+  };
+
+  const handleClose = () => {
+    closePopout();
+    onOpenChange?.(false);
+  };
+
+  const handleOpenPopout = () => {
+    let win = popoutRef.current;
+    if (win && !win.closed) {
+      win.focus();
+      syncToPopout();
+      setPopoutActive(true);
+      return;
+    }
+
+    const url = getLlmAssistPopoutUrl();
+    win = window.open(url, LLM_ASSIST_POPOUT_NAME, LLM_ASSIST_POPOUT_FEATURES);
+    if (!win) {
+      alert('팝업이 차단되어 새 창을 열 수 없습니다.');
+      return;
+    }
+    popoutRef.current = win;
+    setPopoutActive(true);
+  };
+
+  const panelProps = {
+    theme,
+    getGeminiApiKey,
+    geminiModel,
+    onGeminiModelChange: setGeminiModel,
+    selectedText,
+    onRefreshSelection: refreshSelection,
+    instruction,
+    onInstructionChange: setInstruction,
+    result,
+    onResultChange: setResult,
+    resultViewMode,
+    onResultViewModeChange: setResultViewMode,
+    loading,
+    error,
+    templates,
+    selectedTemplateId,
+    onLoadTemplate: handleLoadTemplate,
+    templateName,
+    onTemplateNameChange: setTemplateName,
+    editingTemplateId,
+    onSaveTemplate: handleSaveTemplate,
+    onNewTemplate: handleNewTemplate,
+    onDeleteTemplate: handleDeleteTemplate,
+    onRun: handleRun,
+    onApplyResult: handleApplyResult,
   };
 
   if (!open) return null;
 
-  if (hidden) {
+  if (hidden || popoutActive) {
+    const chipLabel = popoutActive ? 'AI (새창)' : 'AI';
+    const chipTitle = popoutActive
+      ? '드래그: 이동 · 클릭: AI 도우미 표시 (새 창 닫으면 복귀)'
+      : '드래그: 이동 · 클릭: AI 도우미 표시';
+
     return (
       <div
         role="button"
         tabIndex={0}
-        onPointerDown={(e) => startPositionDrag(e, { onTap: handleShow })}
+        onPointerDown={(e) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
         onKeyDown={(e) => {
+          if (popoutActive) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             handleShow();
@@ -230,11 +474,11 @@ export default function LlmAssistModal({
         }}
         className="fixed z-80 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
         style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
-        title="드래그: 이동 · 클릭: AI 도우미 표시"
-        aria-label="AI 도우미 표시"
+        title={chipTitle}
+        aria-label={chipLabel}
       >
         <Sparkles size={14} aria-hidden />
-        AI
+        {chipLabel}
       </div>
     );
   }
@@ -260,6 +504,17 @@ export default function LlmAssistModal({
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleOpenPopout}
+            disabled={popoutActive}
+            className="rounded p-1 text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-violet-200 dark:hover:bg-violet-900/50"
+            title={popoutActive ? '새 창에서 열려 있음' : '새 창으로 열기'}
+            aria-label="새 창으로 열기"
+          >
+            <SquareArrowOutUpRight size={15} />
+          </button>
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={handleHide}
             className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
             title="숨기기"
@@ -280,130 +535,8 @@ export default function LlmAssistModal({
         </div>
       </div>
 
-      <div className="max-h-[min(70vh,560px)] overflow-y-auto p-3 space-y-3 text-xs">
-        <div>
-          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">모델</label>
-          <GeminiModelSelect
-            getGeminiApiKey={getGeminiApiKey}
-            value={geminiModel}
-            onChange={setGeminiModel}
-            autoLoad
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="font-semibold text-gray-700 dark:text-odp-fgStrong">선택된 텍스트</label>
-            <button
-              type="button"
-              onClick={refreshSelection}
-              className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
-            >
-              <RefreshCw size={12} aria-hidden />
-              새로고침
-            </button>
-          </div>
-          <textarea
-            readOnly
-            value={selectedText}
-            rows={4}
-            className="w-full resize-y rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] leading-relaxed text-gray-800 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
-            placeholder="에디터에서 텍스트를 선택하세요."
-          />
-        </div>
-
-        <div className="space-y-2 rounded border border-gray-200 p-2 dark:border-odp-borderSoft">
-          <div className="flex items-center gap-2">
-            <label className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">템플릿</label>
-            <select
-              value={selectedTemplateId}
-              onChange={(e) => handleLoadTemplate(e.target.value)}
-              className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-            >
-              <option value="">— 불러오기 —</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <input
-            type="text"
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-            placeholder="템플릿 이름"
-            className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-          />
-          <textarea
-            value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
-            rows={4}
-            placeholder="지시사항 (예: 선택한 텍스트를 더 간결하게 다시 써 주세요)"
-            className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-          />
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={handleSaveTemplate}
-              className="rounded bg-violet-600 px-2 py-1 text-[11px] text-white hover:bg-violet-700"
-            >
-              템플릿 저장
-            </button>
-            <button
-              type="button"
-              onClick={handleNewTemplate}
-              className="rounded border border-gray-300 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
-            >
-              새 템플릿
-            </button>
-            {editingTemplateId && (
-              <button
-                type="button"
-                onClick={handleDeleteTemplate}
-                className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400"
-              >
-                삭제
-              </button>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {loading ? '생성 중…' : 'Gemini 실행'}
-        </button>
-
-        {error && (
-          <p className="rounded border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] whitespace-pre-line text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-300">
-            {error}
-          </p>
-        )}
-
-        <div>
-          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">결과</label>
-          <textarea
-            readOnly={!result}
-            value={result}
-            onChange={(e) => setResult(e.target.value)}
-            rows={6}
-            className="w-full resize-y rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] leading-relaxed text-gray-800 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
-            placeholder="실행 후 결과가 여기에 표시됩니다."
-          />
-          <button
-            type="button"
-            onClick={handleApplyResult}
-            disabled={!result}
-            className="mt-2 inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
-          >
-            <Replace size={14} aria-hidden />
-            선택 영역 바꿔치기
-          </button>
-        </div>
+      <div className="max-h-[min(70vh,560px)] overflow-y-auto p-3">
+        <LlmAssistPanel {...panelProps} />
       </div>
     </div>
   );

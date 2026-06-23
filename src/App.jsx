@@ -46,6 +46,7 @@ import { CreateItemModal } from '@/components/modals/CreateItemModal';
 import { DownloadMethodModal } from '@/components/modals/DownloadMethodModal';
 import SettingsPage from '@/pages/SettingsPage';
 import ExportPDFPage from '@/pages/ExportPDFPage';
+import LlmAssistPopoutPage from '@/pages/LlmAssistPopoutPage';
 import { useRecording } from '@/hooks/useRecording';
 import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
 import { decodeSyncData } from '@/utils/syncProto';
@@ -90,6 +91,7 @@ import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicato
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import { clearGeminiApiKeySession } from '@/utils/geminiApiKeySession';
+import { applyDocumentTheme } from '@/utils/documentTheme';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
@@ -98,6 +100,13 @@ export default function App() {
     return (
       <div className="export-pdf-layout min-h-screen print:min-h-0 max-w-screen bg-white dark:bg-odp-bgSofter print:bg-white print:dark:bg-white">
         <ExportPDFPage />
+      </div>
+    );
+  }
+  if (location.pathname === '/llm-assist-popout') {
+    return (
+      <div className="llm-assist-popout-layout min-h-screen max-w-screen bg-white dark:bg-odp-bgSofter">
+        <LlmAssistPopoutPage />
       </div>
     );
   }
@@ -522,12 +531,7 @@ function MainApp() {
   }, []);
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    applyDocumentTheme(theme);
     window.localStorage.setItem('theme', theme);
   }, [theme]);
 

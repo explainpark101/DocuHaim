@@ -984,6 +984,7 @@ export default function MarkdownEditor({
         getGeminiApiKey={getGeminiApiKey ?? (() => '')}
         open={llmAssistOpen}
         onOpenChange={setLlmAssistOpen}
+        theme={theme}
       />
     </div>
   );
