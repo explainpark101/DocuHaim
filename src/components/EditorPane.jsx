@@ -62,6 +62,7 @@ export default function EditorPane({
   snippetConfig = { snippets: [] },
   editorType,
   hideRecordingCompanions = false,
+  getGeminiApiKey,
 }) {
   const effectiveEditorType = editorType ?? loadEditorType();
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
@@ -481,6 +482,7 @@ export default function EditorPane({
                   onCancelUploadImage={onCancelUploadImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
                   snippetConfig={snippetConfig}
+                  getGeminiApiKey={getGeminiApiKey}
                 />
               )}
             </div>

@@ -89,6 +89,7 @@ import { buildZipBlob } from '@/utils/zipBuilder';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
+import { clearGeminiApiKeySession } from '@/utils/geminiApiKeySession';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
@@ -122,6 +123,18 @@ function MainApp() {
     proceedWithoutStoredCreds,
   } = auth;
   const navigate = useNavigate();
+
+  const getGeminiApiKey = useCallback(
+    () => (s3Creds?.googleAiStudioApiKey || '').trim(),
+    [s3Creds?.googleAiStudioApiKey],
+  );
+
+  useEffect(() => {
+    const onUnload = () => clearGeminiApiKeySession();
+    window.addEventListener('beforeunload', onUnload);
+    return () => window.removeEventListener('beforeunload', onUnload);
+  }, []);
+
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light';
     const stored = window.localStorage.getItem('theme');
@@ -3878,6 +3891,7 @@ function MainApp() {
                   sidebarOpen={sidebarOpen}
                   sidebarCollapsed={sidebarCollapsed}
                   onOpenSidebar={() => setSidebarOpen(true)}
+                  getGeminiApiKey={getGeminiApiKey}
                 />
               }
             />
@@ -3924,6 +3938,7 @@ function MainApp() {
                   onCancelUploadImage={cancelEditorImageUpload}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
                   snippetConfig={snippetConfig}
+                  getGeminiApiKey={getGeminiApiKey}
                   onRequestDelete={() =>
                     setDeleteTarget({
                       node: {
@@ -3982,6 +3997,7 @@ function MainApp() {
                   onCancelUploadImage={cancelEditorImageUpload}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
                   snippetConfig={snippetConfig}
+                  getGeminiApiKey={getGeminiApiKey}
                   onRequestDelete={() =>
                     setDeleteTarget(
                       currentFile

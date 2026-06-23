@@ -25,6 +25,7 @@ import {
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
+import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModelSelect';
 
 export default function SettingsPage({
   s3Creds,
@@ -59,8 +60,10 @@ export default function SettingsPage({
   sidebarOpen = true,
   sidebarCollapsed = false,
   onOpenSidebar,
+  getGeminiApiKey,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
+  const [googleAiKeyInput, setGoogleAiKeyInput] = useState('');
   const [webdavForm, setWebdavForm] = useState(webdavConfig ?? {
     endpoint: '',
     username: '',
@@ -74,10 +77,24 @@ export default function SettingsPage({
   const [altVimNavigationEnabled, setAltVimNavigationEnabled] = useState(() =>
     loadAltVimNavigationEnabled(),
   );
+  const [geminiModel, setGeminiModel, syncGeminiModel] = useGeminiModelState();
+
+  useEffect(() => {
+    syncGeminiModel();
+  }, [syncGeminiModel]);
 
   useEffect(() => {
     setFormCreds(s3Creds);
+    setGoogleAiKeyInput('');
   }, [s3Creds]);
+
+  const hasStoredGoogleAiKey = Boolean((s3Creds?.googleAiStudioApiKey || '').trim());
+
+  const buildCredsForSave = () => {
+    const trimmedKey = googleAiKeyInput.trim();
+    const nextKey = trimmedKey || (hasStoredGoogleAiKey ? s3Creds.googleAiStudioApiKey : '');
+    return { ...formCreds, googleAiStudioApiKey: nextKey };
+  };
   useEffect(() => {
     setWebdavForm(webdavConfig ?? {
       endpoint: '',
@@ -124,7 +141,7 @@ export default function SettingsPage({
         </div>
         <button
           type="button"
-          onClick={() => onRequestClose?.(formCreds)}
+          onClick={() => onRequestClose?.(buildCredsForSave())}
           className="text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition"
         >
           <X size={16} />
@@ -175,7 +192,7 @@ export default function SettingsPage({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSaveS3Creds(formCreds);
+            onSaveS3Creds(buildCredsForSave());
           }}
           className="space-y-4"
         >
@@ -246,7 +263,7 @@ export default function SettingsPage({
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={() => onRequestClose?.(formCreds)}
+              onClick={() => onRequestClose?.(buildCredsForSave())}
               className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition"
             >
               취소
@@ -316,6 +333,61 @@ export default function SettingsPage({
               className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
             >
               WebDAV 저장
+            </button>
+          </div>
+        </form>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const trimmedKey = googleAiKeyInput.trim();
+            if (!trimmedKey && !hasStoredGoogleAiKey) {
+              alert('API 키를 입력하세요.');
+              return;
+            }
+            onSaveS3Creds(buildCredsForSave());
+          }}
+          className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong space-y-3"
+        >
+          <div>
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">Google AI Studio (Gemini)</h3>
+            <p className="text-xs text-gray-600 dark:text-odp-muted">
+              Gemini API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시 표시되지 않습니다.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+              API Key
+            </label>
+            <input
+              type="password"
+              autoComplete="off"
+              className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+              value={googleAiKeyInput}
+              onChange={(e) => setGoogleAiKeyInput(e.target.value)}
+              placeholder={hasStoredGoogleAiKey ? '저장됨 — 변경 시 새 키 입력' : 'AI Studio API 키 입력'}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+              기본 모델
+            </label>
+            <GeminiModelSelect
+              getGeminiApiKey={getGeminiApiKey}
+              value={geminiModel}
+              onChange={setGeminiModel}
+              autoLoad={hasStoredGoogleAiKey || Boolean(googleAiKeyInput.trim())}
+            />
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
+              마지막으로 사용한 모델이 저장되며, 다음에 AI 도우미를 열 때 자동으로 선택됩니다.
+            </p>
+          </div>
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            >
+              API 키 저장
             </button>
           </div>
         </form>

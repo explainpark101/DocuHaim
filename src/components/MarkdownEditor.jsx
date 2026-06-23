@@ -3,6 +3,8 @@ import { MdEditor, config } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import LlmAssistModal from '@/components/LlmAssistModal';
+import LlmAssistToolbar from '@/components/LlmAssistToolbar';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -346,10 +348,12 @@ export default function MarkdownEditor({
   onCancelUploadImage,
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
+  getGeminiApiKey,
 }) {
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
+  const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
@@ -798,12 +802,18 @@ export default function MarkdownEditor({
       language="ko-KR"
     />,
     <MarkdownPageBreakToolbar key="insert-pgbr" editorRef={editorRef} />,
+    <LlmAssistToolbar
+      key="llm-assist"
+      onOpen={() => {
+        setLlmAssistOpen(true);
+      }}
+    />,
   ], [value, theme, currentFile]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
-    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, '-',
+    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, '-',
     'revoke', 'next', 0, '=',
     'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
   ], []);
@@ -917,6 +927,13 @@ export default function MarkdownEditor({
         onConfirm={handleConfirmTransformApply}
         onCancel={() => setFreeTransformConfirmOpen(false)}
         onDiscard={handleConfirmTransformReset}
+      />
+      <LlmAssistModal
+        editorRef={editorRef}
+        onChange={onChange}
+        getGeminiApiKey={getGeminiApiKey ?? (() => '')}
+        open={llmAssistOpen}
+        onOpenChange={setLlmAssistOpen}
       />
     </div>
   );

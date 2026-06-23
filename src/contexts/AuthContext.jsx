@@ -13,6 +13,7 @@ const initialCreds = {
   region: 'ap-northeast-2',
   bucket: '',
   endpoint: '',
+  googleAiStudioApiKey: '',
 };
 
 export function AuthProvider({ children }) {
