@@ -64,7 +64,15 @@ import {
   loadWebdavConfig,
   saveStorageMode,
   saveWebdavConfig,
+  STORAGE_MODE_LOCAL,
 } from '@/utils/storageSettings';
+import { readLocalDirectoryLevel, readLocalDirectoryTree, patchLocalTreeChildren } from '@/utils/localTree';
+import {
+  hasStoredLocalRootHandle,
+  loadLastLocalFolderName,
+  saveLocalRootHandle,
+  tryRestoreLocalRootHandle,
+} from '@/utils/localFolderStore';
 import { loadHideRecordingCompanions, saveHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
 import {
   loadTreeStickyFolderPathEnabled,
@@ -128,6 +136,10 @@ function MainApp() {
   const [s3Tree, setS3Tree] = useState([]);
   const [localTree, setLocalTree] = useState([]);
   const [localRootHandle, setLocalRootHandle] = useState(null);
+  const [isLocalTreeLoading, setIsLocalTreeLoading] = useState(false);
+  const [localFolderLoadingPath, setLocalFolderLoadingPath] = useState(null);
+  const [showRestoreLocalFolderModal, setShowRestoreLocalFolderModal] = useState(false);
+  const [pendingLocalFolderName, setPendingLocalFolderName] = useState('');
   
   // Editor State
   const [currentFile, setCurrentFile] = useState(null);
@@ -326,6 +338,7 @@ function MainApp() {
   const hasRestoredLastFileRef = useRef(false);
   const hasProcessedOpenFromUrlRef = useRef(false);
   const hasRestoredFromPrintRef = useRef(false);
+  const hasPromptedLocalFolderRestoreRef = useRef(false);
   const saveFileRef = useRef(null);
   const prevEditorContentRef = useRef('');
 
@@ -1217,35 +1230,68 @@ function MainApp() {
   }, [isMobile, s3Creds.bucket, isUnlocked, getS3Client]);
 
   // 4. Local Folder Load
-  const readLocalDir = async (dirHandle, basePath = '', parentHandle = null) => {
-    const children = [];
-    for await (const entry of dirHandle.values()) {
-      const path = basePath + entry.name;
-      if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-        children.push({ name: entry.name, type: 'file', path, handle: entry, parentHandle });
-      } else if (entry.kind === 'directory') {
-        const subChildren = await readLocalDir(entry, path + '/', dirHandle);
-        children.push({ name: entry.name, type: 'folder', path: path + '/', handle: entry, parentHandle, children: subChildren });
-      }
+  const attachLocalRootFolder = useCallback(async (dirHandle, { fullScan = false } = {}) => {
+    setIsLocalTreeLoading(true);
+    setLocalRootHandle(dirHandle);
+    try {
+      await saveLocalRootHandle(dirHandle);
+      const tree = fullScan
+        ? await readLocalDirectoryTree(dirHandle, '', dirHandle)
+        : await readLocalDirectoryLevel(dirHandle, '', dirHandle);
+      setLocalTree(tree);
+    } finally {
+      setIsLocalTreeLoading(false);
     }
-    return children.sort((a, b) => (a.type === 'folder' ? -1 : 1) - (b.type === 'folder' ? -1 : 1) || a.name.localeCompare(b.name));
-  };
+  }, []);
+
+  const loadLocalFolderChildren = useCallback(async (folderNode) => {
+    if (!folderNode?.handle || folderNode.childrenLoaded === true) return;
+    setLocalFolderLoadingPath(folderNode.path);
+    try {
+      const children = await readLocalDirectoryLevel(
+        folderNode.handle,
+        folderNode.path,
+        folderNode.handle,
+      );
+      setLocalTree((prev) => patchLocalTreeChildren(prev, folderNode.path, children));
+    } finally {
+      setLocalFolderLoadingPath((current) => (current === folderNode.path ? null : current));
+    }
+  }, []);
 
   const openLocalFolder = async () => {
     try {
       const dirHandle = await window.showDirectoryPicker();
-      setLocalRootHandle(dirHandle);
-      const tree = await readLocalDir(dirHandle, '', dirHandle);
-      setLocalTree(tree);
+      setStorageMode(STORAGE_MODE_LOCAL);
+      await attachLocalRootFolder(dirHandle);
     } catch (e) {
-      console.error("Local folder selection cancelled or failed:", e);
+      console.error('Local folder selection cancelled or failed:', e);
     }
   };
 
   const refreshLocalTree = async () => {
-    if (localRootHandle) {
-      const tree = await readLocalDir(localRootHandle, '', localRootHandle);
+    if (!localRootHandle) return;
+    setIsLocalTreeLoading(true);
+    try {
+      const tree = await readLocalDirectoryTree(localRootHandle, '', localRootHandle);
       setLocalTree(tree);
+    } finally {
+      setIsLocalTreeLoading(false);
+    }
+  };
+
+  const handleConfirmRestoreLocalFolder = async () => {
+    setShowRestoreLocalFolderModal(false);
+    try {
+      const handle = await tryRestoreLocalRootHandle();
+      if (!handle) {
+        alert('폴더 접근 권한이 없습니다. 사이드바에서 폴더를 다시 선택해 주세요.');
+        return;
+      }
+      setStorageMode(STORAGE_MODE_LOCAL);
+      await attachLocalRootFolder(handle);
+    } catch (e) {
+      alert(`폴더를 다시 열지 못했습니다: ${e?.message || e}`);
     }
   };
 
@@ -1468,9 +1514,102 @@ function MainApp() {
       navigate(`/view/${node.path}`);
     } else if (type === 'local') {
       const file = await node.handle.getFile();
-      const serverText = await file.text();
       const serverLastModTs = file.lastModified ?? 0;
 
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+      const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
+      const videoExts = ['mp4', 'webm', 'ogv', 'mov'];
+
+      const openLocalBlobViewer = (viewer, mime) => {
+        const blob = new Blob([file], { type: mime || file.type || undefined });
+        const url = URL.createObjectURL(blob);
+        setCurrentFile((prev) => {
+          if (prev && (prev.viewer === 'image' || prev.viewer === 'pdf' || prev.viewer === 'audio' || prev.viewer === 'video') && prev.objectUrl) {
+            URL.revokeObjectURL(prev.objectUrl);
+          }
+          return {
+            type: 'local',
+            id: node.path,
+            name: node.name,
+            viewer,
+            objectUrl: url,
+            handle: node.handle,
+            parentHandle: node.parentHandle,
+            size: typeof file.size === 'number' ? file.size : null,
+            lastModified: file.lastModified,
+          };
+        });
+        setEditorContent('');
+        navigate(`/view/${node.path}`);
+      };
+
+      if (imageExts.includes(ext)) {
+        const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        openLocalBlobViewer('image', mime);
+        return;
+      }
+
+      if (ext === 'pdf') {
+        openLocalBlobViewer('pdf', 'application/pdf');
+        return;
+      }
+
+      if (audioExts.includes(ext)) {
+        const mime = ext === 'm4a' || ext === 'mp4' ? 'audio/mp4' : ext === 'mp3' ? 'audio/mpeg' : ext === 'ogg' ? 'audio/ogg' : ext === 'weba' ? 'audio/webm' : `audio/${ext}`;
+        openLocalBlobViewer('audio', mime);
+        return;
+      }
+
+      if (videoExts.includes(ext)) {
+        const mime = ext === 'mp4' || ext === 'mov' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : 'video/ogg';
+        openLocalBlobViewer('video', mime);
+        return;
+      }
+
+      if (ext === 'json') {
+        const raw = await file.text();
+        const maxFormatLen = 100000;
+        let display = raw;
+        if (raw.length <= maxFormatLen) {
+          try {
+            display = JSON.stringify(JSON.parse(raw), null, 2);
+          } catch {
+            display = raw;
+          }
+        }
+        setCurrentFile({
+          type: 'local',
+          id: node.path,
+          name: node.name,
+          content: display,
+          handle: node.handle,
+          parentHandle: node.parentHandle,
+          viewer: 'json',
+          size: typeof file.size === 'number' ? file.size : null,
+          lastModified: file.lastModified,
+        });
+        setEditorContent(display);
+        navigate(`/view/${node.path}`);
+        return;
+      }
+
+      if (ext !== 'md' && ext !== 'markdown' && ext !== '') {
+        setCurrentFile({
+          type: 'local',
+          id: node.path,
+          name: node.name,
+          handle: node.handle,
+          parentHandle: node.parentHandle,
+          viewer: 'unsupported',
+          size: typeof file.size === 'number' ? file.size : null,
+          lastModified: file.lastModified,
+        });
+        setEditorContent('');
+        navigate(`/view/${node.path}`);
+        return;
+      }
+
+      const serverText = await file.text();
       const draftKey = getDraftKey('local', node.path);
       const draft = await getMemoDraft(draftKey);
 
@@ -1717,6 +1856,26 @@ function MainApp() {
     if (node) selectFile(type, node);
     hasRestoredLastFileRef.current = true;
   }, [isUnlocked, s3Tree, localTree, selectFile, loadLastOpenedFile]);
+
+  // Prompt to restore last local folder when returning in local mode
+  useEffect(() => {
+    if (!isUnlocked || hasPromptedLocalFolderRestoreRef.current) return;
+    if (storageMode !== STORAGE_MODE_LOCAL || localRootHandle) return;
+
+    let cancelled = false;
+    (async () => {
+      const stored = await hasStoredLocalRootHandle();
+      const name = loadLastLocalFolderName();
+      if (cancelled || !stored || !name) return;
+      hasPromptedLocalFolderRestoreRef.current = true;
+      setPendingLocalFolderName(name);
+      setShowRestoreLocalFolderModal(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isUnlocked, storageMode, localRootHandle]);
 
   const moveS3FileToFolder = async (file, destFolderPath) => {
     const client = getS3Client();
@@ -3605,6 +3764,10 @@ function MainApp() {
                 s3Bucket={s3Creds.bucket}
                 localTree={localTree}
                 localRootHandle={localRootHandle}
+                isLocalTreeLoading={isLocalTreeLoading}
+                localFolderLoadingPath={localFolderLoadingPath}
+                onLoadLocalFolderChildren={loadLocalFolderChildren}
+                onRefreshLocal={refreshLocalTree}
                 currentFile={currentFile}
                 selectedIds={selectedIds}
                 onSelectFile={handleTreeNodeSelect}
@@ -3939,6 +4102,18 @@ function MainApp() {
         masterPassword={masterPassword}
         onCancel={() => setShowSetPasswordModal(false)}
         onSubmit={(password) => requestSaveEncryptedSettings(s3Creds, password, { stayOnSettings: true })}
+      />
+
+      <ConfirmModal
+        isOpen={showRestoreLocalFolderModal}
+        title="로컬 폴더 다시 열기"
+        message={`이전에 열었던 로컬 폴더 "${pendingLocalFolderName}"을(를) 다시 열까요?`}
+        confirmLabel="다시 열기"
+        cancelLabel="나중에"
+        onConfirm={() => {
+          void handleConfirmRestoreLocalFolder();
+        }}
+        onCancel={() => setShowRestoreLocalFolderModal(false)}
       />
 
       <ConfirmModal

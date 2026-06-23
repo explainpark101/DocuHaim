@@ -149,6 +149,7 @@ function RootDropZone({
 
   return (
     <div
+      data-tree-root-drop-zone
       onClick={handleClick}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -229,6 +230,10 @@ export default function Sidebar({
   s3Bucket,
   localTree,
   localRootHandle,
+  isLocalTreeLoading = false,
+  localFolderLoadingPath = null,
+  onLoadLocalFolderChildren,
+  onRefreshLocal,
   currentFile,
   selectedIds,
   onSelectFile,
@@ -390,7 +395,14 @@ export default function Sidebar({
       saveExpandedPaths(next);
       return next;
     });
-  }, []);
+
+    if (storageType === 'local' && isOpen && onLoadLocalFolderChildren) {
+      const node = findNodeByPath(localTree, path);
+      if (node?.type === 'folder' && node.childrenLoaded !== true) {
+        void onLoadLocalFolderChildren(node);
+      }
+    }
+  }, [localTree, onLoadLocalFolderChildren]);
 
   const expandPathsForNewItem = useCallback((storageType, paths) => {
     if (!paths?.length) return;
@@ -625,11 +637,12 @@ export default function Sidebar({
         onClick={(e) => {
           if (
             !e.target.closest('[data-tree-node-row]') &&
+            !e.target.closest('[data-tree-root-drop-zone]') &&
             !e.target.closest('button') &&
             !e.target.closest('input')
           ) {
-            setLastFocusedS3FolderPath('');
-            setLastFocusedLocalFolder({ path: '', handle: null });
+            setLastFocusedS3FolderPath(null);
+            setLastFocusedLocalFolder(null);
             onClearSelection?.();
           }
         }}
@@ -801,6 +814,23 @@ export default function Sidebar({
             </span>
             {localRootHandle && (
               <div className="flex gap-1">
+                {onRefreshLocal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isLocalTreeLoading) return;
+                      void onRefreshLocal();
+                    }}
+                    disabled={isLocalTreeLoading}
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation disabled:pointer-events-none disabled:opacity-70"
+                    title="폴더 구조 새로고침"
+                  >
+                    <IconRefresh
+                      size={22}
+                      className={`shrink-0 w-5 h-5 md:w-[14px] md:h-[14px] ${isLocalTreeLoading ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const { parentPath, parentDirHandle } = getCreateTargetForStorage('local');
@@ -879,56 +909,66 @@ export default function Sidebar({
                 });
               }}
             />
-            {filteredLocalTree.map((node) => (
-              <TreeNode
-                key={node.path}
-                node={node}
-                level={0}
-                rootDropNode={
-                  localRootHandle
-                    ? { path: '', type: 'folder', handle: localRootHandle }
-                    : null
-                }
-                onSelect={onSelectFile}
-                storageType="local"
-                selectedIds={selectedIds}
-                onCreateFile={(p, h) => onCreateItem('local', p, h, 'file')}
-                onCreateFolder={(p, h) => onCreateItem('local', p, h, 'folder')}
-                onRequestMoveFolder={onRequestMoveFolder}
-                onDelete={(n, t) => onSetDeleteTarget({ node: n, type: t })}
-                onRename={onRenameItem}
-                deletingFolderPath={deletingFolderPath}
-                isDeletingFolder={isDeletingFolder}
-                isSearching={!!searchTerm}
-                expandedPaths={effectiveExpandedLocal}
-                onExpandedChange={handleExpandedChange}
-                onFolderFocus={(node) =>
-                  setLastFocusedLocalFolder(
-                    node ? { path: node.path || '', handle: node.handle } : null,
-                  )
-                }
-                focusedFolderPath={lastFocusedLocalFolder?.path ?? undefined}
-                onDropOnFolder={onDropOnFolder}
-                onDragStartNode={handleDragStartNode}
-                onDragEndNode={handleDragEndNode}
-                dropTarget={dropTarget}
-                onOpenContextMenu={(e, n) => {
-                  activateTreeNode('local', n);
-                  setContextMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    node: n,
-                    storageType: 'local',
-                  });
-                }}
-                onActivate={(n) => activateTreeNode('local', n)}
-                renameTarget={renameTarget}
-                onClearRenameTarget={() => setRenameTarget(null)}
-                recordingBasePathSet={recordingBasePathSet}
-                stickyFoldersEnabled={treeStickyFolderPathEnabled}
-                stickyTopOffset={TREE_STICKY_SECTION_TOP}
-              />
-            ))}
+            {isLocalTreeLoading && !filteredLocalTree.length && (
+              <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
+            )}
+            {localRootHandle ? (
+              filteredLocalTree.length > 0 ? (
+                filteredLocalTree.map((node) => (
+                  <TreeNode
+                    key={node.path}
+                    node={node}
+                    level={0}
+                    rootDropNode={
+                      localRootHandle
+                        ? { path: '', type: 'folder', handle: localRootHandle }
+                        : null
+                    }
+                    onSelect={onSelectFile}
+                    storageType="local"
+                    selectedIds={selectedIds}
+                    onCreateFile={(p, h) => onCreateItem('local', p, h, 'file')}
+                    onCreateFolder={(p, h) => onCreateItem('local', p, h, 'folder')}
+                    onRequestMoveFolder={onRequestMoveFolder}
+                    onDelete={(n, t) => onSetDeleteTarget({ node: n, type: t })}
+                    onRename={onRenameItem}
+                    deletingFolderPath={deletingFolderPath}
+                    isDeletingFolder={isDeletingFolder}
+                    isSearching={!!searchTerm}
+                    expandedPaths={effectiveExpandedLocal}
+                    onExpandedChange={handleExpandedChange}
+                    onFolderFocus={(node) =>
+                      setLastFocusedLocalFolder(
+                        node ? { path: node.path || '', handle: node.handle } : null,
+                      )
+                    }
+                    focusedFolderPath={lastFocusedLocalFolder?.path ?? undefined}
+                    onDropOnFolder={onDropOnFolder}
+                    onDragStartNode={handleDragStartNode}
+                    onDragEndNode={handleDragEndNode}
+                    dropTarget={dropTarget}
+                    onOpenContextMenu={(e, n) => {
+                      activateTreeNode('local', n);
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        node: n,
+                        storageType: 'local',
+                      });
+                    }}
+                    onActivate={(n) => activateTreeNode('local', n)}
+                    isFolderLoading={localFolderLoadingPath}
+                    renameTarget={renameTarget}
+                    onClearRenameTarget={() => setRenameTarget(null)}
+                    recordingBasePathSet={recordingBasePathSet}
+                    stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                    stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                  />
+                ))
+              ) : (
+                <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
+              )
+            ) : null}
           </div>
         </div>
         )}

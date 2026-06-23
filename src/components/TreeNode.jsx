@@ -50,6 +50,7 @@ export default function TreeNode({
   recordingBasePathSet = null,
   stickyFoldersEnabled = true,
   stickyTopOffset = 0,
+  isFolderLoading = null,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -94,6 +95,9 @@ export default function TreeNode({
     isDeletingFolder && node.type === 'folder' && deletingFolderPath === node.path;
   const isFocusedFolder =
     node.type === 'folder' && focusedFolderPath && node.path === focusedFolderPath;
+
+  const isLoadingChildren =
+    node.type === 'folder' && isFolderLoading && isFolderLoading === node.path;
 
   const getFileIcon = () => {
     if (node.type === 'folder') {
@@ -487,7 +491,15 @@ export default function TreeNode({
         )}
         <div className="flex items-center gap-1.5 overflow-hidden">
           <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
-            {node.type === 'folder' ? (isOpen ? <IconChevronDown /> : <IconChevronRight />) : null}
+            {node.type === 'folder' ? (
+              isLoadingChildren ? (
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500 dark:border-gray-600 dark:border-t-blue-400" />
+              ) : isOpen ? (
+                <IconChevronDown />
+              ) : (
+                <IconChevronRight />
+              )
+            ) : null}
           </span>
           <span className={`${iconColorClass} shrink-0`}>
             {node.type === 'folder'
@@ -614,6 +626,7 @@ export default function TreeNode({
             recordingBasePathSet={recordingBasePathSet}
             stickyFoldersEnabled={stickyFoldersEnabled}
             stickyTopOffset={stickyTopOffset}
+            isFolderLoading={isFolderLoading}
           />
         ))}
     </div>
