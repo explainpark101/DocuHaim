@@ -212,6 +212,51 @@ function toggleBoldForSelection(view) {
   return true;
 }
 
+const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
+const ORDERED_LIST_LINE_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
+
+function toggleListLineMarker(text) {
+  const unordered = text.match(UNORDERED_LIST_LINE_RE);
+  if (unordered) {
+    return `${unordered[1]}1. ${unordered[4]}`;
+  }
+  const ordered = text.match(ORDERED_LIST_LINE_RE);
+  if (ordered) {
+    return `${ordered[1]}- ${ordered[5]}`;
+  }
+  return null;
+}
+
+/** Alt+- : unordered (-) <-> ordered (1.) on current or selected list lines. */
+function toggleListTypeBetweenUlAndOl(view) {
+  if (!view?.state) return false;
+
+  const { state } = view;
+  const lineNumbers = new Set();
+
+  for (const range of state.selection.ranges) {
+    const fromLine = state.doc.lineAt(range.from).number;
+    const toLine = state.doc.lineAt(range.to).number;
+    for (let n = fromLine; n <= toLine; n += 1) {
+      lineNumbers.add(n);
+    }
+  }
+
+  const changes = [];
+  for (const lineNumber of lineNumbers) {
+    const line = state.doc.line(lineNumber);
+    const nextText = toggleListLineMarker(line.text);
+    if (nextText !== null && nextText !== line.text) {
+      changes.push({ from: line.from, to: line.to, insert: nextText });
+    }
+  }
+
+  if (changes.length === 0) return false;
+
+  view.dispatch({ changes });
+  return true;
+}
+
 function runAltVimNavigation(view, command) {
   if (!loadAltVimNavigationEnabled()) return false;
   return command(view);
@@ -264,6 +309,11 @@ config({
 
     const multiCursorKeyBindings = [
       ...ALT_VIM_NAVIGATION_KEY_BINDINGS,
+      {
+        key: 'Alt--',
+        preventDefault: true,
+        run: toggleListTypeBetweenUlAndOl,
+      },
       {
         key: 'Ctrl-d',
         mac: 'Cmd-d',
