@@ -60,7 +60,7 @@ export async function listGeminiModels(apiKey) {
   return models.sort((a, b) => a.displayName.localeCompare(b.displayName, 'ko'));
 }
 
-async function postGenerateContent(apiKey, modelId, userText) {
+async function postGenerateContent(apiKey, modelId, parts) {
   const url = `${API_BASE}/models/${encodeURIComponent(modelId)}:generateContent`;
   const res = await fetch(url, {
     method: 'POST',
@@ -69,7 +69,7 @@ async function postGenerateContent(apiKey, modelId, userText) {
       'x-goog-api-key': apiKey,
     },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: userText }] }],
+      contents: [{ parts }],
       generationConfig: {
         temperature: 0.4,
       },
@@ -92,34 +92,52 @@ async function postGenerateContent(apiKey, modelId, userText) {
   return text.trim();
 }
 
-/**
- * @param {object} params
- * @param {string} params.apiKey
- * @param {string} [params.model]
- * @param {string} params.instruction
- * @param {string} params.selectedText
- * @returns {Promise<string>}
- */
-export async function generateGeminiTransform({ apiKey, model, instruction, selectedText }) {
-  const modelId = (model || loadLastUsedGeminiModel()).trim() || DEFAULT_GEMINI_MODEL;
+function buildTransformPrompt({ instruction, selectedText, hasImages }) {
   const trimmedInstruction = (instruction || '').trim();
   const trimmedSelection = (selectedText || '').trim();
-  if (!trimmedInstruction) throw new Error('지시사항을 입력하세요.');
-  if (!trimmedSelection) throw new Error('에디터에서 변환할 텍스트를 선택하세요.');
+  const lines = [trimmedInstruction, '', '---'];
 
-  const userText = [
-    trimmedInstruction,
-    '',
-    '---',
-    '아래는 사용자가 선택한 텍스트입니다. 지시사항에 따라 결과만 출력하세요. 설명이나 부가 코멘트는 최소화하세요.',
-    '',
-    trimmedSelection,
-  ].join('\n');
+  if (hasImages && trimmedSelection) {
+    lines.push(
+      '첨부된 이미지와 아래 사용자가 선택한 텍스트를 참고하여 지시사항에 따라 결과만 출력하세요. 설명이나 부가 코멘트는 최소화하세요.',
+      '',
+      trimmedSelection,
+    );
+  } else if (hasImages) {
+    lines.push(
+      '첨부된 이미지를 참고하여 지시사항에 따라 결과만 출력하세요. 설명이나 부가 코멘트는 최소화하세요.',
+    );
+  } else {
+    lines.push(
+      '아래는 사용자가 선택한 텍스트입니다. 지시사항에 따라 결과만 출력하세요. 설명이나 부가 코멘트는 최소화하세요.',
+      '',
+      trimmedSelection,
+    );
+  }
 
+  return lines.join('\n');
+}
+
+function buildContentParts({ instruction, selectedText, images }) {
+  const imageList = Array.isArray(images) ? images : [];
+  const hasImages = imageList.length > 0;
+  const parts = imageList.map((img) => ({
+    inline_data: {
+      mime_type: img.mimeType,
+      data: img.dataBase64,
+    },
+  }));
+  parts.push({
+    text: buildTransformPrompt({ instruction, selectedText, hasImages }),
+  });
+  return parts;
+}
+
+async function postGenerateContentWithRetry(apiKey, modelId, parts) {
   let attempt = 0;
   while (true) {
     try {
-      return await postGenerateContent(apiKey, modelId, userText);
+      return await postGenerateContent(apiKey, modelId, parts);
     } catch (err) {
       const canRetry =
         err?.status === 429 &&
@@ -133,4 +151,34 @@ export async function generateGeminiTransform({ apiKey, model, instruction, sele
       await sleep(err.retryAfterSec * 1000);
     }
   }
+}
+
+/**
+ * @param {object} params
+ * @param {string} params.apiKey
+ * @param {string} [params.model]
+ * @param {string} params.instruction
+ * @param {string} [params.selectedText]
+ * @param {{ mimeType: string, dataBase64: string }[]} [params.images]
+ * @returns {Promise<string>}
+ */
+export async function generateGeminiTransform({ apiKey, model, instruction, selectedText, images }) {
+  const modelId = (model || loadLastUsedGeminiModel()).trim() || DEFAULT_GEMINI_MODEL;
+  const trimmedInstruction = (instruction || '').trim();
+  const trimmedSelection = (selectedText || '').trim();
+  const imageList = Array.isArray(images) ? images.filter((img) => img?.mimeType && img?.dataBase64) : [];
+  const hasImages = imageList.length > 0;
+
+  if (!trimmedInstruction) throw new Error('지시사항을 입력하세요.');
+  if (!trimmedSelection && !hasImages) {
+    throw new Error('에디터에서 텍스트를 선택하거나 이미지를 추가하세요.');
+  }
+
+  const parts = buildContentParts({
+    instruction: trimmedInstruction,
+    selectedText: trimmedSelection,
+    images: imageList,
+  });
+
+  return postGenerateContentWithRetry(apiKey, modelId, parts);
 }

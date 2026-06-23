@@ -27,6 +27,7 @@ import {
   postLlmAssistMessage,
 } from '@/utils/llmAssistBridge';
 import LlmAssistPanel from '@/components/LlmAssistPanel';
+import { LLM_ASSIST_MAX_IMAGES, normalizeImageAttachment } from '@/utils/llmAssistImages';
 
 export default function LlmAssistModal({
   editorRef,
@@ -41,6 +42,7 @@ export default function LlmAssistModal({
   const [popoutActive, setPopoutActive] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
+  const [attachedImages, setAttachedImages] = useState([]);
   const [instruction, setInstruction] = useState('');
   const [result, setResult] = useState('');
   const [resultViewMode, setResultViewMode] = useState('text');
@@ -60,6 +62,7 @@ export default function LlmAssistModal({
     () => ({
       selectedText,
       selectionRange,
+      attachedImages,
       instruction,
       result,
       resultViewMode,
@@ -75,6 +78,7 @@ export default function LlmAssistModal({
     [
       selectedText,
       selectionRange,
+      attachedImages,
       instruction,
       result,
       resultViewMode,
@@ -227,7 +231,11 @@ export default function LlmAssistModal({
     setLoading(true);
     try {
       const text = refreshSelection();
-      if (!text.trim()) throw new Error('에디터에서 변환할 텍스트를 선택하세요.');
+      const hasText = Boolean(text.trim());
+      const hasImages = attachedImages.length > 0;
+      if (!hasText && !hasImages) {
+        throw new Error('에디터에서 텍스트를 선택하거나 이미지를 추가하세요.');
+      }
       if (isFreeTierBlockedModel(geminiModel)) {
         throw new Error(
           '선택한 모델은 무료 플랜에서 사용할 수 없습니다.\nGemini 2.0 Flash 또는 Gemini 2.5 Flash로 변경해 주세요.',
@@ -235,7 +243,13 @@ export default function LlmAssistModal({
       }
       saveLastUsedGeminiModel(geminiModel);
       const output = await withGeminiApiKey(getGeminiApiKey, (apiKey) =>
-        generateGeminiTransform({ apiKey, model: geminiModel, instruction, selectedText: text }),
+        generateGeminiTransform({
+          apiKey,
+          model: geminiModel,
+          instruction,
+          selectedText: text,
+          images: attachedImages,
+        }),
       );
       setResult(output);
     } catch (err) {
@@ -243,7 +257,7 @@ export default function LlmAssistModal({
     } finally {
       setLoading(false);
     }
-  }, [refreshSelection, geminiModel, getGeminiApiKey, instruction]);
+  }, [refreshSelection, attachedImages, geminiModel, getGeminiApiKey, instruction]);
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
@@ -303,6 +317,20 @@ export default function LlmAssistModal({
     await loadTemplates();
   }, [editingTemplateId, handleNewTemplate, loadTemplates]);
 
+  const handleAddImages = useCallback(async (images) => {
+    if (!Array.isArray(images) || !images.length) return;
+    setAttachedImages((prev) => {
+      const remaining = LLM_ASSIST_MAX_IMAGES - prev.length;
+      if (remaining <= 0) return prev;
+      return [...prev, ...images.slice(0, remaining)];
+    });
+  }, []);
+
+  const handleRemoveImage = useCallback((id) => {
+    if (!id) return;
+    setAttachedImages((prev) => prev.filter((img) => img.id !== id));
+  }, []);
+
   const handlePopoutAction = useCallback(
     async (action, payload = {}) => {
       switch (action) {
@@ -344,6 +372,16 @@ export default function LlmAssistModal({
             setResultViewMode(payload.value);
           }
           break;
+        case 'add-images': {
+          const incoming = (Array.isArray(payload.images) ? payload.images : [])
+            .map(normalizeImageAttachment)
+            .filter(Boolean);
+          if (incoming.length) await handleAddImages(incoming);
+          break;
+        }
+        case 'remove-image':
+          handleRemoveImage(payload.id);
+          break;
         case 'close':
           onOpenChange?.(false);
           break;
@@ -360,6 +398,8 @@ export default function LlmAssistModal({
       handleSaveTemplate,
       handleNewTemplate,
       handleDeleteTemplate,
+      handleAddImages,
+      handleRemoveImage,
       onOpenChange,
     ],
   );
@@ -431,6 +471,9 @@ export default function LlmAssistModal({
     onGeminiModelChange: setGeminiModel,
     selectedText,
     onRefreshSelection: refreshSelection,
+    attachedImages,
+    onAddImages: handleAddImages,
+    onRemoveImage: handleRemoveImage,
     instruction,
     onInstructionChange: setInstruction,
     result,

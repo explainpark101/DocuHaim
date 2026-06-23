@@ -15,6 +15,7 @@ if (typeof document !== 'undefined') {
 const EMPTY_STATE = {
   selectedText: '',
   selectionRange: { from: 0, to: 0 },
+  attachedImages: [],
   instruction: '',
   result: '',
   resultViewMode: 'text',
@@ -154,6 +155,9 @@ export default function LlmAssistPopoutPage() {
           }}
           selectedText={remoteState.selectedText}
           onRefreshSelection={() => sendAction('refresh-selection')}
+          attachedImages={remoteState.attachedImages || []}
+          onAddImages={async (images) => sendAction('add-images', { images })}
+          onRemoveImage={(id) => sendAction('remove-image', { id })}
           instruction={instruction}
           onInstructionChange={handleInstructionChange}
           result={result}
