@@ -950,8 +950,17 @@ h5 + :is(h6, ul, ol) {
 }
 
 .md-editor-preview li {
-  margin-block: 0.5em;
+  margin-block: 0;
   display: list-item;
+}
+
+.md-editor-preview li > p {
+  margin-block: 0;
+}
+
+.md-editor-preview ol li + li,
+.md-editor-preview ul li + li {
+  margin-block-start: 0.25em;
 }
 
 .md-editor-preview ul ul,

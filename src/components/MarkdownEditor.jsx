@@ -7,7 +7,7 @@ import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import {
   addCursorAbove,
   addCursorBelow,
@@ -15,7 +15,9 @@ import {
   cursorCharRight,
   cursorLineDown,
   cursorLineUp,
+  insertNewline,
 } from '@codemirror/commands';
+import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
 import { highlightSelectionMatches, selectNextOccurrence } from '@codemirror/search';
 import { Loader2 } from 'lucide-react';
@@ -65,6 +67,38 @@ function normalizeShortcutForMatch(shortcut) {
     .replace(/\bmeta\b/g, 'mod')
     .trim();
 }
+
+const markdownContinueMarkup = insertNewlineContinueMarkupCommand({ nonTightLists: false });
+
+/** Remove blank line inserted before a new list item (loose-list continuation). */
+function collapseEmptyLineBeforeListItem(view) {
+  if (!view?.state) return;
+  const { state } = view;
+  const pos = state.selection?.main?.head;
+  if (typeof pos !== 'number') return;
+  const line = state.doc.lineAt(pos);
+  if (!/^(\s*)([-+*]|\d+[.)]|\[[ xX]\])/.test(line.text)) return;
+  if (line.number < 2) return;
+  const prevLine = state.doc.line(line.number - 1);
+  if (prevLine.text.trim() !== '') return;
+  const removed = line.from - prevLine.from;
+  view.dispatch({
+    changes: { from: prevLine.from, to: line.from, insert: '' },
+    selection: EditorSelection.cursor(pos - removed),
+  });
+}
+
+function markdownEnterSingleNewline(view) {
+  if (markdownContinueMarkup(view)) {
+    collapseEmptyLineBeforeListItem(view);
+    return true;
+  }
+  return insertNewline(view);
+}
+
+const MARKDOWN_SINGLE_NEWLINE_ENTER_KEYMAP = Prec.highest(
+  keymap.of([{ key: 'Enter', run: markdownEnterSingleNewline }]),
+);
 
 function insertLineAboveInEditorView(view) {
   if (!view?.state) return;
@@ -249,6 +283,10 @@ config({
     ];
 
     nextExtensions.push(
+      {
+        type: 'markdownSingleNewlineEnter',
+        extension: MARKDOWN_SINGLE_NEWLINE_ENTER_KEYMAP,
+      },
       {
         type: 'lineNumbers',
         extension: lineNumbers(),
