@@ -240,7 +240,7 @@ export default function LlmAssistPanel({
           placeholder="지시사항 (예: 이미지를 설명하거나, 선택한 텍스트를 다시 써 주세요)"
           className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
         />
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 justify-end">
           <button
             type="button"
             onClick={onSaveTemplate}
