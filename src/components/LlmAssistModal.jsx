@@ -515,7 +515,7 @@ export default function LlmAssistModal({
             handleShow();
           }
         }}
-        className="fixed z-80 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
+        className="fixed z-[10050] flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
         style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
         title={chipTitle}
         aria-label={chipLabel}
@@ -528,7 +528,7 @@ export default function LlmAssistModal({
 
   return (
     <div
-      className="fixed z-80 w-[min(92vw,420px)] rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
+      className="fixed z-[10050] w-[min(92vw,420px)] rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
       style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
       role="dialog"
       aria-modal="false"
