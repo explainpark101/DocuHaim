@@ -52,7 +52,8 @@ import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
 import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
-import { isFileProbablyImage, uploadEditorImage } from '@/utils/editorImageUpload';
+import { isFileProbablyImage, uploadEditorImage, buildEditorImagePathPrefix } from '@/utils/editorImageUpload';
+import { uploadLocalEditorImage, getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
@@ -979,11 +980,18 @@ function MainApp() {
         rawCount: files?.length ?? 0,
         files: fileSummaries(files),
         currentFileId: currentFile?.id ?? null,
+        currentFileType: currentFile?.type ?? null,
       });
+      const isLocalUpload = currentFile?.type === 'local' && localRootHandle;
       const client = getS3Client();
-      if (!client || !s3Creds.bucket) {
+      if (!isLocalUpload && (!client || !s3Creds.bucket)) {
         dbgClipboard('app:upload:abort', { reason: 'no S3 client or bucket' });
         setOperationStatus('이미지 업로드는 S3 연결 후 사용할 수 있습니다.');
+        return [];
+      }
+      if (isLocalUpload && !localRootHandle) {
+        dbgClipboard('app:upload:abort', { reason: 'no local root handle' });
+        setOperationStatus('이미지 업로드는 로컬 폴더를 연 뒤 사용할 수 있습니다.');
         return [];
       }
       const candidates = Array.from(files).filter((f) => f && f.size > 0);
@@ -1019,13 +1027,8 @@ function MainApp() {
         label: '이미지 업로드 중',
       });
       const imagePathPrefix =
-        currentFile?.type === 's3' && currentFile?.id
-          ? (() => {
-              const mdPath = currentFile.id;
-              const mdDir = mdPath.includes('/') ? mdPath.replace(/\/[^/]+$/, '/') : '';
-              const mdNameNoExt = mdPath.replace(/^.*\//, '').replace(/\.[^.]+$/, '') || 'note';
-              return `.images/${mdDir}${mdNameNoExt}`;
-            })()
+        (currentFile?.type === 's3' || currentFile?.type === 'local') && currentFile?.id
+          ? buildEditorImagePathPrefix(currentFile.id)
           : '.images/note';
       const paths = [];
       const totalBytes = imageFiles.reduce((acc, file) => acc + (file.size || 0), 0);
@@ -1035,26 +1038,51 @@ function MainApp() {
           if (editorImageUploadCancelRequestedRef.current) break;
           const uploadController = new AbortController();
           editorImageUploadAbortControllerRef.current = uploadController;
-          const path = await uploadEditorImage(client, s3Creds.bucket, file, {
-            imagePathPrefix,
-            signal: uploadController.signal,
-            onProgress: (percent) => {
-              const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
-              const overallPercent =
-                totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
-              const normalized = Math.max(0, Math.min(100, Math.round(overallPercent)));
-              setEditorImageUploadPercent(normalized);
-              updateIndicator(indicatorId, {
-                progress: normalized,
-                detail: `${normalized}%`,
+          const path = isLocalUpload
+            ? await uploadLocalEditorImage(localRootHandle, file, {
+                imagePathPrefix,
+                signal: uploadController.signal,
+                onProgress: (percent) => {
+                  const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
+                  const overallPercent =
+                    totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
+                  const normalized = Math.max(0, Math.min(100, Math.round(overallPercent)));
+                  setEditorImageUploadPercent(normalized);
+                  updateIndicator(indicatorId, {
+                    progress: normalized,
+                    detail: `${normalized}%`,
+                  });
+                },
+              })
+            : await uploadEditorImage(client, s3Creds.bucket, file, {
+                imagePathPrefix,
+                signal: uploadController.signal,
+                onProgress: (percent) => {
+                  const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
+                  const overallPercent =
+                    totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
+                  const normalized = Math.max(0, Math.min(100, Math.round(overallPercent)));
+                  setEditorImageUploadPercent(normalized);
+                  updateIndicator(indicatorId, {
+                    progress: normalized,
+                    detail: `${normalized}%`,
+                  });
+                },
               });
-            },
-          });
           uploadedBytes += file.size || 0;
           editorImageUploadAbortControllerRef.current = null;
           const committedPercent = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 100;
           setEditorImageUploadPercent(Math.max(0, Math.min(100, committedPercent)));
           paths.push(path);
+        }
+        if (isLocalUpload && paths.length > 0 && localRootHandle) {
+          setIsLocalTreeLoading(true);
+          try {
+            const tree = await readLocalDirectoryTree(localRootHandle, '', localRootHandle);
+            setLocalTree(tree);
+          } finally {
+            setIsLocalTreeLoading(false);
+          }
         }
       } catch (err) {
         if (err?.name === 'AbortError') {
@@ -1075,12 +1103,21 @@ function MainApp() {
       dbgClipboard('app:upload:return', { paths, pathCount: paths.length });
       return paths;
     },
-    [getS3Client, s3Creds, currentFile, addIndicator, removeIndicator, updateIndicator]
+    [getS3Client, s3Creds, currentFile, localRootHandle, addIndicator, removeIndicator, updateIndicator]
   );
 
-  /** Preview용 ![[path]] 이미지 Pre-signed URL 반환 (캐시는 호출 측에서 처리) */
+  /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬: blob URL) */
   const getPresignedUrlForPath = useCallback(
     async (path) => {
+      if (currentFile?.type === 'local' && localRootHandle) {
+        const url = await getLocalWikiImageObjectUrl(localRootHandle, path);
+        if (url) {
+          console.log('[wiki-image] getPresignedUrlForPath: local ok', { path, urlLength: url.length });
+          return url;
+        }
+        console.warn('[wiki-image] getPresignedUrlForPath: local failed', { path });
+        return null;
+      }
       const client = getS3Client();
       if (!client || !s3Creds.bucket) {
         console.log('[wiki-image] getPresignedUrlForPath: no client or bucket', { path });
@@ -1095,7 +1132,7 @@ function MainApp() {
         return null;
       }
     },
-    [getS3Client, s3Creds]
+    [getS3Client, s3Creds, currentFile, localRootHandle]
   );
 
   useEffect(() => {

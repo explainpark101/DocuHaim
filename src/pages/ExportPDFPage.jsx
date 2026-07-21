@@ -287,7 +287,7 @@ export default function ExportPDFPage() {
   const tocProgrammaticScrollRef = useRef(false);
   const tocProgrammaticResetTimerRef = useRef(null);
   const tocAutoFollowPausedUntilRef = useRef(0);
-  const getPresignedUrl = useMemo(() => getPresignedUrlResolver(), []);
+  const getPresignedUrl = useMemo(() => getPresignedUrlResolver(currentFile?.type), [currentFile?.type]);
 
   useWikiImageHydration(previewContainerRef, previewValue, getPresignedUrl ?? undefined);
 

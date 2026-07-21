@@ -49,6 +49,18 @@ export async function isFileProbablyImage(file) {
 }
 
 /**
+ * 현재 md 파일 경로에서 에디터 이미지 디렉터리 prefix 생성.
+ * @param {string} [mdPath]
+ * @returns {string} 예: '.images/notes/my-note'
+ */
+export function buildEditorImagePathPrefix(mdPath) {
+  if (!mdPath) return '.images/note';
+  const mdDir = mdPath.includes('/') ? mdPath.replace(/\/[^/]+$/, '/') : '';
+  const mdNameNoExt = mdPath.replace(/^.*\//, '').replace(/\.[^.]+$/, '') || 'note';
+  return `.images/${mdDir}${mdNameNoExt}`;
+}
+
+/**
  * 에디터용 이미지 S3 업로드 — 위키 문법 ![[path]]용 path(S3 Object Key) 반환.
  * Key 형식: .images/<md파일경로>/<md파일이름>/<uuid>.<ext>
  * 예: .images/고려대학교/고려대학교/a1b2c3d4.png
@@ -67,9 +79,7 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
     throw new Error(`이미지 크기는 ${Math.round(maxSizeBytes / 1024 / 1024)}MB 이하여야 합니다.`);
   }
 
-  const prefix = typeof options.imagePathPrefix === 'string' && options.imagePathPrefix
-    ? options.imagePathPrefix.replace(/\/+$/, '') + '/'
-    : '.images/note/';
+  const prefix = normalizeEditorImagePathPrefix(options.imagePathPrefix);
   const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -112,7 +122,13 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
   return key;
 }
 
-function getExtensionFromMime(mime) {
+export function normalizeEditorImagePathPrefix(imagePathPrefix) {
+  return typeof imagePathPrefix === 'string' && imagePathPrefix
+    ? imagePathPrefix.replace(/\/+$/, '') + '/'
+    : '.images/note/';
+}
+
+export function getExtensionFromMime(mime) {
   if (!mime) return '.png';
   const map = {
     'image/jpeg': '.jpg',

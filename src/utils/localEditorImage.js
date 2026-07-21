@@ -1,0 +1,110 @@
+import {
+  getExtensionFromMime,
+  normalizeEditorImagePathPrefix,
+  sniffImageMimeFromFile,
+} from '@/utils/editorImageUpload';
+
+/**
+ * @param {FileSystemDirectoryHandle} rootHandle
+ * @param {string} relativePath
+ * @param {{ create?: boolean }} [options]
+ * @returns {Promise<FileSystemDirectoryHandle>}
+ */
+export async function getLocalDirectoryHandleForPath(rootHandle, relativePath, { create = false } = {}) {
+  const parts = relativePath.replace(/^\/+/, '').replace(/\/+$/, '').split('/').filter(Boolean);
+  let dir = rootHandle;
+  for (const segment of parts) {
+    dir = await dir.getDirectoryHandle(segment, { create });
+  }
+  return dir;
+}
+
+/**
+ * @param {FileSystemDirectoryHandle} rootHandle
+ * @param {string} relativePath
+ * @param {{ create?: boolean }} [options]
+ * @returns {Promise<FileSystemFileHandle>}
+ */
+export async function getLocalFileHandleForPath(rootHandle, relativePath, { create = false } = {}) {
+  const normalized = relativePath.replace(/^\/+/, '');
+  const lastSlash = normalized.lastIndexOf('/');
+  if (lastSlash < 0) {
+    return rootHandle.getFileHandle(normalized, { create });
+  }
+  const dirPath = normalized.slice(0, lastSlash);
+  const fileName = normalized.slice(lastSlash + 1);
+  const dir = await getLocalDirectoryHandleForPath(rootHandle, dirPath, { create });
+  return dir.getFileHandle(fileName, { create });
+}
+
+/**
+ * 로컬 폴더에 에디터 이미지 저장 — 위키 문법 ![[path]]용 상대 path 반환.
+ *
+ * @param {FileSystemDirectoryHandle} rootHandle
+ * @param {File} file
+ * @param {{ maxSizeBytes?: number, imagePathPrefix?: string, onProgress?: (percent: number) => void, signal?: AbortSignal }} [options]
+ * @returns {Promise<string>}
+ */
+export async function uploadLocalEditorImage(rootHandle, file, options = {}) {
+  if (!rootHandle) {
+    throw new Error('로컬 폴더가 열려 있지 않습니다.');
+  }
+
+  const maxSizeBytes = options.maxSizeBytes ?? 10 * 1024 * 1024;
+  if (file.size > maxSizeBytes) {
+    throw new Error(`이미지 크기는 ${Math.round(maxSizeBytes / 1024 / 1024)}MB 이하여야 합니다.`);
+  }
+  if (options.signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
+
+  const prefix = normalizeEditorImagePathPrefix(options.imagePathPrefix);
+  const uuid =
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  let mime = file.type;
+  if (!mime || mime === 'application/octet-stream') {
+    mime = (await sniffImageMimeFromFile(file)) || mime;
+  }
+  const ext = getExtensionFromMime(mime);
+  const relativePath = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
+
+  options.onProgress?.(0);
+  const fileHandle = await getLocalFileHandleForPath(rootHandle, relativePath, { create: true });
+  if (options.signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
+
+  const writable = await fileHandle.createWritable();
+  try {
+    await writable.write(await file.arrayBuffer());
+  } finally {
+    await writable.close();
+  }
+
+  if (options.signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
+
+  options.onProgress?.(100);
+  return relativePath;
+}
+
+/**
+ * 로컬 위키 이미지 path를 blob URL로 변환.
+ * @param {FileSystemDirectoryHandle} rootHandle
+ * @param {string} path
+ * @returns {Promise<string|null>}
+ */
+export async function getLocalWikiImageObjectUrl(rootHandle, path) {
+  if (!rootHandle || !path) return null;
+  try {
+    const fileHandle = await getLocalFileHandleForPath(rootHandle, path, { create: false });
+    const file = await fileHandle.getFile();
+    return URL.createObjectURL(file);
+  } catch (err) {
+    console.warn('[wiki-image] getLocalWikiImageObjectUrl: failed', { path, err });
+    return null;
+  }
+}
