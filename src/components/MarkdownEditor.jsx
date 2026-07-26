@@ -5,6 +5,8 @@ import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import LlmAssistModal from '@/components/LlmAssistModal';
 import LlmAssistToolbar from '@/components/LlmAssistToolbar';
+import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloatingPanel';
+import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -449,6 +451,7 @@ export default function MarkdownEditor({
   const containerRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
   const [llmAssistOpen, setLlmAssistOpen] = useState(false);
+  const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
@@ -903,12 +906,18 @@ export default function MarkdownEditor({
         setLlmAssistOpen(true);
       }}
     />,
+    <ChecklistProgressToolbar
+      key="checklist-progress"
+      onOpen={() => {
+        setChecklistProgressOpen(true);
+      }}
+    />,
   ], [value, theme, currentFile]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
-    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, '-',
+    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, '-',
     'revoke', 'next', 0, '=',
     'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
   ], []);
@@ -1030,6 +1039,12 @@ export default function MarkdownEditor({
         open={llmAssistOpen}
         onOpenChange={setLlmAssistOpen}
         theme={theme}
+      />
+      <ChecklistProgressFloatingPanel
+        editorRef={editorRef}
+        onChange={onChange}
+        open={checklistProgressOpen}
+        onOpenChange={setChecklistProgressOpen}
       />
     </div>
   );
