@@ -6,6 +6,34 @@ import TaskItem from '@tiptap/extension-task-item';
 export const NovelTaskItem = TaskItem.extend({
   name: 'taskItem',
 
+  addKeyboardShortcuts() {
+    return {
+      // Ctrl-Tab (not Cmd-Tab): toggle checked when cursor is in a task item
+      'Ctrl-Tab': ({ editor }) => {
+        const { $from } = editor.state.selection;
+        for (let depth = $from.depth; depth > 0; depth -= 1) {
+          const node = $from.node(depth);
+          if (node.type.name !== this.name) continue;
+          const pos = $from.before(depth);
+          return editor
+            .chain()
+            .focus(undefined, { scrollIntoView: false })
+            .command(({ tr }) => {
+              const current = tr.doc.nodeAt(pos);
+              if (!current || current.type.name !== this.name) return false;
+              tr.setNodeMarkup(pos, undefined, {
+                ...current.attrs,
+                checked: !current.attrs.checked,
+              });
+              return true;
+            })
+            .run();
+        }
+        return false;
+      },
+    };
+  },
+
   addNodeView() {
     return ({ node, HTMLAttributes, getPos, editor }) => {
       const listItem = document.createElement('li');

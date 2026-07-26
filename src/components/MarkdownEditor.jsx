@@ -214,6 +214,8 @@ function toggleBoldForSelection(view) {
 
 const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
 const ORDERED_LIST_LINE_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
+/** GFM task list: `- [ ]` / `- [x]` (also *, +, ordered). */
+const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX])\](.*)$/;
 
 function toggleListLineMarker(text) {
   const unordered = text.match(UNORDERED_LIST_LINE_RE);
@@ -225,6 +227,15 @@ function toggleListLineMarker(text) {
     return `${ordered[1]}- ${ordered[5]}`;
   }
   return null;
+}
+
+/** Flip `- [ ]` <-> `- [x]` on a single line; null if not a task checkbox line. */
+function toggleTaskCheckboxMarker(text) {
+  const match = text.match(TASK_CHECKBOX_LINE_RE);
+  if (!match) return null;
+  const [, prefix, checked, rest] = match;
+  const nextChecked = checked === ' ' ? 'x' : ' ';
+  return `${prefix}[${nextChecked}]${rest}`;
 }
 
 /** Alt+- : unordered (-) <-> ordered (1.) on current or selected list lines. */
@@ -246,6 +257,36 @@ function toggleListTypeBetweenUlAndOl(view) {
   for (const lineNumber of lineNumbers) {
     const line = state.doc.line(lineNumber);
     const nextText = toggleListLineMarker(line.text);
+    if (nextText !== null && nextText !== line.text) {
+      changes.push({ from: line.from, to: line.to, insert: nextText });
+    }
+  }
+
+  if (changes.length === 0) return false;
+
+  view.dispatch({ changes });
+  return true;
+}
+
+/** Ctrl-Tab: cycle task checkbox checked state on current or selected lines. */
+function toggleTaskCheckboxBetweenChecked(view) {
+  if (!view?.state) return false;
+
+  const { state } = view;
+  const lineNumbers = new Set();
+
+  for (const range of state.selection.ranges) {
+    const fromLine = state.doc.lineAt(range.from).number;
+    const toLine = state.doc.lineAt(range.to).number;
+    for (let n = fromLine; n <= toLine; n += 1) {
+      lineNumbers.add(n);
+    }
+  }
+
+  const changes = [];
+  for (const lineNumber of lineNumbers) {
+    const line = state.doc.line(lineNumber);
+    const nextText = toggleTaskCheckboxMarker(line.text);
     if (nextText !== null && nextText !== line.text) {
       changes.push({ from: line.from, to: line.to, insert: nextText });
     }
@@ -313,6 +354,10 @@ config({
         key: 'Alt--',
         preventDefault: true,
         run: toggleListTypeBetweenUlAndOl,
+      },
+      {
+        key: 'Ctrl-Tab',
+        run: toggleTaskCheckboxBetweenChecked,
       },
       {
         key: 'Ctrl-d',
