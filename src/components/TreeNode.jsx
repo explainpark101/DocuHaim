@@ -30,6 +30,7 @@ export default function TreeNode({
   onDelete,
   selectedIds,
   storageType,
+  currentFile = null,
   onRename,
   deletingFolderPath,
   isDeletingFolder,
@@ -71,6 +72,13 @@ export default function TreeNode({
   const [isStickyPinned, setIsStickyPinned] = useState(false);
   const selectKey = storageType && node.path ? `${storageType}:${node.path}` : node.path;
   const isSelected = selectedIds && selectedIds.has && selectedIds.has(selectKey);
+  const activeFilePath =
+    currentFile?.id && currentFile?.type === storageType ? currentFile.id : null;
+  const isOnActivePath = Boolean(
+    activeFilePath &&
+      ((node.type === 'file' && node.path === activeFilePath) ||
+        (node.type === 'folder' && node.path && activeFilePath.startsWith(node.path))),
+  );
   const paddingLeft = `${level * INDENT_SIZE + BASE_LEFT_PADDING}px`;
   const guideLineOffsets = Array.from({ length: level }, (_, depth) => INDENT_SIZE/2 + BASE_LEFT_PADDING + depth * INDENT_SIZE);
 
@@ -530,7 +538,11 @@ export default function TreeNode({
             <span
               ref={titleContainerRef}
               className={`text-sm select-none overflow-hidden whitespace-nowrap ${
-                isTrashRoot ? 'font-semibold text-red-600 dark:text-red-400' : ''
+                isTrashRoot
+                  ? 'font-semibold text-red-600 dark:text-red-400'
+                  : isOnActivePath
+                    ? 'font-bold underline'
+                    : ''
               }`}
               title={displayName}
               onMouseEnter={startTitleScroll}
@@ -606,6 +618,7 @@ export default function TreeNode({
             onDelete={onDelete}
             selectedIds={selectedIds}
             storageType={storageType}
+            currentFile={currentFile}
             onRename={onRename}
             deletingFolderPath={deletingFolderPath}
             isDeletingFolder={isDeletingFolder}

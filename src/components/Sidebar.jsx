@@ -760,6 +760,7 @@ export default function Sidebar({
                     onSelect={onSelectFile}
                     storageType="s3"
                     selectedIds={selectedIds}
+                    currentFile={currentFile}
                     onCreateFile={(p) => onCreateItem('s3', p, null, 'file')}
                     onCreateFolder={(p) => onCreateItem('s3', p, null, 'folder')}
                     onRequestMoveFolder={onRequestMoveFolder}
@@ -927,6 +928,7 @@ export default function Sidebar({
                     onSelect={onSelectFile}
                     storageType="local"
                     selectedIds={selectedIds}
+                    currentFile={currentFile}
                     onCreateFile={(p, h) => onCreateItem('local', p, h, 'file')}
                     onCreateFolder={(p, h) => onCreateItem('local', p, h, 'folder')}
                     onRequestMoveFolder={onRequestMoveFolder}
