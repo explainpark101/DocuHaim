@@ -1,10 +1,27 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  closestCenter,
+  useSensor,
+  useSensors,
+  useDroppable,
+} from '@dnd-kit/core';
+import { motion } from 'motion/react';
 import TreeNode from '@/components/TreeNode';
 import {
   findNodeByPath,
   isRecordingCompanionFileKey,
   buildRecordingBasePathSetFromTrees,
 } from '@/utils/s3Tree';
+import {
+  resolveDragItems,
+  parseDroppableId,
+  toDroppableId,
+  toTreeSelectKey,
+} from '@/utils/treeMove';
 
 const EXPANDED_FOLDERS_KEY = 's3haim_expandedFolders';
 
@@ -48,8 +65,6 @@ import {
 import { ArrowRightToLine, ChevronsLeft } from 'lucide-react';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 
-const DATA_TRANSFER_TYPE = 'application/x-s3haim-tree-node';
-
 function getParentPathFromFilePath(filePath) {
   if (!filePath || typeof filePath !== 'string') return '';
   const normalized = filePath.replace(/\/+$/, '');
@@ -88,6 +103,18 @@ function RootDropZone({
     handle: storageType === 'local' ? localRootHandle : null,
   };
   const isDropTarget = dropTarget?.storageType === storageType && dropTarget?.folderPath === '';
+  const canDrop = storageType === 's3' || (storageType === 'local' && localRootHandle);
+
+  const { setNodeRef } = useDroppable({
+    id: toDroppableId(storageType, ''),
+    data: {
+      storageType,
+      path: '',
+      nodeType: 'folder',
+      handle: storageType === 'local' ? localRootHandle : null,
+    },
+    disabled: !canDrop,
+  });
 
   const handleClick = (e) => {
     if (e.button !== 0) return;
@@ -100,26 +127,22 @@ function RootDropZone({
     if (onContextMenu) onContextMenu(e, rootNode);
   };
 
-  const handleDragOver = (e) => {
+  const handleOsDragOver = (e) => {
     const dt = e.dataTransfer;
-    if (dt.types.includes(DATA_TRANSFER_TYPE) || dt.files?.length > 0 || dt.items?.length > 0) {
-      e.preventDefault();
-      e.stopPropagation();
-      dt.dropEffect = 'move';
-      if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'dragOver');
-    }
+    const hasFiles =
+      dt.types?.includes?.('Files') || dt.files?.length > 0 || dt.items?.length > 0;
+    if (!hasFiles) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dt.dropEffect = 'copy';
+    if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'dragOver');
   };
 
-  const handleDrop = async (e) => {
+  const handleOsDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     const dt = e.dataTransfer;
-    if (dt.types.includes(DATA_TRANSFER_TYPE)) {
-      try {
-        const data = JSON.parse(dt.getData(DATA_TRANSFER_TYPE));
-        if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'drop', data);
-      } catch (_) {}
-    } else if (dt.items?.length > 0 || dt.files?.length > 0) {
+    if (dt.items?.length > 0 || dt.files?.length > 0) {
       const files = [];
       const dirHandles = [];
       if (dt.items?.length > 0) {
@@ -143,16 +166,15 @@ function RootDropZone({
     }
   };
 
-  const canDrop = storageType === 's3' || (storageType === 'local' && localRootHandle);
-
   if (!canDrop) return null;
 
   return (
     <div
+      ref={setNodeRef}
       data-tree-root-drop-zone
       onClick={handleClick}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
+      onDragOver={handleOsDragOver}
+      onDrop={handleOsDrop}
       onContextMenu={handleContextMenu}
       className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer ${
         isDropTarget
@@ -173,6 +195,35 @@ function RootDropZone({
       </span>
     </div>
   );
+}
+
+function TreeDragOverlayPreview({ items }) {
+  if (!items?.length) return null;
+  const primary = items[0];
+  const count = items.length;
+  return (
+    <motion.div
+      initial={{ scale: 0.92, opacity: 0.75 }}
+      animate={{ scale: 1.04, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+      className="pointer-events-none flex items-center gap-2 rounded-md border border-blue-300 bg-white px-3 py-2 text-sm shadow-lg dark:border-blue-700 dark:bg-odp-surface"
+    >
+      <span className="max-w-[180px] truncate font-medium text-gray-800 dark:text-odp-fgStrong">
+        {primary.name || primary.path}
+      </span>
+      {count > 1 && (
+        <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+          {count}
+        </span>
+      )}
+    </motion.div>
+  );
+}
+
+function treeCollisionDetection(args) {
+  const pointerCollisions = pointerWithin(args);
+  if (pointerCollisions.length > 0) return pointerCollisions;
+  return closestCenter(args);
 }
 
 function filterTree(
@@ -276,11 +327,44 @@ export default function Sidebar({
   const [lastActivatedNode, setLastActivatedNode] = useState(null);
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
+  const [activeDragItems, setActiveDragItems] = useState(null);
   const scrollContainerRef = useRef(null);
   const isDraggingRef = useRef(false);
+  const activeDragItemsRef = useRef(null);
   const autoScrollIntervalRef = useRef(null);
   const EDGE_THRESHOLD = 48;
   const AUTO_SCROLL_SPEED = 12;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
+
+  const findTreeNode = useCallback(
+    (storageType, path) => {
+      const tree = storageType === 's3' ? s3Tree : localTree;
+      return findNodeByPath(tree, path);
+    },
+    [s3Tree, localTree],
+  );
+
+  const resolveDropTargetNode = useCallback(
+    (storageType, path) => {
+      if (path === '' || path == null) {
+        return {
+          path: '',
+          type: 'folder',
+          name: 'root',
+          handle: storageType === 'local' ? localRootHandle : null,
+        };
+      }
+      const node = findTreeNode(storageType, path);
+      if (!node || node.type !== 'folder') return null;
+      return node;
+    },
+    [findTreeNode, localRootHandle],
+  );
 
   const handleDragStartNode = useCallback(() => {
     isDraggingRef.current = true;
@@ -294,6 +378,75 @@ export default function Sidebar({
     }
     onDragEndNode?.();
   }, [onDragEndNode]);
+
+  const handleDndDragStart = useCallback(
+    (event) => {
+      const activeId = String(event.active.id);
+      const items = resolveDragItems(activeId, selectedIds, findTreeNode);
+      activeDragItemsRef.current = items;
+      setActiveDragItems(items);
+      handleDragStartNode();
+    },
+    [selectedIds, findTreeNode, handleDragStartNode],
+  );
+
+  const handleDndDragOver = useCallback(
+    (event) => {
+      const { over } = event;
+      if (!over) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+      const parsed = parseDroppableId(String(over.id));
+      if (!parsed) return;
+      const targetNode = resolveDropTargetNode(parsed.storageType, parsed.path);
+      if (!targetNode) return;
+      onDropOnFolder?.(targetNode, parsed.storageType, 'dragOver');
+    },
+    [onDropOnFolder, resolveDropTargetNode],
+  );
+
+  const handleDndDragEnd = useCallback(
+    (event) => {
+      const { over } = event;
+      const items = activeDragItemsRef.current;
+      activeDragItemsRef.current = null;
+      setActiveDragItems(null);
+      handleDragEndNode();
+
+      if (!over || !items?.length) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      const parsed = parseDroppableId(String(over.id));
+      if (!parsed) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      const targetNode = resolveDropTargetNode(parsed.storageType, parsed.path);
+      if (!targetNode) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      onDropOnFolder?.(targetNode, parsed.storageType, 'drop', { items });
+    },
+    [handleDragEndNode, onDropOnFolder, resolveDropTargetNode],
+  );
+
+  const handleDndDragCancel = useCallback(() => {
+    activeDragItemsRef.current = null;
+    setActiveDragItems(null);
+    handleDragEndNode();
+    onDropOnFolder?.(null, null, 'dragLeave');
+  }, [handleDragEndNode, onDropOnFolder]);
+
+  const activeDragItemIds = useMemo(() => {
+    if (!activeDragItems?.length) return null;
+    return new Set(activeDragItems.map((item) => toTreeSelectKey(item.storageType, item.path)));
+  }, [activeDragItems]);
 
   useEffect(() => {
     const el = scrollContainerRef.current;
@@ -333,17 +486,14 @@ export default function Sidebar({
   }, []);
 
   const handleScrollAreaDragEnter = useCallback((e) => {
-    const hasDragData =
-      e.dataTransfer?.types?.includes(DATA_TRANSFER_TYPE) ||
-      e.dataTransfer?.types?.includes?.('Files');
+    const hasDragData = e.dataTransfer?.types?.includes?.('Files');
     if (hasDragData) isDraggingRef.current = true;
   }, []);
 
   const handleScrollAreaDragOver = useCallback((e) => {
     const el = scrollContainerRef.current;
     const hasDragData =
-      e.dataTransfer?.types?.includes(DATA_TRANSFER_TYPE) ||
-      (e.dataTransfer?.types?.includes?.('Files') && e.dataTransfer?.items?.length > 0);
+      e.dataTransfer?.types?.includes?.('Files') && e.dataTransfer?.items?.length > 0;
     if (!el || !hasDragData) return;
     const rect = el.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -629,6 +779,15 @@ export default function Sidebar({
         )}
       </div>
 
+      <DndContext
+        sensors={sensors}
+        collisionDetection={treeCollisionDetection}
+        onDragStart={handleDndDragStart}
+        onDragOver={handleDndDragOver}
+        onDragEnd={handleDndDragEnd}
+        onDragCancel={handleDndDragCancel}
+        autoScroll
+      >
       <div
         ref={scrollContainerRef}
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4 space-y-6"
@@ -776,9 +935,8 @@ export default function Sidebar({
                     }
                     focusedFolderPath={lastFocusedS3FolderPath ?? undefined}
                     onDropOnFolder={onDropOnFolder}
-                    onDragStartNode={handleDragStartNode}
-                    onDragEndNode={handleDragEndNode}
                     dropTarget={dropTarget}
+                    activeDragItemIds={activeDragItemIds}
                     onOpenContextMenu={(e, n) => {
                       activateTreeNode('s3', n);
                       setContextMenu({
@@ -946,9 +1104,8 @@ export default function Sidebar({
                     }
                     focusedFolderPath={lastFocusedLocalFolder?.path ?? undefined}
                     onDropOnFolder={onDropOnFolder}
-                    onDragStartNode={handleDragStartNode}
-                    onDragEndNode={handleDragEndNode}
                     dropTarget={dropTarget}
+                    activeDragItemIds={activeDragItemIds}
                     onOpenContextMenu={(e, n) => {
                       activateTreeNode('local', n);
                       setContextMenu({
@@ -983,6 +1140,10 @@ export default function Sidebar({
           </div>
         )}
       </div>
+      <DragOverlay dropAnimation={null}>
+        <TreeDragOverlayPreview items={activeDragItems} />
+      </DragOverlay>
+      </DndContext>
     </div>
   );
 }

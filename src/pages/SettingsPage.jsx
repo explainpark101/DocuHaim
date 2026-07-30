@@ -277,6 +277,25 @@ export default function SettingsPage({
           </div>
         </form>
 
+        {/* Import / Export Section */}
+        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">데이터 백업/복원</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={onExportCreds}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
+            >
+              <IconDownload /> S3 연결정보 내보내기
+            </button>
+            <button
+              onClick={onImportClick}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
+            >
+              <IconUpload /> S3 연결정보 불러오기
+            </button>
+          </div>
+        </div>
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -391,25 +410,6 @@ export default function SettingsPage({
             </button>
           </div>
         </form>
-
-        {/* Import / Export Section */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">데이터 백업/복원</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={onExportCreds}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
-            >
-              <IconDownload /> S3 연결정보 내보내기
-            </button>
-            <button
-              onClick={onImportClick}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
-            >
-              <IconUpload /> S3 연결정보 불러오기
-            </button>
-          </div>
-        </div>
 
         {/* WebAuthn: 지문/보안 키로 잠금 해제 또는 연결 정보 저장 */}
         {showWebAuthnSection && (

@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { motion } from 'motion/react';
 import {
   IconChevronDown,
   IconChevronRight,
@@ -15,8 +17,8 @@ import {
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine } from 'lucide-react';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
+import { toDraggableId, toDroppableId } from '@/utils/treeMove';
 
-const DATA_TRANSFER_TYPE = 'application/x-s3haim-tree-node';
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
 
@@ -39,8 +41,6 @@ export default function TreeNode({
   focusedFolderPath,
   expandedPaths,
   onExpandedChange,
-  onDragStartNode,
-  onDragEndNode,
   onDropOnFolder,
   dropTarget,
   rootDropNode,
@@ -52,6 +52,7 @@ export default function TreeNode({
   stickyFoldersEnabled = true,
   stickyTopOffset = 0,
   isFolderLoading = null,
+  activeDragItemIds = null,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -70,7 +71,7 @@ export default function TreeNode({
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempName, setTempName] = useState(node.name);
   const [isStickyPinned, setIsStickyPinned] = useState(false);
-  const selectKey = storageType && node.path ? `${storageType}:${node.path}` : node.path;
+  const selectKey = storageType && node.path != null ? `${storageType}:${node.path}` : node.path;
   const isSelected = selectedIds && selectedIds.has && selectedIds.has(selectKey);
   const activeFilePath =
     currentFile?.id && currentFile?.type === storageType ? currentFile.id : null;
@@ -107,9 +108,67 @@ export default function TreeNode({
   const isLoadingChildren =
     node.type === 'folder' && isFolderLoading && isFolderLoading === node.path;
 
+  const canDrag = !isTrashRoot && !isUnderDeletingFolder;
+  const isRootLevel = level === 0;
+  const effectiveDropTarget =
+    isRootLevel && rootDropNode && node.type === 'file' ? rootDropNode : node;
+  const isDropTarget =
+    dropTarget?.storageType === storageType &&
+    dropTarget?.folderPath === effectiveDropTarget.path;
+  const isUnderDropTarget =
+    dropTarget?.storageType === storageType &&
+    dropTarget?.folderPath &&
+    node.path.startsWith(dropTarget.folderPath);
+  const showDropHighlight = !isTrashRoot && (isDropTarget || isUnderDropTarget);
+  const canAcceptOsDrop =
+    (node.type === 'folder' || (node.type === 'file' && isRootLevel && rootDropNode)) &&
+    !isTrashRoot;
+  const canAcceptInternalDrop = node.type === 'folder' && !isTrashRoot;
+
+  const dragId = toDraggableId(storageType, node.path);
+  const dropId = toDroppableId(storageType, node.path);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    isDragging,
+  } = useDraggable({
+    id: dragId,
+    data: {
+      storageType,
+      path: node.path,
+      nodeType: node.type,
+      name: node.name,
+    },
+    disabled: !canDrag || isRenaming,
+  });
+
+  const { setNodeRef: setDropRef } = useDroppable({
+    id: dropId,
+    data: {
+      storageType,
+      path: node.path,
+      nodeType: 'folder',
+      handle: node.handle ?? null,
+    },
+    disabled: !canAcceptInternalDrop,
+  });
+
+  const setRowRef = useCallback(
+    (el) => {
+      rowRef.current = el;
+      setDragRef(el);
+      setDropRef(el);
+    },
+    [setDragRef, setDropRef],
+  );
+
+  const isDragGhost =
+    isDragging || (activeDragItemIds?.has?.(selectKey) ?? false);
+
   const getFileIcon = () => {
     if (node.type === 'folder') {
-      // .settings 및 .images 폴더는 특수 아이콘 사용
       const isSettingsFolder =
         node.name === '.settings' ||
         node.path.endsWith('/.settings') ||
@@ -220,41 +279,24 @@ export default function TreeNode({
     }
   };
 
-  const handleDragStart = (e) => {
-    if (isTrashRoot || isUnderDeletingFolder) return;
-    e.stopPropagation();
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData(DATA_TRANSFER_TYPE, JSON.stringify({ storageType, path: node.path, nodeType: node.type }));
-    e.dataTransfer.setData('text/plain', node.name);
-    if (onDragStartNode) onDragStartNode(node, storageType);
-  };
-
-  const handleDragEnd = () => {
-    if (onDragEndNode) onDragEndNode();
-  };
-
-  const handleDragOver = (e) => {
-    if (!canAcceptDrop) return;
+  const handleOsDragOver = (e) => {
+    if (!canAcceptOsDrop) return;
     const dt = e.dataTransfer;
-    if (dt.types.includes(DATA_TRANSFER_TYPE) || dt.files?.length > 0 || dt.items?.length > 0) {
-      e.preventDefault();
-      e.stopPropagation();
-      dt.dropEffect = 'move';
-      if (onDropOnFolder) onDropOnFolder(effectiveDropTarget, storageType, 'dragOver');
-    }
+    const hasFiles =
+      dt.types?.includes?.('Files') || dt.files?.length > 0 || dt.items?.length > 0;
+    if (!hasFiles) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dt.dropEffect = 'copy';
+    if (onDropOnFolder) onDropOnFolder(effectiveDropTarget, storageType, 'dragOver');
   };
 
-  const handleDrop = async (e) => {
-    if (!canAcceptDrop) return;
+  const handleOsDrop = async (e) => {
+    if (!canAcceptOsDrop) return;
     e.preventDefault();
     e.stopPropagation();
     const dt = e.dataTransfer;
-    if (dt.types.includes(DATA_TRANSFER_TYPE)) {
-      try {
-        const data = JSON.parse(dt.getData(DATA_TRANSFER_TYPE));
-        if (onDropOnFolder) onDropOnFolder(effectiveDropTarget, storageType, 'drop', data);
-      } catch (_) {}
-    } else if (dt.items?.length > 0 || dt.files?.length > 0) {
+    if (dt.items?.length > 0 || dt.files?.length > 0) {
       const files = [];
       const dirHandles = [];
       if (dt.items?.length > 0) {
@@ -366,21 +408,6 @@ export default function TreeNode({
     }
   };
 
-  const canDrag = !isTrashRoot && !isUnderDeletingFolder;
-  const isRootLevel = level === 0;
-  const effectiveDropTarget =
-    isRootLevel && rootDropNode && node.type === 'file' ? rootDropNode : node;
-  const isDropTarget =
-    dropTarget?.storageType === storageType &&
-    dropTarget?.folderPath === effectiveDropTarget.path;
-  const isUnderDropTarget =
-    dropTarget?.storageType === storageType &&
-    dropTarget?.folderPath &&
-    node.path.startsWith(dropTarget.folderPath);
-  const showDropHighlight = !isTrashRoot && (isDropTarget || isUnderDropTarget);
-  const canAcceptDrop =
-    (node.type === 'folder' || (node.type === 'file' && isRootLevel && rootDropNode)) &&
-    !isTrashRoot;
   const shouldShowStickyFolder =
     stickyFoldersEnabled &&
     node.type === 'folder' &&
@@ -447,14 +474,18 @@ export default function TreeNode({
 
   return (
     <div className={shouldShowStickyFolder ? 'relative' : ''}>
-      <div
-        ref={rowRef}
+      <motion.div
+        ref={setRowRef}
         data-tree-node-row
-        draggable={canDrag}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragOver={canAcceptDrop ? handleDragOver : undefined}
-        onDrop={canAcceptDrop ? handleDrop : undefined}
+        layout={false}
+        animate={{
+          opacity: isDragGhost ? 0.35 : 1,
+          scale: isDragGhost ? 0.98 : 1,
+        }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        {...(canDrag && !isRenaming ? { ...listeners, ...attributes } : {})}
+        onDragOver={canAcceptOsDrop ? handleOsDragOver : undefined}
+        onDrop={canAcceptOsDrop ? handleOsDrop : undefined}
         className={`group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${
           isSelected
             ? 'bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong'
@@ -602,7 +633,7 @@ export default function TreeNode({
             <IconTrash />
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {isOpen &&
         node.type === 'folder' &&
@@ -627,8 +658,6 @@ export default function TreeNode({
             onExpandedChange={onExpandedChange}
             onFolderFocus={onFolderFocus}
             focusedFolderPath={focusedFolderPath}
-            onDragStartNode={onDragStartNode}
-            onDragEndNode={onDragEndNode}
             onDropOnFolder={onDropOnFolder}
             dropTarget={dropTarget}
             rootDropNode={rootDropNode}
@@ -640,9 +669,9 @@ export default function TreeNode({
             stickyFoldersEnabled={stickyFoldersEnabled}
             stickyTopOffset={stickyTopOffset}
             isFolderLoading={isFolderLoading}
+            activeDragItemIds={activeDragItemIds}
           />
         ))}
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ import {
   updateWebAuthnWrappedPassword,
 } from '@/utils/webauthn';
 import { buildS3Tree, getFileLastModifiedMap, findFileNodeByPath, findNodeByPath, flattenTreeToPaths, getRecordingKeysFromTree } from '@/utils/s3Tree';
+import { pruneNestedMovePaths } from '@/utils/treeMove';
 import {
   createS3Client,
   listObjectsV2,
@@ -3305,6 +3306,7 @@ function MainApp() {
 
   const handleDropOnFolder = async (targetNode, targetStorageType, action, payload) => {
     if (action === 'dragOver') {
+      if (!targetNode) return;
       setDropTarget({ folderPath: targetNode.path, storageType: targetStorageType });
       return;
     }
@@ -3319,57 +3321,101 @@ function MainApp() {
     const destPath = targetNode.path || '';
     const destHandle = targetStorageType === 'local' ? (targetNode.handle || localRootHandle) : null;
 
-    if (payload?.storageType !== undefined && payload?.path) {
-      const { storageType: srcStorageType, path: srcPath, nodeType } = payload;
-      if (srcStorageType !== targetStorageType) return;
-      if (srcPath === destPath) return;
-      if (nodeType === 'folder' && (destPath === srcPath || destPath.startsWith(srcPath))) return;
+    const rawItems = Array.isArray(payload?.items) && payload.items.length
+      ? payload.items
+      : (payload?.storageType !== undefined && payload?.path
+        ? [{ storageType: payload.storageType, path: payload.path, nodeType: payload.nodeType }]
+        : null);
 
-      const tree = srcStorageType === 's3' ? s3Tree : localTree;
-      const srcNode = findNodeByPath(tree, srcPath);
-      if (!srcNode) {
-        alert('이동할 항목을 트리에서 찾을 수 없습니다. 목록을 새로고침한 뒤 다시 시도해 주세요.');
-        return;
-      }
-
-      if (nodeType === 'file') {
-        const destFilePath = `${destPath || ''}${srcNode.name}`;
-        if (destFilePath === srcPath) return;
-      } else if (nodeType === 'folder') {
-        const destFolderPrefix = `${destPath || ''}${srcNode.name}/`;
-        if (destFolderPrefix === srcPath) return;
-        if (destFolderPrefix.startsWith(srcPath) || srcPath.startsWith(destFolderPrefix)) return;
-      }
-
-      try {
-        if (nodeType === 'file') {
-          const fileNode = srcStorageType === 's3'
-            ? { id: srcPath, name: srcNode.name }
-            : { ...srcNode, id: srcNode.path };
-          if (srcStorageType === 's3') {
-            await moveS3FileToFolder(fileNode, destPath);
-            if (currentFile?.type === 's3' && currentFile.id === srcPath) {
-              setCurrentFile((prev) => (prev && prev.id === srcPath ? { ...prev, id: destPath + srcNode.name } : prev));
-            }
-          } else {
-            const updated = await moveLocalFileToFolder(fileNode, destHandle, destPath);
-            if (currentFile?.type === 'local' && currentFile.id === srcPath) {
-              setCurrentFile(updated);
-            }
-          }
-          setOperationStatus(`파일 이동 완료: ${srcNode.name}`);
-        } else {
-          const folderNode = srcNode;
-          if (srcStorageType === 's3') {
-            await moveS3FolderToFolder(folderNode, destPath);
-          } else {
-            await moveLocalFolderToFolder(folderNode, destHandle, destPath);
-          }
-          setOperationStatus(`폴더 이동 완료: ${folderNode.name}`);
+    if (rawItems) {
+      const items = pruneNestedMovePaths(rawItems).filter((item) => {
+        if (item.storageType !== targetStorageType) return false;
+        if (item.path === destPath) return false;
+        if (item.nodeType === 'folder' && (destPath === item.path || destPath.startsWith(item.path))) {
+          return false;
         }
-      } catch (e) {
-        alert('이동 실패: ' + e.message);
-        setOperationStatus(`이동 실패: ${e.message}`);
+        return true;
+      });
+
+      if (!items.length) return;
+
+      const tree = targetStorageType === 's3' ? s3Tree : localTree;
+      let successCount = 0;
+      let failCount = 0;
+      let lastError = null;
+      let lastSuccessName = null;
+
+      if (items.length > 1) {
+        setOperationStatus(`${items.length}개 항목 이동 중…`);
+      }
+
+      for (const item of items) {
+        const { storageType: srcStorageType, path: srcPath, nodeType } = item;
+        const srcNode = findNodeByPath(tree, srcPath);
+        if (!srcNode) {
+          failCount += 1;
+          lastError = new Error('이동할 항목을 트리에서 찾을 수 없습니다.');
+          continue;
+        }
+
+        if (nodeType === 'file') {
+          const destFilePath = `${destPath || ''}${srcNode.name}`;
+          if (destFilePath === srcPath) continue;
+        } else if (nodeType === 'folder') {
+          const destFolderPrefix = `${destPath || ''}${srcNode.name}/`;
+          if (destFolderPrefix === srcPath) continue;
+          if (destFolderPrefix.startsWith(srcPath) || srcPath.startsWith(destFolderPrefix)) continue;
+        }
+
+        try {
+          if (nodeType === 'file') {
+            const fileNode = srcStorageType === 's3'
+              ? { id: srcPath, name: srcNode.name }
+              : { ...srcNode, id: srcNode.path };
+            if (srcStorageType === 's3') {
+              await moveS3FileToFolder(fileNode, destPath);
+              if (currentFile?.type === 's3' && currentFile.id === srcPath) {
+                setCurrentFile((prev) => (prev && prev.id === srcPath ? { ...prev, id: destPath + srcNode.name } : prev));
+              }
+            } else {
+              const updated = await moveLocalFileToFolder(fileNode, destHandle, destPath);
+              if (currentFile?.type === 'local' && currentFile.id === srcPath) {
+                setCurrentFile(updated);
+              }
+            }
+          } else {
+            if (srcStorageType === 's3') {
+              await moveS3FolderToFolder(srcNode, destPath);
+            } else {
+              await moveLocalFolderToFolder(srcNode, destHandle, destPath);
+            }
+          }
+          successCount += 1;
+          lastSuccessName = srcNode.name;
+        } catch (e) {
+          failCount += 1;
+          lastError = e;
+        }
+      }
+
+      if (successCount === 0 && failCount === 0) return;
+
+      if (successCount > 0) {
+        setSelectedIds(new Set());
+      }
+
+      if (failCount === 0) {
+        setOperationStatus(
+          successCount > 1
+            ? `${successCount}개 항목 이동 완료`
+            : `${items[0].nodeType === 'folder' ? '폴더' : '파일'} 이동 완료: ${lastSuccessName || items[0].name || items[0].path}`,
+        );
+      } else if (successCount === 0) {
+        alert('이동 실패: ' + (lastError?.message || '알 수 없는 오류'));
+        setOperationStatus(`이동 실패: ${lastError?.message || ''}`);
+      } else {
+        alert(`${successCount}개 이동 완료, ${failCount}개 실패` + (lastError ? `: ${lastError.message}` : ''));
+        setOperationStatus(`${successCount}개 이동, ${failCount}개 실패`);
       }
       return;
     }
