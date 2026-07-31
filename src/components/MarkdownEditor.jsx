@@ -10,6 +10,7 @@ import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import TocResizeHandle from '@/components/TocResizeHandle';
+import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
@@ -33,6 +34,7 @@ import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
+import { useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import {
   getMarkdownImageOccurrenceInContainer,
   getResizableImageAttrsFromElement,
@@ -473,6 +475,7 @@ export default function MarkdownEditor({
   const [catalogEl, setCatalogEl] = useState(null);
   const [catalogHandleBox, setCatalogHandleBox] = useState(null);
   const activeTransformRef = useRef(null);
+  const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const {
     width: catalogWidth,
     isResizing: catalogResizing,
@@ -1084,7 +1087,13 @@ export default function MarkdownEditor({
         setChecklistProgressOpen(true);
       }}
     />,
-  ], [value, theme, currentFile]);
+    <TocTitleWrapToolbar
+      key="toc-title-wrap"
+      checked={wrapTitles}
+      onChange={setWrapTitles}
+      theme={theme}
+    />,
+  ], [value, theme, currentFile, wrapTitles, setWrapTitles]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
@@ -1092,7 +1101,8 @@ export default function MarkdownEditor({
     'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, '-',
     'revoke', 'next', 0, '=',
     'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
-  ], []);
+    ...(catalogEl ? [4] : []),
+  ], [catalogEl]);
 
   const onUploadImg = useMemo(() => {
     if (typeof onUploadImage !== 'function') return undefined;
@@ -1106,7 +1116,7 @@ export default function MarkdownEditor({
   return (
     <div
       ref={containerRef}
-      className="h-full w-full flex flex-col relative"
+      className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}`}
       style={{ '--md-catalog-width': `${catalogWidth}px` }}
     >
       {catalogHandleBox && (

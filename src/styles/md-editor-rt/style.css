@@ -3480,6 +3480,15 @@ div.smart-blue-theme hr {
   line-height: 18px
 }
 
+.toc-titles-wrap .md-editor-catalog-link span {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.35
+}
+
 .md-editor-catalog-link span:hover {
   color: var(--color-primary-hover)
 }

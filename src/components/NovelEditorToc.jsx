@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useEditor } from 'novel';
 import TocResizeHandle from '@/components/TocResizeHandle';
+import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
+import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 
 function extractHeadings(editor) {
   if (!editor || editor.isDestroyed) return [];
@@ -39,6 +41,7 @@ export default function NovelEditorToc({
 }) {
   const { editor } = useEditor();
   const [items, setItems] = useState([]);
+  const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const {
     width: tocWidth,
     isResizing: tocResizing,
@@ -145,11 +148,16 @@ export default function NovelEditorToc({
             />
           )}
           <div
-            className={`mb-2 shrink-0 px-0.5 pl-1 text-sm font-semibold uppercase tracking-wide ${
+            className={`mb-2 flex shrink-0 items-center justify-between gap-2 px-0.5 pl-1 ${
               isDark ? 'text-odp-fg' : 'text-gray-800'
             }`}
           >
-            목차
+            <span className="text-sm font-semibold uppercase tracking-wide">목차</span>
+            <TocTitleWrapToggle
+              checked={wrapTitles}
+              onChange={setWrapTitles}
+              isDark={isDark}
+            />
           </div>
           <ul className="novel-editor-toc-list m-0 max-h-full min-h-0 flex-1 list-none space-y-1 overflow-y-auto p-0 pr-0.5">
             {items.length === 0 ? (
@@ -163,7 +171,7 @@ export default function NovelEditorToc({
                 >
                   <button
                     type="button"
-                    className={`w-full max-w-full truncate rounded px-1 py-0.5 text-left text-base transition hover:underline focus:outline-none focus-visible:ring-1 ${
+                    className={`w-full max-w-full rounded px-1 py-0.5 text-left text-base transition hover:underline focus:outline-none focus-visible:ring-1 ${tocTitleTextClass(wrapTitles)} ${
                       isDark
                         ? 'text-odp-fg ring-odp-borderStrong hover:text-white'
                         : 'text-gray-700 ring-gray-300 hover:text-gray-900'

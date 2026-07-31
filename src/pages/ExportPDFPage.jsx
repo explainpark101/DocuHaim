@@ -5,9 +5,11 @@ import '@/styles/md-editor-rt/style.css';
 import { ArrowLeft, ListTree, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import TocResizeHandle from '@/components/TocResizeHandle';
+import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
+import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import Modal from '@/components/modals/Modal';
@@ -276,6 +278,7 @@ export default function ExportPDFPage() {
   const [tocVisible, setTocVisible] = useState(true);
   const [tocTopPx, setTocTopPx] = useState(0);
   const [tocItems, setTocItems] = useState([]);
+  const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [visibleHeadingIds, setVisibleHeadingIds] = useState([]);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
@@ -893,8 +896,18 @@ export default function ExportPDFPage() {
               label="목차 너비 조절"
             />
             <div className="relative flex flex-col w-full min-h-0 p-2 pl-2.5">
-              <div className="px-1.5 py-1 text-xs font-semibold tracking-wide text-gray-700 dark:text-odp-fgStrong uppercase">
-                목차
+              <div className="flex items-center justify-between gap-2 px-1.5 py-1">
+                <div className="text-xs font-semibold tracking-wide text-gray-700 dark:text-odp-fgStrong uppercase">
+                  목차
+                </div>
+                <TocTitleWrapToggle
+                  checked={wrapTitles}
+                  onChange={setWrapTitles}
+                  isDark={
+                    typeof document !== 'undefined' &&
+                    document.documentElement.classList.contains('dark')
+                  }
+                />
               </div>
               <ul
                 ref={tocListRef}
@@ -930,7 +943,7 @@ export default function ExportPDFPage() {
                             headingText: item.text || '',
                           });
                         }}
-                        className={`group relative w-full text-left truncate rounded px-1.5 py-1 text-sm transition ${
+                        className={`group relative w-full text-left rounded px-1.5 py-1 text-sm transition ${tocTitleTextClass(wrapTitles)} ${
                           visibleHeadingIds.includes(item.id)
                             ? 'font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-odp-focusBg'
                             : 'text-gray-700 dark:text-odp-fg hover:bg-gray-100 dark:hover:bg-odp-focusBg'
@@ -938,7 +951,9 @@ export default function ExportPDFPage() {
                         title={item.text}
                       >
                         <span
-                          className={`absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded ${
+                          className={`absolute left-0 w-0.5 rounded ${
+                            wrapTitles ? 'top-2 h-4' : 'top-1/2 h-4 -translate-y-1/2'
+                          } ${
                             visibleHeadingIds.includes(item.id) ? 'bg-red-500' : 'bg-transparent'
                           }`}
                           aria-hidden
