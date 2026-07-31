@@ -800,7 +800,7 @@ function MainApp() {
   const hasUnsavedEditorChanges = useCallback(() => {
     const file = currentFileRef.current;
     if (!file) return false;
-    const editable = ['markdown', 'json', 'raw'].includes(file.viewer || 'markdown');
+    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(file.viewer || 'markdown');
     return editable && file.content !== editorContentRef.current;
   }, []);
 
@@ -1264,6 +1264,10 @@ function MainApp() {
           } catch { /* keep raw */ }
           setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
           setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? display : prevContent));
+        } else if (cur.viewer === 'html' || cur.viewer === 'svg' || ext === 'html' || ext === 'htm' || ext === 'svg') {
+          const text = new TextDecoder('utf-8').decode(body);
+          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? text : prevContent));
         } else if (cur.viewer === 'image' || cur.viewer === 'pdf' || cur.viewer === 'audio' || cur.viewer === 'video') {
           const mime = ContentType || (cur.viewer === 'pdf' ? 'application/pdf' : '');
           const blob = new Blob([body], { type: mime || undefined });
@@ -1359,12 +1363,12 @@ function MainApp() {
       const client = getS3Client();
       if (!client) return;
 
-      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 
       if (imageExts.includes(ext)) {
         try {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
-          const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+          const mime = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
           const blob = new Blob([body], { type: mime });
           const url = URL.createObjectURL(blob);
           setCurrentFile((prev) => {
@@ -1496,6 +1500,28 @@ function MainApp() {
         return;
       }
 
+      if (ext === 'html' || ext === 'htm' || ext === 'svg') {
+        try {
+          const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
+          const text = new TextDecoder('utf-8').decode(body);
+          const viewer = ext === 'svg' ? 'svg' : 'html';
+          setCurrentFile({
+            type: 's3',
+            id: node.path,
+            name: node.name,
+            content: text,
+            viewer,
+            size: typeof ContentLength === 'number' ? ContentLength : null,
+            lastModified: node.lastModified,
+          });
+          setEditorContent(text);
+          navigate(`/view/${node.path}`);
+        } catch (err) {
+          console.error('S3 Read Error:', err);
+        }
+        return;
+      }
+
       const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
       const videoExts = ['mp4', 'webm', 'ogv', 'mov'];
       const isAudio = audioExts.includes(ext);
@@ -1571,7 +1597,7 @@ function MainApp() {
       const file = await node.handle.getFile();
       const serverLastModTs = file.lastModified ?? 0;
 
-      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
       const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
       const videoExts = ['mp4', 'webm', 'ogv', 'mov'];
 
@@ -1599,7 +1625,7 @@ function MainApp() {
       };
 
       if (imageExts.includes(ext)) {
-        const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        const mime = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
         openLocalBlobViewer('image', mime);
         return;
       }
@@ -1644,6 +1670,25 @@ function MainApp() {
           lastModified: file.lastModified,
         });
         setEditorContent(display);
+        navigate(`/view/${node.path}`);
+        return;
+      }
+
+      if (ext === 'html' || ext === 'htm' || ext === 'svg') {
+        const text = await file.text();
+        const viewer = ext === 'svg' ? 'svg' : 'html';
+        setCurrentFile({
+          type: 'local',
+          id: node.path,
+          name: node.name,
+          content: text,
+          handle: node.handle,
+          parentHandle: node.parentHandle,
+          viewer,
+          size: typeof file.size === 'number' ? file.size : null,
+          lastModified: file.lastModified,
+        });
+        setEditorContent(text);
         navigate(`/view/${node.path}`);
         return;
       }
@@ -1806,7 +1851,7 @@ function MainApp() {
       const path = node.path;
       const ext = (path.split('.').pop() || '').toLowerCase();
 
-      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
       const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
       const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
       const isS3Media = storageType === 's3' && (ext === 'pdf' || imageExts.includes(ext) || videoExts.includes(ext) || audioExts.includes(ext));
@@ -2621,7 +2666,7 @@ function MainApp() {
       return;
     }
     const viewer = fileToSave.viewer || 'markdown';
-    const editableViewers = ['markdown', 'json', 'raw'];
+    const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
     if (!editableViewers.includes(viewer)) return;
     setIsSaving(true);
     const indicatorId = addIndicator({
@@ -2636,7 +2681,15 @@ function MainApp() {
         const client = getS3Client();
         if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
         const contentType =
-          viewer === 'json' ? 'application/json' : viewer === 'raw' ? 'text/plain' : 'text/markdown';
+          viewer === 'json'
+            ? 'application/json'
+            : viewer === 'raw'
+              ? 'text/plain'
+              : viewer === 'html'
+                ? 'text/html'
+                : viewer === 'svg'
+                  ? 'image/svg+xml'
+                  : 'text/markdown';
         await putObject(client, {
           Bucket: s3Creds.bucket,
           Key: fileToSave.id,
@@ -2678,7 +2731,16 @@ function MainApp() {
             key: fileToSave.id,
             content: textToSave,
             modifiedAt: inputModifiedAt ?? Date.now(),
-            contentType: viewer === 'json' ? 'application/json' : viewer === 'raw' ? 'text/plain' : 'text/markdown',
+            contentType:
+              viewer === 'json'
+                ? 'application/json'
+                : viewer === 'raw'
+                  ? 'text/plain'
+                  : viewer === 'html'
+                    ? 'text/html'
+                    : viewer === 'svg'
+                      ? 'image/svg+xml'
+                      : 'text/markdown',
           });
           alert('업로드가 중단되었습니다. 연결이 복구되면 다시 로그인하면 자동으로 동기화됩니다.');
         } catch (dbErr) {
@@ -2712,7 +2774,15 @@ function MainApp() {
     if (contentOverride != null && typeof contentOverride === 'string') {
       const viewer = file.viewer || 'markdown';
       const contentType =
-        viewer === 'json' ? 'application/json' : viewer === 'raw' ? 'text/plain' : 'text/markdown';
+        viewer === 'json'
+          ? 'application/json'
+          : viewer === 'raw'
+            ? 'text/plain'
+            : viewer === 'html'
+              ? 'text/html'
+              : viewer === 'svg'
+                ? 'image/svg+xml'
+                : 'text/markdown';
       await putObject(client, {
         Bucket: s3Creds.bucket,
         Key: newKey,

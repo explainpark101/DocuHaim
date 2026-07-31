@@ -226,6 +226,7 @@ export default function NovelMarkdownEditor({
   const pasteImageUploadLockRef = useRef(false);
   const [hydrateTick, setHydrateTick] = useState(0);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
+  const [novelTocWidthPx, setNovelTocWidthPx] = useState(224);
 
   const [initialHtml, setInitialHtml] = useState(() => markdownToNovelEditorHtml(value ?? ''));
 
@@ -742,6 +743,9 @@ export default function NovelMarkdownEditor({
               'transition-[padding] duration-300 ease-out motion-reduce:transition-none',
               tocVisible ? NOVEL_TOC_MD_PADDING_CLASS : 'md:pr-0',
             ].join(' '),
+            style: {
+              '--novel-toc-width': `${novelTocWidthPx}px`,
+            },
           }}
           initialContent={initialHtml}
           extensions={extensions}
@@ -768,6 +772,7 @@ export default function NovelMarkdownEditor({
             open={tocVisible}
             onRequestClose={onTocRequestClose}
             mobileOverlayTopPx={mobileTocOverlayTopPx}
+            onWidthChange={setNovelTocWidthPx}
           />
           <NovelImagePasteBridge
             previewOnly={previewOnly}

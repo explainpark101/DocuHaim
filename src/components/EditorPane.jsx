@@ -19,6 +19,7 @@ import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import MonacoTextEditor from '@/components/MonacoTextEditor';
+import HtmlSvgPreviewEditor from '@/components/HtmlSvgPreviewEditor';
 import Button from '@/components/Button';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { ListTree, PenLine, X } from 'lucide-react';
@@ -180,7 +181,8 @@ export default function EditorPane({
   }
 
   const viewer = currentFile.viewer || 'markdown';
-  const isEditableViewer = viewer === 'markdown' || viewer === 'json' || viewer === 'raw';
+  const isEditableViewer =
+    viewer === 'markdown' || viewer === 'json' || viewer === 'raw' || viewer === 'html' || viewer === 'svg';
   const hasUnsavedChanges = isEditableViewer && currentFile.content !== editorContent;
 
   const currentName = currentFile.name || '';
@@ -512,6 +514,18 @@ export default function EditorPane({
               language="json"
               theme={theme}
               readOnly={false}
+              onChange={onChangeEditor}
+              onSave={onSave}
+            />
+          </div>
+        ) : viewer === 'html' || viewer === 'svg' ? (
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <HtmlSvgPreviewEditor
+              key={currentFile?.id ?? 'html-svg'}
+              value={editorContent}
+              mode={viewer === 'svg' ? 'svg' : 'html'}
+              theme={theme}
+              readOnly={previewOnly}
               onChange={onChangeEditor}
               onSave={onSave}
             />

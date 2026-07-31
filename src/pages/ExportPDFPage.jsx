@@ -4,8 +4,10 @@ import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import { ArrowLeft, ListTree, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
+import TocResizeHandle from '@/components/TocResizeHandle';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import Modal from '@/components/modals/Modal';
@@ -19,6 +21,8 @@ import {
 } from '@/utils/wikiImageSyntax';
 
 const EDITOR_ID = 'export-pdf-preview';
+const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
+const PRINT_TOC_DEFAULT_WIDTH = 224;
 
 const headingId = ({ index }) => `pdf-ex-heading-${index}`;
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
@@ -287,6 +291,17 @@ export default function ExportPDFPage() {
   const tocProgrammaticScrollRef = useRef(false);
   const tocProgrammaticResetTimerRef = useRef(null);
   const tocAutoFollowPausedUntilRef = useRef(0);
+  const {
+    width: tocWidth,
+    isResizing: tocResizing,
+    handleProps: tocResizeHandleProps,
+  } = useResizablePanelWidth({
+    storageKey: PRINT_TOC_WIDTH_KEY,
+    defaultWidth: PRINT_TOC_DEFAULT_WIDTH,
+    minWidth: 160,
+    maxWidth: 480,
+    edge: 'right',
+  });
   const getPresignedUrl = useMemo(() => getPresignedUrlResolver(currentFile?.type), [currentFile?.type]);
 
   useWikiImageHydration(previewContainerRef, previewValue, getPresignedUrl ?? undefined);
@@ -844,10 +859,13 @@ export default function ExportPDFPage() {
         </div>
       </div>
 
-      <div className="relative flex-1 min-h-0">
+      <div
+        className="relative flex-1 min-h-0"
+        style={{ '--export-toc-width': `${tocWidth}px` }}
+      >
         <div
           ref={previewContainerRef}
-          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full print:h-auto print:max-h-none print:overflow-visible ${tocVisible ? 'md:pr-56' : ''}`}
+          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full print:h-auto print:max-h-none print:overflow-visible ${tocVisible ? 'md:pr-(--export-toc-width)' : ''}`}
         >
           <MdPreview
             id={EDITOR_ID}
@@ -861,9 +879,14 @@ export default function ExportPDFPage() {
         </div>
         {tocVisible && (
           <aside
-            className="hidden md:flex fixed right-0 bottom-0 w-56 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
-            style={{ top: tocTopPx }}
+            className="hidden md:flex fixed right-0 bottom-0 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
+            style={{ top: tocTopPx, width: tocWidth }}
           >
+            <TocResizeHandle
+              handleProps={tocResizeHandleProps}
+              isResizing={tocResizing}
+              label="목차 너비 조절"
+            />
             <div className="flex flex-col w-full min-h-0 p-2">
               <div className="px-1.5 py-1 text-xs font-semibold tracking-wide text-gray-700 dark:text-odp-fgStrong uppercase">
                 목차

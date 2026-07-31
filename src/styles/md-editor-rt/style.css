@@ -2849,7 +2849,7 @@ div.smart-blue-theme hr {
   height: 100%;
   background-color: var(--md-bk-color);
   border-inline-start: 1px solid var(--md-border-color);
-  width: 200px;
+  width: 100%;
   box-sizing: border-box;
   margin-block: 0;
   margin-inline: 0;
@@ -2898,12 +2898,16 @@ div.smart-blue-theme hr {
   position: absolute;
   inset-block-start: 0;
   inset-inline-end: 0;
-  z-index: 10002
+  z-index: 10002;
+  width: var(--md-catalog-width, 200px);
+  box-sizing: border-box
 }
 
 .md-editor-catalog-flat {
-  position: initial;
-  flex-shrink: 0
+  position: relative;
+  flex-shrink: 0;
+  width: var(--md-catalog-width, 200px);
+  box-sizing: border-box
 }
 
 .md-editor-footer {

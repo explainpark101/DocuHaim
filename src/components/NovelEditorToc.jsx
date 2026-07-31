@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useEditor } from 'novel';
+import TocResizeHandle from '@/components/TocResizeHandle';
+import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
 function extractHeadings(editor) {
   if (!editor || editor.isDestroyed) return [];
@@ -17,23 +19,41 @@ function extractHeadings(editor) {
   return items;
 }
 
-/** 우측 목차 패널 너비 — 본문 `NOVEL_TOC_MD_PADDING_CLASS` 와 동일 값 */
-export const NOVEL_TOC_WIDTH_CLASS = 'w-[14rem]';
-export const NOVEL_TOC_MD_PADDING_CLASS = 'md:pr-[14rem]';
+const NOVEL_TOC_WIDTH_KEY = 's3haim_novel_toc_width';
+const NOVEL_TOC_DEFAULT_WIDTH = 224; // 14rem
+
+/** Default body padding class when TOC open (overridden by inline style when width changes). */
+export const NOVEL_TOC_MD_PADDING_CLASS = 'md:pr-(--novel-toc-width)';
 
 /**
  * 문서 내 제목을 우측에 표시. 부모는 `position: relative` 여야 한다.
  * 모바일: `open`일 때 우측 고정 드로어 + 백드롭 (`onRequestClose`).
- * @param {{ theme?: string; open?: boolean; onRequestClose?: () => void; mobileOverlayTopPx?: number | null }} props
+ * @param {{ theme?: string; open?: boolean; onRequestClose?: () => void; mobileOverlayTopPx?: number | null; onWidthChange?: (width: number) => void }} props
  */
 export default function NovelEditorToc({
   theme = 'light',
   open = true,
   onRequestClose,
   mobileOverlayTopPx = null,
+  onWidthChange,
 }) {
   const { editor } = useEditor();
   const [items, setItems] = useState([]);
+  const {
+    width: tocWidth,
+    isResizing: tocResizing,
+    handleProps: tocResizeHandleProps,
+  } = useResizablePanelWidth({
+    storageKey: NOVEL_TOC_WIDTH_KEY,
+    defaultWidth: NOVEL_TOC_DEFAULT_WIDTH,
+    minWidth: 160,
+    maxWidth: 480,
+    edge: 'right',
+  });
+
+  useEffect(() => {
+    onWidthChange?.(tocWidth);
+  }, [onWidthChange, tocWidth]);
 
   const refresh = useCallback(() => {
     if (!editor || editor.isDestroyed) {
@@ -74,7 +94,12 @@ export default function NovelEditorToc({
       : null;
   const mobileBackdropStyle =
     mobileTopPx !== null ? { top: mobileTopPx, left: 0, right: 0, bottom: 0 } : undefined;
-  const mobileShellStyle = mobileTopPx !== null ? { top: mobileTopPx, bottom: 0 } : undefined;
+  const mobileShellStyle =
+    mobileTopPx !== null
+      ? { top: mobileTopPx, bottom: 0, width: open ? tocWidth : undefined }
+      : open
+        ? { width: tocWidth }
+        : undefined;
 
   return (
     <>
@@ -90,24 +115,34 @@ export default function NovelEditorToc({
         />
       )}
       <div
-        className={`novel-editor-toc-shell max-h-full overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none ${
+        className={`novel-editor-toc-shell max-h-full overflow-hidden motion-reduce:transition-none ${
+          tocResizing ? '' : 'transition-[width] duration-300 ease-out'
+        } ${
           open
             ? `max-md:fixed max-md:right-0 max-md:z-10090 max-md:flex max-md:flex-col max-md:shadow-2xl ${
                 mobileTopPx !== null ? 'max-md:bottom-0' : 'max-md:inset-y-0'
-              } ${NOVEL_TOC_WIDTH_CLASS} pointer-events-auto md:absolute md:inset-y-0 md:right-0 md:z-6 md:block`
+              } pointer-events-auto md:absolute md:inset-y-0 md:right-0 md:z-6 md:block`
             : 'max-md:hidden md:absolute md:inset-y-0 md:right-0 md:z-6 md:block md:w-0 md:pointer-events-none'
         }`}
         style={mobileShellStyle}
         aria-hidden={!open}
       >
       <aside
-        className={`novel-editor-toc novel-editor-toc-panel ${NOVEL_TOC_WIDTH_CLASS} flex h-full flex-col border-l py-2.5 pl-2.5 pr-1.5 text-base leading-snug ${
+        className={`novel-editor-toc novel-editor-toc-panel relative flex h-full w-full flex-col border-l py-2.5 pl-2.5 pr-1.5 text-base leading-snug ${
           isDark
             ? 'novel-editor-toc--dark border-odp-borderSoft bg-odp-bg/95 text-odp-muted'
             : 'border-gray-200 bg-white/95 text-gray-600'
         }`}
         aria-label="목차"
       >
+      {open && (
+        <TocResizeHandle
+          handleProps={tocResizeHandleProps}
+          isResizing={tocResizing}
+          label="목차 너비 조절"
+          className="hidden md:block"
+        />
+      )}
       <div
         className={`mb-2 shrink-0 px-0.5 text-sm font-semibold uppercase tracking-wide ${
           isDark ? 'text-odp-fg' : 'text-gray-800'

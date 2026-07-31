@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MdEditor, config } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
@@ -9,6 +10,7 @@ import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloati
 import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
+import TocResizeHandle from '@/components/TocResizeHandle';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
@@ -31,6 +33,7 @@ import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
+import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import {
   getMarkdownImageOccurrenceInContainer,
   getResizableImageAttrsFromElement,
@@ -38,7 +41,10 @@ import {
   updateMarkdownImageSizeInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
+
 const DEBUG_WIKI_IMAGE = true;
+const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
+const MD_EDITOR_TOC_DEFAULT_WIDTH = 200;
 const buildPreviewHeadingId = (arg1, _arg2, arg3) => {
   const fallbackIndex = Number.isInteger(arg3) ? arg3 : 0;
   const objectIndex = typeof arg1 === 'object' && arg1 !== null ? Number(arg1.index) : NaN;
@@ -456,10 +462,46 @@ export default function MarkdownEditor({
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
+  const [catalogEl, setCatalogEl] = useState(null);
   const activeTransformRef = useRef(null);
+  const {
+    width: catalogWidth,
+    isResizing: catalogResizing,
+    handleProps: catalogResizeHandleProps,
+  } = useResizablePanelWidth({
+    storageKey: MD_EDITOR_TOC_WIDTH_KEY,
+    defaultWidth: MD_EDITOR_TOC_DEFAULT_WIDTH,
+    minWidth: 140,
+    maxWidth: 480,
+    edge: 'right',
+  });
+
   useEffect(() => {
     snippetConfigRef.current = snippetConfig || { snippets: [] };
   }, [snippetConfig]);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return undefined;
+
+    const syncCatalog = () => {
+      const next = root.querySelector(
+        '.md-editor-catalog-fixed, .md-editor-catalog-flat',
+      );
+      setCatalogEl((prev) => (prev === next ? prev : next));
+    };
+    syncCatalog();
+
+    const mo = new MutationObserver(syncCatalog);
+    mo.observe(root, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    root.style.setProperty('--md-catalog-width', `${catalogWidth}px`);
+  }, [catalogWidth]);
 
   useEffect(() => {
     if (!onResolveWikiImageUrl || !value) {
@@ -932,7 +974,20 @@ export default function MarkdownEditor({
   }, [onUploadImage, isUploadingEditorImage]);
 
   return (
-    <div ref={containerRef} className="h-full w-full flex flex-col relative">
+    <div
+      ref={containerRef}
+      className="h-full w-full flex flex-col relative"
+      style={{ '--md-catalog-width': `${catalogWidth}px` }}
+    >
+      {catalogEl &&
+        createPortal(
+          <TocResizeHandle
+            handleProps={catalogResizeHandleProps}
+            isResizing={catalogResizing}
+            label="목차 너비 조절"
+          />,
+          catalogEl,
+        )}
       {isUploadingEditorImage && (
         <div
           className="absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center gap-2 py-2 text-sm bg-blue-300/40 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 border-b border-blue-500/20"

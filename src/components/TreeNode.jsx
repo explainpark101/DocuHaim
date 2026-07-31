@@ -185,7 +185,7 @@ export default function TreeNode({
     const lower = node.name.toLowerCase();
     const lastDot = lower.lastIndexOf('.');
     const ext = lastDot > -1 ? lower.slice(lastDot + 1) : '';
-    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
     const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
     const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
 
@@ -193,7 +193,9 @@ export default function TreeNode({
     if (videoExts.includes(ext)) return IconVideo;
     if (audioExts.includes(ext)) return IconMusic;
     if (ext === 'pdf') return IconFileJson;
-    if (ext === 'md' || ext === 'markdown' || ext === 'mdx') return IconFileCode;
+    if (ext === 'md' || ext === 'markdown' || ext === 'mdx' || ext === 'html' || ext === 'htm' || ext === 'svg') {
+      return IconFileCode;
+    }
     return IconFile;
   };
 
@@ -215,13 +217,16 @@ export default function TreeNode({
     const lower = node.name.toLowerCase();
     const lastDot = lower.lastIndexOf('.');
     const ext = lastDot > -1 ? lower.slice(lastDot + 1) : '';
-    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
     const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
     const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
     if (imageExts.includes(ext)) return 'text-green-600 dark:text-green-400';
     if (videoExts.includes(ext)) return 'text-orange-600 dark:text-orange-400';
     if (audioExts.includes(ext)) return 'text-purple-600 dark:text-purple-400';
     if (ext === 'pdf') return 'text-red-500 dark:text-red-400';
+    if (ext === 'html' || ext === 'htm' || ext === 'svg') {
+      return 'text-sky-600 dark:text-sky-400';
+    }
     if (ext === 'md' || ext === 'markdown' || ext === 'mdx') {
       if (recordingBasePathSet?.size && node.path) {
         const base = getFilePathBaseForRecordingLookup(node.path);
