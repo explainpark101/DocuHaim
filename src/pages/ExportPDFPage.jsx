@@ -887,7 +887,7 @@ export default function ExportPDFPage() {
               isResizing={tocResizing}
               label="목차 너비 조절"
             />
-            <div className="flex flex-col w-full min-h-0 p-2">
+            <div className="relative flex flex-col w-full min-h-0 p-2 pl-2.5">
               <div className="px-1.5 py-1 text-xs font-semibold tracking-wide text-gray-700 dark:text-odp-fgStrong uppercase">
                 목차
               </div>

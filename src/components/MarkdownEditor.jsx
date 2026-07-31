@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { MdEditor, config } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
@@ -463,6 +462,7 @@ export default function MarkdownEditor({
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
   const [catalogEl, setCatalogEl] = useState(null);
+  const [catalogHandleBox, setCatalogHandleBox] = useState(null);
   const activeTransformRef = useRef(null);
   const {
     width: catalogWidth,
@@ -502,6 +502,42 @@ export default function MarkdownEditor({
     if (!root) return;
     root.style.setProperty('--md-catalog-width', `${catalogWidth}px`);
   }, [catalogWidth]);
+
+  // Do not portal into md-editor-rt catalog DOM: that host is reconciled by MdEditor
+  // and wipes foreign children. Track geometry and render the handle in our tree.
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root || !catalogEl) {
+      setCatalogHandleBox(null);
+      return undefined;
+    }
+
+    const updateBox = () => {
+      const rootRect = root.getBoundingClientRect();
+      const catRect = catalogEl.getBoundingClientRect();
+      if (catRect.width <= 0 || catRect.height <= 0) {
+        setCatalogHandleBox(null);
+        return;
+      }
+      setCatalogHandleBox({
+        top: catRect.top - rootRect.top,
+        left: catRect.left - rootRect.left,
+        height: catRect.height,
+      });
+    };
+
+    updateBox();
+    const ro = new ResizeObserver(updateBox);
+    ro.observe(root);
+    ro.observe(catalogEl);
+    window.addEventListener('resize', updateBox);
+    window.addEventListener('scroll', updateBox, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateBox);
+      window.removeEventListener('scroll', updateBox, true);
+    };
+  }, [catalogEl, catalogWidth]);
 
   useEffect(() => {
     if (!onResolveWikiImageUrl || !value) {
@@ -979,15 +1015,20 @@ export default function MarkdownEditor({
       className="h-full w-full flex flex-col relative"
       style={{ '--md-catalog-width': `${catalogWidth}px` }}
     >
-      {catalogEl &&
-        createPortal(
-          <TocResizeHandle
-            handleProps={catalogResizeHandleProps}
-            isResizing={catalogResizing}
-            label="목차 너비 조절"
-          />,
-          catalogEl,
-        )}
+      {catalogHandleBox && (
+        <TocResizeHandle
+          handleProps={catalogResizeHandleProps}
+          isResizing={catalogResizing}
+          label="목차 너비 조절"
+          className="z-10003"
+          style={{
+            top: catalogHandleBox.top,
+            left: catalogHandleBox.left,
+            height: catalogHandleBox.height,
+            bottom: 'auto',
+          }}
+        />
+      )}
       {isUploadingEditorImage && (
         <div
           className="absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center gap-2 py-2 text-sm bg-blue-300/40 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 border-b border-blue-500/20"

@@ -115,7 +115,7 @@ export default function NovelEditorToc({
         />
       )}
       <div
-        className={`novel-editor-toc-shell max-h-full overflow-hidden motion-reduce:transition-none ${
+        className={`novel-editor-toc-shell relative max-h-full overflow-hidden motion-reduce:transition-none ${
           tocResizing ? '' : 'transition-[width] duration-300 ease-out'
         } ${
           open
@@ -144,7 +144,7 @@ export default function NovelEditorToc({
         />
       )}
       <div
-        className={`mb-2 shrink-0 px-0.5 text-sm font-semibold uppercase tracking-wide ${
+        className={`mb-2 shrink-0 px-0.5 pl-1 text-sm font-semibold uppercase tracking-wide ${
           isDark ? 'text-odp-fg' : 'text-gray-800'
         }`}
       >
