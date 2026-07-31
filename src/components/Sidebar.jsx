@@ -62,7 +62,7 @@ import {
   IconUpload,
   IconRefresh,
 } from '@/components/icons';
-import { ArrowRightToLine, ChevronsLeft } from 'lucide-react';
+import { ArrowRightToLine, ChevronsLeft, Loader2, Search, X } from 'lucide-react';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 
 function getParentPathFromFilePath(filePath) {
@@ -316,7 +316,9 @@ export default function Sidebar({
   onOpenInNewWindow,
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const isSearchPending = searchInput !== searchTerm;
   /** null = no explicit folder; '' = bucket/project root selected */
   const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState(null);
   /** null = no explicit folder; { path: '', handle } = project root */
@@ -447,6 +449,13 @@ export default function Sidebar({
     if (!activeDragItems?.length) return null;
     return new Set(activeDragItems.map((item) => toTreeSelectKey(item.storageType, item.path)));
   }, [activeDragItems]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     const el = scrollContainerRef.current;
@@ -720,63 +729,92 @@ export default function Sidebar({
           onOpenInNewWindow={onOpenInNewWindow}
         />
       )}
-      <div className="p-4 border-b border-gray-200 dark:border-odp-bgSofter flex flex-col gap-3 bg-gray-50 dark:bg-odp-surface shrink-0">
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex items-center gap-1 min-w-0">
-            {typeof onRequestCollapseSidebar === 'function' && (
+      <div className="flex flex-col bg-gray-50 dark:bg-odp-surface shrink-0">
+        <div className="p-4 flex flex-col gap-3">
+          <div className="flex justify-between items-center gap-2" data-sidebar-header-row>
+            <div className="flex items-center gap-1 min-w-0" data-sidebar-header-left>
+              {typeof onRequestCollapseSidebar === 'function' && (
+                <button
+                  type="button"
+                  onClick={onRequestCollapseSidebar}
+                  className="hidden md:inline-flex p-1.5 shrink-0 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+                  title="사이드바 접기"
+                  aria-label="사이드바 접기"
+                >
+                  <ChevronsLeft size={18} />
+                </button>
+              )}
+              <h1
+                data-sidebar-brand
+                className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate"
+              >
+                {appName}
+              </h1>
+            </div>
+            <div className="flex items-center gap-1.5" data-sidebar-header-right>
+              <button
+                onClick={onToggleTheme}
+                className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+                title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
+              >
+                {theme !== 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+              </button>
+              <button
+                onClick={onOpenSettings}
+                className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
+              >
+                <IconSettings />
+              </button>
+            </div>
+          </div>
+          {selectedFolderForMove && onRequestMoveFolder && (
+            <div className="flex items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-1.5 text-xs">
+              <span className="text-blue-700 dark:text-blue-300 truncate flex-1 min-w-0">
+                폴더 선택됨: {selectedFolderForMove.node.name}
+              </span>
               <button
                 type="button"
-                onClick={onRequestCollapseSidebar}
-                className="hidden md:inline-flex p-1.5 shrink-0 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
-                title="사이드바 접기"
-                aria-label="사이드바 접기"
+                onClick={() => onRequestMoveFolder(selectedFolderForMove.node, selectedFolderForMove.storageType)}
+                className="flex items-center gap-1 px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shrink-0"
+                title="폴더 이동"
               >
-                <ChevronsLeft size={18} />
+                <ArrowRightToLine size={12} />
+                이동
               </button>
-            )}
-            <h1 className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate">{appName}</h1>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={onToggleTheme}
-              className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
-              title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
-            >
-              {theme !== 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
-            </button>
-            <button
-              onClick={onOpenSettings}
-              className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
-            >
-              <IconSettings />
-            </button>
-          </div>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2 rounded-md bg-white dark:bg-odp-bgSoft border border-gray-200 dark:border-odp-borderSoft px-2 py-1.5 text-xs text-gray-500 dark:text-odp-fg">
+        <div className="flex items-center gap-2 w-full border-y border-gray-400 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm text-gray-700 dark:text-odp-fgStrong">
+          <Search size={16} className="shrink-0 text-gray-700 dark:text-odp-fgStrong" aria-hidden />
           <input
             type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={isWebdavMode ? '파일명 검색 (WebDAV)' : '파일명 검색'}
-            className="w-full bg-transparent border-none outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={isWebdavMode ? '파일명 검색 (WebDAV)' : '파일명 검색'}
+            className="min-w-0 flex-1 bg-transparent border-none outline-none text-sm font-bold placeholder:font-normal placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            aria-label="파일명 검색"
           />
-        </div>
-        {selectedFolderForMove && onRequestMoveFolder && (
-          <div className="flex items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-1.5 text-xs">
-            <span className="text-blue-700 dark:text-blue-300 truncate flex-1 min-w-0">
-              폴더 선택됨: {selectedFolderForMove.node.name}
-            </span>
+          {isSearchPending ? (
+            <Loader2
+              size={16}
+              className="animate-spin shrink-0 text-gray-400 dark:text-gray-500"
+              aria-label="검색 중"
+            />
+          ) : searchInput ? (
             <button
               type="button"
-              onClick={() => onRequestMoveFolder(selectedFolderForMove.node, selectedFolderForMove.storageType)}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shrink-0"
-              title="폴더 이동"
+              onClick={() => {
+                setSearchInput('');
+                setSearchTerm('');
+              }}
+              className="shrink-0 p-0.5 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-odp-fgStrong rounded transition"
+              title="검색어 지우기"
+              aria-label="검색어 지우기"
             >
-              <ArrowRightToLine size={12} />
-              이동
+              <X size={16} />
             </button>
-          </div>
-        )}
+          ) : null}
+        </div>
       </div>
 
       <DndContext

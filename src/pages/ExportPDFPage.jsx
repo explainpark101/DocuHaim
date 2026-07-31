@@ -299,8 +299,10 @@ export default function ExportPDFPage() {
     storageKey: PRINT_TOC_WIDTH_KEY,
     defaultWidth: PRINT_TOC_DEFAULT_WIDTH,
     minWidth: 160,
+    collapseBelowWidth: 80,
     maxWidth: 480,
     edge: 'right',
+    onCollapseBelowMin: () => setTocVisible(false),
   });
   const getPresignedUrl = useMemo(() => getPresignedUrlResolver(currentFile?.type), [currentFile?.type]);
 
@@ -865,7 +867,9 @@ export default function ExportPDFPage() {
       >
         <div
           ref={previewContainerRef}
-          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full print:h-auto print:max-h-none print:overflow-visible ${tocVisible ? 'md:pr-(--export-toc-width)' : ''}`}
+          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full print:h-auto print:max-h-none print:overflow-visible ${
+            tocVisible ? 'md:pr-(--export-toc-width)' : ''
+          }`}
         >
           <MdPreview
             id={EDITOR_ID}
@@ -885,6 +889,7 @@ export default function ExportPDFPage() {
             <TocResizeHandle
               handleProps={tocResizeHandleProps}
               isResizing={tocResizing}
+              visibleOnHover
               label="목차 너비 조절"
             />
             <div className="relative flex flex-col w-full min-h-0 p-2 pl-2.5">

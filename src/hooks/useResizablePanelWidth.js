@@ -8,21 +8,35 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * @param {number} [options.defaultWidth=224]
  * @param {number} [options.minWidth=160]
  * @param {number} [options.maxWidth=480]
+ * @param {number} [options.collapseBelowWidth]
+ *   Collapse threshold (and hard floor when onCollapseBelowMin is unset). Defaults to minWidth.
  * @param {'left'|'right'} [options.edge='right'] Panel side; 'right' inverts drag delta.
+ * @param {boolean} [options.deferReactUpdateUntilEnd=false]
+ *   When true, React width state updates only on pointer-up; during drag call onLiveWidth instead.
+ * @param {(width: number) => void} [options.onLiveWidth] Called on every move (and start) with the live width.
+ * @param {() => void} [options.onCollapseBelowMin]
+ *   On pointer/touch end, if live width is below collapseBelowWidth, called instead of committing width
+ *   (pre-drag width is restored). Collapse does not run mid-drag.
  */
 export function useResizablePanelWidth({
   storageKey,
   defaultWidth = 224,
   minWidth = 160,
   maxWidth = 480,
+  collapseBelowWidth,
   edge = 'right',
+  deferReactUpdateUntilEnd = false,
+  onLiveWidth,
+  onCollapseBelowMin,
 } = {}) {
+  const dragFloor = collapseBelowWidth ?? minWidth;
+
   const [width, setWidth] = useState(() => {
     if (!storageKey || typeof window === 'undefined') return defaultWidth;
     try {
       const raw = window.localStorage.getItem(storageKey);
       const n = Number(raw);
-      if (Number.isFinite(n)) return Math.min(maxWidth, Math.max(minWidth, n));
+      if (Number.isFinite(n)) return Math.min(maxWidth, Math.max(dragFloor, n));
     } catch {
       // ignore
     }
@@ -34,30 +48,88 @@ export function useResizablePanelWidth({
     startX: 0,
     startWidth: defaultWidth,
   });
+  const widthRef = useRef(width);
+  const liveWidthRef = useRef(null);
+  const onLiveWidthRef = useRef(onLiveWidth);
+  const onCollapseBelowMinRef = useRef(onCollapseBelowMin);
+  const deferRef = useRef(deferReactUpdateUntilEnd);
+  const dragFloorRef = useRef(dragFloor);
+  const maxWidthRef = useRef(maxWidth);
+  const edgeRef = useRef(edge);
 
-  const onResizeStart = useCallback(
-    (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const clientX = e.touches?.[0]?.clientX ?? e.clientX;
-      resizeStateRef.current = {
-        isResizing: true,
-        startX: clientX,
-        startWidth: width,
-      };
-      setIsResizing(true);
-    },
-    [width],
-  );
+  useEffect(() => {
+    widthRef.current = width;
+  }, [width]);
+
+  useEffect(() => {
+    onLiveWidthRef.current = onLiveWidth;
+  }, [onLiveWidth]);
+
+  useEffect(() => {
+    onCollapseBelowMinRef.current = onCollapseBelowMin;
+  }, [onCollapseBelowMin]);
+
+  useEffect(() => {
+    deferRef.current = deferReactUpdateUntilEnd;
+  }, [deferReactUpdateUntilEnd]);
+
+  useEffect(() => {
+    dragFloorRef.current = collapseBelowWidth ?? minWidth;
+  }, [collapseBelowWidth, minWidth]);
+
+  useEffect(() => {
+    maxWidthRef.current = maxWidth;
+  }, [maxWidth]);
+
+  useEffect(() => {
+    edgeRef.current = edge;
+  }, [edge]);
+
+  const endResizeSession = useCallback(() => {
+    resizeStateRef.current = {
+      ...resizeStateRef.current,
+      isResizing: false,
+    };
+    liveWidthRef.current = null;
+    setIsResizing(false);
+  }, []);
+
+  const onResizeStart = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const clientX = e.touches?.[0]?.clientX ?? e.clientX;
+    const startWidth = widthRef.current;
+    resizeStateRef.current = {
+      isResizing: true,
+      startX: clientX,
+      startWidth,
+    };
+    liveWidthRef.current = startWidth;
+    onLiveWidthRef.current?.(startWidth);
+    setIsResizing(true);
+  }, []);
 
   useEffect(() => {
     const applyDelta = (clientX) => {
       const state = resizeStateRef.current;
       if (!state.isResizing) return;
       const delta = clientX - state.startX;
-      const signed = edge === 'right' ? -delta : delta;
-      const next = Math.min(maxWidth, Math.max(minWidth, state.startWidth + signed));
-      setWidth(next);
+      const signed = edgeRef.current === 'right' ? -delta : delta;
+      const raw = state.startWidth + signed;
+      const floor = dragFloorRef.current;
+      const max = maxWidthRef.current;
+      const canCollapse = typeof onCollapseBelowMinRef.current === 'function';
+
+      // While dragging, allow preview below the collapse threshold; decide on pointer up.
+      const next = canCollapse
+        ? Math.min(max, Math.max(0, raw))
+        : Math.min(max, Math.max(floor, raw));
+
+      liveWidthRef.current = next;
+      onLiveWidthRef.current?.(next);
+      if (!deferRef.current) {
+        setWidth(next);
+      }
     };
 
     const handleMouseMove = (e) => applyDelta(e.clientX);
@@ -65,16 +137,34 @@ export function useResizablePanelWidth({
       if (!resizeStateRef.current.isResizing) return;
       if (e.touches?.[0]) {
         e.preventDefault();
+        e.stopPropagation();
         applyDelta(e.touches[0].clientX);
       }
     };
-    const handleEnd = () => {
+    const handleEnd = (e) => {
       if (!resizeStateRef.current.isResizing) return;
-      resizeStateRef.current = {
-        ...resizeStateRef.current,
-        isResizing: false,
-      };
-      setIsResizing(false);
+      if (e?.type?.startsWith('touch')) {
+        e.stopPropagation?.();
+      }
+
+      const finalWidth = liveWidthRef.current;
+      const startWidth = resizeStateRef.current.startWidth;
+      const floor = dragFloorRef.current;
+      const max = maxWidthRef.current;
+      const collapse = onCollapseBelowMinRef.current;
+
+      endResizeSession();
+
+      if (typeof collapse === 'function' && finalWidth != null && finalWidth < floor) {
+        // Restore pre-drag width so reopen / localStorage keep a usable size.
+        setWidth(startWidth);
+        collapse();
+        return;
+      }
+
+      if (finalWidth != null) {
+        setWidth(Math.min(max, Math.max(floor, finalWidth)));
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -90,16 +180,16 @@ export function useResizablePanelWidth({
       window.removeEventListener('touchend', handleEnd);
       window.removeEventListener('touchcancel', handleEnd);
     };
-  }, [edge, maxWidth, minWidth]);
+  }, [endResizeSession]);
 
   useEffect(() => {
-    if (!storageKey) return;
+    if (!storageKey || isResizing) return;
     try {
       window.localStorage.setItem(storageKey, String(width));
     } catch {
       // ignore
     }
-  }, [storageKey, width]);
+  }, [storageKey, width, isResizing]);
 
   useEffect(() => {
     if (!isResizing) return undefined;
@@ -124,8 +214,9 @@ export function useResizablePanelWidth({
       role: 'separator',
       'aria-orientation': 'vertical',
       'aria-valuenow': Math.round(width),
-      'aria-valuemin': minWidth,
-      'aria-valuemax': maxWidth,
+      'aria-valuemin': Math.round(dragFloor),
+      'aria-valuemax': Math.round(maxWidth),
+      style: { touchAction: 'none' },
     },
   };
 }

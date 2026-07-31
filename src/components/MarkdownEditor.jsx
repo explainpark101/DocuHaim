@@ -40,6 +40,8 @@ import {
   updateMarkdownImageSizeInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
+import { syncPreviewSelectionToEditor } from '@/utils/previewSelectionSync';
+import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
 
 const DEBUG_WIKI_IMAGE = true;
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
@@ -455,6 +457,13 @@ export default function MarkdownEditor({
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
+  const { onChange: onChangeWithUndoHistory } = usePerFileEditorUndoHistory({
+    currentFile,
+    value,
+    onChange,
+    editorRef,
+    enabled: !previewOnly,
+  });
   const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
@@ -472,8 +481,13 @@ export default function MarkdownEditor({
     storageKey: MD_EDITOR_TOC_WIDTH_KEY,
     defaultWidth: MD_EDITOR_TOC_DEFAULT_WIDTH,
     minWidth: 140,
+    collapseBelowWidth: 70,
     maxWidth: 480,
     edge: 'right',
+    onCollapseBelowMin: () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      api?.toggleCatalog?.(false);
+    },
   });
 
   useEffect(() => {
@@ -606,6 +620,86 @@ export default function MarkdownEditor({
     if (!previewOnly) return;
     const api = editorRef.current?.value ?? editorRef.current;
     api?.togglePreviewOnly?.(true);
+  }, [previewOnly]);
+
+  // Preview selection → CodeMirror selection + focus so typing edits the source.
+  useEffect(() => {
+    if (previewOnly) return undefined;
+    const root = containerRef.current;
+    if (!root) return undefined;
+
+    const shouldIgnoreTarget = (target) => {
+      if (!(target instanceof Element)) return false;
+      return Boolean(
+        target.closest(
+          'a, button, input, textarea, select, .md-editor-code-action, [data-transform-handle]',
+        ),
+      );
+    };
+
+    const syncFromPreview = () => {
+      const previewRoot = root.querySelector('.md-editor-preview');
+      if (!previewRoot) return;
+      const sel = window.getSelection?.();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      if (!previewRoot.contains(range.commonAncestorContainer)) return;
+
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view) return;
+
+      syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
+    };
+
+    const onMouseUp = (e) => {
+      if (shouldIgnoreTarget(e.target)) return;
+      // Wait until the browser finalizes the selection.
+      requestAnimationFrame(syncFromPreview);
+    };
+
+    const onTouchEnd = (e) => {
+      if (shouldIgnoreTarget(e.target)) return;
+      requestAnimationFrame(syncFromPreview);
+    };
+
+    // If focus/selection is still on the preview, move editing into CodeMirror.
+    // Do not synthesize insertText here — that breaks IME (e.g. Korean).
+    const onKeyDownCapture = (e) => {
+      const previewRoot = root.querySelector('.md-editor-preview');
+      if (!previewRoot) return;
+
+      const target = e.target;
+      const focusInPreview =
+        target instanceof Node && previewRoot.contains(target);
+      const sel = window.getSelection?.();
+      const selInPreview =
+        sel?.rangeCount > 0
+        && previewRoot.contains(sel.getRangeAt(0).commonAncestorContainer);
+
+      if (!focusInPreview && !selInPreview) return;
+
+      // Let browser shortcuts / IME composition alone once CM already has focus.
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view) return;
+      if (view.hasFocus) return;
+
+      if (selInPreview) {
+        syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
+      } else {
+        view.focus();
+      }
+    };
+
+    root.addEventListener('mouseup', onMouseUp);
+    root.addEventListener('touchend', onTouchEnd, { passive: true });
+    root.addEventListener('keydown', onKeyDownCapture, true);
+    return () => {
+      root.removeEventListener('mouseup', onMouseUp);
+      root.removeEventListener('touchend', onTouchEnd);
+      root.removeEventListener('keydown', onKeyDownCapture, true);
+    };
   }, [previewOnly]);
 
   useEffect(() => {
@@ -761,7 +855,7 @@ export default function MarkdownEditor({
   const handleApplyWikiImageSize = useCallback(
     ({ width, height }) => {
       const modal = wikiImageModalState;
-      if (!modal?.key || typeof onChange !== 'function') return;
+      if (!modal?.key || typeof onChangeWithUndoHistory !== 'function') return;
       const next =
         modal.kind === 'wiki'
           ? updateWikiImageSizeInMarkdown(value, {
@@ -777,10 +871,10 @@ export default function MarkdownEditor({
               height,
             });
       if (next.updated && next.markdown !== value) {
-        onChange(next.markdown);
+        onChangeWithUndoHistory(next.markdown);
       }
     },
-    [wikiImageModalState, onChange, value],
+    [wikiImageModalState, onChangeWithUndoHistory, value],
   );
 
   const findResizableImageElement = useCallback((target) => {
@@ -801,7 +895,7 @@ export default function MarkdownEditor({
 
   const applyTransformSizeToMarkdown = useCallback(
     ({ kind, key, occurrence, widthPx, heightPx }) => {
-      if (!key || typeof onChange !== 'function') return false;
+      if (!key || typeof onChangeWithUndoHistory !== 'function') return false;
       const width = Number.isFinite(widthPx) ? `${Math.round(widthPx)}px` : null;
       const height = Number.isFinite(heightPx) ? `${Math.round(heightPx)}px` : null;
       const next =
@@ -809,12 +903,12 @@ export default function MarkdownEditor({
           ? updateWikiImageSizeInMarkdown(value, { path: key, occurrence, width, height })
           : updateMarkdownImageSizeInMarkdown(value, { src: key, occurrence, width, height });
       if (next.updated && next.markdown !== value) {
-        onChange(next.markdown);
+        onChangeWithUndoHistory(next.markdown);
         return true;
       }
       return false;
     },
-    [onChange, value],
+    [onChangeWithUndoHistory, value],
   );
 
   const startFreeTransform = useCallback(() => {
@@ -1019,6 +1113,7 @@ export default function MarkdownEditor({
         <TocResizeHandle
           handleProps={catalogResizeHandleProps}
           isResizing={catalogResizing}
+          visibleOnHover
           label="목차 너비 조절"
           className="z-10003"
           style={{
@@ -1050,7 +1145,7 @@ export default function MarkdownEditor({
       <MdEditor
         ref={editorRef}
         modelValue={value}
-        onChange={onChange}
+        onChange={onChangeWithUndoHistory}
         mdHeadingId={buildPreviewHeadingId}
         className="h-full! max-h-dvh"
         theme={theme}
@@ -1130,7 +1225,7 @@ export default function MarkdownEditor({
       />
       <LlmAssistModal
         editorRef={editorRef}
-        onChange={onChange}
+        onChange={onChangeWithUndoHistory}
         getGeminiApiKey={getGeminiApiKey ?? (() => '')}
         open={llmAssistOpen}
         onOpenChange={setLlmAssistOpen}
@@ -1138,7 +1233,7 @@ export default function MarkdownEditor({
       />
       <ChecklistProgressFloatingPanel
         editorRef={editorRef}
-        onChange={onChange}
+        onChange={onChangeWithUndoHistory}
         open={checklistProgressOpen}
         onOpenChange={setChecklistProgressOpen}
       />

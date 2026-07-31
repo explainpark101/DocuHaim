@@ -740,7 +740,6 @@ export default function NovelMarkdownEditor({
           editorContainerProps={{
             className: [
               'flex min-h-0 flex-1 flex-col overflow-y-auto novel-editor-scroll-area',
-              'transition-[padding] duration-300 ease-out motion-reduce:transition-none',
               tocVisible ? NOVEL_TOC_MD_PADDING_CLASS : 'md:pr-0',
             ].join(' '),
             style: {

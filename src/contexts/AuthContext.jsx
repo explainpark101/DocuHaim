@@ -2,8 +2,10 @@
  * 인증 Context
  * - 잠금 해제 상태, S3 인증 정보 등을 유지
  * - /export-pdf 등 다른 라우트로 이동 후 돌아와도 재잠금 해제 불필요
+ * - sessionStorage에 잠금 해제 세션을 두어 같은 탭에서 새로고침해도 자동 복원
  */
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { clearAuthSession, saveAuthSession } from '@/utils/authSession';
 
 const AuthContext = createContext(null);
 
@@ -23,6 +25,11 @@ export function AuthProvider({ children }) {
   const [masterPassword, setMasterPassword] = useState('');
   const [s3Creds, setS3Creds] = useState(initialCreds);
 
+  useEffect(() => {
+    if (!isUnlocked) return;
+    void saveAuthSession({ creds: s3Creds, password: masterPassword });
+  }, [isUnlocked, s3Creds, masterPassword]);
+
   const unlock = useCallback((creds, password = '') => {
     setS3Creds(creds);
     setMasterPassword(password);
@@ -39,6 +46,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const lock = useCallback(() => {
+    clearAuthSession();
     setIsUnlocked(false);
     setShowAuthModal(true);
     setS3Creds(initialCreds);

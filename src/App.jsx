@@ -32,6 +32,7 @@ import {
   streamS3ObjectToWritable,
 } from '@/utils/s3Client';
 import Sidebar from '@/components/Sidebar';
+import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import EditorPane from '@/components/EditorPane';
 import { AuthModal } from '@/components/modals/AuthModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
@@ -93,6 +94,7 @@ import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicato
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import { clearGeminiApiKeySession } from '@/utils/geminiApiKeySession';
+import { tryRestoreAuthSession } from '@/utils/authSession';
 import { applyDocumentTheme } from '@/utils/documentTheme';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
@@ -121,7 +123,6 @@ function MainApp() {
   const auth = useAuth();
   const {
     isUnlocked,
-    setIsUnlocked,
     showAuthModal,
     setShowAuthModal,
     showSetPasswordModal,
@@ -184,12 +185,6 @@ function MainApp() {
   const uploadFileInputRef = useRef(null);
   const uploadFolderInputRef = useRef(null);
   const [uploadTarget, setUploadTarget] = useState(null);
-  const [sidebarWidth, setSidebarWidth] = useState(260);
-  const sidebarResizeStateRef = useRef({
-    isResizing: false,
-    startX: 0,
-    startWidth: 260,
-  });
   const [deletingFolderPath, setDeletingFolderPath] = useState(null);
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -493,62 +488,38 @@ function MainApp() {
     saveTreeStickyFolderPathEnabled(treeStickyFolderPathEnabled);
   }, [treeStickyFolderPathEnabled]);
 
-  const handleSidebarResizeMouseDown = (e) => {
-    e.preventDefault();
-    sidebarResizeStateRef.current = {
-      isResizing: true,
-      startX: e.clientX,
-      startWidth: sidebarWidth,
-    };
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      const state = sidebarResizeStateRef.current;
-      if (!state.isResizing) return;
-      const delta = e.clientX - state.startX;
-      const nextWidth = Math.min(
-        480,
-        Math.max(200, state.startWidth + delta),
-      );
-      setSidebarWidth(nextWidth);
-    };
-
-    const handleMouseUp = () => {
-      if (sidebarResizeStateRef.current.isResizing) {
-        sidebarResizeStateRef.current = {
-          ...sidebarResizeStateRef.current,
-          isResizing: false,
-        };
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
   useEffect(() => {
     applyDocumentTheme(theme);
     window.localStorage.setItem('theme', theme);
   }, [theme]);
 
   // 1. Init (marked & S3 client are from npm modules; no script loading)
+  // Same-tab reload: restore unlock from sessionStorage before showing AuthModal.
   useEffect(() => {
     setScriptsLoaded(true);
     if (isUnlocked) return;
-    const stored = localStorage.getItem('s3NotesEncrypted');
-    if (stored) {
-      setShowAuthModal(true);
-    } else {
-      setIsUnlocked(true);
-      navigate('/settings');
-    }
-  }, [isUnlocked, setShowAuthModal, setIsUnlocked, navigate]);
+
+    let cancelled = false;
+    (async () => {
+      const session = await tryRestoreAuthSession();
+      if (cancelled) return;
+      if (session) {
+        unlock(session.creds, session.password);
+        return;
+      }
+      const stored = localStorage.getItem('s3NotesEncrypted');
+      if (stored) {
+        setShowAuthModal(true);
+      } else {
+        proceedWithoutStoredCreds();
+        navigate('/settings');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isUnlocked, setShowAuthModal, unlock, proceedWithoutStoredCreds, navigate]);
 
   useEffect(() => {
     Promise.all([isWebAuthnPRFSupported(), browserSupportsWebAuthn()]).then(([prf, basic]) => {
@@ -3894,93 +3865,73 @@ function MainApp() {
           )}
 
           {/* Sidebar: mobile open z-60 above main z-50; closed z-40 + pointer-events-none */}
-          <div
-            className={`
-              flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter
-              ${isMobile && sidebarOpen ? 'z-60' : 'z-40'}
-              md:relative md:h-full md:shrink-0
-              fixed top-0 left-0 right-0 w-full h-dvh md:max-h-none
-              max-md:transition-transform max-md:duration-300 max-md:ease-out
-              md:transition-[width] md:duration-300 md:ease-in-out
-              ${!isMobile && sidebarCollapsed ? 'md:overflow-hidden md:border-r-0' : ''}
-              ${isMobile && !sidebarOpen ? '-translate-y-full pointer-events-none' : 'translate-y-0'}
-            `}
-            style={
-              isMobile
-                ? undefined
-                : {
-                    width: sidebarCollapsed ? 0 : sidebarWidth,
-                    minWidth: 0,
-                  }
+          <ResizableSidebarPanel
+            isMobile={isMobile}
+            collapsed={sidebarCollapsed}
+            open={sidebarOpen}
+            onRequestCollapse={() => setSidebarCollapsed(true)}
+            mobileHeader={
+              isMobile ? (
+                <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
+                  <button
+                    type="button"
+                    aria-label="사이드바 닫기"
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
+                  >
+                    <IconX size={22} />
+                  </button>
+                </div>
+              ) : null
             }
           >
-            {isMobile && (
-              <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
-                <button
-                  type="button"
-                  aria-label="사이드바 닫기"
-                  onClick={() => setSidebarOpen(false)}
-                  className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
-                >
-                  <IconX size={22} />
-                </button>
-              </div>
-            )}
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-              <Sidebar
-                appName={appName}
-                storageMode={storageMode}
-                s3Tree={s3Tree}
-                s3Bucket={s3Creds.bucket}
-                localTree={localTree}
-                localRootHandle={localRootHandle}
-                isLocalTreeLoading={isLocalTreeLoading}
-                localFolderLoadingPath={localFolderLoadingPath}
-                onLoadLocalFolderChildren={loadLocalFolderChildren}
-                onRefreshLocal={refreshLocalTree}
-                currentFile={currentFile}
-                selectedIds={selectedIds}
-                onSelectFile={handleTreeNodeSelect}
-                onClearSelection={() => setSelectedIds(new Set())}
-                onCreateItem={requestCreateItem}
-                onRequestUploadFile={requestUploadFile}
-                onRequestUploadFolder={requestUploadFolder}
-                onRequestMoveFolder={handleRequestMoveFolder}
-                onDropOnFolder={handleDropOnFolder}
-                onDragEndNode={handleDragEndNode}
-                dropTarget={dropTarget}
-                onOpenLocalFolder={openLocalFolder}
-                onSetDeleteTarget={setDeleteTarget}
-                onOpenSettings={() => {
-                  if (isMobile) setSidebarOpen(false);
-                  navigate('/settings');
-                }}
-                theme={theme}
-                onToggleTheme={() =>
-                  setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
-                }
-                onRenameItem={renameTreeItem}
-                showHiddenFolders={showHiddenFolders}
-                hideRecordingCompanions={hideRecordingCompanions}
-                treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
-                onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
-                deletingFolderPath={deletingFolderPath}
-                isDeletingFolder={isDeletingFolder}
-                expandPathsRef={expandPathsRef}
-                onRefreshS3={loadS3Files}
-                onDownloadNode={handleDownloadNode}
-                onDuplicateNode={handleDuplicateNode}
-                onRequestMoveFile={handleRequestMoveFileFromSidebar}
-                onOpenInNewWindow={handleOpenInNewWindow}
-              />
-            </div>
-            {!isMobile && !sidebarCollapsed && (
-              <div
-                className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-blue-400/30 dark:hover:bg-blue-400/30"
-                onMouseDown={handleSidebarResizeMouseDown}
-              />
-            )}
-          </div>
+            <Sidebar
+              appName={appName}
+              storageMode={storageMode}
+              s3Tree={s3Tree}
+              s3Bucket={s3Creds.bucket}
+              localTree={localTree}
+              localRootHandle={localRootHandle}
+              isLocalTreeLoading={isLocalTreeLoading}
+              localFolderLoadingPath={localFolderLoadingPath}
+              onLoadLocalFolderChildren={loadLocalFolderChildren}
+              onRefreshLocal={refreshLocalTree}
+              currentFile={currentFile}
+              selectedIds={selectedIds}
+              onSelectFile={handleTreeNodeSelect}
+              onClearSelection={() => setSelectedIds(new Set())}
+              onCreateItem={requestCreateItem}
+              onRequestUploadFile={requestUploadFile}
+              onRequestUploadFolder={requestUploadFolder}
+              onRequestMoveFolder={handleRequestMoveFolder}
+              onDropOnFolder={handleDropOnFolder}
+              onDragEndNode={handleDragEndNode}
+              dropTarget={dropTarget}
+              onOpenLocalFolder={openLocalFolder}
+              onSetDeleteTarget={setDeleteTarget}
+              onOpenSettings={() => {
+                if (isMobile) setSidebarOpen(false);
+                navigate('/settings');
+              }}
+              theme={theme}
+              onToggleTheme={() =>
+                setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+              }
+              onRenameItem={renameTreeItem}
+              showHiddenFolders={showHiddenFolders}
+              hideRecordingCompanions={hideRecordingCompanions}
+              treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
+              onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
+              deletingFolderPath={deletingFolderPath}
+              isDeletingFolder={isDeletingFolder}
+              expandPathsRef={expandPathsRef}
+              onRefreshS3={loadS3Files}
+              onDownloadNode={handleDownloadNode}
+              onDuplicateNode={handleDuplicateNode}
+              onRequestMoveFile={handleRequestMoveFileFromSidebar}
+              onOpenInNewWindow={handleOpenInNewWindow}
+            />
+          </ResizableSidebarPanel>
 
           {!isMobile && (
             <button
