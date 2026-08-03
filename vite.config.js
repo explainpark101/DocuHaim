@@ -27,6 +27,19 @@ if (!isElectron) {
         display: 'standalone',
         start_url: (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/'),
         scope: (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/'),
+        share_target: {
+          action: (() => {
+            const base = (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/');
+            return `${base}chat`;
+          })(),
+          method: 'GET',
+          enctype: 'application/x-www-form-urlencoded',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+          },
+        },
         icons: [
           {
             src: 'pwa-192x192.png',

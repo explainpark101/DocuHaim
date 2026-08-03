@@ -34,6 +34,7 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import EditorPane from '@/components/EditorPane';
+import ChatWithMyselfPane from '@/components/chatWithMyself/ChatWithMyselfPane';
 import { AuthModal } from '@/components/modals/AuthModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
 import { SaveMethodModal } from '@/components/modals/SaveMethodModal';
@@ -135,6 +136,7 @@ function MainApp() {
     proceedWithoutStoredCreds,
   } = auth;
   const navigate = useNavigate();
+  const location = useLocation();
 
   const getGeminiApiKey = useCallback(
     () => (s3Creds?.googleAiStudioApiKey || '').trim(),
@@ -3930,6 +3932,11 @@ function MainApp() {
               onDuplicateNode={handleDuplicateNode}
               onRequestMoveFile={handleRequestMoveFileFromSidebar}
               onOpenInNewWindow={handleOpenInNewWindow}
+              onOpenChatWithMyself={() => {
+                if (isMobile) setSidebarOpen(false);
+                navigate('/chat');
+              }}
+              chatWithMyselfActive={location.pathname === '/chat' || location.pathname.endsWith('/chat')}
             />
           </ResizableSidebarPanel>
 
@@ -3954,6 +3961,21 @@ function MainApp() {
           {/* Main Content Routes (z-50: above closed mobile sidebar z-40 so toolbar buttons receive taps) */}
           <div className="relative z-50 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
+            <Route
+              path="/chat"
+              element={
+                <ChatWithMyselfPane
+                  storageMode={storageMode}
+                  getS3Client={getS3Client}
+                  s3Bucket={s3Creds.bucket}
+                  localRootHandle={localRootHandle}
+                  theme={theme}
+                  isMobileLayout={isMobile}
+                  sidebarOpen={sidebarOpen}
+                  onOpenSidebar={() => setSidebarOpen(true)}
+                />
+              }
+            />
             <Route
               path="/settings"
               element={

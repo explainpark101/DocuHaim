@@ -24,6 +24,7 @@ import {
 } from '@/utils/treeMove';
 
 const EXPANDED_FOLDERS_KEY = 's3haim_expandedFolders';
+const EMPTY_SELECTED_IDS = new Set();
 
 function loadExpandedPaths() {
   try {
@@ -62,7 +63,7 @@ import {
   IconUpload,
   IconRefresh,
 } from '@/components/icons';
-import { ArrowRightToLine, ChevronsLeft, Loader2, Search, X } from 'lucide-react';
+import { ArrowRightToLine, ChevronsLeft, Loader2, MessageCircle, Search, X } from 'lucide-react';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 
 function getParentPathFromFilePath(filePath) {
@@ -85,6 +86,32 @@ function isTypingElement(target) {
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
   if (target.isContentEditable) return true;
   return false;
+}
+
+function ChatWithMyselfEntry({ isActive, onOpen }) {
+  return (
+    <button
+      type="button"
+      data-chat-with-myself-entry
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen?.();
+      }}
+      className={`flex w-full items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer text-left ${
+        'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-odp-focusBg rounded'
+      } ${
+        isActive
+          ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
+          : ''
+      }`}
+      style={{ paddingLeft: '8px' }}
+    >
+      <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
+        <MessageCircle size={14} />
+      </span>
+      <span className="text-gray-500 dark:text-gray-400 truncate">나와의 채팅</span>
+    </button>
+  );
 }
 
 function RootDropZone({
@@ -314,6 +341,8 @@ export default function Sidebar({
   onDuplicateNode,
   onRequestMoveFile,
   onOpenInNewWindow,
+  onOpenChatWithMyself,
+  chatWithMyselfActive = false,
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
   const [searchInput, setSearchInput] = useState('');
@@ -323,6 +352,11 @@ export default function Sidebar({
   const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState(null);
   /** null = no explicit folder; { path: '', handle } = project root */
   const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState(null);
+
+  // While Chat with Myself is open, tree must not show another file/folder as selected.
+  const treeSelectedIds = chatWithMyselfActive ? EMPTY_SELECTED_IDS : selectedIds;
+  const treeCurrentFile = chatWithMyselfActive ? null : currentFile;
+
   const [expandedPaths, setExpandedPaths] = useState(loadExpandedPaths);
   const [contextMenu, setContextMenu] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
@@ -929,12 +963,18 @@ export default function Sidebar({
           </div>
           {s3Bucket ? (
             <div className="space-y-0.5">
+              <ChatWithMyselfEntry
+                isActive={chatWithMyselfActive}
+                onOpen={onOpenChatWithMyself}
+              />
               <RootDropZone
                 storageType="s3"
                 localRootHandle={null}
                 onDropOnFolder={onDropOnFolder}
                 dropTarget={dropTarget}
-                isFocused={lastFocusedS3FolderPath === ''}
+                isFocused={
+                  !chatWithMyselfActive && lastFocusedS3FolderPath === ''
+                }
                 onFocusRoot={() => setLastFocusedS3FolderPath('')}
                 onContextMenu={(e, rootNode) => {
                   setLastFocusedS3FolderPath('');
@@ -956,8 +996,8 @@ export default function Sidebar({
                     rootDropNode={{ path: '', type: 'folder', handle: null }}
                     onSelect={onSelectFile}
                     storageType="s3"
-                    selectedIds={selectedIds}
-                    currentFile={currentFile}
+                    selectedIds={treeSelectedIds}
+                    currentFile={treeCurrentFile}
                     onCreateFile={(p) => onCreateItem('s3', p, null, 'file')}
                     onCreateFolder={(p) => onCreateItem('s3', p, null, 'folder')}
                     onRequestMoveFolder={onRequestMoveFolder}
@@ -971,7 +1011,11 @@ export default function Sidebar({
                     onFolderFocus={(node) =>
                       setLastFocusedS3FolderPath(node ? node.path || '' : null)
                     }
-                    focusedFolderPath={lastFocusedS3FolderPath ?? undefined}
+                    focusedFolderPath={
+                      chatWithMyselfActive
+                        ? undefined
+                        : (lastFocusedS3FolderPath ?? undefined)
+                    }
                     onDropOnFolder={onDropOnFolder}
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
@@ -1082,12 +1126,17 @@ export default function Sidebar({
             </div>
           )}
           <div className="space-y-0.5">
+            <ChatWithMyselfEntry
+              isActive={chatWithMyselfActive}
+              onOpen={onOpenChatWithMyself}
+            />
             <RootDropZone
               storageType="local"
               localRootHandle={localRootHandle}
               onDropOnFolder={onDropOnFolder}
               dropTarget={dropTarget}
               isFocused={
+                !chatWithMyselfActive &&
                 lastFocusedLocalFolder !== null &&
                 lastFocusedLocalFolder.path === '' &&
                 lastFocusedLocalFolder.handle === localRootHandle
@@ -1123,8 +1172,8 @@ export default function Sidebar({
                     }
                     onSelect={onSelectFile}
                     storageType="local"
-                    selectedIds={selectedIds}
-                    currentFile={currentFile}
+                    selectedIds={treeSelectedIds}
+                    currentFile={treeCurrentFile}
                     onCreateFile={(p, h) => onCreateItem('local', p, h, 'file')}
                     onCreateFolder={(p, h) => onCreateItem('local', p, h, 'folder')}
                     onRequestMoveFolder={onRequestMoveFolder}
@@ -1140,7 +1189,11 @@ export default function Sidebar({
                         node ? { path: node.path || '', handle: node.handle } : null,
                       )
                     }
-                    focusedFolderPath={lastFocusedLocalFolder?.path ?? undefined}
+                    focusedFolderPath={
+                      chatWithMyselfActive
+                        ? undefined
+                        : (lastFocusedLocalFolder?.path ?? undefined)
+                    }
                     onDropOnFolder={onDropOnFolder}
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}

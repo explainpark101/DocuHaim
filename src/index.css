@@ -180,3 +180,7 @@
     background-color: white !important;
   }
 }
+
+button {
+  cursor: pointer;
+}
