@@ -10,13 +10,18 @@
  */
 import { createContext, useContext, useReducer, useCallback } from 'react';
 
-/** @type {'file-upload'|'recording'|'note-processing'|'photo-upload'|'download'} */
+/** @type {'file-upload'|'recording'|'note-processing'|'photo-upload'|'download'|'chat-send'|'chat-load'|'chat-search'|'chat-sync'|'chat-note'} */
 export const ActivityTypes = {
   FILE_UPLOAD: 'file-upload',
   RECORDING: 'recording',
   NOTE_PROCESSING: 'note-processing',
   PHOTO_UPLOAD: 'photo-upload',
   DOWNLOAD: 'download',
+  CHAT_SEND: 'chat-send',
+  CHAT_LOAD: 'chat-load',
+  CHAT_SEARCH: 'chat-search',
+  CHAT_SYNC: 'chat-sync',
+  CHAT_NOTE: 'chat-note',
 };
 
 /** @type {'pending'|'processing'|'done'|'error'} */

@@ -1,0 +1,41 @@
+---
+description: Form UI library choice — Radix by default; React Aria for date/time
+alwaysApply: true
+---
+
+# Form components
+
+## Default: Radix UI
+
+Use **Radix UI** (`radix-ui` / `@radix-ui/*`) for general forms and overlays:
+
+- Text, Select, Checkbox, Switch, Radio, Slider
+- Dialog, Alert Dialog, Popover, Dropdown Menu, Context Menu, Tabs
+- Native `input` / `textarea` only when wrapped by Radix Form (or project ChatSelect / ConfirmModal patterns)
+
+Do **not** use native `type="date"`, `type="datetime-local"`, or `type="time"` for new UI.
+
+## Dates & times: React Aria Components
+
+Use **`react-aria-components`** + **`@internationalized/date`** for:
+
+- date
+- date range
+- datetime
+- datetime range
+- time (when a dedicated picker is needed)
+
+Prefer existing wrappers when present (e.g. `ChatDatePicker`, `ChatDateTimePicker`). Compose `DatePicker` / `DateRangePicker` / `DateField` / `TimeField` with `Calendar` / `RangeCalendar` rather than browser date inputs.
+
+```jsx
+// ❌ BAD
+<input type="date" value={date} onChange={...} />
+<input type="datetime-local" value={from} onChange={...} />
+
+// ✅ GOOD
+import { parseDate, parseDateTime } from '@internationalized/date';
+import { DatePicker, DateRangePicker } from 'react-aria-components';
+// or project wrappers: ChatDatePicker, ChatDateTimePicker
+```
+
+Wire values through `@internationalized/date` (`CalendarDate`, `CalendarDateTime`, ranges) and convert at the boundary if storage/API still needs ISO / `YYYY-MM-DD` / `datetime-local` strings.

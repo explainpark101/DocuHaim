@@ -12,7 +12,6 @@ import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
-import Modal from '@/components/modals/Modal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   getMarkdownImageOccurrenceInContainer,
@@ -1042,99 +1041,34 @@ export default function ExportPDFPage() {
         onCancel={() => setFreeTransformConfirmOpen(false)}
         onDiscard={handleConfirmTransformReset}
       />
-      <Modal
+      <ConfirmModal
         isOpen={Boolean(headingPgbrModalState)}
-        onClose={() => setHeadingPgbrModalState(null)}
+        title="페이지 나누기 삽입"
+        message={`아래 heading 앞에 <pgbr/> 를 삽입합니다.\n\n${headingPgbrModalState?.headingText || '(제목 텍스트 없음)'}`}
+        confirmLabel="삽입"
+        cancelLabel="취소"
         onConfirm={handleInsertPgbrBeforeHeading}
-      >
-        <div className="p-6 flex flex-col gap-4">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
-            페이지 나누기 삽입
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-odp-muted">
-            아래 heading 앞에 <code className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<pgbr/>'}</code> 를 삽입합니다.
-          </p>
-          <p className="text-sm text-gray-700 dark:text-odp-fg break-all">
-            {headingPgbrModalState?.headingText || '(제목 텍스트 없음)'}
-          </p>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setHeadingPgbrModalState(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleInsertPgbrBeforeHeading}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition"
-            >
-              삽입
-            </button>
-          </div>
-        </div>
-      </Modal>
-      <Modal
+        onCancel={() => setHeadingPgbrModalState(null)}
+      />
+      <ConfirmModal
         isOpen={Boolean(pgbrDeleteModalState)}
-        onClose={() => setPgbrDeleteModalState(null)}
+        title="페이지 나누기 삭제"
+        message={"선택한 <pgbr/> 를 삭제합니다."}
+        variant="danger"
+        confirmLabel="삭제"
+        cancelLabel="취소"
         onConfirm={handleDeletePgbr}
-      >
-        <div className="p-6 flex flex-col gap-4">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
-            페이지 나누기 삭제
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-odp-muted">
-            선택한 <code className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<pgbr/>'}</code> 를 삭제합니다.
-          </p>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setPgbrDeleteModalState(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleDeletePgbr}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition"
-            >
-              삭제
-            </button>
-          </div>
-        </div>
-      </Modal>
-      <Modal
+        onCancel={() => setPgbrDeleteModalState(null)}
+      />
+      <ConfirmModal
         isOpen={Boolean(hrPgbrModalState)}
-        onClose={() => setHrPgbrModalState(null)}
+        title="페이지 나누기 삽입"
+        message={"선택한 구분선(HR) 앞에 <pgbr/> 를 삽입합니다."}
+        confirmLabel="삽입"
+        cancelLabel="취소"
         onConfirm={handleInsertPgbrBeforeHr}
-      >
-        <div className="p-6 flex flex-col gap-4">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
-            페이지 나누기 삽입
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-odp-muted">
-            선택한 구분선(HR) 앞에 <code className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<pgbr/>'}</code> 를 삽입합니다.
-          </p>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setHrPgbrModalState(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleInsertPgbrBeforeHr}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition"
-            >
-              삽입
-            </button>
-          </div>
-        </div>
-      </Modal>
+        onCancel={() => setHrPgbrModalState(null)}
+      />
     </div>
   );
 }

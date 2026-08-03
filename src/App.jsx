@@ -35,6 +35,10 @@ import Sidebar from '@/components/Sidebar';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import EditorPane from '@/components/EditorPane';
 import ChatWithMyselfPane from '@/components/chatWithMyself/ChatWithMyselfPane';
+import {
+  detectTimeZone,
+  formatChatMessageAsNoteMarkdown,
+} from '@/utils/chatWithMyself';
 import { AuthModal } from '@/components/modals/AuthModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
 import { SaveMethodModal } from '@/components/modals/SaveMethodModal';
@@ -199,6 +203,7 @@ function MainApp() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalContext, setCreateModalContext] = useState(null);
   const [moveModalSelectPath, setMoveModalSelectPath] = useState(null);
+  const [addToNoteSelectPath, setAddToNoteSelectPath] = useState(null);
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const [showExportPasswordModal, setShowExportPasswordModal] = useState(false);
   const [showImportPasswordModal, setShowImportPasswordModal] = useState(false);
@@ -1113,6 +1118,23 @@ function MainApp() {
       }
     },
     [getS3Client, s3Creds, currentFile, localRootHandle]
+  );
+
+  /** Chat with Myself: resolve by storageMode (not current editor file). */
+  const getChatImageUrlForPath = useCallback(
+    async (path) => {
+      if (storageMode === 'local' && localRootHandle) {
+        return getLocalWikiImageObjectUrl(localRootHandle, path);
+      }
+      const client = getS3Client();
+      if (!client || !s3Creds.bucket) return null;
+      try {
+        return await getSignedGetUrl(client, s3Creds.bucket, path, 3600);
+      } catch {
+        return null;
+      }
+    },
+    [storageMode, localRootHandle, getS3Client, s3Creds.bucket],
   );
 
   useEffect(() => {
@@ -3060,14 +3082,22 @@ function MainApp() {
 
   const handleCreateItemSubmit = async (nameInput) => {
     if (!createModalContext) return;
-    const { storageType, parentPath, parentDirHandle, type, fromMoveModal } = createModalContext;
+    const {
+      storageType,
+      parentPath,
+      parentDirHandle,
+      type,
+      fromMoveModal,
+      fromAddToNoteModal,
+    } = createModalContext;
     setIsCreateSubmitting(true);
     try {
       await createItem(storageType, parentPath, parentDirHandle, type, nameInput);
-      if (type === 'folder' && fromMoveModal) {
+      if (type === 'folder') {
         const trimmed = (nameInput || '').trim();
         const newPath = parentPath + trimmed + '/';
-        setMoveModalSelectPath(newPath);
+        if (fromMoveModal) setMoveModalSelectPath(newPath);
+        if (fromAddToNoteModal) setAddToNoteSelectPath(newPath);
       }
       setCreateModalOpen(false);
       setCreateModalContext(null);
@@ -3365,6 +3395,43 @@ function MainApp() {
   const handleRequestMoveFolder = (node, storageType) => {
     if (!node || node.type !== 'folder') return;
     setMoveFolderTarget({ node, storageType });
+  };
+
+  const handleCreateNoteFromChatMessage = async ({
+    message,
+    parentPath = '',
+    parentHandle,
+    fileName,
+  }) => {
+    let finalName = String(fileName || '').trim();
+    if (!finalName) throw new Error('파일명이 비어 있습니다.');
+    if (!finalName.endsWith('.md')) finalName += '.md';
+    if (finalName.includes('/') || finalName.includes('\\')) {
+      throw new Error('파일명에 / 를 넣을 수 없습니다.');
+    }
+    const newPath = `${parentPath || ''}${finalName}`;
+    const body = formatChatMessageAsNoteMarkdown(message, detectTimeZone());
+
+    if (storageMode === 's3') {
+      const client = getS3Client();
+      if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+      await putObject(client, {
+        Bucket: s3Creds.bucket,
+        Key: newPath,
+        Body: body,
+        ContentType: 'text/markdown; charset=utf-8',
+      });
+      await loadS3Files();
+    } else {
+      const targetDir = parentHandle || localRootHandle;
+      if (!targetDir) throw new Error('루트 폴더를 먼저 열어주세요.');
+      const newFileHandle = await targetDir.getFileHandle(finalName, { create: true });
+      const writable = await newFileHandle.createWritable();
+      await writable.write(body);
+      await writable.close();
+      await refreshLocalTree();
+    }
+    setOperationStatus(`노트 생성 완료: ${newPath}`);
   };
 
   const handleDropOnFolder = async (targetNode, targetStorageType, action, payload) => {
@@ -3993,6 +4060,23 @@ function MainApp() {
                   isMobileLayout={isMobile}
                   sidebarOpen={sidebarOpen}
                   onOpenSidebar={() => setSidebarOpen(true)}
+                  s3Tree={s3Tree}
+                  localTree={localTree}
+                  selectPathAfterCreateFolder={addToNoteSelectPath}
+                  onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}
+                  onRequestCreateFolderForNote={(parentPath, parentDirHandle) => {
+                    setCreateModalContext({
+                      storageType: storageMode === 'local' ? 'local' : 's3',
+                      parentPath,
+                      parentDirHandle,
+                      type: 'folder',
+                      fromAddToNoteModal: true,
+                    });
+                    setCreateModalOpen(true);
+                  }}
+                  onRequestMoveFolder={handleRequestMoveFolder}
+                  onCreateNoteFromMessage={handleCreateNoteFromChatMessage}
+                  getPresignedUrlForPath={getChatImageUrlForPath}
                 />
               }
             />
@@ -4196,56 +4280,109 @@ function MainApp() {
                 </span>
               </span>
             )}
-            <span className="truncate shrink-0 max-w-12 md:max-w-none" title={currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}>
-              <span className="md:hidden">{currentFile?.type === 's3' ? 'S3' : currentFile?.type === 'local' ? '로컬' : '없음'}</span>
-              <span className="hidden md:inline">저장소: {currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}</span>
-            </span>
-            {currentFile && (
+            {!(location.pathname === '/chat' || location.pathname.endsWith('/chat')) ? (
               <>
-                <span className="truncate min-w-0" title={currentFile.type === 's3' ? currentFile.id : currentFile.id || currentFile.name}>
-                  {currentFile.type === 's3' ? currentFile.id : currentFile.id || currentFile.name}
+                <span className="truncate shrink-0 max-w-12 md:max-w-none" title={currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}>
+                  <span className="md:hidden">{currentFile?.type === 's3' ? 'S3' : currentFile?.type === 'local' ? '로컬' : '없음'}</span>
+                  <span className="hidden md:inline">저장소: {currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}</span>
                 </span>
-                <span className="hidden md:inline truncate text-gray-500 dark:text-odp-muted shrink-0">
-                  크기: {currentFile.size != null ? formatFileSize(currentFile.size) : '알 수 없음'}
-                </span>
+                {currentFile && (
+                  <>
+                    <span className="truncate min-w-0" title={currentFile.type === 's3' ? currentFile.id : currentFile.id || currentFile.name}>
+                      {currentFile.type === 's3' ? currentFile.id : currentFile.id || currentFile.name}
+                    </span>
+                    <span className="hidden md:inline truncate text-gray-500 dark:text-odp-muted shrink-0">
+                      크기: {currentFile.size != null ? formatFileSize(currentFile.size) : '알 수 없음'}
+                    </span>
+                  </>
+                )}
+                {operationStatus && (
+                  <span className="truncate text-gray-500 dark:text-odp-muted hidden md:inline">
+                    상태: {operationStatus}
+                  </span>
+                )}
               </>
-            )}
-            {operationStatus && (
-              <span className="truncate text-gray-500 dark:text-odp-muted hidden md:inline">
-                상태: {operationStatus}
+            ) : (
+              <span className="truncate text-gray-500 dark:text-odp-muted shrink-0">
+                나와의 채팅
+                {storageMode === 's3'
+                  ? ` · S3${s3Creds.bucket ? ` (${s3Creds.bucket})` : ''}`
+                  : storageMode === 'local'
+                    ? ' · 로컬'
+                    : ''}
               </span>
             )}
           </div>
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
-            <span className="flex items-center gap-1 md:gap-1.5" title={isEditableStorage ? (lastAutoSaveAt ? `저장 ${formatTime(lastAutoSaveAt)}` : '대기 중') : '대상 아님'}>
+            {location.pathname === '/chat' || location.pathname.endsWith('/chat') ? (
               <span
-                className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 ${autoSaveIndicatorClass}`}
-                aria-hidden="true"
-              />
-              <span className="md:hidden">
-                {isEditableStorage
-                  ? lastAutoSaveAt
-                    ? formatTime(lastAutoSaveAt)
-                    : '대기'
-                  : '-'}
+                className="flex items-center gap-1 md:gap-1.5"
+                title={
+                  storageMode === 's3'
+                    ? '채팅 메시지는 S3에 저장·동기화됩니다'
+                    : storageMode === 'local'
+                      ? '채팅 메시지는 로컬 폴더에 저장됩니다'
+                      : '저장소 미연결'
+                }
+              >
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full md:h-2.5 md:w-2.5 ${
+                    (storageMode === 's3' && s3Creds.bucket) ||
+                    (storageMode === 'local' && localRootHandle)
+                      ? 'bg-emerald-500'
+                      : 'bg-amber-400'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="md:hidden">
+                  {(storageMode === 's3' && s3Creds.bucket) ||
+                  (storageMode === 'local' && localRootHandle)
+                    ? '동기화'
+                    : '대기'}
+                </span>
+                <span className="hidden md:inline">
+                  채팅 동기화:{' '}
+                  {(storageMode === 's3' && s3Creds.bucket) ||
+                  (storageMode === 'local' && localRootHandle)
+                    ? storageMode === 's3'
+                      ? 'S3 연결됨'
+                      : '로컬 준비됨'
+                    : '연결 필요'}
+                </span>
               </span>
-              <span className="hidden md:inline">
-                자동저장:{' '}
-                {isEditableStorage
-                  ? lastAutoSaveAt
-                    ? `마지막 ${formatTime(lastAutoSaveAt)}`
-                    : '대기 중 (입력 후 5초)'
-                  : '대상 아님'}
-              </span>
-            </span>
-            <span className="hidden md:inline" title={currentFile?.type === 's3' ? (lastAutoSyncAt ? `동기화 ${formatTime(lastAutoSyncAt)}` : '대기 중') : '대상 아님'}>
-              자동동기화(S3):{' '}
-              {currentFile?.type === 's3'
-                ? lastAutoSyncAt
-                  ? `마지막 ${formatTime(lastAutoSyncAt)}`
-                  : '대기 중 (입력 후 30초)'
-                : '대상 아님'}
-            </span>
+            ) : (
+              <>
+                <span className="flex items-center gap-1 md:gap-1.5" title={isEditableStorage ? (lastAutoSaveAt ? `저장 ${formatTime(lastAutoSaveAt)}` : '대기 중') : '대상 아님'}>
+                  <span
+                    className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 ${autoSaveIndicatorClass}`}
+                    aria-hidden="true"
+                  />
+                  <span className="md:hidden">
+                    {isEditableStorage
+                      ? lastAutoSaveAt
+                        ? formatTime(lastAutoSaveAt)
+                        : '대기'
+                      : '-'}
+                  </span>
+                  <span className="hidden md:inline">
+                    자동저장:{' '}
+                    {isEditableStorage
+                      ? lastAutoSaveAt
+                        ? `마지막 ${formatTime(lastAutoSaveAt)}`
+                        : '대기 중 (입력 후 5초)'
+                      : '대상 아님'}
+                  </span>
+                </span>
+                <span className="hidden md:inline" title={currentFile?.type === 's3' ? (lastAutoSyncAt ? `동기화 ${formatTime(lastAutoSyncAt)}` : '대기 중') : '대상 아님'}>
+                  자동동기화(S3):{' '}
+                  {currentFile?.type === 's3'
+                    ? lastAutoSyncAt
+                      ? `마지막 ${formatTime(lastAutoSyncAt)}`
+                      : '대기 중 (입력 후 30초)'
+                    : '대상 아님'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { IconTrash } from '@/components/icons';
+import Button from '@/components/Button';
+import { IconBack, IconTrash } from '@/components/icons';
 import Modal from '@/components/modals/Modal';
 
 const CLOSE_ANIMATION_MS = 200;
@@ -82,34 +83,37 @@ export function DeleteConfirmModal({
           </div>
         )}
         <div className="flex justify-end gap-2">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
             onClick={isProcessing ? undefined : onCancel}
             disabled={isProcessing}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
+            <IconBack size={16} />
             취소
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="danger"
+            size="md"
             onClick={isProcessing ? undefined : handleConfirm}
             disabled={isProcessing || !target}
-            className={`px-4 py-2 text-sm font-medium text-white rounded transition flex items-center gap-2 ${
-              isProcessing
-                ? 'bg-red-400 cursor-wait'
-                : 'bg-red-600 hover:bg-red-700'
-            }`}
+            className={isProcessing ? 'cursor-wait' : ''}
           >
-            {isProcessing && (
+            {isProcessing ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+            ) : (
+              <IconTrash size={16} />
             )}
             {isTrashRoot
               ? isProcessing
                 ? '비우는 중...'
                 : '비우기'
               : isProcessing
-              ? '삭제 중...'
-              : '삭제'}
-          </button>
+                ? '삭제 중...'
+                : '삭제'}
+          </Button>
         </div>
       </div>
     </Modal>

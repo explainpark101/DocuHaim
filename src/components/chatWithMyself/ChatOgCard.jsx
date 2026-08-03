@@ -1,22 +1,33 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Play } from 'lucide-react';
 import { isYouTubeUrl, loadAndArchiveOg } from '@/utils/chatWithMyself/og.js';
+import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 
 /**
  * OG / YouTube card rendered inside a chat bubble (bottom attached).
+ * @param {{ url: string, ogStorage?: object, compact?: boolean }} props
  */
-export default function ChatOgCard({ url, ogStorage }) {
+export default function ChatOgCard({ url, ogStorage, compact = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEmbed, setShowEmbed] = useState(false);
+  const openChatImage = useChatImageLightbox();
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setShowEmbed(false);
     (async () => {
       try {
-        const result = await loadAndArchiveOg(url, ogStorage);
-        if (!cancelled) setData(result.data);
+        const result = await loadAndArchiveOg(url, ogStorage, {
+          onUpdate: (next) => {
+            if (!cancelled && next?.data) setData(next.data);
+          },
+        });
+        if (!cancelled) {
+          setData(result.data);
+          setLoading(false);
+        }
       } catch {
         if (!cancelled) {
           setData({
@@ -26,9 +37,8 @@ export default function ChatOgCard({ url, ogStorage }) {
             image: '',
             siteName: '',
           });
+          setLoading(false);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -40,7 +50,11 @@ export default function ChatOgCard({ url, ogStorage }) {
 
   if (loading && !data) {
     return (
-      <div className="mt-2 overflow-hidden rounded-md border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 animate-pulse h-20" />
+      <div
+        className={`mt-2 overflow-hidden rounded-md border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 animate-pulse ${
+          compact ? 'h-12' : 'h-20'
+        }`}
+      />
     );
   }
 
@@ -48,8 +62,52 @@ export default function ChatOgCard({ url, ogStorage }) {
 
   const yt = isYouTubeUrl(url);
 
+  if (compact) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1.5 flex max-w-full items-center gap-2 overflow-hidden rounded-md border border-black/10 bg-white/80 px-2 py-1.5 text-left dark:border-white/15 dark:bg-odp-bgSoft/90"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {data.image ? (
+          <button
+            type="button"
+            className="shrink-0 overflow-hidden rounded"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openChatImage?.(data.image, { alt: data.title || url });
+            }}
+            aria-label="이미지 크게 보기"
+          >
+            <img
+              src={data.image}
+              alt=""
+              className="h-10 w-10 object-cover"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          </button>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          {data.siteName ? (
+            <div className="truncate text-[10px] uppercase tracking-wide text-gray-500">
+              {data.siteName}
+            </div>
+          ) : null}
+          <div className="truncate text-xs font-semibold text-gray-900 dark:text-odp-fgStrong">
+            {data.title || url}
+          </div>
+        </div>
+        <ExternalLink size={12} className="shrink-0 text-gray-400" />
+      </a>
+    );
+  }
+
   return (
-    <div className="mt-2 overflow-hidden rounded-md border border-black/10 dark:border-white/15 bg-white/80 dark:bg-odp-bgSoft/90 text-left">
+    <div className="mt-2 max-w-full min-w-0 overflow-hidden rounded-md border border-black/10 dark:border-white/15 bg-white/80 dark:bg-odp-bgSoft/90 text-left">
       {showEmbed && yt && data.embedHtml ? (
         <div
           className="aspect-video w-full bg-black [&_iframe]:h-full [&_iframe]:w-full"
@@ -60,10 +118,15 @@ export default function ChatOgCard({ url, ogStorage }) {
         <button
           type="button"
           className="relative block w-full aspect-video bg-gray-100 dark:bg-odp-surface overflow-hidden"
-          onClick={() => {
-            if (yt && data.embedHtml) setShowEmbed(true);
-            else window.open(url, '_blank', 'noopener,noreferrer');
+          onClick={(e) => {
+            e.stopPropagation();
+            if (yt && data.embedHtml) {
+              setShowEmbed(true);
+              return;
+            }
+            openChatImage?.(data.image, { alt: data.title || url });
           }}
+          aria-label={yt ? '동영상 재생' : '이미지 크게 보기'}
         >
           <img
             src={data.image}

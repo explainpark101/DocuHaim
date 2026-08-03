@@ -1,0 +1,62 @@
+---
+description: ConfirmModal animation, danger variant, and button icon conventions
+globs: src/**/*.{jsx,js,tsx,ts}
+alwaysApply: false
+---
+
+# ConfirmModal
+
+Use `ConfirmModal` from `@/components/modals/ConfirmModal` for yes/no (and optional discard) confirms. Do not hand-roll confirm dialogs with plain `Modal` + buttons.
+
+## Animation
+
+ConfirmModal uses **Motion** (`motion/react` `AnimatePresence` + `motion.div`) for open/close. Do not reintroduce CSS-only opacity/scale transitions on ConfirmModal itself.
+
+## Variants
+
+- Default (`variant="default"`): primary (blue) confirm button + check icon
+- Destructive delete / empty-trash: pass `variant="danger"` so the confirm button is red (`Button` danger) + trash icon
+
+```jsx
+// ❌ BAD — delete confirm without danger variant
+<ConfirmModal confirmLabel="삭제" onConfirm={...} ... />
+
+// ✅ GOOD
+<ConfirmModal variant="danger" confirmLabel="삭제" onConfirm={...} ... />
+```
+
+Labels containing `삭제` / `비우기` also force the danger style, but always set `variant="danger"` explicitly for destructive actions.
+
+## Button icons (built into ConfirmModal)
+
+Do not pass custom button icons; ConfirmModal applies them:
+
+| Button | Icon | Component |
+|--------|------|-----------|
+| Cancel | Back / return (`Undo2`) | `IconBack` |
+| Confirm (default) | Check | `IconCheck` |
+| Confirm (danger) | Trash | `IconTrash` |
+
+`DeleteConfirmModal` follows the same cancel/delete icon pairing.
+
+## Prefer ConfirmModal over ad-hoc Modal
+
+```jsx
+// ❌ BAD
+<Modal isOpen={open} onClose={onCancel} onConfirm={onConfirm}>
+  <button onClick={onCancel}>취소</button>
+  <button onClick={onConfirm}>삭제</button>
+</Modal>
+
+// ✅ GOOD
+<ConfirmModal
+  isOpen={open}
+  title="…"
+  message="…"
+  variant="danger"
+  confirmLabel="삭제"
+  cancelLabel="취소"
+  onConfirm={onConfirm}
+  onCancel={onCancel}
+/>
+```

@@ -21,7 +21,6 @@ import RecordingPlayer from '@/components/RecordingPlayer';
 import MonacoTextEditor from '@/components/MonacoTextEditor';
 import HtmlSvgPreviewEditor from '@/components/HtmlSvgPreviewEditor';
 import Button from '@/components/Button';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { ListTree, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 

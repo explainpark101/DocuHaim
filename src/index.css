@@ -184,3 +184,87 @@
 button {
   cursor: pointer;
 }
+
+/* Chat with Myself — compact auto-growing composer */
+.chat-composer-editor .md-editor {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+.chat-composer-editor .md-editor-toolbar-wrapper,
+.chat-composer-editor .md-editor-toolbar {
+  display: flex !important;
+  flex-shrink: 0;
+}
+.chat-composer-editor.chat-composer-editor--no-toolbar .md-editor-toolbar-wrapper,
+.chat-composer-editor.chat-composer-editor--no-toolbar .md-editor-toolbar {
+  display: none !important;
+}
+.chat-composer-editor .md-editor-footer {
+  display: none !important;
+}
+/* Keep height:0 + flex so the CodeMirror scroller gets a bounded viewport. */
+.chat-composer-editor .md-editor-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+.chat-composer-editor .md-editor-content-wrapper {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+.chat-composer-editor .md-editor-input-wrapper,
+.chat-composer-editor .md-editor-input {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+.chat-composer-editor .cm-editor {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+.chat-composer-editor .cm-scroller {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding: 8px 10px !important;
+  scrollbar-width: thin !important;
+}
+.chat-composer-editor .cm-scroller::-webkit-scrollbar {
+  display: block !important;
+  width: 6px;
+}
+.chat-composer-editor .md-editor .cm-scroller .cm-content[contenteditable='true'],
+.chat-composer-editor .cm-content {
+  margin: 0 !important;
+  min-height: 1.4em !important;
+  padding: 0 !important;
+  padding-bottom: 0 !important;
+}
+.chat-composer-editor .cm-line {
+  padding: 0 !important;
+}
+.chat-composer-editor .cm-gutters {
+  display: none;
+  background: transparent;
+  border: none;
+}
+.chat-composer-editor.chat-composer-editor--line-numbers .cm-gutters {
+  display: flex;
+}
+.chat-composer-editor.chat-composer-editor--line-numbers .cm-scroller {
+  padding-left: 4px !important;
+}
+.chat-composer-editor.chat-composer-editor--line-numbers .cm-lineNumbers .cm-gutterElement {
+  min-width: 1.75rem;
+  font-size: 11px;
+  color: rgb(156 163 175);
+  padding: 0 6px 0 2px;
+}

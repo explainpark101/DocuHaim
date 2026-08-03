@@ -1,0 +1,27 @@
+---
+description: Incremental TypeScript adoption — new/touched code only, no big-bang rewrite
+alwaysApply: true
+---
+
+# TypeScript migration
+
+Do **not** mass-convert the codebase to TypeScript. Prefer incremental adoption while feature work continues.
+
+## Policy
+
+1. **New files** — use `.ts` / `.tsx` only (no new `.js` / `.jsx` unless matching an existing colocated pattern that cannot move yet).
+2. **Existing files** — convert only when substantially editing that module. Do not rename/convert for typing alone.
+3. **Boundaries first** — prefer typing DB schemas, storage contracts, API/S3 clients, and shared utils before large UI components.
+4. **Keep `allowJs`** — do not enable project-wide `checkJs` or force-fix every JS file in a PR.
+5. **Large UI later** — defer opportunistic conversion of giant panes (`App`, `Sidebar`, `ChatWithMyselfPane`, editors) unless the change already rewrites most of the file.
+
+## Examples
+
+```text
+❌ BAD — rewrite all of src/**/*.jsx to .tsx in one pass
+❌ BAD — mechanical .jsx → .tsx rename with `any` everywhere
+✅ GOOD — add `src/utils/chatWithMyself/sync.ts` for new sync logic
+✅ GOOD — while editing `chatDb.js` heavily, convert that file to `chatDb.ts`
+```
+
+`tsconfig` is strict (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`). Prefer real types at module boundaries; avoid littering `any` just to silence errors.

@@ -13,7 +13,7 @@ import {
   SELF_GROUP,
 } from './paths.js';
 import {
-  appendMessageToContent,
+  appendMessagesToContent,
   createMessageId,
   parseDayFile,
   serializeDayFile,
@@ -199,26 +199,46 @@ export async function appendChatMessage(
   ctx,
   { body, group, source = 'compose', replyTo = '', replySnippet = '', replyGroup = '' },
 ) {
+  const result = await appendChatMessages(ctx, [
+    { body, group, source, replyTo, replySnippet, replyGroup },
+  ]);
+  return {
+    msg: result.msgs[0],
+    dateStr: result.dateStr,
+    key: result.key,
+  };
+}
+
+/**
+ * Append one or more messages with a single day-file read/write.
+ * @param {ChatStorageCtx} ctx
+ * @param {Array<{ id?: string, body: string, group?: string, source?: string, replyTo?: string, replySnippet?: string, replyGroup?: string, at?: string, tz?: string }>} items
+ */
+export async function appendChatMessages(ctx, items = []) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return { msgs: [], dateStr: null, key: null };
+
   const tz = detectTimeZone();
   const dateStr = localDateString(new Date(), tz);
   const key = dayFileKey(dateStr);
-  const msg = {
-    id: createMessageId(),
-    at: new Date().toISOString(),
-    tz,
-    source,
-    group: group || SELF_GROUP,
-    body: String(body ?? ''),
-    replyTo: replyTo || '',
-    replySnippet: replySnippet || '',
-    replyGroup: replyGroup || '',
+  const baseMs = Date.now();
+  const msgs = list.map((item, i) => ({
+    id: item.id || createMessageId(),
+    at: item.at || new Date(baseMs + i).toISOString(),
+    tz: item.tz || tz,
+    source: item.source || 'compose',
+    group: item.group || SELF_GROUP,
+    body: String(item.body ?? ''),
+    replyTo: item.replyTo || '',
+    replySnippet: item.replySnippet || '',
+    replyGroup: item.replyGroup || '',
     dateStr,
-  };
+  }));
 
   try {
     await ensureChatFolder(ctx);
     const existing = (await readText(ctx, key)) || '';
-    const next = appendMessageToContent(existing, msg);
+    const next = appendMessagesToContent(existing, msgs);
     await writeText(ctx, key, next, 'text/markdown; charset=utf-8');
     await cacheDay(key, next);
     try {
@@ -227,14 +247,20 @@ export async function appendChatMessage(
     } catch {
       /* ignore */
     }
-    return { msg, dateStr, key };
+    return { msgs, dateStr, key };
   } catch (err) {
-    await savePendingMessage({
-      dayKey: key,
-      dateStr,
-      message: msg,
-      error: String(err?.message || err),
-    });
+    for (const msg of msgs) {
+      try {
+        await savePendingMessage({
+          dayKey: key,
+          dateStr,
+          message: msg,
+          error: String(err?.message || err),
+        });
+      } catch {
+        /* ignore */
+      }
+    }
     throw err;
   }
 }
@@ -250,6 +276,47 @@ export async function deleteChatMessage(ctx, dateStr, messageId) {
   if (next.length === messages.length) return false;
   await writeDayMessages(ctx, dateStr, next);
   return true;
+}
+
+/**
+ * Update an existing message body/group in its day file.
+ * Preserves original `at`; sets `editedAt`.
+ * @returns {Promise<object | null>} updated message or null
+ */
+export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
+  if (!dateStr || !messageId) return null;
+  const messages = await readDayMessages(ctx, dateStr);
+  const idx = messages.findIndex((m) => m.id === messageId);
+  if (idx < 0) return null;
+  const prev = messages[idx];
+  const nextBody = patch.body !== undefined ? String(patch.body ?? '') : prev.body;
+  const nextGroup = patch.group !== undefined ? patch.group || SELF_GROUP : prev.group;
+  const prevHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
+  const bodyChanged = nextBody !== prev.body;
+  const groupChanged = nextGroup !== (prev.group || SELF_GROUP);
+  const editHistory =
+    bodyChanged || groupChanged
+      ? [
+          ...prevHistory,
+          {
+            at: prev.editedAt || prev.at,
+            body: prev.body,
+            group: prev.group || SELF_GROUP,
+          },
+        ]
+      : prevHistory;
+  const updated = {
+    ...prev,
+    body: nextBody,
+    group: nextGroup,
+    editedAt: new Date().toISOString(),
+    editHistory,
+    dateStr,
+  };
+  const next = messages.slice();
+  next[idx] = updated;
+  await writeDayMessages(ctx, dateStr, next);
+  return updated;
 }
 
 /**

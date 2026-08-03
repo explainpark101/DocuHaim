@@ -1,6 +1,8 @@
 export const CHAT_FOLDER = '.chat-with-myself';
 export const META_FILE = 'meta.json';
 export const OG_FOLDER = 'og';
+export const IMAGES_FOLDER = 'images';
+export const FILES_FOLDER = 'files';
 export const SELF_GROUP = '나';
 export const ADD_GROUP_VALUE = '__add_group__';
 
@@ -18,6 +20,18 @@ export function dayFileKey(dateStr) {
 
 export function ogArchiveKey(urlHash) {
   return `${CHAT_FOLDER}/${OG_FOLDER}/${urlHash}.json`;
+}
+
+/** Prefix for chat-attached images: `.chat-with-myself/images/YYYY-MM-DD/` */
+export function chatImagePathPrefix(dateStr) {
+  const day = dateStr || localDateString(new Date());
+  return `${CHAT_FOLDER}/${IMAGES_FOLDER}/${day}/`;
+}
+
+/** Prefix for chat-attached files: `.chat-with-myself/files/YYYY-MM-DD/` */
+export function chatFilePathPrefix(dateStr) {
+  const day = dateStr || localDateString(new Date());
+  return `${CHAT_FOLDER}/${FILES_FOLDER}/${day}/`;
 }
 
 /** Local calendar date YYYY-MM-DD */
@@ -71,5 +85,53 @@ export function formatMessageDateLabel(isoAt, timeZone) {
     }).format(d);
   } catch {
     return localDateString(new Date(isoAt), timeZone);
+  }
+}
+
+/**
+ * Day-list row label: `yyyy년 mm월 dd일 (요일)`.
+ * @param {string} dateStr YYYY-MM-DD
+ */
+export function formatChatDayListLabel(dateStr, timeZone) {
+  const raw = String(dateStr || '');
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return raw;
+  const [, y, mo, d] = m;
+  let weekday = '';
+  try {
+    weekday = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: timeZone || undefined,
+      weekday: 'short',
+    }).format(new Date(`${raw}T12:00:00`));
+  } catch {
+    weekday = '';
+  }
+  const wd = weekday ? ` (${weekday})` : '';
+  return `${y}년 ${mo}월 ${d}일${wd}`;
+}
+
+/**
+ * Default note filename base from message timestamp (no .md).
+ * Example: 2026-08-04_03-57-12
+ */
+export function formatMessageFileNameBase(isoAt, timeZone) {
+  try {
+    const d = new Date(isoAt);
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || undefined,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const get = (type) => parts.find((p) => p.type === type)?.value || '00';
+    const date = `${get('year')}-${get('month')}-${get('day')}`;
+    const time = `${get('hour')}-${get('minute')}-${get('second')}`;
+    return `${date}_${time}`;
+  } catch {
+    return localDateString(new Date(), timeZone).replace(/:/g, '-');
   }
 }

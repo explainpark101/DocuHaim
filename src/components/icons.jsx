@@ -33,6 +33,11 @@ import {
   Loader2,
   PenLine,
   ImageUp,
+  MessageCircle,
+  Search,
+  Check,
+  CircleAlert,
+  Undo2,
 } from 'lucide-react';
 
 export const IconFolder = ({ size = 16, ...props }) => <Folder size={size} {...props} />;
@@ -69,3 +74,9 @@ export const IconPause = ({ size = 16, ...props }) => <Pause size={size} {...pro
 export const IconEye = ({ size = 16, ...props }) => <Eye size={size} {...props} />;
 export const IconLoader = ({ size = 14, ...props }) => <Loader2 size={size} {...props} />;
 export const IconPenLine = ({ size = 14, ...props }) => <PenLine size={size} {...props} />;
+export const IconMessage = ({ size = 14, ...props }) => <MessageCircle size={size} {...props} />;
+export const IconSearch = ({ size = 14, ...props }) => <Search size={size} {...props} />;
+export const IconCheck = ({ size = 14, ...props }) => <Check size={size} {...props} />;
+export const IconAlert = ({ size = 14, ...props }) => <CircleAlert size={size} {...props} />;
+/** Back / cancel ("돌아가기") affordance for ConfirmModal and similar dialogs. */
+export const IconBack = ({ size = 14, ...props }) => <Undo2 size={size} {...props} />;

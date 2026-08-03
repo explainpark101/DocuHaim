@@ -9,6 +9,14 @@ chatDb.version(1).stores({
   ogCache: 'urlHash',
 });
 
+chatDb.version(2).stores({
+  pendingMessages: '++id, dayKey, createdAt',
+  pendingShares: '++id, createdAt',
+  dayCache: 'dayKey',
+  ogCache: 'urlHash',
+  composerDraftImages: 'id',
+});
+
 export async function savePendingMessage(record) {
   return chatDb.pendingMessages.add({
     ...record,
@@ -53,4 +61,29 @@ export async function cacheOg(urlHash, data) {
 
 export async function getCachedOg(urlHash) {
   return chatDb.ogCache.get(urlHash);
+}
+
+export async function putComposerDraftImage(record) {
+  return chatDb.composerDraftImages.put({
+    ...record,
+    updatedAt: record.updatedAt ?? Date.now(),
+  });
+}
+
+export async function getComposerDraftImages(ids = []) {
+  if (!ids.length) return [];
+  const rows = await chatDb.composerDraftImages.bulkGet(ids);
+  return rows.filter(Boolean);
+}
+
+export async function deleteComposerDraftImage(id) {
+  return chatDb.composerDraftImages.delete(id);
+}
+
+export async function clearComposerDraftImages() {
+  return chatDb.composerDraftImages.clear();
+}
+
+export async function listComposerDraftImageIds() {
+  return chatDb.composerDraftImages.toCollection().primaryKeys();
 }

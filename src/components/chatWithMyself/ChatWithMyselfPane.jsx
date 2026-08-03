@@ -1,48 +1,88 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Menu, Search } from 'lucide-react';
+import { CalendarDays, Menu, MessageCircleMore, RefreshCw, Search, Users } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import ChatComposer from '@/components/chatWithMyself/ChatComposer';
+import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
 import ChatGroupPanel from '@/components/chatWithMyself/ChatGroupPanel';
 import ChatMessageList from '@/components/chatWithMyself/ChatMessageList';
+import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
 import ChatSearchPanel from '@/components/chatWithMyself/ChatSearchPanel';
+import ChatAddToNoteModal from '@/components/chatWithMyself/ChatAddToNoteModal';
+import ChatEditHistoryModal from '@/components/chatWithMyself/ChatEditHistoryModal';
+import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
+import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
+import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { useChatActivityStatus } from '@/components/chatWithMyself/useChatActivityStatus';
 import {
   SELF_GROUP,
   addGroup,
   appendChatMessage,
+  appendChatMessages,
   createOgStorageAdapters,
   deleteChatMessage,
+  deleteChatAttachment,
+  updateChatMessage,
+  uploadChatAttachment,
+  chatAttachmentsToMarkdown,
   detectTimeZone,
   findMessageById,
   listDayKeys,
   localDateString,
   makeReplySnippet,
+  createMessageId,
   readDayMessages,
   sharePayloadFromSearch,
   touchTimezone,
+  fuzzyMatchText,
+  loadMessageOgSearchText,
+  readComposerDraftMeta,
+  getComposerToolbarVisible,
+  readComposerToolbarPref,
+  writeComposerToolbarPref,
+  getComposerLineNumbersVisible,
+  writeComposerLineNumbersPref,
+  getChatRailOpen,
+  writeChatRailOpenPref,
 } from '@/utils/chatWithMyself';
 import { savePendingShare, getPendingShares, deletePendingShare } from '@/utils/chatWithMyself/chatDb.js';
 
-function matchesFilters(msg, dateStr, filters) {
-  if (!filters) return true;
+async function matchesFilters(msg, dateStr, filters, ogStorage) {
+  if (!filters) return { ok: true, ogSearchText: '' };
   if (filters.groupFilter && filters.groupFilter !== '__all__') {
-    if ((msg.group || SELF_GROUP) !== filters.groupFilter) return false;
+    if ((msg.group || SELF_GROUP) !== filters.groupFilter) {
+      return { ok: false, ogSearchText: '' };
+    }
   }
-  if (filters.dateFilter && dateStr !== filters.dateFilter) return false;
+  if (filters.dateFilter && dateStr !== filters.dateFilter) {
+    return { ok: false, ogSearchText: '' };
+  }
   if (filters.fromDt) {
     const from = new Date(filters.fromDt).getTime();
-    if (!Number.isNaN(from) && new Date(msg.at).getTime() < from) return false;
+    if (!Number.isNaN(from) && new Date(msg.at).getTime() < from) {
+      return { ok: false, ogSearchText: '' };
+    }
   }
   if (filters.toDt) {
     const to = new Date(filters.toDt).getTime();
-    if (!Number.isNaN(to) && new Date(msg.at).getTime() > to) return false;
+    if (!Number.isNaN(to) && new Date(msg.at).getTime() > to) {
+      return { ok: false, ogSearchText: '' };
+    }
   }
   if (filters.query) {
-    const q = filters.query.toLowerCase();
-    const body = (msg.body || '').toLowerCase();
-    const group = (msg.group || '').toLowerCase();
-    if (!body.includes(q) && !group.includes(q)) return false;
+    const body = msg.body || '';
+    const group = msg.group || '';
+    if (fuzzyMatchText(body, filters.query) || fuzzyMatchText(group, filters.query)) {
+      return { ok: true, ogSearchText: '' };
+    }
+    const ogSearchText = await loadMessageOgSearchText(msg, ogStorage);
+    if (fuzzyMatchText(ogSearchText, filters.query)) {
+      return { ok: true, ogSearchText };
+    }
+    return { ok: false, ogSearchText: '' };
   }
-  return true;
+  return { ok: true, ogSearchText: '' };
 }
 
 /**
@@ -57,6 +97,14 @@ export default function ChatWithMyselfPane({
   isMobileLayout = false,
   sidebarOpen,
   onOpenSidebar,
+  s3Tree = [],
+  localTree = [],
+  onRequestCreateFolderForNote,
+  onRequestMoveFolder,
+  onCreateNoteFromMessage,
+  selectPathAfterCreateFolder,
+  onSelectPathAfterCreateFolderApplied,
+  getPresignedUrlForPath,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const ctx = useMemo(() => {
@@ -82,24 +130,57 @@ export default function ChatWithMyselfPane({
   const [groups, setGroups] = useState([]);
   const [timeZone, setTimeZone] = useState(detectTimeZone);
   const [selectedGroup, setSelectedGroup] = useState(SELF_GROUP);
+  /** null = show all groups; otherwise only that group's messages */
+  const [viewGroupFilter, setViewGroupFilter] = useState(null);
   const [dayKeys, setDayKeys] = useState([]);
+  const [dayCounts, setDayCounts] = useState({});
+  /** Inclusive index of newest day currently in the message window. */
+  const [windowNewestIndex, setWindowNewestIndex] = useState(0);
+  /** Exclusive end index of oldest day in the window (same role as former loadedDayIndex). */
   const [loadedDayIndex, setLoadedDayIndex] = useState(0);
   const [messages, setMessages] = useState([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [loadingNewer, setLoadingNewer] = useState(false);
+  const [booting, setBooting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [jumping, setJumping] = useState(false);
   const [error, setError] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(() =>
+    getChatRailOpen('search', { isMobileLayout }),
+  );
+  const [dateOpen, setDateOpen] = useState(() =>
+    getChatRailOpen('date', { isMobileLayout }),
+  );
+  const [groupOpen, setGroupOpen] = useState(() =>
+    getChatRailOpen('group', { isMobileLayout }),
+  );
+  const [composerToolbarOpen, setComposerToolbarOpen] = useState(
+    getComposerToolbarVisible,
+  );
+  const [composerLineNumbers, setComposerLineNumbers] = useState(
+    getComposerLineNumbersVisible,
+  );
+  const [activeJumpDate, setActiveJumpDate] = useState(null);
   const [searchFilters, setSearchFilters] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [searchCursor, setSearchCursor] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [addToNoteMessage, setAddToNoteMessage] = useState(null);
+  const [historyMessage, setHistoryMessage] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingCount, setDeletingCount] = useState(0);
+  const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
   const shareHandledRef = useRef(false);
   const searchDayKeysRef = useRef([]);
   const messagesRef = useRef(messages);
   const dayKeysRef = useRef(dayKeys);
   const loadedDayIndexRef = useRef(loadedDayIndex);
+  const windowNewestIndexRef = useRef(windowNewestIndex);
+  const sendQueueRef = useRef([]);
+  const flushingSendRef = useRef(false);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -110,8 +191,84 @@ export default function ChatWithMyselfPane({
   useEffect(() => {
     loadedDayIndexRef.current = loadedDayIndex;
   }, [loadedDayIndex]);
+  useEffect(() => {
+    windowNewestIndexRef.current = windowNewestIndex;
+  }, [windowNewestIndex]);
+
+  // Persist which desktop rails are open.
+  useEffect(() => {
+    if (isMobileLayout) return;
+    writeChatRailOpenPref('group', groupOpen);
+    writeChatRailOpenPref('date', dateOpen);
+    writeChatRailOpenPref('search', searchOpen);
+  }, [isMobileLayout, groupOpen, dateOpen, searchOpen]);
+
+  // Restore compose draft group / reply target (body+images restored in ChatComposer).
+  useEffect(() => {
+    const meta = readComposerDraftMeta();
+    if (!meta) return;
+    if (meta.group) setSelectedGroup(meta.group);
+    if (meta.replyTo?.id) setReplyTo(meta.replyTo);
+  }, []);
+
+  // Follow orientation default until the user sets an explicit toolbar preference.
+  useEffect(() => {
+    if (readComposerToolbarPref() != null) return undefined;
+    const mq = window.matchMedia('(orientation: landscape)');
+    const sync = () => setComposerToolbarOpen(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const toggleComposerToolbar = useCallback((next) => {
+    const value = typeof next === 'boolean' ? next : !composerToolbarOpen;
+    setComposerToolbarOpen(value);
+    writeComposerToolbarPref(value);
+  }, [composerToolbarOpen]);
+
+  const toggleComposerLineNumbers = useCallback((next) => {
+    const value = typeof next === 'boolean' ? next : !composerLineNumbers;
+    setComposerLineNumbers(value);
+    writeComposerLineNumbersPref(value);
+  }, [composerLineNumbers]);
 
   const hasMore = loadedDayIndex < dayKeys.length;
+  const hasMoreNewer = windowNewestIndex > 0;
+
+  const visibleMessages = useMemo(() => {
+    if (!viewGroupFilter) return messages;
+    return messages.filter((m) => (m.group || SELF_GROUP) === viewGroupFilter);
+  }, [messages, viewGroupFilter]);
+
+  const pendingSend = useMemo(
+    () => messages.some((m) => m.pendingSync === 'send'),
+    [messages],
+  );
+  const pendingEdit = useMemo(
+    () => messages.some((m) => m.pendingSync === 'edit'),
+    [messages],
+  );
+  const deleting = deletingCount > 0;
+
+  const handleToggleViewGroup = useCallback((group) => {
+    setViewGroupFilter((prev) => (prev === group ? null : group));
+  }, []);
+
+  useChatActivityStatus({
+    storageReady,
+    storageMode,
+    pendingSend,
+    pendingEdit,
+    deleting,
+    loadingOlder,
+    loadingNewer,
+    searchLoading,
+    jumping,
+    booting,
+    noteSubmitting: addToNoteSubmitting,
+    error,
+  });
 
   const refreshMeta = useCallback(async () => {
     if (!storageReady) return;
@@ -126,6 +283,7 @@ export default function ChatWithMyselfPane({
 
   const loadInitial = useCallback(async () => {
     if (!storageReady) return;
+    setBooting(true);
     try {
       await refreshMeta();
       const keys = await listDayKeys(ctx);
@@ -136,11 +294,91 @@ export default function ChatWithMyselfPane({
       const first = unique[0];
       const msgs = first ? await readDayMessages(ctx, first) : [];
       setMessages(msgs);
-      setLoadedDayIndex(1);
+      setWindowNewestIndex(0);
+      setLoadedDayIndex(first ? 1 : 0);
+      setActiveJumpDate(first || null);
     } catch (e) {
       setError(e?.message || '채팅 로드 실패');
+    } finally {
+      setBooting(false);
     }
   }, [storageReady, ctx, refreshMeta]);
+
+  // Load per-day message counts while the date panel is open (uses day-file cache).
+  useEffect(() => {
+    if (!storageReady || !dateOpen) return undefined;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        dayKeys.map(async (dateStr) => {
+          try {
+            const msgs = await readDayMessages(ctx, dateStr);
+            return [dateStr, msgs.length];
+          } catch {
+            return [dateStr, 0];
+          }
+        }),
+      );
+      if (!cancelled) setDayCounts(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storageReady, dateOpen, dayKeys, ctx]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!storageReady || refreshing) return;
+    setRefreshing(true);
+    setError('');
+    const started = Date.now();
+    try {
+      await refreshMeta();
+      const keys = await listDayKeys(ctx);
+      const today = localDateString(new Date(), detectTimeZone());
+      const ordered = keys.includes(today) ? keys : [today, ...keys];
+      const unique = [...new Set(ordered)];
+      setDayKeys(unique);
+
+      const prevKeys = dayKeysRef.current;
+      const wStart = windowNewestIndexRef.current;
+      const wEnd = loadedDayIndexRef.current;
+      let loadDates =
+        prevKeys.length && wEnd > wStart
+          ? prevKeys.slice(wStart, wEnd).filter((d) => unique.includes(d))
+          : [];
+      if (!loadDates.length && unique[0]) loadDates = [unique[0]];
+
+      const parts = await Promise.all(
+        loadDates.map((d) => readDayMessages(ctx, d)),
+      );
+      // dayKeys order is newest→oldest; messages are chronological (oldest first).
+      const msgs = [];
+      for (let i = parts.length - 1; i >= 0; i -= 1) {
+        msgs.push(...(parts[i] || []));
+      }
+      setMessages(msgs);
+
+      if (loadDates.length) {
+        const firstIdx = unique.indexOf(loadDates[0]);
+        const lastIdx = unique.indexOf(loadDates[loadDates.length - 1]);
+        setWindowNewestIndex(firstIdx >= 0 ? firstIdx : 0);
+        setLoadedDayIndex(lastIdx >= 0 ? lastIdx + 1 : unique[0] ? 1 : 0);
+        setActiveJumpDate(loadDates[0] || unique[0] || null);
+      } else {
+        setWindowNewestIndex(0);
+        setLoadedDayIndex(0);
+        setActiveJumpDate(null);
+      }
+    } catch (e) {
+      setError(e?.message || '새로고침 실패');
+    } finally {
+      const elapsed = Date.now() - started;
+      if (elapsed < 450) {
+        await new Promise((r) => window.setTimeout(r, 450 - elapsed));
+      }
+      setRefreshing(false);
+    }
+  }, [storageReady, refreshing, ctx, refreshMeta]);
 
   useEffect(() => {
     loadInitial();
@@ -213,8 +451,185 @@ export default function ChatWithMyselfPane({
     }
   }, [storageReady, loadingOlder, loadedDayIndex, dayKeys, ctx]);
 
+  const handleLoadNewer = useCallback(async () => {
+    if (!storageReady || loadingNewer || windowNewestIndex <= 0) return;
+    setLoadingNewer(true);
+    try {
+      const nextIdx = windowNewestIndex - 1;
+      const newer = await readDayMessages(ctx, dayKeys[nextIdx]);
+      setMessages((prev) => [...prev, ...newer]);
+      setWindowNewestIndex(nextIdx);
+    } finally {
+      setLoadingNewer(false);
+    }
+  }, [storageReady, loadingNewer, windowNewestIndex, dayKeys, ctx]);
+
+  const scrollToDayFirstMessage = useCallback((dateStr, messageId = null) => {
+    const id =
+      messageId ||
+      messagesRef.current.find((m) => m.dateStr === dateStr)?.id ||
+      null;
+    if (id) {
+      setHighlightId(id);
+      requestAnimationFrame(() => {
+        document.getElementById(`chat-msg-${id}`)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+      window.setTimeout(
+        () => setHighlightId((cur) => (cur === id ? null : cur)),
+        2200,
+      );
+      return;
+    }
+    requestAnimationFrame(() => {
+      document.getElementById(`chat-date-${dateStr}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  }, []);
+
+  /**
+   * Jump to a day without loading middle days.
+   * Resets the message window to that day; older/newer load via infinite scroll.
+   */
+  const jumpToDate = useCallback(
+    async (dateStr, messageId = null) => {
+      if (!storageReady || !dateStr) return;
+      setActiveJumpDate(dateStr);
+      const keys = dayKeysRef.current;
+      const idx = keys.indexOf(dateStr);
+      if (idx < 0) return;
+
+      const newest = windowNewestIndexRef.current;
+      const oldestEnd = loadedDayIndexRef.current;
+      const inWindow = idx >= newest && idx < oldestEnd;
+
+      if (inWindow) {
+        scrollToDayFirstMessage(dateStr, messageId);
+        return;
+      }
+
+      setJumping(true);
+      try {
+        const msgs = await readDayMessages(ctx, dateStr);
+        setMessages(msgs);
+        setWindowNewestIndex(idx);
+        setLoadedDayIndex(idx + 1);
+        const targetId = messageId || msgs[0]?.id || null;
+        if (targetId) {
+          setHighlightId(targetId);
+          window.setTimeout(
+            () => setHighlightId((cur) => (cur === targetId ? null : cur)),
+            2200,
+          );
+        } else {
+          requestAnimationFrame(() => {
+            document.getElementById(`chat-date-${dateStr}`)?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            });
+          });
+        }
+      } catch (e) {
+        setError(e?.message || '날짜 이동 실패');
+      } finally {
+        setJumping(false);
+      }
+    },
+    [storageReady, ctx, scrollToDayFirstMessage],
+  );
+
+  const confirmPendingMessages = useCallback((msgs, dateStr) => {
+    if (!msgs?.length || !dateStr) return;
+    const byId = new Map(msgs.map((m) => [m.id, m]));
+    setMessages((prev) => {
+      if (windowNewestIndexRef.current !== 0) {
+        return prev.filter((m) => !byId.has(m.id));
+      }
+      return prev.map((m) => {
+        const confirmed = byId.get(m.id);
+        if (!confirmed) return m;
+        const next = { ...m, ...confirmed, dateStr };
+        delete next.pendingSync;
+        return next;
+      });
+    });
+    setDayCounts((prev) => ({
+      ...prev,
+      [dateStr]: (prev[dateStr] || 0) + msgs.length,
+    }));
+    if (dayKeysRef.current.includes(dateStr)) return;
+    setDayKeys((prev) => [dateStr, ...prev.filter((d) => d !== dateStr)]);
+    if (windowNewestIndexRef.current === 0) {
+      setWindowNewestIndex(0);
+      setLoadedDayIndex((i) => Math.max(i, 1));
+    } else {
+      setWindowNewestIndex((i) => i + 1);
+      setLoadedDayIndex((i) => i + 1);
+    }
+  }, []);
+
+  const flushSendQueue = useCallback(async () => {
+    if (flushingSendRef.current) return;
+    flushingSendRef.current = true;
+    try {
+      while (sendQueueRef.current.length > 0) {
+        const batch = sendQueueRef.current.splice(0, sendQueueRef.current.length);
+        setError('');
+        const batchIds = batch.map((item) => item.clientId);
+        try {
+          const prepared = [];
+          for (const item of batch) {
+            const uploaded = [];
+            for (const file of item.files) {
+              const uploadedItem = await uploadChatAttachment(ctx, file);
+              uploaded.push(uploadedItem);
+            }
+            const attachMd = chatAttachmentsToMarkdown(uploaded);
+            const finalBody = [item.text, attachMd].filter(Boolean).join('\n\n');
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === item.clientId
+                  ? { ...m, body: finalBody, pendingSync: 'send' }
+                  : m,
+              ),
+            );
+            prepared.push({
+              id: item.clientId,
+              at: item.at,
+              tz: item.tz,
+              body: finalBody,
+              group: item.group,
+              source: 'compose',
+              replyTo: item.replyTarget?.id || '',
+              replySnippet: item.replyTarget
+                ? makeReplySnippet(
+                    item.replyTarget.snippet || item.replyTarget.body,
+                  )
+                : '',
+              replyGroup: item.replyTarget?.group || '',
+            });
+          }
+          const { msgs, dateStr } = await appendChatMessages(ctx, prepared);
+          confirmPendingMessages(msgs, dateStr);
+        } catch (e) {
+          setMessages((prev) => prev.filter((m) => !batchIds.includes(m.id)));
+          setError(e?.message || '전송 실패');
+        }
+      }
+    } finally {
+      flushingSendRef.current = false;
+      if (sendQueueRef.current.length > 0) {
+        void flushSendQueue();
+      }
+    }
+  }, [ctx, confirmPendingMessages]);
+
   const handleSend = useCallback(
-    async (body, group, replyTarget = null) => {
+    (body, group, replyTarget = null, imageFiles = []) => {
       if (!storageReady) {
         setError(
           storageMode === 'local'
@@ -223,101 +638,276 @@ export default function ChatWithMyselfPane({
         );
         return;
       }
-      setSending(true);
-      setError('');
-      try {
-        const { msg, dateStr } = await appendChatMessage(ctx, {
-          body,
-          group,
-          source: 'compose',
-          replyTo: replyTarget?.id || '',
-          replySnippet: replyTarget
-            ? makeReplySnippet(replyTarget.snippet || replyTarget.body)
-            : '',
-          replyGroup: replyTarget?.group || '',
-        });
-        setMessages((prev) => {
-          const today = localDateString(new Date(), detectTimeZone());
-          if (dateStr === today || dayKeys[0] === dateStr) {
-            return [...prev, msg];
-          }
-          return prev;
-        });
-        if (!dayKeys.includes(dateStr)) {
-          setDayKeys((prev) => [dateStr, ...prev.filter((d) => d !== dateStr)]);
-        }
-        setReplyTo(null);
-      } catch (e) {
-        setError(e?.message || '전송 실패');
-      } finally {
-        setSending(false);
+      const text = String(body || '').trim();
+      const files = Array.isArray(imageFiles) ? imageFiles : [];
+      if (!text && files.length === 0) return;
+
+      const tz = detectTimeZone();
+      const at = new Date().toISOString();
+      const dateStr = localDateString(new Date(at), tz);
+      const clientId = createMessageId();
+      const optimisticBody =
+        text ||
+        (files.length > 0 ? `(첨부 ${files.length}개 업로드 중…)` : '');
+      const optimistic = {
+        id: clientId,
+        at,
+        tz,
+        source: 'compose',
+        group: group || SELF_GROUP,
+        body: optimisticBody,
+        replyTo: replyTarget?.id || '',
+        replySnippet: replyTarget
+          ? makeReplySnippet(replyTarget.snippet || replyTarget.body)
+          : '',
+        replyGroup: replyTarget?.group || '',
+        dateStr,
+        pendingSync: 'send',
+      };
+
+      if (windowNewestIndexRef.current === 0) {
+        setMessages((prev) => [...prev, optimistic]);
       }
+      if (!dayKeysRef.current.includes(dateStr)) {
+        setDayKeys((prev) => [dateStr, ...prev.filter((d) => d !== dateStr)]);
+        setWindowNewestIndex(0);
+        setLoadedDayIndex((i) => Math.max(i, 1));
+      }
+
+      sendQueueRef.current.push({
+        clientId,
+        at,
+        tz,
+        text,
+        group,
+        replyTarget: replyTarget || null,
+        files,
+      });
+      void flushSendQueue();
     },
-    [storageReady, storageMode, ctx, dayKeys],
+    [storageReady, storageMode, flushSendQueue],
   );
 
   const handleReply = useCallback((message) => {
+    setEditTarget(null);
     setReplyTo({
       id: message.id,
       group: message.group || SELF_GROUP,
       body: message.body,
       snippet: makeReplySnippet(message.body),
       dateStr: message.dateStr,
+      at: message.at,
     });
   }, []);
 
-  const handleDelete = useCallback(
-    async (message) => {
-      if (!storageReady || !message?.id) return;
+  const handleEdit = useCallback((message) => {
+    if (!message?.id) return;
+    setReplyTo(null);
+    setEditTarget(message);
+    setSelectedGroup(message.group || SELF_GROUP);
+  }, []);
+
+  const handleSaveEdit = useCallback(
+    async (body, group, target, imageFiles = [], options = {}) => {
+      if (!storageReady || !target?.id) return;
       const dateStr =
-        message.dateStr || localDateString(new Date(message.at), detectTimeZone());
-      if (!window.confirm('이 메시지를 삭제할까요?')) return;
+        target.dateStr || localDateString(new Date(target.at), detectTimeZone());
+      const text = String(body || '').trim();
+      const files = Array.isArray(imageFiles) ? imageFiles : [];
+      const existingMarkdown = String(options.existingMarkdown || '').trim();
+      const removedPaths = Array.isArray(options.removedPaths)
+        ? options.removedPaths.filter(Boolean)
+        : [];
+      if (!text && files.length === 0 && !existingMarkdown) return;
+
+      const snapshot = messagesRef.current.find((m) => m.id === target.id) || target;
+      const attachHint =
+        files.length > 0
+          ? `(첨부 ${files.length}개 업로드 중…)`
+          : existingMarkdown;
+      const optimisticBody = [text, attachHint].filter(Boolean).join('\n\n');
+      const editedAt = new Date().toISOString();
+      const prevHistory = Array.isArray(snapshot.editHistory)
+        ? snapshot.editHistory
+        : [];
+      const optimisticHistory = [
+        ...prevHistory,
+        {
+          at: snapshot.editedAt || snapshot.at,
+          body: snapshot.body,
+          group: snapshot.group || SELF_GROUP,
+        },
+      ];
+
+      setEditTarget(null);
+      setError('');
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === target.id
+            ? {
+                ...m,
+                body: optimisticBody,
+                group: group || SELF_GROUP,
+                editedAt,
+                editHistory: optimisticHistory,
+                pendingSync: 'edit',
+              }
+            : m,
+        ),
+      );
+
       try {
-        const ok = await deleteChatMessage(ctx, dateStr, message.id);
-        if (ok) {
-          setMessages((prev) => prev.filter((m) => m.id !== message.id));
-          if (replyTo?.id === message.id) setReplyTo(null);
-        } else {
+        const uploaded = [];
+        for (const file of files) {
+          const item = await uploadChatAttachment(ctx, file);
+          uploaded.push(item);
+        }
+        const uploadedMd = chatAttachmentsToMarkdown(uploaded);
+        const finalBody = [text, existingMarkdown, uploadedMd]
+          .filter(Boolean)
+          .join('\n\n');
+        if (finalBody !== optimisticBody) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === target.id
+                ? { ...m, body: finalBody, pendingSync: 'edit' }
+                : m,
+            ),
+          );
+        }
+
+        const updated = await updateChatMessage(ctx, dateStr, target.id, {
+          body: finalBody,
+          group,
+        });
+        if (!updated) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === target.id ? { ...snapshot } : m)),
+          );
           setError('메시지를 찾지 못했습니다.');
+          return;
+        }
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== target.id) return m;
+            const next = { ...m, ...updated, dateStr };
+            delete next.pendingSync;
+            return next;
+          }),
+        );
+
+        for (const path of removedPaths) {
+          try {
+            await deleteChatAttachment(ctx, path);
+          } catch {
+            /* best-effort storage cleanup */
+          }
         }
       } catch (e) {
-        setError(e?.message || '삭제 실패');
+        setMessages((prev) =>
+          prev.map((m) => (m.id === target.id ? { ...snapshot } : m)),
+        );
+        setError(e?.message || '수정 실패');
       }
     },
-    [storageReady, ctx, replyTo],
+    [storageReady, ctx],
   );
+
+  const performDeleteMessage = useCallback(
+    async (message) => {
+      if (!storageReady || !message?.id) return;
+      if (message.pendingSync === 'delete') return;
+      const dateStr =
+        message.dateStr || localDateString(new Date(message.at), detectTimeZone());
+      const snapshot = { ...message };
+      delete snapshot.pendingSync;
+
+      // Close confirm immediately; keep bubble in a disabled deleting state.
+      setDeleteTarget(null);
+      setError('');
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message.id ? { ...m, pendingSync: 'delete' } : m,
+        ),
+      );
+      if (replyTo?.id === message.id) setReplyTo(null);
+      if (editTarget?.id === message.id) setEditTarget(null);
+      if (historyMessage?.id === message.id) setHistoryMessage(null);
+      setDeletingCount((c) => c + 1);
+
+      try {
+        const ok = await deleteChatMessage(ctx, dateStr, message.id);
+        if (!ok) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
+          );
+          setError('메시지를 찾지 못했습니다.');
+          return;
+        }
+        setMessages((prev) => prev.filter((m) => m.id !== message.id));
+        setDayCounts((prev) => ({
+          ...prev,
+          [dateStr]: Math.max(0, (prev[dateStr] || 1) - 1),
+        }));
+      } catch (e) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
+        );
+        setError(e?.message || '삭제 실패');
+      } finally {
+        setDeletingCount((c) => Math.max(0, c - 1));
+      }
+    },
+    [storageReady, ctx, replyTo, editTarget, historyMessage],
+  );
+
+  const handleDelete = useCallback(
+    (message, options = {}) => {
+      if (!storageReady || !message?.id) return;
+      if (message.pendingSync === 'delete') return;
+      if (options.skipConfirm) {
+        void performDeleteMessage(message);
+        return;
+      }
+      setDeleteTarget(message);
+    },
+    [storageReady, performDeleteMessage],
+  );
+
+  const confirmDeleteMessage = useCallback(() => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    void performDeleteMessage(target);
+  }, [deleteTarget, performDeleteMessage]);
 
   const ensureMessageLoaded = useCallback(
     async (messageId) => {
       const existing = messagesRef.current.find((m) => m.id === messageId);
       if (existing) return existing;
 
-      const keys = dayKeysRef.current;
-      let idx = loadedDayIndexRef.current;
-      let msgs = [...messagesRef.current];
-      while (idx < keys.length) {
-        const dateStr = keys[idx];
-        const older = await readDayMessages(ctx, dateStr);
-        msgs = [...older, ...msgs];
-        idx += 1;
-        setMessages(msgs);
-        setLoadedDayIndex(idx);
-        const found = older.find((m) => m.id === messageId);
-        if (found) return found;
+      const hit = await findMessageById(ctx, messageId);
+      if (!hit?.msg) return null;
+
+      if (!dayKeysRef.current.includes(hit.dateStr)) {
+        setDayKeys((prev) => {
+          const next = [...prev, hit.dateStr];
+          next.sort().reverse();
+          return next;
+        });
+        // Allow dayKeysRef to update before jump indexes resolve.
+        dayKeysRef.current = [...dayKeysRef.current, hit.dateStr]
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .sort()
+          .reverse();
       }
 
-      const hit = await findMessageById(ctx, messageId);
-      if (!hit) return null;
-      if (!keys.includes(hit.dateStr)) {
-        setDayKeys((prev) => [...prev, hit.dateStr]);
-      }
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === messageId)) return prev;
-        return [...hit.msg ? [hit.msg] : [], ...prev];
-      });
-      return hit.msg;
+      await jumpToDate(hit.dateStr, messageId);
+      return (
+        messagesRef.current.find((m) => m.id === messageId) || hit.msg
+      );
     },
-    [ctx],
+    [ctx, jumpToDate],
   );
 
   const handleOpenReplyTarget = useCallback(
@@ -365,8 +955,13 @@ export default function ChatWithMyselfPane({
           const dateStr = keys[i];
           const msgs = await readDayMessages(ctx, dateStr);
           for (const msg of msgs) {
-            if (matchesFilters(msg, dateStr, filters)) {
-              found.push({ ...msg, dateStr });
+            const hit = await matchesFilters(msg, dateStr, filters, ogStorage);
+            if (hit.ok) {
+              found.push({
+                ...msg,
+                dateStr,
+                ogSearchText: hit.ogSearchText || '',
+              });
             }
           }
         }
@@ -375,7 +970,7 @@ export default function ChatWithMyselfPane({
       }
       return { results: found, nextIndex: i, hasMore: i < keys.length };
     },
-    [storageReady, ctx],
+    [storageReady, ctx, ogStorage],
   );
 
   const handleSearch = useCallback(
@@ -423,26 +1018,50 @@ export default function ChatWithMyselfPane({
 
   const handleSelectResult = useCallback(
     async (result) => {
-      setHighlightId(result.id);
       if (isMobileLayout) setSearchOpen(false);
-      // Ensure day is loaded in main list
-      const idx = dayKeys.indexOf(result.dateStr);
-      if (idx >= 0 && idx >= loadedDayIndex) {
-        let msgs = [...messages];
-        for (let i = loadedDayIndex; i <= idx; i++) {
-          const older = await readDayMessages(ctx, dayKeys[i]);
-          msgs = [...older, ...msgs];
-        }
-        setMessages(msgs);
-        setLoadedDayIndex(idx + 1);
-      }
+      await jumpToDate(result.dateStr, result.id);
     },
-    [isMobileLayout, dayKeys, loadedDayIndex, messages, ctx],
+    [isMobileLayout, jumpToDate],
   );
 
   const searchHasMore = searchCursor < (searchDayKeysRef.current.length || 0);
 
+  const toolbarBtnClass = (active) =>
+    `rounded p-1.5 ${
+      active
+        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30'
+        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg'
+    }`;
+
+  const groupPanelProps = {
+    groups,
+    viewGroup: viewGroupFilter,
+    onToggleViewGroup: handleToggleViewGroup,
+    onAddGroup: handleAddGroup,
+    onAfterAddGroup: (name) => {
+      setSelectedGroup(name);
+      setViewGroupFilter(name);
+    },
+  };
+
+  const searchPanelProps = {
+    groups,
+    onSearch: handleSearch,
+    results: searchResults,
+    loading: searchLoading,
+    hasMore: searchHasMore,
+    onLoadMore: handleSearchLoadMore,
+    onSelectResult: handleSelectResult,
+    timeZone,
+  };
+
+  const desktopResizableCount = Math.max(
+    1,
+    (groupOpen ? 1 : 0) + (dateOpen ? 1 : 0) + (searchOpen ? 1 : 0),
+  );
+
   return (
+    <ChatImageLightboxProvider>
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg">
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 dark:border-odp-borderSoft px-3 py-2">
         {isMobileLayout && !sidebarOpen ? (
@@ -455,19 +1074,71 @@ export default function ChatWithMyselfPane({
             <Menu size={18} />
           </button>
         ) : null}
-        <h2 className="flex-1 truncate text-sm font-bold text-gray-800 dark:text-odp-fgStrong">
-          나와의 채팅
-        </h2>
+        <div className="flex min-w-0 flex-1 items-center gap-0.5">
+          <h2 className="min-w-0 truncate text-sm font-bold text-gray-800 dark:text-odp-fgStrong">
+            <span className="flex items-center gap-1">
+              <MessageCircleMore size={18} className="shrink-0 text-gray-500 dark:text-gray-400" />
+              나와의 채팅
+            </span>
+          </h2>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={!storageReady || refreshing}
+            className={`${toolbarBtnClass(false)} shrink-0 disabled:opacity-40`}
+            aria-label="새로고침"
+            title="새로고침"
+          >
+            <RefreshCw
+              size={18}
+              className={refreshing ? 'animate-spin' : undefined}
+              aria-hidden
+            />
+          </button>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+          <ChatNavSwitch
+            id="chat-nav-toolbar"
+            label="툴바"
+            title="입력창 툴바"
+            checked={composerToolbarOpen}
+            onCheckedChange={toggleComposerToolbar}
+          />
+          <ChatNavSwitch
+            id="chat-nav-line-numbers"
+            label="줄번호"
+            title="입력창 줄 번호"
+            checked={composerLineNumbers}
+            onCheckedChange={toggleComposerLineNumbers}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setDateOpen((v) => !v)}
+          className={toolbarBtnClass(dateOpen)}
+          aria-label="날짜 목록"
+          title="날짜 목록"
+          aria-pressed={dateOpen}
+        >
+          <CalendarDays size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setGroupOpen((v) => !v)}
+          className={toolbarBtnClass(groupOpen)}
+          aria-label="그룹"
+          title="그룹"
+          aria-pressed={groupOpen}
+        >
+          <Users size={18} />
+        </button>
         <button
           type="button"
           onClick={() => setSearchOpen((v) => !v)}
-          className={`rounded p-1.5 ${
-            searchOpen
-              ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg'
-          }`}
+          className={toolbarBtnClass(searchOpen)}
           aria-label="검색"
           title="검색"
+          aria-pressed={searchOpen}
         >
           <Search size={18} />
         </button>
@@ -486,56 +1157,256 @@ export default function ChatWithMyselfPane({
             : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.'}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-100/80 dark:bg-odp-bg">
-            <div className="mx-auto flex h-full min-h-0 w-full max-w-full flex-col md:max-w-[min(100%,50vw)]">
-              <ChatMessageList
-                messages={messages}
-                ogStorage={ogStorage}
-                timeZone={timeZone}
-                highlightId={highlightId}
-                onReachTop={handleLoadOlder}
-                loadingOlder={loadingOlder}
-                hasMore={hasMore}
-                onReply={handleReply}
-                onDelete={handleDelete}
-                onOpenReplyTarget={handleOpenReplyTarget}
-              />
-              <ChatComposer
-                groups={groups}
-                selectedGroup={selectedGroup}
-                onSelectedGroupChange={setSelectedGroup}
-                onAddGroup={handleAddGroup}
-                onSend={handleSend}
-                sending={sending}
-                theme={theme === 'dark' ? 'dark' : 'light'}
-                replyTo={replyTo}
-                onClearReply={() => setReplyTo(null)}
-              />
+        <div className="flex min-h-0 flex-1" data-chat-rails-root>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#b9cfe0] dark:bg-[#0b1220]">
+            <ChatMessageList
+              messages={visibleMessages}
+              ogStorage={ogStorage}
+              timeZone={timeZone}
+              highlightId={highlightId}
+              editingMessageId={editTarget?.id || null}
+              onReachTop={handleLoadOlder}
+              onReachBottom={handleLoadNewer}
+              loadingOlder={loadingOlder}
+              loadingNewer={loadingNewer}
+              hasMore={hasMore}
+              hasMoreNewer={hasMoreNewer}
+              onReply={handleReply}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              onAddToNote={setAddToNoteMessage}
+              onViewEditHistory={setHistoryMessage}
+              onOpenReplyTarget={handleOpenReplyTarget}
+              getPresignedUrl={getPresignedUrlForPath}
+              emptyHint={
+                viewGroupFilter
+                  ? `「${viewGroupFilter}」 그룹 메시지가 없습니다`
+                  : undefined
+              }
+            />
+            <div className="w-full shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft">
+              <div className="mx-auto w-full max-w-full p-2 md:max-w-[min(100%,50vw)] md:p-3">
+                <ChatComposer
+                  bare
+                  groups={groups}
+                  selectedGroup={selectedGroup}
+                  onSelectedGroupChange={setSelectedGroup}
+                  onAddGroup={handleAddGroup}
+                  onSend={handleSend}
+                  sending={pendingSend || pendingEdit}
+                  theme={theme === 'dark' ? 'dark' : 'light'}
+                  replyTo={replyTo}
+                  onClearReply={() => setReplyTo(null)}
+                  editTarget={editTarget}
+                  onClearEdit={() => setEditTarget(null)}
+                  onSaveEdit={handleSaveEdit}
+                  ogStorage={ogStorage}
+                  timeZone={timeZone}
+                  getPresignedUrl={getPresignedUrlForPath}
+                  showToolbar={composerToolbarOpen}
+                  showLineNumbers={composerLineNumbers}
+                />
+              </div>
             </div>
           </div>
-          {!isMobileLayout && !searchOpen ? (
-            <ChatGroupPanel
-              groups={groups}
-              selectedGroup={selectedGroup}
-              onSelectGroup={setSelectedGroup}
-              onAddGroup={handleAddGroup}
-            />
-          ) : null}
-          <ChatSearchPanel
-            open={searchOpen}
-            onClose={() => setSearchOpen(false)}
-            groups={groups}
-            onSearch={handleSearch}
-            results={searchResults}
-            loading={searchLoading}
-            hasMore={searchHasMore}
-            onLoadMore={handleSearchLoadMore}
-            onSelectResult={handleSelectResult}
-            fullscreen={isMobileLayout}
-          />
+          {!isMobileLayout ? (
+            <>
+              <AnimatePresence initial={false}>
+                {dateOpen ? (
+                  <motion.div
+                    key="desktop-date"
+                    className="flex h-full min-h-0"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 16 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <ChatRailShell
+                      storageKey="s3haim_chat_date_rail_width"
+                      defaultWidth={280}
+                      reservedAside={0}
+                      openResizableCount={desktopResizableCount}
+                      label="날짜 사이드바 너비 조절"
+                    >
+                      <ChatDatePanel
+                        dayKeys={dayKeys}
+                        dayCounts={dayCounts}
+                        activeDate={activeJumpDate}
+                        timeZone={timeZone}
+                        onSelectDate={(dateStr) => {
+                          void jumpToDate(dateStr);
+                        }}
+                        onClose={() => setDateOpen(false)}
+                      />
+                    </ChatRailShell>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+              <AnimatePresence initial={false}>
+                {groupOpen ? (
+                  <motion.div
+                    key="desktop-group"
+                    className="flex h-full min-h-0"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 16 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <ChatRailShell
+                      storageKey="s3haim_chat_group_rail_width"
+                      defaultWidth={260}
+                      reservedAside={0}
+                      openResizableCount={desktopResizableCount}
+                      label="그룹 사이드바 너비 조절"
+                    >
+                      <ChatGroupPanel
+                        {...groupPanelProps}
+                        onClose={() => setGroupOpen(false)}
+                      />
+                    </ChatRailShell>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+              <AnimatePresence initial={false}>
+                {searchOpen ? (
+                  <motion.div
+                    key="desktop-search"
+                    className="flex h-full min-h-0"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 16 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <ChatRailShell
+                      storageKey="s3haim_chat_search_rail_width"
+                      defaultWidth={320}
+                      reservedAside={0}
+                      openResizableCount={desktopResizableCount}
+                      label="검색 사이드바 너비 조절"
+                    >
+                      <ChatSearchPanel
+                        open
+                        onClose={() => setSearchOpen(false)}
+                        {...searchPanelProps}
+                      />
+                    </ChatRailShell>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </>
+          ) : (
+            <>
+              <ChatMobileDrawer
+                open={groupOpen}
+                onClose={() => setGroupOpen(false)}
+                width="80vw"
+                zClass="z-[70]"
+                label="그룹"
+              >
+                <ChatGroupPanel
+                  {...groupPanelProps}
+                  onClose={() => setGroupOpen(false)}
+                />
+              </ChatMobileDrawer>
+              <ChatMobileDrawer
+                open={dateOpen}
+                onClose={() => setDateOpen(false)}
+                width="80vw"
+                zClass="z-[72]"
+                label="날짜"
+              >
+                <ChatDatePanel
+                  dayKeys={dayKeys}
+                  dayCounts={dayCounts}
+                  activeDate={activeJumpDate}
+                  timeZone={timeZone}
+                  onSelectDate={(dateStr) => {
+                    void jumpToDate(dateStr);
+                    setDateOpen(false);
+                  }}
+                  onClose={() => setDateOpen(false)}
+                />
+              </ChatMobileDrawer>
+              <ChatMobileDrawer
+                open={searchOpen}
+                onClose={() => setSearchOpen(false)}
+                width="100%"
+                zClass="z-[80]"
+                label="검색"
+              >
+                <ChatSearchPanel
+                  open
+                  onClose={() => setSearchOpen(false)}
+                  {...searchPanelProps}
+                />
+              </ChatMobileDrawer>
+            </>
+          )}
         </div>
       )}
+
+      <ChatAddToNoteModal
+        isOpen={Boolean(addToNoteMessage)}
+        message={addToNoteMessage}
+        storageType={storageMode === 'local' ? 'local' : 's3'}
+        s3Tree={s3Tree}
+        localTree={localTree}
+        localRootHandle={localRootHandle}
+        timeZone={timeZone}
+        isSubmitting={addToNoteSubmitting}
+        selectPathAfterCreate={selectPathAfterCreateFolder}
+        onSelectPathAfterCreateApplied={onSelectPathAfterCreateFolderApplied}
+        onClose={() => {
+          if (!addToNoteSubmitting) setAddToNoteMessage(null);
+        }}
+        onRequestCreateFolder={onRequestCreateFolderForNote}
+        onRequestMoveFolder={onRequestMoveFolder}
+        onConfirm={async (payload) => {
+          if (!onCreateNoteFromMessage) return;
+          setAddToNoteSubmitting(true);
+          try {
+            await onCreateNoteFromMessage(payload);
+            setAddToNoteMessage(null);
+          } finally {
+            setAddToNoteSubmitting(false);
+          }
+        }}
+      />
+      <ChatEditHistoryModal
+        open={Boolean(historyMessage)}
+        message={
+          historyMessage
+            ? messages.find((m) => m.id === historyMessage.id) || historyMessage
+            : null
+        }
+        onOpenChange={(next) => {
+          if (!next) setHistoryMessage(null);
+        }}
+        timeZone={timeZone}
+        getPresignedUrl={getPresignedUrlForPath}
+      />
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title="메시지 삭제"
+        message={
+          deleteTarget
+            ? `이 메시지를 삭제할까요?\n\n${(deleteTarget.body || '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 120) || '(빈 메시지)'}`
+            : ''
+        }
+        variant="danger"
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        onConfirm={() => {
+          confirmDeleteMessage();
+        }}
+        onCancel={() => {
+          setDeleteTarget(null);
+        }}
+      />
     </div>
+    </ChatImageLightboxProvider>
   );
 }
