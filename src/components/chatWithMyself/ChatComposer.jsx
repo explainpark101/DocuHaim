@@ -143,6 +143,9 @@ export default function ChatComposer({
   bare = false,
   showToolbar = true,
   showLineNumbers = false,
+  /** Share-target (or similar) seed: replace compose body once consumed. */
+  seedBody = null,
+  onSeedConsumed,
 }) {
   const [value, setValue] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -211,6 +214,20 @@ export default function ChatComposer({
       cancelled = true;
     };
   }, []);
+
+  // Apply share-target (or similar) seed into the editor + draft meta.
+  useEffect(() => {
+    if (!seedBody?.id || seedBody.body == null || !draftReady || editTarget) return;
+    const nextBody = String(seedBody.body);
+    setValue(nextBody);
+    const meta = readComposerDraftMeta() || {};
+    writeComposerDraftMeta({
+      ...meta,
+      body: nextBody,
+      group: selectedGroup || SELF_GROUP,
+    });
+    onSeedConsumed?.();
+  }, [seedBody?.id, seedBody?.body, draftReady, editTarget, selectedGroup, onSeedConsumed]);
 
   useEffect(() => {
     if (!editTarget) return undefined;

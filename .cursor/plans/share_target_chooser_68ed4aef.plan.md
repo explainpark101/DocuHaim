@@ -4,13 +4,13 @@ overview: share_target 수신 시 자동 전송을 막고, "나로 즉시 보내
 todos:
   - id: share-modal
     content: ChatShareTargetModal 추가 (미리보기 + 2옵션 + 취소)
-    status: pending
+    status: completed
   - id: pane-prompt
     content: "ChatWithMyselfPane: 자동전송 제거, sharePrompt/pending 큐/핸들러 연결"
-    status: pending
+    status: completed
   - id: composer-seed
     content: "ChatComposer: seedBody로 입력란·draft 반영"
-    status: pending
+    status: completed
 isProject: false
 ---
 

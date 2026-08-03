@@ -10,6 +10,7 @@ import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
 import ChatSearchPanel from '@/components/chatWithMyself/ChatSearchPanel';
 import ChatAddToNoteModal from '@/components/chatWithMyself/ChatAddToNoteModal';
 import ChatEditHistoryModal from '@/components/chatWithMyself/ChatEditHistoryModal';
+import ChatShareTargetModal from '@/components/chatWithMyself/ChatShareTargetModal';
 import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
 import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
@@ -173,6 +174,8 @@ export default function ChatWithMyselfPane({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingCount, setDeletingCount] = useState(0);
   const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
+  const [sharePrompt, setSharePrompt] = useState(null);
+  const [composerSeed, setComposerSeed] = useState(null);
   const shareHandledRef = useRef(false);
   const searchDayKeysRef = useRef([]);
   const messagesRef = useRef(messages);
@@ -397,7 +400,51 @@ export default function ChatWithMyselfPane({
     [ctx, storageReady, loadInitial],
   );
 
-  // Share target query ingest
+  const clearSharePromptRecord = useCallback(async (prompt) => {
+    if (prompt?.id != null) {
+      try {
+        await deletePendingShare(prompt.id);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const handleShareSendAsSelf = useCallback(async () => {
+    const prompt = sharePrompt;
+    if (!prompt?.body) return;
+    try {
+      await appendShareBody(prompt.body);
+      await clearSharePromptRecord(prompt);
+      setSharePrompt(null);
+    } catch {
+      if (prompt.id == null) {
+        try {
+          await savePendingShare({ body: prompt.body });
+        } catch {
+          /* ignore */
+        }
+      }
+      setSharePrompt(null);
+    }
+  }, [sharePrompt, appendShareBody, clearSharePromptRecord]);
+
+  const handleShareComposeWithGroup = useCallback(async () => {
+    const prompt = sharePrompt;
+    if (!prompt?.body) return;
+    setEditTarget(null);
+    setComposerSeed({ id: `share-${Date.now()}`, body: prompt.body });
+    await clearSharePromptRecord(prompt);
+    setSharePrompt(null);
+  }, [sharePrompt, clearSharePromptRecord]);
+
+  const handleSharePromptClose = useCallback(async () => {
+    const prompt = sharePrompt;
+    await clearSharePromptRecord(prompt);
+    setSharePrompt(null);
+  }, [sharePrompt, clearSharePromptRecord]);
+
+  // Share target query ingest → chooser prompt (or pending if storage locked / busy)
   useEffect(() => {
     if (shareHandledRef.current) return;
     const hasShare =
@@ -414,29 +461,30 @@ export default function ChatWithMyselfPane({
         await savePendingShare({ body });
         return;
       }
-      try {
-        await appendShareBody(body);
-      } catch {
-        await savePendingShare({ body });
-      }
+      setSharePrompt((prev) => {
+        if (prev) {
+          void savePendingShare({ body });
+          return prev;
+        }
+        return { body };
+      });
     })();
-  }, [searchParams, setSearchParams, storageReady, appendShareBody]);
+  }, [searchParams, setSearchParams, storageReady]);
 
-  // Flush pending shares when storage becomes ready
+  // Surface pending shares one at a time when storage is ready and no prompt is open
   useEffect(() => {
-    if (!storageReady) return;
+    if (!storageReady || sharePrompt) return undefined;
+    let cancelled = false;
     (async () => {
       const pending = await getPendingShares();
-      for (const p of pending) {
-        try {
-          await appendShareBody(p.body);
-          await deletePendingShare(p.id);
-        } catch {
-          /* keep pending */
-        }
-      }
+      if (cancelled || !pending.length) return;
+      const first = pending[0];
+      setSharePrompt({ id: first.id, body: first.body });
     })();
-  }, [storageReady, appendShareBody]);
+    return () => {
+      cancelled = true;
+    };
+  }, [storageReady, sharePrompt]);
 
   const handleLoadOlder = useCallback(async () => {
     if (!storageReady || loadingOlder || loadedDayIndex >= dayKeys.length) return;
@@ -1205,6 +1253,8 @@ export default function ChatWithMyselfPane({
                   getPresignedUrl={getPresignedUrlForPath}
                   showToolbar={composerToolbarOpen}
                   showLineNumbers={composerLineNumbers}
+                  seedBody={composerSeed}
+                  onSeedConsumed={() => setComposerSeed(null)}
                 />
               </div>
             </div>
@@ -1404,6 +1454,19 @@ export default function ChatWithMyselfPane({
         }}
         onCancel={() => {
           setDeleteTarget(null);
+        }}
+      />
+      <ChatShareTargetModal
+        isOpen={Boolean(sharePrompt?.body)}
+        body={sharePrompt?.body || ''}
+        onSendAsSelf={() => {
+          void handleShareSendAsSelf();
+        }}
+        onComposeWithGroup={() => {
+          void handleShareComposeWithGroup();
+        }}
+        onClose={() => {
+          void handleSharePromptClose();
         }}
       />
     </div>
