@@ -406,6 +406,12 @@ function MainApp() {
   }, [currentFile]);
 
   useEffect(() => {
+    const onChat =
+      location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    if (onChat) {
+      document.title = `${appName} - 나와의 채팅`;
+      return;
+    }
     if (currentFile) {
       const fileName = currentFile.name
         || (typeof currentFile.id === 'string' && currentFile.id.split('/').filter(Boolean).pop())
@@ -414,7 +420,7 @@ function MainApp() {
     } else {
       document.title = appName;
     }
-  }, [appName, currentFile]);
+  }, [appName, currentFile, location.pathname]);
 
   useEffect(() => {
     saveStorageMode(storageMode);
@@ -1876,12 +1882,19 @@ function MainApp() {
     setEditorContent(nextContent);
   }, [isUnlocked]);
 
-  // Persist last opened file (S3 or local) for restore on next load
+  // Persist last opened file or chat for restore on next load
   useEffect(() => {
-    if (!isUnlocked || !currentFile) return;
+    if (!isUnlocked) return;
+    const onChat =
+      location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    if (onChat) {
+      saveLastOpenedFile({ type: 'chat' });
+      return;
+    }
+    if (!currentFile) return;
     if (currentFile.type !== 's3' && currentFile.type !== 'local') return;
     saveLastOpenedFile({ type: currentFile.type, path: currentFile.id });
-  }, [isUnlocked, currentFile, saveLastOpenedFile]);
+  }, [isUnlocked, currentFile, location.pathname, saveLastOpenedFile]);
 
   // Open file from URL ?open=storageType:path (e.g. from "새 창에서 열기")
   useEffect(() => {
@@ -1904,7 +1917,7 @@ function MainApp() {
     hasProcessedOpenFromUrlRef.current = true;
   }, [isUnlocked, s3Tree, localTree, selectFile]);
 
-  // Restore last opened file once trees are loaded
+  // Restore last opened file or chat once unlocked (trees needed for files)
   useEffect(() => {
     if (!isUnlocked || hasRestoredLastFileRef.current) return;
     if (hasProcessedOpenFromUrlRef.current) return;
@@ -1916,6 +1929,13 @@ function MainApp() {
       return;
     }
     const { type, path } = saved;
+    if (type === 'chat') {
+      hasRestoredLastFileRef.current = true;
+      if (location.pathname !== '/chat' && !location.pathname.endsWith('/chat')) {
+        navigate('/chat');
+      }
+      return;
+    }
     if (type !== 's3' && type !== 'local') {
       hasRestoredLastFileRef.current = true;
       return;
@@ -1928,7 +1948,7 @@ function MainApp() {
     const node = findFileNodeByPath(tree, path);
     if (node) selectFile(type, node);
     hasRestoredLastFileRef.current = true;
-  }, [isUnlocked, s3Tree, localTree, selectFile, loadLastOpenedFile]);
+  }, [isUnlocked, s3Tree, localTree, selectFile, loadLastOpenedFile, navigate, location.pathname]);
 
   // Prompt to restore last local folder when returning in local mode
   useEffect(() => {
