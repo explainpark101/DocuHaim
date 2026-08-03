@@ -344,7 +344,9 @@ config({
     },
   },
   codeMirrorExtensions(extensions, { keyBindings }) {
-    const nextExtensions = [...extensions].filter((item) => item.type !== 'keymap');
+    const nextExtensions = [...extensions].filter(
+      (item) => item.type !== 'keymap' && item.type !== 'linkShortener',
+    );
 
     const baseKeyBindings = (keyBindings || []).filter((binding) => {
       const key = String(binding?.key || '').toLowerCase();

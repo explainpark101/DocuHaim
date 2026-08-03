@@ -28,4 +28,8 @@ config({
       { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} },
     ];
   },
+  // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).
+  codeMirrorExtensions(extensions) {
+    return (extensions || []).filter((item) => item?.type !== 'linkShortener');
+  },
 });
