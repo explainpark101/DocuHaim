@@ -17,7 +17,7 @@ const MAX_MERGE_TS = (msg) => {
 
 function parseAttrs(attrStr) {
   const attrs = {};
-  const re = /(\w+)="([^"]*)"/g;
+  const re = /([\w-]+)="([^"]*)"/g;
   let m;
   while ((m = re.exec(attrStr))) {
     attrs[m[1]] = m[2];
@@ -318,35 +318,39 @@ export function formatChatMessageMarkdownCopy(msg) {
 }
 
 /**
- * Markdown body for a note created from a chat message.
+ * Parse `<!-- chat-with-myself ... -->` metadata from a note body.
+ * @returns {{ id: string, at: string, group: string, href: string, notePath: string } | null}
  */
-export function formatChatMessageAsNoteMarkdown(msg, timeZone, notePath = '') {
+export function parseChatWithMyselfNoteMeta(markdown) {
+  const text = String(markdown ?? '');
+  const match = text.match(/<!--\s*chat-with-myself\s+([^>]*?)-->/);
+  if (!match) return null;
+  const attrs = parseAttrs(match[1] || '');
+  const id = attrs.id || '';
+  if (!id && !attrs.href) return null;
+  const href = attrs.href || chatMessageUrl(id);
+  return {
+    id,
+    at: attrs.at || '',
+    group: unescapeAttr(attrs.group || ''),
+    href,
+    notePath: unescapeAttr(attrs.notePath || attrs['note-path'] || ''),
+  };
+}
+
+/**
+ * Markdown body for a note created from a chat message.
+ * Source metadata lives in an HTML comment; UI renders a card from it.
+ */
+export function formatChatMessageAsNoteMarkdown(msg, _timeZone, notePath = '') {
   const group = msg?.group || '나';
   const at = msg?.at || '';
   const msgId = msg?.id || '';
   const chatHref = chatMessageUrl(msgId);
-  let when = at;
-  try {
-    when = new Intl.DateTimeFormat(undefined, {
-      timeZone: timeZone || undefined,
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-    }).format(new Date(at));
-  } catch {
-    /* keep iso */
-  }
   const body = String(msg?.body ?? '').replace(/\n+$/, '');
-  const notePathAttr = notePath ? ` note-path="${escapeAttr(notePath)}"` : '';
+  const notePathAttr = notePath ? ` notePath="${escapeAttr(notePath)}"` : '';
   return [
-    `<!-- chat-with-myself id="${msgId}" at="${at}" group="${group}" href="${chatHref}"${notePathAttr} -->`,
-    '',
-    `> ${group} · ${when}`,
-    '',
-    `[채팅으로 이동](${chatHref})`,
+    `<!-- chat-with-myself id="${escapeAttr(msgId)}" at="${escapeAttr(at)}" group="${escapeAttr(group)}" href="${escapeAttr(chatHref)}"${notePathAttr} -->`,
     '',
     body,
     '',

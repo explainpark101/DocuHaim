@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import {
   IconCloud,
   IconChevronDown,
@@ -25,6 +25,8 @@ import HtmlSvgPreviewEditor from '@/components/HtmlSvgPreviewEditor';
 import Button from '@/components/Button';
 import { ListTree, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
+import ChatSavedNoteCard from '@/components/chatWithMyself/ChatSavedNoteCard';
+import { parseChatWithMyselfNoteMeta } from '@/utils/chatWithMyself';
 
 export default function EditorPane({
   currentFile,
@@ -159,6 +161,13 @@ export default function EditorPane({
     isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function';
   const desktopCollapsedTopBarPaddingClass =
     !isMobileLayout && sidebarCollapsed ? 'md:pl-14' : '';
+  const chatSavedNoteMeta = useMemo(
+    () =>
+      currentFile?.viewer === 'markdown'
+        ? parseChatWithMyselfNoteMeta(editorContent)
+        : null,
+    [currentFile?.viewer, editorContent],
+  );
 
   if (!currentFile) {
     return (
@@ -481,6 +490,9 @@ export default function EditorPane({
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-odp-surface h-full">
         {viewer === 'markdown' ? (
           <>
+            {chatSavedNoteMeta ? (
+              <ChatSavedNoteCard meta={chatSavedNoteMeta} />
+            ) : null}
             <div className="flex-1 min-h-0">
               {recordingViewMode && recordingAudioUrl ? (
                 <RecordingSyncView

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router';
 import {
   CalendarDays,
   Menu,
@@ -9,7 +10,6 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import { AnimatePresence, motion as Motion } from 'motion/react';
 import ChatComposer from '@/components/chatWithMyself/ChatComposer';
 import ChatComposerDock from '@/components/chatWithMyself/ChatComposerDock';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
@@ -145,6 +145,7 @@ export default function ChatWithMyselfPane({
   onShareGroupSendConsumed,
   onOpenNote,
 }) {
+  const location = useLocation();
   const ctx = useMemo(() => {
     if (storageMode === 'local') {
       return { mode: 'local', localRootHandle };
@@ -239,6 +240,8 @@ export default function ChatWithMyselfPane({
   const [composerSeed, setComposerSeed] = useState(null);
   const [shareGroupModal, setShareGroupModal] = useState(null);
   const [pinnedResults, setPinnedResults] = useState([]);
+  const [notedResults, setNotedResults] = useState([]);
+  const [editedResults, setEditedResults] = useState([]);
   const [pinnedLoading, setPinnedLoading] = useState(false);
   const searchDayKeysRef = useRef([]);
   const pinnedDayKeysRef = useRef([]);
@@ -677,11 +680,12 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx, scrollToDayFirstMessage],
   );
 
-  // Deep-link to a message via /chat#msg-{id}
+  // Deep-link to a message via /chat#msg-{id} (Link / navigate / hashchange).
   useEffect(() => {
     if (!storageReady) return undefined;
     const scrollToHash = () => {
-      const match = window.location.hash.match(/^#msg-(.+)$/);
+      const rawHash = location.hash || window.location.hash || '';
+      const match = rawHash.match(/^#?msg-(.+)$/);
       if (!match?.[1]) return;
       const messageId = match[1];
       void (async () => {
@@ -693,7 +697,7 @@ export default function ChatWithMyselfPane({
     scrollToHash();
     window.addEventListener('hashchange', scrollToHash);
     return () => window.removeEventListener('hashchange', scrollToHash);
-  }, [storageReady, ctx, jumpToDate]);
+  }, [storageReady, ctx, jumpToDate, location.hash, location.pathname]);
 
   const confirmPendingMessages = useCallback((msgs, dateStr) => {
     if (!msgs?.length || !dateStr) return;
@@ -951,6 +955,21 @@ export default function ChatWithMyselfPane({
             return next;
           }),
         );
+        setEditedResults((prev) => {
+          const row = { ...updated, dateStr };
+          const next = prev.filter((m) => m.id !== target.id);
+          return [row, ...next];
+        });
+        setPinnedResults((prev) =>
+          prev.map((m) =>
+            m.id === target.id ? { ...m, ...updated, dateStr } : m,
+          ),
+        );
+        setNotedResults((prev) =>
+          prev.map((m) =>
+            m.id === target.id ? { ...m, ...updated, dateStr } : m,
+          ),
+        );
         postChatSyncEvent('day', { dateStr });
         noteLocalDayWrite(dateStr);
 
@@ -1003,6 +1022,9 @@ export default function ChatWithMyselfPane({
           return;
         }
         setMessages((prev) => prev.filter((m) => m.id !== message.id));
+        setPinnedResults((prev) => prev.filter((m) => m.id !== message.id));
+        setNotedResults((prev) => prev.filter((m) => m.id !== message.id));
+        setEditedResults((prev) => prev.filter((m) => m.id !== message.id));
         setDayCounts((prev) => ({
           ...prev,
           [dateStr]: Math.max(0, (prev[dateStr] || 1) - 1),
@@ -1144,19 +1166,34 @@ export default function ChatWithMyselfPane({
     try {
       const keys = await listDayKeys(ctx);
       pinnedDayKeysRef.current = keys;
-      const found = [];
+      const pinned = [];
+      const noted = [];
+      const edited = [];
       for (const dateStr of keys) {
         const msgs = await readDayMessages(ctx, dateStr);
         for (const msg of msgs) {
-          if (msg.pinnedAt) found.push({ ...msg, dateStr });
+          const row = { ...msg, dateStr };
+          if (msg.pinnedAt) pinned.push(row);
+          if (msg.notePath) noted.push(row);
+          if (msg.editedAt) edited.push(row);
         }
       }
-      found.sort(
+      pinned.sort(
         (a, b) =>
           (Date.parse(b.pinnedAt || b.at) || 0) -
           (Date.parse(a.pinnedAt || a.at) || 0),
       );
-      setPinnedResults(found);
+      noted.sort(
+        (a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0),
+      );
+      edited.sort(
+        (a, b) =>
+          (Date.parse(b.editedAt || b.at) || 0) -
+          (Date.parse(a.editedAt || a.at) || 0),
+      );
+      setPinnedResults(pinned);
+      setNotedResults(noted);
+      setEditedResults(edited);
     } finally {
       setPinnedLoading(false);
     }
@@ -1312,10 +1349,14 @@ export default function ChatWithMyselfPane({
   };
 
   const pinnedPanelProps = {
-    results: pinnedResults,
+    pinnedResults,
+    notedResults,
+    editedResults,
     loading: pinnedLoading,
     onSelectResult: handleSelectResult,
     onUnpin: handleTogglePin,
+    onOpenNote,
+    onViewEditHistory: setHistoryMessage,
     timeZone,
     getPresignedUrl: getPresignedUrlForPath,
   };
@@ -1427,8 +1468,8 @@ export default function ChatWithMyselfPane({
           type="button"
           onClick={() => setPinnedOpen((v) => !v)}
           className={toolbarBtnClass(pinnedOpen)}
-          aria-label="고정 메시지"
-          title="고정 메시지"
+          aria-label="모아보기"
+          title="모아보기"
           aria-pressed={pinnedOpen}
         >
           <Pin size={18} />
@@ -1507,114 +1548,70 @@ export default function ChatWithMyselfPane({
           </div>
           {!isMobileLayout ? (
             <>
-              <AnimatePresence initial={false}>
-                {dateOpen ? (
-                  <Motion.div
-                    key="desktop-date"
-                    className="flex h-full min-h-0"
-                    initial={{ opacity: 0, x: 16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 16 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    <ChatRailShell
-                      storageKey="s3haim_chat_date_rail_width"
-                      defaultWidth={280}
-                      reservedAside={0}
-                      openResizableCount={desktopResizableCount}
-                      label="날짜 사이드바 너비 조절"
-                    >
-                      <ChatDatePanel
-                        dayKeys={dayKeys}
-                        dayCounts={dayCounts}
-                        activeDate={activeJumpDate}
-                        timeZone={timeZone}
-                        onSelectDate={(dateStr) => {
-                          void jumpToDate(dateStr);
-                        }}
-                        onClose={() => setDateOpen(false)}
-                      />
-                    </ChatRailShell>
-                  </Motion.div>
-                ) : null}
-              </AnimatePresence>
-              <AnimatePresence initial={false}>
-                {groupOpen ? (
-                  <Motion.div
-                    key="desktop-group"
-                    className="flex h-full min-h-0"
-                    initial={{ opacity: 0, x: 16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 16 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    <ChatRailShell
-                      storageKey="s3haim_chat_group_rail_width"
-                      defaultWidth={260}
-                      reservedAside={0}
-                      openResizableCount={desktopResizableCount}
-                      label="그룹 사이드바 너비 조절"
-                    >
-                      <ChatGroupPanel
-                        {...groupPanelProps}
-                        onClose={() => setGroupOpen(false)}
-                      />
-                    </ChatRailShell>
-                  </Motion.div>
-                ) : null}
-              </AnimatePresence>
-              <AnimatePresence initial={false}>
-                {searchOpen ? (
-                  <Motion.div
-                    key="desktop-search"
-                    className="flex h-full min-h-0"
-                    initial={{ opacity: 0, x: 16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 16 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    <ChatRailShell
-                      storageKey="s3haim_chat_search_rail_width"
-                      defaultWidth={320}
-                      reservedAside={0}
-                      openResizableCount={desktopResizableCount}
-                      label="검색 사이드바 너비 조절"
-                    >
-                      <ChatSearchPanel
-                        open
-                        onClose={() => setSearchOpen(false)}
-                        {...searchPanelProps}
-                      />
-                    </ChatRailShell>
-                  </Motion.div>
-                ) : null}
-              </AnimatePresence>
-              <AnimatePresence initial={false}>
-                {pinnedOpen ? (
-                  <Motion.div
-                    key="desktop-pinned"
-                    className="flex h-full min-h-0"
-                    initial={{ opacity: 0, x: 16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 16 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    <ChatRailShell
-                      storageKey="s3haim_chat_pinned_rail_width"
-                      defaultWidth={300}
-                      reservedAside={0}
-                      openResizableCount={desktopResizableCount}
-                      label="고정 메시지 사이드바 너비 조절"
-                    >
-                      <ChatPinnedPanel
-                        open
-                        onClose={() => setPinnedOpen(false)}
-                        {...pinnedPanelProps}
-                      />
-                    </ChatRailShell>
-                  </Motion.div>
-                ) : null}
-              </AnimatePresence>
+              <ChatRailShell
+                open={dateOpen}
+                onClose={() => setDateOpen(false)}
+                storageKey="s3haim_chat_date_rail_width"
+                defaultWidth={280}
+                reservedAside={0}
+                openResizableCount={desktopResizableCount}
+                label="날짜 사이드바 너비 조절"
+              >
+                <ChatDatePanel
+                  dayKeys={dayKeys}
+                  dayCounts={dayCounts}
+                  activeDate={activeJumpDate}
+                  timeZone={timeZone}
+                  onSelectDate={(dateStr) => {
+                    void jumpToDate(dateStr);
+                  }}
+                  onClose={() => setDateOpen(false)}
+                />
+              </ChatRailShell>
+              <ChatRailShell
+                open={groupOpen}
+                onClose={() => setGroupOpen(false)}
+                storageKey="s3haim_chat_group_rail_width"
+                defaultWidth={260}
+                reservedAside={0}
+                openResizableCount={desktopResizableCount}
+                label="그룹 사이드바 너비 조절"
+              >
+                <ChatGroupPanel
+                  {...groupPanelProps}
+                  onClose={() => setGroupOpen(false)}
+                />
+              </ChatRailShell>
+              <ChatRailShell
+                open={searchOpen}
+                onClose={() => setSearchOpen(false)}
+                storageKey="s3haim_chat_search_rail_width"
+                defaultWidth={320}
+                reservedAside={0}
+                openResizableCount={desktopResizableCount}
+                label="검색 사이드바 너비 조절"
+              >
+                <ChatSearchPanel
+                  open
+                  onClose={() => setSearchOpen(false)}
+                  {...searchPanelProps}
+                />
+              </ChatRailShell>
+              <ChatRailShell
+                open={pinnedOpen}
+                onClose={() => setPinnedOpen(false)}
+                storageKey="s3haim_chat_pinned_rail_width"
+                defaultWidth={300}
+                reservedAside={0}
+                openResizableCount={desktopResizableCount}
+                label="모아보기 사이드바 너비 조절"
+              >
+                <ChatPinnedPanel
+                  open
+                  onClose={() => setPinnedOpen(false)}
+                  {...pinnedPanelProps}
+                />
+              </ChatRailShell>
             </>
           ) : (
             <>
@@ -1667,7 +1664,7 @@ export default function ChatWithMyselfPane({
                 onClose={() => setPinnedOpen(false)}
                 width="100%"
                 zClass="z-[80]"
-                label="고정 메시지"
+                label="모아보기"
               >
                 <ChatPinnedPanel
                   open
@@ -1706,11 +1703,22 @@ export default function ChatWithMyselfPane({
           try {
             const notePath = await onCreateNoteFromMessage(payload);
             if (notePath && payload?.message?.id) {
+              const dateStr =
+                payload.message.dateStr ||
+                localDateString(
+                  new Date(payload.message.at || Date.now()),
+                  detectTimeZone(),
+                );
+              const nextMsg = { ...payload.message, notePath, dateStr };
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === payload.message.id ? { ...m, notePath } : m,
                 ),
               );
+              setNotedResults((prev) => {
+                const next = prev.filter((m) => m.id !== payload.message.id);
+                return [nextMsg, ...next];
+              });
             }
             setAddToNoteMessage(null);
           } finally {

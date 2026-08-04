@@ -22,6 +22,7 @@ export {
   formatChatMessageAsNoteMarkdown,
   formatChatMessagePlainText,
   formatChatMessageMarkdownCopy,
+  parseChatWithMyselfNoteMeta,
   chatMessageHash,
   chatMessageUrl,
 } from './format.js';
@@ -117,3 +118,8 @@ export {
   writeChatRailOpenPref,
   getChatRailOpen,
 } from './composerPrefs.js';
+export {
+  createPretextMeasurer,
+  decideTabDensity,
+  splitLabelChars,
+} from './tabPretext.js';

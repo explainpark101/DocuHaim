@@ -7,6 +7,7 @@ import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
+import ChatResultEnter from '@/components/chatWithMyself/ChatResultEnter';
 import { chatFieldInputClass } from '@/components/chatWithMyself/ui/chatUiStyles';
 import {
   SELF_GROUP,
@@ -319,24 +320,26 @@ export default function ChatSearchPanel({
           </div>
         ) : null}
 
-        {resultItems.map((item) =>
+        {resultItems.map((item, index) =>
           item.type === 'date' ? (
-            <ChatDateDivider
-              key={item.key}
-              label={item.label}
-              className="-mx-2 z-[1]"
-              surfaceClassName="bg-[#d7e4ef] dark:bg-[#0b1220]"
-              bubbleClassName="bg-[#c5d5e4] text-gray-700 dark:bg-[#152033] dark:text-gray-300"
-            />
+            <ChatResultEnter key={item.key} index={index}>
+              <ChatDateDivider
+                label={item.label}
+                className="-mx-2 z-1"
+                surfaceClassName="bg-[#d7e4ef] dark:bg-[#0b1220]"
+                bubbleClassName="bg-[#c5d5e4] text-gray-700 dark:bg-[#152033] dark:text-gray-300"
+              />
+            </ChatResultEnter>
           ) : (
-            <SearchResultCard
-              key={item.key}
-              result={item.result}
-              query={query}
-              timeZone={tz}
-              onSelect={onSelectResult}
-              getPresignedUrl={getPresignedUrl}
-            />
+            <ChatResultEnter key={item.key} index={index}>
+              <SearchResultCard
+                result={item.result}
+                query={query}
+                timeZone={tz}
+                onSelect={onSelectResult}
+                getPresignedUrl={getPresignedUrl}
+              />
+            </ChatResultEnter>
           ),
         )}
 
