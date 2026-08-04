@@ -511,12 +511,28 @@ function MainApp() {
 
   useEffect(() => {
     if (!swRegistration) return undefined;
-    const interval = setInterval(() => {
+
+    const checkForUpdate = () => {
       swRegistration.update().catch((error) => {
         console.warn('PWA update check failed:', error);
       });
-    }, 60 * 60 * 1000);
-    return () => clearInterval(interval);
+    };
+
+    checkForUpdate();
+    const interval = setInterval(checkForUpdate, 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkForUpdate();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', checkForUpdate);
+    window.addEventListener('pageshow', checkForUpdate);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', checkForUpdate);
+      window.removeEventListener('pageshow', checkForUpdate);
+    };
   }, [swRegistration]);
 
   useEffect(() => {

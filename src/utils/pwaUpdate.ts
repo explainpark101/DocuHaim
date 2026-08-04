@@ -1,3 +1,5 @@
+const BUILD_RELOAD_GUARD_KEY = 's3haim_build_reload_guard';
+
 /**
  * Ask the browser to check for a newer service worker and resolve whether
  * an update is waiting (or becomes waiting within timeoutMs).
@@ -55,4 +57,75 @@ export async function checkServiceWorkerUpdate(
         finish(Boolean(registration.waiting));
       });
   });
+}
+
+async function clearServiceWorkerCaches(): Promise<void> {
+  if ('serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+  }
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => caches.delete(key)));
+  }
+}
+
+/**
+ * Compare the network build-id.json against this bundle's build id.
+ * On mismatch, wipe SW/caches and reload once so every path gets the latest build.
+ * @returns {Promise<boolean>} false when a forced reload was triggered
+ */
+export async function ensureLatestAppBuild(): Promise<boolean> {
+  if (!import.meta.env.PROD) return true;
+  if (import.meta.env.VITE_ELECTRON === 'true') return true;
+
+  const localId = import.meta.env.VITE_APP_BUILD_ID;
+  if (!localId || typeof localId !== 'string') return true;
+
+  const base = import.meta.env.BASE_URL || '/';
+  const url = `${base}build-id.json?t=${Date.now()}`;
+
+  let remoteId: string | undefined;
+  try {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (!response.ok) return true;
+    const payload = (await response.json()) as { id?: unknown };
+    if (typeof payload?.id !== 'string' || !payload.id) return true;
+    remoteId = payload.id;
+  } catch (error: unknown) {
+    // Offline or blocked — keep the currently loaded build.
+    console.warn('Build id check failed:', error);
+    return true;
+  }
+
+  if (remoteId === localId) {
+    try {
+      window.sessionStorage.removeItem(BUILD_RELOAD_GUARD_KEY);
+    } catch {
+      // ignore
+    }
+    return true;
+  }
+
+  try {
+    if (window.sessionStorage.getItem(BUILD_RELOAD_GUARD_KEY) === remoteId) {
+      console.warn('Build id mismatch persists after reload; skipping another force reload.');
+      return true;
+    }
+    window.sessionStorage.setItem(BUILD_RELOAD_GUARD_KEY, remoteId);
+  } catch {
+    // sessionStorage unavailable — still attempt a single clear + reload
+  }
+
+  try {
+    await clearServiceWorkerCaches();
+  } catch (error: unknown) {
+    console.warn('Failed to clear service worker caches:', error);
+  }
+
+  window.location.reload();
+  return false;
 }

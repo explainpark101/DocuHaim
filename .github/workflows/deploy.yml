@@ -35,6 +35,7 @@ jobs:
         run: bun run build
         env:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_APP_BUILD_ID: ${{ github.sha }}
 
       - name: Verify build output
         run: |

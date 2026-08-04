@@ -5,10 +5,34 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const isElectron = process.env.VITE_ELECTRON === 'true';
+const basePath = process.env.VITE_BASE_PATH || '/';
+const normalizedBase = basePath.replace(/\/?$/, '/');
+const appBuildId =
+  process.env.VITE_APP_BUILD_ID ||
+  process.env.GITHUB_SHA ||
+  `local-${Date.now()}`;
+
+// Expose to the client as import.meta.env.VITE_APP_BUILD_ID
+process.env.VITE_APP_BUILD_ID = appBuildId;
+
+function emitBuildIdPlugin() {
+  return {
+    name: 'emit-build-id',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'build-id.json',
+        source: JSON.stringify({ id: appBuildId }),
+      });
+    },
+  };
+}
 
 const plugins = [
   react(),
   tailwindcss(),
+  emitBuildIdPlugin(),
 ];
 
 if (!isElectron) {
@@ -18,20 +42,17 @@ if (!isElectron) {
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        id: (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/'),
+        id: normalizedBase,
         name: 'S3 Haim - Markdown Notes',
         short_name: 'S3 Haim',
         description: 'S3에 저장하는 마크다운 메모 앱',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
-        start_url: (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/'),
-        scope: (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/'),
+        start_url: normalizedBase,
+        scope: normalizedBase,
         share_target: {
-          action: (() => {
-            const base = (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/');
-            return `${base}chat`;
-          })(),
+          action: `${normalizedBase}chat`,
           method: 'GET',
           enctype: 'application/x-www-form-urlencoded',
           params: {
@@ -60,9 +81,22 @@ if (!isElectron) {
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
+        // Do not precache HTML / disable navigateFallback (plugin default is index.html).
+        // Soft refresh on any SPA path must hit the network (GitHub Pages
+        // 404.html → latest index) instead of a stale precached shell.
+        globPatterns: ['**/*.{js,css,png,svg,ico,woff,woff2}'],
+        navigateFallback: null,
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8MB
-        navigateFallback: (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '') + '/index.html',
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        runtimeCaching: [
+          {
+            // Always revalidate the build stamp (never serve from SW cache).
+            urlPattern: /build-id\.json$/i,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
       devOptions: {
         enabled: true,
@@ -73,7 +107,7 @@ if (!isElectron) {
 }
 
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH || '/',
+  base: basePath,
   plugins,
   resolve: {
     alias: {
