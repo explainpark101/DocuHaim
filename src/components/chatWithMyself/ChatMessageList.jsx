@@ -804,6 +804,9 @@ function MessageBubble({
                   collapsed ? 'whitespace-nowrap' : 'whitespace-pre-wrap wrap-anywhere'
                 } ${isDeleting ? 'select-none' : 'select-text'}`}
                 getPresignedUrl={getPresignedUrl}
+                onOpenViewPath={
+                  onOpenNote ? (path) => onOpenNote(path, msg) : undefined
+                }
               />
               {!collapsed && msg.notePath && !isDeleting ? (
                 <button

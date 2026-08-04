@@ -1,22 +1,31 @@
 import { useMemo } from 'react';
-import { splitTextWithUrls } from '@/utils/chatWithMyself';
+import { Link } from 'react-router';
+import { splitTextWithUrls, parseAppViewPath } from '@/utils/chatWithMyself';
 import ChatWikiImage from '@/components/chatWithMyself/ChatWikiImage';
 import ChatFileCard from '@/components/chatWithMyself/ChatFileCard';
+import ChatNoteLinkCard from '@/components/chatWithMyself/ChatNoteLinkCard';
 import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';
 
 const linkClass =
   'break-all wrap-anywhere underline underline-offset-2 text-blue-700 hover:text-blue-900 dark:text-sky-300 dark:hover:text-sky-200';
 
 /**
- * First non-empty text line when collapsed (skip images/files and blank lines).
+ * First non-empty text line when collapsed (skip images/files/notes and blank lines).
  * @param {ReturnType<typeof splitTextWithUrls>} parts
  */
 function collapsedFirstLine(parts) {
   let hasMedia = false;
   let text = '';
   for (const part of parts) {
-    if (part.type === 'wiki' || part.type === 'file') {
+    if (part.type === 'wiki' || part.type === 'file' || part.type === 'note') {
       hasMedia = true;
+      if (part.type === 'note') {
+        text += part.name || part.path || '';
+      }
+      continue;
+    }
+    if (part.type === 'link') {
+      text += part.label || part.value || '';
       continue;
     }
     text += part.value || '';
@@ -40,13 +49,15 @@ function collapsedFirstLine(parts) {
 }
 
 /**
- * Render chat plain text with auto-linked http(s) URLs, wiki images, and file cards.
+ * Render chat plain text with auto-linked http(s) URLs, note share cards,
+ * wiki images, and file cards.
  */
 export default function ChatLinkedText({
   text,
   className = '',
   getPresignedUrl,
   collapsed = false,
+  onOpenViewPath,
 }) {
   const openInNewWindow = useOpenLinksInNewWindow();
   const parts = useMemo(() => splitTextWithUrls(text), [text]);
@@ -70,18 +81,62 @@ export default function ChatLinkedText({
   return (
     <div className={`min-w-0 max-w-full ${className}`}>
       {parts.map((part, i) => {
+        if (part.type === 'note') {
+          return (
+            <ChatNoteLinkCard
+              key={`n-${i}-${part.path}`}
+              path={part.path}
+              name={part.name}
+              onOpen={onOpenViewPath}
+            />
+          );
+        }
         if (part.type === 'link') {
+          const href = part.value || '';
+          const label = part.label || href;
+          const viewPath = parseAppViewPath(href);
+          const handleClick = (e) => {
+            e.stopPropagation();
+            if (
+              viewPath &&
+              typeof onOpenViewPath === 'function' &&
+              !openInNewWindow &&
+              !e.metaKey &&
+              !e.ctrlKey &&
+              !e.shiftKey &&
+              !e.altKey
+            ) {
+              e.preventDefault();
+              onOpenViewPath(viewPath);
+            }
+          };
+
+          if (viewPath && !openInNewWindow) {
+            return (
+              <Link
+                key={`l-${i}`}
+                to={href.startsWith('/') ? href : `/view/${viewPath}`}
+                className={linkClass}
+                onClick={handleClick}
+                title={href}
+              >
+                {label}
+              </Link>
+            );
+          }
+
           return (
             <a
               key={`l-${i}`}
-              href={part.value}
+              href={href}
               {...(openInNewWindow
                 ? { target: '_blank', rel: 'noopener noreferrer' }
                 : {})}
               className={linkClass}
-              onClick={(e) => e.stopPropagation()}
+              onClick={handleClick}
+              title={part.label ? href : undefined}
             >
-              {part.value}
+              {label}
             </a>
           );
         }

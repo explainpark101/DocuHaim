@@ -51,6 +51,20 @@ const TAB_ORDER = /** @type {const} */ (['pinned', 'noted', 'edited']);
 function formatCollectionPreview(text) {
   return String(text || '')
     .replace(/\r\n/g, '\n')
+    .replace(/\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g, (_, path, name) => {
+      return (
+        String(name || '').trim() ||
+        String(path || '')
+          .split('/')
+          .filter(Boolean)
+          .pop() ||
+        'note'
+      );
+    })
+    .replace(
+      /\[([^\]]+)\]\(((?:\/view\/[^)\s]+|https?:\/\/[^)\s]+))\)/g,
+      '$1',
+    )
     .replace(/\n+/g, '\n')
     .trim();
 }
@@ -284,6 +298,9 @@ function CollectionCard({
                     text={attachmentMarkdown}
                     className="text-sm text-gray-800 dark:text-odp-fg"
                     getPresignedUrl={getPresignedUrl}
+                    onOpenViewPath={
+                      onOpenNote ? (path) => onOpenNote(path, msg) : undefined
+                    }
                   />
                 </div>
               ) : null}

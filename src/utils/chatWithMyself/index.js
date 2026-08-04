@@ -31,6 +31,9 @@ export {
   chatSavedNoteLinkTo,
   chatMessageHash,
   chatMessageUrl,
+  noteViewHref,
+  formatNoteShareChatBody,
+  parseAppViewPath,
 } from './format.js';
 export { normalizeSharePayload, sharePayloadFromSearch } from './sharePayload.js';
 export {

@@ -41,6 +41,7 @@ export default function EditorPane({
   onRequestMove,
   onViewUnsupportedAsText,
   onRequestDownload,
+  onShareToChatWithMyself,
   theme = 'light',
   previewOnly = false,
   isMobileLayout = false,
@@ -328,7 +329,7 @@ export default function EditorPane({
             </Button>
             {fileManagementOpen && (
               <div
-                className="absolute right-0 top-full z-100 mt-1 min-w-[140px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
+                className="absolute right-0 top-full z-100 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
                 role="menu"
               >
                 <button
@@ -353,6 +354,19 @@ export default function EditorPane({
                   >
                     <IconDownload size={14} />
                     다운로드
+                  </button>
+                )}
+                {onShareToChatWithMyself && (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
+                    onClick={() => {
+                      onShareToChatWithMyself?.();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <IconMessage size={14} />
+                    나와의 채팅에 공유하기
                   </button>
                 )}
                 <button

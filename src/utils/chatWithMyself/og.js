@@ -1,5 +1,6 @@
 import { cacheOg, getCachedOg } from './chatDb.js';
 import { ogArchiveKey } from './paths.js';
+import { parseAppViewPath } from './format.js';
 
 const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/gi;
 
@@ -14,18 +15,109 @@ export function extractUrls(text) {
   return [...new Set(cleaned)];
 }
 
+const MD_LINK_RE =
+  /\[([^\]]+)\]\(((?:\/view\/[^)\s]+|https?:\/\/[^)\s]+))\)/g;
+
 /**
- * Split plain text into text / link / wiki-image / file-card segments.
+ * @param {string} path
+ * @param {string} [name]
+ */
+function notePart(path, name) {
+  const p = String(path || '').replace(/^\/+/, '').trim();
+  if (!p) return null;
+  const label =
+    String(name || '').trim() ||
+    p.split('/').filter(Boolean).pop() ||
+    'note';
+  return {
+    type: 'note',
+    path: p,
+    name: label.replace(/[[\]|]/g, '_').trim() || 'note',
+  };
+}
+
+/**
+ * Split a plain-text chunk into text / note-card / markdown-link / bare-URL segments.
+ * @param {string} ts
+ * @returns {Array<{ type: 'text' | 'link' | 'note', value?: string, label?: string, path?: string, name?: string }>}
+ */
+function splitTextLinks(ts) {
+  const out = [];
+  let last = 0;
+  const mdRe = new RegExp(MD_LINK_RE.source, MD_LINK_RE.flags);
+  let md;
+  while ((md = mdRe.exec(ts))) {
+    if (md.index > last) {
+      out.push({ type: 'text', value: ts.slice(last, md.index) });
+    }
+    const label = String(md[1] || '').trim();
+    const url = String(md[2] || '').trim();
+    if (url) {
+      const viewPath = parseAppViewPath(url);
+      if (viewPath) {
+        const part = notePart(viewPath, label);
+        if (part) out.push(part);
+      } else {
+        out.push({
+          type: 'link',
+          value: url,
+          ...(label ? { label } : {}),
+        });
+      }
+    }
+    last = md.index + md[0].length;
+  }
+  if (last < ts.length) out.push({ type: 'text', value: ts.slice(last) });
+  if (!out.length) out.push({ type: 'text', value: ts });
+
+  const parts = [];
+  for (const chunk of out) {
+    if (chunk.type !== 'text') {
+      parts.push(chunk);
+      continue;
+    }
+    const re = new RegExp(URL_RE.source, URL_RE.flags);
+    let tLast = 0;
+    let m;
+    const segment = chunk.value || '';
+    while ((m = re.exec(segment))) {
+      const raw = m[0];
+      const url = trimUrlTrailingPunct(raw);
+      const trailing = raw.slice(url.length);
+      if (m.index > tLast) {
+        parts.push({ type: 'text', value: segment.slice(tLast, m.index) });
+      }
+      if (url) {
+        const viewPath = parseAppViewPath(url);
+        if (viewPath) {
+          const part = notePart(viewPath);
+          if (part) parts.push(part);
+        } else {
+          parts.push({ type: 'link', value: url });
+        }
+      }
+      if (trailing) parts.push({ type: 'text', value: trailing });
+      tLast = m.index + raw.length;
+    }
+    if (tLast < segment.length) {
+      parts.push({ type: 'text', value: segment.slice(tLast) });
+    }
+  }
+  return parts.length ? parts : [{ type: 'text', value: ts }];
+}
+
+/**
+ * Split plain text into text / link / note / wiki-image / file-card segments.
  * @param {string} text
- * @returns {Array<{ type: 'text' | 'link' | 'wiki' | 'file', value?: string, path?: string, name?: string, size?: number | null }>}
+ * @returns {Array<{ type: 'text' | 'link' | 'note' | 'wiki' | 'file', value?: string, label?: string, path?: string, name?: string, size?: number | null }>}
  */
 export function splitTextWithUrls(text) {
   const s = String(text ?? '');
   if (!s) return [{ type: 'text', value: '' }];
 
-  // Images: ![[path]]  Files: [[file:path|name|size?]]
+  // Images: ![[path]]  Files: [[file:...]]  Notes: [[note:path|name?]]
   const tokenRe =
-    /!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]/g;
+    /!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
   const coarse = [];
   let last = 0;
   let tm;
@@ -35,7 +127,7 @@ export function splitTextWithUrls(text) {
     }
     if (tm[1] != null) {
       coarse.push({ type: 'wiki', value: tm[1].trim() });
-    } else {
+    } else if (tm[2] != null) {
       const path = String(tm[2] || '').trim();
       const name = String(tm[3] || path.split('/').filter(Boolean).pop() || 'file')
         .replace(/[[\]|]/g, '_')
@@ -47,6 +139,9 @@ export function splitTextWithUrls(text) {
         name: name || 'file',
         size: Number.isFinite(sizeNum) ? sizeNum : null,
       });
+    } else {
+      const part = notePart(tm[5], tm[6]);
+      if (part) coarse.push(part);
     }
     last = tm.index + tm[0].length;
   }
@@ -59,22 +154,7 @@ export function splitTextWithUrls(text) {
       parts.push(chunk);
       continue;
     }
-    const re = new RegExp(URL_RE.source, URL_RE.flags);
-    let tLast = 0;
-    let m;
-    const ts = chunk.value;
-    while ((m = re.exec(ts))) {
-      const raw = m[0];
-      const url = trimUrlTrailingPunct(raw);
-      const trailing = raw.slice(url.length);
-      if (m.index > tLast) {
-        parts.push({ type: 'text', value: ts.slice(tLast, m.index) });
-      }
-      if (url) parts.push({ type: 'link', value: url });
-      if (trailing) parts.push({ type: 'text', value: trailing });
-      tLast = m.index + raw.length;
-    }
-    if (tLast < ts.length) parts.push({ type: 'text', value: ts.slice(tLast) });
+    parts.push(...splitTextLinks(chunk.value || ''));
   }
   return parts.length ? parts : [{ type: 'text', value: s }];
 }

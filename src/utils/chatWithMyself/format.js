@@ -309,6 +309,70 @@ export function chatMessageUrl(messageId) {
 }
 
 /**
+ * App-relative href for opening a note in the editor (`/view/...`).
+ * @param {string} notePath
+ */
+export function noteViewHref(notePath) {
+  const p = String(notePath || '').replace(/^\/+/, '');
+  return p ? `/view/${p}` : '/view/';
+}
+
+/**
+ * Chat message body that renders as a shared-note card.
+ * @param {{ path?: string, name?: string }} input
+ */
+export function formatNoteShareChatBody(input = {}) {
+  const notePath = String(input.path || '')
+    .replace(/^\/+/, '')
+    .replace(/[[\]|]/g, '_');
+  const rawName =
+    String(input.name || '').trim() ||
+    notePath.split('/').filter(Boolean).pop() ||
+    'note';
+  const label = rawName.replace(/[[\]|]/g, '_').trim() || 'note';
+  if (!notePath) return `[[note:${label}|${label}]]`;
+  return `[[note:${notePath}|${label}]]`;
+}
+
+/**
+ * If href points at this app's `/view/...` note route, return the storage path.
+ * @param {string} href
+ * @returns {string | null}
+ */
+export function parseAppViewPath(href) {
+  const raw = String(href || '').trim();
+  if (!raw) return null;
+  try {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '';
+    let pathname = raw;
+    if (/^https?:\/\//i.test(raw)) {
+      const u = new URL(raw);
+      if (
+        typeof window !== 'undefined' &&
+        window.location?.origin &&
+        u.origin !== window.location.origin
+      ) {
+        return null;
+      }
+      pathname = u.pathname || '';
+    }
+    if (base && (pathname === base || pathname.startsWith(`${base}/`))) {
+      pathname = pathname.slice(base.length) || '/';
+    }
+    if (!pathname.startsWith('/')) pathname = `/${pathname}`;
+    const m = pathname.match(/^\/view\/(.+)$/);
+    if (!m) return null;
+    try {
+      return decodeURIComponent(m[1]);
+    } catch {
+      return m[1];
+    }
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Plain text for clipboard (strips attachment tokens to readable labels).
  */
 export function formatChatMessagePlainText(msg) {
@@ -320,6 +384,20 @@ export function formatChatMessagePlainText(msg) {
       const label = String(name || '').trim() || 'file';
       return `[file: ${label}]`;
     })
+    .replace(/\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g, (_, path, name) => {
+      const label =
+        String(name || '').trim() ||
+        String(path || '')
+          .split('/')
+          .filter(Boolean)
+          .pop() ||
+        'note';
+      return `[note: ${label}]`;
+    })
+    .replace(
+      /\[([^\]]+)\]\(((?:\/view\/[^)\s]+|https?:\/\/[^)\s]+))\)/g,
+      (_, label) => String(label || '').trim() || 'link',
+    )
     .trim();
 }
 

@@ -42,9 +42,14 @@ import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
+  formatNoteShareChatBody,
   createChatBackend,
   patchChatMessageMeta,
+  appendChatMessage,
+  enqueuePendingShare,
+  SELF_GROUP,
   postChatSyncEvent,
+  postChatLocalSyncEvent,
   localDateString,
   resolveReplyThreadMessages,
 } from '@/utils/chatWithMyself';
@@ -4159,9 +4164,54 @@ function MainApp() {
       }
       const node = findNodeByPath(localTree, path) || findFileNodeByPath(localTree, path);
       if (node) await selectFileRaw('local', node);
+      else navigate(`/view/${path}`);
     },
     [storageMode, s3Tree, webdavTree, localTree, selectFileRaw, navigate],
   );
+
+  const handleShareNoteToChatWithMyself = useCallback(async () => {
+    if (!currentFile?.id) return;
+    const path = String(currentFile.id);
+    const name =
+      String(editedFileName || '').trim() ||
+      currentFile.name ||
+      path.split('/').filter(Boolean).pop() ||
+      'note';
+    const body = formatNoteShareChatBody({ path, name });
+    try {
+      if (chatStorageReady && chatStorageCtx) {
+        const { dateStr } = await appendChatMessage(chatStorageCtx, {
+          body,
+          group: SELF_GROUP,
+          source: 'share',
+        });
+        if (dateStr) {
+          postChatSyncEvent('day', { dateStr });
+          postChatLocalSyncEvent('day', { dateStr });
+        }
+      } else {
+        await enqueuePendingShare({ body, intent: 'sendSelf' });
+      }
+      setOperationStatus('나와의 채팅에 공유했습니다');
+      navigate('/chat');
+    } catch (err) {
+      try {
+        await enqueuePendingShare({ body, intent: 'sendSelf' });
+        setOperationStatus('나와의 채팅에 공유했습니다 (동기화 대기)');
+        navigate('/chat');
+      } catch {
+        setOperationStatus(
+          `공유 실패: ${err?.message || String(err) || 'unknown error'}`,
+        );
+      }
+    }
+  }, [
+    currentFile,
+    editedFileName,
+    chatStorageReady,
+    chatStorageCtx,
+    navigate,
+  ]);
 
   const handleDropOnFolder = async (targetNode, targetStorageType, action, payload) => {
     if (action === 'dragOver') {
@@ -4998,6 +5048,9 @@ function MainApp() {
                   onRequestMove={handleRequestMove}
                   onViewUnsupportedAsText={handleViewUnsupportedAsText}
                   onRequestDownload={handleRequestDownload}
+                  onShareToChatWithMyself={
+                    currentFile ? handleShareNoteToChatWithMyself : undefined
+                  }
                   theme={theme}
                   previewOnly={false}
                   isMobileLayout={isMobile}
@@ -5070,6 +5123,9 @@ function MainApp() {
                   onRequestMove={handleRequestMove}
                   onViewUnsupportedAsText={handleViewUnsupportedAsText}
                   onRequestDownload={handleRequestDownload}
+                  onShareToChatWithMyself={
+                    currentFile ? handleShareNoteToChatWithMyself : undefined
+                  }
                   theme={theme}
                   previewOnly={false}
                   isMobileLayout={isMobile}

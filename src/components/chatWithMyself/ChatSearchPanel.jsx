@@ -227,6 +227,11 @@ function SearchResultCard({
                   text={attachmentMarkdown}
                   className="text-sm text-gray-800 dark:text-odp-fg"
                   getPresignedUrl={getPresignedUrl}
+                  onOpenViewPath={
+                    onOpenNote
+                      ? (path) => onOpenNote(path, result)
+                      : undefined
+                  }
                 />
               </div>
             ) : null}
