@@ -2,9 +2,23 @@ import { useEffect, useRef } from 'react';
 
 const OVERLAY_STATE_KEY = 's3haimOverlay';
 
+function isOverlayHistoryState(overlayId: string): boolean {
+  const state = history.state;
+  return (
+    !!state &&
+    typeof state === 'object' &&
+    (state as Record<string, unknown>)[OVERLAY_STATE_KEY] === overlayId
+  );
+}
+
 /**
  * Tie overlay open state to `history.pushState` so mobile browser back closes
  * the overlay instead of leaving the page.
+ *
+ * When the overlay closes because of an in-flight `navigate()`, do not call
+ * `history.back()` — React Router may have already pushed the new entry while
+ * React location is still deferred via `startTransition`. Rewinding would cancel
+ * that navigation.
  */
 export function useHistoryOverlayBack(
   open: boolean,
@@ -16,7 +30,12 @@ export function useHistoryOverlayBack(
   const closingFromPopRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      // Leaving the gated route/context: drop bookkeeping without rewinding.
+      pushedRef.current = false;
+      closingFromPopRef.current = false;
+      return;
+    }
     if (open && !pushedRef.current) {
       history.pushState({ [OVERLAY_STATE_KEY]: overlayId }, '');
       pushedRef.current = true;
@@ -46,7 +65,11 @@ export function useHistoryOverlayBack(
         return;
       }
       pushedRef.current = false;
-      history.back();
+      // Only rewind while still on our overlay entry. If navigate() already
+      // pushed a new location, history.state no longer carries our key.
+      if (isOverlayHistoryState(overlayId)) {
+        history.back();
+      }
     }
-  }, [open, enabled]);
+  }, [open, enabled, overlayId]);
 }
