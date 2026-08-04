@@ -410,7 +410,7 @@ function CollectionTabList({
         className="flex w-full items-stretch justify-start gap-0 overflow-hidden px-1"
         aria-label="모아보기 분류"
       >
-        {TABS.map(({ id, label, Icon: _Icon }) => {
+        {TABS.map(({ id, label, Icon }) => {
           const count = counts[id] || 0;
           const chars = splitLabelChars(label);
           const visible = Math.max(0, Math.min(chars.length, visibleCharCounts[id] ?? 0));
