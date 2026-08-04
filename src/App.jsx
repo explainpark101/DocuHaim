@@ -2359,6 +2359,13 @@ function MainApp() {
     if (!isUnlocked || hasRestoredLastFileRef.current) return;
     if (hasProcessedOpenFromUrlRef.current) return;
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('open')) return;
+    const onChat =
+      location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    // share_target (and direct /chat) already chose chat — don't yank to last note
+    if (onChat) {
+      hasRestoredLastFileRef.current = true;
+      return;
+    }
     const saved = loadLastOpenedFile();
     if (!saved) return;
     if (typeof saved !== 'object' || saved == null) {
@@ -2368,9 +2375,7 @@ function MainApp() {
     const { type, path } = saved;
     if (type === 'chat') {
       hasRestoredLastFileRef.current = true;
-      if (location.pathname !== '/chat' && !location.pathname.endsWith('/chat')) {
-        navigate('/chat');
-      }
+      navigate('/chat');
       return;
     }
     if (type !== 's3' && type !== 'local' && type !== 'webdav') {

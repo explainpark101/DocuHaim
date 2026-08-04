@@ -6,7 +6,7 @@ import {
 import { appendChatMessage } from './storage.js';
 import { SELF_GROUP } from './paths.js';
 import { sharePayloadFromSearch } from './sharePayload.js';
-import { postChatSyncEvent } from './syncChannel.js';
+import { postChatLocalSyncEvent, postChatSyncEvent } from './syncChannel.js';
 
 export type PendingShareIntent = 'choose' | 'sendSelf' | 'compose';
 
@@ -145,6 +145,7 @@ export async function flushSendSelfPendingShares(
 
   for (const dateStr of [...new Set(dateStrs)]) {
     postChatSyncEvent('day', { dateStr });
+    postChatLocalSyncEvent('day', { dateStr });
   }
 
   return { flushed, dateStrs };

@@ -11,7 +11,7 @@ import {
   removePendingShare,
   shareBodyFromSearch,
 } from '@/utils/chatWithMyself/pendingShares';
-import { appendChatMessage, SELF_GROUP, postChatSyncEvent } from '@/utils/chatWithMyself';
+import { appendChatMessage, SELF_GROUP, postChatSyncEvent, postChatLocalSyncEvent } from '@/utils/chatWithMyself';
 
 /**
  * App-level share-target gate:
@@ -93,6 +93,12 @@ export default function ShareTargetGate({
     setPrompt(null);
   }, []);
 
+  const ensureChatOpen = useCallback(() => {
+    if (!location.pathname.endsWith('/chat')) {
+      navigate('/chat');
+    }
+  }, [location.pathname, navigate]);
+
   const handleSendAsSelf = useCallback(async () => {
     const current = prompt;
     if (!current?.body) return;
@@ -103,7 +109,10 @@ export default function ShareTargetGate({
           group: SELF_GROUP,
           source: 'share',
         });
-        if (dateStr) postChatSyncEvent('day', { dateStr });
+        if (dateStr) {
+          postChatSyncEvent('day', { dateStr });
+          postChatLocalSyncEvent('day', { dateStr });
+        }
         await clearPromptRecord(current);
       } else {
         await clearPromptRecord(current);
@@ -117,6 +126,7 @@ export default function ShareTargetGate({
         /* ignore */
       }
     } finally {
+      ensureChatOpen();
       finishPrompt();
     }
   }, [
@@ -126,6 +136,7 @@ export default function ShareTargetGate({
     chatCtx,
     clearPromptRecord,
     finishPrompt,
+    ensureChatOpen,
   ]);
 
   const handleComposeWithGroup = useCallback(async () => {
@@ -137,9 +148,7 @@ export default function ShareTargetGate({
         id: `share-group-send-${Date.now()}`,
         body: current.body,
       };
-      if (!location.pathname.endsWith('/chat')) {
-        navigate('/chat');
-      }
+      ensureChatOpen();
       if (isUnlocked) {
         onComposeClaimed?.(payload);
       } else {
@@ -155,8 +164,7 @@ export default function ShareTargetGate({
     clearPromptRecord,
     finishPrompt,
     isUnlocked,
-    location.pathname,
-    navigate,
+    ensureChatOpen,
     onComposeClaimed,
   ]);
 
@@ -174,7 +182,10 @@ export default function ShareTargetGate({
     flushingRef.current = true;
     (async () => {
       try {
-        await flushSendSelfPendingShares(chatCtx);
+        const { flushed } = await flushSendSelfPendingShares(chatCtx);
+        if (!cancelled && flushed > 0) {
+          ensureChatOpen();
+        }
       } finally {
         if (!cancelled) flushingRef.current = false;
       }
@@ -183,7 +194,7 @@ export default function ShareTargetGate({
       cancelled = true;
       flushingRef.current = false;
     };
-  }, [isUnlocked, storageReady, chatCtx]);
+  }, [isUnlocked, storageReady, chatCtx, ensureChatOpen]);
 
   // After unlock, claim compose seeds (navigate to chat if needed).
   useEffect(() => {
@@ -194,10 +205,8 @@ export default function ShareTargetGate({
       if (cancelled || !composeRows.length) return;
       const body = composeRows.map((row) => row.body).filter(Boolean).join('\n\n');
       if (!body) return;
-      if (!location.pathname.endsWith('/chat')) {
-        composeNavigatedRef.current = true;
-        navigate('/chat');
-      }
+      composeNavigatedRef.current = true;
+      ensureChatOpen();
       onComposeClaimed?.({ id: `share-group-send-${Date.now()}`, body });
     })();
     return () => {
@@ -207,8 +216,7 @@ export default function ShareTargetGate({
     isUnlocked,
     bootstrapDone,
     prompt,
-    location.pathname,
-    navigate,
+    ensureChatOpen,
     onComposeClaimed,
   ]);
 

@@ -9,6 +9,7 @@ import { dayFileKey, metaKey } from '@/utils/chatWithMyself/paths.js';
 import { mergeDayMessages } from '@/utils/chatWithMyself/format.js';
 import { cacheDay } from '@/utils/chatWithMyself/chatDb.js';
 import {
+  CHAT_LOCAL_SYNC_EVENT,
   getChatSyncTabId,
   openChatSyncChannel,
 } from '@/utils/chatWithMyself/syncChannel.js';
@@ -231,9 +232,8 @@ export function useChatRemoteSync({
     }
 
     const channel = openChatSyncChannel();
-    const onMessage = (ev) => {
-      const data = ev?.data;
-      if (!data || data.originTabId === tabId) return;
+    const applySyncPayload = (data) => {
+      if (!data) return;
       if (data.type === 'meta') {
         void syncOnce({ forceMeta: true });
       } else if (data.type === 'day') {
@@ -243,7 +243,16 @@ export function useChatRemoteSync({
         });
       }
     };
+    const onMessage = (ev) => {
+      const data = ev?.data;
+      if (!data || data.originTabId === tabId) return;
+      applySyncPayload(data);
+    };
+    const onLocalSync = (ev) => {
+      applySyncPayload(ev?.detail);
+    };
     channel?.addEventListener('message', onMessage);
+    window.addEventListener(CHAT_LOCAL_SYNC_EVENT, onLocalSync);
 
     let intervalId = null;
     const startInterval = () => {
@@ -293,6 +302,7 @@ export function useChatRemoteSync({
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('online', onOnline);
       channel?.removeEventListener('message', onMessage);
+      window.removeEventListener(CHAT_LOCAL_SYNC_EVENT, onLocalSync);
       try {
         channel?.close();
       } catch {

@@ -92,7 +92,13 @@ export {
   createChatBackend,
 } from './storage.js';
 export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from './format.js';
-export { postChatSyncEvent, CHAT_SYNC_CHANNEL, getChatSyncTabId } from './syncChannel.js';
+export {
+  postChatSyncEvent,
+  postChatLocalSyncEvent,
+  CHAT_SYNC_CHANNEL,
+  CHAT_LOCAL_SYNC_EVENT,
+  getChatSyncTabId,
+} from './syncChannel.js';
 export { uploadChatImage, uploadGroupIcon, chatImagesToMarkdown } from './images.js';
 export { getCroppedImg } from './cropImage.js';
 export { serializeEditVersion, parseEditVersion } from './editHistory.js';

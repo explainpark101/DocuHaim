@@ -1,4 +1,6 @@
 export const CHAT_SYNC_CHANNEL = 's3haim-chat-sync';
+/** Same-tab refresh (BroadcastChannel ignores originTabId === this tab). */
+export const CHAT_LOCAL_SYNC_EVENT = 's3haim-chat-local-sync';
 
 const TAB_ID =
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -22,6 +24,7 @@ export function openChatSyncChannel() {
 }
 
 /**
+ * Notify other tabs via BroadcastChannel.
  * @param {'day' | 'meta'} type
  * @param {{ dateStr?: string }} [extra]
  */
@@ -43,5 +46,27 @@ export function postChatSyncEvent(type, extra = {}) {
     } catch {
       /* ignore */
     }
+  }
+}
+
+/**
+ * Notify this tab's chat pane (e.g. share-target wrote while /chat is open).
+ * @param {'day' | 'meta'} type
+ * @param {{ dateStr?: string }} [extra]
+ */
+export function postChatLocalSyncEvent(type, extra = {}) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent(CHAT_LOCAL_SYNC_EVENT, {
+        detail: {
+          type,
+          dateStr: extra.dateStr || null,
+          at: Date.now(),
+        },
+      }),
+    );
+  } catch {
+    /* ignore */
   }
 }
