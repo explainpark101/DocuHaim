@@ -617,7 +617,13 @@ export default function ChatComposer({
   const removeQueuedImage = useCallback((id) => {
     setImageQueue((prev) => {
       const target = prev.find((p) => p.id === id);
-      if (target?.existing && target.path) {
+      // Only chat-uploaded image/file keys are safe to delete from storage.
+      // Note shares are references to existing notes — do not delete them.
+      if (
+        target?.existing &&
+        target.path &&
+        (target.kind === 'image' || target.kind === 'file')
+      ) {
         removedExistingPathsRef.current = [
           ...removedExistingPathsRef.current,
           target.path,
@@ -873,18 +879,31 @@ export default function ChatComposer({
         {imageQueue.length > 0 ? (
           <div className="mb-1 flex flex-wrap gap-2">
             {imageQueue.map((item) =>
-              item.kind === 'file' ? (
+              item.kind === 'file' || item.kind === 'note' ? (
                 <div
                   key={item.id}
-                  className="relative flex max-w-[11rem] items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 dark:border-odp-borderSoft dark:bg-odp-bg/50"
+                  className={`relative flex max-w-[11rem] items-center gap-2 rounded-md border px-2 py-1.5 ${
+                    item.kind === 'note'
+                      ? 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-800/50 dark:bg-emerald-950/40'
+                      : 'border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bg/50'
+                  }`}
                 >
-                  <FileText size={16} className="shrink-0 text-blue-600 dark:text-blue-300" />
+                  <FileText
+                    size={16}
+                    className={`shrink-0 ${
+                      item.kind === 'note'
+                        ? 'text-emerald-600 dark:text-emerald-300'
+                        : 'text-blue-600 dark:text-blue-300'
+                    }`}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[11px] font-medium text-gray-800 dark:text-odp-fg">
-                      {item.name || item.file?.name || 'file'}
+                      {item.name || item.file?.name || (item.kind === 'note' ? 'note' : 'file')}
                     </div>
                     <div className="text-[10px] text-gray-400">
-                      {formatChatAttachmentSize(item.size ?? item.file?.size)}
+                      {item.kind === 'note'
+                        ? '노트'
+                        : formatChatAttachmentSize(item.size ?? item.file?.size)}
                     </div>
                   </div>
                   <button
