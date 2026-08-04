@@ -2,6 +2,13 @@
 @import "tailwindcss";
 @config "../tailwind.config";
 
+/* Paperozi/A2z + system glyph fallback — source of truth for font-sans / font-display */
+@theme {
+  --font-sans: Paperozi, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans", Arial, sans-serif, D2Coding, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: A2z, Paperozi, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: "JetBrains Mono", D2Coding, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 @layer base {
   html {
     color-scheme: dark;
@@ -28,25 +35,6 @@
   kbd,
   samp {
     @apply font-mono;
-  }
-
-  /* md-editor-rt hardcodes Paperozi/A2z; keep theme stacks (system glyph fallback). */
-  .md-editor,
-  .md-editor-modal,
-  .md-editor-modal-container {
-    font-family: var(--font-sans);
-  }
-
-  .md-editor-preview h1,
-  .md-editor-preview h2,
-  .md-editor-preview h3,
-  .md-editor-preview h4,
-  .md-editor-preview h5,
-  .md-editor-preview h6,
-  .md-editor-preview b,
-  .md-editor-preview strong,
-  .md-editor-preview th {
-    font-family: var(--font-display);
   }
 }
 
@@ -286,4 +274,34 @@ button {
   font-size: 11px;
   color: rgb(156 163 175);
   padding: 0 6px 0 2px;
+}
+
+/*
+ * Unlayered: beat md-editor-rt / CodeMirror font-family hardcodes.
+ * App chrome, chat, notes preview/modals → Paperozi + system glyph fallback.
+ * Chat composer input also uses sans (matches message bubbles).
+ */
+.md-editor,
+.md-editor-modal,
+.md-editor-modal-container,
+.md-editor-preview {
+  font-family: var(--font-sans);
+}
+
+.chat-composer-editor .md-editor .ͼ1 .cm-scroller,
+.chat-composer-editor .md-editor .cm-scroller,
+.chat-composer-editor .cm-content {
+  font-family: var(--font-sans);
+}
+
+.md-editor-preview h1,
+.md-editor-preview h2,
+.md-editor-preview h3,
+.md-editor-preview h4,
+.md-editor-preview h5,
+.md-editor-preview h6,
+.md-editor-preview b,
+.md-editor-preview strong,
+.md-editor-preview th {
+  font-family: var(--font-display);
 }

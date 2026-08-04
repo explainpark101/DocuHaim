@@ -37,7 +37,7 @@ const config: Config = {
         sans: ['Paperozi', ...SYSTEM_SANS_FALLBACK_LIST],
         display: ['A2z', 'Paperozi', ...SYSTEM_SANS_FALLBACK_LIST],
         mono: [
-          'JetBrainsMono',
+          '"JetBrains Mono"',
           'D2Coding',
           'ui-monospace',
           'SFMono-Regular',

@@ -639,13 +639,7 @@
   margin: 0;
 }
 .md-editor-preview .md-editor-code pre code {
-  font-family:
-    source-code-pro,
-    Menlo,
-    Monaco,
-    Consolas,
-    Courier New,
-    monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--md-theme-code-block-color);
   background-color: var(--md-theme-code-before-bg-color);
