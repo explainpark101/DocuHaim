@@ -23,6 +23,7 @@ import ChatMessageContextMenu from '@/components/chatWithMyself/ChatMessageConte
 import ChatMessageReactions from '@/components/chatWithMyself/ChatMessageReactions';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
 import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
+import { useViewportClampNudge } from '@/components/chatWithMyself/useViewportClampNudge';
 import {
   chatMenuContentClass,
   chatMenuDangerItemClass,
@@ -309,24 +310,6 @@ function MessageReplyButton({ msg, onReply }) {
   );
 }
 
-function MessageReactButton({ msg, onOpenReactionPicker }) {
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onOpenReactionPicker?.(msg);
-      }}
-      className={iconBtnClass}
-      title="반응 추가"
-      aria-label="반응 추가"
-    >
-      <SmilePlus size={16} />
-    </button>
-  );
-}
-
 function MessageMoreButton({
   msg,
   onReply,
@@ -428,7 +411,6 @@ function MessageSideActions({
 
   const buttons = (
     <>
-      <MessageReactButton msg={msg} onOpenReactionPicker={onOpenReactionPicker} />
       <MessageReplyButton msg={msg} onReply={onReply} />
       <MessageMoreButton
         msg={msg}
@@ -517,6 +499,7 @@ function MessageBubble({
   const rowRef = useRef(null);
   const longPressOpenedRef = useRef(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const contextMenuClamp = useViewportClampNudge(contextMenuOpen);
   const [pressing, setPressing] = useState(false);
   const [localReactionPickerOpen, setLocalReactionPickerOpen] = useState(false);
   const forceReactionPickerOpen = Boolean(externalReactionPickerOpen);
@@ -906,7 +889,10 @@ function MessageBubble({
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Content
-          className={chatMenuContentClass}
+          ref={contextMenuClamp.ref}
+          style={contextMenuClamp.style}
+          className={`${chatMenuContentClass} overflow-y-auto`}
+          collisionPadding={{ top: 12, right: 12, left: 12, bottom: 48 }}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <MessageActionItems

@@ -5114,7 +5114,10 @@ function MainApp() {
         </div>
 
         {/* Status Bar — z above editor chrome (z-10100) so novel/md layers do not cover it on mobile */}
-        <div className="relative z-10200 flex h-6 shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white/90 px-2 pb-[max(0px,env(safe-area-inset-bottom))] text-[10px] dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 md:h-7 md:gap-3 md:px-3 md:text-[11px]">
+        <div
+          data-app-status-bar=""
+          className="relative z-10200 flex h-6 shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white/90 px-2 pb-[max(0px,env(safe-area-inset-bottom))] text-[10px] dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 md:h-7 md:gap-3 md:px-3 md:text-[11px]"
+        >
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 overflow-hidden">
             <ActivityIndicatorBar />
             {!hideRecordingCompanions &&
