@@ -1647,7 +1647,10 @@ export default function ChatWithMyselfPane({
                   : undefined
               }
             />
-            <ChatComposerDock autoFit={Boolean(editTarget)}>
+            <ChatComposerDock
+              autoFit={Boolean(editTarget)}
+              fitKey={editTarget?.id || ''}
+            >
               <div
                 className={
                   editTarget
