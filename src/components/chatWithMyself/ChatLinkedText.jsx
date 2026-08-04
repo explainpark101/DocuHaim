@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { splitTextWithUrls } from '@/utils/chatWithMyself';
 import ChatWikiImage from '@/components/chatWithMyself/ChatWikiImage';
 import ChatFileCard from '@/components/chatWithMyself/ChatFileCard';
+import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';
 
 const linkClass =
   'break-all wrap-anywhere underline underline-offset-2 text-blue-700 hover:text-blue-900 dark:text-sky-300 dark:hover:text-sky-200';
@@ -37,6 +38,7 @@ export default function ChatLinkedText({
   getPresignedUrl,
   collapsed = false,
 }) {
+  const openInNewWindow = useOpenLinksInNewWindow();
   const parts = useMemo(() => splitTextWithUrls(text), [text]);
 
   if (collapsed) {
@@ -63,8 +65,9 @@ export default function ChatLinkedText({
             <a
               key={`l-${i}`}
               href={part.value}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...(openInNewWindow
+                ? { target: '_blank', rel: 'noopener noreferrer' }
+                : {})}
               className={linkClass}
               onClick={(e) => e.stopPropagation()}
             >

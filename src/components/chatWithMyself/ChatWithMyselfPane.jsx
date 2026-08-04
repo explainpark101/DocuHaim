@@ -26,6 +26,7 @@ import ChatEditHistoryModal from '@/components/chatWithMyself/ChatEditHistoryMod
 import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
 import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
+import { ChatUiPrefsProvider } from '@/components/chatWithMyself/ChatUiPrefsContext';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { useChatActivityStatus } from '@/components/chatWithMyself/useChatActivityStatus';
 import {
@@ -72,6 +73,8 @@ import {
   writeComposerToolbarPref,
   getComposerLineNumbersVisible,
   writeComposerLineNumbersPref,
+  getOpenLinksInNewWindow,
+  writeOpenLinksInNewWindowPref,
   getChatRailOpen,
   writeChatRailOpenPref,
   flushPendingMessages,
@@ -235,6 +238,9 @@ export default function ChatWithMyselfPane({
   const [composerLineNumbers, setComposerLineNumbers] = useState(
     getComposerLineNumbersVisible,
   );
+  const [openLinksInNewWindow, setOpenLinksInNewWindow] = useState(
+    getOpenLinksInNewWindow,
+  );
   const [composerSettingsOpen, setComposerSettingsOpen] = useState(false);
   const [activeJumpDate, setActiveJumpDate] = useState(null);
   const [searchFilters, setSearchFilters] = useState(null);
@@ -333,6 +339,12 @@ export default function ChatWithMyselfPane({
     setComposerLineNumbers(value);
     writeComposerLineNumbersPref(value);
   }, [composerLineNumbers]);
+
+  const toggleOpenLinksInNewWindow = useCallback((next) => {
+    const value = typeof next === 'boolean' ? next : !openLinksInNewWindow;
+    setOpenLinksInNewWindow(value);
+    writeOpenLinksInNewWindowPref(value);
+  }, [openLinksInNewWindow]);
 
   const hasMore = loadedDayIndex < dayKeys.length;
   const hasMoreNewer = windowNewestIndex > 0;
@@ -1605,6 +1617,7 @@ export default function ChatWithMyselfPane({
 
   return (
     <ChatImageLightboxProvider>
+    <ChatUiPrefsProvider openLinksInNewWindow={openLinksInNewWindow}>
     <div className="flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg">
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 dark:border-odp-borderSoft px-3 py-2">
         {isMobileLayout && !sidebarOpen ? (
@@ -1665,6 +1678,13 @@ export default function ChatWithMyselfPane({
               title="입력창 줄 번호"
               checked={composerLineNumbers}
               onCheckedChange={toggleComposerLineNumbers}
+            />
+            <ChatNavSwitch
+              id="chat-nav-open-links-new-window"
+              label="링크 새창"
+              title="링크를 새창으로 열기"
+              checked={openLinksInNewWindow}
+              onCheckedChange={toggleOpenLinksInNewWindow}
             />
           </div>
         )}
@@ -1995,6 +2015,8 @@ export default function ChatWithMyselfPane({
         onShowToolbarChange={toggleComposerToolbar}
         showLineNumbers={composerLineNumbers}
         onShowLineNumbersChange={toggleComposerLineNumbers}
+        openLinksInNewWindow={openLinksInNewWindow}
+        onOpenLinksInNewWindowChange={toggleOpenLinksInNewWindow}
       />
       <ChatEditHistoryModal
         open={Boolean(historyMessage)}
@@ -2035,6 +2057,7 @@ export default function ChatWithMyselfPane({
         }}
       />
     </div>
+    </ChatUiPrefsProvider>
     </ChatImageLightboxProvider>
   );
 }

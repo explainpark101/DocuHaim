@@ -3,6 +3,7 @@ import { ExternalLink, Play } from 'lucide-react';
 import { isYouTubeUrl, loadAndArchiveOg } from '@/utils/chatWithMyself/og.js';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
+import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';
 
 /**
  * OG / YouTube card rendered inside a chat bubble (bottom attached).
@@ -13,6 +14,10 @@ export default function ChatOgCard({ url, ogStorage, compact = false }) {
   const [loading, setLoading] = useState(true);
   const [showEmbed, setShowEmbed] = useState(false);
   const openChatImage = useChatImageLightbox();
+  const openInNewWindow = useOpenLinksInNewWindow();
+  const linkTargetProps = openInNewWindow
+    ? { target: '_blank', rel: 'noopener noreferrer' }
+    : {};
 
   useEffect(() => {
     let cancelled = false;
@@ -67,8 +72,7 @@ export default function ChatOgCard({ url, ogStorage, compact = false }) {
     return (
       <a
         href={url}
-        target="_blank"
-        rel="noopener noreferrer"
+        {...linkTargetProps}
         className="mt-1.5 flex max-w-full items-center gap-2 overflow-hidden rounded-md border border-black/10 bg-white/80 px-2 py-1.5 text-left dark:border-white/15 dark:bg-odp-bgSoft/90"
         onClick={(e) => e.stopPropagation()}
       >
@@ -147,8 +151,7 @@ export default function ChatOgCard({ url, ogStorage, compact = false }) {
       ) : null}
       <a
         href={url}
-        target="_blank"
-        rel="noopener noreferrer"
+        {...linkTargetProps}
         className="block px-2.5 py-2 hover:bg-black/5 dark:hover:bg-white/5 transition"
       >
         <div className="flex items-start gap-1.5">

@@ -40,7 +40,7 @@ function SettingsSwitchRow({ id, label, description, checked, onCheckedChange })
 }
 
 /**
- * Mobile settings dialog for composer toolbar / line-number visibility.
+ * Chat settings dialog (composer display + link behavior).
  */
 export default function ChatComposerSettingsModal({
   open = false,
@@ -49,6 +49,8 @@ export default function ChatComposerSettingsModal({
   onShowToolbarChange,
   showLineNumbers = false,
   onShowLineNumbersChange,
+  openLinksInNewWindow = false,
+  onOpenLinksInNewWindowChange,
 }) {
   return (
     <Dialog.Root open={Boolean(open)} onOpenChange={(next) => onOpenChange?.(next)}>
@@ -60,10 +62,10 @@ export default function ChatComposerSettingsModal({
         >
           <div>
             <Dialog.Title className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
-              입력창 설정
+              채팅 설정
             </Dialog.Title>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-odp-muted">
-              메시지 입력란 표시 옵션
+              나와의 채팅 표시·입력 옵션
             </p>
           </div>
 
@@ -81,6 +83,13 @@ export default function ChatComposerSettingsModal({
               description="입력창 왼쪽 줄 번호 표시"
               checked={showLineNumbers}
               onCheckedChange={onShowLineNumbersChange}
+            />
+            <SettingsSwitchRow
+              id="chat-settings-open-links-new-window"
+              label="링크를 새창으로 열기"
+              description="메시지·미리보기의 http(s) 링크를 새 탭에서 엽니다"
+              checked={openLinksInNewWindow}
+              onCheckedChange={onOpenLinksInNewWindowChange}
             />
           </div>
 

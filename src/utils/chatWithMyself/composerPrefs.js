@@ -5,6 +5,7 @@ export const CHAT_PREF_KEYS = {
   composerToolbar: `${CHAT_PREF_PREFIX}composer_toolbar`,
   composerLineNumbers: `${CHAT_PREF_PREFIX}composer_line_numbers`,
   composerHelperText: `${CHAT_PREF_PREFIX}composer_helper_text`,
+  openLinksInNewWindow: `${CHAT_PREF_PREFIX}open_links_new_window`,
   railGroupOpen: `${CHAT_PREF_PREFIX}rail_group_open`,
   railDateOpen: `${CHAT_PREF_PREFIX}rail_date_open`,
   railSearchOpen: `${CHAT_PREF_PREFIX}rail_search_open`,
@@ -88,6 +89,20 @@ export function getComposerHelperTextVisible() {
   const stored = readComposerHelperTextPref();
   if (stored != null) return stored;
   return true;
+}
+
+/** Stored "open links in new window" preference, or null if unset. */
+export function readOpenLinksInNewWindowPref() {
+  return readBoolPref(CHAT_PREF_KEYS.openLinksInNewWindow);
+}
+
+export function writeOpenLinksInNewWindowPref(enabled) {
+  writeBoolPref(CHAT_PREF_KEYS.openLinksInNewWindow, Boolean(enabled));
+}
+
+/** Effective: open http(s) links in a new window/tab (default off). */
+export function getOpenLinksInNewWindow() {
+  return readOpenLinksInNewWindowPref() === true;
 }
 
 /** @typedef {'group'|'date'|'search'|'pinned'} ChatRailId */
