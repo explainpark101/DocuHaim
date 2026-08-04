@@ -98,18 +98,22 @@ type DataTableColumn = {
   tree?: boolean;
 };
 
-type DataTableRow = Record<string, ReactNode> & {
+type DataTableTreeMeta = {
+  depth: number;
+  expandable: boolean;
+  expanded: boolean;
+  label: ReactNode;
+};
+
+type DataTableRow = {
   /** Stable row key when provided. */
   _key?: string;
   /** Optional whole-row click handler (e.g. open detail modal). */
   _onClick?: () => void;
   /** Tree expand meta consumed by columns with `tree: true`. */
-  _tree?: {
-    depth: number;
-    expandable: boolean;
-    expanded: boolean;
-    label: ReactNode;
-  };
+  _tree?: DataTableTreeMeta;
+  /** Column cell values (keys match `DataTableColumn.key`). */
+  [key: string]: ReactNode | (() => void) | DataTableTreeMeta | undefined;
 };
 
 function storageLabel(mode: string | undefined): string {
@@ -251,7 +255,7 @@ function DataTable({
                             label={tree.label}
                           />
                         ) : (
-                          row[col.key]
+                          (row[col.key] as ReactNode)
                         )}
                       </td>
                     );
@@ -511,7 +515,9 @@ export default function StorageUsageAnalysis({
                 fileCount: row.fileCount.toLocaleString(),
                 size: formatStorageBytes(row.size),
                 percent: <PercentCell percent={row.percent} />,
-                _onClick: row.hasChildFolders ? () => toggleFolder(row.path) : undefined,
+                ...(row.hasChildFolders
+                  ? { _onClick: () => toggleFolder(row.path) }
+                  : {}),
                 _tree: {
                   depth: row.depth,
                   expandable: row.hasChildFolders,
