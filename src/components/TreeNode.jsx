@@ -15,7 +15,8 @@ import {
   IconTrash,
   IconSettings,
 } from '@/components/icons';
-import { PencilIcon, ArrowRightToLine } from 'lucide-react';
+import { PencilIcon, ArrowRightToLine, AlertCircle } from 'lucide-react';
+import { Tooltip } from 'radix-ui';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
 
@@ -567,12 +568,39 @@ export default function TreeNode({
               )
             ) : null}
           </span>
-          <span className={`${iconColorClass} shrink-0`}>
+          <span className={`${iconColorClass} shrink-0 inline-flex items-center gap-0.5`}>
             {node.type === 'folder'
               ? isTrashRoot
                 ? <IconTrash />
                 : <FileIconComponent />
               : <FileIconComponent />}
+            {node.type === 'file' && node.size === 0 ? (
+              <Tooltip.Provider delayDuration={280} skipDelayDuration={120}>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex shrink-0 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 rounded-full"
+                      aria-label="파일 크기가 0 byte 입니다."
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <AlertCircle size={12} strokeWidth={2.5} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      side="top"
+                      sideOffset={6}
+                      className="z-[100001] max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] leading-snug text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+                    >
+                      파일 크기가 0 byte 입니다.
+                      <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </Tooltip.Provider>
+            ) : null}
           </span>
           {isRenaming && !isTrashRoot && (node.type === 'file' || node.type === 'folder') ? (
             <span className="flex items-baseline gap-1 min-w-0">

@@ -115,12 +115,18 @@ function ChatWithMyselfEntry({ isActive, onOpen }) {
 
 function filterTree(
   nodes,
-  { hideDotFolders, hideRecordingCompanionFiles, searchTerm } = {},
+  { hideDotFolders, hideTrashFolder, hideRecordingCompanionFiles, searchTerm } = {},
 ) {
   const q = searchTerm ? searchTerm.toLowerCase() : '';
+  const isTrashFolder = (node) =>
+    node.type === 'folder' && (node.name === '.trash' || node.path === '.trash/');
   const walk = (node) => {
-    if (hideDotFolders && node.type === 'folder' && node.name.startsWith('.')) {
-      return null;
+    if (node.type === 'folder') {
+      if (isTrashFolder(node)) {
+        if (hideTrashFolder) return null;
+      } else if (hideDotFolders && node.name.startsWith('.')) {
+        return null;
+      }
     }
     if (node.type === 'file' && hideRecordingCompanionFiles && isRecordingCompanionFileKey(node.path)) {
       return null;
@@ -204,6 +210,7 @@ export default function Sidebar({
   onToggleTheme,
   onRenameItem,
   showHiddenFolders,
+  showTrashFolder = false,
   hideRecordingCompanions = false,
   treeStickyFolderPathEnabled = true,
   hoverExpandDelayMs = 2000,
@@ -626,28 +633,31 @@ export default function Sidebar({
     () =>
       filterTree(s3Tree, {
         hideDotFolders: !showHiddenFolders,
+        hideTrashFolder: !showTrashFolder,
         hideRecordingCompanionFiles: hideRecordingCompanions,
         searchTerm,
       }),
-    [s3Tree, searchTerm, showHiddenFolders, hideRecordingCompanions],
+    [s3Tree, searchTerm, showHiddenFolders, showTrashFolder, hideRecordingCompanions],
   );
   const filteredLocalTree = useMemo(
     () =>
       filterTree(localTree, {
         hideDotFolders: !showHiddenFolders,
+        hideTrashFolder: !showTrashFolder,
         hideRecordingCompanionFiles: hideRecordingCompanions,
         searchTerm,
       }),
-    [localTree, searchTerm, showHiddenFolders, hideRecordingCompanions],
+    [localTree, searchTerm, showHiddenFolders, showTrashFolder, hideRecordingCompanions],
   );
   const filteredWebdavTree = useMemo(
     () =>
       filterTree(webdavTree, {
         hideDotFolders: !showHiddenFolders,
+        hideTrashFolder: !showTrashFolder,
         hideRecordingCompanionFiles: hideRecordingCompanions,
         searchTerm,
       }),
-    [webdavTree, searchTerm, showHiddenFolders, hideRecordingCompanions],
+    [webdavTree, searchTerm, showHiddenFolders, showTrashFolder, hideRecordingCompanions],
   );
 
   /** 필터 전 원본 트리 기준 — 숨김 옵션과 무관하게 녹음 연결 여부 표시 */

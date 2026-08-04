@@ -34,6 +34,7 @@ import {
   treeHoverExpandSettingsToMs,
 } from '@/utils/treeHoverExpandSettings';
 import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModelSelect';
+import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import { RadioGroup } from 'radix-ui';
 
 export default function SettingsPage({
@@ -44,6 +45,8 @@ export default function SettingsPage({
   onImportClick,
   showHiddenFolders,
   onToggleHiddenFolders,
+  showTrashFolder = false,
+  onToggleTrashFolder,
   hideRecordingCompanions = false,
   onToggleHideRecordingCompanions,
   treeStickyFolderPathEnabled = true,
@@ -74,6 +77,8 @@ export default function SettingsPage({
   getGeminiApiKey,
   onCheckAppUpdate,
   isCheckingAppUpdate = false,
+  onScanStorageUsage,
+  canScanStorageUsage = false,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [googleAiKeyInput, setGoogleAiKeyInput] = useState('');
@@ -203,6 +208,12 @@ export default function SettingsPage({
             </label>
           </div>
         </div>
+
+        <StorageUsageAnalysis
+          storageMode={storageMode}
+          onScanTree={onScanStorageUsage}
+          canScan={canScanStorageUsage}
+        />
 
         {/* S3 Form */}
         <form
@@ -633,11 +644,35 @@ export default function SettingsPage({
           </div>
         </div>
 
-        {/* Hidden Folders Option */}
+        {/* Display Options */}
         <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
           <label
             className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
+          >
+            <button
+              type="button"
+              onClick={onToggleTrashFolder}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                showTrashFolder
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={showTrashFolder}
+              aria-label="쓰레기통 보기 토글"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  showTrashFolder ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              쓰레기통 보기 (`.trash` 폴더)
+            </span>
+          </label>
+          <label
+            className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
           >
             <button
               type="button"
@@ -657,7 +692,7 @@ export default function SettingsPage({
               />
             </button>
             <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-              숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더)
+              숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더, `.trash` 제외)
             </span>
           </label>
           {typeof onToggleHideRecordingCompanions === 'function' && (

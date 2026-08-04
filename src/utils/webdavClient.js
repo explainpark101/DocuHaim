@@ -245,7 +245,7 @@ export async function webdavEnsureParentDirs(config, fileKey) {
  * Depth-1 PROPFIND; returns child hrefs relative to basePath as storage keys.
  * @param {WebdavConfig} config
  * @param {string} dirKey
- * @returns {Promise<{ key: string, etag: string | null, mtime: number | null, isCollection: boolean }[]>}
+ * @returns {Promise<{ key: string, etag: string | null, mtime: number | null, isCollection: boolean, size?: number }[]>}
  */
 export async function webdavPropfind(config, dirKey = '') {
   const key = String(dirKey || '').replace(/\/?$/, '/');
@@ -259,6 +259,7 @@ export async function webdavPropfind(config, dirKey = '') {
   <d:prop>
     <d:getetag/>
     <d:getlastmodified/>
+    <d:getcontentlength/>
     <d:resourcetype/>
   </d:prop>
 </d:propfind>`,
@@ -352,9 +353,17 @@ function parsePropfindResponse(xml, config, dirKey) {
       node.getElementsByTagName('d:getlastmodified')[0] ||
       node.getElementsByTagName('D:getlastmodified')[0] ||
       node.getElementsByTagName('getlastmodified')[0];
+    const sizeEl =
+      node.getElementsByTagNameNS('DAV:', 'getcontentlength')[0] ||
+      node.getElementsByTagName('d:getcontentlength')[0] ||
+      node.getElementsByTagName('D:getcontentlength')[0] ||
+      node.getElementsByTagName('getcontentlength')[0];
     const etag = etagEl?.textContent?.trim() || null;
     const lm = lmEl?.textContent?.trim();
     const mtime = lm ? Date.parse(lm) || null : null;
+    const sizeRaw = sizeEl?.textContent?.trim();
+    const sizeParsed = sizeRaw != null && sizeRaw !== '' ? Number(sizeRaw) : NaN;
+    const size = Number.isFinite(sizeParsed) ? sizeParsed : undefined;
 
     // Skip the directory itself
     const dirNorm = String(dirKey || '')
@@ -363,7 +372,7 @@ function parsePropfindResponse(xml, config, dirKey) {
     const keyNorm = key.replace(/\/?$/, '');
     if (keyNorm === dirNorm) continue;
 
-    results.push({ key, etag, mtime, isCollection });
+    results.push({ key, etag, mtime, isCollection, size });
   }
   return results;
 }

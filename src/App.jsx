@@ -229,6 +229,7 @@ function MainApp() {
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState(null);
   const [lastAutoSyncAt, setLastAutoSyncAt] = useState(null);
   const [showHiddenFolders, setShowHiddenFolders] = useState(false);
+  const [showTrashFolder, setShowTrashFolder] = useState(false);
   const [editorType, setEditorType] = useState(() => loadEditorType());
   const [storageMode, setStorageMode] = useState(() => loadStorageMode());
   const [webdavConfig, setWebdavConfig] = useState(() => loadWebdavConfig());
@@ -1048,6 +1049,36 @@ function MainApp() {
       console.error("S3 Load Error:", err);
     }
   }, [getS3Client, s3Creds]);
+
+  const scanActiveStorageUsageTree = useCallback(async () => {
+    if (storageMode === STORAGE_MODE_LOCAL) {
+      if (!localRootHandle) throw new Error('로컬 폴더가 열려 있지 않습니다.');
+      return readLocalDirectoryTree(localRootHandle, '', localRootHandle);
+    }
+    if (storageMode === STORAGE_MODE_WEBDAV) {
+      if (!webdavReady) throw new Error('WebDAV가 연결되지 않았습니다.');
+      const backend = createWebdavBackend(webdavConfig);
+      return backend.listAll();
+    }
+    const client = getS3Client();
+    if (!client || !s3Creds.bucket) throw new Error('S3가 연결되지 않았습니다.');
+    const contents = await listObjectsV2(client, s3Creds.bucket, '');
+    return buildS3Tree(contents);
+  }, [
+    storageMode,
+    localRootHandle,
+    webdavReady,
+    webdavConfig,
+    getS3Client,
+    s3Creds.bucket,
+  ]);
+
+  const canScanStorageUsage =
+    (storageMode === STORAGE_MODE_LOCAL && Boolean(localRootHandle)) ||
+    (storageMode === STORAGE_MODE_WEBDAV && webdavReady) ||
+    (storageMode !== STORAGE_MODE_LOCAL &&
+      storageMode !== STORAGE_MODE_WEBDAV &&
+      Boolean(s3Creds.bucket));
 
   // IndexedDB recording upload retry: on app start / network recovery (S3/WebDAV only)
   useEffect(() => {
@@ -5006,6 +5037,7 @@ function MainApp() {
               }
               onRenameItem={renameTreeItem}
               showHiddenFolders={showHiddenFolders}
+              showTrashFolder={showTrashFolder}
               hideRecordingCompanions={hideRecordingCompanions}
               treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
               hoverExpandDelayMs={treeHoverExpandSettingsToMs(treeHoverExpandSettings)}
@@ -5114,6 +5146,10 @@ function MainApp() {
                   onToggleHiddenFolders={() =>
                     setShowHiddenFolders((prev) => !prev)
                   }
+                  showTrashFolder={showTrashFolder}
+                  onToggleTrashFolder={() =>
+                    setShowTrashFolder((prev) => !prev)
+                  }
                   hideRecordingCompanions={hideRecordingCompanions}
                   treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
                   treeHoverExpandSettings={treeHoverExpandSettings}
@@ -5144,6 +5180,8 @@ function MainApp() {
                   getGeminiApiKey={getGeminiApiKey}
                   onCheckAppUpdate={handleCheckAppUpdate}
                   isCheckingAppUpdate={isCheckingAppUpdate}
+                  onScanStorageUsage={scanActiveStorageUsageTree}
+                  canScanStorageUsage={canScanStorageUsage}
                 />
               }
             />

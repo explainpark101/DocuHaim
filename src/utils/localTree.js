@@ -27,32 +27,46 @@ async function collectDirectoryEntries(dirHandle) {
 export async function readLocalDirectoryLevel(dirHandle, basePath = '', parentHandle = null) {
   const resolvedParent = parentHandle ?? dirHandle;
   const entries = await collectDirectoryEntries(dirHandle);
-  const children = [];
 
-  for (const entry of entries) {
-    const path = basePath + entry.name;
-    if (entry.kind === 'file') {
-      children.push({
-        name: entry.name,
-        type: 'file',
-        path,
-        handle: entry,
-        parentHandle: resolvedParent,
-      });
-    } else if (entry.kind === 'directory') {
-      children.push({
-        name: entry.name,
-        type: 'folder',
-        path: `${path}/`,
-        handle: entry,
-        parentHandle: resolvedParent,
-        children: [],
-        childrenLoaded: false,
-      });
-    }
-  }
+  const childNodes = await Promise.all(
+    entries.map(async (entry) => {
+      const path = basePath + entry.name;
+      if (entry.kind === 'file') {
+        let size;
+        let lastModified;
+        try {
+          const file = await entry.getFile();
+          size = file.size;
+          lastModified = new Date(file.lastModified);
+        } catch {
+          /* metadata unavailable */
+        }
+        return {
+          name: entry.name,
+          type: 'file',
+          path,
+          handle: entry,
+          parentHandle: resolvedParent,
+          size,
+          lastModified,
+        };
+      }
+      if (entry.kind === 'directory') {
+        return {
+          name: entry.name,
+          type: 'folder',
+          path: `${path}/`,
+          handle: entry,
+          parentHandle: resolvedParent,
+          children: [],
+          childrenLoaded: false,
+        };
+      }
+      return null;
+    }),
+  );
 
-  return sortLocalTreeChildren(children);
+  return sortLocalTreeChildren(childNodes.filter(Boolean));
 }
 
 /**
@@ -69,12 +83,23 @@ export async function readLocalDirectoryTree(dirHandle, basePath = '', parentHan
     entries.map(async (entry) => {
       const path = basePath + entry.name;
       if (entry.kind === 'file') {
+        let size;
+        let lastModified;
+        try {
+          const file = await entry.getFile();
+          size = file.size;
+          lastModified = new Date(file.lastModified);
+        } catch {
+          /* metadata unavailable */
+        }
         return {
           name: entry.name,
           type: 'file',
           path,
           handle: entry,
           parentHandle: resolvedParent,
+          size,
+          lastModified,
         };
       }
       if (entry.kind === 'directory') {
