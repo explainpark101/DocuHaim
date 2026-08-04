@@ -117,8 +117,8 @@ export function writeChatRailOpenPref(railId, open) {
  * Unset → desktop default open for group only; date/search default closed.
  */
 export function getChatRailOpen(railId, { isMobileLayout = false } = {}) {
+  if (isMobileLayout) return false;
   const stored = readChatRailOpenPref(railId);
   if (stored != null) return stored;
-  if (isMobileLayout) return false;
   return railId === 'group';
 }

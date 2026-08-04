@@ -247,6 +247,7 @@ function CollectionTabList({
   onTabChange,
   lists,
   onClose,
+  allowAutoClose = true,
 }) {
   const listRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const fontSampleRef = useRef(/** @type {HTMLSpanElement | null} */ (null));
@@ -338,6 +339,10 @@ function CollectionTabList({
     });
 
     if (next === 'close') {
+      if (!allowAutoClose) {
+        setDensity('iconOnly');
+        return;
+      }
       if (available < CLOSE_MIN_AVAILABLE) {
         setDensity('iconOnly');
         return;
@@ -371,7 +376,7 @@ function CollectionTabList({
       closeTimerRef.current = null;
     }
     setDensity((prev) => (prev === next ? prev : next));
-  }, [counts, tab, onClose]);
+  }, [counts, tab, onClose, allowAutoClose]);
 
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -491,6 +496,7 @@ export default function ChatPinnedPanel({
   timeZone,
   getPresignedUrl,
   groups = [],
+  disableTabAutoClose = false,
 }) {
   const [tab, setTab] = useState(/** @type {CollectionTabId} */ ('pinned'));
   const tz = timeZone || detectTimeZone();
@@ -540,6 +546,7 @@ export default function ChatPinnedPanel({
           onTabChange={handleTabChange}
           lists={lists}
           onClose={onClose}
+          allowAutoClose={!disableTabAutoClose}
         />
       </div>
 

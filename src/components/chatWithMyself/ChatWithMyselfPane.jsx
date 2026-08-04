@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
+import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import {
   CalendarDays,
   Menu,
@@ -628,13 +629,8 @@ export default function ChatWithMyselfPane({
       messagesRef.current.find((m) => m.dateStr === dateStr)?.id ||
       null;
     if (id) {
+      if (messageId) setViewGroupFilter(null);
       setHighlightId(id);
-      requestAnimationFrame(() => {
-        document.getElementById(`chat-msg-${id}`)?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      });
       window.setTimeout(
         () => setHighlightId((cur) => (cur === id ? null : cur)),
         2200,
@@ -678,6 +674,7 @@ export default function ChatWithMyselfPane({
         setLoadedDayIndex(idx + 1);
         const targetId = messageId || msgs[0]?.id || null;
         if (targetId) {
+          if (messageId) setViewGroupFilter(null);
           setHighlightId(targetId);
           window.setTimeout(
             () => setHighlightId((cur) => (cur === targetId ? null : cur)),
@@ -1388,10 +1385,55 @@ export default function ChatWithMyselfPane({
 
   const handleSelectResult = useCallback(
     async (result) => {
-      if (isMobileLayout) setSearchOpen(false);
+      if (isMobileLayout) {
+        setSearchOpen(false);
+        setPinnedOpen(false);
+      }
       await jumpToDate(result.dateStr, result.id);
     },
     [isMobileLayout, jumpToDate],
+  );
+
+  const closeOtherMobileRails = useCallback(
+    (except) => {
+      if (!isMobileLayout) return;
+      if (except !== 'group') setGroupOpen(false);
+      if (except !== 'date') setDateOpen(false);
+      if (except !== 'search') setSearchOpen(false);
+      if (except !== 'pinned') setPinnedOpen(false);
+    },
+    [isMobileLayout],
+  );
+
+  const toggleMobileRail = useCallback(
+    (rail, open, setOpen) => {
+      if (!isMobileLayout) {
+        setOpen((v) => !v);
+        return;
+      }
+      if (open) {
+        setOpen(false);
+        return;
+      }
+      closeOtherMobileRails(rail);
+      setOpen(true);
+    },
+    [isMobileLayout, closeOtherMobileRails],
+  );
+
+  const closeTopMobileRail = useCallback(() => {
+    if (searchOpen) setSearchOpen(false);
+    else if (pinnedOpen) setPinnedOpen(false);
+    else if (dateOpen) setDateOpen(false);
+    else if (groupOpen) setGroupOpen(false);
+  }, [searchOpen, pinnedOpen, dateOpen, groupOpen]);
+
+  const mobileRailOpen = groupOpen || dateOpen || searchOpen || pinnedOpen;
+  useHistoryOverlayBack(
+    mobileRailOpen,
+    closeTopMobileRail,
+    isMobileLayout,
+    'chat-rail',
   );
 
   const searchHasMore = searchCursor < (searchDayKeysRef.current.length || 0);
@@ -1523,7 +1565,7 @@ export default function ChatWithMyselfPane({
         )}
         <button
           type="button"
-          onClick={() => setDateOpen((v) => !v)}
+          onClick={() => toggleMobileRail('date', dateOpen, setDateOpen)}
           className={toolbarBtnClass(dateOpen)}
           aria-label="날짜 목록"
           title="날짜 목록"
@@ -1533,7 +1575,7 @@ export default function ChatWithMyselfPane({
         </button>
         <button
           type="button"
-          onClick={() => setGroupOpen((v) => !v)}
+          onClick={() => toggleMobileRail('group', groupOpen, setGroupOpen)}
           className={toolbarBtnClass(groupOpen)}
           aria-label="그룹"
           title="그룹"
@@ -1543,7 +1585,7 @@ export default function ChatWithMyselfPane({
         </button>
         <button
           type="button"
-          onClick={() => setSearchOpen((v) => !v)}
+          onClick={() => toggleMobileRail('search', searchOpen, setSearchOpen)}
           className={toolbarBtnClass(searchOpen)}
           aria-label="검색"
           title="검색"
@@ -1553,7 +1595,7 @@ export default function ChatWithMyselfPane({
         </button>
         <button
           type="button"
-          onClick={() => setPinnedOpen((v) => !v)}
+          onClick={() => toggleMobileRail('pinned', pinnedOpen, setPinnedOpen)}
           className={toolbarBtnClass(pinnedOpen)}
           aria-label="모아보기"
           title="모아보기"
@@ -1770,6 +1812,7 @@ export default function ChatWithMyselfPane({
                 <ChatPinnedPanel
                   open
                   onClose={() => setPinnedOpen(false)}
+                  disableTabAutoClose={isMobileLayout}
                   {...pinnedPanelProps}
                 />
               </ChatMobileDrawer>
