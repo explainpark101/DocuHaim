@@ -1,0 +1,1 @@
+import{w as e}from"./index-CP8rS8OE.js";const t=[["path",{d:"M21 5H3",key:"1fi0y6"}],["path",{d:"M17 12H7",key:"16if0g"}],["path",{d:"M19 19H5",key:"vjpgq2"}]],n=e("text-align-center",t);export{t as __iconNode,n as default};
