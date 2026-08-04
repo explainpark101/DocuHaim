@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FilePlus2, History, Pencil, Reply, Trash2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
@@ -11,6 +11,8 @@ import {
 
 /** Ignore outside dismiss from the same finger that long-pressed to open. */
 const DISMISS_GUARD_MS = 450;
+/** Briefly block selection after open (long-press residual selection). */
+const SELECT_NONE_MS = 200;
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
@@ -36,12 +38,24 @@ export default function ChatMessageContextMenu({
   shiftHeldRef,
 }) {
   const dismissGuardUntilRef = useRef(0);
+  const [selectNone, setSelectNone] = useState(false);
+  const isOpen = Boolean(open && message);
 
   useEffect(() => {
-    if (open && message) {
+    if (isOpen) {
       dismissGuardUntilRef.current = Date.now() + DISMISS_GUARD_MS;
     }
-  }, [open, message]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectNone(false);
+      return undefined;
+    }
+    setSelectNone(true);
+    const t = window.setTimeout(() => setSelectNone(false), SELECT_NONE_MS);
+    return () => window.clearTimeout(t);
+  }, [isOpen]);
 
   if (!message && !open) return null;
 
@@ -55,9 +69,11 @@ export default function ChatMessageContextMenu({
     }
   };
 
+  const selectNoneClass = selectNone ? 'select-none' : '';
+
   return (
     <Dialog.Root
-      open={Boolean(open && message)}
+      open={isOpen}
       onOpenChange={(next) => {
         if (!next && Date.now() < dismissGuardUntilRef.current) return;
         onOpenChange?.(next);
@@ -66,7 +82,7 @@ export default function ChatMessageContextMenu({
       <Dialog.Portal>
         <Dialog.Overlay asChild>
           <motion.div
-            className={chatDialogOverlayClass}
+            className={`${chatDialogOverlayClass} ${selectNoneClass}`.trim()}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={OVERLAY_TRANSITION}
@@ -79,7 +95,7 @@ export default function ChatMessageContextMenu({
           onInteractOutside={guardOutside}
         >
           <motion.div
-            className={menuContentClass}
+            className={`${menuContentClass} ${selectNoneClass}`.trim()}
             initial={{ opacity: 0, scale: 0.95, x: '-50%', y: 'calc(-50% + 8px)' }}
             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
             transition={PANEL_TRANSITION}

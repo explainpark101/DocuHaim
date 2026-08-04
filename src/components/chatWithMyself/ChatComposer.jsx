@@ -891,13 +891,13 @@ export default function ChatComposer({
           )}
 
           <div
-            className={`flex items-end gap-2 ${showToolbar ? 'col-span-2' : ''}`}
+            className={`flex items-start gap-2 ${showToolbar ? 'col-span-2' : ''}`}
           >
             {!showToolbar ? (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-odp-borderSoft dark:hover:bg-odp-focusBg"
+                className="sticky top-0 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-odp-borderSoft dark:hover:bg-odp-focusBg"
                 title="파일 첨부"
                 aria-label="파일 첨부"
               >
@@ -932,7 +932,7 @@ export default function ChatComposer({
               type="button"
               onClick={doSend}
               disabled={!canSend}
-              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 ${
+              className={`sticky top-0 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 ${
                 editTarget
                   ? 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500'
                   : 'bg-blue-600 hover:bg-blue-700'
