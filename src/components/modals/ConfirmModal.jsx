@@ -12,6 +12,21 @@ function isDangerConfirm(variant, confirmLabel) {
   return /삭제|비우기/.test(label);
 }
 
+/**
+ * @param {object} props
+ * @param {boolean} props.isOpen
+ * @param {string} [props.title]
+ * @param {string} [props.message]
+ * @param {string} [props.confirmLabel]
+ * @param {string} [props.cancelLabel]
+ * @param {string} [props.discardLabel]
+ * @param {'default' | 'danger'} [props.variant]
+ * @param {() => void} [props.onConfirm]
+ * @param {() => void} [props.onCancel]
+ * @param {() => void} [props.onDiscard]
+ * @param {import('react').ReactNode} [props.children]
+ * @param {boolean} [props.confirmDisabled]
+ */
 export function ConfirmModal({
   isOpen,
   title,
@@ -19,11 +34,12 @@ export function ConfirmModal({
   confirmLabel = '확인',
   cancelLabel = '취소',
   discardLabel,
-  /** `'danger'` for destructive actions (delete / empty trash). */
   variant = 'default',
   onConfirm,
   onCancel,
   onDiscard,
+  children,
+  confirmDisabled = false,
 }) {
   const hasDiscard = discardLabel && typeof onDiscard === 'function';
   const danger = isDangerConfirm(variant, confirmLabel);
@@ -38,17 +54,17 @@ export function ConfirmModal({
         }
         return;
       }
-      if (event.key !== 'Enter' || typeof onConfirm !== 'function') return;
+      if (event.key !== 'Enter' || typeof onConfirm !== 'function' || confirmDisabled) return;
       if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
       const targetTag = event.target?.tagName?.toLowerCase?.() ?? '';
-      if (targetTag === 'textarea') return;
+      if (targetTag === 'textarea' || targetTag === 'input' || targetTag === 'select') return;
       if (event.target?.isContentEditable) return;
       event.preventDefault();
       onConfirm();
     };
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onCancel, onConfirm]);
+  }, [isOpen, onCancel, onConfirm, confirmDisabled]);
 
   return (
     <AnimatePresence>
@@ -72,7 +88,7 @@ export function ConfirmModal({
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={PANEL_TRANSITION}
           >
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto">
               {title && (
                 <h2
                   id="confirm-modal-title"
@@ -86,6 +102,7 @@ export function ConfirmModal({
                   {message}
                 </p>
               )}
+              {children ? <div className="mb-4">{children}</div> : null}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="secondary" size="md" onClick={onCancel}>
                   <IconBack size={16} />
@@ -101,6 +118,7 @@ export function ConfirmModal({
                   variant={danger ? 'danger' : 'primary'}
                   size="md"
                   onClick={onConfirm}
+                  disabled={confirmDisabled}
                 >
                   {danger ? <IconTrash size={16} /> : <IconCheck size={16} />}
                   {confirmLabel}

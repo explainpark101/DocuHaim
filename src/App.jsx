@@ -63,6 +63,8 @@ import { ExportPasswordModal } from '@/components/modals/ExportPasswordModal';
 import { ImportPasswordModal } from '@/components/modals/ImportPasswordModal';
 import { DeleteConfirmModal, normalizeDeleteTargets } from '@/components/modals/DeleteConfirmModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import EmptyTrashConfirmModal from '@/components/modals/EmptyTrashConfirmModal';
+import { executeEmptyTrash } from '@/utils/emptyTrashExecute';
 import Modal from '@/components/modals/Modal';
 import { useVisualViewportLock } from '@/hooks/useVisualViewportLock';
 import { MoveFileModal } from '@/components/modals/MoveFileModal';
@@ -123,6 +125,12 @@ import {
   loadTreeStickyFolderPathEnabled,
   saveTreeStickyFolderPathEnabled,
 } from '@/utils/treeStickySettings';
+import {
+  loadShowHiddenFolders,
+  loadShowTrashFolder,
+  saveShowHiddenFolders,
+  saveShowTrashFolder,
+} from '@/utils/treeVisibilitySettings';
 import {
   loadTreeHoverExpandSettings,
   saveTreeHoverExpandSettings,
@@ -225,11 +233,13 @@ function MainApp() {
   const editorContentRef = useRef('');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [emptyTrashTarget, setEmptyTrashTarget] = useState(null);
+  const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
   const [lastInputAt, setLastInputAt] = useState(null);
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState(null);
   const [lastAutoSyncAt, setLastAutoSyncAt] = useState(null);
-  const [showHiddenFolders, setShowHiddenFolders] = useState(false);
-  const [showTrashFolder, setShowTrashFolder] = useState(false);
+  const [showHiddenFolders, setShowHiddenFolders] = useState(() => loadShowHiddenFolders());
+  const [showTrashFolder, setShowTrashFolder] = useState(() => loadShowTrashFolder());
   const [editorType, setEditorType] = useState(() => loadEditorType());
   const [storageMode, setStorageMode] = useState(() => loadStorageMode());
   const [webdavConfig, setWebdavConfig] = useState(() => loadWebdavConfig());
@@ -618,6 +628,14 @@ function MainApp() {
   useEffect(() => {
     saveHideRecordingCompanions(hideRecordingCompanions);
   }, [hideRecordingCompanions]);
+
+  useEffect(() => {
+    saveShowTrashFolder(showTrashFolder);
+  }, [showTrashFolder]);
+
+  useEffect(() => {
+    saveShowHiddenFolders(showHiddenFolders);
+  }, [showHiddenFolders]);
 
   useEffect(() => {
     saveTreeStickyFolderPathEnabled(treeStickyFolderPathEnabled);
@@ -3879,9 +3897,8 @@ function MainApp() {
     const closeModal = () => setDeleteTarget(null);
     let closeTimer = null;
 
-    // Trash root is a no-op safety action (single target only).
+    // Trash root emptying uses EmptyTrashConfirmModal (context menu / dedicated flow).
     if (targets.length === 1 && targets[0].node.path === '.trash/') {
-      setOperationStatus('쓰레기통 비우기 요청: 실제 파일은 삭제되지 않습니다.');
       closeModal();
       return;
     }
@@ -4062,6 +4079,46 @@ function MainApp() {
         );
         setOperationStatus(`${successCount}개 삭제, ${failCount}개 실패`);
       }
+    }
+  };
+
+  const confirmEmptyTrash = async (options) => {
+    if (!emptyTrashTarget?.storageType || isEmptyingTrash) return;
+    const storageType = emptyTrashTarget.storageType;
+    setIsEmptyingTrash(true);
+    setOperationStatus('쓰레기통 비우는 중…');
+    try {
+      const { deletedCount } = await executeEmptyTrash({
+        storageType,
+        options,
+        getS3Client,
+        bucket: s3Creds.bucket,
+        localRootHandle,
+        webdavConfig,
+      });
+      if (storageType === 's3') await loadS3Files();
+      else if (storageType === 'local') await refreshLocalTree();
+      else if (storageType === 'webdav') await refreshWebdavTree();
+
+      if (
+        currentFile?.id &&
+        (currentFile.id === '.trash/' || currentFile.id.startsWith('.trash/'))
+      ) {
+        setCurrentFile(null);
+        setEditorContent('');
+      }
+
+      setEmptyTrashTarget(null);
+      setOperationStatus(
+        deletedCount > 0
+          ? `쓰레기통 정리 완료 (${deletedCount}개 삭제)`
+          : '쓰레기통 정리 완료 (삭제할 항목 없음)',
+      );
+    } catch (e) {
+      alert('쓰레기통 비우기 실패: ' + (e?.message || e));
+      setOperationStatus(`쓰레기통 비우기 실패: ${e?.message || e}`);
+    } finally {
+      setIsEmptyingTrash(false);
     }
   };
 
@@ -5027,6 +5084,9 @@ function MainApp() {
               dropTarget={dropTarget}
               onOpenLocalFolder={openLocalFolder}
               onSetDeleteTarget={setDeleteTarget}
+              onRequestEmptyTrash={(_node, storageType) => {
+                setEmptyTrashTarget({ storageType });
+              }}
               onOpenSettings={() => {
                 if (isMobile) setSidebarOpen(false);
                 navigate('/settings');
@@ -5681,6 +5741,17 @@ function MainApp() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         isProcessing={isDeleting}
+      />
+
+      <EmptyTrashConfirmModal
+        isOpen={Boolean(emptyTrashTarget)}
+        storageType={emptyTrashTarget?.storageType}
+        isProcessing={isEmptyingTrash}
+        onCancel={() => {
+          if (isEmptyingTrash) return;
+          setEmptyTrashTarget(null);
+        }}
+        onConfirm={confirmEmptyTrash}
       />
 
       {/* Move File Modal (editor current file or sidebar-selected file) */}

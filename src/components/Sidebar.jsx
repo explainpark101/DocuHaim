@@ -205,6 +205,7 @@ export default function Sidebar({
   onRequestMoveFolder,
   onOpenLocalFolder,
   onSetDeleteTarget,
+  onRequestEmptyTrash,
   onOpenSettings,
   theme,
   onToggleTheme,
@@ -367,12 +368,17 @@ export default function Sidebar({
 
   const requestDeleteNode = useCallback(
     (node, storageType) => {
-      if (!node || !onSetDeleteTarget) return;
+      if (!node) return;
+      if (node.path === '.trash/') {
+        onRequestEmptyTrash?.(node, storageType);
+        return;
+      }
+      if (!onSetDeleteTarget) return;
       const targets = resolveDeleteTargets(node, storageType, selectedIds, findTreeNode);
       if (!targets.length) return;
       onSetDeleteTarget(targets.length === 1 ? targets[0] : { targets });
     },
-    [findTreeNode, onSetDeleteTarget, selectedIds],
+    [findTreeNode, onRequestEmptyTrash, onSetDeleteTarget, selectedIds],
   );
 
   const handleDragStartNode = useCallback(() => {
@@ -867,6 +873,11 @@ export default function Sidebar({
           onDownload={onDownloadNode ? () => onDownloadNode(contextMenuStorageType, contextMenuNode) : undefined}
           onRename={() => setRenameTarget({ storageType: contextMenuStorageType, node: contextMenuNode })}
           onDelete={() => requestDeleteNode(contextMenuNode, contextMenuStorageType)}
+          onEmptyTrash={
+            onRequestEmptyTrash
+              ? () => onRequestEmptyTrash(contextMenuNode, contextMenuStorageType)
+              : undefined
+          }
           onDuplicate={onDuplicateNode ? () => onDuplicateNode(contextMenuStorageType, contextMenuNode) : undefined}
           onMove={() => {
             if (contextMenuNode.type === 'folder') {

@@ -14,6 +14,7 @@ const VIEWPORT_PADDING = 8;
  * 우클릭 시 표시되는 사이드바 컨텍스트 메뉴.
  * 폴더: 파일 추가, 폴더 추가, 다운로드, 이름 수정, 삭제, 복제, 이동
  * 파일: 새 창에서 열기, 다운로드, 이름 수정, 삭제, 복제, 이동
+ * 쓰레기통: 쓰레기통 비우기
  */
 export default function SidebarContextMenu({
   x,
@@ -27,6 +28,7 @@ export default function SidebarContextMenu({
   onDownload,
   onRename,
   onDelete,
+  onEmptyTrash,
   onDuplicate,
   onMove,
   onOpenInNewWindow,
@@ -166,6 +168,19 @@ export default function SidebarContextMenu({
         >
           <PencilIcon className={iconClass} />
           이름 수정
+        </button>
+      )}
+      {isTrashRoot && onEmptyTrash && (
+        <button
+          type="button"
+          className={`${itemClass} text-red-600 dark:text-red-400`}
+          onClick={() => {
+            onEmptyTrash(node, storageType);
+            onClose();
+          }}
+        >
+          <IconTrash className={iconClass} />
+          쓰레기통 비우기
         </button>
       )}
       {canEdit && onDelete && (

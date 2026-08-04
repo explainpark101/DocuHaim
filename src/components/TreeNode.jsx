@@ -538,7 +538,7 @@ export default function TreeNode({
             ? (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (!isTrashRoot && !isUnderDeletingFolder) {
+                if (!isUnderDeletingFolder) {
                   onOpenContextMenu(e, node);
                 }
               }
