@@ -18,7 +18,9 @@ import {
   buildRecordingBasePathSetFromTrees,
 } from '@/utils/s3Tree';
 import {
+  getParentFolderPath,
   resolveDragItems,
+  resolveDeleteTargets,
   parseDroppableId,
   toTreeSelectKey,
 } from '@/utils/treeMove';
@@ -69,12 +71,7 @@ import { ArrowRightToLine, ChevronsLeft, Loader2, MessageCircle, Search, X } fro
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 
 function getParentPathFromFilePath(filePath) {
-  if (!filePath || typeof filePath !== 'string') return '';
-  const normalized = filePath.replace(/\/+$/, '');
-  if (!normalized) return '';
-  const lastSlashIndex = normalized.lastIndexOf('/');
-  if (lastSlashIndex < 0) return '';
-  return normalized.slice(0, lastSlashIndex + 1);
+  return getParentFolderPath(filePath);
 }
 
 function isRenameableTreeNode(node) {
@@ -250,6 +247,56 @@ export default function Sidebar({
   const isDraggingRef = useRef(false);
   const activeDragItemsRef = useRef(null);
   const autoScrollIntervalRef = useRef(null);
+  const hoverExpandTimerRef = useRef(null);
+  const hoverExpandKeyRef = useRef(null);
+  const expandedPathsRef = useRef(expandedPaths);
+  const searchTermRef = useRef(searchTerm);
+  const handleExpandedChangeRef = useRef(null);
+
+  expandedPathsRef.current = expandedPaths;
+  searchTermRef.current = searchTerm;
+
+  const HOVER_EXPAND_MS = 3000;
+
+  const clearHoverExpandTimer = useCallback(() => {
+    if (hoverExpandTimerRef.current != null) {
+      clearTimeout(hoverExpandTimerRef.current);
+      hoverExpandTimerRef.current = null;
+    }
+    hoverExpandKeyRef.current = null;
+  }, []);
+
+  useEffect(() => () => clearHoverExpandTimer(), [clearHoverExpandTimer]);
+
+  const scheduleHoverExpandFolder = useCallback(
+    (storageType, folderPath) => {
+      if (!folderPath || folderPath === '.trash/') {
+        clearHoverExpandTimer();
+        return;
+      }
+      if (searchTermRef.current) {
+        clearHoverExpandTimer();
+        return;
+      }
+      const expandedSet = expandedSetForStorageType(expandedPathsRef.current, storageType);
+      if (expandedSet?.has(folderPath)) {
+        clearHoverExpandTimer();
+        return;
+      }
+
+      const key = `${storageType}:${folderPath}`;
+      if (hoverExpandKeyRef.current === key) return;
+
+      clearHoverExpandTimer();
+      hoverExpandKeyRef.current = key;
+      hoverExpandTimerRef.current = setTimeout(() => {
+        hoverExpandTimerRef.current = null;
+        hoverExpandKeyRef.current = null;
+        handleExpandedChangeRef.current?.(storageType, folderPath, true);
+      }, HOVER_EXPAND_MS);
+    },
+    [clearHoverExpandTimer],
+  );
   const EDGE_THRESHOLD = 48;
   const AUTO_SCROLL_SPEED = 12;
 
@@ -283,10 +330,40 @@ export default function Sidebar({
         };
       }
       const node = findTreeNode(storageType, path);
-      if (!node || node.type !== 'folder') return null;
-      return node;
+      if (!node) return null;
+      if (node.type === 'folder') return node;
+      if (node.type !== 'file') return null;
+
+      // Dropping on a file moves into its parent directory (as a sibling).
+      const parentPath = getParentFolderPath(node.path);
+      if (parentPath === '') {
+        return {
+          path: '',
+          type: 'folder',
+          name: 'root',
+          handle: storageType === 'local' ? localRootHandle : null,
+        };
+      }
+      const parent = findTreeNode(storageType, parentPath);
+      if (parent?.type === 'folder') return parent;
+      return {
+        path: parentPath,
+        type: 'folder',
+        name: parentPath.replace(/\/$/, '').split('/').pop() || 'folder',
+        handle: null,
+      };
     },
     [findTreeNode, localRootHandle],
+  );
+
+  const requestDeleteNode = useCallback(
+    (node, storageType) => {
+      if (!node || !onSetDeleteTarget) return;
+      const targets = resolveDeleteTargets(node, storageType, selectedIds, findTreeNode);
+      if (!targets.length) return;
+      onSetDeleteTarget(targets.length === 1 ? targets[0] : { targets });
+    },
+    [findTreeNode, onSetDeleteTarget, selectedIds],
   );
 
   const handleDragStartNode = useCallback(() => {
@@ -295,12 +372,13 @@ export default function Sidebar({
 
   const handleDragEndNode = useCallback(() => {
     isDraggingRef.current = false;
+    clearHoverExpandTimer();
     if (autoScrollIntervalRef.current) {
       clearInterval(autoScrollIntervalRef.current);
       autoScrollIntervalRef.current = null;
     }
     onDragEndNode?.();
-  }, [onDragEndNode]);
+  }, [clearHoverExpandTimer, onDragEndNode]);
 
   const handleDndDragStart = useCallback(
     (event) => {
@@ -317,16 +395,38 @@ export default function Sidebar({
     (event) => {
       const { over } = event;
       if (!over) {
+        clearHoverExpandTimer();
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
       }
       const parsed = parseDroppableId(String(over.id));
-      if (!parsed) return;
+      if (!parsed) {
+        clearHoverExpandTimer();
+        return;
+      }
+
+      // Expand only when hovering the folder row itself (not a file → parent resolve).
+      const overNode =
+        parsed.path === '' || parsed.path == null
+          ? null
+          : findTreeNode(parsed.storageType, parsed.path);
+      if (overNode?.type === 'folder') {
+        scheduleHoverExpandFolder(parsed.storageType, overNode.path);
+      } else {
+        clearHoverExpandTimer();
+      }
+
       const targetNode = resolveDropTargetNode(parsed.storageType, parsed.path);
       if (!targetNode) return;
       onDropOnFolder?.(targetNode, parsed.storageType, 'dragOver');
     },
-    [onDropOnFolder, resolveDropTargetNode],
+    [
+      clearHoverExpandTimer,
+      findTreeNode,
+      onDropOnFolder,
+      resolveDropTargetNode,
+      scheduleHoverExpandFolder,
+    ],
   );
 
   const handleDndDragEnd = useCallback(
@@ -335,6 +435,7 @@ export default function Sidebar({
       const items = activeDragItemsRef.current;
       activeDragItemsRef.current = null;
       setActiveDragItems(null);
+      clearHoverExpandTimer();
       handleDragEndNode();
 
       if (!over || !items?.length) {
@@ -356,15 +457,16 @@ export default function Sidebar({
 
       onDropOnFolder?.(targetNode, parsed.storageType, 'drop', { items });
     },
-    [handleDragEndNode, onDropOnFolder, resolveDropTargetNode],
+    [clearHoverExpandTimer, handleDragEndNode, onDropOnFolder, resolveDropTargetNode],
   );
 
   const handleDndDragCancel = useCallback(() => {
     activeDragItemsRef.current = null;
     setActiveDragItems(null);
+    clearHoverExpandTimer();
     handleDragEndNode();
     onDropOnFolder?.(null, null, 'dragLeave');
-  }, [handleDragEndNode, onDropOnFolder]);
+  }, [clearHoverExpandTimer, handleDragEndNode, onDropOnFolder]);
 
   const activeDragItemIds = useMemo(() => {
     if (!activeDragItems?.length) return null;
@@ -491,6 +593,8 @@ export default function Sidebar({
       }
     }
   }, [localTree, webdavTree, onLoadLocalFolderChildren, onLoadWebdavFolderChildren]);
+
+  handleExpandedChangeRef.current = handleExpandedChange;
 
   const expandPathsForNewItem = useCallback((storageType, paths) => {
     if (!paths?.length) return;
@@ -650,27 +754,72 @@ export default function Sidebar({
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key !== 'F2' || e.defaultPrevented) return;
+      if (e.defaultPrevented) return;
       if (isTypingElement(e.target)) return;
-      if (!lastActivatedNode) return;
 
-      const { storageType, node } = lastActivatedNode;
-      if (
-        (isS3Mode && storageType !== 's3') ||
-        (isLocalMode && storageType !== 'local') ||
-        (isWebdavMode && storageType !== 'webdav')
-      ) {
+      if (e.key === 'F2') {
+        if (!lastActivatedNode) return;
+
+        const { storageType, node } = lastActivatedNode;
+        if (
+          (isS3Mode && storageType !== 's3') ||
+          (isLocalMode && storageType !== 'local') ||
+          (isWebdavMode && storageType !== 'webdav')
+        ) {
+          return;
+        }
+        if (!isRenameableTreeNode(node)) return;
+
+        e.preventDefault();
+        setRenameTarget({ storageType, node });
         return;
       }
-      if (!isRenameableTreeNode(node)) return;
 
-      e.preventDefault();
-      setRenameTarget({ storageType, node });
+      if (e.key === 'Delete') {
+        if (!selectedIds?.size) return;
+        // Prefer last activated node if it is in the selection; else first selected.
+        let storageType = null;
+        let node = null;
+        if (lastActivatedNode) {
+          const key = toTreeSelectKey(lastActivatedNode.storageType, lastActivatedNode.node.path);
+          if (selectedIds.has(key)) {
+            storageType = lastActivatedNode.storageType;
+            node = lastActivatedNode.node;
+          }
+        }
+        if (!node) {
+          const firstKey = selectedIds.values().next().value;
+          if (!firstKey) return;
+          const colonIdx = String(firstKey).indexOf(':');
+          storageType = colonIdx >= 0 ? firstKey.slice(0, colonIdx) : 's3';
+          const path = colonIdx >= 0 ? firstKey.slice(colonIdx + 1) : firstKey;
+          node = findTreeNode(storageType, path);
+        }
+        if (!node || !storageType) return;
+        if (
+          (isS3Mode && storageType !== 's3') ||
+          (isLocalMode && storageType !== 'local') ||
+          (isWebdavMode && storageType !== 'webdav')
+        ) {
+          return;
+        }
+        if (node.path === '.trash/') return;
+        e.preventDefault();
+        requestDeleteNode(node, storageType);
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isWebdavMode, isS3Mode, isLocalMode, lastActivatedNode]);
+  }, [
+    findTreeNode,
+    isWebdavMode,
+    isS3Mode,
+    isLocalMode,
+    lastActivatedNode,
+    requestDeleteNode,
+    selectedIds,
+  ]);
 
   return (
     <div className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col">
@@ -681,6 +830,17 @@ export default function Sidebar({
           node={contextMenuNode}
           storageType={contextMenuStorageType}
           isTrashRoot={contextMenuNode.path === '.trash/'}
+          deleteCount={
+            (() => {
+              const targets = resolveDeleteTargets(
+                contextMenuNode,
+                contextMenuStorageType,
+                selectedIds,
+                findTreeNode,
+              );
+              return Math.max(1, targets.length);
+            })()
+          }
           onClose={() => setContextMenu(null)}
           onCreateFile={
             contextMenuNode.type === 'folder'
@@ -694,7 +854,7 @@ export default function Sidebar({
           }
           onDownload={onDownloadNode ? () => onDownloadNode(contextMenuStorageType, contextMenuNode) : undefined}
           onRename={() => setRenameTarget({ storageType: contextMenuStorageType, node: contextMenuNode })}
-          onDelete={() => onSetDeleteTarget({ node: contextMenuNode, type: contextMenuStorageType })}
+          onDelete={() => requestDeleteNode(contextMenuNode, contextMenuStorageType)}
           onDuplicate={onDuplicateNode ? () => onDuplicateNode(contextMenuStorageType, contextMenuNode) : undefined}
           onMove={() => {
             if (contextMenuNode.type === 'folder') {
@@ -945,7 +1105,7 @@ export default function Sidebar({
                     onCreateFile={(p) => onCreateItem('s3', p, null, 'file')}
                     onCreateFolder={(p) => onCreateItem('s3', p, null, 'folder')}
                     onRequestMoveFolder={onRequestMoveFolder}
-                    onDelete={(n, t) => onSetDeleteTarget({ node: n, type: t })}
+                    onDelete={(n, t) => requestDeleteNode(n, t)}
                     onRename={onRenameItem}
                     deletingFolderPath={deletingFolderPath}
                     isDeletingFolder={isDeletingFolder}
@@ -1121,7 +1281,7 @@ export default function Sidebar({
                     onCreateFile={(p, h) => onCreateItem('local', p, h, 'file')}
                     onCreateFolder={(p, h) => onCreateItem('local', p, h, 'folder')}
                     onRequestMoveFolder={onRequestMoveFolder}
-                    onDelete={(n, t) => onSetDeleteTarget({ node: n, type: t })}
+                    onDelete={(n, t) => requestDeleteNode(n, t)}
                     onRename={onRenameItem}
                     deletingFolderPath={deletingFolderPath}
                     isDeletingFolder={isDeletingFolder}
@@ -1280,7 +1440,7 @@ export default function Sidebar({
                     onCreateFile={(p) => onCreateItem('webdav', p, null, 'file')}
                     onCreateFolder={(p) => onCreateItem('webdav', p, null, 'folder')}
                     onRequestMoveFolder={onRequestMoveFolder}
-                    onDelete={(n, t) => onSetDeleteTarget({ node: n, type: t })}
+                    onDelete={(n, t) => requestDeleteNode(n, t)}
                     onRename={onRenameItem}
                     deletingFolderPath={deletingFolderPath}
                     isDeletingFolder={isDeletingFolder}

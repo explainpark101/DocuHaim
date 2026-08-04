@@ -17,7 +17,7 @@ import {
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine } from 'lucide-react';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
-import { toDraggableId, toDroppableId } from '@/utils/treeMove';
+import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -113,9 +113,23 @@ export default function TreeNode({
     node.type === 'folder' && isFolderLoading && isFolderLoading === node.path;
 
   const canDrag = !disableDrag && !isTrashRoot && !isUnderDeletingFolder;
-  const isRootLevel = level === 0;
+  // Dropping on a file targets its parent folder (sibling placement).
+  const parentFolderPath =
+    node.type === 'file' ? getParentFolderPath(node.path) : null;
   const effectiveDropTarget =
-    isRootLevel && rootDropNode && node.type === 'file' ? rootDropNode : node;
+    node.type === 'file'
+      ? parentFolderPath === '' && rootDropNode
+        ? rootDropNode
+        : {
+            path: parentFolderPath ?? '',
+            type: 'folder',
+            name:
+              parentFolderPath === ''
+                ? 'root'
+                : (parentFolderPath || '').replace(/\/$/, '').split('/').pop() || 'folder',
+            handle: null,
+          }
+      : node;
   const isDropTarget =
     dropTarget?.storageType === storageType &&
     dropTarget?.folderPath === effectiveDropTarget.path;
@@ -124,10 +138,8 @@ export default function TreeNode({
     dropTarget?.folderPath &&
     node.path.startsWith(dropTarget.folderPath);
   const showDropHighlight = !isTrashRoot && (isDropTarget || isUnderDropTarget);
-  const canAcceptOsDrop =
-    (node.type === 'folder' || (node.type === 'file' && isRootLevel && rootDropNode)) &&
-    !isTrashRoot;
-  const canAcceptInternalDrop = node.type === 'folder' && !isTrashRoot;
+  const canAcceptOsDrop = !isTrashRoot;
+  const canAcceptInternalDrop = !isTrashRoot;
 
   const dragId = toDraggableId(storageType, node.path);
   const dropId = toDroppableId(storageType, node.path);
@@ -153,8 +165,8 @@ export default function TreeNode({
     data: {
       storageType,
       path: node.path,
-      nodeType: 'folder',
-      handle: node.handle ?? null,
+      nodeType: node.type,
+      handle: node.type === 'folder' ? (node.handle ?? null) : null,
     },
     disabled: !canAcceptInternalDrop,
   });

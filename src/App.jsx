@@ -61,7 +61,7 @@ import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
 import { SaveMethodModal } from '@/components/modals/SaveMethodModal';
 import { ExportPasswordModal } from '@/components/modals/ExportPasswordModal';
 import { ImportPasswordModal } from '@/components/modals/ImportPasswordModal';
-import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { DeleteConfirmModal, normalizeDeleteTargets } from '@/components/modals/DeleteConfirmModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import Modal from '@/components/modals/Modal';
 import { useVisualViewportLock } from '@/hooks/useVisualViewportLock';
@@ -3811,128 +3811,166 @@ function MainApp() {
   };
 
   const associatedRecordings = (() => {
-    if (
-      !deleteTarget ||
-      !['s3', 'local', 'webdav'].includes(deleteTarget.type) ||
-      deleteTarget.node.type !== 'file'
-    ) {
-      return [];
+    const targets = normalizeDeleteTargets(deleteTarget);
+    if (!targets.length) return [];
+    const seen = new Set();
+    const recordings = [];
+    for (const t of targets) {
+      if (!['s3', 'local', 'webdav'].includes(t.type) || t.node.type !== 'file') continue;
+      const tree =
+        t.type === 's3' ? s3Tree : t.type === 'webdav' ? webdavTree : localTree;
+      for (const r of getRecordingKeysFromTree(tree, t.node.path)) {
+        if (seen.has(r.key)) continue;
+        seen.add(r.key);
+        recordings.push(r);
+      }
     }
-    const tree =
-      deleteTarget.type === 's3'
-        ? s3Tree
-        : deleteTarget.type === 'webdav'
-          ? webdavTree
-          : localTree;
-    return getRecordingKeysFromTree(tree, deleteTarget.node.path);
+    return recordings;
   })();
 
   const confirmDelete = async (options = {}) => {
-    if (!deleteTarget) return;
-    const { node, type } = deleteTarget;
+    const targets = normalizeDeleteTargets(deleteTarget);
+    if (!targets.length) return;
     const { deleteWithRecordings = false } = options;
-    const isInTrash = node.path.startsWith('.trash/');
-    const isFolder = node.type === 'folder';
-    const isTrashRoot = node.path === '.trash/';
 
     const closeModal = () => setDeleteTarget(null);
     let closeTimer = null;
 
-    const recordingKeysToMove = deleteWithRecordings
-      ? associatedRecordings.flatMap((r) => {
-          const syncKey = getSyncKeyForRecording(r.key);
-          return syncKey ? [r.key, syncKey] : [r.key];
-        })
-      : [];
-
-    // 쓰레기통 루트는 실제 삭제 수행하지 않음
-    if (isTrashRoot) {
+    // Trash root is a no-op safety action (single target only).
+    if (targets.length === 1 && targets[0].node.path === '.trash/') {
       setOperationStatus('쓰레기통 비우기 요청: 실제 파일은 삭제되지 않습니다.');
       closeModal();
       return;
     }
 
-    if (isFolder && isDeletingFolder) return;
+    const workTargets = targets.filter((t) => t.node.path !== '.trash/');
+    if (!workTargets.length) return;
+
+    if (workTargets.some((t) => t.node.type === 'folder') && isDeletingFolder) return;
 
     setIsDeleting(true);
-    if (isFolder) {
-      setIsDeletingFolder(true);
-      setDeletingFolderPath(node.path);
-      setOperationStatus(`폴더 삭제 중: ${node.path}`);
-    } else {
-      setOperationStatus(isInTrash ? `영구 삭제 중: ${node.path}` : `삭제 중: ${node.path}`);
+    const multi = workTargets.length > 1;
+    if (multi) {
+      setOperationStatus(`${workTargets.length}개 항목 삭제 중…`);
     }
 
     closeTimer = setTimeout(closeModal, 3000);
 
-    let deleteSucceeded = false;
+    let successCount = 0;
+    let failCount = 0;
+    let lastError = null;
+    let anyFolder = false;
+    const isChatRoute =
+      location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    let openFileAffected = false;
+    /** @type {Array<{ path?: string, type?: string, name?: string }>} */
+    const deletedNodesForChat = [];
+
+    const treeFor = (type) =>
+      type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
+
+    const recordingKeysForNode = (node, type) => {
+      if (!deleteWithRecordings || node.type !== 'file') return [];
+      return getRecordingKeysFromTree(treeFor(type), node.path).flatMap((r) => {
+        const syncKey = getSyncKeyForRecording(r.key);
+        return syncKey ? [r.key, syncKey] : [r.key];
+      });
+    };
+
     try {
-      if (type === 's3') {
-        const client = getS3Client();
-        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+      const storagesTouched = new Set();
 
-        if (isInTrash) {
-          if (node.type === 'folder') {
-            const contents = await listObjectsV2(client, s3Creds.bucket, node.path);
-            if (contents.length > 0) {
-              await deleteObjects(client, s3Creds.bucket, contents.map(({ Key }) => ({ Key })));
-            }
-          } else {
-            const keysToDelete =
-              deleteWithRecordings && recordingKeysToMove.length > 0
-                ? [node.path, ...recordingKeysToMove]
-                : [node.path];
-            await deleteObjects(client, s3Creds.bucket, keysToDelete.map((Key) => ({ Key })));
-          }
-        } else {
-          await moveS3EntryToTrash(node, recordingKeysToMove);
-        }
-        loadS3Files();
-      } else if (type === 'local') {
-        if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+      for (const { node, type } of workTargets) {
+        const isInTrash = node.path.startsWith('.trash/');
+        const isFolder = node.type === 'folder';
+        const recordingKeysToMove = recordingKeysForNode(node, type);
 
-        if (isInTrash) {
-          const pHandle = node.parentHandle || localRootHandle;
-          await pHandle.removeEntry(node.name, { recursive: true });
-        } else {
-          await moveLocalEntryToTrash(node);
+        if (isFolder) {
+          anyFolder = true;
+          setIsDeletingFolder(true);
+          setDeletingFolderPath(node.path);
+          if (!multi) setOperationStatus(`폴더 삭제 중: ${node.path}`);
+        } else if (!multi) {
+          setOperationStatus(isInTrash ? `영구 삭제 중: ${node.path}` : `삭제 중: ${node.path}`);
         }
-        await refreshLocalTree();
-      } else if (type === 'webdav') {
-        const backend = createWebdavBackend(webdavConfig);
-        if (isInTrash) {
-          if (node.type === 'folder') {
-            await backend.deletePrefix(node.path);
-          } else {
-            const keysToDelete =
-              deleteWithRecordings && recordingKeysToMove.length > 0
-                ? [node.path, ...recordingKeysToMove]
-                : [node.path];
-            for (const key of keysToDelete) {
-              try {
-                await backend.delete(key);
-              } catch (e) {
-                if (e?.$metadata?.httpStatusCode !== 404) throw e;
+
+        try {
+          if (type === 's3') {
+            const client = getS3Client();
+            if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+
+            if (isInTrash) {
+              if (node.type === 'folder') {
+                const contents = await listObjectsV2(client, s3Creds.bucket, node.path);
+                if (contents.length > 0) {
+                  await deleteObjects(client, s3Creds.bucket, contents.map(({ Key }) => ({ Key })));
+                }
+              } else {
+                const keysToDelete =
+                  recordingKeysToMove.length > 0
+                    ? [node.path, ...recordingKeysToMove]
+                    : [node.path];
+                await deleteObjects(client, s3Creds.bucket, keysToDelete.map((Key) => ({ Key })));
               }
+            } else {
+              await moveS3EntryToTrash(node, recordingKeysToMove);
             }
+            storagesTouched.add('s3');
+          } else if (type === 'local') {
+            if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+
+            if (isInTrash) {
+              const pHandle = node.parentHandle || localRootHandle;
+              await pHandle.removeEntry(node.name, { recursive: true });
+            } else {
+              await moveLocalEntryToTrash(node);
+            }
+            storagesTouched.add('local');
+          } else if (type === 'webdav') {
+            const backend = createWebdavBackend(webdavConfig);
+            if (isInTrash) {
+              if (node.type === 'folder') {
+                await backend.deletePrefix(node.path);
+              } else {
+                const keysToDelete =
+                  recordingKeysToMove.length > 0
+                    ? [node.path, ...recordingKeysToMove]
+                    : [node.path];
+                for (const key of keysToDelete) {
+                  try {
+                    await backend.delete(key);
+                  } catch (e) {
+                    if (e?.$metadata?.httpStatusCode !== 404) throw e;
+                  }
+                }
+              }
+            } else {
+              await backend.trash(node.path, { additionalKeys: recordingKeysToMove });
+            }
+            storagesTouched.add('webdav');
           }
-        } else {
-          await backend.trash(node.path, { additionalKeys: recordingKeysToMove });
+
+          successCount += 1;
+          deletedNodesForChat.push(node);
+
+          if (
+            currentFile?.id &&
+            (node.type === 'folder'
+              ? currentFile.id === node.path || currentFile.id.startsWith(node.path)
+              : currentFile.id === node.path)
+          ) {
+            openFileAffected = true;
+          }
+        } catch (e) {
+          failCount += 1;
+          lastError = e;
         }
-        await refreshWebdavTree();
       }
 
-      // Only close the editor / leave /view when the deleted item is the open file,
-      // and never yank the user off /chat.
-      const isChatRoute =
-        location.pathname === '/chat' || location.pathname.endsWith('/chat');
-      const openFileAffected = Boolean(
-        currentFile?.id &&
-          (node.type === 'folder'
-            ? currentFile.id === node.path ||
-              currentFile.id.startsWith(node.path)
-            : currentFile.id === node.path),
-      );
+      if (storagesTouched.has('s3')) loadS3Files();
+      if (storagesTouched.has('local')) await refreshLocalTree();
+      if (storagesTouched.has('webdav')) await refreshWebdavTree();
+
       if (openFileAffected) {
         setCurrentFile(null);
         setEditorContent('');
@@ -3940,37 +3978,46 @@ function MainApp() {
           navigate('/');
         }
       }
-      deleteSucceeded = true;
 
-      // Clear chat ↔ note links for deleted / trashed notes.
-      if (chatStorageReady && chatStorageCtx) {
+      if (chatStorageReady && chatStorageCtx && deletedNodesForChat.length) {
         try {
-          const scope = deletedNoteScopeFromNode(node);
-          const { dateStrs } = await unlinkChatNotesForDeletedPaths(
-            chatStorageCtx,
-            scope,
-          );
-          for (const dateStr of dateStrs) {
-            postChatSyncEvent('day', { dateStr });
-            postChatLocalSyncEvent('day', { dateStr });
+          for (const node of deletedNodesForChat) {
+            const scope = deletedNoteScopeFromNode(node);
+            const { dateStrs } = await unlinkChatNotesForDeletedPaths(chatStorageCtx, scope);
+            for (const dateStr of dateStrs) {
+              postChatSyncEvent('day', { dateStr });
+              postChatLocalSyncEvent('day', { dateStr });
+            }
           }
         } catch (unlinkErr) {
           console.warn('Failed to unlink chat note refs after delete:', unlinkErr);
         }
       }
-    } catch (e) {
-      alert("삭제 실패: " + e.message);
-      setOperationStatus(`삭제 실패: ${e.message}`);
+
+      if (successCount > 0) {
+        setSelectedIds(new Set());
+      }
     } finally {
       if (closeTimer) clearTimeout(closeTimer);
       closeModal();
       setIsDeleting(false);
-      if (isFolder) {
+      if (anyFolder) {
         setIsDeletingFolder(false);
         setDeletingFolderPath(null);
       }
-      if (deleteSucceeded) {
-        setOperationStatus(isFolder ? `폴더 삭제 완료: ${node.path}` : `삭제 완료: ${node.path}`);
+      if (failCount === 0 && successCount > 0) {
+        setOperationStatus(
+          multi ? `${successCount}개 항목 삭제 완료` : `삭제 완료: ${workTargets[0].node.path}`,
+        );
+      } else if (successCount === 0 && lastError) {
+        alert('삭제 실패: ' + lastError.message);
+        setOperationStatus(`삭제 실패: ${lastError.message}`);
+      } else if (failCount > 0) {
+        alert(
+          `${successCount}개 삭제 완료, ${failCount}개 실패` +
+            (lastError ? `: ${lastError.message}` : ''),
+        );
+        setOperationStatus(`${successCount}개 삭제, ${failCount}개 실패`);
       }
     }
   };
@@ -4275,7 +4322,17 @@ function MainApp() {
     setDropTarget(null);
 
     const destPath = targetNode.path || '';
-    const destHandle = targetStorageType === 'local' ? (targetNode.handle || localRootHandle) : null;
+    let destHandle = null;
+    if (targetStorageType === 'local') {
+      destHandle = targetNode.handle || null;
+      if (!destHandle) {
+        if (!destPath) {
+          destHandle = localRootHandle;
+        } else {
+          destHandle = findNodeByPath(localTree, destPath)?.handle || localRootHandle;
+        }
+      }
+    }
 
     const rawItems = Array.isArray(payload?.items) && payload.items.length
       ? payload.items

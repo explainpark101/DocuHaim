@@ -30,6 +30,7 @@ export default function SidebarContextMenu({
   onDuplicate,
   onMove,
   onOpenInNewWindow,
+  deleteCount = 1,
 }) {
   const menuRef = useRef(null);
   const [position, setPosition] = useState({ left: x, top: y });
@@ -177,7 +178,7 @@ export default function SidebarContextMenu({
           }}
         >
           <IconTrash className={iconClass} />
-          삭제
+          {deleteCount > 1 ? `${deleteCount}개 삭제` : '삭제'}
         </button>
       )}
       {canEdit && onDuplicate && (
