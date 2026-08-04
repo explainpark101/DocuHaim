@@ -234,7 +234,7 @@ button {
   overflow-x: hidden !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
-  padding: 8px 10px !important;
+  padding: 4px 8px !important;
   scrollbar-width: thin !important;
 }
 .chat-composer-editor .cm-scroller::-webkit-scrollbar {

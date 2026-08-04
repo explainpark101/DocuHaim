@@ -1473,9 +1473,9 @@ export default function ChatWithMyselfPane({
                   : undefined
               }
             />
-            <div className="w-full max-h-[min(45%,280px)] shrink-0 overflow-y-auto border-t-2 border-gray-300 bg-slate-100 pb-7 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] md:pb-8">
-              <div className="mx-auto w-full max-w-full p-2 md:max-w-[min(100%,50vw)] md:p-3">
-                <div className="rounded-xl border border-gray-300 bg-white p-2 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:p-3">
+            <div className="w-full max-h-[min(45%,280px)] shrink-0 overflow-y-auto border-t-2 border-gray-300 bg-slate-100 pb-1.5 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] md:pb-2">
+              <div className="mx-auto w-full max-w-full px-2 py-1 md:max-w-[min(100%,50vw)] md:px-3 md:py-1.5">
+                <div className="rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5">
                   <ChatComposer
                     bare
                     groups={groups}

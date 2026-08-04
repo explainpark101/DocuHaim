@@ -689,13 +689,13 @@ export default function ChatComposer({
     <div
       className={
         bare
-          ? `shrink-0 ${editTarget ? 'pb-7 md:pb-8' : ''}`
-          : `shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft ${editTarget ? 'pb-7 md:pb-8' : ''}`
+          ? `shrink-0 ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
+          : `shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
       }
     >
-      <div className={bare ? '' : 'p-2 md:p-3'}>
+      <div className={bare ? '' : 'px-2 py-1 md:px-3 md:py-1.5'}>
         {editTarget ? (
-          <div className="mb-2 flex items-start gap-2 rounded-md border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 px-2 py-1.5 dark:border-amber-800/60 dark:border-l-amber-400 dark:bg-amber-950/40">
+          <div className="mb-1 flex items-start gap-2 rounded-md border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 px-2 py-1 dark:border-amber-800/60 dark:border-l-amber-400 dark:bg-amber-950/40">
             <Pencil size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
             <div className="min-w-0 flex-1">
               <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">
@@ -721,7 +721,7 @@ export default function ChatComposer({
           </div>
         ) : null}
         {replyTo && !editTarget ? (
-          <div className="mb-2 min-w-0 max-w-full overflow-hidden rounded-md border border-blue-200 border-l-4 border-l-blue-500 bg-blue-100 px-2 py-1.5 shadow-sm dark:border-blue-800/60 dark:border-l-blue-400 dark:bg-blue-950 dark:shadow-none">
+          <div className="mb-1 min-w-0 max-w-full overflow-hidden rounded-md border border-blue-200 border-l-4 border-l-blue-500 bg-blue-100 px-2 py-1 shadow-sm dark:border-blue-800/60 dark:border-l-blue-400 dark:bg-blue-950 dark:shadow-none">
             <div className="flex min-w-0 items-start gap-2">
               <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="truncate text-[11px] font-semibold text-blue-700 dark:text-blue-300">
@@ -762,7 +762,7 @@ export default function ChatComposer({
         />
 
         {imageQueue.length > 0 ? (
-          <div className="mb-2 flex flex-wrap gap-2">
+          <div className="mb-1 flex flex-wrap gap-2">
             {imageQueue.map((item) =>
               item.kind === 'file' ? (
                 <div
@@ -840,7 +840,7 @@ export default function ChatComposer({
 
         <div
           className={
-            showToolbar ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-2' : 'flex flex-col gap-2'
+            showToolbar ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-1.5' : 'flex flex-col gap-1.5'
           }
           onDragOver={(e) => {
             if ([...e.dataTransfer.types].includes('Files')) {
@@ -947,7 +947,7 @@ export default function ChatComposer({
           </div>
         </div>
         {!isMobile ? (
-          <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+          <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
             {editTarget
               ? editingMultilineHint
                 ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`
