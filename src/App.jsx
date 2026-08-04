@@ -101,6 +101,7 @@ import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import { clearGeminiApiKeySession } from '@/utils/geminiApiKeySession';
 import { tryRestoreAuthSession } from '@/utils/authSession';
 import { applyDocumentTheme } from '@/utils/documentTheme';
+import { checkServiceWorkerUpdate } from '@/utils/pwaUpdate';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
@@ -345,6 +346,9 @@ function MainApp() {
   const [swRegistration, setSwRegistration] = useState(null);
   const [isApplyingPwaUpdate, setIsApplyingPwaUpdate] = useState(false);
   const [hidePwaUpdateToast, setHidePwaUpdateToast] = useState(false);
+  const [isCheckingAppUpdate, setIsCheckingAppUpdate] = useState(false);
+  const [showAppUpdateConfirmModal, setShowAppUpdateConfirmModal] = useState(false);
+  const [appUpdateAvailable, setAppUpdateAvailable] = useState(false);
   const appName = getAppNameByStorageMode(storageMode || DEFAULT_STORAGE_MODE);
   const {
     needRefresh: [needRefresh],
@@ -475,6 +479,12 @@ function MainApp() {
     }
   }, [needRefresh]);
 
+  useEffect(() => {
+    if (showAppUpdateConfirmModal && needRefresh) {
+      setAppUpdateAvailable(true);
+    }
+  }, [needRefresh, showAppUpdateConfirmModal]);
+
   const handleApplyPwaUpdate = useCallback(async () => {
     try {
       setIsApplyingPwaUpdate(true);
@@ -484,6 +494,37 @@ function MainApp() {
       setIsApplyingPwaUpdate(false);
     }
   }, [updateServiceWorker]);
+
+  const handleCheckAppUpdate = useCallback(async () => {
+    setIsCheckingAppUpdate(true);
+    try {
+      const found = await checkServiceWorkerUpdate(swRegistration);
+      setAppUpdateAvailable(Boolean(found || needRefresh || swRegistration?.waiting));
+    } catch (error) {
+      console.warn('App update check failed:', error);
+      setAppUpdateAvailable(Boolean(needRefresh || swRegistration?.waiting));
+    } finally {
+      setIsCheckingAppUpdate(false);
+      setShowAppUpdateConfirmModal(true);
+    }
+  }, [needRefresh, swRegistration]);
+
+  const handleConfirmAppUpdate = useCallback(async () => {
+    setShowAppUpdateConfirmModal(false);
+    setHidePwaUpdateToast(true);
+    try {
+      setIsApplyingPwaUpdate(true);
+      if (needRefresh || appUpdateAvailable || swRegistration?.waiting) {
+        await updateServiceWorker(true);
+        return;
+      }
+      window.location.reload();
+    } catch (error) {
+      console.error('App update apply failed:', error);
+      setIsApplyingPwaUpdate(false);
+      window.location.reload();
+    }
+  }, [appUpdateAvailable, needRefresh, swRegistration, updateServiceWorker]);
 
   useEffect(() => {
     try {
@@ -4126,6 +4167,8 @@ function MainApp() {
                   sidebarCollapsed={sidebarCollapsed}
                   onOpenSidebar={() => setSidebarOpen(true)}
                   getGeminiApiKey={getGeminiApiKey}
+                  onCheckAppUpdate={handleCheckAppUpdate}
+                  isCheckingAppUpdate={isCheckingAppUpdate}
                 />
               }
             />
@@ -4417,6 +4460,26 @@ function MainApp() {
           void handleConfirmRestoreLocalFolder();
         }}
         onCancel={() => setShowRestoreLocalFolderModal(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showAppUpdateConfirmModal}
+        title="앱 업데이트"
+        message={
+          appUpdateAvailable
+            ? '새 버전이 준비되었습니다. 저장 중인 작업을 확인한 뒤 최신 버전으로 업데이트하세요.'
+            : '새 업데이트를 찾지 못했습니다. 그래도 앱을 다시 로드해 최신 상태를 적용할 수 있습니다.'
+        }
+        confirmLabel={isApplyingPwaUpdate ? '업데이트 중...' : '최신 버전으로 업데이트'}
+        cancelLabel="취소"
+        onConfirm={() => {
+          if (isApplyingPwaUpdate) return;
+          void handleConfirmAppUpdate();
+        }}
+        onCancel={() => {
+          if (isApplyingPwaUpdate) return;
+          setShowAppUpdateConfirmModal(false);
+        }}
       />
 
       <ConfirmModal

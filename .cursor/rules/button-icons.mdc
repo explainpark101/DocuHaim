@@ -1,0 +1,46 @@
+---
+description: Every button must include a Lucide/project icon
+globs: src/**/*.{jsx,js,tsx,ts}
+alwaysApply: false
+---
+
+# Button icons
+
+Every interactive button (`Button`, native `<button>`, and button-like controls that act as actions) **must include an icon**. Do not ship text-only or empty action buttons.
+
+## Prefer project wrappers
+
+- Prefer `@/components/Button` over raw `<button>` for app actions.
+- Prefer icons from `@/components/icons` (`IconSave`, `IconTrash`, …). If missing, add a wrapper there or use `lucide-react` consistently with existing size defaults (usually 14–16).
+
+## Layout
+
+- Place the icon **before** the label (LTR). `Button` already uses `gap-2` — do not add extra spacer hacks.
+- Icon-only buttons are allowed when space is tight; always set `aria-label` (and usually `title`).
+- Label-only buttons are **not** allowed.
+
+```jsx
+// ❌ BAD — text only
+<Button variant="secondary" onClick={onSave}>저장</Button>
+<button type="button" onClick={onCancel}>취소</button>
+
+// ✅ GOOD — icon + label
+<Button variant="secondary" onClick={onSave}>
+  <IconSave size={14} />
+  저장
+</Button>
+
+// ✅ GOOD — icon only with accessible name
+<Button variant="tertiary" onClick={onClose} aria-label="닫기" title="닫기">
+  <IconX size={14} />
+</Button>
+```
+
+## Built-in exceptions
+
+- `ConfirmModal` / `DeleteConfirmModal` already inject cancel/confirm icons — do not pass duplicate icons for those built-in actions (see `confirm-modal` rule).
+- Non-button controls (links styled as text, checkbox/switch/radio, menu item chevrons that are not the action affordance) are out of scope unless they are implemented as `<button>` / `Button` action triggers.
+
+## When editing UI
+
+If you touch a button that is still text-only, add an appropriate icon in the same change.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { IconDownload, IconMenu, IconSettings, IconUpload } from '@/components/icons';
+import { IconDownload, IconMenu, IconRefresh, IconSettings, IconUpload } from '@/components/icons';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import { X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
@@ -61,6 +61,8 @@ export default function SettingsPage({
   sidebarCollapsed = false,
   onOpenSidebar,
   getGeminiApiKey,
+  onCheckAppUpdate,
+  isCheckingAppUpdate = false,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [googleAiKeyInput, setGoogleAiKeyInput] = useState('');
@@ -725,6 +727,23 @@ export default function SettingsPage({
           isSaving={isSavingSnippets}
           isLoaded={snippetConfigLoaded}
         />
+
+        {/* App update */}
+        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">앱 업데이트</h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+            서비스 워커(PWA)와 캐시를 포함해 최신 버전이 있는지 확인하고, 바로 적용할 수 있습니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => onCheckAppUpdate?.()}
+            disabled={isCheckingAppUpdate || typeof onCheckAppUpdate !== 'function'}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <IconRefresh size={16} />
+            {isCheckingAppUpdate ? '최신 버전 확인 중...' : '최신 버전 확인 및 즉시 업데이트'}
+          </button>
+        </div>
       </div>
     </div>
   );
