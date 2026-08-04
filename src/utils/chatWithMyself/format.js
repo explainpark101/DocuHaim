@@ -339,18 +339,64 @@ export function parseChatWithMyselfNoteMeta(markdown) {
 }
 
 /**
- * Markdown body for a note created from a chat message.
- * Source metadata lives in an HTML comment; UI renders a card from it.
+ * React Router location for a chat message deep-link.
+ * Path is basename-relative (`/chat`); Router applies Vite `BASE_URL`.
+ * @param {{ id?: string, href?: string } | null | undefined} meta
  */
-export function formatChatMessageAsNoteMarkdown(msg, _timeZone, notePath = '') {
+export function chatSavedNoteLinkTo(meta) {
+  const raw = String(meta?.href || chatMessageUrl(meta?.id) || '/chat');
+  try {
+    const url = new URL(raw, 'https://s3haim.local');
+    const path = url.pathname || '/chat';
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '';
+    const pathname =
+      base && path.startsWith(`${base}/`)
+        ? path.slice(base.length) || '/chat'
+        : path.startsWith('/')
+          ? path
+          : `/${path}`;
+    const hash = (url.hash || '').replace(/^#/, '');
+    return hash ? { pathname, hash } : pathname;
+  } catch {
+    const hashMatch = raw.match(/#(.+)$/);
+    if (hashMatch) {
+      return { pathname: '/chat', hash: hashMatch[1] };
+    }
+    return '/chat';
+  }
+}
+
+/**
+ * Markdown body for a note created from a chat message.
+ * Comment + optional quote + link are folded into one preview card by md-editor-rt.
+ */
+export function formatChatMessageAsNoteMarkdown(msg, timeZone, notePath = '') {
   const group = msg?.group || '나';
   const at = msg?.at || '';
   const msgId = msg?.id || '';
   const chatHref = chatMessageUrl(msgId);
+  let when = at;
+  try {
+    when = new Intl.DateTimeFormat(undefined, {
+      timeZone: timeZone || undefined,
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(new Date(at));
+  } catch {
+    /* keep iso */
+  }
   const body = String(msg?.body ?? '').replace(/\n+$/, '');
   const notePathAttr = notePath ? ` notePath="${escapeAttr(notePath)}"` : '';
   return [
     `<!-- chat-with-myself id="${escapeAttr(msgId)}" at="${escapeAttr(at)}" group="${escapeAttr(group)}" href="${escapeAttr(chatHref)}"${notePathAttr} -->`,
+    '',
+    `> ${group} · ${when}`,
+    '',
+    `[채팅에서 저장된 노트](${chatHref})`,
     '',
     body,
     '',

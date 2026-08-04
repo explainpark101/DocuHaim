@@ -4,6 +4,7 @@ export const CHAT_PREF_PREFIX = 's3haim_chat_';
 export const CHAT_PREF_KEYS = {
   composerToolbar: `${CHAT_PREF_PREFIX}composer_toolbar`,
   composerLineNumbers: `${CHAT_PREF_PREFIX}composer_line_numbers`,
+  composerHelperText: `${CHAT_PREF_PREFIX}composer_helper_text`,
   railGroupOpen: `${CHAT_PREF_PREFIX}rail_group_open`,
   railDateOpen: `${CHAT_PREF_PREFIX}rail_date_open`,
   railSearchOpen: `${CHAT_PREF_PREFIX}rail_search_open`,
@@ -71,6 +72,22 @@ export function writeComposerLineNumbersPref(visible) {
 /** Effective line-numbers visibility (default off). */
 export function getComposerLineNumbersVisible() {
   return readComposerLineNumbersPref() === true;
+}
+
+/** Stored helper-text preference, or null if unset. */
+export function readComposerHelperTextPref() {
+  return readBoolPref(CHAT_PREF_KEYS.composerHelperText);
+}
+
+export function writeComposerHelperTextPref(visible) {
+  writeBoolPref(CHAT_PREF_KEYS.composerHelperText, Boolean(visible));
+}
+
+/** Effective composer shortcut helper text (default shown). */
+export function getComposerHelperTextVisible() {
+  const stored = readComposerHelperTextPref();
+  if (stored != null) return stored;
+  return true;
 }
 
 /** @typedef {'group'|'date'|'search'|'pinned'} ChatRailId */

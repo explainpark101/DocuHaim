@@ -23,6 +23,7 @@ export {
   formatChatMessagePlainText,
   formatChatMessageMarkdownCopy,
   parseChatWithMyselfNoteMeta,
+  chatSavedNoteLinkTo,
   chatMessageHash,
   chatMessageUrl,
 } from './format.js';
@@ -114,6 +115,9 @@ export {
   readComposerLineNumbersPref,
   writeComposerLineNumbersPref,
   getComposerLineNumbersVisible,
+  readComposerHelperTextPref,
+  writeComposerHelperTextPref,
+  getComposerHelperTextVisible,
   readChatRailOpenPref,
   writeChatRailOpenPref,
   getChatRailOpen,

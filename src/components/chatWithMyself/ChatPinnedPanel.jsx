@@ -9,6 +9,7 @@ import {
   formatMessageTime,
   detectTimeZone,
   extractChatBodyAttachments,
+  chatAttachmentsToMarkdown,
 } from '@/utils/chatWithMyself';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatResultEnter from '@/components/chatWithMyself/ChatResultEnter';
@@ -20,6 +21,20 @@ import {
 
 /** @typedef {'pinned' | 'noted' | 'edited'} CollectionTabId */
 /** @typedef {'full' | 'activeLabel' | 'iconOnly'} TabDensity */
+
+/** Preview body max height for collection cards. */
+const PREVIEW_MAX_H_CLASS = 'max-h-32';
+
+/**
+ * Keep line breaks for collection previews; collapse runs of newlines to one.
+ * @param {string} text
+ */
+function formatCollectionPreview(text) {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n+/g, '\n')
+    .trim();
+}
 
 const TABS = [
   {
@@ -72,7 +87,29 @@ function CollectionCard({
   const tz = timeZone || detectTimeZone();
   const time = formatMessageTime(msg.at, tz);
   const { text, attachments } = extractChatBodyAttachments(msg.body || '');
-  const preview = text.replace(/\s+/g, ' ').trim().slice(0, 120);
+  const preview = formatCollectionPreview(text);
+  const attachmentMarkdown = chatAttachmentsToMarkdown(attachments);
+  const hasAttachments = attachments.length > 0;
+  const hasContent = Boolean(preview) || hasAttachments;
+
+  const previewRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = previewRef.current;
+    if (!el) {
+      setOverflows(false);
+      return undefined;
+    }
+    const check = () => {
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    };
+    check();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [preview, attachmentMarkdown, hasContent]);
 
   return (
     <div className="rounded-xl border border-black/8 bg-white px-3 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#243044]">
@@ -87,20 +124,46 @@ function CollectionCard({
         onClick={() => onSelect?.(msg)}
         className="w-full text-left"
       >
-        {preview ? (
-          <div className="line-clamp-3 text-sm leading-relaxed text-gray-800 dark:text-odp-fg">
-            {preview}
+        {hasContent ? (
+          <div className="relative">
+            <div
+              ref={previewRef}
+              className={`${PREVIEW_MAX_H_CLASS} overflow-hidden`}
+            >
+              {preview ? (
+                <div className="whitespace-pre-wrap wrap-anywhere text-sm leading-relaxed text-gray-800 dark:text-odp-fg">
+                  {preview}
+                </div>
+              ) : null}
+              {hasAttachments ? (
+                <div
+                  className={`${preview ? 'mt-1.5' : ''} [&_a]:!mt-0 [&_button]:!mt-0 [&_div]:!mt-0`}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  role="presentation"
+                >
+                  <ChatLinkedText
+                    text={attachmentMarkdown}
+                    className="text-sm text-gray-800 dark:text-odp-fg"
+                    getPresignedUrl={getPresignedUrl}
+                  />
+                </div>
+              ) : null}
+            </div>
+            {overflows ? (
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 flex h-10 items-end justify-end bg-linear-to-t from-white from-25% via-white/80 to-transparent px-0.5 pb-0.5 dark:from-[#243044] dark:via-[#243044]/80"
+                aria-hidden
+              >
+                <span className="text-xs leading-none text-gray-400 dark:text-gray-500">
+                  …
+                </span>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-        {attachments.length > 0 ? (
-          <ChatLinkedText
-            text={msg.body}
-            className={`text-sm text-gray-800 dark:text-odp-fg ${preview ? 'mt-2' : ''}`}
-            getPresignedUrl={getPresignedUrl}
-          />
-        ) : !preview ? (
+        ) : (
           <div className="text-sm text-gray-400">(빈 메시지)</div>
-        ) : null}
+        )}
       </button>
       <div className="mt-2 flex justify-end gap-1">
         {tab === 'pinned' ? (

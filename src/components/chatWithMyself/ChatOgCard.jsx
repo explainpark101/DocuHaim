@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ExternalLink, Play } from 'lucide-react';
 import { isYouTubeUrl, loadAndArchiveOg } from '@/utils/chatWithMyself/og.js';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
+import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 
 /**
  * OG / YouTube card rendered inside a chat bubble (bottom attached).
@@ -82,7 +83,7 @@ export default function ChatOgCard({ url, ogStorage, compact = false }) {
             }}
             aria-label="이미지 크게 보기"
           >
-            <img
+            <ChatImageFade
               src={data.image}
               alt=""
               className="h-10 w-10 object-cover"
@@ -128,7 +129,7 @@ export default function ChatOgCard({ url, ogStorage, compact = false }) {
           }}
           aria-label={yt ? '동영상 재생' : '이미지 크게 보기'}
         >
-          <img
+          <ChatImageFade
             src={data.image}
             alt=""
             className="h-full w-full object-cover"

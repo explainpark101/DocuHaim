@@ -1516,12 +1516,24 @@ export default function ChatWithMyselfPane({
                   : undefined
               }
             />
-            <ChatComposerDock>
-              <div className="mx-auto flex h-full min-h-0 w-full max-w-full px-2 md:max-w-[min(100%,50vw)] md:px-3">
-                <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5">
+            <ChatComposerDock autoFit={Boolean(editTarget)}>
+              <div
+                className={
+                  editTarget
+                    ? 'mx-auto flex w-full max-w-full px-2 md:max-w-[min(100%,50vw)] md:px-3'
+                    : 'mx-auto flex h-full min-h-0 w-full max-w-full px-2 md:max-w-[min(100%,50vw)] md:px-3'
+                }
+              >
+                <div
+                  className={
+                    editTarget
+                      ? 'flex w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5'
+                      : 'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5'
+                  }
+                >
                   <ChatComposer
                     bare
-                    fillParent
+                    fillParent={!editTarget}
                     groups={groups}
                     selectedGroup={selectedGroup}
                     onSelectedGroupChange={setSelectedGroup}

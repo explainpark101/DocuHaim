@@ -10,6 +10,8 @@ import ChatAddGroupDialog from '@/components/chatWithMyself/ui/ChatAddGroupDialo
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
+import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
+import { chatComposerAreaMaxHeight } from '@/components/chatWithMyself/ChatComposerDock';
 import {
   ADD_GROUP_VALUE,
   SELF_GROUP,
@@ -27,6 +29,8 @@ import {
   formatChatAttachmentSize,
   extractChatBodyAttachments,
   chatAttachmentsToMarkdown,
+  getComposerHelperTextVisible,
+  writeComposerHelperTextPref,
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 
@@ -41,9 +45,18 @@ config({
 const COMPOSER_MIN_H = 40;
 const COMPOSER_MAX_H = 200;
 
-/** Cap editor body height against the visual viewport (keyboard-aware). */
-function getComposerContentMaxH() {
-  if (typeof window === 'undefined') return COMPOSER_MAX_H;
+/**
+ * Cap editor body height against the visual viewport (keyboard-aware).
+ * While editing, allow growth up to ~70% of the message column (minus chrome).
+ */
+function getComposerContentMaxH({ editing = false } = {}) {
+  if (typeof window === 'undefined') {
+    return editing ? 480 : COMPOSER_MAX_H;
+  }
+  if (editing) {
+    // Match dock max (70% of message column) minus edit banner / group / padding.
+    return Math.max(COMPOSER_MIN_H, chatComposerAreaMaxHeight() - 120);
+  }
   const vvH = window.visualViewport?.height ?? window.innerHeight;
   // Keep room for chat nav, status bar, group row, and reply chrome.
   const capped = Math.floor(vvH * 0.28);
@@ -171,9 +184,12 @@ export default function ChatComposer({
   const [value, setValue] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editorHeight, setEditorHeight] = useState(COMPOSER_MIN_H);
-  const [contentMaxH, setContentMaxH] = useState(getComposerContentMaxH);
+  const [contentMaxH, setContentMaxH] = useState(() =>
+    getComposerContentMaxH({ editing: Boolean(editTarget) }),
+  );
   const [imageQueue, setImageQueue] = useState([]);
   const [draftReady, setDraftReady] = useState(false);
+  const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
   const openChatImage = useChatImageLightbox();
   const wrapRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -214,6 +230,22 @@ export default function ChatComposer({
   useEffect(() => {
     imageQueueRef.current = imageQueue;
   }, [imageQueue]);
+
+  // Keep helper text in sync if settings (or another tab) changes the pref.
+  useEffect(() => {
+    const sync = () => setShowHelperText(getComposerHelperTextVisible());
+    const onStorage = (event) => {
+      if (event.key == null || event.key.includes('composer_helper_text')) sync();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', sync);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', sync);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, []);
 
   // Restore unsent compose draft (text + images) once on mount.
   useEffect(() => {
@@ -402,10 +434,17 @@ export default function ChatComposer({
     setEditorHeight((prev) => (prev === next ? prev : next));
   }, [contentMaxH, fillParent]);
 
+  // Leaving edit / switching to fillParent: drop the expanded editor height.
+  useLayoutEffect(() => {
+    if (!fillParent) return;
+    setEditorHeight(COMPOSER_MIN_H);
+    setContentMaxH(getComposerContentMaxH({ editing: false }));
+  }, [fillParent]);
+
   useEffect(() => {
     if (fillParent) return undefined;
     const syncMax = () => {
-      const next = getComposerContentMaxH();
+      const next = getComposerContentMaxH({ editing: Boolean(editTarget) });
       setContentMaxH((prev) => (prev === next ? prev : next));
     };
     syncMax();
@@ -416,12 +455,23 @@ export default function ChatComposer({
       vv?.removeEventListener('resize', syncMax);
       window.removeEventListener('resize', syncMax);
     };
-  }, [fillParent]);
+  }, [fillParent, editTarget]);
 
   useLayoutEffect(() => {
     if (fillParent) return;
     syncEditorHeight();
-  }, [fillParent, value, showLineNumbers, showToolbar, contentMaxH, syncEditorHeight]);
+    const raf = window.requestAnimationFrame(() => syncEditorHeight());
+    return () => window.cancelAnimationFrame(raf);
+  }, [
+    fillParent,
+    value,
+    imageQueue.length,
+    showLineNumbers,
+    showToolbar,
+    contentMaxH,
+    editTarget,
+    syncEditorHeight,
+  ]);
 
   // Focus the editor when entering (or switching) reply mode.
   useEffect(() => {
@@ -818,7 +868,7 @@ export default function ChatComposer({
                     aria-label="이미지 크게 보기"
                   >
                     {item.previewUrl ? (
-                      <img
+                      <ChatImageFade
                         src={item.previewUrl}
                         alt=""
                         className="h-full w-full object-cover"
@@ -970,14 +1020,28 @@ export default function ChatComposer({
             </button>
           </div>
         </div>
-        {!isMobile ? (
-          <p className="mt-0.5 shrink-0 text-[10px] text-gray-400 dark:text-gray-500">
-            {editTarget
-              ? editingMultilineHint
-                ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`
-                : `${sendModLabel} / Enter 수정 완료 · Shift+Enter 줄바꿈`
-              : `${sendModLabel} / Enter 전송 · Shift+Enter 줄바꿈 · 첨부는 전송 시 업로드`}
-          </p>
+        {!isMobile && showHelperText ? (
+          <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
+            <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
+              {editTarget
+                ? editingMultilineHint
+                  ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`
+                  : `${sendModLabel} / Enter 수정 완료 · Shift+Enter 줄바꿈`
+                : `${sendModLabel} / Enter 전송 · Shift+Enter 줄바꿈 · 첨부는 전송 시 업로드`}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                writeComposerHelperTextPref(false);
+                setShowHelperText(false);
+              }}
+              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-black/5 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-gray-300"
+              title="단축키 안내 숨기기"
+              aria-label="단축키 안내 숨기기"
+            >
+              <X size={12} strokeWidth={2.25} />
+            </button>
+          </div>
         ) : null}
       </div>
     </div>

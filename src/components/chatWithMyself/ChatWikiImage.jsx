@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
+import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 
 /**
  * Resolve and display a chat wiki image ![[path]].
@@ -57,7 +58,7 @@ export default function ChatWikiImage({ path, getPresignedUrl }) {
       }}
       aria-label="이미지 크게 보기"
     >
-      <img
+      <ChatImageFade
         src={url}
         alt=""
         className="max-h-64 max-w-full rounded-md object-contain"

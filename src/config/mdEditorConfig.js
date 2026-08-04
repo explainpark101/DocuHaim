@@ -7,11 +7,14 @@ import { config, XSSPlugin } from 'md-editor-rt';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
+import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
+import '@/styles/md-editor-rt/chat-saved-note.css';
 
 const PGBR_XSS_EXTENDED_WHITELIST = {
   pgbr: [],
   div: ['class', 'data-md-pgbr'],
-  span: ['class', 'data-md-pgbr'],
+  span: ['class', 'data-md-pgbr', 'aria-hidden'],
+  a: ['href', 'class', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
 };
 
 config({
@@ -26,6 +29,7 @@ config({
       { type: 'wiki_image', plugin: wikiImagePlugin, options: {} },
       { type: 'preview_link_target_blank', plugin: previewLinkTargetBlankPlugin, options: {} },
       { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} },
+      { type: 'chat_saved_note', plugin: chatSavedNotePlugin, options: {} },
     ];
   },
   // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).

@@ -43,6 +43,18 @@ const LONG_PRESS_MENU_MS = 500;
 const SWIPE_REPLY_THRESHOLD = 64;
 const SWIPE_REPLY_MAX = 72;
 
+/** Soft morph for long-press / selected bubble shape. */
+const BUBBLE_SHAPE_SPRING = {
+  type: 'spring',
+  stiffness: 420,
+  damping: 28,
+  mass: 0.85,
+};
+/** Matches Tailwind rounded-2xl + rounded-br/bl-md chat-tail. */
+const BUBBLE_RADIUS_SELF = '1rem 1rem 0.375rem 1rem';
+const BUBBLE_RADIUS_OTHER = '1rem 1rem 1rem 0.375rem';
+const BUBBLE_RADIUS_PRESSED = '1.125rem';
+
 const iconBtnClass =
   'inline-flex shrink-0 items-center justify-center rounded p-0.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 bg-transparent hover:bg-transparent focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400';
 
@@ -143,42 +155,42 @@ function MessageActionItems({
   onViewEditHistory,
   onTogglePin,
   shiftHeldRef,
-  _Item,
+  Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
   return (
     <>
-      <_Item
+      <Item
         className={chatMenuItemClass}
         onSelect={() => onReply?.(msg)}
       >
         <Reply size={16} className="shrink-0 text-gray-500" />
         답장
-      </_Item>
-      <_Item
+      </Item>
+      <Item
         className={chatMenuItemClass}
         onSelect={() => onEdit?.(msg)}
       >
         <Pencil size={16} className="shrink-0 text-gray-500" />
         수정
-      </_Item>
+      </Item>
       {hasMessageEditHistory(msg) ? (
-        <_Item
+        <Item
           className={chatMenuItemClass}
           onSelect={() => onViewEditHistory?.(msg)}
         >
           <History size={16} className="shrink-0 text-gray-500" />
           수정기록 보기
-        </_Item>
+        </Item>
       ) : null}
-      <_Item
+      <Item
         className={chatMenuItemClass}
         onSelect={() => onTogglePin?.(msg)}
       >
         <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
         {pinned ? '고정 해제' : '고정'}
-      </_Item>
-      <_Item
+      </Item>
+      <Item
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessagePlainText(msg));
@@ -186,8 +198,8 @@ function MessageActionItems({
       >
         <Copy size={16} className="shrink-0 text-gray-500" />
         내용 복사
-      </_Item>
-      <_Item
+      </Item>
+      <Item
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessageMarkdownCopy(msg));
@@ -195,15 +207,15 @@ function MessageActionItems({
       >
         <FileText size={16} className="shrink-0 text-gray-500" />
         MD 복사
-      </_Item>
-      <_Item
+      </Item>
+      <Item
         className={chatMenuItemClass}
         onSelect={() => onAddToNote?.(msg)}
       >
         <FilePlus2 size={16} className="shrink-0 text-gray-500" />
         노트로 추가
-      </_Item>
-      <_Item
+      </Item>
+      <Item
         className={chatMenuDangerItemClass}
         onPointerDown={(e) => {
           if (shiftHeldRef) shiftHeldRef.current = e.shiftKey;
@@ -214,7 +226,7 @@ function MessageActionItems({
       >
         <Trash2 size={16} className="shrink-0" />
         삭제
-      </_Item>
+      </Item>
     </>
   );
 }
@@ -437,6 +449,8 @@ function MessageBubble({
   const [pressing, setPressing] = useState(false);
   const rowActive = contextMenuOpen || rowSelected || isEditing;
   const isDeleting = msg?.pendingSync === 'delete';
+  /** Long-press / sheet / context — morph shape without snapping between states. */
+  const shapeActive = !isDeleting && (pressing || rowSelected || contextMenuOpen);
   const syncing =
     msg?.pendingSync === 'send' || msg?.pendingSync === 'edit';
   const dimmed = syncing || isDeleting;
@@ -466,10 +480,8 @@ function MessageBubble({
     } catch {
       /* ignore */
     }
+    // Keep press morph; rowSelected takes over when finger lifts.
     onOpenMobileSheet?.(msg);
-    requestAnimationFrame(() => {
-      endPressVisual();
-    });
   };
 
   const applyOffset = (x) => {
@@ -512,7 +524,7 @@ function MessageBubble({
   const isSwiping = offsetX !== 0;
 
   const rowClassName = [
-    'group relative -mx-3 flex w-[calc(100%+1.5rem)] max-w-[calc(100%+1.5rem)] gap-2 touch-pan-y px-3 py-1.5 rounded-md transition-colors overflow-x-hidden',
+    'group relative -mx-3 flex w-[calc(100%+1.5rem)] max-w-[calc(100%+1.5rem)] gap-2 touch-pan-y px-3 py-1.5 rounded-md transition-[background-color,box-shadow] duration-200 ease-out overflow-x-hidden',
     self ? 'justify-end' : 'justify-start',
     isDeleting
       ? 'pointer-events-none select-none bg-red-500/20 dark:bg-red-500/25'
@@ -661,24 +673,31 @@ function MessageBubble({
             ) : self && isDeleting ? (
               deletingStatus
             ) : null}
-            <div
-              className={`min-w-0 max-w-full overflow-hidden rounded-2xl px-3 py-2 text-sm shadow-sm select-none origin-center will-change-transform [-webkit-touch-callout:none] transition-[transform,filter,opacity] duration-150 ease-out ${
+            <Motion.div
+              className={`min-w-0 max-w-full overflow-hidden px-3 py-2 text-sm shadow-sm select-none origin-center will-change-transform [-webkit-touch-callout:none] transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${
                 isDeleting
-                  ? `${self ? 'rounded-br-md' : 'rounded-bl-md'} bg-red-100 text-gray-900 border border-red-300/80 shadow dark:bg-red-950/70 dark:text-odp-fgStrong dark:border-red-700/60`
+                  ? 'bg-red-100 text-gray-900 border border-red-300/80 shadow dark:bg-red-950/70 dark:text-odp-fgStrong dark:border-red-700/60'
                   : isEditing
-                    ? `${self ? 'rounded-br-md' : 'rounded-bl-md'} bg-sky-500/25 text-gray-900 border border-sky-400/60 shadow dark:bg-sky-400/25 dark:text-odp-fgStrong dark:border-sky-400/50`
+                    ? 'bg-sky-500/25 text-gray-900 border border-sky-400/60 shadow dark:bg-sky-400/25 dark:text-odp-fgStrong dark:border-sky-400/50'
                     : self
-                      ? 'rounded-br-md bg-sky-100 text-gray-900 dark:bg-[#1a2740] dark:text-odp-fgStrong border border-sky-200/80 dark:border-sky-800/50 shadow'
-                      : 'rounded-bl-md bg-white text-gray-900 dark:bg-[#243044] dark:text-odp-fgStrong border border-white/60 dark:border-white/10 shadow'
-              } ${
-                pressing && !isDeleting
-                  ? 'scale-[0.97] brightness-[0.94] dark:brightness-[0.88]'
-                  : 'scale-100'
+                      ? 'bg-sky-100 text-gray-900 dark:bg-[#1a2740] dark:text-odp-fgStrong border border-sky-200/80 dark:border-sky-800/50 shadow'
+                      : 'bg-white text-gray-900 dark:bg-[#243044] dark:text-odp-fgStrong border border-white/60 dark:border-white/10 shadow'
               }`}
-              style={{
-                ...(dimmed ? { opacity: 0.7 } : undefined),
-                transition: 'transform 180ms ease-out, filter 180ms ease-out',
+              initial={false}
+              animate={{
+                scale: shapeActive ? 0.97 : 1,
+                borderRadius: shapeActive
+                  ? BUBBLE_RADIUS_PRESSED
+                  : self
+                    ? BUBBLE_RADIUS_SELF
+                    : BUBBLE_RADIUS_OTHER,
+                filter:
+                  pressing && !isDeleting
+                    ? 'brightness(0.92)'
+                    : 'brightness(1)',
               }}
+              transition={BUBBLE_SHAPE_SPRING}
+              style={dimmed ? { opacity: 0.7 } : undefined}
             >
               <ReplyPreview msg={msg} onOpen={isDeleting ? undefined : onOpenReply} />
               {pinned ? (
@@ -722,7 +741,7 @@ function MessageBubble({
               {urls.map((u) => (
                 <ChatOgCard key={u} url={u} ogStorage={ogStorage} />
               ))}
-            </div>
+            </Motion.div>
             {!self && !isDeleting ? (
               <MessageSideActions
                 msg={msg}

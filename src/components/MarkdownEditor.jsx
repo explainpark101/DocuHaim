@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { MdEditor, config } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
@@ -30,6 +31,8 @@ import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
+import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
+import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
@@ -439,6 +442,9 @@ config({
     if (!next.some((p) => p.type === 'pgbr')) {
       next = [...next, { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} }];
     }
+    if (!next.some((p) => p.type === 'chat_saved_note')) {
+      next = [...next, { type: 'chat_saved_note', plugin: chatSavedNotePlugin, options: {} }];
+    }
     return next;
   },
 });
@@ -458,6 +464,7 @@ export default function MarkdownEditor({
   snippetConfig = { snippets: [] },
   getGeminiApiKey,
 }) {
+  const navigate = useNavigate();
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
@@ -856,6 +863,25 @@ export default function MarkdownEditor({
     root.addEventListener('contextmenu', onContextMenu);
     return () => root.removeEventListener('contextmenu', onContextMenu);
   }, []);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return undefined;
+    const onClick = (event) => {
+      const card = event.target?.closest?.('[data-chat-saved-note]');
+      if (!card || !root.contains(card)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      navigate(
+        chatSavedNoteLinkTo({
+          id: card.getAttribute('data-chat-id') || '',
+          href: card.getAttribute('data-chat-href') || card.getAttribute('href') || '',
+        }),
+      );
+    };
+    root.addEventListener('click', onClick);
+    return () => root.removeEventListener('click', onClick);
+  }, [navigate]);
 
   const handleApplyWikiImageSize = useCallback(
     ({ width, height }) => {
