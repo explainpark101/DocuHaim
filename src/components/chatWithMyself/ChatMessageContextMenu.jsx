@@ -9,6 +9,8 @@ import {
   Reply,
   Trash2,
   X,
+  ChevronsDownUp,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
@@ -62,6 +64,7 @@ export default function ChatMessageContextMenu({
   onAddToNote,
   onViewEditHistory,
   onTogglePin,
+  onToggleCollapse,
   shiftHeldRef,
 }) {
   const dismissGuardUntilRef = useRef(0);
@@ -95,6 +98,8 @@ export default function ChatMessageContextMenu({
 
   const hasEditHistory = Boolean(message?.editedAt);
   const pinned = Boolean(message?.pinnedAt);
+  const collapsed =
+    message?.collapsed === '1' || message?.collapsed === true;
 
   const guardOutside = (event) => {
     if (Date.now() < dismissGuardUntilRef.current) {
@@ -201,6 +206,21 @@ export default function ChatMessageContextMenu({
               >
                 <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
                 {pinned ? '고정 해제' : '고정'}
+              </button>
+              <button
+                type="button"
+                className={menuBtnClass}
+                onClick={() => {
+                  onToggleCollapse?.(message);
+                  onOpenChange?.(false);
+                }}
+              >
+                {collapsed ? (
+                  <ChevronsUpDown size={16} className="shrink-0 text-gray-500" />
+                ) : (
+                  <ChevronsDownUp size={16} className="shrink-0 text-gray-500" />
+                )}
+                {collapsed ? '펼치기' : '접기'}
               </button>
               <button
                 type="button"

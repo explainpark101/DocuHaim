@@ -6,6 +6,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { Switch } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import TreeNode from '@/components/TreeNode';
 import {
@@ -31,6 +32,13 @@ const EMPTY_SELECTED_IDS = new Set();
 
 /** Above Modal / ConfirmModal (`z-100000`) so the drag preview stays visible. */
 const DRAG_OVERLAY_Z_INDEX = 100050;
+
+const switchRootClass =
+  'relative h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent bg-gray-300 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 data-[state=checked]:bg-blue-600 dark:bg-odp-borderStrong dark:data-[state=checked]:bg-blue-500';
+
+const switchThumbClass =
+  'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
+
 
 function useIsMobileDragDisabled() {
   const [disabled, setDisabled] = useState(() => {
@@ -123,6 +131,7 @@ export default function ChatAddToNoteModal({
   const [pendingMove, setPendingMove] = useState(null);
   const [expandedPaths, setExpandedPaths] = useState(() => new Set());
   const [activeDragItems, setActiveDragItems] = useState(null);
+  const [includeReplyThread, setIncludeReplyThread] = useState(true);
   const hasInitializedRef = useRef(false);
   const activeDragItemsRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -147,6 +156,7 @@ export default function ChatAddToNoteModal({
     setSelectedRoot(true);
     setSelectedFolder(null);
     setExpandedPaths(new Set());
+    setIncludeReplyThread(true);
     hasInitializedRef.current = false;
   }, [isOpen, message?.id]);
 
@@ -346,6 +356,7 @@ export default function ChatAddToNoteModal({
 
   if (!isOpen || !message) return null;
 
+  const isReplyMessage = Boolean(message.replyTo);
   const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
   const canCreateFolder = isS3 || parentDirHandle != null;
@@ -378,6 +389,7 @@ export default function ChatAddToNoteModal({
         parentHandle: parentDirHandle,
         fileName: `${raw}.md`,
         message,
+        includeReplyThread: isReplyMessage ? includeReplyThread : false,
       });
     } catch (e) {
       setError(e?.message || '노트 생성 실패');
@@ -520,6 +532,31 @@ export default function ChatAddToNoteModal({
             </DragOverlay>
           </DndContext>
         </div>
+
+        {isReplyMessage ? (
+          <label
+            htmlFor="chat-add-to-note-include-thread"
+            className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-odp-borderSoft dark:bg-odp-bg/40"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-gray-800 dark:text-odp-fgStrong">
+                원본 메시지 쓰레드도 노트에 포함
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-500 dark:text-odp-muted">
+                답장 대상과 그 상위 원본을 노트 본문에 함께 넣습니다.
+              </span>
+            </span>
+            <Switch.Root
+              id="chat-add-to-note-include-thread"
+              className={switchRootClass}
+              checked={includeReplyThread}
+              onCheckedChange={(next) => setIncludeReplyThread(Boolean(next))}
+              aria-label="원본 메시지 쓰레드도 노트에 포함"
+            >
+              <Switch.Thumb className={switchThumbClass} />
+            </Switch.Root>
+          </label>
+        ) : null}
 
         {error ? (
           <p className="text-xs text-red-600 dark:text-red-400">{error}</p>

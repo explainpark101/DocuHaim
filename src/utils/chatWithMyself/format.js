@@ -58,6 +58,7 @@ function unescapeAttr(value) {
  * @property {string} [editedAt]
  * @property {string} [pinnedAt]
  * @property {string} [notePath]
+ * @property {string} [collapsed] - "1" when folded; empty when expanded
  * @property {{ at: string, body: string, group: string }[]} [editHistory]
  */
 
@@ -137,6 +138,7 @@ export function parseDayFile(content) {
       editedAt: attrs.editedAt || '',
       pinnedAt: attrs.pinnedAt || '',
       notePath: attrs.notePath || '',
+      collapsed: attrs.collapsed === '1' || attrs.collapsed === 'true' ? '1' : '',
       editHistory,
       body,
     });
@@ -169,6 +171,10 @@ export function serializeMessage(msg) {
   const editedAt = escapeAttr(msg.editedAt || '');
   const pinnedAt = escapeAttr(msg.pinnedAt || '');
   const notePath = escapeAttr(msg.notePath || '');
+  const collapsed =
+    msg.collapsed === '1' || msg.collapsed === true || msg.collapsed === 'true'
+      ? '1'
+      : '';
   const body = String(msg.body ?? '').replace(/\n+$/, '');
   const replyAttrs = replyTo
     ? ` replyTo="${replyTo}" replySnippet="${replySnippet}" replyGroup="${replyGroup}"`
@@ -176,7 +182,8 @@ export function serializeMessage(msg) {
   const editedAttr = editedAt ? ` editedAt="${editedAt}"` : '';
   const pinnedAttr = pinnedAt ? ` pinnedAt="${pinnedAt}"` : '';
   const notePathAttr = notePath ? ` notePath="${notePath}"` : '';
-  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr} -->\n${body}\n\n`;
+  const collapsedAttr = collapsed ? ` collapsed="${collapsed}"` : '';
+  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr}${collapsedAttr} -->\n${body}\n\n`;
   // Edit history is stored under `.chat-with-myself/edits/<id>/` (not inline).
   return out;
 }
@@ -357,15 +364,60 @@ export function chatSavedNoteLinkTo(meta) {
 /**
  * Markdown body for a note created from a chat message.
  * Comment + optional quote + link are folded into one preview card by md-editor-rt.
+ * @param {ChatMessage} msg
+ * @param {string} [timeZone]
+ * @param {string} [notePath]
+ * @param {{ threadMessages?: ChatMessage[] }} [options]
  */
-export function formatChatMessageAsNoteMarkdown(msg, timeZone, notePath = '') {
+export function formatChatMessageAsNoteMarkdown(
+  msg,
+  timeZone,
+  notePath = '',
+  options = {},
+) {
   const group = msg?.group || '나';
   const at = msg?.at || '';
   const msgId = msg?.id || '';
   const chatHref = chatMessageUrl(msgId);
-  let when = at;
+  const when = formatNoteDateTime(at, timeZone);
+  const body = String(msg?.body ?? '').replace(/\n+$/, '');
+  const notePathAttr = notePath ? ` notePath="${escapeAttr(notePath)}"` : '';
+  const threadMessages = Array.isArray(options.threadMessages)
+    ? options.threadMessages.filter(Boolean)
+    : [];
+
+  /** @type {string[]} */
+  const threadParts = [];
+  if (threadMessages.length > 0) {
+    threadParts.push('### 원본 메시지', '');
+    for (let i = 0; i < threadMessages.length; i += 1) {
+      if (i > 0) threadParts.push('', '---', '');
+      threadParts.push(formatNoteThreadMessageBlock(threadMessages[i], timeZone));
+    }
+    threadParts.push('', '### 답장', '');
+  }
+
+  return [
+    `<!-- chat-with-myself id="${escapeAttr(msgId)}" at="${escapeAttr(at)}" group="${escapeAttr(group)}" href="${escapeAttr(chatHref)}"${notePathAttr} -->`,
+    '',
+    `> ${group} · ${when}`,
+    '',
+    `[채팅에서 저장된 노트](${chatHref})`,
+    '',
+    ...threadParts,
+    body,
+    '',
+  ].join('\n');
+}
+
+/**
+ * @param {string} at
+ * @param {string} [timeZone]
+ */
+function formatNoteDateTime(at, timeZone) {
+  if (!at) return '';
   try {
-    when = new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(undefined, {
       timeZone: timeZone || undefined,
       year: 'numeric',
       month: 'long',
@@ -375,18 +427,18 @@ export function formatChatMessageAsNoteMarkdown(msg, timeZone, notePath = '') {
       second: '2-digit',
     }).format(new Date(at));
   } catch {
-    /* keep iso */
+    return String(at);
   }
+}
+
+/**
+ * @param {ChatMessage} msg
+ * @param {string} [timeZone]
+ */
+function formatNoteThreadMessageBlock(msg, timeZone) {
+  const group = msg?.group || '나';
+  const when = formatNoteDateTime(msg?.at || '', timeZone);
   const body = String(msg?.body ?? '').replace(/\n+$/, '');
-  const notePathAttr = notePath ? ` notePath="${escapeAttr(notePath)}"` : '';
-  return [
-    `<!-- chat-with-myself id="${escapeAttr(msgId)}" at="${escapeAttr(at)}" group="${escapeAttr(group)}" href="${escapeAttr(chatHref)}"${notePathAttr} -->`,
-    '',
-    `> ${group} · ${when}`,
-    '',
-    `[채팅에서 저장된 노트](${chatHref})`,
-    '',
-    body,
-    '',
-  ].join('\n');
+  const header = when ? `**${group}** · ${when}` : `**${group}**`;
+  return [header, '', body].join('\n');
 }

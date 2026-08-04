@@ -86,6 +86,7 @@ export {
   deleteMessageEditHistoryEntry,
   deleteAllMessageEditHistory,
   findMessageById,
+  resolveReplyThreadMessages,
   patchChatMessageMeta,
   createOgStorageAdapters,
   readOgArchive,

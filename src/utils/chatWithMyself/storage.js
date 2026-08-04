@@ -626,6 +626,14 @@ export async function patchChatMessageMeta(ctx, dateStr, messageId, fields = {})
     if (fields.notePath !== undefined) {
       next.notePath = fields.notePath ? String(fields.notePath) : '';
     }
+    if (fields.collapsed !== undefined) {
+      next.collapsed =
+        fields.collapsed === '1' ||
+        fields.collapsed === true ||
+        fields.collapsed === 'true'
+          ? '1'
+          : '';
+    }
     updated = next;
     const messages = parsed.messages.slice();
     messages[idx] = next;
@@ -978,6 +986,48 @@ export async function findMessageById(ctx, messageId, { maxDays = 90 } = {}) {
     if (found) return { msg: found, dateStr };
   }
   return null;
+}
+
+/**
+ * Walk replyTo parents (oldest first) for note export.
+ * Falls back to replySnippet when a parent cannot be loaded.
+ * @returns {Promise<object[]>}
+ */
+export async function resolveReplyThreadMessages(
+  ctx,
+  message,
+  { maxDepth = 32 } = {},
+) {
+  if (!message?.replyTo) return [];
+  /** @type {object[]} */
+  const newestFirst = [];
+  let replyToId = String(message.replyTo || '');
+  let fallbackSnippet = String(message.replySnippet || '');
+  let fallbackGroup = String(message.replyGroup || '');
+  const seen = new Set([String(message.id || '')].filter(Boolean));
+
+  while (replyToId && !seen.has(replyToId) && newestFirst.length < maxDepth) {
+    seen.add(replyToId);
+    const hit = ctx ? await findMessageById(ctx, replyToId) : null;
+    if (hit?.msg) {
+      newestFirst.push(hit.msg);
+      replyToId = String(hit.msg.replyTo || '');
+      fallbackSnippet = String(hit.msg.replySnippet || '');
+      fallbackGroup = String(hit.msg.replyGroup || '');
+      continue;
+    }
+    if (fallbackSnippet) {
+      newestFirst.push({
+        id: replyToId,
+        at: '',
+        group: fallbackGroup || '나',
+        body: fallbackSnippet,
+      });
+    }
+    break;
+  }
+
+  return newestFirst.reverse();
 }
 
 export async function readOgArchive(ctx, key) {

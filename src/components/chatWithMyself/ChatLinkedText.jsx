@@ -7,10 +7,53 @@ const linkClass =
   'break-all wrap-anywhere underline underline-offset-2 text-blue-700 hover:text-blue-900 dark:text-sky-300 dark:hover:text-sky-200';
 
 /**
+ * First visible text line when collapsed (no images/files).
+ * @param {ReturnType<typeof splitTextWithUrls>} parts
+ */
+function collapsedFirstLine(parts) {
+  let hasMedia = false;
+  let text = '';
+  for (const part of parts) {
+    if (part.type === 'wiki' || part.type === 'file') {
+      hasMedia = true;
+      continue;
+    }
+    text += part.value || '';
+  }
+  const normalized = text.replace(/\r\n/g, '\n');
+  const nl = normalized.indexOf('\n');
+  const firstLine = (nl >= 0 ? normalized.slice(0, nl) : normalized).trimEnd();
+  const hasMore =
+    hasMedia || nl >= 0 || (nl < 0 && normalized.length > firstLine.length);
+  return { firstLine, hasMore };
+}
+
+/**
  * Render chat plain text with auto-linked http(s) URLs, wiki images, and file cards.
  */
-export default function ChatLinkedText({ text, className = '', getPresignedUrl }) {
+export default function ChatLinkedText({
+  text,
+  className = '',
+  getPresignedUrl,
+  collapsed = false,
+}) {
   const parts = useMemo(() => splitTextWithUrls(text), [text]);
+
+  if (collapsed) {
+    const { firstLine, hasMore } = collapsedFirstLine(parts);
+    const display =
+      firstLine && hasMore
+        ? `${firstLine}…`
+        : firstLine || (hasMore ? '…' : '');
+    return (
+      <div
+        className={`min-w-0 max-w-full truncate whitespace-nowrap ${className}`}
+        title={firstLine || undefined}
+      >
+        {display}
+      </div>
+    );
+  }
 
   return (
     <div className={`min-w-0 max-w-full ${className}`}>

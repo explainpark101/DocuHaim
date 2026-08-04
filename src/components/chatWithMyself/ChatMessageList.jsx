@@ -11,6 +11,8 @@ import {
   Copy,
   FileText,
   ExternalLink,
+  ChevronsDownUp,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
@@ -155,10 +157,12 @@ function MessageActionItems({
   onAddToNote,
   onViewEditHistory,
   onTogglePin,
+  onToggleCollapse,
   shiftHeldRef,
   _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
+  const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
   return (
     <>
       <_Item
@@ -190,6 +194,17 @@ function MessageActionItems({
       >
         <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
         {pinned ? '고정 해제' : '고정'}
+      </_Item>
+      <_Item
+        className={chatMenuItemClass}
+        onSelect={() => onToggleCollapse?.(msg)}
+      >
+        {collapsed ? (
+          <ChevronsUpDown size={16} className="shrink-0 text-gray-500" />
+        ) : (
+          <ChevronsDownUp size={16} className="shrink-0 text-gray-500" />
+        )}
+        {collapsed ? '펼치기' : '접기'}
       </_Item>
       <_Item
         className={chatMenuItemClass}
@@ -283,6 +298,7 @@ function MessageMoreButton({
   onAddToNote,
   onViewEditHistory,
   onTogglePin,
+  onToggleCollapse,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -334,6 +350,7 @@ function MessageMoreButton({
             onAddToNote={onAddToNote}
             onViewEditHistory={onViewEditHistory}
             onTogglePin={onTogglePin}
+            onToggleCollapse={onToggleCollapse}
             shiftHeldRef={shiftHeldRef}
             _Item={DropdownMenu.Item}
           />
@@ -351,6 +368,7 @@ function MessageSideActions({
   onAddToNote,
   onViewEditHistory,
   onTogglePin,
+  onToggleCollapse,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -379,6 +397,7 @@ function MessageSideActions({
         onAddToNote={onAddToNote}
         onViewEditHistory={onViewEditHistory}
         onTogglePin={onTogglePin}
+        onToggleCollapse={onToggleCollapse}
         onOpenMobileSheet={onOpenMobileSheet}
         shiftHeldRef={shiftHeldRef}
         coarse={coarse}
@@ -426,6 +445,7 @@ function MessageBubble({
   onAddToNote,
   onViewEditHistory,
   onTogglePin,
+  onToggleCollapse,
   onOpenNote,
   onOpenReply,
   onOpenMobileSheet,
@@ -461,6 +481,7 @@ function MessageBubble({
     msg?.pendingSync === 'send' || msg?.pendingSync === 'edit';
   const dimmed = syncing || isDeleting;
   const pinned = Boolean(msg?.pinnedAt);
+  const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
 
   const clearLongPress = () => {
     if (longPressThresholdTimer.current) {
@@ -679,6 +700,7 @@ function MessageBubble({
                 onAddToNote={onAddToNote}
                 onViewEditHistory={onViewEditHistory}
                 onTogglePin={onTogglePin}
+                onToggleCollapse={onToggleCollapse}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -713,25 +735,34 @@ function MessageBubble({
               transition={BUBBLE_SHAPE_SPRING}
               style={dimmed ? { opacity: 0.7 } : undefined}
             >
-              <ReplyPreview
-                msg={msg}
-                onOpen={isDeleting ? undefined : onOpenReply}
-                replyGroupLabel={replyGroupLabel}
-              />
+              {!collapsed ? (
+                <ReplyPreview
+                  msg={msg}
+                  onOpen={isDeleting ? undefined : onOpenReply}
+                  replyGroupLabel={replyGroupLabel}
+                />
+              ) : null}
               {pinned ? (
                 <div className="mb-1 inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-300">
                   <Pin size={10} className="fill-current" />
                   고정됨
                 </div>
               ) : null}
+              {collapsed ? (
+                <div className="mb-1 inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+                  <ChevronsDownUp size={10} />
+                  접힘
+                </div>
+              ) : null}
               <ChatLinkedText
                 text={msg.body}
-                className={`min-w-0 max-w-full overflow-hidden whitespace-pre-wrap wrap-anywhere ${
-                  isDeleting ? 'select-none' : 'select-text'
-                }`}
+                collapsed={collapsed}
+                className={`min-w-0 max-w-full overflow-hidden ${
+                  collapsed ? 'whitespace-nowrap' : 'whitespace-pre-wrap wrap-anywhere'
+                } ${isDeleting ? 'select-none' : 'select-text'}`}
                 getPresignedUrl={getPresignedUrl}
               />
-              {msg.notePath && !isDeleting ? (
+              {!collapsed && msg.notePath && !isDeleting ? (
                 <button
                   type="button"
                   className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-600 underline-offset-2 hover:underline dark:text-blue-300"
@@ -744,7 +775,7 @@ function MessageBubble({
                   노트 열기
                 </button>
               ) : null}
-              {msg.editedAt && !isDeleting ? (
+              {!collapsed && msg.editedAt && !isDeleting ? (
                 <button
                   type="button"
                   className="mt-1 text-[10px] text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline dark:text-gray-500 dark:hover:text-gray-300"
@@ -756,9 +787,11 @@ function MessageBubble({
                   수정됨
                 </button>
               ) : null}
-              {urls.map((u) => (
-                <ChatOgCard key={u} url={u} ogStorage={ogStorage} />
-              ))}
+              {!collapsed
+                ? urls.map((u) => (
+                    <ChatOgCard key={u} url={u} ogStorage={ogStorage} />
+                  ))
+                : null}
             </Motion.div>
             {!self && !isDeleting ? (
               <MessageSideActions
@@ -769,6 +802,7 @@ function MessageBubble({
                 onAddToNote={onAddToNote}
                 onViewEditHistory={onViewEditHistory}
                 onTogglePin={onTogglePin}
+                onToggleCollapse={onToggleCollapse}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -814,6 +848,7 @@ function MessageBubble({
             onAddToNote={onAddToNote}
             onViewEditHistory={onViewEditHistory}
             onTogglePin={onTogglePin}
+            onToggleCollapse={onToggleCollapse}
             shiftHeldRef={shiftHeldRef}
             _Item={ContextMenu.Item}
           />
@@ -841,6 +876,7 @@ export default function ChatMessageList({
   onAddToNote,
   onViewEditHistory,
   onTogglePin,
+  onToggleCollapse,
   onOpenNote,
   onOpenReplyTarget,
   emptyHint,
@@ -1129,6 +1165,7 @@ export default function ChatMessageList({
                         onAddToNote={onAddToNote}
                         onViewEditHistory={onViewEditHistory}
                         onTogglePin={onTogglePin}
+                        onToggleCollapse={onToggleCollapse}
                         onOpenNote={onOpenNote}
                         onOpenReply={onOpenReplyTarget}
                         onOpenMobileSheet={setSheetMessage}
@@ -1190,6 +1227,7 @@ export default function ChatMessageList({
         onAddToNote={onAddToNote}
         onViewEditHistory={onViewEditHistory}
         onTogglePin={onTogglePin}
+        onToggleCollapse={onToggleCollapse}
         shiftHeldRef={shiftHeldRef}
       />
     </>

@@ -46,6 +46,7 @@ import {
   patchChatMessageMeta,
   postChatSyncEvent,
   localDateString,
+  resolveReplyThreadMessages,
 } from '@/utils/chatWithMyself';
 import { AuthModal } from '@/components/modals/AuthModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
@@ -4050,6 +4051,7 @@ function MainApp() {
     parentPath = '',
     parentHandle,
     fileName,
+    includeReplyThread = false,
   }) => {
     let finalName = String(fileName || '').trim();
     if (!finalName) throw new Error('파일명이 비어 있습니다.');
@@ -4058,7 +4060,29 @@ function MainApp() {
       throw new Error('파일명에 / 를 넣을 수 없습니다.');
     }
     const newPath = `${parentPath || ''}${finalName}`;
-    const body = formatChatMessageAsNoteMarkdown(message, detectTimeZone(), newPath);
+    const tz = detectTimeZone();
+    /** @type {object[]} */
+    let threadMessages = [];
+    if (includeReplyThread && message?.replyTo && chatStorageCtx) {
+      try {
+        threadMessages = await resolveReplyThreadMessages(chatStorageCtx, message);
+      } catch (err) {
+        console.warn('Failed to resolve reply thread for note:', err);
+        if (message.replySnippet) {
+          threadMessages = [
+            {
+              id: message.replyTo,
+              at: '',
+              group: message.replyGroup || '나',
+              body: message.replySnippet,
+            },
+          ];
+        }
+      }
+    }
+    const body = formatChatMessageAsNoteMarkdown(message, tz, newPath, {
+      threadMessages,
+    });
 
     if (storageMode === 's3') {
       const client = getS3Client();
@@ -4085,7 +4109,6 @@ function MainApp() {
     }
 
     if (chatStorageCtx && message?.id) {
-      const tz = detectTimeZone();
       const dateStr =
         message.dateStr || localDateString(new Date(message.at || Date.now()), tz);
       try {

@@ -1291,6 +1291,46 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx, noteLocalDayWrite],
   );
 
+  const handleToggleCollapse = useCallback(
+    async (message) => {
+      if (!storageReady || !message?.id) return;
+      const dateStr =
+        message.dateStr || localDateString(new Date(message.at), detectTimeZone());
+      const nextCollapsed =
+        message.collapsed === '1' || message.collapsed === true ? '' : '1';
+      try {
+        const updated = await patchChatMessageMeta(ctx, dateStr, message.id, {
+          collapsed: nextCollapsed,
+        });
+        if (!updated) {
+          setError('메시지를 찾지 못했습니다.');
+          return;
+        }
+        const patch = { ...updated, dateStr };
+        setMessages((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setPinnedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setNotedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setEditedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setSearchResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+      } catch (e) {
+        setError(e?.message || '접기 상태 변경 실패');
+      }
+    },
+    [storageReady, ctx, noteLocalDayWrite],
+  );
+
   const runPinnedScan = useCallback(async () => {
     if (!storageReady) return;
     setPinnedLoading(true);
@@ -1701,6 +1741,7 @@ export default function ChatWithMyselfPane({
               onAddToNote={setAddToNoteMessage}
               onViewEditHistory={setHistoryMessage}
               onTogglePin={handleTogglePin}
+              onToggleCollapse={handleToggleCollapse}
               onOpenNote={onOpenNote}
               onOpenReplyTarget={handleOpenReplyTarget}
               getPresignedUrl={getPresignedUrlForPath}
