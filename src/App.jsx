@@ -4363,6 +4363,61 @@ function MainApp() {
     [storageMode, s3Tree, webdavTree, localTree, selectFileRaw, showAlert],
   );
 
+  const handleOpenStorageUsageFile = useCallback(
+    async (file) => {
+      const scanned = file?.node;
+      const path = String(file?.path || scanned?.path || '');
+      if (!path) return;
+
+      const type =
+        storageMode === STORAGE_MODE_LOCAL
+          ? 'local'
+          : storageMode === STORAGE_MODE_WEBDAV
+            ? 'webdav'
+            : 's3';
+      const tree =
+        type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
+      const live = findNodeByPath(tree, path) || findFileNodeByPath(tree, path);
+      const node =
+        type === 'local' && scanned?.handle
+          ? scanned
+          : live || scanned;
+
+      if (!node) {
+        showAlert({
+          title: '파일 열기',
+          message: '해당 파일을 찾을 수 없습니다',
+          detail: path,
+        });
+        return;
+      }
+      if (type === 'local' && !node.handle) {
+        showAlert({
+          title: '파일 열기',
+          message: '로컬 파일 핸들을 찾을 수 없습니다. 폴더를 다시 연 뒤 분석해 주세요.',
+          detail: path,
+        });
+        return;
+      }
+
+      if (!confirmAndCancelEditorImageUpload()) return;
+      await saveCurrentMarkdownBeforeSwitch(type, node);
+      setSelectedIds(new Set([toSelectKey(type, path)]));
+      lastSelectedIdRef.current = toSelectKey(type, path);
+      await selectFileRaw(type, node);
+    },
+    [
+      storageMode,
+      s3Tree,
+      webdavTree,
+      localTree,
+      selectFileRaw,
+      showAlert,
+      confirmAndCancelEditorImageUpload,
+      saveCurrentMarkdownBeforeSwitch,
+    ],
+  );
+
   const handleShareNoteToChatWithMyself = useCallback(async () => {
     if (!currentFile?.id) return;
     const path = String(currentFile.id);
@@ -5242,6 +5297,7 @@ function MainApp() {
                   isCheckingAppUpdate={isCheckingAppUpdate}
                   onScanStorageUsage={scanActiveStorageUsageTree}
                   canScanStorageUsage={canScanStorageUsage}
+                  onOpenStorageUsageFile={handleOpenStorageUsageFile}
                 />
               }
             />

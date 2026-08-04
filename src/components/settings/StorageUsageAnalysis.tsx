@@ -1,24 +1,52 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import {
   analyzeStorageTree,
   formatStorageBytes,
   type StorageTreeNode,
   type StorageUsageAnalysis,
+  type StorageUsageExtensionRow,
+  type StorageUsageFileEntry,
+  type StorageUsageFolderRow,
 } from '@/utils/storageUsageAnalysis';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
+import StorageExtensionFilesModal from '@/components/settings/StorageExtensionFilesModal';
 
 type Props = {
   storageMode?: string;
   onScanTree?: () => Promise<StorageTreeNode[]>;
   canScan?: boolean;
+  onOpenFile?: (file: StorageUsageFileEntry) => void | Promise<void>;
 };
 
 type SectionId = 'summary' | 'extension' | 'folder';
+
+type DataTableColumn = {
+  key: string;
+  header: string;
+  align?: 'left' | 'right';
+  className?: string;
+  /** When set, this column renders expand/collapse icons from row tree meta. */
+  tree?: boolean;
+};
+
+type DataTableRow = Record<string, ReactNode> & {
+  /** Stable row key when provided. */
+  _key?: string;
+  /** Optional whole-row click handler (e.g. open detail modal). */
+  _onClick?: () => void;
+  /** Tree expand meta consumed by columns with `tree: true`. */
+  _tree?: {
+    depth: number;
+    expandable: boolean;
+    expanded: boolean;
+    label: ReactNode;
+  };
+};
 
 function storageLabel(mode: string | undefined): string {
   if (mode === STORAGE_MODE_LOCAL) return 'Local Haim';
@@ -35,14 +63,47 @@ function GraphPlaceholder() {
   );
 }
 
+function TreeCell({
+  depth,
+  expandable,
+  expanded,
+  label,
+}: {
+  depth: number;
+  expandable: boolean;
+  expanded: boolean;
+  label: ReactNode;
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-0.5 font-mono text-[11px]">
+      <span
+        className="inline-block shrink-0"
+        style={{ width: `${depth * 12}px` }}
+        aria-hidden
+      />
+      {expandable ? (
+        <span
+          className="inline-flex size-4 shrink-0 items-center justify-center text-gray-500 dark:text-odp-muted"
+          aria-hidden
+        >
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </span>
+      ) : (
+        <span className="inline-block size-4 shrink-0" aria-hidden />
+      )}
+      <span className="min-w-0 truncate">{label}</span>
+    </span>
+  );
+}
+
 function DataTable({
   columns,
   rows,
   emptyText = '데이터가 없습니다.',
   maxHeightClass = 'max-h-64',
 }: {
-  columns: { key: string; header: string; align?: 'left' | 'right'; className?: string }[];
-  rows: Record<string, ReactNode>[];
+  columns: DataTableColumn[];
+  rows: DataTableRow[];
   emptyText?: string;
   maxHeightClass?: string;
 }) {
@@ -76,25 +137,75 @@ function DataTable({
               </td>
             </tr>
           ) : (
-            rows.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-odp-focusBg/40">
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`border-t border-gray-100 px-3 py-1.5 text-gray-700 dark:border-odp-borderSoft dark:text-odp-fg ${
-                      col.align === 'right' ? 'text-right tabular-nums' : ''
-                    } ${col.className ?? ''}`}
-                  >
-                    {row[col.key]}
-                  </td>
-                ))}
-              </tr>
-            ))
+            rows.map((row, idx) => {
+              const clickable = typeof row._onClick === 'function';
+              const treeExpanded = row._tree?.expandable ? row._tree.expanded : undefined;
+              const onRowKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
+                if (!clickable) return;
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                row._onClick?.();
+              };
+              return (
+                <tr
+                  key={row._key ?? idx}
+                  onClick={clickable ? row._onClick : undefined}
+                  onKeyDown={onRowKeyDown}
+                  tabIndex={clickable ? 0 : undefined}
+                  aria-expanded={treeExpanded}
+                  className={`hover:bg-gray-50 dark:hover:bg-odp-focusBg/40 ${
+                    clickable ? 'cursor-pointer' : ''
+                  }`}
+                >
+                  {columns.map((col) => {
+                    const tree = col.tree ? row._tree : undefined;
+                    return (
+                      <td
+                        key={col.key}
+                        className={`border-t border-gray-100 px-3 py-1.5 text-gray-700 dark:border-odp-borderSoft dark:text-odp-fg ${
+                          col.align === 'right' ? 'text-right tabular-nums' : ''
+                        } ${col.className ?? ''}`}
+                      >
+                        {tree ? (
+                          <TreeCell
+                            depth={tree.depth}
+                            expandable={tree.expandable}
+                            expanded={tree.expanded}
+                            label={tree.label}
+                          />
+                        ) : (
+                          row[col.key]
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>
     </div>
   );
+}
+
+function visibleFolderRows(
+  folders: StorageUsageFolderRow[],
+  expandedPaths: Set<string>,
+): StorageUsageFolderRow[] {
+  const visiblePaths = new Set<string>();
+  const visible: StorageUsageFolderRow[] = [];
+
+  for (const row of folders) {
+    const parentOk =
+      row.parentPath == null ||
+      (visiblePaths.has(row.parentPath) && expandedPaths.has(row.parentPath));
+    if (!parentOk) continue;
+    visible.push(row);
+    visiblePaths.add(row.path);
+  }
+
+  return visible;
 }
 
 function AnalysisSection({
@@ -139,10 +250,13 @@ export default function StorageUsageAnalysis({
   storageMode = STORAGE_MODE_S3,
   onScanTree,
   canScan = true,
+  onOpenFile,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<StorageUsageAnalysis | null>(null);
+  const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(() => new Set());
+  const [extensionModal, setExtensionModal] = useState<StorageUsageExtensionRow | null>(null);
   const [openSections, setOpenSections] = useState<Record<SectionId, boolean>>({
     summary: true,
     extension: false,
@@ -152,6 +266,8 @@ export default function StorageUsageAnalysis({
   useEffect(() => {
     setAnalysis(null);
     setError(null);
+    setExpandedFolderPaths(new Set());
+    setExtensionModal(null);
     setOpenSections({
       summary: true,
       extension: false,
@@ -163,6 +279,15 @@ export default function StorageUsageAnalysis({
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const toggleFolder = (path: string) => {
+    setExpandedFolderPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
   const handleAnalyze = async () => {
     if (!onScanTree || !canScan || loading) return;
     setLoading(true);
@@ -170,10 +295,14 @@ export default function StorageUsageAnalysis({
     try {
       const tree = await onScanTree();
       setAnalysis(analyzeStorageTree(tree));
+      setExpandedFolderPaths(new Set());
+      setExtensionModal(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(message || '용량 분석에 실패했습니다.');
       setAnalysis(null);
+      setExpandedFolderPaths(new Set());
+      setExtensionModal(null);
     } finally {
       setLoading(false);
     }
@@ -196,6 +325,8 @@ export default function StorageUsageAnalysis({
           : []),
       ]
     : [];
+
+  const folderRows = visibleFolderRows(analysis?.folders ?? [], expandedFolderPaths);
 
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface">
@@ -257,10 +388,12 @@ export default function StorageUsageAnalysis({
               { key: 'percent', header: '비율', align: 'right' },
             ]}
             rows={(analysis?.byExtension ?? []).map((row) => ({
+              _key: row.ext,
               label: row.label,
               count: row.count.toLocaleString(),
               size: formatStorageBytes(row.size),
               percent: `${row.percent.toFixed(1)}%`,
+              _onClick: () => setExtensionModal(row),
             }))}
             emptyText="분석을 시작하면 형식별 용량이 표시됩니다."
           />
@@ -274,32 +407,45 @@ export default function StorageUsageAnalysis({
           <DataTable
             maxHeightClass="max-h-80"
             columns={[
-              { key: 'name', header: '폴더' },
+              { key: 'name', header: '폴더', tree: true },
               { key: 'fileCount', header: '파일 수', align: 'right' },
               { key: 'size', header: '용량', align: 'right' },
               { key: 'percent', header: '비율', align: 'right' },
             ]}
-            rows={(analysis?.folders ?? []).map((row) => ({
-              name: (
-                <span className="inline-flex min-w-0 items-center gap-1 font-mono text-[11px]">
-                  <span
-                    className="inline-block shrink-0"
-                    style={{ width: `${row.depth * 12}px` }}
-                    aria-hidden
-                  />
-                  <span className="truncate" title={row.path}>
-                    {row.name}
-                  </span>
-                </span>
-              ),
-              fileCount: row.fileCount.toLocaleString(),
-              size: formatStorageBytes(row.size),
-              percent: `${row.percent.toFixed(1)}%`,
-            }))}
+            rows={folderRows.map((row) => {
+              const expanded = expandedFolderPaths.has(row.path);
+              return {
+                _key: row.path,
+                fileCount: row.fileCount.toLocaleString(),
+                size: formatStorageBytes(row.size),
+                percent: `${row.percent.toFixed(1)}%`,
+                _onClick: row.hasChildFolders ? () => toggleFolder(row.path) : undefined,
+                _tree: {
+                  depth: row.depth,
+                  expandable: row.hasChildFolders,
+                  expanded,
+                  label: (
+                    <span title={row.path}>{row.name}</span>
+                  ),
+                },
+              };
+            })}
             emptyText="분석을 시작하면 폴더별 용량이 표시됩니다."
           />
         </AnalysisSection>
       </div>
+
+      <StorageExtensionFilesModal
+        open={extensionModal != null}
+        extension={extensionModal}
+        onOpenChange={(next) => {
+          if (!next) setExtensionModal(null);
+        }}
+        onOpenFile={async (file) => {
+          setExtensionModal(null);
+          await onOpenFile?.(file);
+        }}
+      />
     </div>
   );
 }

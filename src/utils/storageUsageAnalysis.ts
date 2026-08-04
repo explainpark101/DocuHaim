@@ -8,6 +8,10 @@ export type StorageTreeNode = {
   path?: string;
   size?: number | null;
   children?: StorageTreeNode[] | null;
+  /** Local File System Access handle (when present). */
+  handle?: unknown;
+  parentHandle?: unknown;
+  lastModified?: Date | string | number | null;
 };
 
 export type StorageUsageSummary = {
@@ -18,18 +22,29 @@ export type StorageUsageSummary = {
   unknownSizeCount: number;
 };
 
+export type StorageUsageFileEntry = {
+  path: string;
+  name: string;
+  size: number | null;
+  /** Original tree node so callers can open local/S3/WebDAV files. */
+  node: StorageTreeNode;
+};
+
 export type StorageUsageExtensionRow = {
   ext: string;
   label: string;
   count: number;
   size: number;
   percent: number;
+  files: StorageUsageFileEntry[];
 };
 
 export type StorageUsageFolderRow = {
   path: string;
   name: string;
   depth: number;
+  parentPath: string | null;
+  hasChildFolders: boolean;
   size: number;
   fileCount: number;
   percent: number;
@@ -92,8 +107,8 @@ export function analyzeStorageTree(nodes: StorageTreeNode[] | null | undefined):
   let zeroByteCount = 0;
   let unknownSizeCount = 0;
   let totalSize = 0;
-  /** @type {Map<string, { count: number, size: number }>} */
-  const extMap = new Map();
+  type ExtAgg = { count: number; size: number; files: StorageUsageFileEntry[] };
+  const extMap = new Map<string, ExtAgg>();
 
   const walkFiles = (items: StorageTreeNode[]) => {
     for (const node of items) {
@@ -111,26 +126,36 @@ export function analyzeStorageTree(nodes: StorageTreeNode[] | null | undefined):
       totalSize += size;
 
       const ext = extensionOf(node.name);
-      const prev = extMap.get(ext) ?? { count: 0, size: 0 };
+      const path = node.path || node.name;
+      const prev = extMap.get(ext) ?? { count: 0, size: 0, files: [] };
       prev.count += 1;
       prev.size += size;
+      prev.files.push({
+        path,
+        name: node.name,
+        size: hasSize ? size : null,
+        node,
+      });
       extMap.set(ext, prev);
     }
   };
   walkFiles(list);
 
   const byExtension: StorageUsageExtensionRow[] = [...extMap.entries()]
-    .map(([ext, { count, size }]) => ({
+    .map(([ext, { count, size, files }]) => ({
       ext,
       label: ext === '(none)' ? '(확장자 없음)' : `.${ext}`,
       count,
       size,
       percent: totalSize > 0 ? (size / totalSize) * 100 : 0,
+      files: [...files].sort(
+        (a, b) => (b.size ?? -1) - (a.size ?? -1) || a.path.localeCompare(b.path),
+      ),
     }))
     .sort((a, b) => b.size - a.size || b.count - a.count || a.label.localeCompare(b.label));
 
   const folders: StorageUsageFolderRow[] = [];
-  const walkFolders = (items: StorageTreeNode[], depth: number) => {
+  const walkFolders = (items: StorageTreeNode[], depth: number, parentPath: string | null) => {
     const ranked = items
       .filter((n) => n.type === 'folder')
       .map((n) => ({
@@ -141,18 +166,22 @@ export function analyzeStorageTree(nodes: StorageTreeNode[] | null | undefined):
       .sort((a, b) => b.size - a.size || a.node.name.localeCompare(b.node.name));
 
     for (const { node, size, fileCount: fc } of ranked) {
+      const path = node.path || `${node.name}/`;
+      const hasChildFolders = (node.children ?? []).some((child) => child.type === 'folder');
       folders.push({
-        path: node.path || `${node.name}/`,
+        path,
         name: node.name,
         depth,
+        parentPath,
+        hasChildFolders,
         size,
         fileCount: fc,
         percent: totalSize > 0 ? (size / totalSize) * 100 : 0,
       });
-      if (node.children?.length) walkFolders(node.children, depth + 1);
+      if (node.children?.length) walkFolders(node.children, depth + 1, path);
     }
   };
-  walkFolders(list, 0);
+  walkFolders(list, 0, null);
 
   return {
     summary: {

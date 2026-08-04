@@ -79,6 +79,7 @@ export default function SettingsPage({
   isCheckingAppUpdate = false,
   onScanStorageUsage,
   canScanStorageUsage = false,
+  onOpenStorageUsageFile,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [googleAiKeyInput, setGoogleAiKeyInput] = useState('');
@@ -213,6 +214,7 @@ export default function SettingsPage({
           storageMode={storageMode}
           onScanTree={onScanStorageUsage}
           canScan={canScanStorageUsage}
+          onOpenFile={onOpenStorageUsageFile}
         />
 
         {/* S3 Form */}
