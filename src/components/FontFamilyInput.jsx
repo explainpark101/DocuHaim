@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { withFontFallback } from '@/utils/fontFallback';
 
 /**
  * font-family 전용 입력 컴포넌트.
@@ -83,7 +84,7 @@ export default function FontFamilyInput({
         aria-controls={id ? `${id}-listbox` : undefined}
         aria-activedescendant={open && filtered[0] ? `${id}-opt-0` : undefined}
         className="w-full rounded border border-gray-300 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        style={{ fontFamily: inputValue || 'inherit' }}
+        style={{ fontFamily: withFontFallback(inputValue) }}
       />
       <div
         id={id ? `${id}-listbox` : undefined}
@@ -104,7 +105,7 @@ export default function FontFamilyInput({
               role="option"
               id={id ? `${id}-opt-${i}` : undefined}
               className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-odp-focusBg focus:bg-gray-100 dark:focus:bg-odp-focusBg focus:outline-none"
-              style={{ fontFamily: font }}
+              style={{ fontFamily: withFontFallback(font) }}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleSelect(font);

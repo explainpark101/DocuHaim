@@ -29,6 +29,25 @@
   samp {
     @apply font-mono;
   }
+
+  /* md-editor-rt hardcodes Paperozi/A2z; keep theme stacks (system glyph fallback). */
+  .md-editor,
+  .md-editor-modal,
+  .md-editor-modal-container {
+    font-family: var(--font-sans);
+  }
+
+  .md-editor-preview h1,
+  .md-editor-preview h2,
+  .md-editor-preview h3,
+  .md-editor-preview h4,
+  .md-editor-preview h5,
+  .md-editor-preview h6,
+  .md-editor-preview b,
+  .md-editor-preview strong,
+  .md-editor-preview th {
+    font-family: var(--font-display);
+  }
 }
 
 @font-face {

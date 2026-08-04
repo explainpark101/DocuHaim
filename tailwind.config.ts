@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import { SYSTEM_SANS_FALLBACK_LIST } from './src/utils/fontFallback';
 
 const config: Config = {
   darkMode: 'class',
@@ -32,8 +33,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Paperozi', 'system-ui', 'sans-serif'],
-        display: ['A2z', 'Paperozi', 'system-ui', 'sans-serif'],
+        // Primary webfonts first; system stack covers unsupported glyph ranges.
+        sans: ['Paperozi', ...SYSTEM_SANS_FALLBACK_LIST],
+        display: ['A2z', 'Paperozi', ...SYSTEM_SANS_FALLBACK_LIST],
         mono: [
           'JetBrainsMono',
           'D2Coding',

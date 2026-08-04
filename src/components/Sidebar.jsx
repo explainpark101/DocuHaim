@@ -206,6 +206,7 @@ export default function Sidebar({
   showHiddenFolders,
   hideRecordingCompanions = false,
   treeStickyFolderPathEnabled = true,
+  hoverExpandDelayMs = 2000,
   onRequestCollapseSidebar,
   deletingFolderPath,
   isDeletingFolder,
@@ -249,14 +250,14 @@ export default function Sidebar({
   const autoScrollIntervalRef = useRef(null);
   const hoverExpandTimerRef = useRef(null);
   const hoverExpandKeyRef = useRef(null);
+  const hoverExpandDelayMsRef = useRef(hoverExpandDelayMs);
   const expandedPathsRef = useRef(expandedPaths);
   const searchTermRef = useRef(searchTerm);
   const handleExpandedChangeRef = useRef(null);
 
   expandedPathsRef.current = expandedPaths;
   searchTermRef.current = searchTerm;
-
-  const HOVER_EXPAND_MS = 2000;
+  hoverExpandDelayMsRef.current = hoverExpandDelayMs;
 
   const clearHoverExpandTimer = useCallback(() => {
     if (hoverExpandTimerRef.current != null) {
@@ -289,11 +290,12 @@ export default function Sidebar({
 
       clearHoverExpandTimer();
       hoverExpandKeyRef.current = key;
+      const delayMs = Math.max(0, Number(hoverExpandDelayMsRef.current) || 0);
       hoverExpandTimerRef.current = setTimeout(() => {
         hoverExpandTimerRef.current = null;
         hoverExpandKeyRef.current = null;
         handleExpandedChangeRef.current?.(storageType, folderPath, true);
-      }, HOVER_EXPAND_MS);
+      }, delayMs);
     },
     [clearHoverExpandTimer],
   );

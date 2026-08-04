@@ -123,6 +123,11 @@ import {
   loadTreeStickyFolderPathEnabled,
   saveTreeStickyFolderPathEnabled,
 } from '@/utils/treeStickySettings';
+import {
+  loadTreeHoverExpandSettings,
+  saveTreeHoverExpandSettings,
+  treeHoverExpandSettingsToMs,
+} from '@/utils/treeHoverExpandSettings';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import {
   getDraftKey,
@@ -380,6 +385,9 @@ function MainApp() {
   const [treeStickyFolderPathEnabled, setTreeStickyFolderPathEnabled] = useState(() =>
     loadTreeStickyFolderPathEnabled(),
   );
+  const [treeHoverExpandSettings, setTreeHoverExpandSettings] = useState(() =>
+    loadTreeHoverExpandSettings(),
+  );
 
   const {
     isRecording,
@@ -613,6 +621,10 @@ function MainApp() {
   useEffect(() => {
     saveTreeStickyFolderPathEnabled(treeStickyFolderPathEnabled);
   }, [treeStickyFolderPathEnabled]);
+
+  useEffect(() => {
+    saveTreeHoverExpandSettings(treeHoverExpandSettings);
+  }, [treeHoverExpandSettings]);
 
   useEffect(() => {
     applyDocumentTheme(theme);
@@ -4996,6 +5008,7 @@ function MainApp() {
               showHiddenFolders={showHiddenFolders}
               hideRecordingCompanions={hideRecordingCompanions}
               treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
+              hoverExpandDelayMs={treeHoverExpandSettingsToMs(treeHoverExpandSettings)}
               onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
               deletingFolderPath={deletingFolderPath}
               isDeletingFolder={isDeletingFolder}
@@ -5103,6 +5116,8 @@ function MainApp() {
                   }
                   hideRecordingCompanions={hideRecordingCompanions}
                   treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
+                  treeHoverExpandSettings={treeHoverExpandSettings}
+                  onTreeHoverExpandSettingsChange={setTreeHoverExpandSettings}
                   onToggleHideRecordingCompanions={() =>
                     setHideRecordingCompanions((prev) => !prev)
                   }

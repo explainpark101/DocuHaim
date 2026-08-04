@@ -7,6 +7,7 @@ import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
+import { withFontFallback } from '@/utils/fontFallback';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
@@ -803,10 +804,10 @@ export default function ExportPDFPage() {
   }, [currentFile, hrPgbrModalState, previewValue]);
 
   const fontStyleVars = {
-    '--print-font-body': fonts.body || 'inherit',
-    '--print-font-heading': fonts.heading || 'inherit',
-    '--print-font-bold': fonts.bold || 'inherit',
-    '--print-font-code': fonts.code || 'inherit',
+    '--print-font-body': withFontFallback(fonts.body),
+    '--print-font-heading': withFontFallback(fonts.heading),
+    '--print-font-bold': withFontFallback(fonts.bold),
+    '--print-font-code': withFontFallback(fonts.code, 'mono'),
   };
 
   if (location.state == null) {

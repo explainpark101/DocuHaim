@@ -28,7 +28,13 @@ import {
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
+import {
+  DEFAULT_TREE_HOVER_EXPAND,
+  convertTreeHoverExpandValue,
+  treeHoverExpandSettingsToMs,
+} from '@/utils/treeHoverExpandSettings';
 import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModelSelect';
+import { RadioGroup } from 'radix-ui';
 
 export default function SettingsPage({
   s3Creds,
@@ -42,6 +48,8 @@ export default function SettingsPage({
   onToggleHideRecordingCompanions,
   treeStickyFolderPathEnabled = true,
   onToggleTreeStickyFolderPath,
+  treeHoverExpandSettings = DEFAULT_TREE_HOVER_EXPAND,
+  onTreeHoverExpandSettingsChange,
   onRequestClose,
   webauthnSupported = false,
   webauthnEnabled = false,
@@ -703,6 +711,78 @@ export default function SettingsPage({
                 트리에서 열린 폴더 경로 sticky 표시 (스크롤 시 현재 경로 고정)
               </span>
             </label>
+          )}
+          {typeof onTreeHoverExpandSettingsChange === 'function' && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
+              <p className="text-xs font-semibold text-gray-700 dark:text-odp-fg mb-1">
+                사이드바 파일 이동 드래그 시 폴더 자동 펼침 대기 시간
+              </p>
+              <p className="text-[11px] text-gray-500 dark:text-odp-muted mb-3">
+                파일을 드래그한 채로 접힌 폴더 위에 올려두면, 설정한 시간 후 해당 폴더가 펼쳐집니다.
+                기본 단위는 초(s)입니다.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-odp-fg">
+                  <span className="sr-only">대기 시간</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={treeHoverExpandSettings.unit === 'ms' ? 1 : 0.1}
+                    value={treeHoverExpandSettings.value}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      onTreeHoverExpandSettingsChange({
+                        ...treeHoverExpandSettings,
+                        value: Number.isFinite(next) && next >= 0 ? next : 0,
+                      });
+                    }}
+                    className="w-24 border border-gray-300 dark:border-odp-borderSoft rounded px-2 py-1.5 text-sm bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg"
+                    aria-label="폴더 자동 펼침 대기 시간"
+                  />
+                </label>
+                <div className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg">
+                  <RadioGroup.Root
+                    className="flex items-center gap-3"
+                    value={treeHoverExpandSettings.unit}
+                    onValueChange={(nextUnit) => {
+                      if (nextUnit !== 's' && nextUnit !== 'ms') return;
+                      if (treeHoverExpandSettings.unit === nextUnit) return;
+                      onTreeHoverExpandSettingsChange({
+                        unit: nextUnit,
+                        value: convertTreeHoverExpandValue(
+                          treeHoverExpandSettings.value,
+                          treeHoverExpandSettings.unit,
+                          nextUnit,
+                        ),
+                      });
+                    }}
+                    aria-label="대기 시간 단위"
+                  >
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <RadioGroup.Item
+                        value="s"
+                        className="size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
+                      >
+                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                      </RadioGroup.Item>
+                      <span>초 (s)</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <RadioGroup.Item
+                        value="ms"
+                        className="size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
+                      >
+                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                      </RadioGroup.Item>
+                      <span>밀리초 (ms)</span>
+                    </label>
+                  </RadioGroup.Root>
+                </div>
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted">
+                  = {treeHoverExpandSettingsToMs(treeHoverExpandSettings)} ms
+                </span>
+              </div>
+            </div>
           )}
         </div>
 
