@@ -6,6 +6,7 @@ import '@/index.css'
 import '@/config/mdEditorConfig'
 import App from '@/App.jsx'
 import { ActivityIndicatorProvider } from '@/contexts/ActivityIndicatorContext'
+import { AlertModalProvider } from '@/contexts/AlertModalContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 
@@ -25,9 +26,11 @@ async function bootstrap() {
     <StrictMode>
       <Router basename={routerBasename}>
         <ActivityIndicatorProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
+          <AlertModalProvider>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </AlertModalProvider>
         </ActivityIndicatorProvider>
       </Router>
     </StrictMode>,

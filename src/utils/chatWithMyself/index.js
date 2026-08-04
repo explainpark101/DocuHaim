@@ -49,6 +49,12 @@ export {
   flushSendSelfPendingShares,
 } from './pendingShares.js';
 export {
+  normalizeStoragePath,
+  deletedNoteScopeFromNode,
+  pathAffectedByDelete,
+  messageNeedsNoteUnlink,
+} from './noteRefs.js';
+export {
   extractUrls,
   splitTextWithUrls,
   isYouTubeUrl,
@@ -91,6 +97,7 @@ export {
   findMessageById,
   resolveReplyThreadMessages,
   patchChatMessageMeta,
+  unlinkChatNotesForDeletedPaths,
   createOgStorageAdapters,
   readOgArchive,
   writeOgArchive,

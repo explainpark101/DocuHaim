@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   IconFilePlus,
@@ -7,6 +7,8 @@ import {
   IconTrash,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucide-react';
+
+const VIEWPORT_PADDING = 8;
 
 /**
  * 우클릭 시 표시되는 사이드바 컨텍스트 메뉴.
@@ -30,6 +32,7 @@ export default function SidebarContextMenu({
   onOpenInNewWindow,
 }) {
   const menuRef = useRef(null);
+  const [position, setPosition] = useState({ left: x, top: y });
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -48,6 +51,40 @@ export default function SidebarContextMenu({
     };
   }, [onClose]);
 
+  // Keep menu inside the viewport: flip above the cursor when it would overflow below.
+  useLayoutEffect(() => {
+    if (x == null || y == null || !node) return;
+    const el = menuRef.current;
+    if (!el) return;
+
+    const { width, height } = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = VIEWPORT_PADDING;
+
+    let left = x;
+    let top = y;
+
+    if (top + height > vh - pad) {
+      top = y - height;
+    }
+    if (top < pad) {
+      top = pad;
+    }
+    if (top + height > vh - pad) {
+      top = Math.max(pad, vh - pad - height);
+    }
+
+    if (left + width > vw - pad) {
+      left = Math.max(pad, vw - pad - width);
+    }
+    if (left < pad) {
+      left = pad;
+    }
+
+    setPosition({ left, top });
+  }, [x, y, node, isTrashRoot]);
+
   if (x == null || y == null || !node) return null;
 
   const isFolder = node.type === 'folder';
@@ -63,7 +100,7 @@ export default function SidebarContextMenu({
     <div
       ref={menuRef}
       className="fixed z-100 min-w-[180px] rounded-lg border border-gray-200 dark:border-gray-500 bg-white dark:bg-odp-bgSoft shadow-lg overflow-clip"
-      style={{ left: x, top: y }}
+      style={{ left: position.left ?? x, top: position.top ?? y }}
     >
       {canAdd && onCreateFile && (
         <button

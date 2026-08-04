@@ -58,6 +58,7 @@ export default function ChatLinkedText({
   getPresignedUrl,
   collapsed = false,
   onOpenViewPath,
+  noteExists,
 }) {
   const openInNewWindow = useOpenLinksInNewWindow();
   const parts = useMemo(() => splitTextWithUrls(text), [text]);
@@ -82,12 +83,17 @@ export default function ChatLinkedText({
     <div className={`min-w-0 max-w-full ${className}`}>
       {parts.map((part, i) => {
         if (part.type === 'note') {
+          const available =
+            typeof noteExists === 'function'
+              ? Boolean(noteExists(part.path))
+              : true;
           return (
             <ChatNoteLinkCard
               key={`n-${i}-${part.path}`}
               path={part.path}
               name={part.name}
-              onOpen={onOpenViewPath}
+              available={available}
+              onOpen={available ? onOpenViewPath : undefined}
             />
           );
         }

@@ -151,6 +151,7 @@ function CollectionCardMenuItems({
   onTogglePin,
   onOpenNote,
   onViewEditHistory,
+  noteExists,
   _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
@@ -170,7 +171,8 @@ function CollectionCardMenuItems({
         <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
         {pinned ? '고정 해제' : '고정'}
       </_Item>
-      {msg?.notePath ? (
+      {msg?.notePath &&
+      (typeof noteExists !== 'function' || noteExists(msg.notePath)) ? (
         <_Item
           className={chatMenuItemClass}
           onSelect={() => onOpenNote?.(msg.notePath, msg)}
@@ -210,6 +212,7 @@ function CollectionCard({
   onOpenNote,
   onViewEditHistory,
   getPresignedUrl,
+  noteExists,
   groups = [],
   coarse,
 }) {
@@ -298,6 +301,7 @@ function CollectionCard({
                     text={attachmentMarkdown}
                     className="text-sm text-gray-800 dark:text-odp-fg"
                     getPresignedUrl={getPresignedUrl}
+                    noteExists={noteExists}
                     onOpenViewPath={
                       onOpenNote ? (path) => onOpenNote(path, msg) : undefined
                     }
@@ -328,7 +332,9 @@ function CollectionCard({
           <div className="text-sm text-gray-400">(빈 메시지)</div>
         )}
       </button>
-      {tab === 'noted' && msg.notePath ? (
+      {tab === 'noted' &&
+      msg.notePath &&
+      (typeof noteExists !== 'function' || noteExists(msg.notePath)) ? (
         <div className="mt-2 flex justify-end gap-1">
           <button
             type="button"
@@ -369,6 +375,7 @@ function CollectionCard({
             onTogglePin={onTogglePin}
             onOpenNote={onOpenNote}
             onViewEditHistory={onViewEditHistory}
+            noteExists={noteExists}
             _Item={ContextMenu.Item}
           />
         </ContextMenu.Content>
@@ -661,6 +668,7 @@ function CollectionSlide({
   onOpenNote,
   onViewEditHistory,
   getPresignedUrl,
+  noteExists,
   groups,
   coarse,
 }) {
@@ -697,6 +705,7 @@ function CollectionSlide({
                 onOpenNote={onOpenNote}
                 onViewEditHistory={onViewEditHistory}
                 getPresignedUrl={getPresignedUrl}
+                noteExists={noteExists}
                 groups={groups}
                 coarse={coarse}
               />
@@ -733,6 +742,7 @@ export default function ChatPinnedPanel({
   onViewEditHistory,
   timeZone,
   getPresignedUrl,
+  noteExists,
   groups = [],
   disableTabAutoClose = false,
 }) {
@@ -836,6 +846,7 @@ export default function ChatPinnedPanel({
               onOpenNote={onOpenNote}
               onViewEditHistory={onViewEditHistory}
               getPresignedUrl={getPresignedUrl}
+              noteExists={noteExists}
               groups={groups}
               coarse={coarse}
             />

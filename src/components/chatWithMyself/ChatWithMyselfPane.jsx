@@ -81,11 +81,13 @@ import {
   flushPendingMessages,
   postChatSyncEvent,
   toggleReaction,
+  normalizeStoragePath,
 } from '@/utils/chatWithMyself';
 import {
   getPendingMessages,
   deletePendingMessage,
 } from '@/utils/chatWithMyself/chatDb.js';
+import { findFileNodeByPath } from '@/utils/s3Tree';
 
 async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   if (!filters) return { ok: true, ogSearchText: '' };
@@ -152,6 +154,7 @@ export default function ChatWithMyselfPane({
   onOpenSidebar,
   s3Tree = [],
   localTree = [],
+  webdavTree = [],
   onRequestCreateFolderForNote,
   onRequestMoveFolder,
   onCreateNoteFromMessage,
@@ -186,6 +189,21 @@ export default function ChatWithMyselfPane({
     (ctx.mode === 'local' && ctx.localRootHandle) ||
     (ctx.mode === 'webdav' &&
       Boolean(ctx.webdavConfig?.endpoint && ctx.webdavConfig?.username));
+
+  const fileTree = useMemo(() => {
+    if (storageMode === 'local') return localTree || [];
+    if (storageMode === 'webdav') return webdavTree || [];
+    return s3Tree || [];
+  }, [storageMode, s3Tree, localTree, webdavTree]);
+
+  const noteExists = useCallback(
+    (path) => {
+      const p = normalizeStoragePath(path);
+      if (!p || p.startsWith('.trash/')) return false;
+      return Boolean(findFileNodeByPath(fileTree, p));
+    },
+    [fileTree],
+  );
 
   const remotePoll = ctx.mode === 's3' || ctx.mode === 'webdav';
 
@@ -610,12 +628,20 @@ export default function ChatWithMyselfPane({
   });
 
   // Apply share-target group-send modal from App-level ShareTargetGate.
+  // Keep App seed until the modal closes/sends — clearing on apply loses the payload
+  // when this pane remounts after unlock/auth.
   useEffect(() => {
     if (!shareGroupSend?.id || shareGroupSend.body == null) return;
     setEditTarget(null);
-    setShareGroupModal(shareGroupSend);
+    setShareGroupModal((prev) =>
+      prev?.id === shareGroupSend.id ? prev : shareGroupSend,
+    );
+  }, [shareGroupSend]);
+
+  const clearShareGroupSend = useCallback(() => {
+    setShareGroupModal(null);
     onShareGroupSendConsumed?.();
-  }, [shareGroupSend, onShareGroupSendConsumed]);
+  }, [onShareGroupSendConsumed]);
 
   const handleLoadOlder = useCallback(async () => {
     if (!storageReady || loadingOlder || loadedDayIndex >= dayKeys.length) return;
@@ -1457,9 +1483,9 @@ export default function ChatWithMyselfPane({
         setWindowNewestIndex(0);
         setLoadedDayIndex(1);
       }
-      setShareGroupModal(null);
+      clearShareGroupSend();
     },
-    [storageReady, ctx, storageSendErrorHint, noteLocalDayWrite],
+    [storageReady, ctx, storageSendErrorHint, noteLocalDayWrite, clearShareGroupSend],
   );
 
   const runSearchScan = useCallback(
@@ -1639,6 +1665,7 @@ export default function ChatWithMyselfPane({
     onViewEditHistory: setHistoryMessage,
     timeZone,
     getPresignedUrl: getPresignedUrlForPath,
+    noteExists,
   };
 
   const pinnedPanelProps = {
@@ -1653,6 +1680,7 @@ export default function ChatWithMyselfPane({
     onViewEditHistory: setHistoryMessage,
     timeZone,
     getPresignedUrl: getPresignedUrlForPath,
+    noteExists,
   };
 
   const desktopResizableCount = Math.max(
@@ -1814,6 +1842,7 @@ export default function ChatWithMyselfPane({
               onOpenNote={onOpenNote}
               onOpenReplyTarget={handleOpenReplyTarget}
               getPresignedUrl={getPresignedUrlForPath}
+              noteExists={noteExists}
               groupIconByName={groupIconByName}
               groupLabelByKey={groupLabelByKey}
               emptyHint={
@@ -2054,7 +2083,7 @@ export default function ChatWithMyselfPane({
         groups={groups}
         onAddGroup={handleAddGroup}
         onSend={handleShareGroupSend}
-        onClose={() => setShareGroupModal(null)}
+        onClose={clearShareGroupSend}
         getPresignedUrl={getPresignedUrlForPath}
       />
       <ChatComposerSettingsModal

@@ -24,6 +24,10 @@ import {
   serializeEditVersion,
 } from './editHistory.js';
 import { cacheDay, getCachedDay, savePendingMessage } from './chatDb.js';
+import {
+  messageNeedsNoteUnlink,
+  pathAffectedByDelete,
+} from './noteRefs.js';
 
 const MAX_WRITE_RETRIES = 5;
 
@@ -1123,6 +1127,54 @@ export async function flushPendingMessages(ctx, db) {
     }
   }
   return { flushed, dateStrs: [...dateStrs] };
+}
+
+/**
+ * Clear chat → note links for deleted (or trashed) note paths.
+ * Only clears `notePath` meta (messages saved as notes from chat).
+ * Does not remove `[[note:...]]` share tokens — those stay and show disabled in UI.
+ * Does not create edit-history versions (system cleanup).
+ *
+ * @param {ChatStorageCtx} ctx
+ * @param {{ exact?: string[], prefixes?: string[] }} scope
+ * @returns {Promise<{ dateStrs: string[], updatedCount: number }>}
+ */
+export async function unlinkChatNotesForDeletedPaths(ctx, scope) {
+  const deleted = {
+    exact: Array.isArray(scope?.exact) ? scope.exact : [],
+    prefixes: Array.isArray(scope?.prefixes) ? scope.prefixes : [],
+  };
+  if (!deleted.exact.length && !deleted.prefixes.length) {
+    return { dateStrs: [], updatedCount: 0 };
+  }
+
+  const keys = await listDayKeys(ctx);
+  /** @type {string[]} */
+  const dateStrs = [];
+  let updatedCount = 0;
+
+  for (const dateStr of keys) {
+    const messages = await readDayMessages(ctx, dateStr);
+    if (!messages.some((m) => messageNeedsNoteUnlink(m, deleted))) continue;
+
+    await mutateDayFile(ctx, dateStr, (parsed) => {
+      let dayUpdated = 0;
+      const nextMessages = parsed.messages.map((msg) => {
+        if (!pathAffectedByDelete(msg.notePath, deleted)) return msg;
+        dayUpdated += 1;
+        return { ...msg, notePath: '' };
+      });
+      updatedCount += dayUpdated;
+      return {
+        messages: nextMessages,
+        deletedIds: parsed.deletedIds,
+        deletedAtById: parsed.deletedAtById,
+      };
+    });
+    dateStrs.push(dateStr);
+  }
+
+  return { dateStrs, updatedCount };
 }
 
 export { ChatPreconditionFailedError, createChatBackend, CHAT_FOLDER };

@@ -484,6 +484,7 @@ function MessageBubble({
   replyGroupLabel = null,
   externalReactionPickerOpen = false,
   onReactionPickerOpenChange,
+  noteExists,
 }) {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
@@ -804,11 +805,15 @@ function MessageBubble({
                   collapsed ? 'whitespace-nowrap' : 'whitespace-pre-wrap wrap-anywhere'
                 } ${isDeleting ? 'select-none' : 'select-text'}`}
                 getPresignedUrl={getPresignedUrl}
+                noteExists={noteExists}
                 onOpenViewPath={
                   onOpenNote ? (path) => onOpenNote(path, msg) : undefined
                 }
               />
-              {!collapsed && msg.notePath && !isDeleting ? (
+              {!collapsed &&
+              msg.notePath &&
+              !isDeleting &&
+              (typeof noteExists !== 'function' || noteExists(msg.notePath)) ? (
                 <button
                   type="button"
                   className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-600 underline-offset-2 hover:underline dark:text-blue-300"
@@ -945,6 +950,8 @@ export default function ChatMessageList({
   groupIconByName = null,
   /** @type {Map<string, string>|Record<string, string>|null} */
   groupLabelByKey = null,
+  /** @type {((path: string) => boolean) | null | undefined} */
+  noteExists,
 }) {
   const scrollerRef = useRef(null);
   const topSentinelRef = useRef(null);
@@ -1277,6 +1284,7 @@ export default function ChatMessageList({
                           setReactionPickerMsgId(open ? item.msg.id : null);
                         }}
                         getPresignedUrl={getPresignedUrl}
+                        noteExists={noteExists}
                         groupIconPath={
                           groupIconByName instanceof Map
                             ? groupIconByName.get(item.msg.group) || null

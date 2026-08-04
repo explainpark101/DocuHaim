@@ -39,6 +39,7 @@ import ShareTargetGate, {
   useChatStorageCtx,
 } from '@/components/chatWithMyself/ShareTargetGate';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
+import { useAlertModal } from '@/contexts/AlertModalContext';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
@@ -47,6 +48,8 @@ import {
   patchChatMessageMeta,
   appendChatMessage,
   enqueuePendingShare,
+  unlinkChatNotesForDeletedPaths,
+  deletedNoteScopeFromNode,
   SELF_GROUP,
   postChatSyncEvent,
   postChatLocalSyncEvent,
@@ -159,6 +162,7 @@ export default function App() {
 function MainApp() {
   const LAST_FILE_KEY = 's3haim_lastFile';
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
+  const { showAlert } = useAlertModal();
   const auth = useAuth();
   const {
     isUnlocked,
@@ -987,6 +991,10 @@ function MainApp() {
 
   const handleShareComposeClaimed = useCallback((seed) => {
     if (seed?.body) setShareGroupSend(seed);
+  }, []);
+
+  const handleShareGroupSendConsumed = useCallback(() => {
+    setShareGroupSend(null);
   }, []);
 
   const refreshWebdavTree = useCallback(async () => {
@@ -3914,12 +3922,42 @@ function MainApp() {
         await refreshWebdavTree();
       }
 
-      if (currentFile && currentFile.id.startsWith(node.path)) {
+      // Only close the editor / leave /view when the deleted item is the open file,
+      // and never yank the user off /chat.
+      const isChatRoute =
+        location.pathname === '/chat' || location.pathname.endsWith('/chat');
+      const openFileAffected = Boolean(
+        currentFile?.id &&
+          (node.type === 'folder'
+            ? currentFile.id === node.path ||
+              currentFile.id.startsWith(node.path)
+            : currentFile.id === node.path),
+      );
+      if (openFileAffected) {
         setCurrentFile(null);
         setEditorContent('');
-        navigate('/');
+        if (!isChatRoute) {
+          navigate('/');
+        }
       }
       deleteSucceeded = true;
+
+      // Clear chat ↔ note links for deleted / trashed notes.
+      if (chatStorageReady && chatStorageCtx) {
+        try {
+          const scope = deletedNoteScopeFromNode(node);
+          const { dateStrs } = await unlinkChatNotesForDeletedPaths(
+            chatStorageCtx,
+            scope,
+          );
+          for (const dateStr of dateStrs) {
+            postChatSyncEvent('day', { dateStr });
+            postChatLocalSyncEvent('day', { dateStr });
+          }
+        } catch (unlinkErr) {
+          console.warn('Failed to unlink chat note refs after delete:', unlinkErr);
+        }
+      }
     } catch (e) {
       alert("삭제 실패: " + e.message);
       setOperationStatus(`삭제 실패: ${e.message}`);
@@ -4150,23 +4188,32 @@ function MainApp() {
     async (notePath) => {
       if (!notePath) return;
       const path = String(notePath);
+      const tree =
+        storageMode === 's3'
+          ? s3Tree
+          : storageMode === 'webdav'
+            ? webdavTree
+            : localTree;
+      const node = findNodeByPath(tree, path) || findFileNodeByPath(tree, path);
+      if (!node) {
+        showAlert({
+          title: '노트 열기',
+          message: '해당 노트가 삭제되어 열 수 없습니다',
+          detail: path,
+        });
+        return;
+      }
       if (storageMode === 's3') {
-        const node = findNodeByPath(s3Tree, path) || findFileNodeByPath(s3Tree, path);
-        if (node) await selectFileRaw('s3', node);
-        else navigate(`/view/${path}`);
+        await selectFileRaw('s3', node);
         return;
       }
       if (storageMode === 'webdav') {
-        const node = findNodeByPath(webdavTree, path) || findFileNodeByPath(webdavTree, path);
-        if (node) await selectFileRaw('webdav', node);
-        else navigate(`/view/${path}`);
+        await selectFileRaw('webdav', node);
         return;
       }
-      const node = findNodeByPath(localTree, path) || findFileNodeByPath(localTree, path);
-      if (node) await selectFileRaw('local', node);
-      else navigate(`/view/${path}`);
+      await selectFileRaw('local', node);
     },
-    [storageMode, s3Tree, webdavTree, localTree, selectFileRaw, navigate],
+    [storageMode, s3Tree, webdavTree, localTree, selectFileRaw, showAlert],
   );
 
   const handleShareNoteToChatWithMyself = useCallback(async () => {
@@ -4945,8 +4992,9 @@ function MainApp() {
                   onOpenSidebar={() => setSidebarOpen(true)}
                   s3Tree={s3Tree}
                   localTree={localTree}
+                  webdavTree={webdavTree}
                   shareGroupSend={shareGroupSend}
-                  onShareGroupSendConsumed={() => setShareGroupSend(null)}
+                  onShareGroupSendConsumed={handleShareGroupSendConsumed}
                   onOpenNote={handleOpenNoteFromChat}
                   selectPathAfterCreateFolder={addToNoteSelectPath}
                   onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}

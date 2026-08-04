@@ -30,6 +30,26 @@ type SearchLike =
   | null
   | undefined;
 
+/** Serialize flushes across Strict Mode / effect re-entry so the same row is never appended twice. */
+const sendSelfFlushGate: { chain: Promise<unknown> } = {
+  chain: Promise.resolve(),
+};
+const composeClaimGate: { chain: Promise<unknown> } = {
+  chain: Promise.resolve(),
+};
+
+function enqueueExclusive<T>(
+  gate: { chain: Promise<unknown> },
+  task: () => Promise<T>,
+): Promise<T> {
+  const run = gate.chain.then(task, task) as Promise<T>;
+  gate.chain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 export function hasShareSearchParams(input: SearchLike): boolean {
   let params: URLSearchParams;
   if (input instanceof URLSearchParams) {
@@ -99,54 +119,86 @@ export async function peekChoosePendingShare(): Promise<PendingShareRow | null> 
   );
 }
 
+/**
+ * Atomically claim compose rows (delete then return) so concurrent claimants
+ * cannot both deliver the same seed.
+ */
 export async function claimComposePendingShares(): Promise<PendingShareRow[]> {
-  const rows = (await getPendingShares()) as PendingShareRow[];
-  const compose = rows.filter(
-    (row) => resolvePendingShareIntent(row) === 'compose' && row.body,
-  );
-  for (const row of compose) {
-    if (row.id != null) {
-      try {
-        await deletePendingShare(row.id);
-      } catch {
-        /* ignore */
+  return enqueueExclusive(composeClaimGate, async () => {
+    const rows = (await getPendingShares()) as PendingShareRow[];
+    const compose = rows.filter(
+      (row) => resolvePendingShareIntent(row) === 'compose' && row.body,
+    );
+    for (const row of compose) {
+      if (row.id != null) {
+        try {
+          await deletePendingShare(row.id);
+        } catch {
+          /* ignore */
+        }
       }
     }
-  }
-  return compose;
+    return compose;
+  });
 }
 
+/**
+ * Claim sendSelf rows before appending so overlapping flushes cannot double-send.
+ * Failed appends are re-queued.
+ */
 export async function flushSendSelfPendingShares(
   ctx: ChatStorageCtxLike | null | undefined,
 ): Promise<{ flushed: number; dateStrs: string[] }> {
-  if (!ctx) return { flushed: 0, dateStrs: [] };
-  const rows = (await getPendingShares()) as PendingShareRow[];
-  const ready = rows.filter(
-    (row) => resolvePendingShareIntent(row) === 'sendSelf' && row.body,
-  );
-  const dateStrs: string[] = [];
-  let flushed = 0;
+  return enqueueExclusive(sendSelfFlushGate, async () => {
+    if (!ctx) return { flushed: 0, dateStrs: [] };
 
-  for (const row of ready) {
-    try {
-      // storage.js accepts the runtime ctx shape used across the app.
-      const { dateStr } = await appendChatMessage(ctx as never, {
-        body: row.body,
-        group: SELF_GROUP,
-        source: 'share',
-      });
-      if (row.id != null) await deletePendingShare(row.id);
-      flushed += 1;
-      if (dateStr) dateStrs.push(dateStr);
-    } catch {
-      // Keep row for retry on next storage-ready cycle.
+    const rows = (await getPendingShares()) as PendingShareRow[];
+    const ready = rows.filter(
+      (row) => resolvePendingShareIntent(row) === 'sendSelf' && row.body,
+    );
+    if (!ready.length) return { flushed: 0, dateStrs: [] };
+
+    const claimed: PendingShareRow[] = [];
+    for (const row of ready) {
+      if (row.id != null) {
+        try {
+          await deletePendingShare(row.id);
+          claimed.push(row);
+        } catch {
+          /* leave for a later cycle if delete failed */
+        }
+      } else {
+        claimed.push(row);
+      }
     }
-  }
 
-  for (const dateStr of [...new Set(dateStrs)]) {
-    postChatSyncEvent('day', { dateStr });
-    postChatLocalSyncEvent('day', { dateStr });
-  }
+    const dateStrs: string[] = [];
+    let flushed = 0;
 
-  return { flushed, dateStrs };
+    for (const row of claimed) {
+      try {
+        // storage.js accepts the runtime ctx shape used across the app.
+        const { dateStr } = await appendChatMessage(ctx as never, {
+          body: row.body,
+          group: SELF_GROUP,
+          source: 'share',
+        });
+        flushed += 1;
+        if (dateStr) dateStrs.push(dateStr);
+      } catch {
+        try {
+          await enqueuePendingShare({ body: row.body, intent: 'sendSelf' });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    for (const dateStr of [...new Set(dateStrs)]) {
+      postChatSyncEvent('day', { dateStr });
+      postChatLocalSyncEvent('day', { dateStr });
+    }
+
+    return { flushed, dateStrs };
+  });
 }

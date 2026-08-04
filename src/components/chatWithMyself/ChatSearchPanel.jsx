@@ -78,6 +78,7 @@ function SearchResultMenuItems({
   onTogglePin,
   onOpenNote,
   onViewEditHistory,
+  noteExists,
   _Item,
 }) {
   const pinned = Boolean(result?.pinnedAt);
@@ -93,7 +94,9 @@ function SearchResultMenuItems({
           {pinned ? '고정 해제' : '고정'}
         </_Item>
       ) : null}
-      {result?.notePath && onOpenNote ? (
+      {result?.notePath &&
+      onOpenNote &&
+      (typeof noteExists !== 'function' || noteExists(result.notePath)) ? (
         <_Item
           className={chatMenuItemClass}
           onSelect={() => onOpenNote?.(result.notePath, result)}
@@ -133,6 +136,7 @@ function SearchResultCard({
   onOpenNote,
   onViewEditHistory,
   getPresignedUrl,
+  noteExists,
   groups = [],
   coarse,
 }) {
@@ -227,6 +231,7 @@ function SearchResultCard({
                   text={attachmentMarkdown}
                   className="text-sm text-gray-800 dark:text-odp-fg"
                   getPresignedUrl={getPresignedUrl}
+                  noteExists={noteExists}
                   onOpenViewPath={
                     onOpenNote
                       ? (path) => onOpenNote(path, result)
@@ -271,6 +276,7 @@ function SearchResultCard({
             onTogglePin={onTogglePin}
             onOpenNote={onOpenNote}
             onViewEditHistory={onViewEditHistory}
+            noteExists={noteExists}
             _Item={ContextMenu.Item}
           />
         </ContextMenu.Content>
@@ -298,6 +304,7 @@ export default function ChatSearchPanel({
   onViewEditHistory,
   timeZone,
   getPresignedUrl,
+  noteExists,
 }) {
   const [query, setQuery] = useState('');
   const [groupFilter, setGroupFilter] = useState('__all__');
@@ -592,6 +599,7 @@ export default function ChatSearchPanel({
                 onOpenNote={onOpenNote}
                 onViewEditHistory={onViewEditHistory}
                 getPresignedUrl={getPresignedUrl}
+                noteExists={noteExists}
                 groups={groups}
                 coarse={coarse}
               />

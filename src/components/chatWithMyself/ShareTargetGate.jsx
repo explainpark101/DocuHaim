@@ -34,14 +34,24 @@ export default function ShareTargetGate({
     Boolean(readSharePromptFromWindow()),
   );
   const urlClearedRef = useRef(false);
-  const flushingRef = useRef(false);
-  const composeNavigatedRef = useRef(false);
+  const actionLockRef = useRef(false);
+  const ensureChatOpenRef = useRef(() => {});
+  const onComposeClaimedRef = useRef(onComposeClaimed);
 
   const blocking = Boolean(prompt?.body) || !bootstrapDone;
 
   useEffect(() => {
     onBlockingChange?.(blocking);
   }, [blocking, onBlockingChange]);
+
+  useEffect(() => {
+    onComposeClaimedRef.current = onComposeClaimed;
+  }, [onComposeClaimed]);
+
+  // Allow a new chooser action when a fresh prompt arrives.
+  useEffect(() => {
+    if (prompt?.body) actionLockRef.current = false;
+  }, [prompt?.body]);
 
   // Clear share query params once (keeps /chat path).
   useLayoutEffect(() => {
@@ -99,9 +109,15 @@ export default function ShareTargetGate({
     }
   }, [location.pathname, navigate]);
 
+  useEffect(() => {
+    ensureChatOpenRef.current = ensureChatOpen;
+  }, [ensureChatOpen]);
+
   const handleSendAsSelf = useCallback(async () => {
     const current = prompt;
-    if (!current?.body) return;
+    if (!current?.body || actionLockRef.current) return;
+    actionLockRef.current = true;
+    let appended = false;
     try {
       if (isUnlocked && storageReady && chatCtx) {
         const { dateStr } = await appendChatMessage(chatCtx, {
@@ -109,6 +125,7 @@ export default function ShareTargetGate({
           group: SELF_GROUP,
           source: 'share',
         });
+        appended = true;
         if (dateStr) {
           postChatSyncEvent('day', { dateStr });
           postChatLocalSyncEvent('day', { dateStr });
@@ -119,11 +136,14 @@ export default function ShareTargetGate({
         await enqueuePendingShare({ body: current.body, intent: 'sendSelf' });
       }
     } catch {
-      try {
-        await clearPromptRecord(current);
-        await enqueuePendingShare({ body: current.body, intent: 'sendSelf' });
-      } catch {
-        /* ignore */
+      // Only re-queue when the day-file write did not already succeed.
+      if (!appended) {
+        try {
+          await clearPromptRecord(current);
+          await enqueuePendingShare({ body: current.body, intent: 'sendSelf' });
+        } catch {
+          /* ignore */
+        }
       }
     } finally {
       ensureChatOpen();
@@ -141,7 +161,8 @@ export default function ShareTargetGate({
 
   const handleComposeWithGroup = useCallback(async () => {
     const current = prompt;
-    if (!current?.body) return;
+    if (!current?.body || actionLockRef.current) return;
+    actionLockRef.current = true;
     try {
       await clearPromptRecord(current);
       const payload = {
@@ -169,56 +190,45 @@ export default function ShareTargetGate({
   ]);
 
   const handleClose = useCallback(async () => {
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
     const current = prompt;
     await clearPromptRecord(current);
     finishPrompt();
   }, [prompt, clearPromptRecord, finishPrompt]);
 
   // Flush sendSelf pending after unlock + storage ready (any page).
+  // Module-level mutex in flushSendSelfPendingShares prevents double-append on re-entry.
   useEffect(() => {
     if (!isUnlocked || !storageReady || !chatCtx) return undefined;
-    if (flushingRef.current) return undefined;
     let cancelled = false;
-    flushingRef.current = true;
     (async () => {
-      try {
-        const { flushed } = await flushSendSelfPendingShares(chatCtx);
-        if (!cancelled && flushed > 0) {
-          ensureChatOpen();
-        }
-      } finally {
-        if (!cancelled) flushingRef.current = false;
+      const { flushed } = await flushSendSelfPendingShares(chatCtx);
+      if (!cancelled && flushed > 0) {
+        ensureChatOpenRef.current();
       }
     })();
     return () => {
       cancelled = true;
-      flushingRef.current = false;
     };
-  }, [isUnlocked, storageReady, chatCtx, ensureChatOpen]);
+  }, [isUnlocked, storageReady, chatCtx]);
 
-  // After unlock, claim compose seeds (navigate to chat if needed).
+  // After unlock + storage ready, claim compose seeds (navigate to chat if needed).
+  // claimComposePendingShares is serialized with the pane backup claim.
   useEffect(() => {
-    if (!isUnlocked || !bootstrapDone || prompt) return undefined;
-    let cancelled = false;
+    if (!isUnlocked || !storageReady || !bootstrapDone || prompt) return undefined;
     (async () => {
       const composeRows = await claimComposePendingShares();
-      if (cancelled || !composeRows.length) return;
+      if (!composeRows.length) return;
       const body = composeRows.map((row) => row.body).filter(Boolean).join('\n\n');
       if (!body) return;
-      composeNavigatedRef.current = true;
-      ensureChatOpen();
-      onComposeClaimed?.({ id: `share-group-send-${Date.now()}`, body });
+      ensureChatOpenRef.current();
+      onComposeClaimedRef.current?.({
+        id: `share-group-send-${Date.now()}`,
+        body,
+      });
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isUnlocked,
-    bootstrapDone,
-    prompt,
-    ensureChatOpen,
-    onComposeClaimed,
-  ]);
+  }, [isUnlocked, storageReady, bootstrapDone, prompt]);
 
   return (
     <ChatShareTargetModal
