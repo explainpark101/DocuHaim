@@ -11,6 +11,10 @@ export {
   chatImagePathPrefix,
   chatFilePathPrefix,
   groupIconPathPrefix,
+  messageEditsFolder,
+  messageEditVersionKey,
+  messageEditVersionFileName,
+  editVersionAtFromFileName,
 } from './paths.js';
 export {
   parseDayFile,
@@ -75,6 +79,9 @@ export {
   appendChatMessages,
   deleteChatMessage,
   updateChatMessage,
+  writeMessageEditVersion,
+  listMessageEditVersionKeys,
+  loadMessageEditHistoryPage,
   findMessageById,
   patchChatMessageMeta,
   createOgStorageAdapters,
@@ -88,6 +95,7 @@ export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from './fo
 export { postChatSyncEvent, CHAT_SYNC_CHANNEL, getChatSyncTabId } from './syncChannel.js';
 export { uploadChatImage, uploadGroupIcon, chatImagesToMarkdown } from './images.js';
 export { getCroppedImg } from './cropImage.js';
+export { serializeEditVersion, parseEditVersion } from './editHistory.js';
 export {
   uploadChatFile,
   uploadChatAttachment,

@@ -176,20 +176,8 @@ export function serializeMessage(msg) {
   const editedAttr = editedAt ? ` editedAt="${editedAt}"` : '';
   const pinnedAttr = pinnedAt ? ` pinnedAt="${pinnedAt}"` : '';
   const notePathAttr = notePath ? ` notePath="${notePath}"` : '';
-  let out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr} -->\n${body}\n\n`;
-  const history = Array.isArray(msg.editHistory) ? msg.editHistory : [];
-  if (history.length > 0) {
-    const payload = encodeURIComponent(
-      JSON.stringify(
-        history.map((e) => ({
-          at: String(e?.at || ''),
-          body: String(e?.body ?? ''),
-          group: String(e?.group || SELF_GROUP),
-        })),
-      ),
-    );
-    out += `<!-- chat-edits id="${id}" -->\n${payload}\n<!-- /chat-edits -->\n\n`;
-  }
+  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr} -->\n${body}\n\n`;
+  // Edit history is stored under `.chat-with-myself/edits/<id>/` (not inline).
   return out;
 }
 

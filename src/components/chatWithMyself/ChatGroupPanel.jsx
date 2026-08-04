@@ -3,6 +3,7 @@ import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Check, Pencil, Plus, Users, X } from 'lucide-react';
 import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
 import ChatGroupIconCropModal from '@/components/chatWithMyself/ChatGroupIconCropModal';
+import ChatGroupIconSourceModal from '@/components/chatWithMyself/ChatGroupIconSourceModal';
 import { SELF_GROUP, resolveGroupLabel, sortGroupsKo } from '@/utils/chatWithMyself';
 
 const DRAFT_ENTER = {
@@ -37,6 +38,7 @@ export default function ChatGroupPanel({
   const [draftIconFile, setDraftIconFile] = useState(null);
   const [cropSrc, setCropSrc] = useState(null);
   const [cropOpen, setCropOpen] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
   /** @type {[string|null, function]} null = draft icon, else group id */
   const [cropTarget, setCropTarget] = useState(null);
   const [committing, setCommitting] = useState(false);
@@ -45,7 +47,6 @@ export default function ChatGroupPanel({
   const [renaming, setRenaming] = useState(false);
   const draftInputRef = useRef(null);
   const editInputRef = useRef(null);
-  const fileInputRef = useRef(null);
   const commitGuardRef = useRef(false);
   const renameGuardRef = useRef(false);
   const sorted = useMemo(() => sortGroupsKo(groups), [groups]);
@@ -108,14 +109,12 @@ export default function ChatGroupPanel({
     setEditName(g.name);
   };
 
-  const openFilePicker = (targetId) => {
+  const openIconSource = (targetId) => {
     setCropTarget(targetId);
-    fileInputRef.current?.click();
+    setSourceOpen(true);
   };
 
-  const onFileChosen = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  const onSourceImageChosen = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
     if (cropSrc) URL.revokeObjectURL(cropSrc);
     const url = URL.createObjectURL(file);
@@ -238,12 +237,11 @@ export default function ChatGroupPanel({
         ) : null}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={onFileChosen}
+      <ChatGroupIconSourceModal
+        open={sourceOpen}
+        onOpenChange={setSourceOpen}
+        onImageChosen={onSourceImageChosen}
+        title={cropTarget ? '그룹 아이콘 변경' : '그룹 아이콘'}
       />
       <ChatGroupIconCropModal
         open={cropOpen}
@@ -256,7 +254,7 @@ export default function ChatGroupPanel({
           }
         }}
         onConfirm={onCropConfirm}
-        title={cropTarget ? '그룹 아이콘 변경' : '그룹 아이콘'}
+        title="그룹 아이콘 자르기"
       />
 
       {filtering ? (
@@ -291,7 +289,7 @@ export default function ChatGroupPanel({
                   iconPath={g.iconPath}
                   getPresignedUrl={getPresignedUrl}
                   editable={Boolean(onSetGroupIcon) && !isEditing}
-                  onRequestEdit={() => openFilePicker(g.id)}
+                  onRequestEdit={() => openIconSource(g.id)}
                 />
                 {isEditing ? (
                   <input
@@ -370,7 +368,7 @@ export default function ChatGroupPanel({
                   size="md"
                   iconUrl={draftIconUrl}
                   editable
-                  onRequestEdit={() => openFilePicker(null)}
+                  onRequestEdit={() => openIconSource(null)}
                   title="아이콘 선택"
                 />
                 <input

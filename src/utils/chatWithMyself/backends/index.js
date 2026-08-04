@@ -62,6 +62,7 @@ function normalizeEtag(etag) {
  * @property {(key: string) => Promise<string | null>} getBinaryBlobUrl
  * @property {(key: string) => Promise<void>} deleteKey
  * @property {() => Promise<string[]>} listDayKeys
+ * @property {(prefix: string) => Promise<string[]>} listKeys
  */
 
 /**
@@ -233,6 +234,16 @@ function createS3Backend(ctx) {
         .sort()
         .reverse();
     },
+
+    async listKeys(prefix) {
+      const p = String(prefix || '');
+      const contents = await listObjectsV2(client, bucket, p);
+      return contents
+        .map((c) => c.Key)
+        .filter((k) => typeof k === 'string' && k.startsWith(p) && !k.endsWith('/'))
+        .sort()
+        .reverse();
+    },
   };
 }
 
@@ -315,6 +326,22 @@ function createWebdavBackend(ctx) {
         .map((name) => name.slice(0, -3))
         .sort()
         .reverse();
+    },
+
+    async listKeys(prefix) {
+      const p = String(prefix || '').replace(/\/+$/, '');
+      if (!p) return [];
+      try {
+        const children = await webdavPropfind(config, p);
+        return children
+          .filter((c) => !c.isCollection)
+          .map((c) => c.key)
+          .filter((k) => typeof k === 'string' && k.startsWith(`${p}/`))
+          .sort()
+          .reverse();
+      } catch {
+        return [];
+      }
     },
   };
 }
@@ -416,6 +443,25 @@ function createLocalBackend(ctx) {
           }
         }
         return days.sort().reverse();
+      } catch {
+        return [];
+      }
+    },
+
+    async listKeys(prefix) {
+      const p = String(prefix || '').replace(/\/+$/, '');
+      if (!p) return [];
+      try {
+        const dir = await getLocalDirectoryHandleForPath(root, p, {
+          create: false,
+        });
+        const keys = [];
+        for await (const [name, handle] of dir.entries()) {
+          if (handle.kind === 'file') {
+            keys.push(`${p}/${name}`);
+          }
+        }
+        return keys.sort().reverse();
       } catch {
         return [];
       }

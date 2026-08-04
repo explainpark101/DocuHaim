@@ -8,6 +8,9 @@ import {
   detectTimeZone,
   localDateString,
   metaKey,
+  messageEditsFolder,
+  messageEditVersionKey,
+  editVersionAtFromFileName,
   SELF_GROUP,
 } from './paths.js';
 import {
@@ -16,6 +19,10 @@ import {
   parseDayFile,
   serializeDayFile,
 } from './format.js';
+import {
+  parseEditVersion,
+  serializeEditVersion,
+} from './editHistory.js';
 import { cacheDay, getCachedDay, savePendingMessage } from './chatDb.js';
 
 const MAX_WRITE_RETRIES = 5;
@@ -634,14 +641,18 @@ export async function patchChatMessageMeta(ctx, dateStr, messageId, fields = {})
 /**
  * Update an existing message body/group in its day file.
  * Preserves original `at`; sets `editedAt`.
+ * Previous body/group is archived under `.chat-with-myself/edits/<id>/<editedAt>.md`.
  * @returns {Promise<object | null>} updated message or null
  */
 export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
   if (!dateStr || !messageId) return null;
   /** @type {object | null} */
   let updated = null;
+  /** @type {{ at: string, body: string, group: string } | null} */
+  let archived = null;
   await mutateDayFile(ctx, dateStr, (parsed) => {
     updated = null;
+    archived = null;
     const idx = parsed.messages.findIndex((m) => m.id === messageId);
     if (idx < 0) return parsed;
     const prev = parsed.messages[idx];
@@ -649,26 +660,22 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
       patch.body !== undefined ? String(patch.body ?? '') : prev.body;
     const nextGroup =
       patch.group !== undefined ? patch.group || SELF_GROUP : prev.group;
-    const prevHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
     const bodyChanged = nextBody !== prev.body;
     const groupChanged = nextGroup !== (prev.group || SELF_GROUP);
-    const editHistory =
-      bodyChanged || groupChanged
-        ? [
-            ...prevHistory,
-            {
-              at: prev.editedAt || prev.at,
-              body: prev.body,
-              group: prev.group || SELF_GROUP,
-            },
-          ]
-        : prevHistory;
+    if (bodyChanged || groupChanged) {
+      archived = {
+        at: prev.editedAt || prev.at,
+        body: prev.body,
+        group: prev.group || SELF_GROUP,
+      };
+    }
     updated = {
       ...prev,
       body: nextBody,
       group: nextGroup,
       editedAt: new Date().toISOString(),
-      editHistory,
+      // Stop embedding history in the day file; keep empty for serializers.
+      editHistory: [],
       dateStr,
     };
     const messages = parsed.messages.slice();
@@ -679,7 +686,131 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
       deletedAtById: parsed.deletedAtById,
     };
   });
+
+  if (archived && messageId) {
+    try {
+      await writeMessageEditVersion(ctx, messageId, archived);
+    } catch {
+      // Day file already updated; history write is best-effort.
+    }
+  }
   return updated;
+}
+
+/**
+ * Archive one previous message version as markdown under the message edits folder.
+ * @param {ChatStorageCtx} ctx
+ * @param {string} messageId
+ * @param {{ at?: string, body?: string, group?: string }} entry
+ */
+export async function writeMessageEditVersion(ctx, messageId, entry) {
+  const id = String(messageId || '').trim();
+  if (!id) throw new Error('Invalid message id');
+  const at = entry?.at || new Date().toISOString();
+  const key = messageEditVersionKey(id, at);
+  const content = serializeEditVersion({
+    at,
+    body: entry?.body ?? '',
+    group: entry?.group || SELF_GROUP,
+  });
+  const b = backend(ctx);
+  await b.ensureChatFolder();
+  await b.putTextOverwrite(key, content, 'text/markdown; charset=utf-8');
+  return key;
+}
+
+/**
+ * List edit-version object keys for a message (newest filename first).
+ * @param {ChatStorageCtx} ctx
+ * @param {string} messageId
+ * @returns {Promise<string[]>}
+ */
+export async function listMessageEditVersionKeys(ctx, messageId) {
+  const id = String(messageId || '').trim();
+  if (!id) return [];
+  const prefix = messageEditsFolder(id);
+  try {
+    const keys = await backend(ctx).listKeys(prefix);
+    return keys
+      .filter((k) => k.toLowerCase().endsWith('.md'))
+      .sort((a, b) => b.localeCompare(a));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Load edit versions with pagination (newest first).
+ * Also surfaces legacy inline `editHistory` after file-backed versions when provided.
+ *
+ * @param {ChatStorageCtx} ctx
+ * @param {string} messageId
+ * @param {{
+ *   offset?: number,
+ *   limit?: number,
+ *   legacyEntries?: Array<{ at?: string, body?: string, group?: string }>,
+ * }} [options]
+ * @returns {Promise<{ entries: Array<{ at: string, body: string, group: string, key?: string }>, nextOffset: number, hasMore: boolean, total: number }>}
+ */
+export async function loadMessageEditHistoryPage(
+  ctx,
+  messageId,
+  options = {},
+) {
+  const offset = Math.max(0, Number(options.offset) || 0);
+  const limit = Math.min(50, Math.max(1, Number(options.limit) || 10));
+  const keys = await listMessageEditVersionKeys(ctx, messageId);
+
+  const legacyRaw = Array.isArray(options.legacyEntries)
+    ? options.legacyEntries
+    : [];
+  const keyAts = new Set(
+    keys.map((k) => editVersionAtFromFileName(k)).filter(Boolean),
+  );
+  const legacy = legacyRaw
+    .map((e) => ({
+      at: String(e?.at || ''),
+      body: String(e?.body ?? ''),
+      group: String(e?.group || SELF_GROUP),
+    }))
+    .filter((e) => e.at && !keyAts.has(e.at))
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+
+  const total = keys.length + legacy.length;
+  if (offset >= total) {
+    return { entries: [], nextOffset: offset, hasMore: false, total };
+  }
+
+  /** @type {Array<{ at: string, body: string, group: string, key?: string }>} */
+  const entries = [];
+  let cursor = offset;
+
+  while (entries.length < limit && cursor < total) {
+    if (cursor < keys.length) {
+      const key = keys[cursor];
+      cursor += 1;
+      const raw = await readText(ctx, key);
+      if (raw == null) continue;
+      const parsed = parseEditVersion(raw, { key });
+      if (!parsed) continue;
+      if (!parsed.at) {
+        parsed.at = editVersionAtFromFileName(key) || '';
+      }
+      entries.push(parsed);
+    } else {
+      const legacyIdx = cursor - keys.length;
+      cursor += 1;
+      const item = legacy[legacyIdx];
+      if (item) entries.push(item);
+    }
+  }
+
+  return {
+    entries,
+    nextOffset: cursor,
+    hasMore: cursor < total,
+    total,
+  };
 }
 
 /**

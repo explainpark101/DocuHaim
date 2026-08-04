@@ -1,12 +1,3 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-
 /**
  * Canvas-based text width measurement ("pretext").
  * @param {string} font CSS font shorthand from getComputedStyle

@@ -4,6 +4,7 @@ export const OG_FOLDER = 'og';
 export const IMAGES_FOLDER = 'images';
 export const FILES_FOLDER = 'files';
 export const GROUP_ICONS_FOLDER = 'group-icons';
+export const EDITS_FOLDER = 'edits';
 export const SELF_GROUP = '나';
 /** Select sentinel: show inline group-name input (not a real group). */
 export const ADD_GROUP_VALUE = '__add_group__';
@@ -39,6 +40,46 @@ export function chatFilePathPrefix(dateStr) {
 /** Prefix for group avatar icons: `.chat-with-myself/group-icons/` */
 export function groupIconPathPrefix() {
   return `${CHAT_FOLDER}/${GROUP_ICONS_FOLDER}/`;
+}
+
+/**
+ * Folder for one message's edit versions:
+ * `.chat-with-myself/edits/<messageId>/`
+ */
+export function messageEditsFolder(messageId) {
+  const id = String(messageId || '').replace(/[/\\]/g, '_');
+  return `${CHAT_FOLDER}/${EDITS_FOLDER}/${id}/`;
+}
+
+/**
+ * Filename from edit timestamp (filesystem-safe ISO).
+ * Example: `2026-08-04T12-34-56.789Z.md`
+ */
+export function messageEditVersionFileName(isoAt = new Date().toISOString()) {
+  const iso = new Date(isoAt).toISOString();
+  return `${iso.replace(/:/g, '-')}.md`;
+}
+
+/** Full key for one edit version md file. */
+export function messageEditVersionKey(messageId, isoAt) {
+  return `${messageEditsFolder(messageId)}${messageEditVersionFileName(isoAt)}`;
+}
+
+/**
+ * Parse ISO timestamp back from version filename stem.
+ * `2026-08-04T12-34-56.789Z.md` → `2026-08-04T12:34:56.789Z`
+ * @param {string} fileName
+ */
+export function editVersionAtFromFileName(fileName) {
+  const base = String(fileName || '')
+    .replace(/^.*\//, '')
+    .replace(/\.md$/i, '');
+  const m = base.match(
+    /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})(?:[.-](\d+))?Z$/i,
+  );
+  if (!m) return '';
+  const ms = m[5] ? `.${m[5]}` : '';
+  return `${m[1]}T${m[2]}:${m[3]}:${m[4]}${ms}Z`;
 }
 
 /** Local calendar date YYYY-MM-DD */

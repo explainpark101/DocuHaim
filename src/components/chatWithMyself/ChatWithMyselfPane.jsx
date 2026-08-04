@@ -50,6 +50,7 @@ import {
   updateChatMessage,
   patchChatMessageMeta,
   uploadChatAttachment,
+  loadMessageEditHistoryPage,
   chatAttachmentsToMarkdown,
   extractChatBodyAttachments,
   detectTimeZone,
@@ -909,17 +910,6 @@ export default function ChatWithMyselfPane({
           : existingMarkdown;
       const optimisticBody = [attachHint, text].filter(Boolean).join('\n\n');
       const editedAt = new Date().toISOString();
-      const prevHistory = Array.isArray(snapshot.editHistory)
-        ? snapshot.editHistory
-        : [];
-      const optimisticHistory = [
-        ...prevHistory,
-        {
-          at: snapshot.editedAt || snapshot.at,
-          body: snapshot.body,
-          group: snapshot.group || SELF_GROUP,
-        },
-      ];
 
       setEditTarget(null);
       setError('');
@@ -931,7 +921,6 @@ export default function ChatWithMyselfPane({
                 body: optimisticBody,
                 group: group || SELF_GROUP,
                 editedAt,
-                editHistory: optimisticHistory,
                 pendingSync: 'edit',
               }
             : m,
@@ -1190,6 +1179,22 @@ export default function ChatWithMyselfPane({
       }
     },
     [ctx, noteLocalMetaWrite],
+  );
+
+  const handleLoadEditHistoryPage = useCallback(
+    async (message, { offset = 0, limit = 10 } = {}) => {
+      if (!storageReady || !message?.id) {
+        return { entries: [], nextOffset: 0, hasMore: false, total: 0 };
+      }
+      return loadMessageEditHistoryPage(ctx, message.id, {
+        offset,
+        limit,
+        legacyEntries: Array.isArray(message.editHistory)
+          ? message.editHistory
+          : [],
+      });
+    },
+    [storageReady, ctx],
   );
 
   const handleTogglePin = useCallback(
@@ -1851,6 +1856,8 @@ export default function ChatWithMyselfPane({
         }}
         timeZone={timeZone}
         getPresignedUrl={getPresignedUrlForPath}
+        groups={groups}
+        onLoadHistoryPage={handleLoadEditHistoryPage}
       />
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}

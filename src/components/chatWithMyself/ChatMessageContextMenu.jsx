@@ -93,9 +93,7 @@ export default function ChatMessageContextMenu({
 
   if (!message && !open) return null;
 
-  const hasEditHistory =
-    Boolean(message?.editedAt) ||
-    (Array.isArray(message?.editHistory) && message.editHistory.length > 0);
+  const hasEditHistory = Boolean(message?.editedAt);
   const pinned = Boolean(message?.pinnedAt);
 
   const guardOutside = (event) => {

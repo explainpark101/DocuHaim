@@ -141,10 +141,7 @@ function useShiftHeldRef() {
 }
 
 function hasMessageEditHistory(msg) {
-  return (
-    Boolean(msg?.editedAt) ||
-    (Array.isArray(msg?.editHistory) && msg.editHistory.length > 0)
-  );
+  return Boolean(msg?.editedAt);
 }
 
 function MessageActionItems({
