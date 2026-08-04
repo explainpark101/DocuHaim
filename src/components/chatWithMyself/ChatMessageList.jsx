@@ -848,7 +848,7 @@ export default function ChatMessageList({
     <>
       <div
         ref={scrollerRef}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-clip"
+        className="min-h-0 max-h-full flex-1 overflow-y-auto overflow-x-clip overscroll-contain"
         onScroll={(e) => {
           const el = e.currentTarget;
           const dist = el.scrollHeight - el.scrollTop - el.clientHeight;

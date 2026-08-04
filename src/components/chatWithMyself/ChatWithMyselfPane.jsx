@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { CalendarDays, Menu, MessageCircleMore, RefreshCw, Search, Users } from 'lucide-react';
+import {
+  CalendarDays,
+  Menu,
+  MessageCircleMore,
+  RefreshCw,
+  Search,
+  Settings,
+  Users,
+} from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import ChatComposer from '@/components/chatWithMyself/ChatComposer';
+import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
 import ChatGroupPanel from '@/components/chatWithMyself/ChatGroupPanel';
 import ChatMessageList from '@/components/chatWithMyself/ChatMessageList';
@@ -199,6 +208,7 @@ export default function ChatWithMyselfPane({
   const [composerLineNumbers, setComposerLineNumbers] = useState(
     getComposerLineNumbersVisible,
   );
+  const [composerSettingsOpen, setComposerSettingsOpen] = useState(false);
   const [activeJumpDate, setActiveJumpDate] = useState(null);
   const [searchFilters, setSearchFilters] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
@@ -791,7 +801,7 @@ export default function ChatWithMyselfPane({
               uploaded.push(uploadedItem);
             }
             const attachMd = chatAttachmentsToMarkdown(uploaded);
-            const finalBody = [item.text, attachMd].filter(Boolean).join('\n\n');
+            const finalBody = [attachMd, item.text].filter(Boolean).join('\n\n');
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === item.clientId
@@ -848,9 +858,12 @@ export default function ChatWithMyselfPane({
       const at = new Date().toISOString();
       const dateStr = localDateString(new Date(at), tz);
       const clientId = createMessageId();
-      const optimisticBody =
-        text ||
-        (files.length > 0 ? `(첨부 ${files.length}개 업로드 중…)` : '');
+      const optimisticBody = [
+        files.length > 0 ? `(첨부 ${files.length}개 업로드 중…)` : '',
+        text,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
       const optimistic = {
         id: clientId,
         at,
@@ -927,7 +940,7 @@ export default function ChatWithMyselfPane({
         files.length > 0
           ? `(첨부 ${files.length}개 업로드 중…)`
           : existingMarkdown;
-      const optimisticBody = [text, attachHint].filter(Boolean).join('\n\n');
+      const optimisticBody = [attachHint, text].filter(Boolean).join('\n\n');
       const editedAt = new Date().toISOString();
       const prevHistory = Array.isArray(snapshot.editHistory)
         ? snapshot.editHistory
@@ -965,7 +978,7 @@ export default function ChatWithMyselfPane({
           uploaded.push(item);
         }
         const uploadedMd = chatAttachmentsToMarkdown(uploaded);
-        const finalBody = [text, existingMarkdown, uploadedMd]
+        const finalBody = [existingMarkdown, uploadedMd, text]
           .filter(Boolean)
           .join('\n\n');
         if (finalBody !== optimisticBody) {
@@ -1271,7 +1284,7 @@ export default function ChatWithMyselfPane({
 
   return (
     <ChatImageLightboxProvider>
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg">
+    <div className="flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg">
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 dark:border-odp-borderSoft px-3 py-2">
         {isMobileLayout && !sidebarOpen ? (
           <button
@@ -1305,22 +1318,35 @@ export default function ChatWithMyselfPane({
             />
           </button>
         </div>
-        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-          <ChatNavSwitch
-            id="chat-nav-toolbar"
-            label="툴바"
-            title="입력창 툴바"
-            checked={composerToolbarOpen}
-            onCheckedChange={toggleComposerToolbar}
-          />
-          <ChatNavSwitch
-            id="chat-nav-line-numbers"
-            label="줄번호"
-            title="입력창 줄 번호"
-            checked={composerLineNumbers}
-            onCheckedChange={toggleComposerLineNumbers}
-          />
-        </div>
+        {isMobileLayout ? (
+          <button
+            type="button"
+            onClick={() => setComposerSettingsOpen(true)}
+            className={toolbarBtnClass(composerSettingsOpen)}
+            aria-label="입력창 설정"
+            title="입력창 설정"
+            aria-pressed={composerSettingsOpen}
+          >
+            <Settings size={18} />
+          </button>
+        ) : (
+          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+            <ChatNavSwitch
+              id="chat-nav-toolbar"
+              label="툴바"
+              title="입력창 툴바"
+              checked={composerToolbarOpen}
+              onCheckedChange={toggleComposerToolbar}
+            />
+            <ChatNavSwitch
+              id="chat-nav-line-numbers"
+              label="줄번호"
+              title="입력창 줄 번호"
+              checked={composerLineNumbers}
+              onCheckedChange={toggleComposerLineNumbers}
+            />
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setDateOpen((v) => !v)}
@@ -1364,8 +1390,8 @@ export default function ChatWithMyselfPane({
           {storageNotReadyHint}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1" data-chat-rails-root>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#b9cfe0] dark:bg-[#0b1220]">
+        <div className="flex min-h-0 max-h-full flex-1 overflow-hidden" data-chat-rails-root>
+          <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-[#b9cfe0] dark:bg-[#0b1220]">
             <ChatMessageList
               messages={visibleMessages}
               ogStorage={ogStorage}
@@ -1391,30 +1417,32 @@ export default function ChatWithMyselfPane({
                   : undefined
               }
             />
-            <div className="w-full shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft">
+            <div className="w-full max-h-[min(45%,280px)] shrink-0 overflow-y-auto border-t-2 border-gray-300 bg-slate-100 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)]">
               <div className="mx-auto w-full max-w-full p-2 md:max-w-[min(100%,50vw)] md:p-3">
-                <ChatComposer
-                  bare
-                  groups={groups}
-                  selectedGroup={selectedGroup}
-                  onSelectedGroupChange={setSelectedGroup}
-                  onAddGroup={handleAddGroup}
-                  onSend={handleSend}
-                  sending={pendingSend || pendingEdit}
-                  theme={theme === 'dark' ? 'dark' : 'light'}
-                  replyTo={replyTo}
-                  onClearReply={() => setReplyTo(null)}
-                  editTarget={editTarget}
-                  onClearEdit={() => setEditTarget(null)}
-                  onSaveEdit={handleSaveEdit}
-                  ogStorage={ogStorage}
-                  timeZone={timeZone}
-                  getPresignedUrl={getPresignedUrlForPath}
-                  showToolbar={composerToolbarOpen}
-                  showLineNumbers={composerLineNumbers}
-                  seedBody={composerSeed}
-                  onSeedConsumed={() => setComposerSeed(null)}
-                />
+                <div className="rounded-xl border border-gray-300 bg-white p-2 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:p-3">
+                  <ChatComposer
+                    bare
+                    groups={groups}
+                    selectedGroup={selectedGroup}
+                    onSelectedGroupChange={setSelectedGroup}
+                    onAddGroup={handleAddGroup}
+                    onSend={handleSend}
+                    sending={pendingSend || pendingEdit}
+                    theme={theme === 'dark' ? 'dark' : 'light'}
+                    replyTo={replyTo}
+                    onClearReply={() => setReplyTo(null)}
+                    editTarget={editTarget}
+                    onClearEdit={() => setEditTarget(null)}
+                    onSaveEdit={handleSaveEdit}
+                    ogStorage={ogStorage}
+                    timeZone={timeZone}
+                    getPresignedUrl={getPresignedUrlForPath}
+                    showToolbar={composerToolbarOpen}
+                    showLineNumbers={composerLineNumbers}
+                    seedBody={composerSeed}
+                    onSeedConsumed={() => setComposerSeed(null)}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1584,6 +1612,14 @@ export default function ChatWithMyselfPane({
             setAddToNoteSubmitting(false);
           }
         }}
+      />
+      <ChatComposerSettingsModal
+        open={composerSettingsOpen}
+        onOpenChange={setComposerSettingsOpen}
+        showToolbar={composerToolbarOpen}
+        onShowToolbarChange={toggleComposerToolbar}
+        showLineNumbers={composerLineNumbers}
+        onShowLineNumbersChange={toggleComposerLineNumbers}
       />
       <ChatEditHistoryModal
         open={Boolean(historyMessage)}

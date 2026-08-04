@@ -48,6 +48,7 @@ import { ImportPasswordModal } from '@/components/modals/ImportPasswordModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import Modal from '@/components/modals/Modal';
+import { useVisualViewportLock } from '@/hooks/useVisualViewportLock';
 import { MoveFileModal } from '@/components/modals/MoveFileModal';
 import { MoveFolderModal } from '@/components/modals/MoveFolderModal';
 import { CreateItemModal } from '@/components/modals/CreateItemModal';
@@ -335,6 +336,10 @@ function MainApp() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
   );
+  const isChatRoute =
+    location.pathname === '/chat' || location.pathname.endsWith('/chat');
+  const lockChatViewport = isMobile && isChatRoute;
+  useVisualViewportLock(lockChatViewport);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -4532,7 +4537,22 @@ function MainApp() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-odp-bgSofter text-gray-800 dark:text-odp-fg font-sans relative">
+    <div
+      className={`flex min-h-0 bg-gray-50 dark:bg-odp-bgSofter text-gray-800 dark:text-odp-fg font-sans ${
+        lockChatViewport
+          ? 'fixed inset-x-0 z-0 flex-col overflow-hidden'
+          : 'relative h-screen'
+      }`}
+      style={
+        lockChatViewport
+          ? {
+              top: 'var(--app-vv-top, 0px)',
+              height: 'var(--app-vv-height, 100dvh)',
+              maxHeight: 'var(--app-vv-height, 100dvh)',
+            }
+          : undefined
+      }
+    >
       {/* Hidden file input for import */}
       <input type="file" ref={fileInputRef} onChange={handleImportCreds} accept=".json" className="hidden" />
 

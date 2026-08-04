@@ -41,6 +41,15 @@ config({
 const COMPOSER_MIN_H = 40;
 const COMPOSER_MAX_H = 200;
 
+/** Cap editor body height against the visual viewport (keyboard-aware). */
+function getComposerContentMaxH() {
+  if (typeof window === 'undefined') return COMPOSER_MAX_H;
+  const vvH = window.visualViewport?.height ?? window.innerHeight;
+  // Keep room for chat nav, status bar, group row, and reply chrome.
+  const capped = Math.floor(vvH * 0.28);
+  return Math.max(COMPOSER_MIN_H, Math.min(COMPOSER_MAX_H, capped));
+}
+
 const CHAT_COMPOSER_TOOLBARS = [
   'bold',
   'underline',
@@ -94,7 +103,17 @@ function useIsCoarsePointer() {
   return coarse;
 }
 
-function measureComposerHeight(root) {
+/** macOS / iOS / iPadOS — Cmd is the primary modifier. */
+function isApplePlatform() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  if (/iPhone|iPad|iPod/i.test(ua) || /iPhone|iPad|iPod/i.test(platform)) return true;
+  if (/Mac/i.test(platform) || /Mac OS X/i.test(ua)) return true;
+  return false;
+}
+
+function measureComposerHeight(root, contentMaxH = COMPOSER_MAX_H) {
   if (!root) return COMPOSER_MIN_H;
   const toolbar =
     root.querySelector('.md-editor-toolbar-wrapper') ||
@@ -111,7 +130,7 @@ function measureComposerHeight(root) {
       )
     : 8;
   const contentH = Math.min(
-    COMPOSER_MAX_H,
+    contentMaxH,
     Math.max(COMPOSER_MIN_H, Math.ceil(content.scrollHeight + padY)),
   );
   return toolbarH + contentH;
@@ -150,6 +169,7 @@ export default function ChatComposer({
   const [value, setValue] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editorHeight, setEditorHeight] = useState(COMPOSER_MIN_H);
+  const [contentMaxH, setContentMaxH] = useState(getComposerContentMaxH);
   const [imageQueue, setImageQueue] = useState([]);
   const [draftReady, setDraftReady] = useState(false);
   const openChatImage = useChatImageLightbox();
@@ -164,6 +184,8 @@ export default function ChatComposer({
   const systemTheme = usePrefersColorScheme();
   const resolvedTheme = theme || systemTheme;
   const isMobile = useIsCoarsePointer();
+  const applePlatform = useMemo(() => isApplePlatform(), []);
+  const sendModLabel = applePlatform ? 'Cmd+Enter' : 'Ctrl+Enter';
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
   const tz = timeZone || detectTimeZone();
   const replyUrls = useMemo(
@@ -373,13 +395,63 @@ export default function ChatComposer({
   }, [draftReady, editTarget, selectedGroup, replyTo]);
 
   const syncEditorHeight = useCallback(() => {
-    const next = measureComposerHeight(wrapRef.current);
+    const next = measureComposerHeight(wrapRef.current, contentMaxH);
     setEditorHeight((prev) => (prev === next ? prev : next));
+  }, [contentMaxH]);
+
+  useEffect(() => {
+    const syncMax = () => {
+      const next = getComposerContentMaxH();
+      setContentMaxH((prev) => (prev === next ? prev : next));
+    };
+    syncMax();
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', syncMax);
+    window.addEventListener('resize', syncMax);
+    return () => {
+      vv?.removeEventListener('resize', syncMax);
+      window.removeEventListener('resize', syncMax);
+    };
   }, []);
 
   useLayoutEffect(() => {
     syncEditorHeight();
-  }, [value, showLineNumbers, showToolbar, syncEditorHeight]);
+  }, [value, showLineNumbers, showToolbar, contentMaxH, syncEditorHeight]);
+
+  // Focus the editor when entering (or switching) reply mode.
+  useEffect(() => {
+    if (!replyTo?.id || editTarget) return undefined;
+    const root = wrapRef.current;
+    if (!root) return undefined;
+
+    let cancelled = false;
+    const focusComposer = () => {
+      if (cancelled) return;
+      const cmEl = root.querySelector('.cm-editor');
+      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+      if (view) {
+        view.focus();
+      } else {
+        const content = root.querySelector('.cm-content');
+        content?.focus?.();
+      }
+      // Undo mobile browser scroll-into-view that pushes chat chrome off-screen.
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+
+    // Delay so mobile message-actions dialog can finish closing first.
+    const raf = window.requestAnimationFrame(focusComposer);
+    const t1 = window.setTimeout(focusComposer, 50);
+    const t2 = window.setTimeout(focusComposer, 200);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [replyTo?.id, editTarget]);
 
   // Install lineNumbers once; visibility is toggled via CSS class.
   useEffect(() => {
@@ -535,11 +607,26 @@ export default function ChatComposer({
       if (e.key !== 'Enter' || e.isComposing) return;
       if (!el.contains(e.target)) return;
 
-      // Ctrl/Cmd+Enter always sends (or saves while editing).
-      if (e.ctrlKey || e.metaKey) {
+      // Opt/Alt+Enter: no-op (do not send, do not insert newline).
+      if (e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // Cmd+Enter always sends (or saves while editing).
+      if (e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
         doSend();
+        return;
+      }
+
+      // Ctrl+Enter: no-op on Apple (iOS/macOS); send on Windows/Linux.
+      if (e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!applePlatform) doSend();
         return;
       }
 
@@ -564,7 +651,7 @@ export default function ChatComposer({
     };
     el.addEventListener('keydown', onKeyDown, true);
     return () => el.removeEventListener('keydown', onKeyDown, true);
-  }, [doSend, isMobile, editTarget]);
+  }, [doSend, isMobile, editTarget, applePlatform]);
 
   const editingMultilineHint =
     Boolean(editTarget) && /\n/.test(value || '');
@@ -857,17 +944,15 @@ export default function ChatComposer({
             </button>
           </div>
         </div>
-        <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
-          {editTarget
-            ? isMobile
-              ? 'Ctrl+Enter 저장 · 또는 완료 버튼'
-              : editingMultilineHint
-                ? 'Shift+Enter / Ctrl+Enter 수정 완료 · Enter 줄바꿈'
-                : 'Ctrl+Enter / Enter 수정 완료 · Shift+Enter 줄바꿈'
-            : isMobile
-              ? 'Ctrl+Enter 전송 · 첨부는 전송 시 업로드'
-              : 'Ctrl+Enter / Enter 전송 · Shift+Enter 줄바꿈 · 첨부는 전송 시 업로드'}
-        </p>
+        {!isMobile ? (
+          <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+            {editTarget
+              ? editingMultilineHint
+                ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`
+                : `${sendModLabel} / Enter 수정 완료 · Shift+Enter 줄바꿈`
+              : `${sendModLabel} / Enter 전송 · Shift+Enter 줄바꿈 · 첨부는 전송 시 업로드`}
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -32,7 +32,7 @@ export function useChatActivityStatus({
   noteSubmitting = false,
   error = '',
 }) {
-  const { addIndicator, removeIndicator } = useActivityIndicator();
+  const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
   const timersRef = useRef([]);
 
   useEffect(() => {
@@ -52,25 +52,34 @@ export function useChatActivityStatus({
   useEffect(() => {
     const detail = !storageReady
       ? storageMode === 'local'
-        ? '로컬 폴더 미연결'
+        ? '로컬 폴더를 연 뒤 채팅을 사용할 수 있습니다.'
         : storageMode === 'webdav'
-          ? 'WebDAV 미연결'
-          : 'S3 미연결'
+          ? '설정에서 WebDAV 연결 정보를 저장한 뒤 채팅을 사용할 수 있습니다.'
+          : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.'
       : storageMode === 'local'
         ? '로컬 · 준비됨'
         : storageMode === 'webdav'
           ? 'WebDAV · 동기화 가능'
           : 'S3 · 동기화 가능';
 
-    addIndicator({
+    const payload = {
       id: CHAT_ACTIVITY_IDS.sync,
       type: ActivityTypes.CHAT_SYNC,
       label: '채팅',
       detail,
       status: storageReady ? 'done' : 'error',
       pin: true,
+    };
+    addIndicator(payload);
+    // ADD is no-op when the id already exists; keep status/detail in sync.
+    updateIndicator(CHAT_ACTIVITY_IDS.sync, {
+      detail: payload.detail,
+      status: payload.status,
+      label: payload.label,
+      type: payload.type,
+      pin: true,
     });
-  }, [storageReady, storageMode, addIndicator]);
+  }, [storageReady, storageMode, addIndicator, updateIndicator]);
 
   useEffect(() => {
     if (pendingSend) {

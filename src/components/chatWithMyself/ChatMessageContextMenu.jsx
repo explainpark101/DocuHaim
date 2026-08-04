@@ -3,12 +3,12 @@ import { Dialog } from 'radix-ui';
 import {
   chatMenuDangerItemClass,
   chatMenuItemClass,
-  chatSheetContentClass,
+  chatDialogContentClass,
   chatDialogOverlayClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
 
 /**
- * Mobile message actions sheet (Radix Dialog).
+ * Mobile message actions dialog (centered).
  * Desktop uses ContextMenu / DropdownMenu in ChatMessageList.
  */
 export default function ChatMessageContextMenu({
@@ -36,7 +36,7 @@ export default function ChatMessageContextMenu({
       <Dialog.Portal>
         <Dialog.Overlay className={chatDialogOverlayClass} />
         <Dialog.Content
-          className={`${chatSheetContentClass} mx-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]`}
+          className={chatDialogContentClass}
           aria-describedby={undefined}
         >
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-odp-borderSoft">
