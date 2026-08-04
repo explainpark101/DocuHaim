@@ -736,6 +736,8 @@ export default function ChatPinnedPanel({
     axis: 'x',
     containScroll: 'trimSnaps',
     duration: 22,
+    // Mouse drag fights card select / context menu; keep touch swipe + tab clicks.
+    watchDrag: (_api, evt) => evt.type === 'touchstart',
   });
 
   // Swipe → tab header

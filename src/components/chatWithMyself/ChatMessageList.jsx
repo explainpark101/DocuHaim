@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   MoreHorizontal,
   Reply,
@@ -100,6 +100,10 @@ function useEnteringMessageIds(messages) {
   if (knownRef.current === null) {
     knownRef.current = new Set(ids);
     enterRef.current = new Set();
+  } else if (knownRef.current.size === 0 && ids.length > 0) {
+    // First real batch after empty mount — seed without enter animation.
+    knownRef.current = new Set(ids);
+    enterRef.current = new Set();
   } else {
     const known = knownRef.current;
     const unknown = ids.filter((id) => !known.has(id));
@@ -119,6 +123,11 @@ function useEnteringMessageIds(messages) {
   }
 
   return enterRef.current;
+}
+
+function scrollScrollerToBottom(el) {
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
 }
 
 function useShiftHeldRef() {
@@ -891,6 +900,7 @@ export default function ChatMessageList({
   const bottomSentinelRef = useRef(null);
   const stickBottomRef = useRef(true);
   const prevLenRef = useRef(0);
+  const initialBottomPinRef = useRef(true);
   const [sheetMessage, setSheetMessage] = useState(null);
   const coarse = useIsCoarsePointer();
   const shiftHeldRef = useShiftHeldRef();
@@ -978,23 +988,57 @@ export default function ChatMessageList({
     return groups;
   }, [items]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const grewAtEnd = messages.length > prevLenRef.current;
+
+    const prevLen = prevLenRef.current;
+    const nextLen = messages.length;
+    const grewAtEnd = nextLen > prevLen;
     const prepended =
-      messages.length > prevLenRef.current &&
-      prevLenRef.current > 0 &&
-      !stickBottomRef.current;
-    prevLenRef.current = messages.length;
+      nextLen > prevLen && prevLen > 0 && !stickBottomRef.current;
+    prevLenRef.current = nextLen;
 
     // Skip auto-stick when highlighting a jumped-to message.
-    if (highlightId) return;
+    if (highlightId) {
+      initialBottomPinRef.current = false;
+      return;
+    }
+
+    const pinInitial = initialBottomPinRef.current && nextLen > 0;
+    if (pinInitial) {
+      stickBottomRef.current = true;
+      scrollScrollerToBottom(el);
+      requestAnimationFrame(() => {
+        scrollScrollerToBottom(el);
+        requestAnimationFrame(() => scrollScrollerToBottom(el));
+      });
+      initialBottomPinRef.current = false;
+      return;
+    }
 
     if (stickBottomRef.current && grewAtEnd && !prepended) {
-      el.scrollTop = el.scrollHeight;
+      scrollScrollerToBottom(el);
     }
   }, [messages, highlightId]);
+
+  // Keep pinned to bottom while content height changes (images / OG) if sticky.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || highlightId) return undefined;
+    const content = el.firstElementChild;
+    if (!content) return undefined;
+
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            if (!stickBottomRef.current) return;
+            scrollScrollerToBottom(el);
+          })
+        : null;
+    ro?.observe(content);
+    return () => ro?.disconnect();
+  }, [highlightId, messages.length]);
 
   useEffect(() => {
     if (!highlightId) return undefined;
