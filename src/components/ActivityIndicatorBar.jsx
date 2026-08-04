@@ -79,7 +79,7 @@ function chipClassName({ isError, isDone }) {
   }`;
 }
 
-function IndicatorChipContent({ Icon, isActive, isError, isDone, displayLabel, indicator }) {
+function IndicatorChipContent({ Icon: _Icon, isActive, isError, isDone, displayLabel, indicator }) {
   return (
     <>
       {isActive ? (
@@ -89,7 +89,7 @@ function IndicatorChipContent({ Icon, isActive, isError, isDone, displayLabel, i
       ) : isDone ? (
         <IconCheck size={12} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
       ) : (
-        <Icon size={12} className="shrink-0" />
+        <_Icon size={12} className="shrink-0" />
       )}
       <span className="truncate max-w-[120px] md:max-w-[180px]">{displayLabel}</span>
       {indicator.detail && !isError && (

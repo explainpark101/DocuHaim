@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Filter, Loader2, Search, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Form } from 'radix-ui';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
@@ -210,19 +210,19 @@ export default function ChatSearchPanel({
               title="필터"
             >
               <Filter size={14} />
-              <motion.span
+              <Motion.span
                 animate={{ rotate: filtersOpen ? 180 : 0 }}
                 transition={{ duration: 0.18 }}
                 className="inline-flex"
               >
                 <ChevronDown size={14} />
-              </motion.span>
+              </Motion.span>
             </button>
           </div>
 
           <AnimatePresence initial={false}>
             {filtersOpen ? (
-              <motion.div
+              <Motion.div
                 key="search-filters"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -262,7 +262,7 @@ export default function ChatSearchPanel({
                     />
                   </div>
                 </div>
-              </motion.div>
+              </Motion.div>
             ) : null}
           </AnimatePresence>
         </Form.Root>

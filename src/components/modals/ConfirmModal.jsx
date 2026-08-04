@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
 import { IconBack, IconCheck, IconTrash } from '@/components/icons';
 
@@ -53,7 +53,7 @@ export function ConfirmModal({
   return (
     <AnimatePresence>
       {isOpen ? (
-        <motion.div
+        <Motion.div
           key="confirm-modal"
           className="fixed inset-0 z-100000 flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
@@ -62,7 +62,7 @@ export function ConfirmModal({
           transition={OVERLAY_TRANSITION}
         >
           <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
-          <motion.div
+          <Motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? 'confirm-modal-title' : undefined}
@@ -107,8 +107,8 @@ export function ConfirmModal({
                 </Button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </Motion.div>
+        </Motion.div>
       ) : null}
     </AnimatePresence>
   );

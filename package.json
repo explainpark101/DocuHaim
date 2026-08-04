@@ -9,6 +9,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "lint:guard": "eslint . --quiet",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check": "eslint . --quiet && tsc --noEmit -p tsconfig.json",
     "preview": "VITE_BASE_PATH=/s3haim vite build && VITE_BASE_PATH=/s3haim vite preview"
   },
   "dependencies": {

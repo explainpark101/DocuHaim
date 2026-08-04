@@ -1,5 +1,5 @@
 import { useDroppable, pointerWithin, closestCenter } from '@dnd-kit/core';
-import { motion } from 'motion/react';
+import { motion as Motion } from 'motion/react';
 import { IconFolder } from '@/components/icons';
 import { toDroppableId } from '@/utils/treeMove';
 
@@ -133,7 +133,7 @@ export function TreeDragOverlayPreview({ items }) {
   const primary = items[0];
   const count = items.length;
   return (
-    <motion.div
+    <Motion.div
       initial={{ scale: 0.92, opacity: 0.75 }}
       animate={{ scale: 1.04, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 380, damping: 28 }}
@@ -147,6 +147,6 @@ export function TreeDragOverlayPreview({ items }) {
           {count}
         </span>
       )}
-    </motion.div>
+    </Motion.div>
   );
 }

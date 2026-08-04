@@ -9,7 +9,6 @@ import {
   WIKI_IMAGE_CACHE_MODE_BLOB,
   WIKI_IMAGE_CACHE_MODE_URL,
 } from '@/utils/wikiImageSettings';
-import { setWikiImageCacheMode } from '@/utils/wikiImageRuntime';
 import {
   EDITOR_TYPE_MD_EDITOR_RT,
   EDITOR_TYPE_NOVEL,

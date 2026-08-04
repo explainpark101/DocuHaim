@@ -12,7 +12,7 @@ import {
   FileText,
   ExternalLink,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
@@ -143,42 +143,42 @@ function MessageActionItems({
   onViewEditHistory,
   onTogglePin,
   shiftHeldRef,
-  Item,
+  _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
   return (
     <>
-      <Item
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onReply?.(msg)}
       >
         <Reply size={16} className="shrink-0 text-gray-500" />
         답장
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onEdit?.(msg)}
       >
         <Pencil size={16} className="shrink-0 text-gray-500" />
         수정
-      </Item>
+      </_Item>
       {hasMessageEditHistory(msg) ? (
-        <Item
+        <_Item
           className={chatMenuItemClass}
           onSelect={() => onViewEditHistory?.(msg)}
         >
           <History size={16} className="shrink-0 text-gray-500" />
           수정기록 보기
-        </Item>
+        </_Item>
       ) : null}
-      <Item
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onTogglePin?.(msg)}
       >
         <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
         {pinned ? '고정 해제' : '고정'}
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessagePlainText(msg));
@@ -186,8 +186,8 @@ function MessageActionItems({
       >
         <Copy size={16} className="shrink-0 text-gray-500" />
         내용 복사
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessageMarkdownCopy(msg));
@@ -195,15 +195,15 @@ function MessageActionItems({
       >
         <FileText size={16} className="shrink-0 text-gray-500" />
         MD 복사
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onAddToNote?.(msg)}
       >
         <FilePlus2 size={16} className="shrink-0 text-gray-500" />
         노트로 추가
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuDangerItemClass}
         onPointerDown={(e) => {
           if (shiftHeldRef) shiftHeldRef.current = e.shiftKey;
@@ -214,7 +214,7 @@ function MessageActionItems({
       >
         <Trash2 size={16} className="shrink-0" />
         삭제
-      </Item>
+      </_Item>
     </>
   );
 }
@@ -996,7 +996,7 @@ export default function ChatMessageList({
               <div className="mx-auto flex w-full max-w-full min-w-0 flex-col gap-3 px-3 md:max-w-[min(100%,50vw)]">
                 <AnimatePresence initial={false} mode="popLayout">
                   {group.messages.map((item) => (
-                    <motion.div
+                    <Motion.div
                       key={item.key}
                       layout
                       className="min-w-0 max-w-full"
@@ -1041,7 +1041,7 @@ export default function ChatMessageList({
                         isEditing={editingMessageId === item.msg.id}
                         getPresignedUrl={getPresignedUrl}
                       />
-                    </motion.div>
+                    </Motion.div>
                   ))}
                 </AnimatePresence>
               </div>

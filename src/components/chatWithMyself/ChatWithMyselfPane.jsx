@@ -9,7 +9,7 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import ChatComposer from '@/components/chatWithMyself/ChatComposer';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
@@ -1506,7 +1506,7 @@ export default function ChatWithMyselfPane({
             <>
               <AnimatePresence initial={false}>
                 {dateOpen ? (
-                  <motion.div
+                  <Motion.div
                     key="desktop-date"
                     className="flex h-full min-h-0"
                     initial={{ opacity: 0, x: 16 }}
@@ -1532,12 +1532,12 @@ export default function ChatWithMyselfPane({
                         onClose={() => setDateOpen(false)}
                       />
                     </ChatRailShell>
-                  </motion.div>
+                  </Motion.div>
                 ) : null}
               </AnimatePresence>
               <AnimatePresence initial={false}>
                 {groupOpen ? (
-                  <motion.div
+                  <Motion.div
                     key="desktop-group"
                     className="flex h-full min-h-0"
                     initial={{ opacity: 0, x: 16 }}
@@ -1557,12 +1557,12 @@ export default function ChatWithMyselfPane({
                         onClose={() => setGroupOpen(false)}
                       />
                     </ChatRailShell>
-                  </motion.div>
+                  </Motion.div>
                 ) : null}
               </AnimatePresence>
               <AnimatePresence initial={false}>
                 {searchOpen ? (
-                  <motion.div
+                  <Motion.div
                     key="desktop-search"
                     className="flex h-full min-h-0"
                     initial={{ opacity: 0, x: 16 }}
@@ -1583,12 +1583,12 @@ export default function ChatWithMyselfPane({
                         {...searchPanelProps}
                       />
                     </ChatRailShell>
-                  </motion.div>
+                  </Motion.div>
                 ) : null}
               </AnimatePresence>
               <AnimatePresence initial={false}>
                 {pinnedOpen ? (
-                  <motion.div
+                  <Motion.div
                     key="desktop-pinned"
                     className="flex h-full min-h-0"
                     initial={{ opacity: 0, x: 16 }}
@@ -1609,7 +1609,7 @@ export default function ChatWithMyselfPane({
                         {...pinnedPanelProps}
                       />
                     </ChatRailShell>
-                  </motion.div>
+                  </Motion.div>
                 ) : null}
               </AnimatePresence>
             </>

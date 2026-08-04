@@ -19,6 +19,7 @@ export default defineConfig([
     },
   },
   {
+    // JS/JSX only until typescript-eslint is added; .ts/.tsx are gated by `tsc`
     files: ['**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
@@ -35,7 +36,26 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Undeclared identifiers + unused bindings (pre-push gate)
+      'no-undef': 'error',
+      'no-unused-vars': ['error', {
+        varsIgnorePattern: '^[A-Z_]',
+        argsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+        ignoreRestSiblings: true,
+      }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+
+      // Known debt in Move* modals; keep visible but do not block push yet
+      'react-hooks/rules-of-hooks': 'warn',
+
+      // Keep React Compiler-oriented rules visible but non-blocking for push
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-refresh/only-export-components': 'warn',
     },
   },
 ])

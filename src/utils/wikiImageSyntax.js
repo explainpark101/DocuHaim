@@ -187,7 +187,7 @@ export function updateMarkdownImageSizeInMarkdown(markdown, { src, occurrence = 
   const attrsBlock = markdownImageAttrsBlockFromSize({ width, height });
   let matchedCount = -1;
   let updated = false;
-  const next = source.replace(IMAGE_RE, (full, alt, destination, rawAttrs = '') => {
+  const next = source.replace(IMAGE_RE, (full, alt, destination, _rawAttrs = '') => {
     const dest = String(destination ?? '');
     const mdSrc = dest.trim().split(/\s+/)[0];
     if (!mdSrc || mdSrc !== src) return full;

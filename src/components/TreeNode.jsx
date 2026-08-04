@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { motion } from 'motion/react';
+import { motion as Motion } from 'motion/react';
 import {
   IconChevronDown,
   IconChevronRight,
@@ -487,7 +487,7 @@ export default function TreeNode({
 
   return (
     <div className={shouldShowStickyFolder ? 'relative' : ''}>
-      <motion.div
+      <Motion.div
         ref={setRowRef}
         data-tree-node-row
         layout={false}
@@ -646,7 +646,7 @@ export default function TreeNode({
             <IconTrash />
           </button>
         </div>
-      </motion.div>
+      </Motion.div>
 
       {isOpen &&
         node.type === 'folder' &&

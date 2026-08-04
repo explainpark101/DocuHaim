@@ -9,7 +9,7 @@ import Button from '@/components/Button';
  */
 export default function RecordingDropdownButton({
   isRecording = false,
-  audioLevel = 0,
+  _audioLevel = 0,
   hasRecordings = false,
   recordingPipelineStatus = '',
   onStartRecording,

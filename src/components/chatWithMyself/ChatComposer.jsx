@@ -148,7 +148,7 @@ export default function ChatComposer({
   onSelectedGroupChange,
   onAddGroup,
   onSend,
-  sending = false,
+  _sending = false,
   theme,
   replyTo = null,
   onClearReply,

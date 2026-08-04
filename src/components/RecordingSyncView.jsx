@@ -56,7 +56,7 @@ export default function RecordingSyncView({
   content = '',
   syncData = [],
   audioRef,
-  theme = 'light',
+  _theme = 'light',
 }) {
   const [highlightedLine, setHighlightedLine] = useState(-1);
   const containerRef = useRef(null);

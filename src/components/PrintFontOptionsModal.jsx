@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Modal from '@/components/modals/Modal';
 import FontFamilyInput from '@/components/FontFamilyInput';
-import { loadPrintFontsFromStorage, savePrintFontsToStorage, DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
+import { savePrintFontsToStorage, DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
 
 const FONT_OPTIONS = [
   'Georgia',

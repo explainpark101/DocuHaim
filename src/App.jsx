@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
-import { IconFile, IconX } from '@/components/icons';
+import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -838,7 +838,7 @@ function MainApp() {
       } else {
         await saveEncryptedSettings(creds, importPassword);
       }
-    } catch (e) {
+    } catch (_e) {
       alert("비밀번호가 틀렸거나 파일이 손상되었습니다.");
     }
   };
@@ -1119,7 +1119,7 @@ function MainApp() {
         setSnippetConfig({ snippets: parsed.snippets });
       }
       setSnippetLoadedFromLocal(true);
-    } catch (e) {
+    } catch (_e) {
       // 없으면 무시
       setSnippetLoadedFromLocal(true);
     }
@@ -3413,25 +3413,6 @@ function MainApp() {
     }
   };
 
-  const renameCurrentFileTitle = async (newTitle) => {
-    if (!currentFile) return;
-    const trimmedBase = newTitle.trim();
-    if (!trimmedBase) return;
-
-    const name = currentFile.name || '';
-    const lastDot = name.lastIndexOf('.');
-    const ext = lastDot > 0 ? name.slice(lastDot) : '';
-    const newFullName = `${trimmedBase}${ext}`;
-
-    if (newFullName === name) return;
-
-    try {
-      await renameCurrentFileFullName(newFullName);
-    } catch (e) {
-      alert("이름 변경 실패: " + e.message);
-    }
-  };
-
   // 6. Create & Delete
   const getParentPathsToExpand = (parentPath) => {
     if (!parentPath || parentPath === '') return [];
@@ -3686,7 +3667,7 @@ function MainApp() {
       }
       setCreateModalOpen(false);
       setCreateModalContext(null);
-    } catch (e) {
+    } catch (_e) {
       // createItem already shows alert
     } finally {
       setIsCreateSubmitting(false);
@@ -4441,7 +4422,7 @@ function MainApp() {
       try {
         await saveFile(null, { lastInputAt });
         setLastAutoSaveAt(now);
-      } catch (e) {
+      } catch (_e) {
         // saveFile handles alerts
       }
     }, 5000);
@@ -4601,7 +4582,6 @@ function MainApp() {
     return `${gb.toFixed(1)} GB`;
   };
 
-  const isS3Current = currentFile?.type === 's3';
   const isEditableStorage =
     currentFile?.type === 's3' || currentFile?.type === 'local' || currentFile?.type === 'webdav';
   const hasUnsavedChanges =

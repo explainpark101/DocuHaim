@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 36 };
 
@@ -17,7 +17,7 @@ export default function ChatMobileDrawer({
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <Motion.div
           key={`chat-drawer-${label}`}
           className={`fixed inset-0 ${zClass}`}
           initial={{ opacity: 0 }}
@@ -31,7 +31,7 @@ export default function ChatMobileDrawer({
             aria-label={`${label} 닫기`}
             onClick={onClose}
           />
-          <motion.div
+          <Motion.div
             role="dialog"
             aria-modal="true"
             aria-label={label}
@@ -44,8 +44,8 @@ export default function ChatMobileDrawer({
             onClick={(e) => e.stopPropagation()}
           >
             {children}
-          </motion.div>
-        </motion.div>
+          </Motion.div>
+        </Motion.div>
       ) : null}
     </AnimatePresence>
   );

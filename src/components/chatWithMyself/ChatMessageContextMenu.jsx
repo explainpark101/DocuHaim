@@ -10,7 +10,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
 import {
   chatMenuDangerItemClass,
@@ -119,7 +119,7 @@ export default function ChatMessageContextMenu({
     >
       <Dialog.Portal>
         <Dialog.Overlay asChild>
-          <motion.div
+          <Motion.div
             className={`${chatDialogOverlayClass} ${selectNoneClass}`.trim()}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -132,7 +132,7 @@ export default function ChatMessageContextMenu({
           onPointerDownOutside={guardOutside}
           onInteractOutside={guardOutside}
         >
-          <motion.div
+          <Motion.div
             className={`${menuContentClass} ${selectNoneClass}`.trim()}
             initial={{ opacity: 0, scale: 0.95, x: '-50%', y: 'calc(-50% + 8px)' }}
             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
@@ -254,7 +254,7 @@ export default function ChatMessageContextMenu({
                 삭제
               </button>
             </div>
-          </motion.div>
+          </Motion.div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
