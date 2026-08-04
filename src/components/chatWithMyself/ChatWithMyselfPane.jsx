@@ -52,6 +52,8 @@ import {
   patchChatMessageMeta,
   uploadChatAttachment,
   loadMessageEditHistoryPage,
+  deleteMessageEditHistoryEntry,
+  deleteAllMessageEditHistory,
   chatAttachmentsToMarkdown,
   extractChatBodyAttachments,
   detectTimeZone,
@@ -1194,6 +1196,66 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx],
   );
 
+  const applyUpdatedHistoryMessage = useCallback((messageId, updated, dateStr) => {
+    if (!updated) return;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
+      ),
+    );
+    setHistoryMessage((prev) =>
+      prev?.id === messageId
+        ? { ...prev, ...updated, dateStr: dateStr || prev.dateStr }
+        : prev,
+    );
+    setEditedResults((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
+      ),
+    );
+  }, []);
+
+  const handleDeleteEditHistoryEntry = useCallback(
+    async (message, entry) => {
+      if (!storageReady || !message?.id || !entry) return;
+      const dateStr =
+        message.dateStr ||
+        localDateString(new Date(message.at), detectTimeZone());
+      const { updatedMessage } = await deleteMessageEditHistoryEntry(
+        ctx,
+        message.id,
+        entry,
+        { dateStr },
+      );
+      if (updatedMessage) {
+        applyUpdatedHistoryMessage(message.id, updatedMessage, dateStr);
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+      }
+    },
+    [storageReady, ctx, applyUpdatedHistoryMessage, noteLocalDayWrite],
+  );
+
+  const handleDeleteAllEditHistory = useCallback(
+    async (message) => {
+      if (!storageReady || !message?.id) return;
+      const dateStr =
+        message.dateStr ||
+        localDateString(new Date(message.at), detectTimeZone());
+      const { updatedMessage } = await deleteAllMessageEditHistory(
+        ctx,
+        message.id,
+        { dateStr },
+      );
+      if (updatedMessage) {
+        applyUpdatedHistoryMessage(message.id, updatedMessage, dateStr);
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+      }
+    },
+    [storageReady, ctx, applyUpdatedHistoryMessage, noteLocalDayWrite],
+  );
+
   const handleTogglePin = useCallback(
     async (message) => {
       if (!storageReady || !message?.id) return;
@@ -1472,6 +1534,9 @@ export default function ChatWithMyselfPane({
     hasMore: searchHasMore,
     onLoadMore: handleSearchLoadMore,
     onSelectResult: handleSelectResult,
+    onTogglePin: handleTogglePin,
+    onOpenNote,
+    onViewEditHistory: setHistoryMessage,
     timeZone,
     getPresignedUrl: getPresignedUrlForPath,
   };
@@ -1483,7 +1548,7 @@ export default function ChatWithMyselfPane({
     editedResults,
     loading: pinnedLoading,
     onSelectResult: handleSelectResult,
-    onUnpin: handleTogglePin,
+    onTogglePin: handleTogglePin,
     onOpenNote,
     onViewEditHistory: setHistoryMessage,
     timeZone,
@@ -1904,6 +1969,8 @@ export default function ChatWithMyselfPane({
         getPresignedUrl={getPresignedUrlForPath}
         groups={groups}
         onLoadHistoryPage={handleLoadEditHistoryPage}
+        onDeleteHistoryEntry={handleDeleteEditHistoryEntry}
+        onDeleteAllHistory={handleDeleteAllEditHistory}
       />
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}

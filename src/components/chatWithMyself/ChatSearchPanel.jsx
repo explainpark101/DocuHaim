@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Filter, Loader2, Search, X } from 'lucide-react';
+import { ChevronDown, Copy, ExternalLink, Filter, History, Loader2, Pin, Search, FileText, X } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
-import { Form } from 'radix-ui';
+import { ContextMenu, Form } from 'radix-ui';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatResultEnter from '@/components/chatWithMyself/ChatResultEnter';
-import { chatFieldInputClass } from '@/components/chatWithMyself/ui/chatUiStyles';
+import {
+  chatFieldInputClass,
+  chatMenuContentClass,
+  chatMenuItemClass,
+} from '@/components/chatWithMyself/ui/chatUiStyles';
+import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCardMenu';
 import {
   SELF_GROUP,
   formatMessageDateLabel,
@@ -19,15 +24,100 @@ import {
   extractChatBodyAttachments,
   chatAttachmentsToMarkdown,
   resolveGroupLabel,
+  formatChatMessagePlainText,
 } from '@/utils/chatWithMyself';
+
+function useIsCoarsePointer() {
+  const [coarse, setCoarse] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    const onChange = () => setCoarse(mq.matches || window.innerWidth < 768);
+    mq.addEventListener('change', onChange);
+    window.addEventListener('resize', onChange);
+    return () => {
+      mq.removeEventListener('change', onChange);
+      window.removeEventListener('resize', onChange);
+    };
+  }, []);
+  return coarse;
+}
+
+async function copyText(text) {
+  const value = String(text ?? '');
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    /* ignore */
+  }
+}
+
+function SearchResultMenuItems({
+  result,
+  onSelect,
+  onTogglePin,
+  onOpenNote,
+  onViewEditHistory,
+  _Item,
+}) {
+  const pinned = Boolean(result?.pinnedAt);
+  return (
+    <>
+      <_Item className={chatMenuItemClass} onSelect={() => onSelect?.(result)}>
+        <ExternalLink size={16} className="shrink-0 text-gray-500" />
+        메시지로 이동
+      </_Item>
+      {onTogglePin ? (
+        <_Item className={chatMenuItemClass} onSelect={() => onTogglePin?.(result)}>
+          <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
+          {pinned ? '고정 해제' : '고정'}
+        </_Item>
+      ) : null}
+      {result?.notePath && onOpenNote ? (
+        <_Item
+          className={chatMenuItemClass}
+          onSelect={() => onOpenNote?.(result.notePath, result)}
+        >
+          <FileText size={16} className="shrink-0 text-gray-500" />
+          노트 열기
+        </_Item>
+      ) : null}
+      {result?.editedAt && onViewEditHistory ? (
+        <_Item
+          className={chatMenuItemClass}
+          onSelect={() => onViewEditHistory?.(result)}
+        >
+          <History size={16} className="shrink-0 text-gray-500" />
+          수정 기록
+        </_Item>
+      ) : null}
+      <_Item
+        className={chatMenuItemClass}
+        onSelect={() => {
+          void copyText(formatChatMessagePlainText(result));
+        }}
+      >
+        <Copy size={16} className="shrink-0 text-gray-500" />
+        내용 복사
+      </_Item>
+    </>
+  );
+}
 
 function SearchResultCard({
   result,
   query,
   timeZone,
   onSelect,
+  onTogglePin,
+  onOpenNote,
+  onViewEditHistory,
   getPresignedUrl,
   groups = [],
+  coarse,
 }) {
   const { text, attachments } = useMemo(
     () => extractChatBodyAttachments(result.body || ''),
@@ -48,43 +138,88 @@ function SearchResultCard({
   const showPreview =
     Boolean(previewSource) || Boolean(String(result.ogSearchText || '').trim());
 
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect?.(result)}
-      className="w-full rounded-xl border border-black/8 bg-white px-3 py-2.5 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md dark:border-white/10 dark:bg-[#243044] dark:hover:border-blue-500/50"
+  const {
+    contextMenuOpen,
+    setContextMenuOpen,
+    longPressOpenedRef,
+    motionAnimate,
+    motionTransition,
+    interactiveClass,
+    bindPress,
+  } = usePressableCardMenu({ enabled: true, coarse });
+
+  const card = (
+    <Motion.div
+      className={`w-full rounded-xl border border-black/8 bg-white px-3 py-2.5 text-left shadow-sm origin-center will-change-transform select-none [-webkit-touch-callout:none] transition-[background-color,box-shadow,border-color] duration-200 ease-out dark:border-white/10 dark:bg-[#243044] ${interactiveClass}`}
+      initial={false}
+      animate={motionAnimate}
+      transition={motionTransition}
+      {...bindPress}
     >
-      <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-        <span className="truncate font-medium text-gray-700 dark:text-gray-200">
-          {resolveGroupLabel(groups, result.group || SELF_GROUP)}
-        </span>
-        <span className="shrink-0 tabular-nums">{time}</span>
-      </div>
-      {showPreview || hasAttachments ? (
-        <div className="max-h-48 overflow-y-auto overscroll-contain">
-          {showPreview ? (
-            <div
-              className="chat-search-md text-sm leading-relaxed text-gray-800 dark:text-odp-fg [&_a]:text-blue-600 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:text-[12px] dark:[&_a]:text-blue-300 dark:[&_code]:bg-white/10 [&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_pre]:m-0 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/5 [&_pre]:p-2 dark:[&_pre]:bg-black/30 [&_p+p]:mt-1"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          ) : null}
-          {hasAttachments ? (
-            <div
-              className={`${showPreview ? 'mt-1.5' : ''} [&_a]:!mt-0 [&_button]:!mt-0 [&_div]:!mt-0`}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-              role="presentation"
-            >
-              <ChatLinkedText
-                text={attachmentMarkdown}
-                className="text-sm text-gray-800 dark:text-odp-fg"
-                getPresignedUrl={getPresignedUrl}
-              />
-            </div>
-          ) : null}
+      <button
+        type="button"
+        className="w-full text-left"
+        onClick={() => {
+          if (longPressOpenedRef.current) {
+            longPressOpenedRef.current = false;
+            return;
+          }
+          onSelect?.(result);
+        }}
+      >
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="truncate font-medium text-gray-700 dark:text-gray-200">
+            {resolveGroupLabel(groups, result.group || SELF_GROUP)}
+          </span>
+          <span className="shrink-0 tabular-nums">{time}</span>
         </div>
-      ) : null}
-    </button>
+        {showPreview || hasAttachments ? (
+          <div className="max-h-48 overflow-y-auto overscroll-contain">
+            {showPreview ? (
+              <div
+                className="chat-search-md text-sm leading-relaxed text-gray-800 dark:text-odp-fg [&_a]:text-blue-600 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:text-[12px] dark:[&_a]:text-blue-300 dark:[&_code]:bg-white/10 [&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_pre]:m-0 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/5 [&_pre]:p-2 dark:[&_pre]:bg-black/30 [&_p+p]:mt-1"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            ) : null}
+            {hasAttachments ? (
+              <div
+                className={`${showPreview ? 'mt-1.5' : ''} [&_a]:!mt-0 [&_button]:!mt-0 [&_div]:!mt-0`}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+                role="presentation"
+              >
+                <ChatLinkedText
+                  text={attachmentMarkdown}
+                  className="text-sm text-gray-800 dark:text-odp-fg"
+                  getPresignedUrl={getPresignedUrl}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </button>
+    </Motion.div>
+  );
+
+  return (
+    <ContextMenu.Root open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
+      <ContextMenu.Trigger asChild>{card}</ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Content
+          className={chatMenuContentClass}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <SearchResultMenuItems
+            result={result}
+            onSelect={onSelect}
+            onTogglePin={onTogglePin}
+            onOpenNote={onOpenNote}
+            onViewEditHistory={onViewEditHistory}
+            _Item={ContextMenu.Item}
+          />
+        </ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
   );
 }
 
@@ -102,6 +237,9 @@ export default function ChatSearchPanel({
   hasMore = false,
   onLoadMore,
   onSelectResult,
+  onTogglePin,
+  onOpenNote,
+  onViewEditHistory,
   timeZone,
   getPresignedUrl,
 }) {
@@ -113,6 +251,7 @@ export default function ChatSearchPanel({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const listRef = useRef(null);
   const queryInputRef = useRef(null);
+  const coarse = useIsCoarsePointer();
   const tz = timeZone || detectTimeZone();
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
   const availableDaySet = useMemo(() => new Set(dayKeys), [dayKeys]);
@@ -351,8 +490,12 @@ export default function ChatSearchPanel({
                 query={query}
                 timeZone={tz}
                 onSelect={onSelectResult}
+                onTogglePin={onTogglePin}
+                onOpenNote={onOpenNote}
+                onViewEditHistory={onViewEditHistory}
                 getPresignedUrl={getPresignedUrl}
                 groups={groups}
+                coarse={coarse}
               />
             </ChatResultEnter>
           ),

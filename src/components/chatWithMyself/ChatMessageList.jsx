@@ -44,6 +44,8 @@ const LONG_PRESS_THRESHOLD_MS = 250;
 const LONG_PRESS_MENU_MS = 500;
 const SWIPE_REPLY_THRESHOLD = 64;
 const SWIPE_REPLY_MAX = 72;
+/** Same-group messages within this window omit name/avatar and use tight spacing. */
+const GROUP_CLUSTER_MS = 10 * 60 * 1000;
 
 /** Soft morph for long-press / selected bubble shape. */
 const BUBBLE_SHAPE_SPRING = {
@@ -414,6 +416,7 @@ function MessageSideActions({
 function MessageBubble({
   msg,
   showName,
+  clustered = false,
   highlight,
   ogStorage,
   timeZone,
@@ -527,7 +530,8 @@ function MessageBubble({
   const isSwiping = offsetX !== 0;
 
   const rowClassName = [
-    'group relative -mx-3 flex w-[calc(100%+1.5rem)] max-w-[calc(100%+1.5rem)] gap-2 touch-pan-y px-3 py-1.5 rounded-md transition-[background-color,box-shadow] duration-200 ease-out overflow-x-hidden',
+    'group relative -mx-3 flex w-[calc(100%+1.5rem)] max-w-[calc(100%+1.5rem)] gap-2 touch-pan-y px-3 rounded-md transition-[background-color,box-shadow] duration-200 ease-out overflow-x-hidden',
+    clustered ? 'py-0.5' : 'py-1.5',
     self ? 'justify-end' : 'justify-start',
     isDeleting
       ? 'pointer-events-none select-none bg-red-500/20 dark:bg-red-500/25'
@@ -643,7 +647,7 @@ function MessageBubble({
           transition: offsetX === 0 ? 'transform 160ms ease-out' : undefined,
         }}
       >
-        {!self ? (
+        {!self && showName ? (
           <ChatGroupAvatar
             name={displayName}
             colorKey={msg.group}
@@ -869,6 +873,7 @@ export default function ChatMessageList({
     const out = [];
     let lastDate = '';
     let prevGroup = null;
+    let prevAtMs = 0;
     const labelOf = (key) => {
       if (groupLabelByKey instanceof Map) {
         return groupLabelByKey.get(key) || resolveGroupLabel(null, key);
@@ -889,16 +894,26 @@ export default function ChatMessageList({
         });
         lastDate = dateLabel;
         prevGroup = null;
+        prevAtMs = 0;
       }
-      const showName = !isSelfGroup(msg.group) && msg.group !== prevGroup;
+      const atMs = Date.parse(msg.at) || 0;
+      const sameGroup = prevGroup != null && msg.group === prevGroup;
+      const withinWindow =
+        prevAtMs > 0 &&
+        atMs > 0 &&
+        Math.abs(atMs - prevAtMs) <= GROUP_CLUSTER_MS;
+      const clustered = sameGroup && withinWindow;
+      const showName = !isSelfGroup(msg.group) && !clustered;
       out.push({
         type: 'msg',
         key: msg.id,
         msg,
         showName,
+        clustered,
         groupLabel: labelOf(msg.group || SELF_GROUP),
       });
       prevGroup = msg.group;
+      prevAtMs = atMs;
     }
     return out;
   }, [messages, timeZone, groupLabelByKey]);
@@ -1066,13 +1081,19 @@ export default function ChatMessageList({
                   label={group.date.label}
                 />
               ) : null}
-              <div className="mx-auto flex w-full max-w-full min-w-0 flex-col gap-3 px-3 md:max-w-[min(100%,50vw)]">
+              <div className="mx-auto flex w-full max-w-full min-w-0 flex-col px-3 md:max-w-[min(100%,50vw)]">
                 <AnimatePresence initial={false} mode="popLayout">
-                  {group.messages.map((item) => (
+                  {group.messages.map((item, msgIndex) => (
                     <Motion.div
                       key={item.key}
                       layout
-                      className="min-w-0 max-w-full"
+                      className={`min-w-0 max-w-full ${
+                        item.clustered
+                          ? 'mt-0.5'
+                          : msgIndex === 0
+                            ? ''
+                            : 'mt-3'
+                      }`}
                       initial={
                         highlightId
                           ? false
@@ -1098,6 +1119,7 @@ export default function ChatMessageList({
                       <MessageBubble
                         msg={item.msg}
                         showName={item.showName}
+                        clustered={item.clustered}
                         highlight={highlightId === item.msg.id}
                         ogStorage={ogStorage}
                         timeZone={timeZone}

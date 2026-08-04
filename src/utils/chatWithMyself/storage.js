@@ -814,6 +814,156 @@ export async function loadMessageEditHistoryPage(
 }
 
 /**
+ * Delete one file-backed edit version by object key.
+ * @param {ChatStorageCtx} ctx
+ * @param {string} key
+ */
+export async function deleteMessageEditVersion(ctx, key) {
+  const path = String(key || '').trim();
+  if (!path) return;
+  try {
+    await backend(ctx).deleteKey(path);
+  } catch (e) {
+    const status = e?.status ?? e?.$metadata?.httpStatusCode;
+    if (status === 404) return;
+    throw e;
+  }
+}
+
+/**
+ * Remove a legacy inline editHistory entry (no file key) from the day file.
+ * @param {ChatStorageCtx} ctx
+ * @param {string} dateStr
+ * @param {string} messageId
+ * @param {string} at
+ * @returns {Promise<object | null>} updated message or null
+ */
+export async function removeLegacyEditHistoryEntry(
+  ctx,
+  dateStr,
+  messageId,
+  at,
+) {
+  if (!dateStr || !messageId || !at) return null;
+  /** @type {object | null} */
+  let updated = null;
+  await mutateDayFile(ctx, dateStr, (parsed) => {
+    updated = null;
+    const idx = parsed.messages.findIndex((m) => m.id === messageId);
+    if (idx < 0) return parsed;
+    const prev = parsed.messages[idx];
+    const prevHist = Array.isArray(prev.editHistory) ? prev.editHistory : [];
+    const nextHist = prevHist.filter((e) => String(e?.at || '') !== String(at));
+    if (nextHist.length === prevHist.length) return parsed;
+    updated = { ...prev, editHistory: nextHist, dateStr };
+    const messages = parsed.messages.slice();
+    messages[idx] = updated;
+    return {
+      messages,
+      deletedIds: parsed.deletedIds,
+      deletedAtById: parsed.deletedAtById,
+    };
+  });
+  return updated;
+}
+
+/**
+ * Clear all legacy inline editHistory on a message.
+ * @param {ChatStorageCtx} ctx
+ * @param {string} dateStr
+ * @param {string} messageId
+ * @returns {Promise<object | null>}
+ */
+export async function clearLegacyEditHistory(ctx, dateStr, messageId) {
+  if (!dateStr || !messageId) return null;
+  /** @type {object | null} */
+  let updated = null;
+  await mutateDayFile(ctx, dateStr, (parsed) => {
+    updated = null;
+    const idx = parsed.messages.findIndex((m) => m.id === messageId);
+    if (idx < 0) return parsed;
+    const prev = parsed.messages[idx];
+    const prevHist = Array.isArray(prev.editHistory) ? prev.editHistory : [];
+    if (prevHist.length === 0) return parsed;
+    updated = { ...prev, editHistory: [], dateStr };
+    const messages = parsed.messages.slice();
+    messages[idx] = updated;
+    return {
+      messages,
+      deletedIds: parsed.deletedIds,
+      deletedAtById: parsed.deletedAtById,
+    };
+  });
+  return updated;
+}
+
+/**
+ * Delete one history entry (file-backed and/or legacy).
+ * @param {ChatStorageCtx} ctx
+ * @param {string} messageId
+ * @param {{ key?: string, at?: string }} entry
+ * @param {{ dateStr?: string }} [options]
+ * @returns {Promise<{ updatedMessage: object | null }>}
+ */
+export async function deleteMessageEditHistoryEntry(
+  ctx,
+  messageId,
+  entry,
+  options = {},
+) {
+  const id = String(messageId || '').trim();
+  if (!id) return { updatedMessage: null };
+
+  if (entry?.key) {
+    await deleteMessageEditVersion(ctx, entry.key);
+  }
+
+  let updatedMessage = null;
+  if (!entry?.key && entry?.at && options.dateStr) {
+    updatedMessage = await removeLegacyEditHistoryEntry(
+      ctx,
+      options.dateStr,
+      id,
+      entry.at,
+    );
+  }
+  return { updatedMessage };
+}
+
+/**
+ * Delete every edit version for a message (files + legacy inline history).
+ * @param {ChatStorageCtx} ctx
+ * @param {string} messageId
+ * @param {{ dateStr?: string }} [options]
+ * @returns {Promise<{ deletedKeys: number, updatedMessage: object | null }>}
+ */
+export async function deleteAllMessageEditHistory(
+  ctx,
+  messageId,
+  options = {},
+) {
+  const id = String(messageId || '').trim();
+  if (!id) return { deletedKeys: 0, updatedMessage: null };
+
+  const keys = await listMessageEditVersionKeys(ctx, id);
+  let deletedKeys = 0;
+  for (const key of keys) {
+    try {
+      await deleteMessageEditVersion(ctx, key);
+      deletedKeys += 1;
+    } catch {
+      /* continue best-effort */
+    }
+  }
+
+  let updatedMessage = null;
+  if (options.dateStr) {
+    updatedMessage = await clearLegacyEditHistory(ctx, options.dateStr, id);
+  }
+  return { deletedKeys, updatedMessage };
+}
+
+/**
  * Find a message by id, scanning day files newest-first.
  * @returns {Promise<{ msg: object, dateStr: string } | null>}
  */
