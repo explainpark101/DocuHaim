@@ -23,6 +23,8 @@ const chipClass =
 const addChipClass =
   'inline-flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-gray-300/90 bg-white/70 text-gray-500 transition-colors hover:border-sky-400 hover:text-sky-600 dark:border-white/20 dark:bg-[#1a2333]/70 dark:text-gray-400 dark:hover:border-sky-500/60 dark:hover:text-sky-300';
 
+const rowInnerClass = 'mt-1 flex max-w-full flex-wrap items-center gap-1';
+
 /**
  * Discord-style reaction chips under a message bubble.
  */
@@ -46,6 +48,10 @@ export default function ChatMessageReactions({
 
   if (disabled && list.length === 0) return null;
 
+  // Empty add-row: collapse height until hover/open so clustered messages
+  // do not keep a blank reaction gap (animate open/close to avoid jumps).
+  const emptyHoverOnly = list.length === 0 && !coarse;
+
   const addButton = (
     <button
       type="button"
@@ -61,16 +67,8 @@ export default function ChatMessageReactions({
     </button>
   );
 
-  return (
-    <div
-      className={`mt-1 flex max-w-full flex-wrap items-center gap-1 ${
-        list.length === 0 && !coarse
-          ? 'opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 data-[open=true]:opacity-100'
-          : ''
-      } ${className}`.trim()}
-      data-open={pickerOpen ? 'true' : undefined}
-      onClick={(e) => e.stopPropagation()}
-    >
+  const chips = (
+    <>
       {list.map((reaction) => (
         <button
           key={reactionKey(reaction)}
@@ -99,6 +97,30 @@ export default function ChatMessageReactions({
           {addButton}
         </ChatReactionPicker>
       ) : null}
+    </>
+  );
+
+  if (!emptyHoverOnly) {
+    return (
+      <div
+        className={`${rowInnerClass} ${className}`.trim()}
+        data-open={pickerOpen ? 'true' : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {chips}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`grid grid-rows-[0fr] opacity-0 pointer-events-none transition-[grid-template-rows,opacity] duration-300 ease-out group-hover:grid-rows-[1fr] group-hover:opacity-100 group-hover:pointer-events-auto focus-within:grid-rows-[1fr] focus-within:opacity-100 focus-within:pointer-events-auto data-[open=true]:grid-rows-[1fr] data-[open=true]:opacity-100 data-[open=true]:pointer-events-auto ${className}`.trim()}
+      data-open={pickerOpen ? 'true' : undefined}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="min-h-0 overflow-hidden">
+        <div className={rowInnerClass}>{chips}</div>
+      </div>
     </div>
   );
 }

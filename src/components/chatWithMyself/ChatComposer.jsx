@@ -713,11 +713,8 @@ export default function ChatComposer({
         return;
       }
 
-      const editingMultiline =
-        Boolean(editTarget) && /\n/.test(valueRef.current || '');
-
-      // Multi-line edit: Enter = newline, Shift+Enter = save.
-      if (editingMultiline) {
+      // Edit: Enter = newline, Shift+Enter = save (always, even single-line).
+      if (editTarget) {
         if (e.shiftKey) {
           e.preventDefault();
           e.stopPropagation();
@@ -726,7 +723,7 @@ export default function ChatComposer({
         return;
       }
 
-      // Compose / single-line edit: Enter sends; Shift+Enter inserts a newline.
+      // Compose: Enter sends; Shift+Enter inserts a newline.
       if (isMobile || e.shiftKey) return;
       e.preventDefault();
       e.stopPropagation();
@@ -735,9 +732,6 @@ export default function ChatComposer({
     el.addEventListener('keydown', onKeyDown, true);
     return () => el.removeEventListener('keydown', onKeyDown, true);
   }, [doSend, isMobile, editTarget, applePlatform]);
-
-  const editingMultilineHint =
-    Boolean(editTarget) && /\n/.test(value || '');
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -1172,9 +1166,7 @@ export default function ChatComposer({
           <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
             <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
               {editTarget
-                ? editingMultilineHint
-                  ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`
-                  : `${sendModLabel} / Enter 수정 완료 · Shift+Enter 줄바꿈`
+                ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`
                 : `${sendModLabel} / Enter 전송 · Shift+Enter 줄바꿈 · 첨부는 전송 시 업로드`}
             </p>
             <button
