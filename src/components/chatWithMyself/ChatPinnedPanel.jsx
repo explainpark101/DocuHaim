@@ -275,7 +275,7 @@ function CollectionCard({
               ) : null}
               {hasAttachments ? (
                 <div
-                  className={`${preview ? 'mt-1.5' : ''} [&_a]:!mt-0 [&_button]:!mt-0 [&_div]:!mt-0`}
+                  className={`${preview ? 'mt-1.5' : ''} [&_a]:mt-0! [&_button]:mt-0! [&_div]:mt-0!`}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                   role="presentation"

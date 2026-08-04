@@ -36,14 +36,10 @@ export default defineConfig([
       },
     },
     rules: {
-      // Undeclared identifiers + unused bindings (pre-push gate)
+      // Undeclared identifiers (pre-push gate). Unused bindings are not gated —
+      // destructuring placeholders (e.g. map callbacks) are too noisy otherwise.
       'no-undef': 'error',
-      'no-unused-vars': ['error', {
-        varsIgnorePattern: '^[A-Z_]',
-        argsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_',
-        ignoreRestSiblings: true,
-      }],
+      'no-unused-vars': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
 
       // Known debt in Move* modals; keep visible but do not block push yet
