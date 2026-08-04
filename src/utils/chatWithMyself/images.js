@@ -7,10 +7,12 @@ import {
 import {
   chatImagePathPrefix,
   detectTimeZone,
+  groupIconPathPrefix,
   localDateString,
 } from './paths.js';
 
 const MAX_CHAT_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_GROUP_ICON_BYTES = 5 * 1024 * 1024;
 
 /**
  * Upload an image for chat-with-myself. Uploads only when send is pressed (caller timing).
@@ -72,4 +74,53 @@ export function chatImagesToMarkdown(paths) {
     .filter(Boolean)
     .map((p) => `![[${p}]]`)
     .join('\n');
+}
+
+/**
+ * Upload a cropped group avatar (JPEG preferred).
+ * @param {import('./storage.js').ChatStorageCtx} ctx
+ * @param {File} file
+ * @param {{ onProgress?: (n: number) => void, signal?: AbortSignal }} [options]
+ * @returns {Promise<string>} object key / relative path
+ */
+export async function uploadGroupIcon(ctx, file, options = {}) {
+  if (!file) throw new Error('파일이 없습니다.');
+  if (file.size > MAX_GROUP_ICON_BYTES) {
+    throw new Error(
+      `아이콘 크기는 ${Math.round(MAX_GROUP_ICON_BYTES / 1024 / 1024)}MB 이하여야 합니다.`,
+    );
+  }
+
+  const prefix = groupIconPathPrefix();
+  const uuid =
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  let mime = file.type;
+  if (!mime || mime === 'application/octet-stream') {
+    mime = (await sniffImageMimeFromFile(file)) || mime;
+  }
+  const ext = getExtensionFromMime(mime) || '.jpg';
+  const key = `${prefix}${uuid}${ext}`;
+
+  if (ctx.mode === 'local') {
+    if (!ctx.localRootHandle) throw new Error('로컬 폴더를 먼저 열어주세요.');
+    return uploadLocalEditorImage(ctx.localRootHandle, file, {
+      imagePathPrefix: prefix,
+      maxSizeBytes: MAX_GROUP_ICON_BYTES,
+      onProgress: options.onProgress,
+      signal: options.signal,
+    });
+  }
+
+  const contentType =
+    mime && mime.startsWith('image/') ? mime : 'image/jpeg';
+  options.onProgress?.(0);
+  const body = new Uint8Array(await file.arrayBuffer());
+  const backend = createChatBackend(ctx);
+  await backend.ensureChatFolder();
+  await backend.putBinary(key, body, contentType);
+  options.onProgress?.(100);
+  return key;
 }

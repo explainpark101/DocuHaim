@@ -10,6 +10,7 @@ export {
   formatMessageFileNameBase,
   chatImagePathPrefix,
   chatFilePathPrefix,
+  groupIconPathPrefix,
 } from './paths.js';
 export {
   parseDayFile,
@@ -54,7 +55,19 @@ export {
   writeMeta,
   touchTimezone,
   addGroup,
+  setGroupIcon,
+  renameGroup,
+  normalizeGroups,
   sortGroupsKo,
+  groupNames,
+  groupIconMap,
+  groupLabelMap,
+  findGroup,
+  resolveGroupLabel,
+  resolveGroupId,
+  groupMatches,
+  createGroupId,
+  stableGroupIdFromName,
   listDayKeys,
   readDayMessages,
   readDayFileParsed,
@@ -73,7 +86,8 @@ export {
 } from './storage.js';
 export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from './format.js';
 export { postChatSyncEvent, CHAT_SYNC_CHANNEL, getChatSyncTabId } from './syncChannel.js';
-export { uploadChatImage, chatImagesToMarkdown } from './images.js';
+export { uploadChatImage, uploadGroupIcon, chatImagesToMarkdown } from './images.js';
+export { getCroppedImg } from './cropImage.js';
 export {
   uploadChatFile,
   uploadChatAttachment,

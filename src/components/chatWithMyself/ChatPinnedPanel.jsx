@@ -10,6 +10,7 @@ import {
   detectTimeZone,
   extractChatBodyAttachments,
   chatAttachmentsToMarkdown,
+  resolveGroupLabel,
 } from '@/utils/chatWithMyself';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatResultEnter from '@/components/chatWithMyself/ChatResultEnter';
@@ -83,6 +84,7 @@ function CollectionCard({
   onOpenNote,
   onViewEditHistory,
   getPresignedUrl,
+  groups = [],
 }) {
   const tz = timeZone || detectTimeZone();
   const time = formatMessageTime(msg.at, tz);
@@ -91,6 +93,7 @@ function CollectionCard({
   const attachmentMarkdown = chatAttachmentsToMarkdown(attachments);
   const hasAttachments = attachments.length > 0;
   const hasContent = Boolean(preview) || hasAttachments;
+  const groupLabel = resolveGroupLabel(groups, msg.group || SELF_GROUP);
 
   const previewRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [overflows, setOverflows] = useState(false);
@@ -115,7 +118,7 @@ function CollectionCard({
     <div className="rounded-xl border border-black/8 bg-white px-3 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#243044]">
       <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-gray-400">
         <span className="truncate font-medium text-gray-700 dark:text-gray-200">
-          {msg.group || SELF_GROUP}
+          {groupLabel}
         </span>
         <span className="shrink-0 tabular-nums">{time}</span>
       </div>
@@ -402,7 +405,7 @@ function CollectionTabList({
         className="flex w-full items-stretch justify-start gap-0 overflow-hidden px-1"
         aria-label="모아보기 분류"
       >
-        {TABS.map(({ id, label, Icon }) => {
+        {TABS.map(({ id, label, Icon: _Icon }) => {
           const count = counts[id] || 0;
           const chars = splitLabelChars(label);
           const visible = Math.max(0, Math.min(chars.length, visibleCharCounts[id] ?? 0));
@@ -487,6 +490,7 @@ export default function ChatPinnedPanel({
   onViewEditHistory,
   timeZone,
   getPresignedUrl,
+  groups = [],
 }) {
   const [tab, setTab] = useState(/** @type {CollectionTabId} */ ('pinned'));
   const tz = timeZone || detectTimeZone();
@@ -567,6 +571,7 @@ export default function ChatPinnedPanel({
                 onOpenNote={onOpenNote}
                 onViewEditHistory={onViewEditHistory}
                 getPresignedUrl={getPresignedUrl}
+                groups={groups}
               />
             </ChatResultEnter>
           ),

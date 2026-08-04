@@ -4,22 +4,22 @@ overview: 나와의 채팅 그룹에 사진 아이콘(react-easy-crop)을 지원
 todos:
   - id: deps-crop
     content: bun add react-easy-crop + cropImage.js + ChatGroupIconCropModal
-    status: pending
+    status: completed
   - id: meta-model
     content: Normalize groups to {name,iconPath?}; addGroup/setGroupIcon/uploadGroupIcon; paths
-    status: pending
+    status: completed
   - id: avatar-ui
     content: ChatGroupAvatar + wire ChatGroupPanel/MessageList icon display & edit
-    status: pending
+    status: completed
   - id: inline-panel-add
     content: Replace panel modal with motion draft row; disable + while drafting
-    status: pending
+    status: completed
   - id: composer-inline-add
     content: Replace 직접추가 select/dialog with placeholder input + Check
-    status: pending
+    status: completed
   - id: pane-wiring
     content: ChatWithMyselfPane handlers/props; remove ChatAddGroupDialog/ADD_GROUP_VALUE
-    status: pending
+    status: completed
 isProject: false
 ---
 

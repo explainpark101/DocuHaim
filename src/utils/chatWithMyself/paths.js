@@ -3,7 +3,9 @@ export const META_FILE = 'meta.json';
 export const OG_FOLDER = 'og';
 export const IMAGES_FOLDER = 'images';
 export const FILES_FOLDER = 'files';
+export const GROUP_ICONS_FOLDER = 'group-icons';
 export const SELF_GROUP = '나';
+/** Select sentinel: show inline group-name input (not a real group). */
 export const ADD_GROUP_VALUE = '__add_group__';
 
 export function chatFolderPrefix() {
@@ -32,6 +34,11 @@ export function chatImagePathPrefix(dateStr) {
 export function chatFilePathPrefix(dateStr) {
   const day = dateStr || localDateString(new Date());
   return `${CHAT_FOLDER}/${FILES_FOLDER}/${day}/`;
+}
+
+/** Prefix for group avatar icons: `.chat-with-myself/group-icons/` */
+export function groupIconPathPrefix() {
+  return `${CHAT_FOLDER}/${GROUP_ICONS_FOLDER}/`;
 }
 
 /** Local calendar date YYYY-MM-DD */

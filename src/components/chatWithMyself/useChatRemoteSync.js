@@ -25,7 +25,7 @@ const POLL_MS = 10_000;
  *   remotePoll: boolean,
  *   getWatchedDateStrs: () => string[],
  *   onDayMerged: (dateStr: string, messages: object[], remoteParsed?: object) => void,
- *   onMeta: (meta: { timezone: string, groups: string[] }) => void,
+ *   onMeta: (meta: { timezone: string, groups: Array<{ name: string, iconPath?: string }> }) => void,
  *   onDayKeys: (keys: string[]) => void,
  *   syncApiRef?: { current: null | { invalidateDay: (dateStr: string) => void, invalidateMeta: () => void } },
  * }} options

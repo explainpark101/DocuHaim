@@ -18,9 +18,17 @@ import {
   renderSearchResultHtml,
   extractChatBodyAttachments,
   chatAttachmentsToMarkdown,
+  resolveGroupLabel,
 } from '@/utils/chatWithMyself';
 
-function SearchResultCard({ result, query, timeZone, onSelect, getPresignedUrl }) {
+function SearchResultCard({
+  result,
+  query,
+  timeZone,
+  onSelect,
+  getPresignedUrl,
+  groups = [],
+}) {
   const { text, attachments } = useMemo(
     () => extractChatBodyAttachments(result.body || ''),
     [result.body],
@@ -48,7 +56,7 @@ function SearchResultCard({ result, query, timeZone, onSelect, getPresignedUrl }
     >
       <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-gray-400">
         <span className="truncate font-medium text-gray-700 dark:text-gray-200">
-          {result.group || SELF_GROUP}
+          {resolveGroupLabel(groups, result.group || SELF_GROUP)}
         </span>
         <span className="shrink-0 tabular-nums">{time}</span>
       </div>
@@ -116,7 +124,11 @@ export default function ChatSearchPanel({
     () => [
       { value: '__all__', label: '전체' },
       { value: SELF_GROUP, label: SELF_GROUP },
-      ...sortedGroups.map((g) => ({ value: g, label: g })),
+      ...sortedGroups.map((g) => ({
+        value: g.id,
+        label: g.name,
+        iconPath: g.iconPath,
+      })),
     ],
     [sortedGroups],
   );
@@ -266,6 +278,8 @@ export default function ChatSearchPanel({
                       value={groupFilter}
                       onValueChange={setGroupFilter}
                       options={groupOptions}
+                      showGroupAvatars
+                      getPresignedUrl={getPresignedUrl}
                       triggerClassName="w-full"
                       className="w-full"
                     />
@@ -338,6 +352,7 @@ export default function ChatSearchPanel({
                 timeZone={tz}
                 onSelect={onSelectResult}
                 getPresignedUrl={getPresignedUrl}
+                groups={groups}
               />
             </ChatResultEnter>
           ),

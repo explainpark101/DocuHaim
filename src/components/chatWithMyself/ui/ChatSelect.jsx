@@ -10,7 +10,18 @@ import {
 
 /**
  * Radix Select for Chat with Myself.
- * @param {{ value: string, onValueChange: (v: string) => void, options: Array<{ value: string, label: string }>, id?: string, ariaLabel?: string, className?: string, triggerClassName?: string, disabled?: boolean, showGroupAvatars?: boolean }} props
+ * @param {{
+ *   value: string,
+ *   onValueChange: (v: string) => void,
+ *   options: Array<{ value: string, label: string, iconPath?: string }>,
+ *   id?: string,
+ *   ariaLabel?: string,
+ *   className?: string,
+ *   triggerClassName?: string,
+ *   disabled?: boolean,
+ *   showGroupAvatars?: boolean,
+ *   getPresignedUrl?: ((path: string) => Promise<string|null|undefined>)|null,
+ * }} props
  */
 export default function ChatSelect({
   value,
@@ -22,8 +33,11 @@ export default function ChatSelect({
   triggerClassName = '',
   disabled = false,
   showGroupAvatars = false,
+  getPresignedUrl = null,
 }) {
   const selected = options.find((o) => o.value === value);
+  const showSelectedAvatar =
+    showGroupAvatars && selected && selected.value !== ADD_GROUP_VALUE;
 
   return (
     <div className={className}>
@@ -33,9 +47,15 @@ export default function ChatSelect({
           aria-label={ariaLabel}
           className={`${chatSelectTriggerClass} ${triggerClassName}`}
         >
-          {showGroupAvatars && selected && selected.value !== ADD_GROUP_VALUE ? (
+          {showSelectedAvatar ? (
             <span className="flex min-w-0 items-center gap-1.5">
-              <ChatGroupAvatar name={selected.label} size="sm" />
+              <ChatGroupAvatar
+                name={selected.label}
+                colorKey={selected.value}
+                size="sm"
+                iconPath={selected.iconPath}
+                getPresignedUrl={getPresignedUrl}
+              />
               <Select.Value />
             </span>
           ) : (
@@ -63,7 +83,13 @@ export default function ChatSelect({
                   </Select.ItemIndicator>
                   {showGroupAvatars && opt.value !== ADD_GROUP_VALUE ? (
                     <span className="flex items-center gap-2 pl-5">
-                      <ChatGroupAvatar name={opt.label} size="sm" />
+                      <ChatGroupAvatar
+                        name={opt.label}
+                        colorKey={opt.value}
+                        size="sm"
+                        iconPath={opt.iconPath}
+                        getPresignedUrl={getPresignedUrl}
+                      />
                       <Select.ItemText>{opt.label}</Select.ItemText>
                     </span>
                   ) : (

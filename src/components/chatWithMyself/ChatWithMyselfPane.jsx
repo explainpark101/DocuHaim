@@ -34,6 +34,14 @@ import {
 import {
   SELF_GROUP,
   addGroup,
+  setGroupIcon,
+  renameGroup,
+  uploadGroupIcon,
+  groupIconMap,
+  groupLabelMap,
+  groupMatches,
+  resolveGroupLabel,
+  resolveGroupId,
   appendChatMessages,
   appendChatMessage,
   createOgStorageAdapters,
@@ -70,10 +78,10 @@ import {
   deletePendingMessage,
 } from '@/utils/chatWithMyself/chatDb.js';
 
-async function matchesFilters(msg, dateStr, filters, ogStorage) {
+async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   if (!filters) return { ok: true, ogSearchText: '' };
   if (filters.groupFilter && filters.groupFilter !== '__all__') {
-    if ((msg.group || SELF_GROUP) !== filters.groupFilter) {
+    if (!groupMatches(groups, msg.group || SELF_GROUP, filters.groupFilter)) {
       return { ok: false, ogSearchText: '' };
     }
   }
@@ -291,6 +299,15 @@ export default function ChatWithMyselfPane({
     if (meta.replyTo?.id) setReplyTo(meta.replyTo);
   }, []);
 
+  // Once groups load, map legacy draft/selected names → stable ids.
+  useEffect(() => {
+    if (!groups.length) return;
+    setSelectedGroup((prev) => resolveGroupId(groups, prev || SELF_GROUP));
+    setViewGroupFilter((prev) =>
+      prev ? resolveGroupId(groups, prev) : prev,
+    );
+  }, [groups]);
+
   // Follow orientation default until the user sets an explicit toolbar preference.
   useEffect(() => {
     if (readComposerToolbarPref() != null) return undefined;
@@ -318,8 +335,10 @@ export default function ChatWithMyselfPane({
 
   const visibleMessages = useMemo(() => {
     if (!viewGroupFilter) return messages;
-    return messages.filter((m) => (m.group || SELF_GROUP) === viewGroupFilter);
-  }, [messages, viewGroupFilter]);
+    return messages.filter((m) =>
+      groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter),
+    );
+  }, [messages, viewGroupFilter, groups]);
 
   const pendingSend = useMemo(
     () => messages.some((m) => m.pendingSync === 'send'),
@@ -860,12 +879,15 @@ export default function ChatWithMyselfPane({
     });
   }, []);
 
-  const handleEdit = useCallback((message) => {
-    if (!message?.id) return;
-    setReplyTo(null);
-    setEditTarget(message);
-    setSelectedGroup(message.group || SELF_GROUP);
-  }, []);
+  const handleEdit = useCallback(
+    (message) => {
+      if (!message?.id) return;
+      setReplyTo(null);
+      setEditTarget(message);
+      setSelectedGroup(resolveGroupId(groups, message.group || SELF_GROUP));
+    },
+    [groups],
+  );
 
   const handleSaveEdit = useCallback(
     async (body, group, target, imageFiles = [], options = {}) => {
@@ -1115,11 +1137,57 @@ export default function ChatWithMyselfPane({
   );
 
   const handleAddGroup = useCallback(
-    async (name) => {
-      const next = await addGroup(ctx, name);
+    async (name, options = {}) => {
+      let iconPath =
+        typeof options.iconPath === 'string' && options.iconPath.trim()
+          ? options.iconPath.trim()
+          : undefined;
+      if (options.iconFile) {
+        try {
+          iconPath = await uploadGroupIcon(ctx, options.iconFile);
+        } catch (e) {
+          // Keep the group name; fall back to initials if icon upload fails.
+          setError(e?.message || '그룹 아이콘 업로드 실패 (그룹은 추가됩니다)');
+        }
+      }
+      const next = await addGroup(ctx, name, iconPath ? { iconPath } : {});
       setGroups(next);
       noteLocalMetaWrite();
       postChatSyncEvent('meta');
+      return next;
+    },
+    [ctx, noteLocalMetaWrite],
+  );
+
+  const handleSetGroupIcon = useCallback(
+    async (groupId, file) => {
+      if (!file) return;
+      try {
+        const iconPath = await uploadGroupIcon(ctx, file);
+        const next = await setGroupIcon(ctx, groupId, iconPath);
+        setGroups(next);
+        noteLocalMetaWrite();
+        postChatSyncEvent('meta');
+      } catch (e) {
+        setError(e?.message || '그룹 아이콘 변경 실패');
+        throw e;
+      }
+    },
+    [ctx, noteLocalMetaWrite],
+  );
+
+  const handleRenameGroup = useCallback(
+    async (groupId, newName) => {
+      try {
+        const next = await renameGroup(ctx, groupId, newName);
+        setGroups(next);
+        noteLocalMetaWrite();
+        postChatSyncEvent('meta');
+        return next;
+      } catch (e) {
+        setError(e?.message || '그룹 이름 변경 실패');
+        throw e;
+      }
     },
     [ctx, noteLocalMetaWrite],
   );
@@ -1246,7 +1314,13 @@ export default function ChatWithMyselfPane({
           const dateStr = keys[i];
           const msgs = await readDayMessages(ctx, dateStr);
           for (const msg of msgs) {
-            const hit = await matchesFilters(msg, dateStr, filters, ogStorage);
+            const hit = await matchesFilters(
+              msg,
+              dateStr,
+              filters,
+              ogStorage,
+              groups,
+            );
             if (hit.ok) {
               found.push({
                 ...msg,
@@ -1261,7 +1335,7 @@ export default function ChatWithMyselfPane({
       }
       return { results: found, nextIndex: i, hasMore: i < keys.length };
     },
-    [storageReady, ctx, ogStorage],
+    [storageReady, ctx, ogStorage, groups],
   );
 
   const handleSearch = useCallback(
@@ -1324,14 +1398,21 @@ export default function ChatWithMyselfPane({
         : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg'
     }`;
 
+  const groupIconByName = useMemo(() => groupIconMap(groups), [groups]);
+  const groupLabelByKey = useMemo(() => groupLabelMap(groups), [groups]);
+
   const groupPanelProps = {
     groups,
     viewGroup: viewGroupFilter,
     onToggleViewGroup: handleToggleViewGroup,
     onAddGroup: handleAddGroup,
-    onAfterAddGroup: (name) => {
-      setSelectedGroup(name);
-      setViewGroupFilter(name);
+    onRenameGroup: handleRenameGroup,
+    onSetGroupIcon: handleSetGroupIcon,
+    getPresignedUrl: getPresignedUrlForPath,
+    onAfterAddGroup: (id) => {
+      const key = id || SELF_GROUP;
+      setSelectedGroup(key);
+      setViewGroupFilter(key);
     },
   };
 
@@ -1349,6 +1430,7 @@ export default function ChatWithMyselfPane({
   };
 
   const pinnedPanelProps = {
+    groups,
     pinnedResults,
     notedResults,
     editedResults,
@@ -1510,9 +1592,11 @@ export default function ChatWithMyselfPane({
               onOpenNote={onOpenNote}
               onOpenReplyTarget={handleOpenReplyTarget}
               getPresignedUrl={getPresignedUrlForPath}
+              groupIconByName={groupIconByName}
+              groupLabelByKey={groupLabelByKey}
               emptyHint={
                 viewGroupFilter
-                  ? `「${viewGroupFilter}」 그룹 메시지가 없습니다`
+                  ? `「${resolveGroupLabel(groups, viewGroupFilter)}」 그룹 메시지가 없습니다`
                   : undefined
               }
             />
@@ -1745,6 +1829,7 @@ export default function ChatWithMyselfPane({
         onAddGroup={handleAddGroup}
         onSend={handleShareGroupSend}
         onClose={() => setShareGroupModal(null)}
+        getPresignedUrl={getPresignedUrlForPath}
       />
       <ChatComposerSettingsModal
         open={composerSettingsOpen}

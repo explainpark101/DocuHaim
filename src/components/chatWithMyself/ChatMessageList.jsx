@@ -34,6 +34,7 @@ import {
   SELF_GROUP,
   formatChatMessagePlainText,
   formatChatMessageMarkdownCopy,
+  resolveGroupLabel,
 } from '@/utils/chatWithMyself';
 
 /** Shrink feedback starts at this hold duration. */
@@ -155,42 +156,42 @@ function MessageActionItems({
   onViewEditHistory,
   onTogglePin,
   shiftHeldRef,
-  Item,
+  _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
   return (
     <>
-      <Item
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onReply?.(msg)}
       >
         <Reply size={16} className="shrink-0 text-gray-500" />
         답장
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onEdit?.(msg)}
       >
         <Pencil size={16} className="shrink-0 text-gray-500" />
         수정
-      </Item>
+      </_Item>
       {hasMessageEditHistory(msg) ? (
-        <Item
+        <_Item
           className={chatMenuItemClass}
           onSelect={() => onViewEditHistory?.(msg)}
         >
           <History size={16} className="shrink-0 text-gray-500" />
           수정기록 보기
-        </Item>
+        </_Item>
       ) : null}
-      <Item
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onTogglePin?.(msg)}
       >
         <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
         {pinned ? '고정 해제' : '고정'}
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessagePlainText(msg));
@@ -198,8 +199,8 @@ function MessageActionItems({
       >
         <Copy size={16} className="shrink-0 text-gray-500" />
         내용 복사
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessageMarkdownCopy(msg));
@@ -207,15 +208,15 @@ function MessageActionItems({
       >
         <FileText size={16} className="shrink-0 text-gray-500" />
         MD 복사
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuItemClass}
         onSelect={() => onAddToNote?.(msg)}
       >
         <FilePlus2 size={16} className="shrink-0 text-gray-500" />
         노트로 추가
-      </Item>
-      <Item
+      </_Item>
+      <_Item
         className={chatMenuDangerItemClass}
         onPointerDown={(e) => {
           if (shiftHeldRef) shiftHeldRef.current = e.shiftKey;
@@ -226,14 +227,14 @@ function MessageActionItems({
       >
         <Trash2 size={16} className="shrink-0" />
         삭제
-      </Item>
+      </_Item>
     </>
   );
 }
 
-function ReplyPreview({ msg, onOpen }) {
+function ReplyPreview({ msg, onOpen, replyGroupLabel }) {
   if (!msg?.replyTo) return null;
-  const label = msg.replyGroup || SELF_GROUP;
+  const label = replyGroupLabel || msg.replyGroup || SELF_GROUP;
   const snippet = msg.replySnippet || '원본 메시지';
   return (
     <button
@@ -334,7 +335,7 @@ function MessageMoreButton({
             onViewEditHistory={onViewEditHistory}
             onTogglePin={onTogglePin}
             shiftHeldRef={shiftHeldRef}
-            Item={DropdownMenu.Item}
+            _Item={DropdownMenu.Item}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -432,8 +433,12 @@ function MessageBubble({
   rowSelected = false,
   isEditing = false,
   getPresignedUrl,
+  groupIconPath = null,
+  groupLabel = null,
+  replyGroupLabel = null,
 }) {
   const self = isSelfGroup(msg.group);
+  const displayName = groupLabel || msg.group || SELF_GROUP;
   const urls = useMemo(() => extractUrls(msg.body), [msg.body]);
   const time = formatMessageTime(msg.at, timeZone || detectTimeZone());
   const longPressThresholdTimer = useRef(null);
@@ -641,7 +646,14 @@ function MessageBubble({
         }}
       >
         {!self ? (
-          <ChatGroupAvatar name={msg.group} size="lg" className="mt-1" />
+          <ChatGroupAvatar
+            name={displayName}
+            colorKey={msg.group}
+            size="lg"
+            className="mt-1"
+            iconPath={groupIconPath}
+            getPresignedUrl={getPresignedUrl}
+          />
         ) : (
           <div className="w-8 shrink-0" aria-hidden />
         )}
@@ -652,7 +664,7 @@ function MessageBubble({
         >
           {showName && !self ? (
             <div className="mb-0.5 max-w-full truncate px-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
-              {msg.group}
+              {displayName}
             </div>
           ) : null}
           <div className="flex min-w-0 max-w-full items-end gap-1">
@@ -699,7 +711,11 @@ function MessageBubble({
               transition={BUBBLE_SHAPE_SPRING}
               style={dimmed ? { opacity: 0.7 } : undefined}
             >
-              <ReplyPreview msg={msg} onOpen={isDeleting ? undefined : onOpenReply} />
+              <ReplyPreview
+                msg={msg}
+                onOpen={isDeleting ? undefined : onOpenReply}
+                replyGroupLabel={replyGroupLabel}
+              />
               {pinned ? (
                 <div className="mb-1 inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-300">
                   <Pin size={10} className="fill-current" />
@@ -797,7 +813,7 @@ function MessageBubble({
             onViewEditHistory={onViewEditHistory}
             onTogglePin={onTogglePin}
             shiftHeldRef={shiftHeldRef}
-            Item={ContextMenu.Item}
+            _Item={ContextMenu.Item}
           />
         </ContextMenu.Content>
       </ContextMenu.Portal>
@@ -827,6 +843,10 @@ export default function ChatMessageList({
   onOpenReplyTarget,
   emptyHint,
   getPresignedUrl,
+  /** @type {Map<string, string>|Record<string, string>|null} */
+  groupIconByName = null,
+  /** @type {Map<string, string>|Record<string, string>|null} */
+  groupLabelByKey = null,
 }) {
   const scrollerRef = useRef(null);
   const topSentinelRef = useRef(null);
@@ -851,6 +871,13 @@ export default function ChatMessageList({
     const out = [];
     let lastDate = '';
     let prevGroup = null;
+    const labelOf = (key) => {
+      if (groupLabelByKey instanceof Map) {
+        return groupLabelByKey.get(key) || resolveGroupLabel(null, key);
+      }
+      if (groupLabelByKey?.[key]) return groupLabelByKey[key];
+      return resolveGroupLabel(null, key);
+    };
     for (const msg of messages) {
       const dateStr =
         msg.dateStr || localDateString(new Date(msg.at), tz);
@@ -866,11 +893,17 @@ export default function ChatMessageList({
         prevGroup = null;
       }
       const showName = !isSelfGroup(msg.group) && msg.group !== prevGroup;
-      out.push({ type: 'msg', key: msg.id, msg, showName });
+      out.push({
+        type: 'msg',
+        key: msg.id,
+        msg,
+        showName,
+        groupLabel: labelOf(msg.group || SELF_GROUP),
+      });
       prevGroup = msg.group;
     }
     return out;
-  }, [messages, timeZone]);
+  }, [messages, timeZone, groupLabelByKey]);
 
   // Sticky date needs a tall parent (divider + that day's messages). A wrapper
   // that only wraps the divider is the same height as the sticky node → no stick.
@@ -1059,6 +1092,19 @@ export default function ChatMessageList({
                         rowSelected={sheetMessage?.id === item.msg.id}
                         isEditing={editingMessageId === item.msg.id}
                         getPresignedUrl={getPresignedUrl}
+                        groupIconPath={
+                          groupIconByName instanceof Map
+                            ? groupIconByName.get(item.msg.group) || null
+                            : groupIconByName?.[item.msg.group] || null
+                        }
+                        groupLabel={item.groupLabel}
+                        replyGroupLabel={
+                          groupLabelByKey instanceof Map
+                            ? groupLabelByKey.get(item.msg.replyGroup) ||
+                              item.msg.replyGroup
+                            : groupLabelByKey?.[item.msg.replyGroup] ||
+                              item.msg.replyGroup
+                        }
                       />
                     </Motion.div>
                   ))}

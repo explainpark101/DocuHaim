@@ -7,7 +7,6 @@ import { EditorView, lineNumbers } from '@codemirror/view';
 import { motion as Motion } from 'motion/react';
 import '@/styles/md-editor-rt/style.css';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
-import ChatAddGroupDialog from '@/components/chatWithMyself/ui/ChatAddGroupDialog';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
@@ -17,6 +16,7 @@ import {
   ADD_GROUP_VALUE,
   SELF_GROUP,
   sortGroupsKo,
+  resolveGroupLabel,
   extractUrls,
   formatMessageTime,
   formatMessageDateLabel,
@@ -188,7 +188,9 @@ export default function ChatComposer({
   fillParent = false,
 }) {
   const [value, setValue] = useState('');
-  const [addOpen, setAddOpen] = useState(false);
+  const [inlineAddOpen, setInlineAddOpen] = useState(false);
+  const [inlineGroupName, setInlineGroupName] = useState('');
+  const [addingGroup, setAddingGroup] = useState(false);
   const [editorHeight, setEditorHeight] = useState(COMPOSER_MIN_H);
   const [contentMaxH, setContentMaxH] = useState(() =>
     getComposerContentMaxH({ editing: Boolean(editTarget) }),
@@ -199,6 +201,7 @@ export default function ChatComposer({
   const openChatImage = useChatImageLightbox();
   const wrapRef = useRef(null);
   const fileInputRef = useRef(null);
+  const inlineGroupInputRef = useRef(null);
   const valueRef = useRef(value);
   const imageQueueRef = useRef(imageQueue);
   const prevEditTargetRef = useRef(editTarget);
@@ -223,11 +226,19 @@ export default function ChatComposer({
   const groupOptions = useMemo(
     () => [
       { value: SELF_GROUP, label: SELF_GROUP },
-      ...sortedGroups.map((g) => ({ value: g, label: g })),
+      ...sortedGroups.map((g) => ({
+        value: g.id,
+        label: g.name,
+        iconPath: g.iconPath,
+      })),
       { value: ADD_GROUP_VALUE, label: '직접추가' },
     ],
     [sortedGroups],
   );
+
+  const groupSelectValue = inlineAddOpen
+    ? ADD_GROUP_VALUE
+    : selectedGroup || SELF_GROUP;
 
   useEffect(() => {
     valueRef.current = value;
@@ -733,15 +744,44 @@ export default function ChatComposer({
 
   const handleGroupChange = (next) => {
     if (next === ADD_GROUP_VALUE) {
-      setAddOpen(true);
+      setInlineAddOpen(true);
+      setInlineGroupName('');
       return;
     }
+    setInlineAddOpen(false);
+    setInlineGroupName('');
     onSelectedGroupChange?.(next);
   };
 
-  const confirmAddGroup = async (name) => {
-    await onAddGroup?.(name);
-    onSelectedGroupChange?.(name);
+  useEffect(() => {
+    if (!inlineAddOpen) return undefined;
+    const id = window.requestAnimationFrame(() => {
+      inlineGroupInputRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [inlineAddOpen]);
+
+  const closeInlineAdd = () => {
+    setInlineAddOpen(false);
+    setInlineGroupName('');
+  };
+
+  const commitInlineGroup = async () => {
+    const trimmed = inlineGroupName.trim();
+    if (!trimmed || addingGroup) return;
+    setAddingGroup(true);
+    try {
+      const next = await onAddGroup?.(trimmed);
+      const created = Array.isArray(next)
+        ? next.find((g) => g.name === trimmed) || next[next.length - 1]
+        : null;
+      onSelectedGroupChange?.(created?.id || trimmed);
+      closeInlineAdd();
+    } catch {
+      /* keep input on failure */
+    } finally {
+      setAddingGroup(false);
+    }
   };
 
   const canSend = Boolean(value.trim()) || imageQueue.length > 0;
@@ -795,7 +835,7 @@ export default function ChatComposer({
             <div className="flex min-w-0 items-start gap-2">
               <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="truncate text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-                  {replyTo.group || SELF_GROUP} 에게 답장
+                  {resolveGroupLabel(groups, replyTo.group || SELF_GROUP)} 에게 답장
                 </div>
                 {replyWhen ? (
                   <div className="truncate text-[10px] text-gray-500 dark:text-gray-400">{replyWhen}</div>
@@ -824,12 +864,6 @@ export default function ChatComposer({
             ) : null}
           </div>
         ) : null}
-        <ChatAddGroupDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          onConfirm={confirmAddGroup}
-          title="그룹 직접 추가"
-        />
 
         {imageQueue.length > 0 ? (
           <div className="mb-1 flex flex-wrap gap-2">
@@ -942,29 +976,101 @@ export default function ChatComposer({
                   <Paperclip size={18} />
                 </button>
               </div>
-              <div className="flex min-w-0 items-center">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <ChatSelect
                   id="chat-group-select"
                   ariaLabel="그룹"
-                  value={selectedGroup || SELF_GROUP}
+                  value={groupSelectValue}
                   onValueChange={handleGroupChange}
                   options={groupOptions}
                   showGroupAvatars
+                  getPresignedUrl={getPresignedUrl}
                   triggerClassName="w-full max-w-full"
+                  className="min-w-0 flex-1"
                 />
+                {inlineAddOpen ? (
+                  <>
+                    <input
+                      ref={inlineGroupInputRef}
+                      type="text"
+                      value={inlineGroupName}
+                      onChange={(e) => setInlineGroupName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void commitInlineGroup();
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          closeInlineAdd();
+                        }
+                      }}
+                      placeholder="그룹명"
+                      disabled={addingGroup}
+                      className="w-[7.5rem] shrink-0 rounded-md border border-gray-300 bg-transparent px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 dark:border-odp-borderStrong dark:text-odp-fgStrong"
+                      aria-label="그룹 직접 추가"
+                    />
+                    <button
+                      type="button"
+                      title="그룹 추가"
+                      aria-label="그룹 추가"
+                      disabled={addingGroup || !inlineGroupName.trim()}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => void commitInlineGroup()}
+                      className="inline-flex shrink-0 items-center justify-center rounded p-1 text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                    >
+                      <Check size={16} />
+                    </button>
+                  </>
+                ) : null}
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
               <ChatSelect
                 id="chat-group-select"
                 ariaLabel="그룹"
-                value={selectedGroup || SELF_GROUP}
+                value={groupSelectValue}
                 onValueChange={handleGroupChange}
                 options={groupOptions}
                 showGroupAvatars
-                triggerClassName="max-w-[50%]"
+                getPresignedUrl={getPresignedUrl}
+                triggerClassName="max-w-full"
+                className={inlineAddOpen ? 'min-w-0 max-w-[42%]' : 'min-w-0'}
               />
+              {inlineAddOpen ? (
+                <>
+                  <input
+                    ref={inlineGroupInputRef}
+                    type="text"
+                    value={inlineGroupName}
+                    onChange={(e) => setInlineGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void commitInlineGroup();
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeInlineAdd();
+                      }
+                    }}
+                    placeholder="그룹명"
+                    disabled={addingGroup}
+                    className="min-w-0 flex-1 rounded-md border border-gray-300 bg-transparent px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 dark:border-odp-borderStrong dark:text-odp-fgStrong"
+                    aria-label="그룹 직접 추가"
+                  />
+                  <button
+                    type="button"
+                    title="그룹 추가"
+                    aria-label="그룹 추가"
+                    disabled={addingGroup || !inlineGroupName.trim()}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => void commitInlineGroup()}
+                    className="inline-flex shrink-0 items-center justify-center rounded p-1 text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                  >
+                    <Check size={16} />
+                  </button>
+                </>
+              ) : null}
             </div>
           )}
 

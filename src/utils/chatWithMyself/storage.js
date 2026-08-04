@@ -108,7 +108,7 @@ async function mutateDayFile(ctx, dateStr, mutator) {
 /**
  * Conditional meta write with retry (last-write-wins on groups union).
  * @param {ChatStorageCtx} ctx
- * @param {(meta: { timezone: string, groups: string[] }) => { timezone: string, groups: string[] }} mutator
+ * @param {(meta: { timezone: string, groups: ChatGroup[] }) => { timezone: string, groups: ChatGroup[] }} mutator
  */
 async function mutateMeta(ctx, mutator) {
   const key = metaKey();
@@ -123,9 +123,7 @@ async function mutateMeta(ctx, mutator) {
     const next = mutator(current);
     const payload = {
       timezone: next.timezone || detectTimeZone(),
-      groups: sortGroupsKo(
-        (next.groups || []).filter((g) => g && g !== SELF_GROUP),
-      ),
+      groups: sortGroupsKo(next.groups || []).map(serializeGroup),
     };
     const content = `${JSON.stringify(payload, null, 2)}\n`;
     if (content === existing) {
@@ -151,6 +149,132 @@ async function mutateMeta(ctx, mutator) {
   throw lastErr || new ChatPreconditionFailedError('Meta write conflict');
 }
 
+/**
+ * @typedef {{ id: string, name: string, iconPath?: string, aliases?: string[] }} ChatGroup
+ */
+
+/** @param {string} name */
+export function stableGroupIdFromName(name) {
+  let h = 2166136261;
+  const s = String(name || '');
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return `g_${(h >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+/** Random hash id for a new group (used as the stable link key). */
+export function createGroupId() {
+  const uuid =
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID().replace(/-/g, '')
+      : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+  return `g_${uuid.slice(0, 16)}`;
+}
+
+/** @param {ChatGroup} g */
+function serializeGroup(g) {
+  /** @type {{ id: string, name: string, iconPath?: string, aliases?: string[] }} */
+  const row = { id: g.id, name: g.name };
+  if (g.iconPath) row.iconPath = g.iconPath;
+  if (Array.isArray(g.aliases) && g.aliases.length) {
+    row.aliases = [...g.aliases];
+  }
+  return row;
+}
+
+/**
+ * Normalize legacy string[] / nameless objects from meta.json into { id, name, ... }.
+ * @param {unknown} raw
+ * @returns {ChatGroup[]}
+ */
+export function normalizeGroups(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seenIds = new Set();
+  const seenNames = new Set();
+  /** @type {ChatGroup[]} */
+  const out = [];
+  for (const item of raw) {
+    let name = '';
+    /** @type {string|undefined} */
+    let id;
+    /** @type {string|undefined} */
+    let iconPath;
+    /** @type {string[]} */
+    let aliases = [];
+    if (typeof item === 'string') {
+      name = item.trim();
+    } else if (item && typeof item === 'object') {
+      const obj = /** @type {{ id?: unknown, name?: unknown, iconPath?: unknown, aliases?: unknown }} */ (
+        item
+      );
+      name = String(obj.name || '').trim();
+      if (typeof obj.id === 'string' && obj.id.trim()) id = obj.id.trim();
+      if (typeof obj.iconPath === 'string' && obj.iconPath.trim()) {
+        iconPath = obj.iconPath.trim();
+      }
+      if (Array.isArray(obj.aliases)) {
+        aliases = obj.aliases
+          .map((a) => String(a || '').trim())
+          .filter((a) => a && a !== SELF_GROUP && a !== name);
+      }
+    }
+    if (!name || name === SELF_GROUP) continue;
+    if (seenNames.has(name)) continue;
+    const resolvedId = id || stableGroupIdFromName(name);
+    if (seenIds.has(resolvedId)) continue;
+    seenIds.add(resolvedId);
+    seenNames.add(name);
+    /** @type {ChatGroup} */
+    const row = { id: resolvedId, name };
+    if (iconPath) row.iconPath = iconPath;
+    if (aliases.length) row.aliases = [...new Set(aliases)];
+    out.push(row);
+  }
+  return out;
+}
+
+/**
+ * @param {ChatGroup[]|string[]|unknown} groups
+ * @param {string} key group id, display name, or legacy alias
+ * @returns {ChatGroup|null}
+ */
+export function findGroup(groups, key) {
+  const raw = String(key || '').trim();
+  if (!raw || raw === SELF_GROUP) return null;
+  const list = normalizeGroups(groups);
+  return (
+    list.find((g) => g.id === raw) ||
+    list.find((g) => g.name === raw) ||
+    list.find((g) => (g.aliases || []).includes(raw)) ||
+    null
+  );
+}
+
+/** @param {ChatGroup[]|string[]|unknown} groups @param {string} key */
+export function resolveGroupLabel(groups, key) {
+  const raw = String(key || '').trim();
+  if (!raw || raw === SELF_GROUP) return SELF_GROUP;
+  return findGroup(groups, raw)?.name || raw;
+}
+
+/** @param {ChatGroup[]|string[]|unknown} groups @param {string} key */
+export function resolveGroupId(groups, key) {
+  const raw = String(key || '').trim();
+  if (!raw || raw === SELF_GROUP) return SELF_GROUP;
+  return findGroup(groups, raw)?.id || raw;
+}
+
+/**
+ * @param {ChatGroup[]|string[]|unknown} groups
+ * @param {string} messageGroup
+ * @param {string} filterKey
+ */
+export function groupMatches(groups, messageGroup, filterKey) {
+  return resolveGroupId(groups, messageGroup) === resolveGroupId(groups, filterKey);
+}
+
 function readMetaFromRaw(raw) {
   if (!raw) {
     return { timezone: detectTimeZone(), groups: [] };
@@ -160,11 +284,7 @@ function readMetaFromRaw(raw) {
     return {
       timezone:
         typeof parsed.timezone === 'string' ? parsed.timezone : detectTimeZone(),
-      groups: Array.isArray(parsed.groups)
-        ? parsed.groups.filter(
-            (g) => typeof g === 'string' && g.trim() && g !== SELF_GROUP,
-          )
-        : [],
+      groups: normalizeGroups(parsed.groups),
     };
   } catch {
     return { timezone: detectTimeZone(), groups: [] };
@@ -176,15 +296,52 @@ export async function readMeta(ctx) {
   return readMetaFromRaw(raw);
 }
 
+/**
+ * @param {ChatGroup[]|string[]|unknown} groups
+ * @returns {ChatGroup[]}
+ */
 export function sortGroupsKo(groups) {
-  return [...groups].sort((a, b) => a.localeCompare(b, 'ko'));
+  return [...normalizeGroups(groups)].sort((a, b) =>
+    a.name.localeCompare(b.name, 'ko'),
+  );
+}
+
+/** @param {ChatGroup[]|string[]|unknown} groups */
+export function groupNames(groups) {
+  return sortGroupsKo(groups).map((g) => g.name);
+}
+
+/** @param {ChatGroup[]|string[]|unknown} groups @returns {Map<string, string>} id|name|alias → iconPath */
+export function groupIconMap(groups) {
+  /** @type {Map<string, string>} */
+  const map = new Map();
+  for (const g of normalizeGroups(groups)) {
+    if (!g.iconPath) continue;
+    map.set(g.id, g.iconPath);
+    map.set(g.name, g.iconPath);
+    for (const a of g.aliases || []) map.set(a, g.iconPath);
+  }
+  return map;
+}
+
+/** @param {ChatGroup[]|string[]|unknown} groups @returns {Map<string, string>} id|name|alias → display name */
+export function groupLabelMap(groups) {
+  /** @type {Map<string, string>} */
+  const map = new Map();
+  map.set(SELF_GROUP, SELF_GROUP);
+  for (const g of normalizeGroups(groups)) {
+    map.set(g.id, g.name);
+    map.set(g.name, g.name);
+    for (const a of g.aliases || []) map.set(a, g.name);
+  }
+  return map;
 }
 
 export async function writeMeta(ctx, meta) {
   return mutateMeta(ctx, (current) => ({
     timezone: meta.timezone || current.timezone || detectTimeZone(),
     // Prefer explicit groups from caller; fall back to freshly read groups on retry
-    groups: meta.groups != null ? meta.groups : current.groups || [],
+    groups: meta.groups != null ? normalizeGroups(meta.groups) : current.groups || [],
   }));
 }
 
@@ -199,14 +356,115 @@ export async function touchTimezone(ctx) {
   }));
 }
 
-export async function addGroup(ctx, name) {
+/**
+ * @param {ChatStorageCtx} ctx
+ * @param {string} name
+ * @param {{ iconPath?: string }} [options]
+ * @returns {Promise<ChatGroup[]>}
+ */
+export async function addGroup(ctx, name, options = {}) {
   const trimmed = String(name || '').trim();
   if (!trimmed || trimmed === SELF_GROUP) {
     throw new Error('Invalid group name');
   }
+  const iconPath =
+    typeof options.iconPath === 'string' && options.iconPath.trim()
+      ? options.iconPath.trim()
+      : undefined;
   const payload = await mutateMeta(ctx, (meta) => {
-    const groups = [...(meta.groups || [])];
-    if (!groups.includes(trimmed)) groups.push(trimmed);
+    const groups = normalizeGroups(meta.groups);
+    const existing = groups.find(
+      (g) => g.name === trimmed || (g.aliases || []).includes(trimmed),
+    );
+    if (existing) {
+      if (iconPath) {
+        existing.iconPath = iconPath;
+      }
+      return { timezone: detectTimeZone(), groups };
+    }
+    /** @type {ChatGroup} */
+    const row = { id: createGroupId(), name: trimmed };
+    if (iconPath) row.iconPath = iconPath;
+    groups.push(row);
+    return { timezone: detectTimeZone(), groups };
+  });
+  return sortGroupsKo(payload.groups);
+}
+
+/**
+ * @param {ChatStorageCtx} ctx
+ * @param {string} groupId
+ * @param {string} iconPath
+ * @returns {Promise<ChatGroup[]>}
+ */
+export async function setGroupIcon(ctx, groupId, iconPath) {
+  const id = String(groupId || '').trim();
+  if (!id || id === SELF_GROUP) {
+    throw new Error('Invalid group id');
+  }
+  const path = String(iconPath || '').trim();
+  if (!path) {
+    throw new Error('Invalid icon path');
+  }
+  const payload = await mutateMeta(ctx, (meta) => {
+    const groups = normalizeGroups(meta.groups);
+    const idx = groups.findIndex(
+      (g) => g.id === id || g.name === id || (g.aliases || []).includes(id),
+    );
+    if (idx < 0) {
+      throw new Error('Group not found');
+    }
+    groups[idx] = { ...groups[idx], iconPath: path };
+    return { timezone: detectTimeZone(), groups };
+  });
+  return sortGroupsKo(payload.groups);
+}
+
+/**
+ * Rename a group by id. Previous name is kept in aliases so legacy messages still resolve.
+ * @param {ChatStorageCtx} ctx
+ * @param {string} groupId
+ * @param {string} newName
+ * @returns {Promise<ChatGroup[]>}
+ */
+export async function renameGroup(ctx, groupId, newName) {
+  const id = String(groupId || '').trim();
+  const trimmed = String(newName || '').trim();
+  if (!id || id === SELF_GROUP) {
+    throw new Error('Invalid group id');
+  }
+  if (!trimmed || trimmed === SELF_GROUP) {
+    throw new Error('Invalid group name');
+  }
+  const payload = await mutateMeta(ctx, (meta) => {
+    const groups = normalizeGroups(meta.groups);
+    const idx = groups.findIndex(
+      (g) => g.id === id || g.name === id || (g.aliases || []).includes(id),
+    );
+    if (idx < 0) {
+      throw new Error('Group not found');
+    }
+    const prev = groups[idx];
+    if (prev.name === trimmed) {
+      return { timezone: detectTimeZone(), groups };
+    }
+    if (
+      groups.some(
+        (g, i) =>
+          i !== idx &&
+          (g.name === trimmed || (g.aliases || []).includes(trimmed)),
+      )
+    ) {
+      throw new Error('Group name already exists');
+    }
+    const aliases = new Set(prev.aliases || []);
+    aliases.add(prev.name);
+    aliases.delete(trimmed);
+    groups[idx] = {
+      ...prev,
+      name: trimmed,
+      aliases: [...aliases],
+    };
     return { timezone: detectTimeZone(), groups };
   });
   return sortGroupsKo(payload.groups);

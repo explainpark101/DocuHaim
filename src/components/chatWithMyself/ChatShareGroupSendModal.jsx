@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, X } from 'lucide-react';
+import { Check, Send, X } from 'lucide-react';
 import Button from '@/components/Button';
 import Modal from '@/components/modals/Modal';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
-import ChatAddGroupDialog from '@/components/chatWithMyself/ui/ChatAddGroupDialog';
-import {
-  ADD_GROUP_VALUE,
-  SELF_GROUP,
-  sortGroupsKo,
-} from '@/utils/chatWithMyself';
+import { ADD_GROUP_VALUE, SELF_GROUP, sortGroupsKo } from '@/utils/chatWithMyself';
 
 const PREVIEW_MAX = 280;
 
@@ -29,41 +24,84 @@ export default function ChatShareGroupSendModal({
   onAddGroup,
   onSend,
   onClose,
+  getPresignedUrl,
 }) {
   const [selectedGroup, setSelectedGroup] = useState(SELF_GROUP);
-  const [addOpen, setAddOpen] = useState(false);
+  const [inlineAddOpen, setInlineAddOpen] = useState(false);
+  const [inlineGroupName, setInlineGroupName] = useState('');
+  const [addingGroup, setAddingGroup] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const inlineGroupInputRef = useRef(null);
   const preview = truncatePreview(body);
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
 
   const groupOptions = useMemo(
     () => [
       { value: SELF_GROUP, label: SELF_GROUP },
-      ...sortedGroups.map((g) => ({ value: g, label: g })),
+      ...sortedGroups.map((g) => ({
+        value: g.id,
+        label: g.name,
+        iconPath: g.iconPath,
+      })),
       { value: ADD_GROUP_VALUE, label: '직접추가' },
     ],
     [sortedGroups],
   );
+
+  const groupSelectValue = inlineAddOpen
+    ? ADD_GROUP_VALUE
+    : selectedGroup || SELF_GROUP;
 
   useEffect(() => {
     if (!isOpen) return;
     busyRef.current = false;
     setBusy(false);
     setSelectedGroup(SELF_GROUP);
+    setInlineAddOpen(false);
+    setInlineGroupName('');
   }, [isOpen, body]);
+
+  useEffect(() => {
+    if (!inlineAddOpen) return undefined;
+    const id = window.requestAnimationFrame(() => {
+      inlineGroupInputRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [inlineAddOpen]);
 
   const handleGroupChange = (next) => {
     if (next === ADD_GROUP_VALUE) {
-      setAddOpen(true);
+      setInlineAddOpen(true);
+      setInlineGroupName('');
       return;
     }
+    setInlineAddOpen(false);
+    setInlineGroupName('');
     setSelectedGroup(next);
   };
 
-  const confirmAddGroup = async (name) => {
-    await onAddGroup?.(name);
-    setSelectedGroup(name);
+  const closeInlineAdd = () => {
+    setInlineAddOpen(false);
+    setInlineGroupName('');
+  };
+
+  const commitInlineGroup = async () => {
+    const trimmed = inlineGroupName.trim();
+    if (!trimmed || addingGroup) return;
+    setAddingGroup(true);
+    try {
+      const next = await onAddGroup?.(trimmed);
+      const created = Array.isArray(next)
+        ? next.find((g) => g.name === trimmed) || next[next.length - 1]
+        : null;
+      setSelectedGroup(created?.id || trimmed);
+      closeInlineAdd();
+    } catch {
+      /* keep input */
+    } finally {
+      setAddingGroup(false);
+    }
   };
 
   const handleSend = async () => {
@@ -82,66 +120,95 @@ export default function ChatShareGroupSendModal({
   if (!isOpen) return null;
 
   return (
-    <>
-      <Modal isOpen={isOpen} onClose={busy ? undefined : onClose}>
-        <div className="p-6">
-          <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
-            그룹에 보내기
-          </h2>
-          <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-            보낼 그룹을 선택한 뒤 전송하세요.
-          </p>
-          {preview ? (
-            <pre className="mb-4 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg">
-              {preview}
-            </pre>
-          ) : null}
-          <label className="mb-4 block space-y-1">
-            <span className="text-[11px] font-medium text-gray-600 dark:text-odp-muted">
-              그룹
-            </span>
+    <Modal isOpen={isOpen} onClose={busy ? undefined : onClose}>
+      <div className="p-6">
+        <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
+          그룹에 보내기
+        </h2>
+        <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+          보낼 그룹을 선택한 뒤 전송하세요.
+        </p>
+        {preview ? (
+          <pre className="mb-4 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg">
+            {preview}
+          </pre>
+        ) : null}
+        <div className="mb-4 space-y-1">
+          <span className="text-[11px] font-medium text-gray-600 dark:text-odp-muted">
+            그룹
+          </span>
+          <div className="flex items-center gap-1.5">
             <ChatSelect
               ariaLabel="그룹 선택"
-              value={selectedGroup || SELF_GROUP}
+              value={groupSelectValue}
               onValueChange={handleGroupChange}
               options={groupOptions}
               showGroupAvatars
+              getPresignedUrl={getPresignedUrl}
               triggerClassName="w-full"
-              className="w-full"
+              className="min-w-0 flex-1"
             />
-          </label>
-          <div className="flex flex-col gap-2">
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              onClick={() => void handleSend()}
-              disabled={busy || !body.trim()}
-              className="w-full"
-            >
-              <Send size={16} aria-hidden />
-              보내기
-            </Button>
-            <Button
-              type="button"
-              variant="tertiary"
-              size="md"
-              onClick={onClose}
-              disabled={busy}
-              className="w-full"
-            >
-              <X size={16} aria-hidden />
-              취소
-            </Button>
+            {inlineAddOpen ? (
+              <>
+                <input
+                  ref={inlineGroupInputRef}
+                  type="text"
+                  value={inlineGroupName}
+                  onChange={(e) => setInlineGroupName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void commitInlineGroup();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      closeInlineAdd();
+                    }
+                  }}
+                  placeholder="그룹명"
+                  disabled={addingGroup || busy}
+                  className="w-[7.5rem] shrink-0 rounded-md border border-gray-300 bg-transparent px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 dark:border-odp-borderStrong dark:text-odp-fgStrong"
+                  aria-label="그룹 직접 추가"
+                />
+                <button
+                  type="button"
+                  title="그룹 추가"
+                  aria-label="그룹 추가"
+                  disabled={addingGroup || busy || !inlineGroupName.trim()}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => void commitInlineGroup()}
+                  className="inline-flex shrink-0 items-center justify-center rounded p-1 text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                >
+                  <Check size={16} />
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
-      </Modal>
-      <ChatAddGroupDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        onConfirm={confirmAddGroup}
-        title="그룹 직접 추가"
-      />
-    </>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            onClick={() => void handleSend()}
+            disabled={busy || !body.trim()}
+            className="w-full"
+          >
+            <Send size={16} aria-hidden />
+            보내기
+          </Button>
+          <Button
+            type="button"
+            variant="tertiary"
+            size="md"
+            onClick={onClose}
+            disabled={busy}
+            className="w-full"
+          >
+            <X size={16} aria-hidden />
+            취소
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
