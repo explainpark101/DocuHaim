@@ -35,6 +35,9 @@ import Sidebar from '@/components/Sidebar';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import EditorPane from '@/components/EditorPane';
 import ChatWithMyselfPane from '@/components/chatWithMyself/ChatWithMyselfPane';
+import ShareTargetGate, {
+  useChatStorageCtx,
+} from '@/components/chatWithMyself/ShareTargetGate';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
@@ -581,6 +584,12 @@ function MainApp() {
 
   // 1. Init (marked & S3 client are from npm modules; no script loading)
   // Same-tab reload: restore unlock from sessionStorage before showing AuthModal.
+  // If a share-target chooser is open, defer AuthModal until that flow finishes.
+  const [authWanted, setAuthWanted] = useState(false);
+  // True until ShareTargetGate finishes bootstrap / chooser — prevents AuthModal flash.
+  const [shareBlockingAuth, setShareBlockingAuth] = useState(true);
+  const [shareComposerSeed, setShareComposerSeed] = useState(null);
+
   useEffect(() => {
     setScriptsLoaded(true);
     if (isUnlocked) return;
@@ -602,7 +611,7 @@ function MainApp() {
       }
       const stored = localStorage.getItem('s3NotesEncrypted');
       if (stored) {
-        setShowAuthModal(true);
+        setAuthWanted(true);
       } else {
         proceedWithoutStoredCreds();
         navigate('/settings');
@@ -612,7 +621,13 @@ function MainApp() {
     return () => {
       cancelled = true;
     };
-  }, [isUnlocked, setShowAuthModal, unlock, proceedWithoutStoredCreds, navigate]);
+  }, [isUnlocked, unlock, proceedWithoutStoredCreds, navigate]);
+
+  useEffect(() => {
+    if (isUnlocked || !authWanted) return;
+    if (shareBlockingAuth) return;
+    setShowAuthModal(true);
+  }, [isUnlocked, authWanted, shareBlockingAuth, setShowAuthModal]);
 
   useEffect(() => {
     Promise.all([isWebAuthnPRFSupported(), browserSupportsWebAuthn()]).then(([prf, basic]) => {
@@ -924,6 +939,22 @@ function MainApp() {
   );
 
   const webdavReady = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
+
+  const { ready: chatStorageReady, ctx: chatStorageCtx } = useChatStorageCtx({
+    storageMode,
+    getS3Client,
+    s3Bucket: s3Creds.bucket,
+    localRootHandle,
+    webdavConfig,
+  });
+
+  const handleShareBlockingChange = useCallback((blocking) => {
+    setShareBlockingAuth(Boolean(blocking));
+  }, []);
+
+  const handleShareComposeClaimed = useCallback((seed) => {
+    if (seed?.body) setShareComposerSeed(seed);
+  }, []);
 
   const refreshWebdavTree = useCallback(async () => {
     if (!webdavReady) return;
@@ -4631,9 +4662,18 @@ function MainApp() {
         </div>
       )}
 
+      {/* Share target chooser — above lock blur; defers AuthModal while open */}
+      <ShareTargetGate
+        isUnlocked={isUnlocked}
+        storageReady={chatStorageReady}
+        chatCtx={chatStorageCtx}
+        onBlockingChange={handleShareBlockingChange}
+        onComposeClaimed={handleShareComposeClaimed}
+      />
+
       {/* Auth Modal (Lock Screen) */}
       <AuthModal
-        isOpen={showAuthModal}
+        isOpen={showAuthModal && !shareBlockingAuth}
         onUnlock={handleUnlock}
         fileInputRef={fileInputRef}
         onCloseWithoutUnlock={() => {
@@ -4782,6 +4822,8 @@ function MainApp() {
                   onOpenSidebar={() => setSidebarOpen(true)}
                   s3Tree={s3Tree}
                   localTree={localTree}
+                  shareComposerSeed={shareComposerSeed}
+                  onShareComposerSeedConsumed={() => setShareComposerSeed(null)}
                   selectPathAfterCreateFolder={addToNoteSelectPath}
                   onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}
                   onRequestCreateFolderForNote={(parentPath, parentDirHandle) => {
@@ -4887,7 +4929,20 @@ function MainApp() {
                   isMobileLayout={isMobile}
                   sidebarOpen={sidebarOpen}
                   sidebarCollapsed={sidebarCollapsed}
-                  onOpenSidebar={() => setSidebarOpen(true)}
+                  onOpenSidebar={() => {
+                    if (isMobile) setSidebarOpen(true);
+                    else setSidebarCollapsed(false);
+                  }}
+                  onRequestCreateFile={() => {
+                    if (storageMode === 'local') {
+                      requestCreateItem('local', '', localRootHandle, 'file');
+                    } else if (storageMode === 'webdav') {
+                      requestCreateItem('webdav', '', null, 'file');
+                    } else {
+                      requestCreateItem('s3', '', null, 'file');
+                    }
+                  }}
+                  onOpenChatWithMyself={() => navigate('/chat')}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}
@@ -4946,7 +5001,20 @@ function MainApp() {
                   isMobileLayout={isMobile}
                   sidebarOpen={sidebarOpen}
                   sidebarCollapsed={sidebarCollapsed}
-                  onOpenSidebar={() => setSidebarOpen(true)}
+                  onOpenSidebar={() => {
+                    if (isMobile) setSidebarOpen(true);
+                    else setSidebarCollapsed(false);
+                  }}
+                  onRequestCreateFile={() => {
+                    if (storageMode === 'local') {
+                      requestCreateItem('local', '', localRootHandle, 'file');
+                    } else if (storageMode === 'webdav') {
+                      requestCreateItem('webdav', '', null, 'file');
+                    } else {
+                      requestCreateItem('s3', '', null, 'file');
+                    }
+                  }}
+                  onOpenChatWithMyself={() => navigate('/chat')}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}

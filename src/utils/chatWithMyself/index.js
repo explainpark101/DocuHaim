@@ -23,6 +23,18 @@ export {
 } from './format.js';
 export { normalizeSharePayload, sharePayloadFromSearch } from './sharePayload.js';
 export {
+  hasShareSearchParams,
+  shareBodyFromSearch,
+  readSharePromptFromWindow,
+  resolvePendingShareIntent,
+  enqueuePendingShare,
+  listPendingShares,
+  removePendingShare,
+  peekChoosePendingShare,
+  claimComposePendingShares,
+  flushSendSelfPendingShares,
+} from './pendingShares.js';
+export {
   extractUrls,
   splitTextWithUrls,
   isYouTubeUrl,

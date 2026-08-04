@@ -372,14 +372,15 @@ function MessageBubble({
   const colors = !self ? groupColor(msg.group || '') : null;
   const time = formatMessageTime(msg.at, timeZone || detectTimeZone());
   const longPressTimer = useRef(null);
-  const touchStart = useRef(null);
   const [offsetX, setOffsetX] = useState(0);
   const offsetRef = useRef(0);
   const pointerIdRef = useRef(null);
   const swipeStartRef = useRef(null);
   const axisRef = useRef(null);
   const rowRef = useRef(null);
+  const longPressOpenedRef = useRef(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [pressing, setPressing] = useState(false);
   const rowActive = contextMenuOpen || rowSelected || isEditing;
   const isDeleting = msg?.pendingSync === 'delete';
   const syncing =
@@ -393,6 +394,26 @@ function MessageBubble({
     }
   };
 
+  const endPressVisual = () => {
+    setPressing(false);
+  };
+
+  const openMobileSheetFromLongPress = () => {
+    if (axisRef.current === 'h' || isDeleting) return;
+    longPressOpenedRef.current = true;
+    longPressTimer.current = null;
+    try {
+      navigator.vibrate?.(12);
+    } catch {
+      /* ignore */
+    }
+    onOpenMobileSheet?.(msg);
+    // Keep pressed look briefly so open feels tied to the hold, then release.
+    requestAnimationFrame(() => {
+      endPressVisual();
+    });
+  };
+
   const applyOffset = (x) => {
     offsetRef.current = x;
     setOffsetX(x);
@@ -403,6 +424,7 @@ function MessageBubble({
     setContextMenuOpen(false);
     applyOffset(0);
     clearLongPress();
+    endPressVisual();
   }, [isDeleting]);
 
   const endSwipe = (pointerId) => {
@@ -418,7 +440,11 @@ function MessageBubble({
     } catch {
       /* ignore */
     }
-    if (wasHorizontal && Math.abs(x) >= SWIPE_REPLY_THRESHOLD) {
+    if (
+      wasHorizontal &&
+      Math.abs(x) >= SWIPE_REPLY_THRESHOLD &&
+      !longPressOpenedRef.current
+    ) {
       if (!isDeleting) onReply?.(msg);
     }
   };
@@ -468,6 +494,13 @@ function MessageBubble({
         pointerIdRef.current = e.pointerId;
         swipeStartRef.current = { x: e.clientX, y: e.clientY };
         axisRef.current = null;
+        longPressOpenedRef.current = false;
+        if (!coarse) return;
+        setPressing(true);
+        clearLongPress();
+        longPressTimer.current = setTimeout(() => {
+          openMobileSheetFromLongPress();
+        }, LONG_PRESS_MS);
       }}
       onPointerMove={(e) => {
         if (isDeleting) return;
@@ -480,11 +513,15 @@ function MessageBubble({
           axisRef.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
           if (axisRef.current === 'h') {
             clearLongPress();
+            endPressVisual();
             try {
               rowRef.current?.setPointerCapture?.(e.pointerId);
             } catch {
               /* ignore */
             }
+          } else if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+            clearLongPress();
+            endPressVisual();
           }
         }
         if (axisRef.current !== 'h') return;
@@ -494,43 +531,23 @@ function MessageBubble({
       onPointerUp={(e) => {
         if (isDeleting) return;
         if (e.pointerType === 'mouse') return;
+        clearLongPress();
+        endPressVisual();
         endSwipe(e.pointerId);
       }}
       onPointerCancel={(e) => {
         if (isDeleting) return;
         if (e.pointerType === 'mouse') return;
+        clearLongPress();
+        endPressVisual();
         endSwipe(e.pointerId);
       }}
       onContextMenu={(e) => {
-        if (isDeleting) {
+        if (isDeleting || coarse) {
           e.preventDefault();
           e.stopPropagation();
         }
       }}
-      onTouchStart={(e) => {
-        if (isDeleting) return;
-        if (e.target.closest('button, a')) return;
-        const t = e.touches[0];
-        if (!t) return;
-        touchStart.current = { x: t.clientX, y: t.clientY };
-        clearLongPress();
-        longPressTimer.current = setTimeout(() => {
-          if (axisRef.current === 'h') return;
-          onOpenMobileSheet?.(msg);
-          longPressTimer.current = null;
-        }, LONG_PRESS_MS);
-      }}
-      onTouchMove={(e) => {
-        if (isDeleting) return;
-        const t = e.touches[0];
-        const start = touchStart.current;
-        if (!t || !start) return;
-        if (Math.abs(t.clientX - start.x) > 10 || Math.abs(t.clientY - start.y) > 10) {
-          clearLongPress();
-        }
-      }}
-      onTouchEnd={clearLongPress}
-      onTouchCancel={clearLongPress}
     >
       <div
         className={`pointer-events-none absolute inset-y-0 flex items-center ${
@@ -590,7 +607,7 @@ function MessageBubble({
               deletingStatus
             ) : null}
             <div
-              className={`min-w-0 max-w-full overflow-hidden rounded-2xl px-3 py-2 text-sm shadow-sm select-none transition-opacity ${
+              className={`min-w-0 max-w-full overflow-hidden rounded-2xl px-3 py-2 text-sm shadow-sm select-none origin-center will-change-transform [-webkit-touch-callout:none] transition-[transform,filter,opacity] duration-150 ease-out ${
                 isDeleting
                   ? `${self ? 'rounded-br-md' : 'rounded-bl-md'} bg-red-100 text-gray-900 border border-red-300/80 shadow dark:bg-red-950/70 dark:text-odp-fgStrong dark:border-red-700/60`
                   : isEditing
@@ -598,6 +615,10 @@ function MessageBubble({
                     : self
                       ? 'rounded-br-md bg-sky-100 text-gray-900 dark:bg-[#1a2740] dark:text-odp-fgStrong border border-sky-200/80 dark:border-sky-800/50 shadow'
                       : 'rounded-bl-md bg-white text-gray-900 dark:bg-[#243044] dark:text-odp-fgStrong border border-white/60 dark:border-white/10 shadow'
+              } ${
+                pressing && !isDeleting
+                  ? 'scale-[0.96] brightness-[0.92] dark:brightness-[0.85]'
+                  : 'scale-100'
               }`}
               style={dimmed ? { opacity: 0.7 } : undefined}
             >

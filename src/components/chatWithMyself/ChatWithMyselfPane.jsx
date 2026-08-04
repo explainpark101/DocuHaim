@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
 import {
   CalendarDays,
   Menu,
@@ -19,7 +18,6 @@ import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
 import ChatSearchPanel from '@/components/chatWithMyself/ChatSearchPanel';
 import ChatAddToNoteModal from '@/components/chatWithMyself/ChatAddToNoteModal';
 import ChatEditHistoryModal from '@/components/chatWithMyself/ChatEditHistoryModal';
-import ChatShareTargetModal from '@/components/chatWithMyself/ChatShareTargetModal';
 import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
 import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
@@ -32,7 +30,6 @@ import {
 import {
   SELF_GROUP,
   addGroup,
-  appendChatMessage,
   appendChatMessages,
   createOgStorageAdapters,
   deleteChatMessage,
@@ -47,7 +44,6 @@ import {
   makeReplySnippet,
   createMessageId,
   readDayMessages,
-  sharePayloadFromSearch,
   touchTimezone,
   fuzzyMatchText,
   loadMessageOgSearchText,
@@ -63,9 +59,6 @@ import {
   postChatSyncEvent,
 } from '@/utils/chatWithMyself';
 import {
-  savePendingShare,
-  getPendingShares,
-  deletePendingShare,
   getPendingMessages,
   deletePendingMessage,
 } from '@/utils/chatWithMyself/chatDb.js';
@@ -132,8 +125,9 @@ export default function ChatWithMyselfPane({
   dropTarget,
   onLoadLocalFolderChildren,
   localFolderLoadingPath = null,
+  shareComposerSeed = null,
+  onShareComposerSeedConsumed,
 }) {
-  const [searchParams, setSearchParams] = useSearchParams();
   const ctx = useMemo(() => {
     if (storageMode === 'local') {
       return { mode: 'local', localRootHandle };
@@ -222,9 +216,7 @@ export default function ChatWithMyselfPane({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingCount, setDeletingCount] = useState(0);
   const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
-  const [sharePrompt, setSharePrompt] = useState(null);
   const [composerSeed, setComposerSeed] = useState(null);
-  const shareHandledRef = useRef(false);
   const searchDayKeysRef = useRef([]);
   const messagesRef = useRef(messages);
   const dayKeysRef = useRef(dayKeys);
@@ -548,107 +540,13 @@ export default function ChatWithMyselfPane({
     syncApiRef,
   });
 
-  const appendShareBody = useCallback(
-    async (body) => {
-      if (!body || !storageReady) return;
-      await appendChatMessage(ctx, {
-        body,
-        group: SELF_GROUP,
-        source: 'share',
-      });
-      const dateStr = localDateString(new Date(), detectTimeZone());
-      noteLocalDayWrite(dateStr);
-      postChatSyncEvent('day', { dateStr });
-      await loadInitial();
-    },
-    [ctx, storageReady, loadInitial, noteLocalDayWrite],
-  );
-
-  const clearSharePromptRecord = useCallback(async (prompt) => {
-    if (prompt?.id != null) {
-      try {
-        await deletePendingShare(prompt.id);
-      } catch {
-        /* ignore */
-      }
-    }
-  }, []);
-
-  const handleShareSendAsSelf = useCallback(async () => {
-    const prompt = sharePrompt;
-    if (!prompt?.body) return;
-    try {
-      await appendShareBody(prompt.body);
-      await clearSharePromptRecord(prompt);
-      setSharePrompt(null);
-    } catch {
-      if (prompt.id == null) {
-        try {
-          await savePendingShare({ body: prompt.body });
-        } catch {
-          /* ignore */
-        }
-      }
-      setSharePrompt(null);
-    }
-  }, [sharePrompt, appendShareBody, clearSharePromptRecord]);
-
-  const handleShareComposeWithGroup = useCallback(async () => {
-    const prompt = sharePrompt;
-    if (!prompt?.body) return;
+  // Apply share-target compose seed from App-level ShareTargetGate.
+  useEffect(() => {
+    if (!shareComposerSeed?.id || shareComposerSeed.body == null) return;
     setEditTarget(null);
-    setComposerSeed({ id: `share-${Date.now()}`, body: prompt.body });
-    await clearSharePromptRecord(prompt);
-    setSharePrompt(null);
-  }, [sharePrompt, clearSharePromptRecord]);
-
-  const handleSharePromptClose = useCallback(async () => {
-    const prompt = sharePrompt;
-    await clearSharePromptRecord(prompt);
-    setSharePrompt(null);
-  }, [sharePrompt, clearSharePromptRecord]);
-
-  // Share target query ingest → chooser prompt (or pending if storage locked / busy)
-  useEffect(() => {
-    if (shareHandledRef.current) return;
-    const hasShare =
-      searchParams.has('title') ||
-      searchParams.has('text') ||
-      searchParams.has('url');
-    if (!hasShare) return;
-    shareHandledRef.current = true;
-    const { body } = sharePayloadFromSearch(searchParams);
-    setSearchParams({}, { replace: true });
-    (async () => {
-      if (!body) return;
-      if (!storageReady) {
-        await savePendingShare({ body });
-        return;
-      }
-      setSharePrompt((prev) => {
-        if (prev) {
-          void savePendingShare({ body });
-          return prev;
-        }
-        return { body };
-      });
-    })();
-  }, [searchParams, setSearchParams, storageReady]);
-
-  // Surface pending shares one at a time when storage is ready and no prompt is open
-  useEffect(() => {
-    if (!storageReady || sharePrompt) return undefined;
-    let cancelled = false;
-    (async () => {
-      const pending = await getPendingShares();
-      if (cancelled || !pending.length) return;
-      const first = pending[0];
-      setSharePrompt({ id: first.id, body: first.body });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [storageReady, sharePrompt]);
+    setComposerSeed(shareComposerSeed);
+    onShareComposerSeedConsumed?.();
+  }, [shareComposerSeed, onShareComposerSeedConsumed]);
 
   const handleLoadOlder = useCallback(async () => {
     if (!storageReady || loadingOlder || loadedDayIndex >= dayKeys.length) return;
@@ -1653,19 +1551,6 @@ export default function ChatWithMyselfPane({
         }}
         onCancel={() => {
           setDeleteTarget(null);
-        }}
-      />
-      <ChatShareTargetModal
-        isOpen={Boolean(sharePrompt?.body)}
-        body={sharePrompt?.body || ''}
-        onSendAsSelf={() => {
-          void handleShareSendAsSelf();
-        }}
-        onComposeWithGroup={() => {
-          void handleShareComposeWithGroup();
-        }}
-        onClose={() => {
-          void handleSharePromptClose();
         }}
       />
     </div>

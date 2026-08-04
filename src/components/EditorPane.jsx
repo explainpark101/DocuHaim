@@ -4,8 +4,10 @@ import {
   IconChevronDown,
   IconDownload,
   IconFileCode,
+  IconFilePlus,
   IconFolder,
   IconMenu,
+  IconMessage,
   IconRefresh,
   IconSave,
   IconTrash,
@@ -45,6 +47,8 @@ export default function EditorPane({
   sidebarOpen = true,
   sidebarCollapsed = false,
   onOpenSidebar,
+  onRequestCreateFile,
+  onOpenChatWithMyself,
   isRecording = false,
   audioLevel = 0,
   onToggleRecording,
@@ -174,6 +178,44 @@ export default function EditorPane({
         <div className="flex flex-1 flex-col items-center justify-center px-4">
           <IconFolder />
           <p className="mt-4 text-center">사이드바에서 파일을 선택하거나 새 파일을 생성하세요.</p>
+          <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
+            {typeof onRequestCreateFile === 'function' ? (
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                className="w-full"
+                onClick={onRequestCreateFile}
+              >
+                <IconFilePlus size={16} />
+                파일 생성
+              </Button>
+            ) : null}
+            {typeof onOpenSidebar === 'function' ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="w-full"
+                onClick={onOpenSidebar}
+              >
+                <IconMenu size={16} />
+                사이드바 열기
+              </Button>
+            ) : null}
+            {typeof onOpenChatWithMyself === 'function' ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="w-full"
+                onClick={onOpenChatWithMyself}
+              >
+                <IconMessage size={16} />
+                나와의 채팅 열기
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
     );

@@ -1,3 +1,6 @@
+import { useEffect, useRef, useState } from 'react';
+import { Send, Users, X } from 'lucide-react';
+import Button from '@/components/Button';
 import Modal from '@/components/modals/Modal';
 
 const PREVIEW_MAX = 280;
@@ -15,14 +18,30 @@ function truncatePreview(body) {
 export default function ChatShareTargetModal({
   isOpen,
   body = '',
+  canSendAsSelf = true,
   onSendAsSelf,
   onComposeWithGroup,
   onClose,
 }) {
   const preview = truncatePreview(body);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    busyRef.current = false;
+    setBusy(false);
+  }, [isOpen, body]);
+
+  const runOnce = (action) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    action?.();
+  };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={busy ? undefined : onClose}>
       <div className="p-6">
         <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
           공유 내용 보내기
@@ -35,28 +54,40 @@ export default function ChatShareTargetModal({
             {preview}
           </pre>
         ) : null}
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <button
+        <div className="flex flex-col gap-2">
+          <Button
             type="button"
-            onClick={onClose}
-            className="rounded px-4 py-2 text-sm font-medium text-gray-700 transition bg-gray-100 hover:bg-gray-200 dark:bg-odp-bgSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
+            variant="primary"
+            size="md"
+            onClick={() => runOnce(onSendAsSelf)}
+            disabled={busy || !canSendAsSelf}
+            className="w-full"
           >
+            <Send size={16} aria-hidden />
+            나에게 바로 보내기
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            onClick={() => runOnce(onComposeWithGroup)}
+            disabled={busy}
+            className="w-full"
+          >
+            <Users size={16} aria-hidden />
+            메시지 그룹 설정해서 보내기
+          </Button>
+          <Button
+            type="button"
+            variant="tertiary"
+            size="md"
+            onClick={() => runOnce(onClose)}
+            disabled={busy}
+            className="w-full"
+          >
+            <X size={16} aria-hidden />
             취소
-          </button>
-          <button
-            type="button"
-            onClick={onComposeWithGroup}
-            className="rounded px-4 py-2 text-sm font-medium text-gray-700 transition bg-gray-100 hover:bg-gray-200 dark:bg-odp-bgSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
-          >
-            그룹 설정해서 보내기
-          </button>
-          <button
-            type="button"
-            onClick={onSendAsSelf}
-            className="rounded px-4 py-2 text-sm font-medium text-white transition bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
-          >
-            나로 즉시 보내기
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>
