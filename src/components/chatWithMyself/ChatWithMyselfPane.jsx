@@ -9,7 +9,7 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import ChatComposer from '@/components/chatWithMyself/ChatComposer';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
