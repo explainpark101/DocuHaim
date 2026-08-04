@@ -51,7 +51,7 @@ export default function ChatNoteLinkCard({
     showAlert({
       title: '노트 열기',
       message: MISSING_NOTE_MESSAGE,
-      detail: pathHint || undefined,
+      ...(pathHint ? { detail: pathHint } : {}),
     });
   };
 

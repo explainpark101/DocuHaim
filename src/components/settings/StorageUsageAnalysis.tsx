@@ -25,6 +25,70 @@ type Props = {
 
 type SectionId = 'summary' | 'extension' | 'folder';
 
+/** Capacity ratio color stops: light green → #ff0000. */
+const USAGE_PERCENT_STOPS = [
+  { t: 0, rgb: [187, 247, 208] as const }, // light green (green-200)
+  { t: 1, rgb: [255, 0, 0] as const },
+] as const;
+
+const USAGE_PERCENT_GRADIENT_CSS = `linear-gradient(90deg, ${USAGE_PERCENT_STOPS.map(
+  (s) => `rgb(${s.rgb.join(' ')}) ${(s.t * 100).toFixed(2)}%`,
+).join(', ')})`;
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(1, Math.max(0, n));
+}
+
+function lerpChannel(a: number, b: number, t: number): number {
+  return Math.round(a + (b - a) * t);
+}
+
+/** Map 0–100 percent to an RGB color along the usage gradient. */
+function usagePercentColor(percent: number): string {
+  const t = clamp01(percent / 100);
+  let i = 0;
+  while (i < USAGE_PERCENT_STOPS.length - 2 && t > USAGE_PERCENT_STOPS[i + 1]!.t) i += 1;
+  const a = USAGE_PERCENT_STOPS[i]!;
+  const b = USAGE_PERCENT_STOPS[i + 1]!;
+  const span = b.t - a.t || 1;
+  const local = clamp01((t - a.t) / span);
+  const r = lerpChannel(a.rgb[0], b.rgb[0], local);
+  const g = lerpChannel(a.rgb[1], b.rgb[1], local);
+  const bl = lerpChannel(a.rgb[2], b.rgb[2], local);
+  return `rgb(${r} ${g} ${bl})`;
+}
+
+function PercentCell({ percent }: { percent: number }) {
+  const color = usagePercentColor(percent);
+  return (
+    <span className="inline-flex items-center justify-end gap-1.5">
+      <span
+        className="inline-block size-2.5 shrink-0 rounded-full border border-gray-300/80 shadow-sm dark:border-odp-borderStrong"
+        style={{ backgroundColor: color }}
+        title={`비율 ${percent.toFixed(1)}%`}
+        aria-hidden
+      />
+      <span>{percent.toFixed(1)}%</span>
+    </span>
+  );
+}
+
+function UsagePercentLegendBar() {
+  return (
+    <div className="space-y-0.5" aria-label="용량 비율 색상 범례">
+      <div
+        className="h-1.5 w-full rounded-full border border-gray-200 dark:border-odp-borderStrong"
+        style={{ backgroundImage: USAGE_PERCENT_GRADIENT_CSS }}
+      />
+      <div className="flex justify-between text-[9px] leading-none text-gray-500 dark:text-odp-muted">
+        <span>낮음</span>
+        <span>높음</span>
+      </div>
+    </div>
+  );
+}
+
 type DataTableColumn = {
   key: string;
   header: string;
@@ -101,11 +165,14 @@ function DataTable({
   rows,
   emptyText = '데이터가 없습니다.',
   maxHeightClass = 'max-h-64',
+  legendColumnKey = null,
 }: {
   columns: DataTableColumn[];
   rows: DataTableRow[];
   emptyText?: string;
   maxHeightClass?: string;
+  /** When set, render a green→red gradient legend under this column (same width as its th). */
+  legendColumnKey?: string | null;
 }) {
   return (
     <div
@@ -140,6 +207,14 @@ function DataTable({
             rows.map((row, idx) => {
               const clickable = typeof row._onClick === 'function';
               const treeExpanded = row._tree?.expandable ? row._tree.expanded : undefined;
+              const prevDepth = rows[idx - 1]?._tree?.depth;
+              const curDepth = row._tree?.depth;
+              // Thick border only when leaving a subtree (depth decreases), not parent→child.
+              const levelBoundary =
+                idx > 0 &&
+                typeof prevDepth === 'number' &&
+                typeof curDepth === 'number' &&
+                curDepth < prevDepth;
               const onRowKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
                 if (!clickable) return;
                 if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -162,9 +237,11 @@ function DataTable({
                     return (
                       <td
                         key={col.key}
-                        className={`border-t border-gray-100 px-3 py-1.5 text-gray-700 dark:border-odp-borderSoft dark:text-odp-fg ${
-                          col.align === 'right' ? 'text-right tabular-nums' : ''
-                        } ${col.className ?? ''}`}
+                        className={`px-3 py-1.5 text-gray-700 dark:text-odp-fg ${
+                          levelBoundary
+                            ? 'border-t-2 border-gray-300 dark:border-odp-borderStrong'
+                            : 'border-t border-gray-100 dark:border-odp-borderSoft'
+                        } ${col.align === 'right' ? 'text-right tabular-nums' : ''} ${col.className ?? ''}`}
                       >
                         {tree ? (
                           <TreeCell
@@ -184,6 +261,20 @@ function DataTable({
             })
           )}
         </tbody>
+        {legendColumnKey ? (
+          <tfoot>
+            <tr>
+              {columns.map((col) => (
+                <td
+                  key={col.key}
+                  className="sticky bottom-0 border-t border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                >
+                  {col.key === legendColumnKey ? <UsagePercentLegendBar /> : null}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        ) : null}
       </table>
     </div>
   );
@@ -392,10 +483,11 @@ export default function StorageUsageAnalysis({
               label: row.label,
               count: row.count.toLocaleString(),
               size: formatStorageBytes(row.size),
-              percent: `${row.percent.toFixed(1)}%`,
+              percent: <PercentCell percent={row.percent} />,
               _onClick: () => setExtensionModal(row),
             }))}
             emptyText="분석을 시작하면 형식별 용량이 표시됩니다."
+            legendColumnKey="percent"
           />
         </AnalysisSection>
 
@@ -418,7 +510,7 @@ export default function StorageUsageAnalysis({
                 _key: row.path,
                 fileCount: row.fileCount.toLocaleString(),
                 size: formatStorageBytes(row.size),
-                percent: `${row.percent.toFixed(1)}%`,
+                percent: <PercentCell percent={row.percent} />,
                 _onClick: row.hasChildFolders ? () => toggleFolder(row.path) : undefined,
                 _tree: {
                   depth: row.depth,
@@ -431,6 +523,7 @@ export default function StorageUsageAnalysis({
               };
             })}
             emptyText="분석을 시작하면 폴더별 용량이 표시됩니다."
+            legendColumnKey="percent"
           />
         </AnalysisSection>
       </div>

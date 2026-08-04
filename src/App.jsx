@@ -981,6 +981,14 @@ function MainApp() {
     }
   };
 
+  /** Logo / brand: close current file and go home; auto-save if dirty. */
+  const handleBrandClick = async () => {
+    if (hasUnsavedEditorChanges()) {
+      await saveFile(null, { skipSuffixCheck: true });
+    }
+    closeCurrentFile();
+  };
+
   const handleCloseFileConfirmSave = async () => {
     setShowCloseFileConfirmModal(false);
     await saveFile(null, { skipSuffixCheck: true });
@@ -5111,6 +5119,7 @@ function MainApp() {
           >
             <Sidebar
               appName={appName}
+              onBrandClick={handleBrandClick}
               storageMode={storageMode}
               s3Tree={s3Tree}
               s3Bucket={s3Creds.bucket}

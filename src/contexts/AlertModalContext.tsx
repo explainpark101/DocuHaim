@@ -46,11 +46,12 @@ export function AlertModalProvider({ children }: { children: ReactNode }) {
     }
     const message = String(options?.message ?? '').trim();
     if (!message) return;
+    const detail = options.detail?.trim();
     setAlert({
       title: options.title?.trim() || '알림',
       message,
       confirmLabel: options.confirmLabel?.trim() || '확인',
-      detail: options.detail?.trim() || undefined,
+      ...(detail ? { detail } : {}),
     });
   }, []);
 

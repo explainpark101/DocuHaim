@@ -229,6 +229,7 @@ export default function Sidebar({
   onOpenInNewWindow,
   onOpenChatWithMyself,
   chatWithMyselfActive = false,
+  onBrandClick,
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
   const [searchInput, setSearchInput] = useState('');
@@ -904,12 +905,25 @@ export default function Sidebar({
                   <ChevronsLeft size={18} />
                 </button>
               )}
-              <h1
-                data-sidebar-brand
-                className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate"
-              >
-                {appName}
-              </h1>
+              {typeof onBrandClick === 'function' ? (
+                <button
+                  type="button"
+                  data-sidebar-brand
+                  onClick={onBrandClick}
+                  className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate text-left hover:text-gray-900 dark:hover:text-white transition"
+                  title="홈으로"
+                  aria-label={`${appName} 홈으로`}
+                >
+                  {appName}
+                </button>
+              ) : (
+                <h1
+                  data-sidebar-brand
+                  className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate"
+                >
+                  {appName}
+                </h1>
+              )}
             </div>
             <div className="flex items-center gap-1.5" data-sidebar-header-right>
               <button
