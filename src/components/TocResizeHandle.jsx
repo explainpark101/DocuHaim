@@ -43,7 +43,8 @@ export default function TocResizeHandle({
       style={{ touchAction: 'none', ...handleProps.style, ...style }}
       className={[
         // Wider hit target for tablets; visual stays a thin strip via background.
-        'toc-resize-handle absolute top-0 bottom-0 z-20 w-3 cursor-col-resize touch-none select-none',
+        // Above sticky sidebar headers (z-9999) / sticky tree folders (~1000).
+        'toc-resize-handle absolute top-0 bottom-0 z-[10000] w-3 cursor-col-resize touch-none select-none',
         '[@media(pointer:fine)]:w-1.5',
         edgeClass,
         toneClass,
