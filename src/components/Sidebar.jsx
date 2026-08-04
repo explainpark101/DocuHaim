@@ -29,14 +29,15 @@ const EMPTY_SELECTED_IDS = new Set();
 function loadExpandedPaths() {
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(EXPANDED_FOLDERS_KEY) : null;
-    if (!raw) return { s3: new Set(), local: new Set() };
+    if (!raw) return { s3: new Set(), local: new Set(), webdav: new Set() };
     const data = JSON.parse(raw);
     return {
       s3: new Set(Array.isArray(data.s3) ? data.s3 : []),
       local: new Set(Array.isArray(data.local) ? data.local : []),
+      webdav: new Set(Array.isArray(data.webdav) ? data.webdav : []),
     };
   } catch {
-    return { s3: new Set(), local: new Set() };
+    return { s3: new Set(), local: new Set(), webdav: new Set() };
   }
 }
 
@@ -48,6 +49,7 @@ function saveExpandedPaths(expanded) {
       JSON.stringify({
         s3: Array.from(expanded.s3),
         local: Array.from(expanded.local),
+        webdav: Array.from(expanded.webdav),
       }),
     );
   } catch (_) {}
@@ -147,19 +149,30 @@ function filterTree(
     .filter(Boolean);
 }
 
-function getSelectedFolderForMove(selectedIds, s3Tree, localTree) {
+function getSelectedFolderForMove(selectedIds, s3Tree, localTree, webdavTree) {
   if (!selectedIds?.size) return null;
   for (const key of selectedIds) {
     const colonIdx = key.indexOf(':');
     const storageType = colonIdx >= 0 ? key.slice(0, colonIdx) : 's3';
     const path = colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
-    const tree = storageType === 's3' ? s3Tree : localTree;
+    const tree =
+      storageType === 's3'
+        ? s3Tree
+        : storageType === 'webdav'
+          ? webdavTree
+          : localTree;
     const node = findNodeByPath(tree, path);
     if (node?.type === 'folder' && path !== '.trash/') {
       return { node, storageType };
     }
   }
   return null;
+}
+
+function expandedSetForStorageType(expanded, storageType) {
+  if (storageType === 's3') return expanded.s3;
+  if (storageType === 'webdav') return expanded.webdav;
+  return expanded.local;
 }
 
 export default function Sidebar({
@@ -173,6 +186,12 @@ export default function Sidebar({
   localFolderLoadingPath = null,
   onLoadLocalFolderChildren,
   onRefreshLocal,
+  webdavTree = [],
+  webdavReady = false,
+  isWebdavTreeLoading = false,
+  webdavFolderLoadingPath = null,
+  onRefreshWebdav,
+  onLoadWebdavFolderChildren,
   currentFile,
   selectedIds,
   onSelectFile,
@@ -213,6 +232,8 @@ export default function Sidebar({
   const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState(null);
   /** null = no explicit folder; { path: '', handle } = project root */
   const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState(null);
+  /** null = no explicit folder; '' = WebDAV root selected */
+  const [lastFocusedWebdavFolderPath, setLastFocusedWebdavFolderPath] = useState(null);
 
   // While Chat with Myself is open, tree must not show another file/folder as selected.
   const treeSelectedIds = chatWithMyselfActive ? EMPTY_SELECTED_IDS : selectedIds;
@@ -240,10 +261,15 @@ export default function Sidebar({
 
   const findTreeNode = useCallback(
     (storageType, path) => {
-      const tree = storageType === 's3' ? s3Tree : localTree;
+      const tree =
+        storageType === 's3'
+          ? s3Tree
+          : storageType === 'webdav'
+            ? webdavTree
+            : localTree;
       return findNodeByPath(tree, path);
     },
-    [s3Tree, localTree],
+    [s3Tree, localTree, webdavTree],
   );
 
   const resolveDropTargetNode = useCallback(
@@ -442,8 +468,9 @@ export default function Sidebar({
       const next = {
         s3: new Set(prev.s3),
         local: new Set(prev.local),
+        webdav: new Set(prev.webdav),
       };
-      const set = storageType === 's3' ? next.s3 : next.local;
+      const set = expandedSetForStorageType(next, storageType);
       if (isOpen) set.add(path);
       else set.delete(path);
       saveExpandedPaths(next);
@@ -456,7 +483,14 @@ export default function Sidebar({
         void onLoadLocalFolderChildren(node);
       }
     }
-  }, [localTree, onLoadLocalFolderChildren]);
+
+    if (storageType === 'webdav' && isOpen && onLoadWebdavFolderChildren) {
+      const node = findNodeByPath(webdavTree, path);
+      if (node?.type === 'folder' && node.childrenLoaded !== true) {
+        void onLoadWebdavFolderChildren(node);
+      }
+    }
+  }, [localTree, webdavTree, onLoadLocalFolderChildren, onLoadWebdavFolderChildren]);
 
   const expandPathsForNewItem = useCallback((storageType, paths) => {
     if (!paths?.length) return;
@@ -464,8 +498,9 @@ export default function Sidebar({
       const next = {
         s3: new Set(prev.s3),
         local: new Set(prev.local),
+        webdav: new Set(prev.webdav),
       };
-      const set = storageType === 's3' ? next.s3 : next.local;
+      const set = expandedSetForStorageType(next, storageType);
       paths.forEach((p) => set.add(p));
       saveExpandedPaths(next);
       return next;
@@ -499,11 +534,24 @@ export default function Sidebar({
       }),
     [localTree, searchTerm, showHiddenFolders, hideRecordingCompanions],
   );
+  const filteredWebdavTree = useMemo(
+    () =>
+      filterTree(webdavTree, {
+        hideDotFolders: !showHiddenFolders,
+        hideRecordingCompanionFiles: hideRecordingCompanions,
+        searchTerm,
+      }),
+    [webdavTree, searchTerm, showHiddenFolders, hideRecordingCompanions],
+  );
 
   /** 필터 전 원본 트리 기준 — 숨김 옵션과 무관하게 녹음 연결 여부 표시 */
   const recordingBasePathSet = useMemo(
-    () => buildRecordingBasePathSetFromTrees(s3Tree, localTree),
-    [s3Tree, localTree],
+    () =>
+      buildRecordingBasePathSetFromTrees(s3Tree, [
+        ...(localTree || []),
+        ...(webdavTree || []),
+      ]),
+    [s3Tree, localTree, webdavTree],
   );
 
   const collectFolderPaths = (nodes) => {
@@ -525,8 +573,17 @@ export default function Sidebar({
     () => (searchTerm ? collectFolderPaths(filteredLocalTree) : expandedPaths.local),
     [searchTerm, filteredLocalTree, expandedPaths.local],
   );
+  const effectiveExpandedWebdav = useMemo(
+    () => (searchTerm ? collectFolderPaths(filteredWebdavTree) : expandedPaths.webdav),
+    [searchTerm, filteredWebdavTree, expandedPaths.webdav],
+  );
 
-  const selectedFolderForMove = getSelectedFolderForMove(selectedIds, s3Tree, localTree);
+  const selectedFolderForMove = getSelectedFolderForMove(
+    selectedIds,
+    s3Tree,
+    localTree,
+    webdavTree,
+  );
 
   const contextMenuNode = contextMenu?.node;
   const contextMenuStorageType = contextMenu?.storageType;
@@ -537,6 +594,19 @@ export default function Sidebar({
           return { parentPath: lastFocusedS3FolderPath, parentDirHandle: null };
         }
         if (currentFile?.type === 's3' && currentFile.id) {
+          return {
+            parentPath: getParentPathFromFilePath(currentFile.id),
+            parentDirHandle: null,
+          };
+        }
+        return { parentPath: '', parentDirHandle: null };
+      }
+
+      if (storageType === 'webdav') {
+        if (lastFocusedWebdavFolderPath !== null) {
+          return { parentPath: lastFocusedWebdavFolderPath, parentDirHandle: null };
+        }
+        if (currentFile?.type === 'webdav' && currentFile.id) {
           return {
             parentPath: getParentPathFromFilePath(currentFile.id),
             parentDirHandle: null,
@@ -561,7 +631,13 @@ export default function Sidebar({
 
       return { parentPath: '', parentDirHandle: localRootHandle || null };
     },
-    [currentFile, lastFocusedLocalFolder, lastFocusedS3FolderPath, localRootHandle],
+    [
+      currentFile,
+      lastFocusedLocalFolder,
+      lastFocusedS3FolderPath,
+      lastFocusedWebdavFolderPath,
+      localRootHandle,
+    ],
   );
 
   const isS3Mode = storageMode === 's3';
@@ -576,10 +652,16 @@ export default function Sidebar({
     const handleKeyDown = (e) => {
       if (e.key !== 'F2' || e.defaultPrevented) return;
       if (isTypingElement(e.target)) return;
-      if (isWebdavMode || !lastActivatedNode) return;
+      if (!lastActivatedNode) return;
 
       const { storageType, node } = lastActivatedNode;
-      if ((isS3Mode && storageType !== 's3') || (isLocalMode && storageType !== 'local')) return;
+      if (
+        (isS3Mode && storageType !== 's3') ||
+        (isLocalMode && storageType !== 'local') ||
+        (isWebdavMode && storageType !== 'webdav')
+      ) {
+        return;
+      }
       if (!isRenameableTreeNode(node)) return;
 
       e.preventDefault();
@@ -735,6 +817,7 @@ export default function Sidebar({
           ) {
             setLastFocusedS3FolderPath(null);
             setLastFocusedLocalFolder(null);
+            setLastFocusedWebdavFolderPath(null);
             onClearSelection?.();
           }
         }}
@@ -1085,11 +1168,162 @@ export default function Sidebar({
         )}
 
         {isWebdavMode && (
-          <div className="px-4 py-3">
-            <p className="text-xs text-gray-500 dark:text-odp-muted">
-              WebDAV 모드가 선택되었습니다. 설정 페이지에서 WebDAV 연결 정보를 저장해 주세요.
-            </p>
+        <div>
+          <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
+            <span className="flex items-center gap-1">
+              <IconCloud /> WebDAV
+            </span>
+            {webdavReady && (
+              <div className="flex gap-1">
+                {onRefreshWebdav && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isWebdavTreeLoading) return;
+                      void onRefreshWebdav();
+                    }}
+                    disabled={isWebdavTreeLoading}
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation disabled:pointer-events-none disabled:opacity-70"
+                    title="파일 구조 새로고침"
+                  >
+                    <IconRefresh
+                      size={22}
+                      className={`shrink-0 w-5 h-5 md:w-[14px] md:h-[14px] ${
+                        isWebdavTreeLoading ? 'animate-spin' : ''
+                      }`}
+                    />
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    const { parentPath } = getCreateTargetForStorage('webdav');
+                    onRequestUploadFile?.('webdav', parentPath, null);
+                  }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                  title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
+                >
+                  <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                </button>
+                <button
+                  onClick={() => {
+                    const { parentPath } = getCreateTargetForStorage('webdav');
+                    onRequestUploadFolder?.('webdav', parentPath, null);
+                  }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                  title="선택된 폴더에 폴더 업로드 (폴더 전체)"
+                >
+                  <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                </button>
+                <button
+                  onClick={() => {
+                    const target = getCreateTargetForStorage('webdav');
+                    onCreateItem('webdav', target.parentPath, target.parentDirHandle, 'file');
+                  }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                  title="선택된 폴더에 파일 생성"
+                >
+                  <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                </button>
+                <button
+                  onClick={() => {
+                    const target = getCreateTargetForStorage('webdav');
+                    onCreateItem('webdav', target.parentPath, target.parentDirHandle, 'folder');
+                  }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                  title="선택된 폴더에 폴더 생성"
+                >
+                  <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                </button>
+              </div>
+            )}
           </div>
+          {webdavReady ? (
+            <div className="space-y-0.5">
+              <ChatWithMyselfEntry
+                isActive={chatWithMyselfActive}
+                onOpen={onOpenChatWithMyself}
+              />
+              <RootDropZone
+                storageType="webdav"
+                localRootHandle={null}
+                onDropOnFolder={onDropOnFolder}
+                dropTarget={dropTarget}
+                isFocused={
+                  !chatWithMyselfActive && lastFocusedWebdavFolderPath === ''
+                }
+                onFocusRoot={() => setLastFocusedWebdavFolderPath('')}
+                onContextMenu={(e, rootNode) => {
+                  setLastFocusedWebdavFolderPath('');
+                  activateTreeNode('webdav', rootNode);
+                  setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    node: rootNode,
+                    storageType: 'webdav',
+                  });
+                }}
+              />
+              {isWebdavTreeLoading && !filteredWebdavTree.length && (
+                <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
+              )}
+              {filteredWebdavTree.length > 0 ? (
+                filteredWebdavTree.map((node) => (
+                  <TreeNode
+                    key={node.path}
+                    node={node}
+                    level={0}
+                    rootDropNode={{ path: '', type: 'folder', handle: null }}
+                    onSelect={onSelectFile}
+                    storageType="webdav"
+                    selectedIds={treeSelectedIds}
+                    currentFile={treeCurrentFile}
+                    onCreateFile={(p) => onCreateItem('webdav', p, null, 'file')}
+                    onCreateFolder={(p) => onCreateItem('webdav', p, null, 'folder')}
+                    onRequestMoveFolder={onRequestMoveFolder}
+                    onDelete={(n, t) => onSetDeleteTarget({ node: n, type: t })}
+                    onRename={onRenameItem}
+                    deletingFolderPath={deletingFolderPath}
+                    isDeletingFolder={isDeletingFolder}
+                    isSearching={!!searchTerm}
+                    expandedPaths={effectiveExpandedWebdav}
+                    onExpandedChange={handleExpandedChange}
+                    onFolderFocus={(node) =>
+                      setLastFocusedWebdavFolderPath(node ? node.path || '' : null)
+                    }
+                    focusedFolderPath={
+                      chatWithMyselfActive
+                        ? undefined
+                        : (lastFocusedWebdavFolderPath ?? undefined)
+                    }
+                    onDropOnFolder={onDropOnFolder}
+                    dropTarget={dropTarget}
+                    activeDragItemIds={activeDragItemIds}
+                    onOpenContextMenu={(e, n) => {
+                      activateTreeNode('webdav', n);
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        node: n,
+                        storageType: 'webdav',
+                      });
+                    }}
+                    onActivate={(n) => activateTreeNode('webdav', n)}
+                    isFolderLoading={webdavFolderLoadingPath}
+                    renameTarget={renameTarget}
+                    onClearRenameTarget={() => setRenameTarget(null)}
+                    recordingBasePathSet={recordingBasePathSet}
+                    stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                    stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                  />
+                ))
+              ) : !isWebdavTreeLoading ? (
+                <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 px-4 py-2">설정에서 WebDAV 연결 정보를 저장해 주세요.</p>
+          )}
+        </div>
         )}
       </div>
       <DragOverlay dropAnimation={null}>

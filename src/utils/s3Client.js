@@ -112,12 +112,20 @@ export async function getObjectBody(client, bucket, key) {
   };
 }
 
+export class S3PreconditionFailedError extends Error {
+  constructor(message = 'Precondition Failed') {
+    super(message);
+    this.name = 'S3PreconditionFailedError';
+    this.status = 412;
+  }
+}
+
 /**
  * Get object metadata (LastModified 등) without downloading body.
  * @param {S3Client} client
  * @param {string} bucket
  * @param {string} key
- * @returns {Promise<{ LastModified?: Date, ContentLength?: number, ContentType?: string } | null>}
+ * @returns {Promise<{ LastModified?: Date, ContentLength?: number, ContentType?: string, ETag?: string } | null>}
  *   객체가 없으면 null
  */
 export async function headObject(client, bucket, key) {
@@ -128,6 +136,7 @@ export async function headObject(client, bucket, key) {
       LastModified: response.LastModified,
       ContentLength: response.ContentLength,
       ContentType: response.ContentType,
+      ETag: response.ETag,
     };
   } catch (e) {
     if (
@@ -144,11 +153,25 @@ export async function headObject(client, bucket, key) {
  * Put object.
  * Response Cache-Control is set to max-age=30 so GET responses are cached at most 30 seconds.
  * @param {S3Client} client
- * @param {{ Bucket: string, Key: string, Body: string | Uint8Array, ContentType?: string, CacheControl?: string }} params
+ * @param {{ Bucket: string, Key: string, Body: string | Uint8Array, ContentType?: string, CacheControl?: string, IfMatch?: string, IfNoneMatch?: string }} params
+ * @returns {Promise<{ ETag?: string }>}
  */
 export async function putObject(client, params) {
   const withCache = { ...params, CacheControl: params.CacheControl ?? 'max-age=30' };
-  await client.send(new PutObjectCommand(withCache));
+  try {
+    const response = await client.send(new PutObjectCommand(withCache));
+    return { ETag: response.ETag };
+  } catch (e) {
+    const status = e?.$metadata?.httpStatusCode;
+    if (
+      status === 412 ||
+      e?.name === 'PreconditionFailed' ||
+      e?.Code === 'PreconditionFailed'
+    ) {
+      throw new S3PreconditionFailedError(e?.message || 'Precondition Failed');
+    }
+    throw e;
+  }
 }
 
 /**

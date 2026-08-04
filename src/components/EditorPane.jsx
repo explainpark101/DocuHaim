@@ -233,7 +233,7 @@ export default function EditorPane({
           )}
           {isRecording ? (
             <AudioLevelIndicator level={audioLevel} size={16} />
-          ) : currentFile.type === 's3' ? (
+          ) : currentFile.type === 's3' || currentFile.type === 'webdav' ? (
             <IconCloud />
           ) : (
             <IconFolder />

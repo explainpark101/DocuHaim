@@ -1,8 +1,6 @@
 /**
- * note-with-recording: 녹음 → S3 업로드 파이프라인
- * FFmpeg 없이 MediaRecorder 출력(webm/mp4)을 그대로 업로드
- * - Chrome/Firefox/Edge: webm
- * - Safari: mp4
+ * note-with-recording: encode + write audio/sync via injectable writer
+ * FFmpeg 없이 MediaRecorder 출력(webm/mp4)을 그대로 저장
  */
 import { putObject } from './s3Client';
 import { updateRecordingStatus } from './recordingDb';
@@ -28,7 +26,7 @@ export function getNoteBase(noteKey) {
 }
 
 /**
- * noteKey + mimeType + timestamp → 고유 오디오 S3 키 (여러 녹음 지원)
+ * noteKey + mimeType + timestamp → 고유 오디오 키 (여러 녹음 지원)
  * @param {string} noteKey - 예: notes/회의록.md
  * @param {string} [mimeType] - audioBlob.type
  * @param {number} [timestamp] - Date.now(), 없으면 단일 녹음용 (하위 호환)
@@ -54,7 +52,7 @@ export function getSyncKeyForRecording(audioKey) {
 }
 
 /** @deprecated 하위 호환 - getRecordingKeysFromTree 사용 권장 */
-export function getAudioKeyCandidates(noteKey) {
+export function getAudioKeyCandidates() {
   return [];
 }
 
@@ -71,7 +69,65 @@ export function getSyncKey(noteKey, timestamp) {
 }
 
 /**
- * 녹음 결과를 S3에 업로드 (인코딩 없음)
+ * @param {Object} params
+ * @param {Object} params.recording - { audioBlob, syncData, noteKey }
+ * @param {(args: { key: string, body: Uint8Array, contentType: string }) => Promise<void>} params.writeObject
+ * @param {number} [params.recordId]
+ * @param {(msg: string) => void} [params.onStatus]
+ * @param {number} [params.timestamp]
+ */
+export async function runEncodeAndWritePipeline({
+  recording,
+  writeObject,
+  recordId,
+  onStatus,
+  timestamp,
+}) {
+  const { audioBlob, syncData, noteKey } = recording;
+  const fixedTs =
+    timestamp ??
+    recording?.recordingTs ??
+    recording?.createdAt ??
+    Date.now();
+  const audioKey = getAudioKey(noteKey, audioBlob?.type, fixedTs);
+  const syncKey = getSyncKey(noteKey, fixedTs);
+
+  if (!audioKey) throw new Error('유효한 noteKey가 필요합니다.');
+  if (typeof writeObject !== 'function') {
+    throw new Error('writeObject is required');
+  }
+
+  onStatus?.('업로드 중');
+
+  if (recordId) {
+    await updateRecordingStatus(recordId, { status: 'uploading' });
+  }
+
+  const contentType = audioBlob?.type?.includes('mp4') ? 'audio/mp4' : 'audio/webm';
+  const body = new Uint8Array(await audioBlob.arrayBuffer());
+
+  await writeObject({ key: audioKey, body, contentType });
+
+  if (syncKey && syncData?.length > 0) {
+    const compiled = compileSyncData(syncData);
+    const syncBody = encodeSyncData(compiled);
+    await writeObject({
+      key: syncKey,
+      body: syncBody,
+      contentType: 'application/x-protobuf',
+    });
+  }
+
+  if (recordId) {
+    await updateRecordingStatus(recordId, { status: 'uploaded' });
+  }
+
+  onStatus?.('완료');
+  return { audioKey, syncKey };
+}
+
+/**
+ * 녹음 결과를 S3에 업로드 (인코딩 없음) — backward-compatible wrapper
  * @param {Object} params
  * @param {Object} params.recording - { audioBlob, syncData, noteKey }
  * @param {import('@aws-sdk/client-s3').S3Client} params.client
@@ -87,50 +143,19 @@ export async function runEncodeAndUploadPipeline({
   onStatus,
   timestamp,
 }) {
-  const { audioBlob, syncData, noteKey } = recording;
-  const fixedTs =
-    timestamp ??
-    recording?.recordingTs ??
-    recording?.createdAt ??
-    Date.now();
-  const audioKey = getAudioKey(noteKey, audioBlob?.type, fixedTs);
-  const syncKey = getSyncKey(noteKey, fixedTs);
-
-  if (!audioKey) throw new Error('유효한 noteKey가 필요합니다.');
-
-  onStatus?.('업로드 중');
-
-  if (recordId) {
-    await updateRecordingStatus(recordId, { status: 'uploading' });
-  }
-
-  const contentType = audioBlob?.type?.includes('mp4') ? 'audio/mp4' : 'audio/webm';
-
-  // Blob을 Uint8Array로 변환 (AWS SDK 브라우저 환경에서 Blob 직접 전달 시 getReader 오류 방지)
-  const body = new Uint8Array(await audioBlob.arrayBuffer());
-
-  await putObject(client, {
-    Bucket: bucket,
-    Key: audioKey,
-    Body: body,
-    ContentType: contentType,
+  if (!client || !bucket) throw new Error('S3 client and bucket are required');
+  return runEncodeAndWritePipeline({
+    recording,
+    recordId,
+    onStatus,
+    timestamp,
+    writeObject: async ({ key, body, contentType }) => {
+      await putObject(client, {
+        Bucket: bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      });
+    },
   });
-
-  if (syncKey && syncData?.length > 0) {
-    const compiled = compileSyncData(syncData);
-    const syncBody = encodeSyncData(compiled);
-    await putObject(client, {
-      Bucket: bucket,
-      Key: syncKey,
-      Body: syncBody,
-      ContentType: 'application/x-protobuf',
-    });
-  }
-
-  if (recordId) {
-    await updateRecordingStatus(recordId, { status: 'uploaded' });
-  }
-
-  onStatus?.('완료');
-  return { audioKey, syncKey };
 }

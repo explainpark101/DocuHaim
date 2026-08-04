@@ -81,6 +81,7 @@ export function MoveFolderModal({
   storageType,
   s3Tree,
   localTree,
+  webdavTree = [],
   localRootHandle,
   folderNode,
   onClose,
@@ -89,7 +90,8 @@ export function MoveFolderModal({
   if (!folderNode || folderNode.type !== 'folder') return null;
 
   const isS3 = storageType === 's3';
-  const tree = isS3 ? s3Tree : localTree;
+  const isWebdav = storageType === 'webdav';
+  const tree = isS3 ? s3Tree : isWebdav ? webdavTree : localTree;
   const filteredTree = useMemo(
     () => filterFoldersForMove(tree, folderNode.path),
     [tree, folderNode.path],
@@ -111,7 +113,7 @@ export function MoveFolderModal({
   const handleSubmit = () => {
     if (!onConfirm) return;
 
-    if (isS3) {
+    if (isS3 || isWebdav) {
       const destPath = selectedRoot ? '' : selectedFolder?.path || '';
       onConfirm({ path: destPath });
     } else {
@@ -121,7 +123,8 @@ export function MoveFolderModal({
     }
   };
 
-  const canSubmit = isS3 ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
+  const canSubmit =
+    isS3 || isWebdav ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
 
   return (
     <Modal isOpen={isOpen}>

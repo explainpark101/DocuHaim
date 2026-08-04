@@ -1,4 +1,5 @@
-import { runEncodeAndUploadPipeline } from './recordingPipeline';
+import { runEncodeAndWritePipeline } from './recordingPipeline';
+import { putObject } from './s3Client';
 import {
   deleteRecordingById,
   getRecordingById,
@@ -20,23 +21,37 @@ function computeBackoffMs(attempts) {
 }
 
 /**
- * IndexedDB에 저장된 녹음을 S3로 업로드 시도 (성공할 때까지 재시도 기반)
- * - pending/failed 중 nextAttemptAt <= now 인 항목만 처리
- * - 성공 시 IndexedDB 원본 삭제
+ * Drain IndexedDB recordings via injectable writeObject (remote) or S3 client/bucket.
  *
  * @param {Object} params
- * @param {import('@aws-sdk/client-s3').S3Client} params.client
- * @param {string} params.bucket
+ * @param {(args: { key: string, body: Uint8Array, contentType: string }) => Promise<void>} [params.writeObject]
+ * @param {import('@aws-sdk/client-s3').S3Client} [params.client]
+ * @param {string} [params.bucket]
  * @param {number} [params.maxPerDrain]
  * @param {(msg: string) => void} [params.onStatus]
  */
 export async function drainRecordingUploadQueue({
+  writeObject,
   client,
   bucket,
   maxPerDrain = DEFAULT_MAX_PER_DRAIN,
   onStatus,
 }) {
-  if (!client || !bucket) return { processed: 0 };
+  const effectiveWriter =
+    typeof writeObject === 'function'
+      ? writeObject
+      : client && bucket
+        ? async ({ key, body, contentType }) => {
+            await putObject(client, {
+              Bucket: bucket,
+              Key: key,
+              Body: body,
+              ContentType: contentType,
+            });
+          }
+        : null;
+
+  if (!effectiveWriter) return { processed: 0 };
 
   if (drainingPromise) return drainingPromise;
 
@@ -62,10 +77,9 @@ export async function drainRecordingUploadQueue({
 
       try {
         onStatus?.('업로드 중');
-        const result = await runEncodeAndUploadPipeline({
+        const result = await runEncodeAndWritePipeline({
           recording: fresh,
-          client,
-          bucket,
+          writeObject: effectiveWriter,
           recordId: id,
           onStatus,
           timestamp: fresh.recordingTs ?? fresh.createdAt,
@@ -102,4 +116,3 @@ export async function drainRecordingUploadQueue({
     drainingPromise = null;
   }
 }
-

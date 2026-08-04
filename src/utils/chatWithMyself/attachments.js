@@ -1,4 +1,4 @@
-import { putObject, deleteObject } from '@/utils/s3Client';
+import { createChatBackend } from './backends/index.js';
 import {
   getLocalDirectoryHandleForPath,
   getLocalFileHandleForPath,
@@ -31,7 +31,7 @@ function extensionFromFileName(name) {
 /** Strip characters that break [[file:path|name|size]] parsing. */
 export function sanitizeChatFileMeta(name) {
   return String(name || 'file')
-    .replace(/[\[\]|]/g, '_')
+    .replace(/[[\]|]/g, '_')
     .trim() || 'file';
 }
 
@@ -72,9 +72,9 @@ export async function uploadChatFile(ctx, file, options = {}) {
   const key = `${prefix}${makeUuid()}${ext}`;
   const contentType = file.type || 'application/octet-stream';
 
+  options.onProgress?.(0);
   if (ctx.mode === 'local') {
     if (!ctx.localRootHandle) throw new Error('로컬 폴더를 먼저 열어주세요.');
-    options.onProgress?.(0);
     const handle = await getLocalFileHandleForPath(ctx.localRootHandle, key, {
       create: true,
     });
@@ -94,18 +94,10 @@ export async function uploadChatFile(ctx, file, options = {}) {
     return key;
   }
 
-  if (!ctx.client || !ctx.bucket) {
-    throw new Error('S3 자격 증명이 필요합니다.');
-  }
-
   const body = new Uint8Array(await file.arrayBuffer());
-  options.onProgress?.(0);
-  await putObject(ctx.client, {
-    Bucket: ctx.bucket,
-    Key: key,
-    Body: body,
-    ContentType: contentType,
-  });
+  const backend = createChatBackend(ctx);
+  await backend.ensureChatFolder();
+  await backend.putBinary(key, body, contentType);
   options.onProgress?.(100);
   return key;
 }
@@ -245,6 +237,6 @@ export async function deleteChatAttachment(ctx, path) {
     return;
   }
 
-  if (!ctx.client || !ctx.bucket) return;
-  await deleteObject(ctx.client, ctx.bucket, key);
+  const backend = createChatBackend(ctx);
+  await backend.deleteKey(key);
 }

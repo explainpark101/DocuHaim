@@ -38,6 +38,7 @@ import ChatWithMyselfPane from '@/components/chatWithMyself/ChatWithMyselfPane';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
+  createChatBackend,
 } from '@/utils/chatWithMyself';
 import { AuthModal } from '@/components/modals/AuthModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
@@ -55,7 +56,12 @@ import SettingsPage from '@/pages/SettingsPage';
 import ExportPDFPage from '@/pages/ExportPDFPage';
 import LlmAssistPopoutPage from '@/pages/LlmAssistPopoutPage';
 import { useRecording } from '@/hooks/useRecording';
-import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
+import { getSyncKeyForRecording, runEncodeAndWritePipeline } from '@/utils/recordingPipeline';
+import {
+  deleteRecordingById,
+  deleteRecordingFragments,
+  getRecordingQueueStats,
+} from '@/utils/recordingDb';
 import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
@@ -64,7 +70,6 @@ import { uploadLocalEditorImage, getLocalWikiImageObjectUrl } from '@/utils/loca
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
-import { getRecordingQueueStats } from '@/utils/recordingDb';
 import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
 import {
   DEFAULT_STORAGE_MODE,
@@ -73,8 +78,18 @@ import {
   loadWebdavConfig,
   saveStorageMode,
   saveWebdavConfig,
+  decryptWebdavConfig,
   STORAGE_MODE_LOCAL,
+  STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
+import {
+  createStorageBackendForType,
+  createWebdavBackend,
+  createLocalBackend,
+} from '@/utils/storage';
+import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
+import { patchWebdavTreeChildren } from '@/utils/webdavTree.js';
+import { webdavPropfindDeep } from '@/utils/webdavClient';
 import { readLocalDirectoryLevel, readLocalDirectoryTree, patchLocalTreeChildren } from '@/utils/localTree';
 import {
   hasStoredLocalRootHandle,
@@ -167,6 +182,9 @@ function MainApp() {
   // File Systems State
   const [s3Tree, setS3Tree] = useState([]);
   const [localTree, setLocalTree] = useState([]);
+  const [webdavTree, setWebdavTree] = useState([]);
+  const [isWebdavTreeLoading, setIsWebdavTreeLoading] = useState(false);
+  const [webdavFolderLoadingPath, setWebdavFolderLoadingPath] = useState(null);
   const [localRootHandle, setLocalRootHandle] = useState(null);
   const [isLocalTreeLoading, setIsLocalTreeLoading] = useState(false);
   const [localFolderLoadingPath, setLocalFolderLoadingPath] = useState(null);
@@ -311,6 +329,7 @@ function MainApp() {
   const [snippetConfig, setSnippetConfig] = useState({ snippets: [] });
   const [snippetLoadedFromS3, setSnippetLoadedFromS3] = useState(false);
   const [snippetLoadedFromLocal, setSnippetLoadedFromLocal] = useState(false);
+  const [snippetLoadedFromWebdav, setSnippetLoadedFromWebdav] = useState(false);
   const [isSavingSnippets, setIsSavingSnippets] = useState(false);
 
   const [isMobile, setIsMobile] = useState(() =>
@@ -364,6 +383,7 @@ function MainApp() {
   });
 
   const s3TreeRef = useRef([]);
+  const webdavTreeRef = useRef([]);
   const currentFileRef = useRef(null);
   const hasRestoredLastFileRef = useRef(false);
   const hasProcessedOpenFromUrlRef = useRef(false);
@@ -410,6 +430,9 @@ function MainApp() {
   useEffect(() => {
     s3TreeRef.current = s3Tree;
   }, [s3Tree]);
+  useEffect(() => {
+    webdavTreeRef.current = webdavTree;
+  }, [webdavTree]);
   useEffect(() => {
     currentFileRef.current = currentFile;
   }, [currentFile]);
@@ -559,6 +582,13 @@ function MainApp() {
       if (cancelled) return;
       if (session) {
         unlock(session.creds, session.password);
+        if (session.password) {
+          decryptWebdavConfig(session.password)
+            .then((decryptedWebdav) => {
+              if (decryptedWebdav) setWebdavConfig(decryptedWebdav);
+            })
+            .catch((err) => console.warn('WebDAV config decrypt on session restore failed:', err));
+        }
         return;
       }
       const stored = localStorage.getItem('s3NotesEncrypted');
@@ -598,6 +628,12 @@ function MainApp() {
       }
       const creds = JSON.parse(decryptedStr);
       unlock(creds, password);
+      try {
+        const decryptedWebdav = await decryptWebdavConfig(password);
+        if (decryptedWebdav) setWebdavConfig(decryptedWebdav);
+      } catch (webdavErr) {
+        console.warn('WebDAV config decrypt failed:', webdavErr);
+      }
     } catch (e) {
       alert(e?.message || "비밀번호가 틀렸거나 데이터가 손상되었습니다.");
       console.error(e);
@@ -867,6 +903,48 @@ function MainApp() {
   // 3. S3 Actions (using @aws-sdk/client-s3)
   const getS3Client = useCallback((creds = s3Creds) => createS3Client(creds), [s3Creds]);
 
+  const getBackendForType = useCallback(
+    (type) =>
+      createStorageBackendForType(type, {
+        getS3Client,
+        s3Creds,
+        localRootHandle,
+        webdavConfig,
+      }),
+    [getS3Client, s3Creds, localRootHandle, webdavConfig],
+  );
+
+  const webdavReady = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
+
+  const refreshWebdavTree = useCallback(async () => {
+    if (!webdavReady) return;
+    setIsWebdavTreeLoading(true);
+    try {
+      const backend = createWebdavBackend(webdavConfig);
+      const children = await backend.listChildren('');
+      setWebdavTree(children);
+    } catch (err) {
+      console.error('WebDAV tree load error:', err);
+    } finally {
+      setIsWebdavTreeLoading(false);
+    }
+  }, [webdavReady, webdavConfig]);
+
+  const loadWebdavFolderChildren = useCallback(
+    async (folderNode) => {
+      if (!folderNode?.path || folderNode.childrenLoaded === true || !webdavReady) return;
+      setWebdavFolderLoadingPath(folderNode.path);
+      try {
+        const backend = createWebdavBackend(webdavConfig);
+        const children = await backend.listChildren(folderNode.path);
+        setWebdavTree((prev) => patchWebdavTreeChildren(prev, folderNode.path, children));
+      } finally {
+        setWebdavFolderLoadingPath((current) => (current === folderNode.path ? null : current));
+      }
+    },
+    [webdavReady, webdavConfig],
+  );
+
   const loadS3Files = useCallback(async (creds = s3Creds) => {
     const client = getS3Client(creds);
     if (!client || !creds.bucket) return;
@@ -878,47 +956,76 @@ function MainApp() {
     }
   }, [getS3Client, s3Creds]);
 
-  // IndexedDB에 저장된 녹음 업로드 재시도: 앱 시작/인터넷 복구 시
+  // IndexedDB recording upload retry: on app start / network recovery (S3/WebDAV only)
   useEffect(() => {
     if (!isUnlocked) return;
-    const client = getS3Client();
-    const bucket = s3Creds.bucket;
-    if (!client || !bucket) return;
+    if (storageMode === 'local') {
+      getRecordingQueueStats().then(setRecordingQueueStats).catch(() => {});
+      return;
+    }
 
     const refreshStats = () => getRecordingQueueStats().then(setRecordingQueueStats).catch(() => {});
 
-    const kick = () =>
-      drainRecordingUploadQueue({ client, bucket }).then((r) => {
-        refreshStats();
-        if (r?.processed > 0) loadS3Files();
-      }).catch(() => {
-        refreshStats();
-      });
+    const kick = () => {
+      if (storageMode === 's3') {
+        const client = getS3Client();
+        const bucket = s3Creds.bucket;
+        if (!client || !bucket) return Promise.resolve();
+        return drainRecordingUploadQueue({ client, bucket })
+          .then((r) => {
+            refreshStats();
+            if (r?.processed > 0) loadS3Files();
+          })
+          .catch(() => {
+            refreshStats();
+          });
+      }
+      if (storageMode === 'webdav' && webdavReady) {
+        const backend = createWebdavBackend(webdavConfig);
+        const writeObject = ({ key, body, contentType }) => backend.writeBytes(key, body, contentType);
+        return drainRecordingUploadQueue({ writeObject })
+          .then((r) => {
+            refreshStats();
+            if (r?.processed > 0) refreshWebdavTree();
+          })
+          .catch(() => {
+            refreshStats();
+          });
+      }
+      return Promise.resolve();
+    };
 
     refreshStats();
     kick();
     const onOnline = () => kick();
     window.addEventListener('online', onOnline);
     const pollId = window.setInterval(refreshStats, 2000);
-    
-    // 페이지 언로드 전 최종 업로드 시도
+
     const beforeUnload = () => {
       try {
-        drainRecordingUploadQueue({ client, bucket }).catch(() => {});
+        if (storageMode === 's3') {
+          const client = getS3Client();
+          const bucket = s3Creds.bucket;
+          if (client && bucket) drainRecordingUploadQueue({ client, bucket }).catch(() => {});
+        } else if (storageMode === 'webdav' && webdavReady) {
+          const backend = createWebdavBackend(webdavConfig);
+          const writeObject = ({ key, body, contentType }) => backend.writeBytes(key, body, contentType);
+          drainRecordingUploadQueue({ writeObject }).catch(() => {});
+        }
       } catch (_) {}
     };
     window.addEventListener('beforeunload', beforeUnload);
-    
+
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('beforeunload', beforeUnload);
       window.clearInterval(pollId);
     };
-  }, [isUnlocked, getS3Client, s3Creds.bucket, loadS3Files]);
+  }, [isUnlocked, storageMode, webdavReady, webdavConfig, getS3Client, s3Creds.bucket, loadS3Files, refreshWebdavTree]);
 
   useEffect(() => {
-    setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle });
-  }, [getS3Client, s3Creds, localRootHandle]);
+    setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+  }, [getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig]);
 
   const loadSnippetConfigFromS3 = useCallback(
     async (creds = s3Creds) => {
@@ -963,18 +1070,51 @@ function MainApp() {
     }
   }, [localRootHandle]);
 
-  // Snippet 설정 자동 로딩: S3 우선, 없으면(또는 S3 미설정이면) 로컬에서 시도
+  const loadSnippetConfigFromWebdav = useCallback(async () => {
+    if (!webdavReady) return;
+    try {
+      const backend = createWebdavBackend(webdavConfig);
+      const head = await backend.head('.settings/snippets.json');
+      if (!head) {
+        setSnippetLoadedFromWebdav(true);
+        return;
+      }
+      const { text } = await backend.readText('.settings/snippets.json');
+      const parsed = JSON.parse(text);
+      if (parsed && Array.isArray(parsed.snippets)) {
+        setSnippetConfig({ snippets: parsed.snippets });
+      }
+      setSnippetLoadedFromWebdav(true);
+    } catch (e) {
+      console.error('Snippet settings load from WebDAV failed:', e);
+      setSnippetLoadedFromWebdav(true);
+    }
+  }, [webdavConfig, webdavReady]);
+
+  // Snippet settings: load from active storage mode
   useEffect(() => {
-    if (!snippetLoadedFromS3 && scriptsLoaded && isUnlocked && s3Creds.bucket) {
+    if (!scriptsLoaded || !isUnlocked) return;
+    if (storageMode === 'local' && localRootHandle && !snippetLoadedFromLocal) {
+      loadSnippetConfigFromLocal();
+    } else if (storageMode === 'webdav' && webdavReady && !snippetLoadedFromWebdav) {
+      loadSnippetConfigFromWebdav();
+    } else if (storageMode === 's3' && s3Creds.bucket && !snippetLoadedFromS3) {
       loadSnippetConfigFromS3();
     }
-  }, [snippetLoadedFromS3, scriptsLoaded, isUnlocked, s3Creds.bucket, loadSnippetConfigFromS3]);
-
-  useEffect(() => {
-    if (!snippetLoadedFromLocal && !s3Creds.bucket && localRootHandle) {
-      loadSnippetConfigFromLocal();
-    }
-  }, [snippetLoadedFromLocal, s3Creds.bucket, localRootHandle, loadSnippetConfigFromLocal]);
+  }, [
+    scriptsLoaded,
+    isUnlocked,
+    storageMode,
+    s3Creds.bucket,
+    localRootHandle,
+    webdavReady,
+    snippetLoadedFromS3,
+    snippetLoadedFromLocal,
+    snippetLoadedFromWebdav,
+    loadSnippetConfigFromS3,
+    loadSnippetConfigFromLocal,
+    loadSnippetConfigFromWebdav,
+  ]);
 
   const editorImageUploadInProgressRef = useRef(false);
   const editorImageUploadAbortControllerRef = useRef(null);
@@ -1009,10 +1149,17 @@ function MainApp() {
         currentFileType: currentFile?.type ?? null,
       });
       const isLocalUpload = currentFile?.type === 'local' && localRootHandle;
+      const isWebdavUpload = currentFile?.type === 'webdav' && webdavReady;
       const client = getS3Client();
-      if (!isLocalUpload && (!client || !s3Creds.bucket)) {
-        dbgClipboard('app:upload:abort', { reason: 'no S3 client or bucket' });
-        setOperationStatus('이미지 업로드는 S3 연결 후 사용할 수 있습니다.');
+      if (!isLocalUpload && !isWebdavUpload && (!client || !s3Creds.bucket)) {
+        dbgClipboard('app:upload:abort', { reason: 'no storage backend ready' });
+        setOperationStatus(
+          currentFile?.type === 'webdav'
+            ? '이미지 업로드는 WebDAV 연결 후 사용할 수 있습니다.'
+            : currentFile?.type === 'local'
+              ? '이미지 업로드는 로컬 폴더를 연 뒤 사용할 수 있습니다.'
+              : '이미지 업로드는 S3 연결 후 사용할 수 있습니다.',
+        );
         return [];
       }
       if (isLocalUpload && !localRootHandle) {
@@ -1053,48 +1200,70 @@ function MainApp() {
         label: '이미지 업로드 중',
       });
       const imagePathPrefix =
-        (currentFile?.type === 's3' || currentFile?.type === 'local') && currentFile?.id
+        (currentFile?.type === 's3' ||
+          currentFile?.type === 'local' ||
+          currentFile?.type === 'webdav') &&
+        currentFile?.id
           ? buildEditorImagePathPrefix(currentFile.id)
           : '.images/note';
       const paths = [];
       const totalBytes = imageFiles.reduce((acc, file) => acc + (file.size || 0), 0);
       let uploadedBytes = 0;
+      const reportProgress = (file, percent) => {
+        const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
+        const overallPercent =
+          totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
+        const normalized = Math.max(0, Math.min(100, Math.round(overallPercent)));
+        setEditorImageUploadPercent(normalized);
+        updateIndicator(indicatorId, {
+          progress: normalized,
+          detail: `${normalized}%`,
+        });
+      };
       try {
         for (const file of imageFiles) {
           if (editorImageUploadCancelRequestedRef.current) break;
           const uploadController = new AbortController();
           editorImageUploadAbortControllerRef.current = uploadController;
-          const path = isLocalUpload
-            ? await uploadLocalEditorImage(localRootHandle, file, {
-                imagePathPrefix,
-                signal: uploadController.signal,
-                onProgress: (percent) => {
-                  const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
-                  const overallPercent =
-                    totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
-                  const normalized = Math.max(0, Math.min(100, Math.round(overallPercent)));
-                  setEditorImageUploadPercent(normalized);
-                  updateIndicator(indicatorId, {
-                    progress: normalized,
-                    detail: `${normalized}%`,
-                  });
-                },
-              })
-            : await uploadEditorImage(client, s3Creds.bucket, file, {
-                imagePathPrefix,
-                signal: uploadController.signal,
-                onProgress: (percent) => {
-                  const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
-                  const overallPercent =
-                    totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
-                  const normalized = Math.max(0, Math.min(100, Math.round(overallPercent)));
-                  setEditorImageUploadPercent(normalized);
-                  updateIndicator(indicatorId, {
-                    progress: normalized,
-                    detail: `${normalized}%`,
-                  });
-                },
-              });
+          let path;
+          if (isLocalUpload) {
+            path = await uploadLocalEditorImage(localRootHandle, file, {
+              imagePathPrefix,
+              signal: uploadController.signal,
+              onProgress: (percent) => reportProgress(file, percent),
+            });
+          } else if (isWebdavUpload) {
+            const backend = getBackendForType('webdav');
+            const {
+              normalizeEditorImagePathPrefix,
+              sniffImageMimeFromFile,
+              getExtensionFromMime,
+            } = await import('@/utils/editorImageUpload');
+            const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
+            const uuid =
+              typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            let mime = file.type;
+            if (!mime || mime === 'application/octet-stream') {
+              mime = (await sniffImageMimeFromFile(file)) || mime;
+            }
+            const ext = getExtensionFromMime(mime);
+            path = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
+            reportProgress(file, 0);
+            const body = new Uint8Array(await file.arrayBuffer());
+            if (uploadController.signal.aborted) {
+              throw new DOMException('Aborted', 'AbortError');
+            }
+            await backend.writeBytes(path, body, mime || 'application/octet-stream');
+            reportProgress(file, 100);
+          } else {
+            path = await uploadEditorImage(client, s3Creds.bucket, file, {
+              imagePathPrefix,
+              signal: uploadController.signal,
+              onProgress: (percent) => reportProgress(file, percent),
+            });
+          }
           uploadedBytes += file.size || 0;
           editorImageUploadAbortControllerRef.current = null;
           const committedPercent = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 100;
@@ -1109,6 +1278,9 @@ function MainApp() {
           } finally {
             setIsLocalTreeLoading(false);
           }
+        }
+        if (isWebdavUpload && paths.length > 0) {
+          await refreshWebdavTree();
         }
       } catch (err) {
         if (err?.name === 'AbortError') {
@@ -1129,10 +1301,10 @@ function MainApp() {
       dbgClipboard('app:upload:return', { paths, pathCount: paths.length });
       return paths;
     },
-    [getS3Client, s3Creds, currentFile, localRootHandle, addIndicator, removeIndicator, updateIndicator]
+    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType, refreshWebdavTree, addIndicator, removeIndicator, updateIndicator]
   );
 
-  /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬: blob URL) */
+  /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬/WebDAV: blob URL) */
   const getPresignedUrlForPath = useCallback(
     async (path) => {
       if (currentFile?.type === 'local' && localRootHandle) {
@@ -1143,6 +1315,15 @@ function MainApp() {
         }
         console.warn('[wiki-image] getPresignedUrlForPath: local failed', { path });
         return null;
+      }
+      if (currentFile?.type === 'webdav' && webdavReady) {
+        try {
+          const backend = getBackendForType('webdav');
+          return await backend.getObjectUrl(path);
+        } catch (err) {
+          console.warn('[wiki-image] getPresignedUrlForPath: webdav failed', { path, err });
+          return null;
+        }
       }
       const client = getS3Client();
       if (!client || !s3Creds.bucket) {
@@ -1158,7 +1339,7 @@ function MainApp() {
         return null;
       }
     },
-    [getS3Client, s3Creds, currentFile, localRootHandle]
+    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType]
   );
 
   /** Chat with Myself: resolve by storageMode (not current editor file). */
@@ -1166,6 +1347,17 @@ function MainApp() {
     async (path) => {
       if (storageMode === 'local' && localRootHandle) {
         return getLocalWikiImageObjectUrl(localRootHandle, path);
+      }
+      if (storageMode === 'webdav') {
+        try {
+          const backend = createChatBackend({
+            mode: 'webdav',
+            webdavConfig,
+          });
+          return await backend.getBinaryBlobUrl(path);
+        } catch {
+          return null;
+        }
       }
       const client = getS3Client();
       if (!client || !s3Creds.bucket) return null;
@@ -1175,11 +1367,11 @@ function MainApp() {
         return null;
       }
     },
-    [storageMode, localRootHandle, getS3Client, s3Creds.bucket],
+    [storageMode, localRootHandle, getS3Client, s3Creds.bucket, webdavConfig],
   );
 
   useEffect(() => {
-    if (!scriptsLoaded || !isUnlocked || !s3Creds.bucket) return;
+    if (!scriptsLoaded || !isUnlocked || storageMode !== 's3' || !s3Creds.bucket) return;
     const run = async () => {
       const client = getS3Client();
       if (!client) return;
@@ -1203,11 +1395,16 @@ function MainApp() {
       loadS3Files();
     };
     run();
-  }, [scriptsLoaded, isUnlocked, s3Creds.bucket, loadS3Files, getS3Client, addIndicator, removeIndicator]);
+  }, [scriptsLoaded, isUnlocked, storageMode, s3Creds.bucket, loadS3Files, getS3Client, addIndicator, removeIndicator]);
 
-  // 녹음 목록 및 선택된 녹음 URL/sync 로드 (hideRecordingCompanions는 사이드바 표시용이므로 목록 비우지 않음)
+  // Recording list + selected recording URL/sync load
   useEffect(() => {
-    if (!currentFile || currentFile.type !== 's3' || currentFile.viewer !== 'markdown') {
+    const pathStorageTypes = ['s3', 'local', 'webdav'];
+    if (
+      !currentFile ||
+      !pathStorageTypes.includes(currentFile.type) ||
+      currentFile.viewer !== 'markdown'
+    ) {
       setRecordingsList([]);
       setSelectedRecordingKey(null);
       setRecordingAudioUrl('');
@@ -1215,25 +1412,37 @@ function MainApp() {
       return;
     }
     const noteKey = currentFile.id;
-    const list = getRecordingKeysFromTree(s3Tree, noteKey);
+    const tree =
+      currentFile.type === 's3'
+        ? s3Tree
+        : currentFile.type === 'webdav'
+          ? webdavTree
+          : localTree;
+    const list = getRecordingKeysFromTree(tree, noteKey);
     setRecordingsList(list);
     setSelectedRecordingKey(list.length > 0 ? list[0].key : null);
-  }, [currentFile?.id, currentFile?.type, currentFile?.viewer, s3Tree]);
+  }, [currentFile?.id, currentFile?.type, currentFile?.viewer, s3Tree, localTree, webdavTree]);
 
   useEffect(() => {
-    if (!selectedRecordingKey || !s3Creds.bucket) {
+    if (!selectedRecordingKey || !currentFile) {
       setRecordingAudioUrl('');
       setRecordingSyncData([]);
       return;
     }
-    const client = getS3Client();
-    if (!client) return;
+    const storageType = currentFile.type;
+    if (!['s3', 'local', 'webdav'].includes(storageType)) {
+      setRecordingAudioUrl('');
+      setRecordingSyncData([]);
+      return;
+    }
+    const backend = getBackendForType(storageType);
+    if (!backend) return;
 
     let revoked = false;
     (async () => {
       try {
-        const url = await getSignedGetUrl(client, s3Creds.bucket, selectedRecordingKey, 3600);
-        if (!revoked) setRecordingAudioUrl(url);
+        const url = await backend.getObjectUrl(selectedRecordingKey);
+        if (!revoked) setRecordingAudioUrl(url || '');
       } catch {
         if (!revoked) setRecordingAudioUrl('');
       }
@@ -1243,13 +1452,13 @@ function MainApp() {
     if (syncKey) {
       (async () => {
         try {
-          const { body } = await getObjectBody(client, s3Creds.bucket, syncKey);
+          const { body } = await backend.readBytes(syncKey);
           const data = decodeSyncData(body);
           if (!revoked && Array.isArray(data)) setRecordingSyncData(data);
         } catch {
           try {
             const jsonKey = syncKey.replace(/\.sync\.pb$/, '.sync.json');
-            const { body } = await getObjectBody(client, s3Creds.bucket, jsonKey);
+            const { body } = await backend.readBytes(jsonKey);
             const json = new TextDecoder('utf-8').decode(body);
             const data = JSON.parse(json);
             if (!revoked && Array.isArray(data)) setRecordingSyncData(data);
@@ -1265,7 +1474,7 @@ function MainApp() {
       setRecordingAudioUrl('');
       setRecordingSyncData([]);
     };
-  }, [selectedRecordingKey, s3Creds.bucket, getS3Client]);
+  }, [selectedRecordingKey, currentFile?.type, getBackendForType]);
 
   // Mobile: poll S3 every 30s and refresh if S3 has newer LastModified
   useEffect(() => {
@@ -1330,6 +1539,58 @@ function MainApp() {
     return () => clearInterval(t);
   }, [isMobile, s3Creds.bucket, isUnlocked, getS3Client]);
 
+  // Mobile: poll WebDAV every 30s when in webdav mode
+  useEffect(() => {
+    if (!isMobile || storageMode !== 'webdav' || !webdavReady || !isUnlocked) return;
+
+    const poll = async () => {
+      try {
+        const backend = createWebdavBackend(webdavConfig);
+        const newTree = await backend.listAll();
+        const oldMap = getFileLastModifiedMap(webdavTreeRef.current);
+        const newMap = getFileLastModifiedMap(newTree);
+        const changedKeys = new Set();
+        for (const [path, newDate] of newMap) {
+          const oldDate = oldMap.get(path);
+          if (!oldDate || newDate.getTime() > oldDate.getTime()) changedKeys.add(path);
+        }
+        setWebdavTree(newTree);
+
+        const cur = currentFileRef.current;
+        if (cur?.type !== 'webdav' || !changedKeys.has(cur.id)) return;
+        const newNode = findFileNodeByPath(newTree, cur.id);
+        const newLastMod = newNode?.lastModified
+          ? newNode.lastModified instanceof Date
+            ? newNode.lastModified
+            : new Date(newNode.lastModified)
+          : null;
+
+        const { text } = await backend.readText(cur.id);
+        const ext = (cur.name?.split('.').pop() || '').toLowerCase();
+        if (cur.viewer === 'markdown' || ext === 'md' || ext === 'markdown' || ext === '') {
+          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? text : prevContent));
+        } else if (cur.viewer === 'json' || ext === 'json') {
+          let display = text;
+          try {
+            display = JSON.stringify(JSON.parse(text), null, 2);
+          } catch { /* keep raw */ }
+          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? display : prevContent));
+        } else if (cur.viewer === 'html' || cur.viewer === 'svg' || ext === 'html' || ext === 'htm' || ext === 'svg') {
+          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? text : prevContent));
+        }
+      } catch {
+        // ignore poll errors
+      }
+    };
+
+    const t = setInterval(poll, 30000);
+    poll();
+    return () => clearInterval(t);
+  }, [isMobile, storageMode, webdavReady, webdavConfig, isUnlocked]);
+
   // 4. Local Folder Load
   const attachLocalRootFolder = useCallback(async (dirHandle, { fullScan = false } = {}) => {
     setIsLocalTreeLoading(true);
@@ -1381,6 +1642,11 @@ function MainApp() {
     }
   };
 
+  useEffect(() => {
+    if (storageMode !== STORAGE_MODE_WEBDAV || !webdavReady || !isUnlocked) return;
+    refreshWebdavTree();
+  }, [storageMode, webdavReady, isUnlocked, refreshWebdavTree]);
+
   const handleConfirmRestoreLocalFolder = async () => {
     setShowRestoreLocalFolderModal(false);
     try {
@@ -1399,6 +1665,26 @@ function MainApp() {
   // 5. File Read & Save
   const selectFileRaw = async (type, node) => {
     if (node.type === 'folder') return;
+
+    if (type === 'webdav') {
+      if (!webdavReady) return;
+      try {
+        const backend = createWebdavBackend(webdavConfig);
+        const opened = await openPathFileFromBackend({ backend, type: 'webdav', node });
+        if (!opened) return;
+        const { currentFile: openedFile, editorContent: content, revokePrev } = opened;
+        setCurrentFile((prev) => {
+          revokePrev(prev);
+          return openedFile;
+        });
+        setEditorContent(content);
+        navigate(`/view/${node.path}`);
+      } catch (err) {
+        console.error('WebDAV Read Error:', err);
+      }
+      return;
+    }
+
     const ext = (node.name.split('.').pop() || '').toLowerCase();
 
     if (type === 's3') {
@@ -1822,7 +2108,8 @@ function MainApp() {
       const { ctrlKey = false, metaKey = false, shiftKey = false } = modifiers;
       const isRange = shiftKey;
 
-      const tree = storageType === 's3' ? s3Tree : localTree;
+      const tree =
+        storageType === 's3' ? s3Tree : storageType === 'webdav' ? webdavTree : localTree;
       const flatPaths = flattenTreeToPaths(tree);
       const path = node.path;
       const key = toSelectKey(storageType, path);
@@ -1876,7 +2163,7 @@ function MainApp() {
         await selectFileRaw(storageType, node);
       }
     },
-    [isMobile, s3Tree, localTree, selectFileRaw, saveCurrentMarkdownBeforeSwitch, confirmAndCancelEditorImageUpload]
+    [isMobile, s3Tree, localTree, webdavTree, selectFileRaw, saveCurrentMarkdownBeforeSwitch, confirmAndCancelEditorImageUpload]
   );
 
   const selectFile = useCallback(
@@ -1896,10 +2183,11 @@ function MainApp() {
       const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
       const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
       const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
-      const isS3Media = storageType === 's3' && (ext === 'pdf' || imageExts.includes(ext) || videoExts.includes(ext) || audioExts.includes(ext));
+      const isPathMedia =
+        (storageType === 's3' || storageType === 'webdav' || storageType === 'local') &&
+        (ext === 'pdf' || imageExts.includes(ext) || videoExts.includes(ext) || audioExts.includes(ext));
 
-      // Popup blocker 방지를 위해 signedURL 요청 전에 새 창을 먼저 띄웁니다.
-      if (isS3Media) {
+      if (isPathMedia && (storageType === 's3' || storageType === 'webdav')) {
         const win = window.open('about:blank', '_blank');
         if (!win) {
           alert('팝업이 차단되어 새 창을 열 수 없습니다.');
@@ -1907,14 +2195,37 @@ function MainApp() {
         }
 
         try {
-          const client = getS3Client();
-          const bucket = s3Creds.bucket;
-          if (!client || !bucket) throw new Error('S3 클라이언트 또는 버킷이 초기화되지 않았습니다.');
-
-          const signedUrl = await getSignedGetUrl(client, bucket, path, 3600);
-          win.location.href = signedUrl.toString();
+          if (storageType === 's3') {
+            const client = getS3Client();
+            const bucket = s3Creds.bucket;
+            if (!client || !bucket) throw new Error('S3 클라이언트 또는 버킷이 초기화되지 않았습니다.');
+            const signedUrl = await getSignedGetUrl(client, bucket, path, 3600);
+            win.location.href = signedUrl.toString();
+          } else {
+            const backend = createWebdavBackend(webdavConfig);
+            const url = await backend.getObjectUrl(path);
+            if (!url) throw new Error('WebDAV URL을 만들 수 없습니다.');
+            win.location.href = url;
+          }
         } catch (e) {
-          console.error('Open media signedURL failed:', e);
+          console.error('Open media URL failed:', e);
+          alert('미디어 열기에 실패했습니다.');
+        }
+        return;
+      }
+
+      if (isPathMedia && storageType === 'local' && node.handle) {
+        const win = window.open('about:blank', '_blank');
+        if (!win) {
+          alert('팝업이 차단되어 새 창을 열 수 없습니다.');
+          return;
+        }
+        try {
+          const file = await node.handle.getFile();
+          const url = URL.createObjectURL(file);
+          win.location.href = url;
+        } catch (e) {
+          console.error('Open local media failed:', e);
           alert('미디어 열기에 실패했습니다.');
         }
         return;
@@ -1924,7 +2235,7 @@ function MainApp() {
       url.searchParams.set('open', `${storageType}:${path}`);
       window.open(url.toString(), '_blank');
     },
-    [getS3Client, s3Creds.bucket]
+    [getS3Client, s3Creds.bucket, webdavConfig]
   );
 
   useEffect(() => {
@@ -1955,7 +2266,7 @@ function MainApp() {
       return;
     }
     if (!currentFile) return;
-    if (currentFile.type !== 's3' && currentFile.type !== 'local') return;
+    if (currentFile.type !== 's3' && currentFile.type !== 'local' && currentFile.type !== 'webdav') return;
     saveLastOpenedFile({ type: currentFile.type, path: currentFile.id });
   }, [isUnlocked, currentFile, location.pathname, saveLastOpenedFile]);
 
@@ -1967,18 +2278,18 @@ function MainApp() {
     const colonIdx = openParam.indexOf(':');
     const type = colonIdx >= 0 ? openParam.slice(0, colonIdx) : null;
     const path = colonIdx >= 0 ? openParam.slice(colonIdx + 1) : null;
-    if ((type !== 's3' && type !== 'local') || !path) {
+    if ((type !== 's3' && type !== 'local' && type !== 'webdav') || !path) {
       hasProcessedOpenFromUrlRef.current = true;
       return;
     }
-    const tree = type === 's3' ? s3Tree : localTree;
+    const tree = type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
     if (!tree || tree.length === 0) return;
     const node = findFileNodeByPath(tree, path);
     if (node) {
       selectFile(type, node);
     }
     hasProcessedOpenFromUrlRef.current = true;
-  }, [isUnlocked, s3Tree, localTree, selectFile]);
+  }, [isUnlocked, s3Tree, localTree, webdavTree, selectFile]);
 
   // Restore last opened file or chat once unlocked (trees needed for files)
   useEffect(() => {
@@ -1999,19 +2310,19 @@ function MainApp() {
       }
       return;
     }
-    if (type !== 's3' && type !== 'local') {
+    if (type !== 's3' && type !== 'local' && type !== 'webdav') {
       hasRestoredLastFileRef.current = true;
       return;
     }
-    const tree = type === 's3' ? s3Tree : localTree;
+    const tree = type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
     if (!tree || tree.length === 0) {
-      if (type === 'local') hasRestoredLastFileRef.current = true;
+      if (type === 'local' || type === 'webdav') hasRestoredLastFileRef.current = true;
       return;
     }
     const node = findFileNodeByPath(tree, path);
     if (node) selectFile(type, node);
     hasRestoredLastFileRef.current = true;
-  }, [isUnlocked, s3Tree, localTree, selectFile, loadLastOpenedFile, navigate, location.pathname]);
+  }, [isUnlocked, s3Tree, localTree, webdavTree, selectFile, loadLastOpenedFile, navigate, location.pathname]);
 
   // Prompt to restore last local folder when returning in local mode
   useEffect(() => {
@@ -2147,6 +2458,45 @@ function MainApp() {
     await refreshLocalTree();
   };
 
+  const moveWebdavFileToFolder = async (file, destFolderPath) => {
+    const backend = createWebdavBackend(webdavConfig);
+    const fileName = file.name;
+    const destPrefix = destFolderPath || '';
+    const newKey = `${destPrefix}${fileName}`;
+    const oldKey = file.id;
+    if (newKey === oldKey) return file;
+    await backend.move(oldKey, newKey);
+    await refreshWebdavTree();
+    return { ...file, id: newKey };
+  };
+
+  const moveWebdavFolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+    const backend = createWebdavBackend(webdavConfig);
+    const prefix = folderNode.path;
+    if (!prefix) return;
+    const folderName = newFolderName ?? folderNode.name;
+    const destPrefix = `${destParentPath || ''}${folderName}/`;
+    if (destPrefix === prefix) return;
+    if (destPrefix.startsWith(prefix) || prefix.startsWith(destPrefix)) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 이동할 수 없습니다.');
+    }
+    const entries = await webdavPropfindDeep(webdavConfig, prefix);
+    const fileKeys = entries
+      .filter((e) => e.key && !e.isCollection && e.key !== prefix)
+      .map((e) => e.key)
+      .sort((a, b) => b.length - a.length);
+    for (const key of fileKeys) {
+      const relative = key.startsWith(prefix) ? key.slice(prefix.length) : key;
+      await backend.move(key, destPrefix + relative);
+    }
+    try {
+      await backend.deletePrefix(prefix);
+    } catch (_) {
+      /* folder marker may already be gone */
+    }
+    await refreshWebdavTree();
+  };
+
   const handleViewUnsupportedAsText = async () => {
     if (!currentFile || currentFile.viewer !== 'unsupported') return;
     if (currentFile.type === 's3') {
@@ -2164,6 +2514,35 @@ function MainApp() {
         setEditorContent(content);
       } catch (e) {
         console.error('S3 파일 로드 실패:', e);
+        alert('파일을 텍스트로 불러오지 못했습니다.');
+      }
+    } else if (currentFile.type === 'local' && currentFile.handle) {
+      try {
+        const content = await currentFile.handle.getFile().then((f) => f.text());
+        setCurrentFile((prev) => ({
+          ...prev,
+          content,
+          viewer: 'raw',
+          size: typeof content === 'string' ? new TextEncoder().encode(content).length : prev?.size ?? null,
+        }));
+        setEditorContent(content);
+      } catch (e) {
+        console.error('Local file load failed:', e);
+        alert('파일을 텍스트로 불러오지 못했습니다.');
+      }
+    } else if (currentFile.type === 'webdav') {
+      try {
+        const backend = createWebdavBackend(webdavConfig);
+        const { text, contentLength } = await backend.readText(currentFile.id);
+        setCurrentFile((prev) => ({
+          ...prev,
+          content: text,
+          viewer: 'raw',
+          size: typeof contentLength === 'number' ? contentLength : prev?.size ?? null,
+        }));
+        setEditorContent(text);
+      } catch (e) {
+        console.error('WebDAV file load failed:', e);
         alert('파일을 텍스트로 불러오지 못했습니다.');
       }
     }
@@ -2252,11 +2631,35 @@ function MainApp() {
     setSnippetConfig(nextConfig ?? { snippets: [] });
   };
 
+  const saveSnippetConfigToWebdav = useCallback(
+    async (config) => {
+      if (!webdavReady) return;
+      try {
+        const backend = createWebdavBackend(webdavConfig);
+        await backend.writeText(
+          '.settings/snippets.json',
+          JSON.stringify(config ?? { snippets: [] }, null, 2),
+          'application/json',
+        );
+      } catch (e) {
+        console.error('Snippet settings save to WebDAV failed:', e);
+        throw e;
+      }
+    },
+    [webdavConfig, webdavReady],
+  );
+
   const handleSaveSnippetConfig = async (config) => {
     const toSave = config ?? snippetConfig;
     setIsSavingSnippets(true);
     try {
-      await Promise.all([saveSnippetConfigToS3(toSave), saveSnippetConfigToLocal(toSave)]);
+      if (storageMode === 's3') {
+        await saveSnippetConfigToS3(toSave);
+      } else if (storageMode === 'local') {
+        await saveSnippetConfigToLocal(toSave);
+      } else if (storageMode === 'webdav') {
+        await saveSnippetConfigToWebdav(toSave);
+      }
       setOperationStatus('스니펫 설정이 저장되었습니다.');
     } catch (e) {
       alert('스니펫 설정 저장에 실패했습니다: ' + (e?.message || e));
@@ -2668,7 +3071,9 @@ function MainApp() {
     const fileToMove =
       storageType === 's3'
         ? { id: node.path, name: node.name }
-        : { ...node, handle: node.handle, parentHandle: node.parentHandle || localRootHandle };
+        : storageType === 'webdav'
+          ? { id: node.path, name: node.name }
+          : { ...node, handle: node.handle, parentHandle: node.parentHandle || localRootHandle };
     try {
       if (storageType === 's3') {
         await moveS3FileToFolder(fileToMove, dest.path || '');
@@ -2676,6 +3081,11 @@ function MainApp() {
           setCurrentFile((prev) =>
             prev && prev.id === node.path ? { ...prev, id: (dest.path || '') + node.name } : prev,
           );
+        }
+      } else if (storageType === 'webdav') {
+        const updated = await moveWebdavFileToFolder(fileToMove, dest.path || '');
+        if (currentFile?.type === 'webdav' && currentFile.id === node.path) {
+          setCurrentFile(updated);
         }
       } else {
         const updated = await moveLocalFileToFolder(fileToMove, dest.handle || localRootHandle, dest.path || '');
@@ -2732,25 +3142,25 @@ function MainApp() {
       detail: fileToSave.name,
     });
     const textToSave = editorContentRef.current;
+    const contentTypeForViewer =
+      viewer === 'json'
+        ? 'application/json'
+        : viewer === 'raw'
+          ? 'text/plain'
+          : viewer === 'html'
+            ? 'text/html'
+            : viewer === 'svg'
+              ? 'image/svg+xml'
+              : 'text/markdown';
     try {
       if (fileToSave.type === 's3') {
         const client = getS3Client();
         if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-        const contentType =
-          viewer === 'json'
-            ? 'application/json'
-            : viewer === 'raw'
-              ? 'text/plain'
-              : viewer === 'html'
-                ? 'text/html'
-                : viewer === 'svg'
-                  ? 'image/svg+xml'
-                  : 'text/markdown';
         await putObject(client, {
           Bucket: s3Creds.bucket,
           Key: fileToSave.id,
           Body: textToSave,
-          ContentType: contentType,
+          ContentType: contentTypeForViewer,
         });
         await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
@@ -2779,6 +3189,18 @@ function MainApp() {
         });
         setIsSaving(false);
         return;
+      } else if (fileToSave.type === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        await backend.writeText(fileToSave.id, textToSave, contentTypeForViewer);
+        await deleteMemoDraft(getDraftKey('webdav', fileToSave.id));
+        await refreshWebdavTree();
+        const savedByteLength = new TextEncoder().encode(textToSave).length;
+        setCurrentFile((prev) => {
+          if (prev?.id !== fileToSave.id) return prev;
+          const next = { ...prev, content: textToSave, size: savedByteLength };
+          currentFileRef.current = next;
+          return next;
+        });
       }
     } catch (e) {
       if (fileToSave.type === 's3' && isAbortOrNetworkError(e)) {
@@ -2787,20 +3209,35 @@ function MainApp() {
             key: fileToSave.id,
             content: textToSave,
             modifiedAt: inputModifiedAt ?? Date.now(),
-            contentType:
-              viewer === 'json'
-                ? 'application/json'
-                : viewer === 'raw'
-                  ? 'text/plain'
-                  : viewer === 'html'
-                    ? 'text/html'
-                    : viewer === 'svg'
-                      ? 'image/svg+xml'
-                      : 'text/markdown',
+            contentType: contentTypeForViewer,
           });
           alert('업로드가 중단되었습니다. 연결이 복구되면 다시 로그인하면 자동으로 동기화됩니다.');
         } catch (dbErr) {
           console.error('저장 실패 및 IndexedDB 임시 저장 실패:', dbErr);
+          alert('저장 실패: ' + e.message);
+        }
+      } else if (fileToSave.type === 'webdav' && isAbortOrNetworkError(e)) {
+        try {
+          await saveMemoDraft({
+            key: getDraftKey('webdav', fileToSave.id),
+            content: textToSave,
+            originalLastModified: Date.now(),
+          });
+          alert('저장에 실패했습니다. 임시 초안이 로컬에 보관되었습니다.');
+        } catch (dbErr) {
+          console.error('WebDAV save failed and draft save failed:', dbErr);
+          alert('저장 실패: ' + e.message);
+        }
+      } else if (fileToSave.type === 'local') {
+        try {
+          await saveMemoDraft({
+            key: getDraftKey('local', fileToSave.id),
+            content: textToSave,
+            originalLastModified: Date.now(),
+          });
+          alert('저장에 실패했습니다. 임시 초안이 로컬에 보관되었습니다.');
+        } catch (dbErr) {
+          console.error('Local save failed and draft save failed:', dbErr);
           alert('저장 실패: ' + e.message);
         }
       } else {
@@ -2893,6 +3330,23 @@ function MainApp() {
         updated = await renameS3File(currentFile, trimmed, contentOverride);
       } else if (currentFile.type === 'local') {
         updated = await renameLocalFile(currentFile, trimmed);
+      } else if (currentFile.type === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        const oldKey = currentFile.id;
+        const lastSlash = oldKey.lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? oldKey.slice(0, lastSlash + 1) : '';
+        const newKey = dirPrefix + trimmed;
+        if (newKey !== oldKey) {
+          const hasUnsaved = currentFile.content !== editorContent;
+          if (hasUnsaved) {
+            await backend.writeText(newKey, editorContent, 'text/markdown');
+            await backend.delete(oldKey);
+          } else {
+            await backend.move(oldKey, newKey);
+          }
+          await refreshWebdavTree();
+          updated = { ...currentFile, id: newKey, name: trimmed };
+        }
       }
       if (updated) {
         setCurrentFile(updated);
@@ -2985,6 +3439,22 @@ function MainApp() {
           navigate(`/view/${newPath}`);
         }
         refreshLocalTree();
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        if (type === 'folder') {
+          await backend.mkdir(newPath);
+          await refreshWebdavTree();
+          const parentPaths = getParentPathsToExpand(parentPath);
+          expandPathsRef.current?.(storageType, parentPaths);
+        } else {
+          await backend.writeText(newPath, '', 'text/markdown');
+          await refreshWebdavTree();
+          const parentPaths = getParentPathsToExpand(parentPath);
+          expandPathsRef.current?.(storageType, parentPaths);
+          setCurrentFile({ type: 'webdav', id: newPath, name: finalName, content: '', viewer: 'markdown' });
+          setEditorContent('');
+          navigate(`/view/${newPath}`);
+        }
       }
     } catch (e) {
       alert("생성 실패: " + e.message);
@@ -3047,6 +3517,15 @@ function MainApp() {
           await writable.close();
         }
         refreshLocalTree();
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const key = parentPath + file.name;
+          const body = new Uint8Array(await file.arrayBuffer());
+          await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+        }
+        await refreshWebdavTree();
       }
       const parentPaths = getParentPathsToExpand(parentPath);
       expandPathsRef.current?.(storageType, parentPaths);
@@ -3109,6 +3588,16 @@ function MainApp() {
           await writable.close();
         }
         refreshLocalTree();
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const relPath = file.webkitRelativePath || file.name;
+          const key = parentPath + relPath;
+          const body = new Uint8Array(await file.arrayBuffer());
+          await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+        }
+        await refreshWebdavTree();
       }
       const parentPaths = getParentPathsToExpand(parentPath);
       expandPathsRef.current?.(storageType, parentPaths);
@@ -3243,8 +3732,20 @@ function MainApp() {
   };
 
   const associatedRecordings = (() => {
-    if (!deleteTarget || deleteTarget.type !== 's3' || deleteTarget.node.type !== 'file') return [];
-    return getRecordingKeysFromTree(s3Tree, deleteTarget.node.path);
+    if (
+      !deleteTarget ||
+      !['s3', 'local', 'webdav'].includes(deleteTarget.type) ||
+      deleteTarget.node.type !== 'file'
+    ) {
+      return [];
+    }
+    const tree =
+      deleteTarget.type === 's3'
+        ? s3Tree
+        : deleteTarget.type === 'webdav'
+          ? webdavTree
+          : localTree;
+    return getRecordingKeysFromTree(tree, deleteTarget.node.path);
   })();
 
   const confirmDelete = async (options = {}) => {
@@ -3318,6 +3819,28 @@ function MainApp() {
           await moveLocalEntryToTrash(node);
         }
         await refreshLocalTree();
+      } else if (type === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        if (isInTrash) {
+          if (node.type === 'folder') {
+            await backend.deletePrefix(node.path);
+          } else {
+            const keysToDelete =
+              deleteWithRecordings && recordingKeysToMove.length > 0
+                ? [node.path, ...recordingKeysToMove]
+                : [node.path];
+            for (const key of keysToDelete) {
+              try {
+                await backend.delete(key);
+              } catch (e) {
+                if (e?.$metadata?.httpStatusCode !== 404) throw e;
+              }
+            }
+          }
+        } else {
+          await backend.trash(node.path, { additionalKeys: recordingKeysToMove });
+        }
+        await refreshWebdavTree();
       }
 
       if (currentFile && currentFile.id.startsWith(node.path)) {
@@ -3369,6 +3892,15 @@ function MainApp() {
               : currentFile.id;
             setCurrentFile((prev) => (prev && prev.type === 'local' ? { ...prev, id: newPathForFile } : prev));
           }
+        } else if (storageType === 'webdav') {
+          await moveWebdavFolderToFolder(node, '', trimmed);
+          if (currentFile && currentFile.type === 'webdav' && currentFile.id.startsWith(node.path)) {
+            const destPrefix = node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
+            const newPathForFile = currentFile.id.startsWith(node.path)
+              ? destPrefix + currentFile.id.slice(node.path.length)
+              : currentFile.id;
+            setCurrentFile((prev) => (prev && prev.type === 'webdav' ? { ...prev, id: newPathForFile } : prev));
+          }
         }
         return;
       }
@@ -3418,6 +3950,30 @@ function MainApp() {
             handle: newFileHandle,
           });
         }
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        const oldPath = node.path;
+        const lastSlash = oldPath.lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
+        const originalName = node.name || '';
+        const nameLastDot = originalName.lastIndexOf('.');
+        const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
+        const newName = `${trimmed}${ext}`;
+        const newPath = dirPrefix + newName;
+        if (newPath === oldPath) return;
+
+        const isCurrentFile = currentFile?.type === 'webdav' && currentFile?.id === node.path;
+        const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
+        if (hasUnsaved) {
+          await backend.writeText(newPath, editorContent, 'text/markdown');
+          await backend.delete(oldPath);
+        } else {
+          await backend.move(oldPath, newPath);
+        }
+        await refreshWebdavTree();
+        if (isCurrentFile) {
+          setCurrentFile({ ...currentFile, id: newPath, name: newName });
+        }
       }
     } catch (e) {
       alert("이름 변경 실패: " + e.message);
@@ -3429,6 +3985,8 @@ function MainApp() {
       await loadS3Files();
     } else if (currentFile.type === 'local' && localRootHandle) {
       await refreshLocalTree();
+    } else if (currentFile.type === 'webdav' && webdavReady) {
+      await refreshWebdavTree();
     }
     setIsMoveModalOpen(true);
   };
@@ -3463,6 +4021,10 @@ function MainApp() {
         ContentType: 'text/markdown; charset=utf-8',
       });
       await loadS3Files();
+    } else if (storageMode === 'webdav') {
+      const backend = createWebdavBackend(webdavConfig);
+      await backend.writeText(newPath, body, 'text/markdown; charset=utf-8');
+      await refreshWebdavTree();
     } else {
       const targetDir = parentHandle || localRootHandle;
       if (!targetDir) throw new Error('루트 폴더를 먼저 열어주세요.');
@@ -3510,7 +4072,12 @@ function MainApp() {
 
       if (!items.length) return;
 
-      const tree = targetStorageType === 's3' ? s3Tree : localTree;
+      const tree =
+        targetStorageType === 's3'
+          ? s3Tree
+          : targetStorageType === 'webdav'
+            ? webdavTree
+            : localTree;
       let successCount = 0;
       let failCount = 0;
       let lastError = null;
@@ -3548,6 +4115,11 @@ function MainApp() {
               if (currentFile?.type === 's3' && currentFile.id === srcPath) {
                 setCurrentFile((prev) => (prev && prev.id === srcPath ? { ...prev, id: destPath + srcNode.name } : prev));
               }
+            } else if (srcStorageType === 'webdav') {
+              const updated = await moveWebdavFileToFolder(fileNode, destPath);
+              if (currentFile?.type === 'webdav' && currentFile.id === srcPath) {
+                setCurrentFile(updated);
+              }
             } else {
               const updated = await moveLocalFileToFolder(fileNode, destHandle, destPath);
               if (currentFile?.type === 'local' && currentFile.id === srcPath) {
@@ -3557,6 +4129,8 @@ function MainApp() {
           } else {
             if (srcStorageType === 's3') {
               await moveS3FolderToFolder(srcNode, destPath);
+            } else if (srcStorageType === 'webdav') {
+              await moveWebdavFolderToFolder(srcNode, destPath);
             } else {
               await moveLocalFolderToFolder(srcNode, destHandle, destPath);
             }
@@ -3632,6 +4206,32 @@ function MainApp() {
           loadS3Files();
           const parentPaths = getParentPathsToExpand(destPath);
           expandPathsRef.current?.(targetStorageType, parentPaths);
+        } else if (targetStorageType === 'webdav') {
+          const backend = createWebdavBackend(webdavConfig);
+          const uploadFile = async (file, prefix) => {
+            const key = prefix + file.name;
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+          };
+          const uploadDir = async (dirHandle, prefix) => {
+            for await (const entry of dirHandle.values()) {
+              if (entry.kind === 'file') {
+                const file = await entry.getFile();
+                await uploadFile(file, prefix);
+              } else if (entry.kind === 'directory') {
+                await uploadDir(entry, prefix + entry.name + '/');
+              }
+            }
+          };
+          for (const file of files) {
+            await uploadFile(file, destPath);
+          }
+          for (const handle of dirHandles) {
+            await uploadDir(handle, destPath + (handle.name || '') + '/');
+          }
+          await refreshWebdavTree();
+          const parentPaths = getParentPathsToExpand(destPath);
+          expandPathsRef.current?.(targetStorageType, parentPaths);
         } else {
           const targetDirHandle = destHandle || localRootHandle;
           if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
@@ -3686,6 +4286,8 @@ function MainApp() {
     try {
       if (storageType === 's3') {
         await moveS3FolderToFolder(node, dest.path || '');
+      } else if (storageType === 'webdav') {
+        await moveWebdavFolderToFolder(node, dest.path || '');
       } else {
         const destHandle = dest.handle || localRootHandle;
         if (!destHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
@@ -3709,6 +4311,11 @@ function MainApp() {
             prev && prev.type === 's3' ? { ...prev, id: updated.id } : prev,
           );
         }
+      } else if (currentFile.type === 'webdav') {
+        const updated = await moveWebdavFileToFolder(currentFile, dest.path || '');
+        if (updated) {
+          setCurrentFile(updated);
+        }
       } else if (currentFile.type === 'local') {
         const updated = await moveLocalFileToFolder(
           currentFile,
@@ -3727,22 +4334,22 @@ function MainApp() {
     }
   };
 
-  // 7. Auto Save (S3 & local, 5s debounce)
+  // 7. Auto Save (S3, local, WebDAV — 5s debounce)
   useEffect(() => {
-    if (!currentFile || (currentFile.type !== 's3' && currentFile.type !== 'local')) return;
+    const editableTypes = ['s3', 'local', 'webdav'];
+    if (!currentFile || !editableTypes.includes(currentFile.type)) return;
     if (currentFile.viewer !== 'markdown') return;
     if (!lastInputAt) return;
 
     const now = Date.now();
     const timeout = setTimeout(async () => {
-      // 입력 이후 내용이 변경된 상태만 자동 저장
       if (currentFile.content === editorContent) return;
-      if (!currentFile || (currentFile.type !== 's3' && currentFile.type !== 'local')) return;
+      if (!currentFile || !editableTypes.includes(currentFile.type)) return;
       try {
         await saveFile(null, { lastInputAt });
         setLastAutoSaveAt(now);
       } catch (e) {
-        // saveFile 내부에서 alert 처리
+        // saveFile handles alerts
       }
     }, 5000);
 
@@ -3750,9 +4357,9 @@ function MainApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastInputAt, currentFile, editorContent]);
 
-  // 8. Auto Sync (S3 only, pull when idle >= 30s, checked 주기적으로)
+  // 8. Auto Sync (S3 + WebDAV, pull when idle >= 30s)
   useEffect(() => {
-    if (!currentFile || currentFile.type !== 's3') return;
+    if (!currentFile || (currentFile.type !== 's3' && currentFile.type !== 'webdav')) return;
     if (currentFile.viewer !== 'markdown') return;
 
     const interval = setInterval(async () => {
@@ -3762,14 +4369,13 @@ function MainApp() {
       // 로컬에 미저장 내용이 있으면 덮어쓰지 않음
       if (currentFile.content !== editorContent) return;
 
-      const client = getS3Client();
-      if (!client) return;
+      const backend = getBackendForType(currentFile.type);
+      if (!backend) return;
 
       try {
-        const { body } = await getObjectBody(client, s3Creds.bucket, currentFile.id);
-        const text = new TextDecoder('utf-8').decode(body);
+        const { text } = await backend.readText(currentFile.id);
         setCurrentFile((prev) => {
-          if (!prev || prev.type !== 's3' || prev.id !== currentFile.id) return prev;
+          if (!prev || prev.type !== currentFile.type || prev.id !== currentFile.id) return prev;
           return { ...prev, content: text };
         });
         setEditorContent((prev) => {
@@ -3778,7 +4384,7 @@ function MainApp() {
         });
         setLastAutoSyncAt(Date.now());
       } catch (err) {
-        console.error('Auto sync S3 Read Error:', err);
+        console.error('Auto sync read error:', err);
       }
     }, 5000);
 
@@ -3818,21 +4424,42 @@ function MainApp() {
   };
 
   const handleToggleRecording = async () => {
+    const pathStorageTypes = ['s3', 'local', 'webdav'];
+    const noteKey =
+      pathStorageTypes.includes(currentFile?.type) && currentFile?.viewer === 'markdown'
+        ? currentFile.id
+        : '';
+
     if (isRecording) {
-      const noteKey = currentFile?.type === 's3' ? currentFile.id : '';
       const result = await stopRecording({
         noteKey,
         markdown: editorContent,
       });
-      if (result && currentFile?.type === 's3' && noteKey) {
-        const client = getS3Client();
-        if (client && s3Creds.bucket) {
-          const indicatorId = addIndicator({
-            id: 'recording-upload',
-            type: ActivityTypes.RECORDING,
-            label: '녹음 업로드 중',
+      if (!result || !noteKey) return;
+
+      const indicatorId = addIndicator({
+        id: 'recording-upload',
+        type: ActivityTypes.RECORDING,
+        label: '녹음 업로드 중',
+      });
+      try {
+        if (currentFile?.type === 'local' && localRootHandle) {
+          setRecordingPipelineStatus('저장 중');
+          const localBackend = createLocalBackend(localRootHandle);
+          await runEncodeAndWritePipeline({
+            recording: result,
+            writeObject: ({ key, body, contentType }) => localBackend.writeBytes(key, body, contentType),
+            recordId: result.id,
+            onStatus: setRecordingPipelineStatus,
           });
-          try {
+          if (result.id) {
+            await deleteRecordingFragments(result.id);
+            await deleteRecordingById(result.id);
+          }
+          await refreshLocalTree();
+        } else if (currentFile?.type === 's3') {
+          const client = getS3Client();
+          if (client && s3Creds.bucket) {
             setRecordingPipelineStatus('업로드 중');
             await drainRecordingUploadQueue({
               client,
@@ -3840,13 +4467,21 @@ function MainApp() {
               onStatus: setRecordingPipelineStatus,
             });
             loadS3Files();
-          } catch (e) {
-            alert('녹음 업로드 실패: ' + (e?.message || e));
-          } finally {
-            removeIndicator(indicatorId);
-            setRecordingPipelineStatus('');
           }
+        } else if (currentFile?.type === 'webdav' && webdavReady) {
+          setRecordingPipelineStatus('업로드 중');
+          const backend = createWebdavBackend(webdavConfig);
+          await drainRecordingUploadQueue({
+            writeObject: ({ key, body, contentType }) => backend.writeBytes(key, body, contentType),
+            onStatus: setRecordingPipelineStatus,
+          });
+          await refreshWebdavTree();
         }
+      } catch (e) {
+        alert('녹음 업로드 실패: ' + (e?.message || e));
+      } finally {
+        removeIndicator(indicatorId);
+        setRecordingPipelineStatus('');
       }
     } else {
       await startRecording();
@@ -3874,7 +4509,8 @@ function MainApp() {
   };
 
   const isS3Current = currentFile?.type === 's3';
-  const isEditableStorage = currentFile?.type === 's3' || currentFile?.type === 'local';
+  const isEditableStorage =
+    currentFile?.type === 's3' || currentFile?.type === 'local' || currentFile?.type === 'webdav';
   const hasUnsavedChanges =
     isEditableStorage && currentFile && currentFile.content !== editorContent;
   const hasAutoSaved = isEditableStorage && !!lastAutoSaveAt;
@@ -4024,6 +4660,12 @@ function MainApp() {
               localRootHandle={localRootHandle}
               isLocalTreeLoading={isLocalTreeLoading}
               localFolderLoadingPath={localFolderLoadingPath}
+              webdavTree={webdavTree}
+              webdavReady={webdavReady}
+              isWebdavTreeLoading={isWebdavTreeLoading}
+              webdavFolderLoadingPath={webdavFolderLoadingPath}
+              onLoadWebdavFolderChildren={loadWebdavFolderChildren}
+              onRefreshWebdav={refreshWebdavTree}
               onLoadLocalFolderChildren={loadLocalFolderChildren}
               onRefreshLocal={refreshLocalTree}
               currentFile={currentFile}
@@ -4097,6 +4739,7 @@ function MainApp() {
                   getS3Client={getS3Client}
                   s3Bucket={s3Creds.bucket}
                   localRootHandle={localRootHandle}
+                  webdavConfig={webdavConfig}
                   theme={theme}
                   isMobileLayout={isMobile}
                   sidebarOpen={sidebarOpen}
@@ -4107,7 +4750,10 @@ function MainApp() {
                   onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}
                   onRequestCreateFolderForNote={(parentPath, parentDirHandle) => {
                     setCreateModalContext({
-                      storageType: storageMode === 'local' ? 'local' : 's3',
+                      storageType:
+                        storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'
+                          ? storageMode
+                          : 's3',
                       parentPath,
                       parentDirHandle,
                       type: 'folder',
@@ -4135,9 +4781,12 @@ function MainApp() {
                   storageMode={storageMode}
                   onStorageModeChange={setStorageMode}
                   webdavConfig={webdavConfig}
-                  onSaveWebdavConfig={(next) => {
+                  onSaveWebdavConfig={async (next) => {
                     setWebdavConfig(next);
-                    saveWebdavConfig(next);
+                    await saveWebdavConfig(next, masterPassword || undefined);
+                    if (storageMode === STORAGE_MODE_WEBDAV) {
+                      await refreshWebdavTree();
+                    }
                   }}
                   onExportCreds={handleExportCreds}
                   onImportClick={() => fileInputRef.current?.click()}
@@ -4163,7 +4812,7 @@ function MainApp() {
                   onChangeSnippetConfig={handleChangeSnippetConfig}
                   onSaveSnippetConfig={handleSaveSnippetConfig}
                   isSavingSnippets={isSavingSnippets}
-                  snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal}
+                  snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal || snippetLoadedFromWebdav}
                   editorType={editorType}
                   onEditorTypeChange={handleEditorTypeChange}
                   isMobileLayout={isMobile}
@@ -4329,9 +4978,34 @@ function MainApp() {
             )}
             {!(location.pathname === '/chat' || location.pathname.endsWith('/chat')) ? (
               <>
-                <span className="truncate shrink-0 max-w-12 md:max-w-none" title={currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}>
-                  <span className="md:hidden">{currentFile?.type === 's3' ? 'S3' : currentFile?.type === 'local' ? '로컬' : '없음'}</span>
-                  <span className="hidden md:inline">저장소: {currentFile?.type === 's3' ? `S3 (${s3Creds.bucket || '-'})` : currentFile?.type === 'local' ? '로컬' : '없음'}</span>
+                <span className="truncate shrink-0 max-w-12 md:max-w-none" title={
+                  currentFile?.type === 's3'
+                    ? `S3 (${s3Creds.bucket || '-'})`
+                    : currentFile?.type === 'local'
+                      ? '로컬'
+                      : currentFile?.type === 'webdav'
+                        ? 'WebDAV'
+                        : '없음'
+                }>
+                  <span className="md:hidden">
+                    {currentFile?.type === 's3'
+                      ? 'S3'
+                      : currentFile?.type === 'local'
+                        ? '로컬'
+                        : currentFile?.type === 'webdav'
+                          ? 'WebDAV'
+                          : '없음'}
+                  </span>
+                  <span className="hidden md:inline">
+                    저장소:{' '}
+                    {currentFile?.type === 's3'
+                      ? `S3 (${s3Creds.bucket || '-'})`
+                      : currentFile?.type === 'local'
+                        ? '로컬'
+                        : currentFile?.type === 'webdav'
+                          ? 'WebDAV'
+                          : '없음'}
+                  </span>
                 </span>
                 {currentFile && (
                   <>
@@ -4356,7 +5030,9 @@ function MainApp() {
                   ? ` · S3${s3Creds.bucket ? ` (${s3Creds.bucket})` : ''}`
                   : storageMode === 'local'
                     ? ' · 로컬'
-                    : ''}
+                    : storageMode === 'webdav'
+                      ? ' · WebDAV'
+                      : ''}
               </span>
             )}
           </div>
@@ -4369,13 +5045,16 @@ function MainApp() {
                     ? '채팅 메시지는 S3에 저장·동기화됩니다'
                     : storageMode === 'local'
                       ? '채팅 메시지는 로컬 폴더에 저장됩니다'
-                      : '저장소 미연결'
+                      : storageMode === 'webdav'
+                        ? '채팅 메시지는 WebDAV에 저장·동기화됩니다'
+                        : '저장소 미연결'
                 }
               >
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full md:h-2.5 md:w-2.5 ${
                     (storageMode === 's3' && s3Creds.bucket) ||
-                    (storageMode === 'local' && localRootHandle)
+                    (storageMode === 'local' && localRootHandle) ||
+                    (storageMode === 'webdav' && webdavReady)
                       ? 'bg-emerald-500'
                       : 'bg-amber-400'
                   }`}
@@ -4383,17 +5062,21 @@ function MainApp() {
                 />
                 <span className="md:hidden">
                   {(storageMode === 's3' && s3Creds.bucket) ||
-                  (storageMode === 'local' && localRootHandle)
+                  (storageMode === 'local' && localRootHandle) ||
+                  (storageMode === 'webdav' && webdavReady)
                     ? '동기화'
                     : '대기'}
                 </span>
                 <span className="hidden md:inline">
                   채팅 동기화:{' '}
                   {(storageMode === 's3' && s3Creds.bucket) ||
-                  (storageMode === 'local' && localRootHandle)
+                  (storageMode === 'local' && localRootHandle) ||
+                  (storageMode === 'webdav' && webdavReady)
                     ? storageMode === 's3'
                       ? 'S3 연결됨'
-                      : '로컬 준비됨'
+                      : storageMode === 'webdav'
+                        ? 'WebDAV 연결됨'
+                        : '로컬 준비됨'
                     : '연결 필요'}
                 </span>
               </span>
@@ -4420,9 +5103,18 @@ function MainApp() {
                       : '대상 아님'}
                   </span>
                 </span>
-                <span className="hidden md:inline" title={currentFile?.type === 's3' ? (lastAutoSyncAt ? `동기화 ${formatTime(lastAutoSyncAt)}` : '대기 중') : '대상 아님'}>
-                  자동동기화(S3):{' '}
-                  {currentFile?.type === 's3'
+                <span
+                  className="hidden md:inline"
+                  title={
+                    currentFile?.type === 's3' || currentFile?.type === 'webdav'
+                      ? lastAutoSyncAt
+                        ? `동기화 ${formatTime(lastAutoSyncAt)}`
+                        : '대기 중'
+                      : '대상 아님'
+                  }
+                >
+                  자동동기화:{' '}
+                  {currentFile?.type === 's3' || currentFile?.type === 'webdav'
                     ? lastAutoSyncAt
                       ? `마지막 ${formatTime(lastAutoSyncAt)}`
                       : '대기 중 (입력 후 30초)'
@@ -4602,6 +5294,7 @@ function MainApp() {
         storageType={moveFileTarget ? moveFileTarget.storageType : currentFile?.type}
         s3Tree={s3Tree}
         localTree={localTree}
+        webdavTree={webdavTree}
         localRootHandle={localRootHandle}
         currentFile={moveFileTarget ? null : currentFile}
         fileToMove={moveFileTarget?.node}
@@ -4636,6 +5329,7 @@ function MainApp() {
         storageType={moveFolderTarget?.storageType}
         s3Tree={s3Tree}
         localTree={localTree}
+        webdavTree={webdavTree}
         localRootHandle={localRootHandle}
         folderNode={moveFolderTarget?.node}
         onClose={() => setMoveFolderTarget(null)}
@@ -4654,9 +5348,13 @@ function MainApp() {
               ? createModalContext.parentPath
                 ? `S3: ${createModalContext.parentPath}`
                 : 'S3 루트'
-              : createModalContext.parentPath
-                ? `로컬: ${createModalContext.parentPath}`
-                : '로컬 루트'
+              : createModalContext.storageType === 'webdav'
+                ? createModalContext.parentPath
+                  ? `WebDAV: ${createModalContext.parentPath}`
+                  : 'WebDAV 루트'
+                : createModalContext.parentPath
+                  ? `로컬: ${createModalContext.parentPath}`
+                  : '로컬 루트'
             : ''
         }
         onClose={() => {

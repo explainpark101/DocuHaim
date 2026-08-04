@@ -99,6 +99,7 @@ export function MoveFileModal({
   storageType,
   s3Tree,
   localTree,
+  webdavTree = [],
   localRootHandle,
   currentFile,
   fileToMove,
@@ -112,7 +113,8 @@ export function MoveFileModal({
   if (!effectiveFile) return null;
 
   const isS3 = storageType === 's3';
-  const tree = isS3 ? s3Tree : localTree;
+  const isWebdav = storageType === 'webdav';
+  const tree = isS3 ? s3Tree : isWebdav ? webdavTree : localTree;
 
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
@@ -186,7 +188,7 @@ export function MoveFileModal({
 
   const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
-  const canCreateFolder = isS3 || (parentDirHandle != null);
+  const canCreateFolder = isS3 || isWebdav || parentDirHandle != null;
 
   const handleRequestCreateFolder = () => {
     if (!canCreateFolder || !onRequestCreateFolder) return;
@@ -196,7 +198,7 @@ export function MoveFileModal({
   const handleSubmit = () => {
     if (!onConfirm) return;
 
-    if (isS3) {
+    if (isS3 || isWebdav) {
       const destPath = selectedRoot ? '' : selectedFolder?.path || '';
       onConfirm({
         path: destPath,
@@ -211,7 +213,8 @@ export function MoveFileModal({
     }
   };
 
-  const canSubmit = isS3 ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
+  const canSubmit =
+    isS3 || isWebdav ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
 
   return (
     <Modal isOpen={isOpen}>

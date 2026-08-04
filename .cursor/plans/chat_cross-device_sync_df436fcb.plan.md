@@ -4,22 +4,22 @@ overview: 나와의 채팅에 메시지 단위 머지·조건부 쓰기(필수),
 todos:
   - id: backend-iface
     content: ChatBackend 인터페이스 + S3/Local/WebDAV 구현; storage/images/attachments 위임
-    status: pending
+    status: completed
   - id: webdav-client
     content: webdavClient.js (PROPFIND/HEAD/GET/PUT/MKCOL, Basic Auth, If-Match)
-    status: pending
+    status: completed
   - id: merge-tombstone
     content: format.js tombstone + mergeDayMessages; 조건부 append/update/delete/meta 쓰기
-    status: pending
+    status: completed
   - id: s3-etag
     content: s3Client headObject ETag + putObject IfMatch/IfNoneMatch
-    status: pending
+    status: completed
   - id: remote-sync-hook
     content: useChatRemoteSync (10s poll, visibility/focus/online) + BroadcastChannel
-    status: pending
+    status: completed
   - id: pane-app-wire
     content: ChatWithMyselfPane/App webdav ctx, image blob URL, pending flush, ready UI
-    status: pending
+    status: completed
 isProject: false
 ---
 

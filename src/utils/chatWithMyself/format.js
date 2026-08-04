@@ -3,8 +3,17 @@ import { SELF_GROUP } from './paths.js';
 const MSG_START =
   /<!--\s*chat-msg\s+([^>]*?)-->\s*/g;
 
+const MSG_DELETED =
+  /<!--\s*chat-msg-deleted\s+([^>]*?)-->/g;
+
 const EDITS_BLOCK =
   /\n*<!--\s*chat-edits\s+id="([^"]*)"\s*-->\s*([\s\S]*?)\s*<!--\s*\/chat-edits\s*-->\s*$/;
+
+const MAX_MERGE_TS = (msg) => {
+  const a = Date.parse(msg?.editedAt || '') || 0;
+  const b = Date.parse(msg?.at || '') || 0;
+  return Math.max(a, b);
+};
 
 function parseAttrs(attrStr) {
   const attrs = {};
@@ -73,11 +82,22 @@ function parseEditHistoryPayload(raw) {
 
 /**
  * @param {string} content
- * @returns {ChatMessage[]}
+ * @returns {{ messages: ChatMessage[], deletedIds: string[], deletedAtById: Record<string, string> }}
  */
 export function parseDayFile(content) {
-  if (!content || !String(content).trim()) return [];
+  if (!content || !String(content).trim()) {
+    return { messages: [], deletedIds: [], deletedAtById: {} };
+  }
   const text = String(content);
+  const deletedAtById = {};
+  for (const match of text.matchAll(MSG_DELETED)) {
+    const attrs = parseAttrs(match[1] || '');
+    const id = attrs.id;
+    if (!id) continue;
+    deletedAtById[id] = attrs.at || new Date(0).toISOString();
+  }
+  const deletedIds = Object.keys(deletedAtById);
+
   const messages = [];
   const matches = [...text.matchAll(MSG_START)];
   for (let i = 0; i < matches.length; i++) {
@@ -86,6 +106,11 @@ export function parseDayFile(content) {
     const start = match.index + match[0].length;
     const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
     let body = text.slice(start, end).replace(/^\n/, '').replace(/\n+$/, '');
+    // Strip interleaved tombstones from body slice
+    body = body
+      .replace(/<!--\s*chat-msg-deleted\s+([^>]*?)-->/g, '')
+      .replace(/^\n/, '')
+      .replace(/\n+$/, '');
     let editHistory = [];
     const editsMatch = body.match(EDITS_BLOCK);
     if (editsMatch) {
@@ -96,8 +121,10 @@ export function parseDayFile(content) {
       }
       body = body.slice(0, editsMatch.index).replace(/\n+$/, '');
     }
+    const id = attrs.id || `msg-${i}-${attrs.at || start}`;
+    if (deletedAtById[id]) continue;
     messages.push({
-      id: attrs.id || `msg-${i}-${attrs.at || start}`,
+      id,
       at: attrs.at || new Date(0).toISOString(),
       tz: attrs.tz || '',
       source: attrs.source || 'compose',
@@ -110,7 +137,16 @@ export function parseDayFile(content) {
       body,
     });
   }
-  return messages;
+  return { messages, deletedIds, deletedAtById };
+}
+
+/**
+ * Serialize a deletion tombstone line.
+ * @param {string} id
+ * @param {string} [at]
+ */
+export function serializeDeletedMarker(id, at = new Date().toISOString()) {
+  return `<!-- chat-msg-deleted id="${escapeAttr(id)}" at="${escapeAttr(at)}" -->\n`;
 }
 
 /**
@@ -151,10 +187,60 @@ export function serializeMessage(msg) {
 
 /**
  * @param {ChatMessage[]} messages
+ * @param {string[] | Record<string, string>} [deletedIdsOrMap]
  * @returns {string}
  */
-export function serializeDayFile(messages) {
-  return (messages || []).map(serializeMessage).join('');
+export function serializeDayFile(messages, deletedIdsOrMap = []) {
+  const tombstones = [];
+  if (Array.isArray(deletedIdsOrMap)) {
+    for (const id of deletedIdsOrMap) {
+      if (id) tombstones.push(serializeDeletedMarker(id));
+    }
+  } else if (deletedIdsOrMap && typeof deletedIdsOrMap === 'object') {
+    for (const [id, at] of Object.entries(deletedIdsOrMap)) {
+      if (id) tombstones.push(serializeDeletedMarker(id, at));
+    }
+  }
+  const live = (messages || []).map(serializeMessage).join('');
+  return tombstones.join('') + live;
+}
+
+/**
+ * Merge two day-file parses (local vs remote).
+ * @param {{ messages?: ChatMessage[], deletedIds?: string[], deletedAtById?: Record<string, string> }} local
+ * @param {{ messages?: ChatMessage[], deletedIds?: string[], deletedAtById?: Record<string, string> }} remote
+ * @returns {{ messages: ChatMessage[], deletedIds: string[], deletedAtById: Record<string, string> }}
+ */
+export function mergeDayMessages(local, remote) {
+  const deletedAtById = {
+    ...(local?.deletedAtById || {}),
+    ...(remote?.deletedAtById || {}),
+  };
+  for (const id of local?.deletedIds || []) {
+    if (!deletedAtById[id]) deletedAtById[id] = new Date(0).toISOString();
+  }
+  for (const id of remote?.deletedIds || []) {
+    if (!deletedAtById[id]) deletedAtById[id] = new Date(0).toISOString();
+  }
+
+  /** @type {Map<string, ChatMessage>} */
+  const byId = new Map();
+  for (const msg of [...(local?.messages || []), ...(remote?.messages || [])]) {
+    if (!msg?.id || deletedAtById[msg.id]) continue;
+    const prev = byId.get(msg.id);
+    if (!prev || MAX_MERGE_TS(msg) >= MAX_MERGE_TS(prev)) {
+      byId.set(msg.id, msg);
+    }
+  }
+
+  const messages = [...byId.values()].sort(
+    (a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0),
+  );
+  return {
+    messages,
+    deletedIds: Object.keys(deletedAtById),
+    deletedAtById,
+  };
 }
 
 export function appendMessageToContent(existingContent, msg) {

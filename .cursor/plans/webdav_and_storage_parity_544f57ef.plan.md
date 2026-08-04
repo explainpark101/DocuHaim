@@ -4,22 +4,22 @@ overview: StorageBackend 어댑터로 S3/Local/WebDAV를 통일하고, Local은 
 todos:
   - id: phase1-local-parity
     content: "Local parity: recording FS write/playback/delete, open-as-text, media blob new window, draft on save fail, settings load by storageMode"
-    status: pending
+    status: completed
   - id: phase2-adapter
     content: Introduce StorageBackend interface + S3/Local adapters; migrate App/Sidebar gates to capabilities
-    status: pending
+    status: completed
   - id: phase3-webdav
     content: Add webdav package, webdavClient + WebdavBackend, Sidebar tree, connection test, encrypt WebDAV creds
-    status: pending
+    status: completed
   - id: phase4-remote-sync
     content: Gate idle pull / mobile poll / pendingUploads / recording network queue on supportsRemoteSync (S3+WebDAV)
-    status: pending
+    status: completed
   - id: phase5-chat
     content: Extend ChatStorageCtx for webdav; remove s3 coercion; guard until backend ready
-    status: pending
+    status: completed
   - id: phase6-followups
     content: Document CORS; defer Electron proxy / OAuth / App.jsx further split
-    status: pending
+    status: completed
 isProject: false
 ---
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { CalendarDays, Menu, MessageCircleMore, RefreshCw, Search, Users } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import ChatComposer from '@/components/chatWithMyself/ChatComposer';
 import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
 import ChatGroupPanel from '@/components/chatWithMyself/ChatGroupPanel';
@@ -16,6 +16,10 @@ import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { useChatActivityStatus } from '@/components/chatWithMyself/useChatActivityStatus';
+import {
+  useChatRemoteSync,
+  mergeMessagesForDate,
+} from '@/components/chatWithMyself/useChatRemoteSync';
 import {
   SELF_GROUP,
   addGroup,
@@ -46,8 +50,16 @@ import {
   writeComposerLineNumbersPref,
   getChatRailOpen,
   writeChatRailOpenPref,
+  flushPendingMessages,
+  postChatSyncEvent,
 } from '@/utils/chatWithMyself';
-import { savePendingShare, getPendingShares, deletePendingShare } from '@/utils/chatWithMyself/chatDb.js';
+import {
+  savePendingShare,
+  getPendingShares,
+  deletePendingShare,
+  getPendingMessages,
+  deletePendingMessage,
+} from '@/utils/chatWithMyself/chatDb.js';
 
 async function matchesFilters(msg, dateStr, filters, ogStorage) {
   if (!filters) return { ok: true, ogSearchText: '' };
@@ -94,6 +106,7 @@ export default function ChatWithMyselfPane({
   getS3Client,
   s3Bucket,
   localRootHandle,
+  webdavConfig,
   theme,
   isMobileLayout = false,
   sidebarOpen,
@@ -116,16 +129,37 @@ export default function ChatWithMyselfPane({
     if (storageMode === 'local') {
       return { mode: 'local', localRootHandle };
     }
+    if (storageMode === 'webdav') {
+      return { mode: 'webdav', webdavConfig };
+    }
     return {
       mode: 's3',
       client: getS3Client?.(),
       bucket: s3Bucket,
     };
-  }, [storageMode, getS3Client, s3Bucket, localRootHandle]);
+  }, [storageMode, getS3Client, s3Bucket, localRootHandle, webdavConfig]);
 
   const storageReady =
     (ctx.mode === 's3' && ctx.client && ctx.bucket) ||
-    (ctx.mode === 'local' && ctx.localRootHandle);
+    (ctx.mode === 'local' && ctx.localRootHandle) ||
+    (ctx.mode === 'webdav' &&
+      Boolean(ctx.webdavConfig?.endpoint && ctx.webdavConfig?.username));
+
+  const remotePoll = ctx.mode === 's3' || ctx.mode === 'webdav';
+
+  const storageNotReadyHint =
+    storageMode === 'local'
+      ? '로컬 폴더를 연 뒤 채팅을 사용할 수 있습니다.'
+      : storageMode === 'webdav'
+        ? '설정에서 WebDAV 연결 정보를 저장한 뒤 채팅을 사용할 수 있습니다.'
+        : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.';
+
+  const storageSendErrorHint =
+    storageMode === 'local'
+      ? '로컬 폴더를 먼저 열어주세요.'
+      : storageMode === 'webdav'
+        ? 'WebDAV 연결 정보가 필요합니다.'
+        : 'S3 자격 증명이 필요합니다.';
 
   const ogStorage = useMemo(
     () => (storageReady ? createOgStorageAdapters(ctx) : null),
@@ -188,6 +222,15 @@ export default function ChatWithMyselfPane({
   const windowNewestIndexRef = useRef(windowNewestIndex);
   const sendQueueRef = useRef([]);
   const flushingSendRef = useRef(false);
+  const syncApiRef = useRef(null);
+  const localTombstonesRef = useRef(new Set());
+
+  const noteLocalDayWrite = useCallback((dateStr) => {
+    if (dateStr) syncApiRef.current?.invalidateDay(dateStr);
+  }, []);
+  const noteLocalMetaWrite = useCallback(() => {
+    syncApiRef.current?.invalidateMeta();
+  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -300,6 +343,7 @@ export default function ChatWithMyselfPane({
       setDayKeys(unique);
       const first = unique[0];
       const msgs = first ? await readDayMessages(ctx, first) : [];
+      localTombstonesRef.current.clear();
       setMessages(msgs);
       setWindowNewestIndex(0);
       setLoadedDayIndex(first ? 1 : 0);
@@ -391,6 +435,109 @@ export default function ChatWithMyselfPane({
     loadInitial();
   }, [loadInitial]);
 
+  // Flush IDB pending messages after storage is ready
+  useEffect(() => {
+    if (!storageReady) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { flushed, dateStrs } = await flushPendingMessages(ctx, {
+          getPendingMessages,
+          deletePendingMessage,
+        });
+        if (!cancelled && flushed > 0) {
+          const days = dateStrs?.length
+            ? dateStrs
+            : [localDateString(new Date(), detectTimeZone())];
+          for (const d of days) {
+            noteLocalDayWrite(d);
+            postChatSyncEvent('day', { dateStr: d });
+          }
+          await loadInitial();
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storageReady, ctx, loadInitial, noteLocalDayWrite]);
+
+  const getWatchedDateStrs = useCallback(() => {
+    const keys = dayKeysRef.current;
+    const start = windowNewestIndexRef.current;
+    const end = loadedDayIndexRef.current;
+    if (!keys.length) {
+      return [localDateString(new Date(), detectTimeZone())];
+    }
+    if (end > start) return keys.slice(start, end);
+    return keys[0] ? [keys[0]] : [];
+  }, []);
+
+  const handleRemoteDayMerged = useCallback((dateStr, remoteMessages, remoteParsed) => {
+    const remoteDeleted = remoteParsed?.deletedIds || [];
+    if (remoteDeleted.length) {
+      for (const id of remoteDeleted) {
+        localTombstonesRef.current.delete(id);
+      }
+    }
+    setMessages((prev) => {
+      const next = mergeMessagesForDate(
+        prev,
+        dateStr,
+        remoteMessages,
+        remoteParsed,
+        localTombstonesRef.current,
+      );
+      const count = next.filter((m) => m.dateStr === dateStr).length;
+      queueMicrotask(() => {
+        setDayCounts((prevCounts) => ({
+          ...prevCounts,
+          [dateStr]: count,
+        }));
+      });
+      return next;
+    });
+  }, []);
+
+  const handleRemoteMeta = useCallback((meta) => {
+    setGroups(meta.groups || []);
+    setTimeZone(meta.timezone || detectTimeZone());
+  }, []);
+
+  const handleRemoteDayKeys = useCallback((keys) => {
+    const today = localDateString(new Date(), detectTimeZone());
+    const ordered = [...new Set(keys.includes(today) ? keys : [today, ...keys])];
+    const prev = dayKeysRef.current;
+    const oldStart = windowNewestIndexRef.current;
+    const oldEnd = loadedDayIndexRef.current;
+    const loadedDates =
+      prev.length && oldEnd > oldStart ? prev.slice(oldStart, oldEnd) : [];
+
+    setDayKeys(ordered);
+
+    if (!loadedDates.length) return;
+    const newIndexes = loadedDates
+      .map((d) => ordered.indexOf(d))
+      .filter((i) => i >= 0);
+    if (!newIndexes.length) return;
+    setWindowNewestIndex(Math.min(...newIndexes));
+    setLoadedDayIndex(Math.max(...newIndexes) + 1);
+  }, []);
+
+  useChatRemoteSync({
+    enabled: storageReady,
+    storageReady,
+    ctx: storageReady ? ctx : null,
+    remotePoll,
+    getWatchedDateStrs,
+    onDayMerged: handleRemoteDayMerged,
+    onMeta: handleRemoteMeta,
+    onDayKeys: handleRemoteDayKeys,
+    syncApiRef,
+  });
+
   const appendShareBody = useCallback(
     async (body) => {
       if (!body || !storageReady) return;
@@ -399,9 +546,12 @@ export default function ChatWithMyselfPane({
         group: SELF_GROUP,
         source: 'share',
       });
+      const dateStr = localDateString(new Date(), detectTimeZone());
+      noteLocalDayWrite(dateStr);
+      postChatSyncEvent('day', { dateStr });
       await loadInitial();
     },
-    [ctx, storageReady, loadInitial],
+    [ctx, storageReady, loadInitial, noteLocalDayWrite],
   );
 
   const clearSharePromptRecord = useCallback(async (prompt) => {
@@ -667,6 +817,10 @@ export default function ChatWithMyselfPane({
           }
           const { msgs, dateStr } = await appendChatMessages(ctx, prepared);
           confirmPendingMessages(msgs, dateStr);
+          if (dateStr) {
+            noteLocalDayWrite(dateStr);
+            postChatSyncEvent('day', { dateStr });
+          }
         } catch (e) {
           setMessages((prev) => prev.filter((m) => !batchIds.includes(m.id)));
           setError(e?.message || '전송 실패');
@@ -678,16 +832,12 @@ export default function ChatWithMyselfPane({
         void flushSendQueue();
       }
     }
-  }, [ctx, confirmPendingMessages]);
+  }, [ctx, confirmPendingMessages, noteLocalDayWrite]);
 
   const handleSend = useCallback(
     (body, group, replyTarget = null, imageFiles = []) => {
       if (!storageReady) {
-        setError(
-          storageMode === 'local'
-            ? '로컬 폴더를 먼저 열어주세요.'
-            : 'S3 자격 증명이 필요합니다.',
-        );
+        setError(storageSendErrorHint);
         return;
       }
       const text = String(body || '').trim();
@@ -737,7 +887,7 @@ export default function ChatWithMyselfPane({
       });
       void flushSendQueue();
     },
-    [storageReady, storageMode, flushSendQueue],
+    [storageReady, storageSendErrorHint, flushSendQueue],
   );
 
   const handleReply = useCallback((message) => {
@@ -847,6 +997,8 @@ export default function ChatWithMyselfPane({
             return next;
           }),
         );
+        postChatSyncEvent('day', { dateStr });
+        noteLocalDayWrite(dateStr);
 
         for (const path of removedPaths) {
           try {
@@ -862,7 +1014,7 @@ export default function ChatWithMyselfPane({
         setError(e?.message || '수정 실패');
       }
     },
-    [storageReady, ctx],
+    [storageReady, ctx, noteLocalDayWrite],
   );
 
   const performDeleteMessage = useCallback(
@@ -901,6 +1053,9 @@ export default function ChatWithMyselfPane({
           ...prev,
           [dateStr]: Math.max(0, (prev[dateStr] || 1) - 1),
         }));
+        localTombstonesRef.current.add(message.id);
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
       } catch (e) {
         setMessages((prev) =>
           prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
@@ -910,7 +1065,7 @@ export default function ChatWithMyselfPane({
         setDeletingCount((c) => Math.max(0, c - 1));
       }
     },
-    [storageReady, ctx, replyTo, editTarget, historyMessage],
+    [storageReady, ctx, replyTo, editTarget, historyMessage, noteLocalDayWrite],
   );
 
   const handleDelete = useCallback(
@@ -987,8 +1142,10 @@ export default function ChatWithMyselfPane({
     async (name) => {
       const next = await addGroup(ctx, name);
       setGroups(next);
+      noteLocalMetaWrite();
+      postChatSyncEvent('meta');
     },
-    [ctx],
+    [ctx, noteLocalMetaWrite],
   );
 
   const runSearchScan = useCallback(
@@ -1204,9 +1361,7 @@ export default function ChatWithMyselfPane({
 
       {!storageReady ? (
         <div className="flex flex-1 items-center justify-center p-6 text-sm text-gray-500">
-          {storageMode === 'local'
-            ? '로컬 폴더를 연 뒤 채팅을 사용할 수 있습니다.'
-            : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.'}
+          {storageNotReadyHint}
         </div>
       ) : (
         <div className="flex min-h-0 flex-1" data-chat-rails-root>

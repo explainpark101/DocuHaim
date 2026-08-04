@@ -1,4 +1,4 @@
-import { putObject } from '@/utils/s3Client';
+import { createChatBackend } from './backends/index.js';
 import { uploadLocalEditorImage } from '@/utils/localEditorImage';
 import {
   sniffImageMimeFromFile,
@@ -52,20 +52,13 @@ export async function uploadChatImage(ctx, file, options = {}) {
     });
   }
 
-  if (!ctx.client || !ctx.bucket) {
-    throw new Error('S3 자격 증명이 필요합니다.');
-  }
-
-  const body = new Uint8Array(await file.arrayBuffer());
   const contentType =
     mime && mime.startsWith('image/') ? mime : 'application/octet-stream';
   options.onProgress?.(0);
-  await putObject(ctx.client, {
-    Bucket: ctx.bucket,
-    Key: key,
-    Body: body,
-    ContentType: contentType,
-  });
+  const body = new Uint8Array(await file.arrayBuffer());
+  const backend = createChatBackend(ctx);
+  await backend.ensureChatFolder();
+  await backend.putBinary(key, body, contentType);
   options.onProgress?.(100);
   return key;
 }

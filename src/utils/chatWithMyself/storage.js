@@ -1,11 +1,9 @@
-import { getObjectBody, listObjectsV2, putObject } from '@/utils/s3Client';
 import {
-  getLocalDirectoryHandleForPath,
-  getLocalFileHandleForPath,
-} from '@/utils/localEditorImage';
+  ChatPreconditionFailedError,
+  createChatBackend,
+} from './backends/index.js';
 import {
   CHAT_FOLDER,
-  chatFolderPrefix,
   dayFileKey,
   detectTimeZone,
   localDateString,
@@ -13,108 +11,159 @@ import {
   SELF_GROUP,
 } from './paths.js';
 import {
-  appendMessagesToContent,
   createMessageId,
+  mergeDayMessages,
   parseDayFile,
   serializeDayFile,
 } from './format.js';
 import { cacheDay, getCachedDay, savePendingMessage } from './chatDb.js';
 
-function decodeBody(body) {
-  if (typeof body === 'string') return body;
-  return new TextDecoder().decode(body);
-}
+const MAX_WRITE_RETRIES = 5;
 
 /**
  * @typedef {Object} ChatStorageCtx
- * @property {'s3'|'local'} mode
+ * @property {'s3'|'local'|'webdav'} mode
  * @property {import('@aws-sdk/client-s3').S3Client} [client]
  * @property {string} [bucket]
  * @property {FileSystemDirectoryHandle} [localRootHandle]
+ * @property {{ endpoint: string, username: string, password: string, basePath: string }} [webdavConfig]
  */
 
-async function ensureChatFolder(ctx) {
-  if (ctx.mode === 's3') {
-    await putObject(ctx.client, {
-      Bucket: ctx.bucket,
-      Key: chatFolderPrefix(),
-      Body: '',
-      ContentType: 'application/x-directory',
-    });
-    return;
-  }
-  if (!ctx.localRootHandle) throw new Error('Local folder not open');
-  await ctx.localRootHandle.getDirectoryHandle(CHAT_FOLDER, { create: true });
+/**
+ * @param {ChatStorageCtx} ctx
+ */
+function backend(ctx) {
+  return createChatBackend(ctx);
 }
 
 async function readText(ctx, key) {
-  if (ctx.mode === 's3') {
+  return backend(ctx).getText(key);
+}
+
+async function writeTextUnconditional(ctx, key, content, contentType) {
+  const b = backend(ctx);
+  await b.ensureChatFolder();
+  if (ctx.mode === 'local') {
+    return b.putTextIfMatch(key, content, contentType, null);
+  }
+  const meta = await b.headMeta(key);
+  try {
+    return await b.putTextIfMatch(
+      key,
+      content,
+      contentType,
+      meta?.etag || null,
+    );
+  } catch (e) {
+    if (e instanceof ChatPreconditionFailedError) throw e;
+    // Conditional headers unsupported → plain overwrite
+    return b.putTextOverwrite(key, content, contentType);
+  }
+}
+
+/**
+ * Conditional day-file write with merge retry.
+ * @param {ChatStorageCtx} ctx
+ * @param {string} dateStr
+ * @param {(parsed: ReturnType<typeof parseDayFile>) => ReturnType<typeof parseDayFile>} mutator
+ */
+async function mutateDayFile(ctx, dateStr, mutator) {
+  const key = dayFileKey(dateStr);
+  const b = backend(ctx);
+  await b.ensureChatFolder();
+  let lastErr;
+
+  for (let attempt = 0; attempt < MAX_WRITE_RETRIES; attempt++) {
+    const meta = await b.headMeta(key);
+    const raw = (await b.getText(key)) || '';
+    const parsed = parseDayFile(raw);
+    const next = mutator(parsed);
+    const content = serializeDayFile(next.messages, next.deletedAtById);
+    // Avoid no-op puts (also reduces stale-poll races after conflict retries)
+    if (content === raw) {
+      await cacheDay(key, content);
+      return next;
+    }
     try {
-      const { body } = await getObjectBody(ctx.client, ctx.bucket, key);
-      return decodeBody(body);
-    } catch (e) {
-      if (
-        e?.name === 'NoSuchKey' ||
-        e?.$metadata?.httpStatusCode === 404 ||
-        e?.Code === 'NoSuchKey'
-      ) {
-        return null;
+      if (ctx.mode === 'local') {
+        await b.putTextIfMatch(key, content, 'text/markdown; charset=utf-8', null);
+      } else {
+        await b.putTextIfMatch(
+          key,
+          content,
+          'text/markdown; charset=utf-8',
+          meta?.etag || null,
+        );
       }
-      throw e;
+      await cacheDay(key, content);
+      return next;
+    } catch (e) {
+      if (!(e instanceof ChatPreconditionFailedError)) throw e;
+      lastErr = e;
     }
   }
-  try {
-    const handle = await getLocalFileHandleForPath(ctx.localRootHandle, key, {
-      create: false,
-    });
-    const file = await handle.getFile();
-    return await file.text();
-  } catch {
-    return null;
-  }
+  throw lastErr || new ChatPreconditionFailedError('Day file write conflict');
 }
 
-async function writeText(ctx, key, content, contentType = 'text/plain; charset=utf-8') {
-  await ensureChatFolder(ctx);
-  if (ctx.mode === 's3') {
-    // ensure og/ parent marker when writing nested keys
-    if (key.includes('/og/')) {
-      await putObject(ctx.client, {
-        Bucket: ctx.bucket,
-        Key: `${CHAT_FOLDER}/og/`,
-        Body: '',
-      });
+/**
+ * Conditional meta write with retry (last-write-wins on groups union).
+ * @param {ChatStorageCtx} ctx
+ * @param {(meta: { timezone: string, groups: string[] }) => { timezone: string, groups: string[] }} mutator
+ */
+async function mutateMeta(ctx, mutator) {
+  const key = metaKey();
+  const b = backend(ctx);
+  await b.ensureChatFolder();
+  let lastErr;
+
+  for (let attempt = 0; attempt < MAX_WRITE_RETRIES; attempt++) {
+    const fileMeta = await b.headMeta(key);
+    const existing = (await b.getText(key)) || '';
+    const current = readMetaFromRaw(existing);
+    const next = mutator(current);
+    const payload = {
+      timezone: next.timezone || detectTimeZone(),
+      groups: sortGroupsKo(
+        (next.groups || []).filter((g) => g && g !== SELF_GROUP),
+      ),
+    };
+    const content = `${JSON.stringify(payload, null, 2)}\n`;
+    if (content === existing) {
+      return payload;
     }
-    await putObject(ctx.client, {
-      Bucket: ctx.bucket,
-      Key: key,
-      Body: content,
-      ContentType: contentType,
-    });
-    return;
+    try {
+      if (ctx.mode === 'local') {
+        await b.putTextIfMatch(key, content, 'application/json', null);
+      } else {
+        await b.putTextIfMatch(
+          key,
+          content,
+          'application/json',
+          fileMeta?.etag || null,
+        );
+      }
+      return payload;
+    } catch (e) {
+      if (!(e instanceof ChatPreconditionFailedError)) throw e;
+      lastErr = e;
+    }
   }
-  const handle = await getLocalFileHandleForPath(ctx.localRootHandle, key, {
-    create: true,
-  });
-  const writable = await handle.createWritable();
-  try {
-    await writable.write(content);
-  } finally {
-    await writable.close();
-  }
+  throw lastErr || new ChatPreconditionFailedError('Meta write conflict');
 }
 
-export async function readMeta(ctx) {
-  const raw = await readText(ctx, metaKey());
+function readMetaFromRaw(raw) {
   if (!raw) {
     return { timezone: detectTimeZone(), groups: [] };
   }
   try {
     const parsed = JSON.parse(raw);
     return {
-      timezone: typeof parsed.timezone === 'string' ? parsed.timezone : detectTimeZone(),
+      timezone:
+        typeof parsed.timezone === 'string' ? parsed.timezone : detectTimeZone(),
       groups: Array.isArray(parsed.groups)
-        ? parsed.groups.filter((g) => typeof g === 'string' && g.trim() && g !== SELF_GROUP)
+        ? parsed.groups.filter(
+            (g) => typeof g === 'string' && g.trim() && g !== SELF_GROUP,
+          )
         : [],
     };
   } catch {
@@ -122,26 +171,32 @@ export async function readMeta(ctx) {
   }
 }
 
+export async function readMeta(ctx) {
+  const raw = await readText(ctx, metaKey());
+  return readMetaFromRaw(raw);
+}
+
 export function sortGroupsKo(groups) {
   return [...groups].sort((a, b) => a.localeCompare(b, 'ko'));
 }
 
 export async function writeMeta(ctx, meta) {
-  const payload = {
-    timezone: meta.timezone || detectTimeZone(),
-    groups: sortGroupsKo(
-      (meta.groups || []).filter((g) => g && g !== SELF_GROUP),
-    ),
-  };
-  await writeText(ctx, metaKey(), `${JSON.stringify(payload, null, 2)}\n`, 'application/json');
-  return payload;
+  return mutateMeta(ctx, (current) => ({
+    timezone: meta.timezone || current.timezone || detectTimeZone(),
+    // Prefer explicit groups from caller; fall back to freshly read groups on retry
+    groups: meta.groups != null ? meta.groups : current.groups || [],
+  }));
 }
 
 export async function touchTimezone(ctx) {
   const meta = await readMeta(ctx);
   const tz = detectTimeZone();
   if (meta.timezone === tz) return meta;
-  return writeMeta(ctx, { ...meta, timezone: tz });
+  // Only bump timezone; keep concurrent group edits from other devices
+  return mutateMeta(ctx, (current) => ({
+    timezone: tz,
+    groups: current.groups || [],
+  }));
 }
 
 export async function addGroup(ctx, name) {
@@ -149,42 +204,21 @@ export async function addGroup(ctx, name) {
   if (!trimmed || trimmed === SELF_GROUP) {
     throw new Error('Invalid group name');
   }
-  const meta = await readMeta(ctx);
-  if (!meta.groups.includes(trimmed)) {
-    meta.groups.push(trimmed);
-  }
-  meta.timezone = detectTimeZone();
-  await writeMeta(ctx, meta);
-  return sortGroupsKo(meta.groups);
+  const payload = await mutateMeta(ctx, (meta) => {
+    const groups = [...(meta.groups || [])];
+    if (!groups.includes(trimmed)) groups.push(trimmed);
+    return { timezone: detectTimeZone(), groups };
+  });
+  return sortGroupsKo(payload.groups);
 }
 
 export async function listDayKeys(ctx) {
-  const prefix = chatFolderPrefix();
-  if (ctx.mode === 's3') {
-    const contents = await listObjectsV2(ctx.client, ctx.bucket, prefix);
-    return contents
-      .map((c) => c.Key)
-      .filter((k) => k && /^\.chat-with-myself\/\d{4}-\d{2}-\d{2}\.md$/.test(k))
-      .map((k) => k.slice(prefix.length, -3))
-      .sort()
-      .reverse();
-  }
-  try {
-    const dir = await getLocalDirectoryHandleForPath(ctx.localRootHandle, CHAT_FOLDER, {
-      create: false,
-    });
-    const days = [];
-    for await (const [name, handle] of dir.entries()) {
-      if (handle.kind === 'file' && /^\d{4}-\d{2}-\d{2}\.md$/.test(name)) {
-        days.push(name.slice(0, -3));
-      }
-    }
-    return days.sort().reverse();
-  } catch {
-    return [];
-  }
+  return backend(ctx).listDayKeys();
 }
 
+/**
+ * @returns {Promise<import('./format.js').ChatMessage[]>}
+ */
 export async function readDayMessages(ctx, dateStr) {
   const key = dayFileKey(dateStr);
   const cached = await getCachedDay(key);
@@ -192,7 +226,21 @@ export async function readDayMessages(ctx, dateStr) {
   if (content == null && cached?.content) content = cached.content;
   if (content == null) return [];
   await cacheDay(key, content);
-  return parseDayFile(content).map((m) => ({ ...m, dateStr }));
+  return parseDayFile(content).messages.map((m) => ({ ...m, dateStr }));
+}
+
+/**
+ * Full day parse including tombstones (for sync/merge).
+ */
+export async function readDayFileParsed(ctx, dateStr) {
+  const key = dayFileKey(dateStr);
+  const content = (await readText(ctx, key)) || '';
+  const parsed = parseDayFile(content);
+  return {
+    ...parsed,
+    messages: parsed.messages.map((m) => ({ ...m, dateStr })),
+    content,
+  };
 }
 
 export async function appendChatMessage(
@@ -210,7 +258,7 @@ export async function appendChatMessage(
 }
 
 /**
- * Append one or more messages with a single day-file read/write.
+ * Append one or more messages with conditional day-file write.
  * @param {ChatStorageCtx} ctx
  * @param {Array<{ id?: string, body: string, group?: string, source?: string, replyTo?: string, replySnippet?: string, replyGroup?: string, at?: string, tz?: string }>} items
  */
@@ -236,14 +284,16 @@ export async function appendChatMessages(ctx, items = []) {
   }));
 
   try {
-    await ensureChatFolder(ctx);
-    const existing = (await readText(ctx, key)) || '';
-    const next = appendMessagesToContent(existing, msgs);
-    await writeText(ctx, key, next, 'text/markdown; charset=utf-8');
-    await cacheDay(key, next);
+    await mutateDayFile(ctx, dateStr, (parsed) => {
+      const remoteLike = {
+        messages: msgs,
+        deletedIds: [],
+        deletedAtById: {},
+      };
+      return mergeDayMessages(parsed, remoteLike);
+    });
     try {
-      const meta = await readMeta(ctx);
-      if (meta.timezone !== tz) await writeMeta(ctx, { ...meta, timezone: tz });
+      await touchTimezone(ctx);
     } catch {
       /* ignore */
     }
@@ -266,16 +316,29 @@ export async function appendChatMessages(ctx, items = []) {
 }
 
 /**
- * Remove a message from its day file.
- * @returns {Promise<boolean>} true if removed
+ * Remove a message from its day file (adds tombstone).
+ * @returns {Promise<boolean>} true if removed or already tombstoned
  */
 export async function deleteChatMessage(ctx, dateStr, messageId) {
   if (!dateStr || !messageId) return false;
-  const messages = await readDayMessages(ctx, dateStr);
-  const next = messages.filter((m) => m.id !== messageId);
-  if (next.length === messages.length) return false;
-  await writeDayMessages(ctx, dateStr, next);
-  return true;
+  let removed = false;
+  await mutateDayFile(ctx, dateStr, (parsed) => {
+    removed = false;
+    const hadLive = parsed.messages.some((m) => m.id === messageId);
+    const hadTomb = Boolean(parsed.deletedAtById?.[messageId]);
+    if (!hadLive && !hadTomb) return parsed;
+    removed = true;
+    const deletedAtById = {
+      ...(parsed.deletedAtById || {}),
+      [messageId]: new Date().toISOString(),
+    };
+    return {
+      messages: parsed.messages.filter((m) => m.id !== messageId),
+      deletedIds: Object.keys(deletedAtById),
+      deletedAtById,
+    };
+  });
+  return removed;
 }
 
 /**
@@ -285,37 +348,47 @@ export async function deleteChatMessage(ctx, dateStr, messageId) {
  */
 export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
   if (!dateStr || !messageId) return null;
-  const messages = await readDayMessages(ctx, dateStr);
-  const idx = messages.findIndex((m) => m.id === messageId);
-  if (idx < 0) return null;
-  const prev = messages[idx];
-  const nextBody = patch.body !== undefined ? String(patch.body ?? '') : prev.body;
-  const nextGroup = patch.group !== undefined ? patch.group || SELF_GROUP : prev.group;
-  const prevHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
-  const bodyChanged = nextBody !== prev.body;
-  const groupChanged = nextGroup !== (prev.group || SELF_GROUP);
-  const editHistory =
-    bodyChanged || groupChanged
-      ? [
-          ...prevHistory,
-          {
-            at: prev.editedAt || prev.at,
-            body: prev.body,
-            group: prev.group || SELF_GROUP,
-          },
-        ]
-      : prevHistory;
-  const updated = {
-    ...prev,
-    body: nextBody,
-    group: nextGroup,
-    editedAt: new Date().toISOString(),
-    editHistory,
-    dateStr,
-  };
-  const next = messages.slice();
-  next[idx] = updated;
-  await writeDayMessages(ctx, dateStr, next);
+  /** @type {object | null} */
+  let updated = null;
+  await mutateDayFile(ctx, dateStr, (parsed) => {
+    updated = null;
+    const idx = parsed.messages.findIndex((m) => m.id === messageId);
+    if (idx < 0) return parsed;
+    const prev = parsed.messages[idx];
+    const nextBody =
+      patch.body !== undefined ? String(patch.body ?? '') : prev.body;
+    const nextGroup =
+      patch.group !== undefined ? patch.group || SELF_GROUP : prev.group;
+    const prevHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
+    const bodyChanged = nextBody !== prev.body;
+    const groupChanged = nextGroup !== (prev.group || SELF_GROUP);
+    const editHistory =
+      bodyChanged || groupChanged
+        ? [
+            ...prevHistory,
+            {
+              at: prev.editedAt || prev.at,
+              body: prev.body,
+              group: prev.group || SELF_GROUP,
+            },
+          ]
+        : prevHistory;
+    updated = {
+      ...prev,
+      body: nextBody,
+      group: nextGroup,
+      editedAt: new Date().toISOString(),
+      editHistory,
+      dateStr,
+    };
+    const messages = parsed.messages.slice();
+    messages[idx] = updated;
+    return {
+      messages,
+      deletedIds: parsed.deletedIds,
+      deletedAtById: parsed.deletedAtById,
+    };
+  });
   return updated;
 }
 
@@ -347,7 +420,12 @@ export async function readOgArchive(ctx, key) {
 }
 
 export async function writeOgArchive(ctx, key, data) {
-  await writeText(ctx, key, `${JSON.stringify(data, null, 2)}\n`, 'application/json');
+  await writeTextUnconditional(
+    ctx,
+    key,
+    `${JSON.stringify(data, null, 2)}\n`,
+    'application/json',
+  );
 }
 
 export function createOgStorageAdapters(ctx) {
@@ -357,10 +435,61 @@ export function createOgStorageAdapters(ctx) {
   };
 }
 
-/** Rewrite entire day file (e.g. after merges) */
-export async function writeDayMessages(ctx, dateStr, messages) {
-  const key = dayFileKey(dateStr);
-  const content = serializeDayFile(messages);
-  await writeText(ctx, key, content, 'text/markdown; charset=utf-8');
-  await cacheDay(key, content);
+/** Rewrite entire day file (e.g. after merges) — preserves tombstones when provided */
+export async function writeDayMessages(ctx, dateStr, messages, deletedAtById = {}) {
+  await mutateDayFile(ctx, dateStr, (parsed) =>
+    mergeDayMessages(parsed, {
+      messages: messages || [],
+      deletedIds: Object.keys(deletedAtById || {}),
+      deletedAtById: deletedAtById || {},
+    }),
+  );
 }
+
+/**
+ * Flush pending IndexedDB messages with conditional append.
+ * Writes into the original day file when `dateStr`/`dayKey` is known (not always today).
+ * Does not re-queue via appendChatMessages (avoids duplicate pending rows on failure).
+ * @param {ChatStorageCtx} ctx
+ * @param {{ getPendingMessages: () => Promise<any[]>, deletePendingMessage: (id: number) => Promise<void> }} db
+ */
+export async function flushPendingMessages(ctx, db) {
+  const pending = await db.getPendingMessages();
+  if (!pending?.length) return { flushed: 0, dateStrs: [] };
+  let flushed = 0;
+  const dateStrs = new Set();
+  for (const row of pending) {
+    const msg = row.message;
+    if (!msg?.id) {
+      await db.deletePendingMessage(row.id);
+      continue;
+    }
+    const tz = msg.tz || detectTimeZone();
+    let dateStr = row.dateStr || msg.dateStr || '';
+    if (!dateStr && typeof row.dayKey === 'string') {
+      const m = row.dayKey.match(/(\d{4}-\d{2}-\d{2})/);
+      if (m) dateStr = m[1];
+    }
+    if (!dateStr) {
+      dateStr = localDateString(new Date(msg.at || Date.now()), tz);
+    }
+    try {
+      await mutateDayFile(ctx, dateStr, (parsed) =>
+        mergeDayMessages(parsed, {
+          messages: [{ ...msg, dateStr }],
+          deletedIds: [],
+          deletedAtById: {},
+        }),
+      );
+      await db.deletePendingMessage(row.id);
+      flushed += 1;
+      dateStrs.add(dateStr);
+    } catch {
+      /* keep pending */
+    }
+  }
+  return { flushed, dateStrs: [...dateStrs] };
+}
+
+export { ChatPreconditionFailedError, createChatBackend, CHAT_FOLDER };
+export { mergeDayMessages, parseDayFile, serializeDeletedMarker } from './format.js';

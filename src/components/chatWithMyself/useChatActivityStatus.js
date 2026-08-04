@@ -53,10 +53,14 @@ export function useChatActivityStatus({
     const detail = !storageReady
       ? storageMode === 'local'
         ? '로컬 폴더 미연결'
-        : 'S3 미연결'
+        : storageMode === 'webdav'
+          ? 'WebDAV 미연결'
+          : 'S3 미연결'
       : storageMode === 'local'
         ? '로컬 · 준비됨'
-        : 'S3 · 동기화 가능';
+        : storageMode === 'webdav'
+          ? 'WebDAV · 동기화 가능'
+          : 'S3 · 동기화 가능';
 
     addIndicator({
       id: CHAT_ACTIVITY_IDS.sync,

@@ -39,6 +39,7 @@ export {
   sortGroupsKo,
   listDayKeys,
   readDayMessages,
+  readDayFileParsed,
   appendChatMessage,
   appendChatMessages,
   deleteChatMessage,
@@ -47,7 +48,12 @@ export {
   createOgStorageAdapters,
   readOgArchive,
   writeOgArchive,
+  writeDayMessages,
+  flushPendingMessages,
+  createChatBackend,
 } from './storage.js';
+export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from './format.js';
+export { postChatSyncEvent, CHAT_SYNC_CHANNEL, getChatSyncTabId } from './syncChannel.js';
 export { uploadChatImage, chatImagesToMarkdown } from './images.js';
 export {
   uploadChatFile,

@@ -350,6 +350,30 @@ export default function SettingsPage({
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
+              type="button"
+              className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition dark:border-odp-borderStrong dark:hover:bg-odp-focusBg"
+              onClick={async () => {
+                try {
+                  const { createWebdavBackend } = await import('@/utils/storage/webdavBackend.js');
+                  const backend = createWebdavBackend(webdavForm);
+                  if (!backend.isReady()) {
+                    alert('Endpoint와 Username을 입력하세요.');
+                    return;
+                  }
+                  await backend.testConnection();
+                  alert('WebDAV 연결에 성공했습니다.');
+                } catch (e) {
+                  alert(
+                    'WebDAV 연결 실패: ' +
+                      (e?.message || e) +
+                      '\n\n브라우저에서 사용하려면 서버 CORS가 허용되어야 합니다.',
+                  );
+                }
+              }}
+            >
+              연결 테스트
+            </button>
+            <button
               type="submit"
               className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
             >

@@ -38,7 +38,7 @@ export function splitTextWithUrls(text) {
     } else {
       const path = String(tm[2] || '').trim();
       const name = String(tm[3] || path.split('/').filter(Boolean).pop() || 'file')
-        .replace(/[\[\]|]/g, '_')
+        .replace(/[[\]|]/g, '_')
         .trim();
       const sizeNum = tm[4] != null ? Number(tm[4]) : null;
       coarse.push({
