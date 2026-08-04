@@ -106,6 +106,10 @@ export default function ChatWithMyselfPane({
   selectPathAfterCreateFolder,
   onSelectPathAfterCreateFolderApplied,
   getPresignedUrlForPath,
+  onDropOnFolder,
+  dropTarget,
+  onLoadLocalFolderChildren,
+  localFolderLoadingPath = null,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const ctx = useMemo(() => {
@@ -1411,6 +1415,10 @@ export default function ChatWithMyselfPane({
         }}
         onRequestCreateFolder={onRequestCreateFolderForNote}
         onRequestMoveFolder={onRequestMoveFolder}
+        onDropOnFolder={onDropOnFolder}
+        dropTarget={dropTarget}
+        onLoadLocalFolderChildren={onLoadLocalFolderChildren}
+        localFolderLoadingPath={localFolderLoadingPath}
         onConfirm={async (payload) => {
           if (!onCreateNoteFromMessage) return;
           setAddToNoteSubmitting(true);

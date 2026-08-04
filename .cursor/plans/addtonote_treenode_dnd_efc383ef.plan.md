@@ -4,16 +4,16 @@ overview: 「노트로 추가」모달의 로컬 FolderNode를 Sidebar와 동일
 todos:
   - id: treenode-modes
     content: "TreeNode: foldersOnly + folderSelectMode props"
-    status: pending
+    status: completed
   - id: extract-dnd
     content: Extract RootDropZone + treeCollisionDetection to shared treeDnd; update Sidebar imports
-    status: pending
+    status: completed
   - id: modal-tree
     content: Replace FolderNode in ChatAddToNoteModal with DndContext + TreeNode + RootDropZone
-    status: pending
+    status: completed
   - id: app-wiring
     content: Pass onDropOnFolder, dropTarget, onLoadLocalFolderChildren App → Pane → Modal
-    status: pending
+    status: completed
 isProject: false
 ---
 

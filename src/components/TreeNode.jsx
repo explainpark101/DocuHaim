@@ -53,6 +53,8 @@ export default function TreeNode({
   stickyTopOffset = 0,
   isFolderLoading = null,
   activeDragItemIds = null,
+  foldersOnly = false,
+  folderSelectMode = false,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -337,7 +339,13 @@ export default function TreeNode({
     const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey;
 
     if (node.type === 'folder') {
-      if (hasModifier && onSelect) {
+      if (folderSelectMode) {
+        if (onExpandedChange && !isSearching) {
+          onExpandedChange(storageType, node.path, !isOpen);
+        }
+        if (onFolderFocus) onFolderFocus(node);
+        if (onSelect) onSelect(storageType, node, modifiers);
+      } else if (hasModifier && onSelect) {
         onSelect(storageType, node, modifiers);
       } else {
         if (onExpandedChange && !isSearching) {
@@ -642,41 +650,45 @@ export default function TreeNode({
 
       {isOpen &&
         node.type === 'folder' &&
-        node.children?.map((child) => (
-          <TreeNode
-            key={child.path}
-            node={child}
-            level={level + 1}
-            onSelect={onSelect}
-            onCreateFile={onCreateFile}
-            onCreateFolder={onCreateFolder}
-            onRequestMoveFolder={onRequestMoveFolder}
-            onDelete={onDelete}
-            selectedIds={selectedIds}
-            storageType={storageType}
-            currentFile={currentFile}
-            onRename={onRename}
-            deletingFolderPath={deletingFolderPath}
-            isDeletingFolder={isDeletingFolder}
-            isSearching={isSearching}
-            expandedPaths={expandedPaths}
-            onExpandedChange={onExpandedChange}
-            onFolderFocus={onFolderFocus}
-            focusedFolderPath={focusedFolderPath}
-            onDropOnFolder={onDropOnFolder}
-            dropTarget={dropTarget}
-            rootDropNode={rootDropNode}
-            onOpenContextMenu={onOpenContextMenu}
-            onActivate={onActivate}
-            renameTarget={renameTarget}
-            onClearRenameTarget={onClearRenameTarget}
-            recordingBasePathSet={recordingBasePathSet}
-            stickyFoldersEnabled={stickyFoldersEnabled}
-            stickyTopOffset={stickyTopOffset}
-            isFolderLoading={isFolderLoading}
-            activeDragItemIds={activeDragItemIds}
-          />
-        ))}
+        node.children
+          ?.filter((child) => !foldersOnly || child.type === 'folder')
+          .map((child) => (
+            <TreeNode
+              key={child.path}
+              node={child}
+              level={level + 1}
+              onSelect={onSelect}
+              onCreateFile={onCreateFile}
+              onCreateFolder={onCreateFolder}
+              onRequestMoveFolder={onRequestMoveFolder}
+              onDelete={onDelete}
+              selectedIds={selectedIds}
+              storageType={storageType}
+              currentFile={currentFile}
+              onRename={onRename}
+              deletingFolderPath={deletingFolderPath}
+              isDeletingFolder={isDeletingFolder}
+              isSearching={isSearching}
+              expandedPaths={expandedPaths}
+              onExpandedChange={onExpandedChange}
+              onFolderFocus={onFolderFocus}
+              focusedFolderPath={focusedFolderPath}
+              onDropOnFolder={onDropOnFolder}
+              dropTarget={dropTarget}
+              rootDropNode={rootDropNode}
+              onOpenContextMenu={onOpenContextMenu}
+              onActivate={onActivate}
+              renameTarget={renameTarget}
+              onClearRenameTarget={onClearRenameTarget}
+              recordingBasePathSet={recordingBasePathSet}
+              stickyFoldersEnabled={stickyFoldersEnabled}
+              stickyTopOffset={stickyTopOffset}
+              isFolderLoading={isFolderLoading}
+              activeDragItemIds={activeDragItemIds}
+              foldersOnly={foldersOnly}
+              folderSelectMode={folderSelectMode}
+            />
+          ))}
     </div>
   );
 }

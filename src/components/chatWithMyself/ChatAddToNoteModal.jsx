@@ -1,12 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 import Modal from '@/components/modals/Modal';
-import { IconFolder, IconFolderPlus } from '@/components/icons';
+import TreeNode from '@/components/TreeNode';
+import {
+  RootDropZone,
+  TreeDragOverlayPreview,
+  treeCollisionDetection,
+} from '@/components/treeDnd';
+import { IconFolderPlus } from '@/components/icons';
 import { FolderInput } from 'lucide-react';
 import { findNodeByPath } from '@/utils/s3Tree';
+import {
+  resolveDragItems,
+  parseDroppableId,
+  toTreeSelectKey,
+} from '@/utils/treeMove';
 import {
   detectTimeZone,
   formatMessageFileNameBase,
 } from '@/utils/chatWithMyself';
+
+const EMPTY_SELECTED_IDS = new Set();
 
 function getAncestorPathsToExpand(path) {
   if (!path || path === '') return [];
@@ -19,73 +39,6 @@ function getAncestorPathsToExpand(path) {
     result.push(acc);
   }
   return result;
-}
-
-function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, selectedRowRef }) {
-  if (node.type !== 'folder') return null;
-
-  const mustBeOpen = expandedPaths?.has(node.path);
-  const [userOpen, setUserOpen] = useState(true);
-  const isOpen = mustBeOpen === true ? true : userOpen;
-  const paddingLeft = `${level * 12 + 8}px`;
-  const isSelected = selectedPath === node.path;
-
-  const rowRef = (el) => {
-    if (isSelected && selectedRowRef && el) {
-      selectedRowRef.current = el;
-    }
-  };
-
-  return (
-    <div>
-      <div
-        ref={rowRef}
-        className={`flex items-center justify-between py-1 pr-2 cursor-pointer text-sm ${
-          isSelected
-            ? 'bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong'
-            : 'text-gray-700 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-bgSoft'
-        }`}
-        style={{ paddingLeft }}
-        onClick={() => {
-          if (mustBeOpen === true) return;
-          setUserOpen((prev) => !prev);
-        }}
-      >
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
-            {isOpen ? '▾' : '▸'}
-          </span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(node);
-            }}
-            className="flex items-center gap-1 min-w-0 flex-1 text-left"
-          >
-            <span className="text-gray-500 dark:text-gray-300 shrink-0">
-              <IconFolder size={14} />
-            </span>
-            <span className="truncate min-w-0">{node.name || '/'}</span>
-          </button>
-        </div>
-      </div>
-      {isOpen &&
-        node.children?.map((child) =>
-          child.type === 'folder' ? (
-            <FolderNode
-              key={child.path}
-              node={child}
-              level={level + 1}
-              onSelect={onSelect}
-              selectedPath={selectedPath}
-              expandedPaths={expandedPaths}
-              selectedRowRef={selectedRowRef}
-            />
-          ) : null,
-        )}
-    </div>
-  );
 }
 
 /**
@@ -106,6 +59,10 @@ export default function ChatAddToNoteModal({
   selectPathAfterCreate,
   onSelectPathAfterCreateApplied,
   isSubmitting = false,
+  onDropOnFolder,
+  dropTarget,
+  onLoadLocalFolderChildren,
+  localFolderLoadingPath = null,
 }) {
   const isS3 = storageType === 's3';
   const tree = isS3 ? s3Tree : localTree;
@@ -119,9 +76,17 @@ export default function ChatAddToNoteModal({
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [error, setError] = useState('');
+  const [expandedPaths, setExpandedPaths] = useState(() => new Set());
+  const [activeDragItems, setActiveDragItems] = useState(null);
   const hasInitializedRef = useRef(false);
-  const selectedRowRef = useRef(null);
+  const activeDragItemsRef = useRef(null);
   const scrollContainerRef = useRef(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -132,6 +97,7 @@ export default function ChatAddToNoteModal({
     setError('');
     setSelectedRoot(true);
     setSelectedFolder(null);
+    setExpandedPaths(new Set());
     hasInitializedRef.current = false;
   }, [isOpen, message?.id]);
 
@@ -143,6 +109,7 @@ export default function ChatAddToNoteModal({
       if (node && node.type === 'folder') {
         setSelectedFolder(node);
         setSelectedRoot(false);
+        setExpandedPaths(new Set(getAncestorPathsToExpand(selectPathAfterCreate)));
         onSelectPathAfterCreateApplied?.();
       }
       hasInitializedRef.current = true;
@@ -160,24 +127,164 @@ export default function ChatAddToNoteModal({
     if (node && node.type === 'folder') {
       setSelectedFolder(node);
       setSelectedRoot(false);
+      setExpandedPaths((prev) => {
+        const next = new Set(prev);
+        getAncestorPathsToExpand(selectPathAfterCreate).forEach((p) => next.add(p));
+        return next;
+      });
       onSelectPathAfterCreateApplied?.();
     }
   }, [selectPathAfterCreate, tree, isOpen, onSelectPathAfterCreateApplied]);
-
-  const pathToExpand = selectPathAfterCreate || selectedFolder?.path;
-  const expandedPaths = pathToExpand
-    ? new Set(getAncestorPathsToExpand(pathToExpand))
-    : null;
 
   useEffect(() => {
     if (!selectedFolder || !scrollContainerRef.current) return;
     const timer = setTimeout(() => {
       requestAnimationFrame(() => {
-        selectedRowRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+        const rows = scrollContainerRef.current?.querySelectorAll('[data-tree-node-row]');
+        if (!rows?.length) return;
+        for (const row of rows) {
+          if (row.classList.contains('bg-blue-50')) {
+            row.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+            break;
+          }
+        }
       });
     }, 280);
     return () => clearTimeout(timer);
   }, [selectedFolder?.path, isOpen]);
+
+  const selectedIds = useMemo(() => {
+    if (selectedRoot || !selectedFolder?.path) return EMPTY_SELECTED_IDS;
+    return new Set([toTreeSelectKey(storageType, selectedFolder.path)]);
+  }, [selectedRoot, selectedFolder?.path, storageType]);
+
+  const activeDragItemIds = useMemo(() => {
+    if (!activeDragItems?.length) return null;
+    return new Set(activeDragItems.map((item) => toTreeSelectKey(item.storageType, item.path)));
+  }, [activeDragItems]);
+
+  const findTreeNode = useCallback(
+    (type, path) => {
+      if (path === '') {
+        return {
+          path: '',
+          type: 'folder',
+          name: 'root',
+          handle: type === 'local' ? localRootHandle : null,
+        };
+      }
+      const source = type === 's3' ? s3Tree : localTree;
+      return findNodeByPath(source, path);
+    },
+    [s3Tree, localTree, localRootHandle],
+  );
+
+  const resolveDropTargetNode = useCallback(
+    (type, path) => {
+      const node = findTreeNode(type, path);
+      if (!node) return null;
+      if (node.type === 'folder') return node;
+      if (path === '' || (type === 'local' && path === '' && localRootHandle)) {
+        return {
+          path: '',
+          type: 'folder',
+          name: 'root',
+          handle: type === 'local' ? localRootHandle : null,
+        };
+      }
+      return node;
+    },
+    [findTreeNode, localRootHandle],
+  );
+
+  const handleExpandedChange = useCallback(
+    (_type, path, isOpenNext) => {
+      setExpandedPaths((prev) => {
+        const next = new Set(prev);
+        if (isOpenNext) next.add(path);
+        else next.delete(path);
+        return next;
+      });
+
+      if (storageType === 'local' && isOpenNext && onLoadLocalFolderChildren) {
+        const node = findNodeByPath(localTree, path);
+        if (node?.type === 'folder' && node.childrenLoaded !== true) {
+          void onLoadLocalFolderChildren(node);
+        }
+      }
+    },
+    [storageType, localTree, onLoadLocalFolderChildren],
+  );
+
+  const handleSelectFolder = useCallback(
+    (_type, node) => {
+      if (!node || node.type !== 'folder') return;
+      setSelectedRoot(false);
+      setSelectedFolder(node);
+    },
+    [],
+  );
+
+  const handleDndDragStart = useCallback(
+    (event) => {
+      const activeId = String(event.active.id);
+      const items = resolveDragItems(activeId, selectedIds, findTreeNode);
+      activeDragItemsRef.current = items;
+      setActiveDragItems(items);
+    },
+    [selectedIds, findTreeNode],
+  );
+
+  const handleDndDragOver = useCallback(
+    (event) => {
+      const { over } = event;
+      if (!over) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+      const parsed = parseDroppableId(String(over.id));
+      if (!parsed) return;
+      const targetNode = resolveDropTargetNode(parsed.storageType, parsed.path);
+      if (!targetNode) return;
+      onDropOnFolder?.(targetNode, parsed.storageType, 'dragOver');
+    },
+    [onDropOnFolder, resolveDropTargetNode],
+  );
+
+  const handleDndDragEnd = useCallback(
+    (event) => {
+      const { over } = event;
+      const items = activeDragItemsRef.current;
+      activeDragItemsRef.current = null;
+      setActiveDragItems(null);
+
+      if (!over || !items?.length) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      const parsed = parseDroppableId(String(over.id));
+      if (!parsed) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      const targetNode = resolveDropTargetNode(parsed.storageType, parsed.path);
+      if (!targetNode) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      onDropOnFolder?.(targetNode, parsed.storageType, 'drop', { items });
+    },
+    [onDropOnFolder, resolveDropTargetNode],
+  );
+
+  const handleDndDragCancel = useCallback(() => {
+    activeDragItemsRef.current = null;
+    setActiveDragItems(null);
+    onDropOnFolder?.(null, null, 'dragLeave');
+  }, [onDropOnFolder]);
 
   if (!isOpen || !message) return null;
 
@@ -211,6 +318,8 @@ export default function ChatAddToNoteModal({
     }
   };
 
+  const folderRoots = (tree || []).filter((n) => n.type === 'folder');
+
   return (
     <Modal isOpen={isOpen}>
       <div className="flex max-h-[90vh] flex-col gap-4 p-6">
@@ -218,7 +327,7 @@ export default function ChatAddToNoteModal({
           노트로 추가
         </h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted">
-          폴더를 선택한 뒤 노트를 생성합니다. 새 폴더 만들기·폴더 이동도 가능합니다.
+          폴더를 선택한 뒤 노트를 생성합니다. 새 폴더 만들기·폴더 이동·드래그 앤 드롭도 가능합니다.
         </p>
 
         <label className="block space-y-1">
@@ -270,48 +379,65 @@ export default function ChatAddToNoteModal({
             ) : null}
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedRoot(true);
-              setSelectedFolder(null);
-            }}
-            className={`flex items-center gap-2 border-b border-gray-100 px-3 py-2 text-left dark:border-odp-borderSoft ${
-              selectedRoot
-                ? 'bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong'
-                : 'text-gray-700 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-bgSoft'
-            }`}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={treeCollisionDetection}
+            onDragStart={handleDndDragStart}
+            onDragOver={handleDndDragOver}
+            onDragEnd={handleDndDragEnd}
+            onDragCancel={handleDndDragCancel}
+            autoScroll
           >
-            <IconFolder size={14} />
-            <span className="truncate">
-              {isS3 ? '루트 (버킷 최상위)' : '루트 폴더'}
-            </span>
-          </button>
-
-          <div ref={scrollContainerRef} className="flex-1 overflow-auto py-1">
-            {tree && tree.length > 0 ? (
-              tree
-                .filter((n) => n.type === 'folder')
-                .map((node) => (
-                  <FolderNode
+            <div ref={scrollContainerRef} className="flex-1 overflow-auto py-1">
+              <RootDropZone
+                storageType={storageType}
+                localRootHandle={localRootHandle}
+                onDropOnFolder={onDropOnFolder}
+                dropTarget={dropTarget}
+                isSelected={selectedRoot}
+                onFocusRoot={() => {
+                  setSelectedRoot(true);
+                  setSelectedFolder(null);
+                }}
+              />
+              {folderRoots.length > 0 ? (
+                folderRoots.map((node) => (
+                  <TreeNode
                     key={node.path}
                     node={node}
                     level={0}
-                    onSelect={(n) => {
-                      setSelectedRoot(false);
-                      setSelectedFolder(n);
+                    rootDropNode={{
+                      path: '',
+                      type: 'folder',
+                      handle: isS3 ? null : localRootHandle,
                     }}
-                    selectedPath={!selectedRoot ? selectedFolder?.path : null}
+                    onSelect={handleSelectFolder}
+                    storageType={storageType}
+                    selectedIds={selectedIds}
+                    onRequestMoveFolder={onRequestMoveFolder}
                     expandedPaths={expandedPaths}
-                    selectedRowRef={selectedRowRef}
+                    onExpandedChange={handleExpandedChange}
+                    onDropOnFolder={onDropOnFolder}
+                    dropTarget={dropTarget}
+                    activeDragItemIds={activeDragItemIds}
+                    stickyFoldersEnabled={false}
+                    foldersOnly
+                    folderSelectMode
+                    isFolderLoading={localFolderLoadingPath}
                   />
                 ))
-            ) : (
-              <div className="px-3 py-4 text-xs text-gray-400 dark:text-odp-muted">
-                사용할 수 있는 폴더가 없습니다.
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="px-3 py-4 text-xs text-gray-400 dark:text-odp-muted">
+                  사용할 수 있는 폴더가 없습니다.
+                </div>
+              )}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeDragItems?.length ? (
+                <TreeDragOverlayPreview items={activeDragItems} />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </div>
 
         {error ? (

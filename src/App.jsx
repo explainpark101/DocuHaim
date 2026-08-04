@@ -4118,6 +4118,10 @@ function MainApp() {
                   onRequestMoveFolder={handleRequestMoveFolder}
                   onCreateNoteFromMessage={handleCreateNoteFromChatMessage}
                   getPresignedUrlForPath={getChatImageUrlForPath}
+                  onDropOnFolder={handleDropOnFolder}
+                  dropTarget={dropTarget}
+                  onLoadLocalFolderChildren={loadLocalFolderChildren}
+                  localFolderLoadingPath={localFolderLoadingPath}
                 />
               }
             />
