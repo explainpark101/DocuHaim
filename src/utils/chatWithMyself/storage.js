@@ -342,6 +342,38 @@ export async function deleteChatMessage(ctx, dateStr, messageId) {
 }
 
 /**
+ * Patch message metadata without creating edit history (pin, note link, etc.).
+ * @returns {Promise<object | null>}
+ */
+export async function patchChatMessageMeta(ctx, dateStr, messageId, fields = {}) {
+  if (!dateStr || !messageId) return null;
+  /** @type {object | null} */
+  let updated = null;
+  await mutateDayFile(ctx, dateStr, (parsed) => {
+    updated = null;
+    const idx = parsed.messages.findIndex((m) => m.id === messageId);
+    if (idx < 0) return parsed;
+    const prev = parsed.messages[idx];
+    const next = { ...prev, dateStr };
+    if (fields.pinnedAt !== undefined) {
+      next.pinnedAt = fields.pinnedAt ? String(fields.pinnedAt) : '';
+    }
+    if (fields.notePath !== undefined) {
+      next.notePath = fields.notePath ? String(fields.notePath) : '';
+    }
+    updated = next;
+    const messages = parsed.messages.slice();
+    messages[idx] = next;
+    return {
+      messages,
+      deletedIds: parsed.deletedIds,
+      deletedAtById: parsed.deletedAtById,
+    };
+  });
+  return updated;
+}
+
+/**
  * Update an existing message body/group in its day file.
  * Preserves original `at`; sets `editedAt`.
  * @returns {Promise<object | null>} updated message or null

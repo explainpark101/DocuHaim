@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, Form } from 'radix-ui';
 import {
   chatDialogContentClass,
@@ -16,6 +16,7 @@ export default function ChatAddGroupDialog({
   title = '그룹 추가',
 }) {
   const [name, setName] = useState('');
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (open) setName('');
@@ -40,7 +41,14 @@ export default function ChatAddGroupDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={chatDialogOverlayClass} />
-        <Dialog.Content className={chatDialogContentClass} aria-describedby={undefined}>
+        <Dialog.Content
+          className={chatDialogContentClass}
+          aria-describedby={undefined}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            inputRef.current?.focus();
+          }}
+        >
           <Dialog.Title className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
             {title}
           </Dialog.Title>
@@ -49,7 +57,7 @@ export default function ChatAddGroupDialog({
               <Form.Label className="text-[11px] text-gray-500">그룹명</Form.Label>
               <Form.Control asChild>
                 <input
-                  autoFocus
+                  ref={inputRef}
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}

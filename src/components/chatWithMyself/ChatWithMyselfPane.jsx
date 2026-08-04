@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Menu,
   MessageCircleMore,
+  Pin,
   RefreshCw,
   Search,
   Settings,
@@ -16,6 +17,8 @@ import ChatGroupPanel from '@/components/chatWithMyself/ChatGroupPanel';
 import ChatMessageList from '@/components/chatWithMyself/ChatMessageList';
 import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
 import ChatSearchPanel from '@/components/chatWithMyself/ChatSearchPanel';
+import ChatPinnedPanel from '@/components/chatWithMyself/ChatPinnedPanel';
+import ChatShareGroupSendModal from '@/components/chatWithMyself/ChatShareGroupSendModal';
 import ChatAddToNoteModal from '@/components/chatWithMyself/ChatAddToNoteModal';
 import ChatEditHistoryModal from '@/components/chatWithMyself/ChatEditHistoryModal';
 import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
@@ -31,12 +34,15 @@ import {
   SELF_GROUP,
   addGroup,
   appendChatMessages,
+  appendChatMessage,
   createOgStorageAdapters,
   deleteChatMessage,
   deleteChatAttachment,
   updateChatMessage,
+  patchChatMessageMeta,
   uploadChatAttachment,
   chatAttachmentsToMarkdown,
+  extractChatBodyAttachments,
   detectTimeZone,
   findMessageById,
   listDayKeys,
@@ -91,6 +97,15 @@ async function matchesFilters(msg, dateStr, filters, ogStorage) {
     if (fuzzyMatchText(body, filters.query) || fuzzyMatchText(group, filters.query)) {
       return { ok: true, ogSearchText: '' };
     }
+    const { attachments } = extractChatBodyAttachments(body);
+    for (const att of attachments) {
+      if (
+        fuzzyMatchText(att.name || '', filters.query) ||
+        fuzzyMatchText(att.path || '', filters.query)
+      ) {
+        return { ok: true, ogSearchText: '' };
+      }
+    }
     const ogSearchText = await loadMessageOgSearchText(msg, ogStorage);
     if (fuzzyMatchText(ogSearchText, filters.query)) {
       return { ok: true, ogSearchText };
@@ -125,8 +140,9 @@ export default function ChatWithMyselfPane({
   dropTarget,
   onLoadLocalFolderChildren,
   localFolderLoadingPath = null,
-  shareComposerSeed = null,
-  onShareComposerSeedConsumed,
+  shareGroupSend = null,
+  onShareGroupSendConsumed,
+  onOpenNote,
 }) {
   const ctx = useMemo(() => {
     if (storageMode === 'local') {
@@ -190,6 +206,9 @@ export default function ChatWithMyselfPane({
   const [searchOpen, setSearchOpen] = useState(() =>
     getChatRailOpen('search', { isMobileLayout }),
   );
+  const [pinnedOpen, setPinnedOpen] = useState(() =>
+    getChatRailOpen('pinned', { isMobileLayout }),
+  );
   const [dateOpen, setDateOpen] = useState(() =>
     getChatRailOpen('date', { isMobileLayout }),
   );
@@ -217,7 +236,11 @@ export default function ChatWithMyselfPane({
   const [deletingCount, setDeletingCount] = useState(0);
   const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
   const [composerSeed, setComposerSeed] = useState(null);
+  const [shareGroupModal, setShareGroupModal] = useState(null);
+  const [pinnedResults, setPinnedResults] = useState([]);
+  const [pinnedLoading, setPinnedLoading] = useState(false);
   const searchDayKeysRef = useRef([]);
+  const pinnedDayKeysRef = useRef([]);
   const messagesRef = useRef(messages);
   const dayKeysRef = useRef(dayKeys);
   const loadedDayIndexRef = useRef(loadedDayIndex);
@@ -253,7 +276,8 @@ export default function ChatWithMyselfPane({
     writeChatRailOpenPref('group', groupOpen);
     writeChatRailOpenPref('date', dateOpen);
     writeChatRailOpenPref('search', searchOpen);
-  }, [isMobileLayout, groupOpen, dateOpen, searchOpen]);
+    writeChatRailOpenPref('pinned', pinnedOpen);
+  }, [isMobileLayout, groupOpen, dateOpen, searchOpen, pinnedOpen]);
 
   // Restore compose draft group / reply target (body+images restored in ChatComposer).
   useEffect(() => {
@@ -540,13 +564,13 @@ export default function ChatWithMyselfPane({
     syncApiRef,
   });
 
-  // Apply share-target compose seed from App-level ShareTargetGate.
+  // Apply share-target group-send modal from App-level ShareTargetGate.
   useEffect(() => {
-    if (!shareComposerSeed?.id || shareComposerSeed.body == null) return;
+    if (!shareGroupSend?.id || shareGroupSend.body == null) return;
     setEditTarget(null);
-    setComposerSeed(shareComposerSeed);
-    onShareComposerSeedConsumed?.();
-  }, [shareComposerSeed, onShareComposerSeedConsumed]);
+    setShareGroupModal(shareGroupSend);
+    onShareGroupSendConsumed?.();
+  }, [shareGroupSend, onShareGroupSendConsumed]);
 
   const handleLoadOlder = useCallback(async () => {
     if (!storageReady || loadingOlder || loadedDayIndex >= dayKeys.length) return;
@@ -651,6 +675,24 @@ export default function ChatWithMyselfPane({
     },
     [storageReady, ctx, scrollToDayFirstMessage],
   );
+
+  // Deep-link to a message via /chat#msg-{id}
+  useEffect(() => {
+    if (!storageReady) return undefined;
+    const scrollToHash = () => {
+      const match = window.location.hash.match(/^#msg-(.+)$/);
+      if (!match?.[1]) return;
+      const messageId = match[1];
+      void (async () => {
+        const hit = await findMessageById(ctx, messageId);
+        if (!hit?.msg) return;
+        await jumpToDate(hit.dateStr, messageId);
+      })();
+    };
+    scrollToHash();
+    window.addEventListener('hashchange', scrollToHash);
+    return () => window.removeEventListener('hashchange', scrollToHash);
+  }, [storageReady, ctx, jumpToDate]);
 
   const confirmPendingMessages = useCallback((msgs, dateStr) => {
     if (!msgs?.length || !dateStr) return;
@@ -1059,6 +1101,97 @@ export default function ChatWithMyselfPane({
     [ctx, noteLocalMetaWrite],
   );
 
+  const handleTogglePin = useCallback(
+    async (message) => {
+      if (!storageReady || !message?.id) return;
+      const dateStr =
+        message.dateStr || localDateString(new Date(message.at), detectTimeZone());
+      const nextPinnedAt = message.pinnedAt ? '' : new Date().toISOString();
+      try {
+        const updated = await patchChatMessageMeta(ctx, dateStr, message.id, {
+          pinnedAt: nextPinnedAt,
+        });
+        if (!updated) {
+          setError('메시지를 찾지 못했습니다.');
+          return;
+        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === message.id ? { ...m, ...updated, dateStr } : m,
+          ),
+        );
+        setPinnedResults((prev) => {
+          if (!nextPinnedAt) {
+            return prev.filter((m) => m.id !== message.id);
+          }
+          const next = prev.filter((m) => m.id !== message.id);
+          return [{ ...updated, dateStr }, ...next];
+        });
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+      } catch (e) {
+        setError(e?.message || '고정 변경 실패');
+      }
+    },
+    [storageReady, ctx, noteLocalDayWrite],
+  );
+
+  const runPinnedScan = useCallback(async () => {
+    if (!storageReady) return;
+    setPinnedLoading(true);
+    pinnedDayKeysRef.current = [];
+    try {
+      const keys = await listDayKeys(ctx);
+      pinnedDayKeysRef.current = keys;
+      const found = [];
+      for (const dateStr of keys) {
+        const msgs = await readDayMessages(ctx, dateStr);
+        for (const msg of msgs) {
+          if (msg.pinnedAt) found.push({ ...msg, dateStr });
+        }
+      }
+      found.sort(
+        (a, b) =>
+          (Date.parse(b.pinnedAt || b.at) || 0) -
+          (Date.parse(a.pinnedAt || a.at) || 0),
+      );
+      setPinnedResults(found);
+    } finally {
+      setPinnedLoading(false);
+    }
+  }, [storageReady, ctx]);
+
+  useEffect(() => {
+    if (!pinnedOpen || !storageReady) return;
+    void runPinnedScan();
+  }, [pinnedOpen, storageReady, runPinnedScan]);
+
+  const handleShareGroupSend = useCallback(
+    async (body, group) => {
+      if (!storageReady) throw new Error(storageSendErrorHint);
+      const trimmed = String(body || '').trim();
+      if (!trimmed) return;
+      const { dateStr } = await appendChatMessage(ctx, {
+        body: trimmed,
+        group: group || SELF_GROUP,
+        source: 'share',
+      });
+      if (dateStr) {
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+        const msgs = await readDayMessages(ctx, dateStr);
+        setMessages(msgs);
+        setDayKeys((prev) =>
+          prev.includes(dateStr) ? prev : [dateStr, ...prev].sort().reverse(),
+        );
+        setWindowNewestIndex(0);
+        setLoadedDayIndex(1);
+      }
+      setShareGroupModal(null);
+    },
+    [storageReady, ctx, storageSendErrorHint, noteLocalDayWrite],
+  );
+
   const runSearchScan = useCallback(
     async (filters, fromIndex, accumulate) => {
       if (!storageReady) return { results: accumulate, nextIndex: fromIndex, hasMore: false };
@@ -1173,11 +1306,24 @@ export default function ChatWithMyselfPane({
     onLoadMore: handleSearchLoadMore,
     onSelectResult: handleSelectResult,
     timeZone,
+    getPresignedUrl: getPresignedUrlForPath,
+  };
+
+  const pinnedPanelProps = {
+    results: pinnedResults,
+    loading: pinnedLoading,
+    onSelectResult: handleSelectResult,
+    onUnpin: handleTogglePin,
+    timeZone,
+    getPresignedUrl: getPresignedUrlForPath,
   };
 
   const desktopResizableCount = Math.max(
     1,
-    (groupOpen ? 1 : 0) + (dateOpen ? 1 : 0) + (searchOpen ? 1 : 0),
+    (groupOpen ? 1 : 0) +
+      (dateOpen ? 1 : 0) +
+      (searchOpen ? 1 : 0) +
+      (pinnedOpen ? 1 : 0),
   );
 
   return (
@@ -1275,6 +1421,16 @@ export default function ChatWithMyselfPane({
         >
           <Search size={18} />
         </button>
+        <button
+          type="button"
+          onClick={() => setPinnedOpen((v) => !v)}
+          className={toolbarBtnClass(pinnedOpen)}
+          aria-label="고정 메시지"
+          title="고정 메시지"
+          aria-pressed={pinnedOpen}
+        >
+          <Pin size={18} />
+        </button>
       </div>
 
       {error ? (
@@ -1307,6 +1463,8 @@ export default function ChatWithMyselfPane({
               onEdit={handleEdit}
               onAddToNote={setAddToNoteMessage}
               onViewEditHistory={setHistoryMessage}
+              onTogglePin={handleTogglePin}
+              onOpenNote={onOpenNote}
               onOpenReplyTarget={handleOpenReplyTarget}
               getPresignedUrl={getPresignedUrlForPath}
               emptyHint={
@@ -1315,7 +1473,7 @@ export default function ChatWithMyselfPane({
                   : undefined
               }
             />
-            <div className="w-full max-h-[min(45%,280px)] shrink-0 overflow-y-auto border-t-2 border-gray-300 bg-slate-100 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)]">
+            <div className="w-full max-h-[min(45%,280px)] shrink-0 overflow-y-auto border-t-2 border-gray-300 bg-slate-100 pb-7 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] md:pb-8">
               <div className="mx-auto w-full max-w-full p-2 md:max-w-[min(100%,50vw)] md:p-3">
                 <div className="rounded-xl border border-gray-300 bg-white p-2 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:p-3">
                   <ChatComposer
@@ -1428,6 +1586,32 @@ export default function ChatWithMyselfPane({
                   </motion.div>
                 ) : null}
               </AnimatePresence>
+              <AnimatePresence initial={false}>
+                {pinnedOpen ? (
+                  <motion.div
+                    key="desktop-pinned"
+                    className="flex h-full min-h-0"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 16 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <ChatRailShell
+                      storageKey="s3haim_chat_pinned_rail_width"
+                      defaultWidth={300}
+                      reservedAside={0}
+                      openResizableCount={desktopResizableCount}
+                      label="고정 메시지 사이드바 너비 조절"
+                    >
+                      <ChatPinnedPanel
+                        open
+                        onClose={() => setPinnedOpen(false)}
+                        {...pinnedPanelProps}
+                      />
+                    </ChatRailShell>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </>
           ) : (
             <>
@@ -1475,6 +1659,19 @@ export default function ChatWithMyselfPane({
                   {...searchPanelProps}
                 />
               </ChatMobileDrawer>
+              <ChatMobileDrawer
+                open={pinnedOpen}
+                onClose={() => setPinnedOpen(false)}
+                width="100%"
+                zClass="z-[80]"
+                label="고정 메시지"
+              >
+                <ChatPinnedPanel
+                  open
+                  onClose={() => setPinnedOpen(false)}
+                  {...pinnedPanelProps}
+                />
+              </ChatMobileDrawer>
             </>
           )}
         </div>
@@ -1504,12 +1701,27 @@ export default function ChatWithMyselfPane({
           if (!onCreateNoteFromMessage) return;
           setAddToNoteSubmitting(true);
           try {
-            await onCreateNoteFromMessage(payload);
+            const notePath = await onCreateNoteFromMessage(payload);
+            if (notePath && payload?.message?.id) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === payload.message.id ? { ...m, notePath } : m,
+                ),
+              );
+            }
             setAddToNoteMessage(null);
           } finally {
             setAddToNoteSubmitting(false);
           }
         }}
+      />
+      <ChatShareGroupSendModal
+        isOpen={Boolean(shareGroupModal?.body)}
+        body={shareGroupModal?.body || ''}
+        groups={groups}
+        onAddGroup={handleAddGroup}
+        onSend={handleShareGroupSend}
+        onClose={() => setShareGroupModal(null)}
       />
       <ChatComposerSettingsModal
         open={composerSettingsOpen}

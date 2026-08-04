@@ -7,6 +7,7 @@ export const CHAT_PREF_KEYS = {
   railGroupOpen: `${CHAT_PREF_PREFIX}rail_group_open`,
   railDateOpen: `${CHAT_PREF_PREFIX}rail_date_open`,
   railSearchOpen: `${CHAT_PREF_PREFIX}rail_search_open`,
+  railPinnedOpen: `${CHAT_PREF_PREFIX}rail_pinned_open`,
 };
 
 function readBoolPref(key) {
@@ -72,12 +73,13 @@ export function getComposerLineNumbersVisible() {
   return readComposerLineNumbersPref() === true;
 }
 
-/** @typedef {'group'|'date'|'search'} ChatRailId */
+/** @typedef {'group'|'date'|'search'|'pinned'} ChatRailId */
 
 const RAIL_OPEN_KEYS = {
   group: CHAT_PREF_KEYS.railGroupOpen,
   date: CHAT_PREF_KEYS.railDateOpen,
   search: CHAT_PREF_KEYS.railSearchOpen,
+  pinned: CHAT_PREF_KEYS.railPinnedOpen,
 };
 
 /** Stored rail open preference, or null if unset. */

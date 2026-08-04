@@ -6,6 +6,7 @@ import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
+import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import { chatFieldInputClass } from '@/components/chatWithMyself/ui/chatUiStyles';
 import {
   SELF_GROUP,
@@ -14,14 +15,21 @@ import {
   detectTimeZone,
   sortGroupsKo,
   renderSearchResultHtml,
+  extractChatBodyAttachments,
 } from '@/utils/chatWithMyself';
 
-function SearchResultCard({ result, query, timeZone, onSelect }) {
+function SearchResultCard({ result, query, timeZone, onSelect, getPresignedUrl }) {
+  const { text, attachments } = useMemo(
+    () => extractChatBodyAttachments(result.body || ''),
+    [result.body],
+  );
+  const previewSource = text.trim() || result.body || '';
   const html = useMemo(
-    () => renderSearchResultHtml(result.body, query, result.ogSearchText || ''),
-    [result.body, result.ogSearchText, query],
+    () => renderSearchResultHtml(previewSource, query, result.ogSearchText || ''),
+    [previewSource, result.ogSearchText, query],
   );
   const time = formatMessageTime(result.at, timeZone || detectTimeZone());
+  const hasAttachments = attachments.length > 0;
 
   return (
     <button
@@ -35,10 +43,26 @@ function SearchResultCard({ result, query, timeZone, onSelect }) {
         </span>
         <span className="shrink-0 tabular-nums">{time}</span>
       </div>
-      <div
-        className="chat-search-md max-h-40 overflow-hidden text-sm leading-relaxed text-gray-800 dark:text-odp-fg [&_a]:text-blue-600 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:text-[12px] dark:[&_a]:text-blue-300 dark:[&_code]:bg-white/10 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/5 [&_pre]:p-2 dark:[&_pre]:bg-black/30"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      {previewSource ? (
+        <div
+          className="chat-search-md max-h-40 overflow-hidden text-sm leading-relaxed text-gray-800 dark:text-odp-fg [&_a]:text-blue-600 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:text-[12px] dark:[&_a]:text-blue-300 dark:[&_code]:bg-white/10 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/5 [&_pre]:p-2 dark:[&_pre]:bg-black/30"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      ) : null}
+      {hasAttachments ? (
+        <div
+          className={`${previewSource ? 'mt-2' : ''} max-h-48 overflow-hidden`}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <ChatLinkedText
+            text={result.body}
+            className="text-sm text-gray-800 dark:text-odp-fg"
+            getPresignedUrl={getPresignedUrl}
+          />
+        </div>
+      ) : null}
     </button>
   );
 }
@@ -57,6 +81,7 @@ export default function ChatSearchPanel({
   onLoadMore,
   onSelectResult,
   timeZone,
+  getPresignedUrl,
 }) {
   const [query, setQuery] = useState('');
   const [groupFilter, setGroupFilter] = useState('__all__');
@@ -280,6 +305,7 @@ export default function ChatSearchPanel({
               query={query}
               timeZone={tz}
               onSelect={onSelectResult}
+              getPresignedUrl={getPresignedUrl}
             />
           ),
         )}

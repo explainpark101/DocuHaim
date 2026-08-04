@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { FilePlus2, History, Pencil, Reply, Trash2, X } from 'lucide-react';
+import {
+  Copy,
+  FilePlus2,
+  FileText,
+  History,
+  Pencil,
+  Pin,
+  Reply,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
 import {
@@ -8,9 +18,15 @@ import {
   chatDialogContentClass,
   chatDialogOverlayClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
+import {
+  formatChatMessageMarkdownCopy,
+  formatChatMessagePlainText,
+} from '@/utils/chatWithMyself';
 
 /** Ignore outside dismiss from the same finger that long-pressed to open. */
 const DISMISS_GUARD_MS = 450;
+/** Block accidental taps on menu actions right after open. */
+const POINTER_BLOCK_MS = 500;
 /** Briefly block selection after open (long-press residual selection). */
 const SELECT_NONE_MS = 200;
 
@@ -21,6 +37,16 @@ const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
 const menuContentClass = chatDialogContentClass
   .replace('-translate-x-1/2 ', '')
   .replace('-translate-y-1/2 ', '');
+
+async function copyText(text) {
+  const value = String(text ?? '');
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * Mobile message actions dialog (centered).
@@ -35,10 +61,12 @@ export default function ChatMessageContextMenu({
   onEdit,
   onAddToNote,
   onViewEditHistory,
+  onTogglePin,
   shiftHeldRef,
 }) {
   const dismissGuardUntilRef = useRef(0);
   const [selectNone, setSelectNone] = useState(false);
+  const [pointerBlocked, setPointerBlocked] = useState(false);
   const isOpen = Boolean(open && message);
 
   useEffect(() => {
@@ -50,11 +78,17 @@ export default function ChatMessageContextMenu({
   useEffect(() => {
     if (!isOpen) {
       setSelectNone(false);
+      setPointerBlocked(false);
       return undefined;
     }
     setSelectNone(true);
-    const t = window.setTimeout(() => setSelectNone(false), SELECT_NONE_MS);
-    return () => window.clearTimeout(t);
+    setPointerBlocked(true);
+    const tSelect = window.setTimeout(() => setSelectNone(false), SELECT_NONE_MS);
+    const tPointer = window.setTimeout(() => setPointerBlocked(false), POINTER_BLOCK_MS);
+    return () => {
+      window.clearTimeout(tSelect);
+      window.clearTimeout(tPointer);
+    };
   }, [isOpen]);
 
   if (!message && !open) return null;
@@ -62,6 +96,7 @@ export default function ChatMessageContextMenu({
   const hasEditHistory =
     Boolean(message?.editedAt) ||
     (Array.isArray(message?.editHistory) && message.editHistory.length > 0);
+  const pinned = Boolean(message?.pinnedAt);
 
   const guardOutside = (event) => {
     if (Date.now() < dismissGuardUntilRef.current) {
@@ -70,6 +105,9 @@ export default function ChatMessageContextMenu({
   };
 
   const selectNoneClass = selectNone ? 'select-none' : '';
+  const pointerBlockClass = pointerBlocked ? 'pointer-events-none' : '';
+
+  const menuBtnClass = `${chatMenuItemClass} ${pointerBlockClass}`.trim();
 
   return (
     <Dialog.Root
@@ -122,7 +160,7 @@ export default function ChatMessageContextMenu({
             <div className="flex flex-col gap-0.5 p-1">
               <button
                 type="button"
-                className={chatMenuItemClass}
+                className={menuBtnClass}
                 onClick={() => {
                   onReply?.(message);
                   onOpenChange?.(false);
@@ -133,7 +171,7 @@ export default function ChatMessageContextMenu({
               </button>
               <button
                 type="button"
-                className={chatMenuItemClass}
+                className={menuBtnClass}
                 onClick={() => {
                   onEdit?.(message);
                   onOpenChange?.(false);
@@ -145,7 +183,7 @@ export default function ChatMessageContextMenu({
               {hasEditHistory ? (
                 <button
                   type="button"
-                  className={chatMenuItemClass}
+                  className={menuBtnClass}
                   onClick={() => {
                     onViewEditHistory?.(message);
                     onOpenChange?.(false);
@@ -157,7 +195,40 @@ export default function ChatMessageContextMenu({
               ) : null}
               <button
                 type="button"
-                className={chatMenuItemClass}
+                className={menuBtnClass}
+                onClick={() => {
+                  onTogglePin?.(message);
+                  onOpenChange?.(false);
+                }}
+              >
+                <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
+                {pinned ? '고정 해제' : '고정'}
+              </button>
+              <button
+                type="button"
+                className={menuBtnClass}
+                onClick={() => {
+                  void copyText(formatChatMessagePlainText(message));
+                  onOpenChange?.(false);
+                }}
+              >
+                <Copy size={16} className="shrink-0 text-gray-500" />
+                내용 복사
+              </button>
+              <button
+                type="button"
+                className={menuBtnClass}
+                onClick={() => {
+                  void copyText(formatChatMessageMarkdownCopy(message));
+                  onOpenChange?.(false);
+                }}
+              >
+                <FileText size={16} className="shrink-0 text-gray-500" />
+                MD 복사
+              </button>
+              <button
+                type="button"
+                className={menuBtnClass}
                 onClick={() => {
                   onAddToNote?.(message);
                   onOpenChange?.(false);
@@ -168,7 +239,7 @@ export default function ChatMessageContextMenu({
               </button>
               <button
                 type="button"
-                className={chatMenuDangerItemClass}
+                className={`${chatMenuDangerItemClass} ${pointerBlockClass}`.trim()}
                 onPointerDown={(e) => {
                   if (shiftHeldRef) shiftHeldRef.current = e.shiftKey;
                 }}

@@ -42,6 +42,9 @@ import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
   createChatBackend,
+  patchChatMessageMeta,
+  postChatSyncEvent,
+  localDateString,
 } from '@/utils/chatWithMyself';
 import { AuthModal } from '@/components/modals/AuthModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
@@ -588,7 +591,7 @@ function MainApp() {
   const [authWanted, setAuthWanted] = useState(false);
   // True until ShareTargetGate finishes bootstrap / chooser — prevents AuthModal flash.
   const [shareBlockingAuth, setShareBlockingAuth] = useState(true);
-  const [shareComposerSeed, setShareComposerSeed] = useState(null);
+  const [shareGroupSend, setShareGroupSend] = useState(null);
 
   useEffect(() => {
     setScriptsLoaded(true);
@@ -953,7 +956,7 @@ function MainApp() {
   }, []);
 
   const handleShareComposeClaimed = useCallback((seed) => {
-    if (seed?.body) setShareComposerSeed(seed);
+    if (seed?.body) setShareGroupSend(seed);
   }, []);
 
   const refreshWebdavTree = useCallback(async () => {
@@ -4061,7 +4064,7 @@ function MainApp() {
       throw new Error('파일명에 / 를 넣을 수 없습니다.');
     }
     const newPath = `${parentPath || ''}${finalName}`;
-    const body = formatChatMessageAsNoteMarkdown(message, detectTimeZone());
+    const body = formatChatMessageAsNoteMarkdown(message, detectTimeZone(), newPath);
 
     if (storageMode === 's3') {
       const client = getS3Client();
@@ -4086,8 +4089,46 @@ function MainApp() {
       await writable.close();
       await refreshLocalTree();
     }
+
+    if (chatStorageCtx && message?.id) {
+      const tz = detectTimeZone();
+      const dateStr =
+        message.dateStr || localDateString(new Date(message.at || Date.now()), tz);
+      try {
+        await patchChatMessageMeta(chatStorageCtx, dateStr, message.id, {
+          notePath: newPath,
+        });
+        postChatSyncEvent('day', { dateStr });
+      } catch (err) {
+        console.warn('Failed to link chat message to note:', err);
+      }
+    }
+
     setOperationStatus(`노트 생성 완료: ${newPath}`);
+    return newPath;
   };
+
+  const handleOpenNoteFromChat = useCallback(
+    async (notePath) => {
+      if (!notePath) return;
+      const path = String(notePath);
+      if (storageMode === 's3') {
+        const node = findNodeByPath(s3Tree, path) || findFileNodeByPath(s3Tree, path);
+        if (node) await selectFileRaw('s3', node);
+        else navigate(`/view/${path}`);
+        return;
+      }
+      if (storageMode === 'webdav') {
+        const node = findNodeByPath(webdavTree, path) || findFileNodeByPath(webdavTree, path);
+        if (node) await selectFileRaw('webdav', node);
+        else navigate(`/view/${path}`);
+        return;
+      }
+      const node = findNodeByPath(localTree, path) || findFileNodeByPath(localTree, path);
+      if (node) await selectFileRaw('local', node);
+    },
+    [storageMode, s3Tree, webdavTree, localTree, selectFileRaw, navigate],
+  );
 
   const handleDropOnFolder = async (targetNode, targetStorageType, action, payload) => {
     if (action === 'dragOver') {
@@ -4822,8 +4863,9 @@ function MainApp() {
                   onOpenSidebar={() => setSidebarOpen(true)}
                   s3Tree={s3Tree}
                   localTree={localTree}
-                  shareComposerSeed={shareComposerSeed}
-                  onShareComposerSeedConsumed={() => setShareComposerSeed(null)}
+                  shareGroupSend={shareGroupSend}
+                  onShareGroupSendConsumed={() => setShareGroupSend(null)}
+                  onOpenNote={handleOpenNoteFromChat}
                   selectPathAfterCreateFolder={addToNoteSelectPath}
                   onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}
                   onRequestCreateFolderForNote={(parentPath, parentDirHandle) => {

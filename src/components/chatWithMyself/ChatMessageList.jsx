@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MoreHorizontal, Reply, Trash2, FilePlus2, History, Pencil, Loader2 } from 'lucide-react';
+import {
+  MoreHorizontal,
+  Reply,
+  Trash2,
+  FilePlus2,
+  History,
+  Pencil,
+  Loader2,
+  Pin,
+  Copy,
+  FileText,
+  ExternalLink,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatMessageContextMenu from '@/components/chatWithMyself/ChatMessageContextMenu';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
+import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
 import {
   chatMenuContentClass,
   chatMenuDangerItemClass,
@@ -19,20 +32,28 @@ import {
   detectTimeZone,
   localDateString,
   SELF_GROUP,
+  formatChatMessagePlainText,
+  formatChatMessageMarkdownCopy,
 } from '@/utils/chatWithMyself';
 
-const LONG_PRESS_MS = 480;
+/** Shrink feedback starts at this hold duration. */
+const LONG_PRESS_THRESHOLD_MS = 250;
+/** Context menu opens after this total hold duration. */
+const LONG_PRESS_MENU_MS = 500;
 const SWIPE_REPLY_THRESHOLD = 64;
 const SWIPE_REPLY_MAX = 72;
 
 const iconBtnClass =
   'inline-flex shrink-0 items-center justify-center rounded p-0.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 bg-transparent hover:bg-transparent focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400';
 
-function groupColor(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return { bg: `hsl(${hue} 55% 42%)` };
+async function copyText(text) {
+  const value = String(text ?? '');
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    /* ignore */
+  }
 }
 
 function useIsCoarsePointer() {
@@ -120,9 +141,11 @@ function MessageActionItems({
   onEdit,
   onAddToNote,
   onViewEditHistory,
+  onTogglePin,
   shiftHeldRef,
   Item,
 }) {
+  const pinned = Boolean(msg?.pinnedAt);
   return (
     <>
       <Item
@@ -148,6 +171,31 @@ function MessageActionItems({
           수정기록 보기
         </Item>
       ) : null}
+      <Item
+        className={chatMenuItemClass}
+        onSelect={() => onTogglePin?.(msg)}
+      >
+        <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
+        {pinned ? '고정 해제' : '고정'}
+      </Item>
+      <Item
+        className={chatMenuItemClass}
+        onSelect={() => {
+          void copyText(formatChatMessagePlainText(msg));
+        }}
+      >
+        <Copy size={16} className="shrink-0 text-gray-500" />
+        내용 복사
+      </Item>
+      <Item
+        className={chatMenuItemClass}
+        onSelect={() => {
+          void copyText(formatChatMessageMarkdownCopy(msg));
+        }}
+      >
+        <FileText size={16} className="shrink-0 text-gray-500" />
+        MD 복사
+      </Item>
       <Item
         className={chatMenuItemClass}
         onSelect={() => onAddToNote?.(msg)}
@@ -221,6 +269,7 @@ function MessageMoreButton({
   onEdit,
   onAddToNote,
   onViewEditHistory,
+  onTogglePin,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -271,6 +320,7 @@ function MessageMoreButton({
             onEdit={onEdit}
             onAddToNote={onAddToNote}
             onViewEditHistory={onViewEditHistory}
+            onTogglePin={onTogglePin}
             shiftHeldRef={shiftHeldRef}
             Item={DropdownMenu.Item}
           />
@@ -287,6 +337,7 @@ function MessageSideActions({
   onEdit,
   onAddToNote,
   onViewEditHistory,
+  onTogglePin,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -314,6 +365,7 @@ function MessageSideActions({
         onEdit={onEdit}
         onAddToNote={onAddToNote}
         onViewEditHistory={onViewEditHistory}
+        onTogglePin={onTogglePin}
         onOpenMobileSheet={onOpenMobileSheet}
         shiftHeldRef={shiftHeldRef}
         coarse={coarse}
@@ -359,6 +411,8 @@ function MessageBubble({
   onEdit,
   onAddToNote,
   onViewEditHistory,
+  onTogglePin,
+  onOpenNote,
   onOpenReply,
   onOpenMobileSheet,
   shiftHeldRef,
@@ -369,9 +423,9 @@ function MessageBubble({
 }) {
   const self = isSelfGroup(msg.group);
   const urls = useMemo(() => extractUrls(msg.body), [msg.body]);
-  const colors = !self ? groupColor(msg.group || '') : null;
   const time = formatMessageTime(msg.at, timeZone || detectTimeZone());
-  const longPressTimer = useRef(null);
+  const longPressThresholdTimer = useRef(null);
+  const longPressMenuTimer = useRef(null);
   const [offsetX, setOffsetX] = useState(0);
   const offsetRef = useRef(0);
   const pointerIdRef = useRef(null);
@@ -386,11 +440,16 @@ function MessageBubble({
   const syncing =
     msg?.pendingSync === 'send' || msg?.pendingSync === 'edit';
   const dimmed = syncing || isDeleting;
+  const pinned = Boolean(msg?.pinnedAt);
 
   const clearLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+    if (longPressThresholdTimer.current) {
+      clearTimeout(longPressThresholdTimer.current);
+      longPressThresholdTimer.current = null;
+    }
+    if (longPressMenuTimer.current) {
+      clearTimeout(longPressMenuTimer.current);
+      longPressMenuTimer.current = null;
     }
   };
 
@@ -401,14 +460,13 @@ function MessageBubble({
   const openMobileSheetFromLongPress = () => {
     if (axisRef.current === 'h' || isDeleting) return;
     longPressOpenedRef.current = true;
-    longPressTimer.current = null;
+    longPressMenuTimer.current = null;
     try {
       navigator.vibrate?.(12);
     } catch {
       /* ignore */
     }
     onOpenMobileSheet?.(msg);
-    // Keep pressed look briefly so open feels tied to the hold, then release.
     requestAnimationFrame(() => {
       endPressVisual();
     });
@@ -496,11 +554,13 @@ function MessageBubble({
         axisRef.current = null;
         longPressOpenedRef.current = false;
         if (!coarse) return;
-        setPressing(true);
         clearLongPress();
-        longPressTimer.current = setTimeout(() => {
+        longPressThresholdTimer.current = setTimeout(() => {
+          setPressing(true);
+        }, LONG_PRESS_THRESHOLD_MS);
+        longPressMenuTimer.current = setTimeout(() => {
           openMobileSheetFromLongPress();
-        }, LONG_PRESS_MS);
+        }, LONG_PRESS_MENU_MS);
       }}
       onPointerMove={(e) => {
         if (isDeleting) return;
@@ -569,13 +629,7 @@ function MessageBubble({
         }}
       >
         {!self ? (
-          <div
-            className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ background: colors.bg }}
-            title={msg.group}
-          >
-            {(msg.group || '?').slice(0, 1)}
-          </div>
+          <ChatGroupAvatar name={msg.group} size="lg" className="mt-1" />
         ) : (
           <div className="w-8 shrink-0" aria-hidden />
         )}
@@ -598,6 +652,7 @@ function MessageBubble({
                 onEdit={onEdit}
                 onAddToNote={onAddToNote}
                 onViewEditHistory={onViewEditHistory}
+                onTogglePin={onTogglePin}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -617,12 +672,21 @@ function MessageBubble({
                       : 'rounded-bl-md bg-white text-gray-900 dark:bg-[#243044] dark:text-odp-fgStrong border border-white/60 dark:border-white/10 shadow'
               } ${
                 pressing && !isDeleting
-                  ? 'scale-[0.96] brightness-[0.92] dark:brightness-[0.85]'
+                  ? 'scale-[0.97] brightness-[0.94] dark:brightness-[0.88]'
                   : 'scale-100'
               }`}
-              style={dimmed ? { opacity: 0.7 } : undefined}
+              style={{
+                ...(dimmed ? { opacity: 0.7 } : undefined),
+                transition: 'transform 180ms ease-out, filter 180ms ease-out',
+              }}
             >
               <ReplyPreview msg={msg} onOpen={isDeleting ? undefined : onOpenReply} />
+              {pinned ? (
+                <div className="mb-1 inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-300">
+                  <Pin size={10} className="fill-current" />
+                  고정됨
+                </div>
+              ) : null}
               <ChatLinkedText
                 text={msg.body}
                 className={`min-w-0 max-w-full overflow-hidden whitespace-pre-wrap wrap-anywhere ${
@@ -630,6 +694,19 @@ function MessageBubble({
                 }`}
                 getPresignedUrl={getPresignedUrl}
               />
+              {msg.notePath && !isDeleting ? (
+                <button
+                  type="button"
+                  className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-600 underline-offset-2 hover:underline dark:text-blue-300"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenNote?.(msg.notePath, msg);
+                  }}
+                >
+                  <ExternalLink size={10} />
+                  노트 열기
+                </button>
+              ) : null}
               {msg.editedAt && !isDeleting ? (
                 <button
                   type="button"
@@ -654,6 +731,7 @@ function MessageBubble({
                 onEdit={onEdit}
                 onAddToNote={onAddToNote}
                 onViewEditHistory={onViewEditHistory}
+                onTogglePin={onTogglePin}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -698,6 +776,7 @@ function MessageBubble({
             onEdit={onEdit}
             onAddToNote={onAddToNote}
             onViewEditHistory={onViewEditHistory}
+            onTogglePin={onTogglePin}
             shiftHeldRef={shiftHeldRef}
             Item={ContextMenu.Item}
           />
@@ -724,6 +803,8 @@ export default function ChatMessageList({
   onEdit,
   onAddToNote,
   onViewEditHistory,
+  onTogglePin,
+  onOpenNote,
   onOpenReplyTarget,
   emptyHint,
   getPresignedUrl,
@@ -950,6 +1031,8 @@ export default function ChatMessageList({
                         onEdit={onEdit}
                         onAddToNote={onAddToNote}
                         onViewEditHistory={onViewEditHistory}
+                        onTogglePin={onTogglePin}
+                        onOpenNote={onOpenNote}
                         onOpenReply={onOpenReplyTarget}
                         onOpenMobileSheet={setSheetMessage}
                         shiftHeldRef={shiftHeldRef}
@@ -996,6 +1079,7 @@ export default function ChatMessageList({
         onEdit={onEdit}
         onAddToNote={onAddToNote}
         onViewEditHistory={onViewEditHistory}
+        onTogglePin={onTogglePin}
         shiftHeldRef={shiftHeldRef}
       />
     </>

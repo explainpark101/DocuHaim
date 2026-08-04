@@ -133,14 +133,15 @@ export default function ShareTargetGate({
     if (!current?.body) return;
     try {
       await clearPromptRecord(current);
+      const payload = {
+        id: `share-group-send-${Date.now()}`,
+        body: current.body,
+      };
+      if (!location.pathname.endsWith('/chat')) {
+        navigate('/chat');
+      }
       if (isUnlocked) {
-        if (!location.pathname.endsWith('/chat')) {
-          navigate('/chat');
-        }
-        onComposeClaimed?.({
-          id: `share-compose-${Date.now()}`,
-          body: current.body,
-        });
+        onComposeClaimed?.(payload);
       } else {
         await enqueuePendingShare({ body: current.body, intent: 'compose' });
       }
@@ -197,7 +198,7 @@ export default function ShareTargetGate({
         composeNavigatedRef.current = true;
         navigate('/chat');
       }
-      onComposeClaimed?.({ id: `share-compose-${Date.now()}`, body });
+      onComposeClaimed?.({ id: `share-group-send-${Date.now()}`, body });
     })();
     return () => {
       cancelled = true;

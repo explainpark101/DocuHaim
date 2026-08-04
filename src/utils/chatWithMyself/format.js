@@ -56,6 +56,8 @@ function unescapeAttr(value) {
  * @property {string} [replyGroup]
  * @property {string} [dateStr]
  * @property {string} [editedAt]
+ * @property {string} [pinnedAt]
+ * @property {string} [notePath]
  * @property {{ at: string, body: string, group: string }[]} [editHistory]
  */
 
@@ -133,6 +135,8 @@ export function parseDayFile(content) {
       replySnippet: unescapeAttr(attrs.replySnippet || ''),
       replyGroup: unescapeAttr(attrs.replyGroup || ''),
       editedAt: attrs.editedAt || '',
+      pinnedAt: attrs.pinnedAt || '',
+      notePath: attrs.notePath || '',
       editHistory,
       body,
     });
@@ -163,12 +167,16 @@ export function serializeMessage(msg) {
   const replySnippet = escapeAttr(String(msg.replySnippet || ''));
   const replyGroup = escapeAttr(msg.replyGroup || '');
   const editedAt = escapeAttr(msg.editedAt || '');
+  const pinnedAt = escapeAttr(msg.pinnedAt || '');
+  const notePath = escapeAttr(msg.notePath || '');
   const body = String(msg.body ?? '').replace(/\n+$/, '');
   const replyAttrs = replyTo
     ? ` replyTo="${replyTo}" replySnippet="${replySnippet}" replyGroup="${replyGroup}"`
     : '';
   const editedAttr = editedAt ? ` editedAt="${editedAt}"` : '';
-  let out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr} -->\n${body}\n\n`;
+  const pinnedAttr = pinnedAt ? ` pinnedAt="${pinnedAt}"` : '';
+  const notePathAttr = notePath ? ` notePath="${notePath}"` : '';
+  let out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr} -->\n${body}\n\n`;
   const history = Array.isArray(msg.editHistory) ? msg.editHistory : [];
   if (history.length > 0) {
     const payload = encodeURIComponent(
@@ -277,12 +285,46 @@ export function makeReplySnippet(body) {
     .slice(0, 280);
 }
 
+/** Chat deep-link hash for a message bubble. */
+export function chatMessageHash(messageId) {
+  const id = String(messageId || '').trim();
+  return id ? `#msg-${id}` : '';
+}
+
+/** Build /chat URL that scrolls to a message. */
+export function chatMessageUrl(messageId) {
+  const hash = chatMessageHash(messageId);
+  return hash ? `/chat${hash}` : '/chat';
+}
+
+/**
+ * Plain text for clipboard (strips attachment tokens to readable labels).
+ */
+export function formatChatMessagePlainText(msg) {
+  const raw = String(msg?.body ?? '');
+  if (!raw) return '';
+  return raw
+    .replace(/!\[\[([^\]]+)\]\]/g, '[image: $1]')
+    .replace(/\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]/g, (_, _path, name) => {
+      const label = String(name || '').trim() || 'file';
+      return `[file: ${label}]`;
+    })
+    .trim();
+}
+
+/** Raw markdown body for clipboard. */
+export function formatChatMessageMarkdownCopy(msg) {
+  return String(msg?.body ?? '').replace(/\n+$/, '');
+}
+
 /**
  * Markdown body for a note created from a chat message.
  */
-export function formatChatMessageAsNoteMarkdown(msg, timeZone) {
+export function formatChatMessageAsNoteMarkdown(msg, timeZone, notePath = '') {
   const group = msg?.group || '나';
   const at = msg?.at || '';
+  const msgId = msg?.id || '';
+  const chatHref = chatMessageUrl(msgId);
   let when = at;
   try {
     when = new Intl.DateTimeFormat(undefined, {
@@ -298,10 +340,13 @@ export function formatChatMessageAsNoteMarkdown(msg, timeZone) {
     /* keep iso */
   }
   const body = String(msg?.body ?? '').replace(/\n+$/, '');
+  const notePathAttr = notePath ? ` note-path="${escapeAttr(notePath)}"` : '';
   return [
-    `<!-- chat-with-myself id="${msg?.id || ''}" at="${at}" group="${group}" -->`,
+    `<!-- chat-with-myself id="${msgId}" at="${at}" group="${group}" href="${chatHref}"${notePathAttr} -->`,
     '',
     `> ${group} · ${when}`,
+    '',
+    `[채팅으로 이동](${chatHref})`,
     '',
     body,
     '',
