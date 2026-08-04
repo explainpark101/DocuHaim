@@ -16,6 +16,7 @@ import {
   sortGroupsKo,
   renderSearchResultHtml,
   extractChatBodyAttachments,
+  chatAttachmentsToMarkdown,
 } from '@/utils/chatWithMyself';
 
 function SearchResultCard({ result, query, timeZone, onSelect, getPresignedUrl }) {
@@ -23,13 +24,20 @@ function SearchResultCard({ result, query, timeZone, onSelect, getPresignedUrl }
     () => extractChatBodyAttachments(result.body || ''),
     [result.body],
   );
-  const previewSource = text.trim() || result.body || '';
+  // Text only — do not fall back to raw body (avoids wiki tokens as markdown + duplicate media).
+  const previewSource = text.trim();
   const html = useMemo(
     () => renderSearchResultHtml(previewSource, query, result.ogSearchText || ''),
     [previewSource, result.ogSearchText, query],
   );
+  const attachmentMarkdown = useMemo(
+    () => chatAttachmentsToMarkdown(attachments),
+    [attachments],
+  );
   const time = formatMessageTime(result.at, timeZone || detectTimeZone());
   const hasAttachments = attachments.length > 0;
+  const showPreview =
+    Boolean(previewSource) || Boolean(String(result.ogSearchText || '').trim());
 
   return (
     <button
@@ -43,24 +51,28 @@ function SearchResultCard({ result, query, timeZone, onSelect, getPresignedUrl }
         </span>
         <span className="shrink-0 tabular-nums">{time}</span>
       </div>
-      {previewSource ? (
-        <div
-          className="chat-search-md max-h-40 overflow-hidden text-sm leading-relaxed text-gray-800 dark:text-odp-fg [&_a]:text-blue-600 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:text-[12px] dark:[&_a]:text-blue-300 dark:[&_code]:bg-white/10 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/5 [&_pre]:p-2 dark:[&_pre]:bg-black/30"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      ) : null}
-      {hasAttachments ? (
-        <div
-          className={`${previewSource ? 'mt-2' : ''} max-h-48 overflow-hidden`}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          role="presentation"
-        >
-          <ChatLinkedText
-            text={result.body}
-            className="text-sm text-gray-800 dark:text-odp-fg"
-            getPresignedUrl={getPresignedUrl}
-          />
+      {showPreview || hasAttachments ? (
+        <div className="max-h-48 overflow-y-auto overscroll-contain">
+          {showPreview ? (
+            <div
+              className="chat-search-md text-sm leading-relaxed text-gray-800 dark:text-odp-fg [&_a]:text-blue-600 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:text-[12px] dark:[&_a]:text-blue-300 dark:[&_code]:bg-white/10 [&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_pre]:m-0 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/5 [&_pre]:p-2 dark:[&_pre]:bg-black/30 [&_p+p]:mt-1"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          ) : null}
+          {hasAttachments ? (
+            <div
+              className={`${showPreview ? 'mt-1.5' : ''} [&_a]:!mt-0 [&_button]:!mt-0 [&_div]:!mt-0`}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              role="presentation"
+            >
+              <ChatLinkedText
+                text={attachmentMarkdown}
+                className="text-sm text-gray-800 dark:text-odp-fg"
+                getPresignedUrl={getPresignedUrl}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
     </button>
@@ -74,6 +86,7 @@ export default function ChatSearchPanel({
   open,
   onClose,
   groups = [],
+  dayKeys = [],
   onSearch,
   results = [],
   loading = false,
@@ -90,9 +103,14 @@ export default function ChatSearchPanel({
   const [toDt, setToDt] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const listRef = useRef(null);
+  const queryInputRef = useRef(null);
   const tz = timeZone || detectTimeZone();
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
-
+  const availableDaySet = useMemo(() => new Set(dayKeys), [dayKeys]);
+  const isDateUnavailable = useMemo(
+    () => (date) => !availableDaySet.has(date.toString()),
+    [availableDaySet],
+  );
   const groupOptions = useMemo(
     () => [
       { value: '__all__', label: '전체' },
@@ -143,6 +161,14 @@ export default function ChatSearchPanel({
     return () => clearTimeout(t);
   }, [query, groupFilter, dateFilter, fromDt, toDt, onSearch]);
 
+  useEffect(() => {
+    if (!open) return;
+    const id = window.requestAnimationFrame(() => {
+      queryInputRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -177,6 +203,7 @@ export default function ChatSearchPanel({
               />
               <Form.Control asChild>
                 <input
+                  ref={queryInputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="부분 일치로 메시지 검색…"
@@ -247,6 +274,7 @@ export default function ChatSearchPanel({
                     label="날짜"
                     value={dateFilter}
                     onChange={setDateFilter}
+                    isDateUnavailable={isDateUnavailable}
                   />
 
                   <div className="grid grid-cols-2 gap-2">
@@ -254,11 +282,13 @@ export default function ChatSearchPanel({
                       label="부터"
                       value={fromDt}
                       onChange={setFromDt}
+                      isDateUnavailable={isDateUnavailable}
                     />
                     <ChatDateTimePicker
                       label="까지"
                       value={toDt}
                       onChange={setToDt}
+                      isDateUnavailable={isDateUnavailable}
                     />
                   </div>
                 </div>

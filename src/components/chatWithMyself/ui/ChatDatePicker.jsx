@@ -37,7 +37,7 @@ const popoverClass =
   'z-[220] rounded-xl border border-gray-200 bg-white p-3 shadow-lg outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft';
 
 const cellClass =
-  'flex h-8 w-8 items-center justify-center rounded-full text-xs outline-none data-[disabled]:text-gray-300 data-[outside-month]:text-gray-300 data-[hovered]:bg-gray-100 data-[selected]:bg-blue-600 data-[selected]:text-white data-[focused]:ring-2 data-[focused]:ring-blue-400 dark:data-[disabled]:text-gray-600 dark:data-[outside-month]:text-gray-600 dark:data-[hovered]:bg-odp-focusBg';
+  'flex h-8 w-8 items-center justify-center rounded-full text-xs outline-none data-[disabled]:text-gray-300 data-[unavailable]:text-gray-300 data-[unavailable]:line-through data-[outside-month]:text-gray-300 data-[hovered]:bg-gray-100 data-[selected]:bg-blue-600 data-[selected]:text-white data-[focused]:ring-2 data-[focused]:ring-blue-400 dark:data-[disabled]:text-gray-600 dark:data-[unavailable]:text-gray-600 dark:data-[outside-month]:text-gray-600 dark:data-[hovered]:bg-odp-focusBg';
 
 function parseDateValue(isoDate) {
   if (!isoDate) return null;
@@ -55,6 +55,7 @@ function toDateString(value) {
 
 /**
  * Date-only picker (CalendarDate) backed by YYYY-MM-DD string values.
+ * @param {(date: import('@internationalized/date').DateValue) => boolean} [isDateUnavailable]
  */
 export default function ChatDatePicker({
   label,
@@ -62,6 +63,7 @@ export default function ChatDatePicker({
   onChange,
   className = '',
   isDisabled = false,
+  isDateUnavailable,
 }) {
   const dateValue = useMemo(() => parseDateValue(value), [value]);
 
@@ -71,6 +73,7 @@ export default function ChatDatePicker({
       value={dateValue}
       onChange={(next) => onChange?.(toDateString(next))}
       isDisabled={isDisabled}
+      isDateUnavailable={isDateUnavailable}
       granularity="day"
     >
       {label ? <Label className={labelClass}>{label}</Label> : null}

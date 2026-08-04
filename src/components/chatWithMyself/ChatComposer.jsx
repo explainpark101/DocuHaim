@@ -165,6 +165,8 @@ export default function ChatComposer({
   /** Share-target (or similar) seed: replace compose body once consumed. */
   seedBody = null,
   onSeedConsumed,
+  /** Fill parent height (resizable dock); editor expands to remaining space. */
+  fillParent = false,
 }) {
   const [value, setValue] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -395,11 +397,13 @@ export default function ChatComposer({
   }, [draftReady, editTarget, selectedGroup, replyTo]);
 
   const syncEditorHeight = useCallback(() => {
+    if (fillParent) return;
     const next = measureComposerHeight(wrapRef.current, contentMaxH);
     setEditorHeight((prev) => (prev === next ? prev : next));
-  }, [contentMaxH]);
+  }, [contentMaxH, fillParent]);
 
   useEffect(() => {
+    if (fillParent) return undefined;
     const syncMax = () => {
       const next = getComposerContentMaxH();
       setContentMaxH((prev) => (prev === next ? prev : next));
@@ -412,11 +416,12 @@ export default function ChatComposer({
       vv?.removeEventListener('resize', syncMax);
       window.removeEventListener('resize', syncMax);
     };
-  }, []);
+  }, [fillParent]);
 
   useLayoutEffect(() => {
+    if (fillParent) return;
     syncEditorHeight();
-  }, [value, showLineNumbers, showToolbar, contentMaxH, syncEditorHeight]);
+  }, [fillParent, value, showLineNumbers, showToolbar, contentMaxH, syncEditorHeight]);
 
   // Focus the editor when entering (or switching) reply mode.
   useEffect(() => {
@@ -688,13 +693,22 @@ export default function ChatComposer({
   return (
     <div
       className={
-        bare
-          ? `shrink-0 ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
-          : `shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
+        fillParent
+          ? `flex h-full min-h-0 flex-col overflow-hidden ${editTarget ? 'pb-0.5' : ''}`
+          : bare
+            ? `shrink-0 ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
+            : `shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
       }
     >
-      <div className={bare ? '' : 'px-2 py-1 md:px-3 md:py-1.5'}>
-        {editTarget ? (
+      <div
+        className={
+          fillParent
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+            : bare
+              ? ''
+              : 'px-2 py-1 md:px-3 md:py-1.5'
+        }
+      >        {editTarget ? (
           <div className="mb-1 flex items-start gap-2 rounded-md border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 px-2 py-1 dark:border-amber-800/60 dark:border-l-amber-400 dark:bg-amber-950/40">
             <Pencil size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
             <div className="min-w-0 flex-1">
@@ -840,7 +854,13 @@ export default function ChatComposer({
 
         <div
           className={
-            showToolbar ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-1.5' : 'flex flex-col gap-1.5'
+            showToolbar
+              ? fillParent
+                ? 'grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-1.5'
+                : 'grid grid-cols-[auto_minmax(0,1fr)] gap-1.5'
+              : fillParent
+                ? 'flex min-h-0 flex-1 flex-col gap-1.5'
+                : 'flex flex-col gap-1.5'
           }
           onDragOver={(e) => {
             if ([...e.dataTransfer.types].includes('Files')) {
@@ -893,7 +913,9 @@ export default function ChatComposer({
           )}
 
           <div
-            className={`flex items-start gap-2 ${showToolbar ? 'col-span-2' : ''}`}
+            className={`flex items-start gap-2 ${
+              showToolbar ? 'col-span-2' : ''
+            } ${fillParent ? 'min-h-0 flex-1' : ''}`}
           >
             {!showToolbar ? (
               <button
@@ -910,8 +932,10 @@ export default function ChatComposer({
               ref={wrapRef}
               className={`chat-composer-editor min-w-0 flex-1 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft ${
                 showLineNumbers ? 'chat-composer-editor--line-numbers' : ''
-              } ${showToolbar ? '' : 'chat-composer-editor--no-toolbar'}`}
-              style={{ height: editorHeight }}
+              } ${showToolbar ? '' : 'chat-composer-editor--no-toolbar'} ${
+                fillParent ? 'h-full min-h-0' : ''
+              }`}
+              style={fillParent ? undefined : { height: editorHeight }}
             >
               <MdEditor
                 editorId="chat-with-myself-composer"
@@ -947,7 +971,7 @@ export default function ChatComposer({
           </div>
         </div>
         {!isMobile ? (
-          <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
+          <p className="mt-0.5 shrink-0 text-[10px] text-gray-400 dark:text-gray-500">
             {editTarget
               ? editingMultilineHint
                 ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`

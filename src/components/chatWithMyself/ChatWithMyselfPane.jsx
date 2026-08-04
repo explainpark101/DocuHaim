@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import ChatComposer from '@/components/chatWithMyself/ChatComposer';
+import ChatComposerDock from '@/components/chatWithMyself/ChatComposerDock';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
 import ChatGroupPanel from '@/components/chatWithMyself/ChatGroupPanel';
@@ -1299,6 +1300,7 @@ export default function ChatWithMyselfPane({
 
   const searchPanelProps = {
     groups,
+    dayKeys,
     onSearch: handleSearch,
     results: searchResults,
     loading: searchLoading,
@@ -1473,11 +1475,12 @@ export default function ChatWithMyselfPane({
                   : undefined
               }
             />
-            <div className="w-full max-h-[min(45%,280px)] shrink-0 overflow-y-auto border-t-2 border-gray-300 bg-slate-100 pb-1.5 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] md:pb-2">
-              <div className="mx-auto w-full max-w-full px-2 py-1 md:max-w-[min(100%,50vw)] md:px-3 md:py-1.5">
-                <div className="rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5">
+            <ChatComposerDock>
+              <div className="mx-auto flex h-full min-h-0 w-full max-w-full px-2 md:max-w-[min(100%,50vw)] md:px-3">
+                <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5">
                   <ChatComposer
                     bare
+                    fillParent
                     groups={groups}
                     selectedGroup={selectedGroup}
                     onSelectedGroupChange={setSelectedGroup}
@@ -1500,7 +1503,7 @@ export default function ChatWithMyselfPane({
                   />
                 </div>
               </div>
-            </div>
+            </ChatComposerDock>
           </div>
           {!isMobileLayout ? (
             <>

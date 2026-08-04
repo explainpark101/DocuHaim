@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -29,6 +29,29 @@ import {
 
 const EMPTY_SELECTED_IDS = new Set();
 
+/** Above Modal / ConfirmModal (`z-100000`) so the drag preview stays visible. */
+const DRAG_OVERLAY_Z_INDEX = 100050;
+
+function useIsMobileDragDisabled() {
+  const [disabled, setDisabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    const sync = () =>
+      setDisabled(mq.matches || window.innerWidth < 768);
+    sync();
+    mq.addEventListener('change', sync);
+    window.addEventListener('resize', sync);
+    return () => {
+      mq.removeEventListener('change', sync);
+      window.removeEventListener('resize', sync);
+    };
+  }, []);
+  return disabled;
+}
+
 function getAncestorPathsToExpand(path) {
   if (!path || path === '') return [];
   const parts = path.replace(/\/$/, '').split('/').filter(Boolean);
@@ -40,6 +63,25 @@ function getAncestorPathsToExpand(path) {
     result.push(acc);
   }
   return result;
+}
+
+function formatMoveTargetLabel(targetNode, storageType) {
+  if (!targetNode || targetNode.path === '') {
+    return storageType === 's3' ? '루트 (버킷 최상위)' : '루트 폴더';
+  }
+  return targetNode.name || targetNode.path;
+}
+
+function formatMoveConfirmMessage(items, targetNode, storageType) {
+  const targetLabel = formatMoveTargetLabel(targetNode, storageType);
+  if (!items?.length) {
+    return `"${targetLabel}"(으)로 이동할까요?`;
+  }
+  if (items.length === 1) {
+    const name = items[0].name || items[0].path || '항목';
+    return `"${name}"을(를) "${targetLabel}"(으)로 이동할까요?`;
+  }
+  return `${items.length}개 항목을 "${targetLabel}"(으)로 이동할까요?`;
 }
 
 /**
@@ -78,14 +120,17 @@ export default function ChatAddToNoteModal({
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [error, setError] = useState('');
   const [confirmReplaceName, setConfirmReplaceName] = useState(false);
+  const [pendingMove, setPendingMove] = useState(null);
   const [expandedPaths, setExpandedPaths] = useState(() => new Set());
   const [activeDragItems, setActiveDragItems] = useState(null);
   const hasInitializedRef = useRef(false);
   const activeDragItemsRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const dragDisabled = useIsMobileDragDisabled();
 
+  // Mouse only — touch/mobile must not start tree reorder drags.
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: { distance: 8 },
     }),
   );
@@ -98,6 +143,7 @@ export default function ChatAddToNoteModal({
     setFileName('');
     setError('');
     setConfirmReplaceName(false);
+    setPendingMove(null);
     setSelectedRoot(true);
     setSelectedFolder(null);
     setExpandedPaths(new Set());
@@ -230,16 +276,18 @@ export default function ChatAddToNoteModal({
 
   const handleDndDragStart = useCallback(
     (event) => {
+      if (dragDisabled) return;
       const activeId = String(event.active.id);
       const items = resolveDragItems(activeId, selectedIds, findTreeNode);
       activeDragItemsRef.current = items;
       setActiveDragItems(items);
     },
-    [selectedIds, findTreeNode],
+    [dragDisabled, selectedIds, findTreeNode],
   );
 
   const handleDndDragOver = useCallback(
     (event) => {
+      if (dragDisabled) return;
       const { over } = event;
       if (!over) {
         onDropOnFolder?.(null, null, 'dragLeave');
@@ -251,7 +299,7 @@ export default function ChatAddToNoteModal({
       if (!targetNode) return;
       onDropOnFolder?.(targetNode, parsed.storageType, 'dragOver');
     },
-    [onDropOnFolder, resolveDropTargetNode],
+    [dragDisabled, onDropOnFolder, resolveDropTargetNode],
   );
 
   const handleDndDragEnd = useCallback(
@@ -260,27 +308,23 @@ export default function ChatAddToNoteModal({
       const items = activeDragItemsRef.current;
       activeDragItemsRef.current = null;
       setActiveDragItems(null);
+      onDropOnFolder?.(null, null, 'dragLeave');
 
-      if (!over || !items?.length) {
-        onDropOnFolder?.(null, null, 'dragLeave');
-        return;
-      }
+      if (dragDisabled || !over || !items?.length) return;
 
       const parsed = parseDroppableId(String(over.id));
-      if (!parsed) {
-        onDropOnFolder?.(null, null, 'dragLeave');
-        return;
-      }
+      if (!parsed) return;
 
       const targetNode = resolveDropTargetNode(parsed.storageType, parsed.path);
-      if (!targetNode) {
-        onDropOnFolder?.(null, null, 'dragLeave');
-        return;
-      }
+      if (!targetNode) return;
 
-      onDropOnFolder?.(targetNode, parsed.storageType, 'drop', { items });
+      setPendingMove({
+        targetNode,
+        targetStorageType: parsed.storageType,
+        items,
+      });
     },
-    [onDropOnFolder, resolveDropTargetNode],
+    [dragDisabled, onDropOnFolder, resolveDropTargetNode],
   );
 
   const handleDndDragCancel = useCallback(() => {
@@ -288,6 +332,17 @@ export default function ChatAddToNoteModal({
     setActiveDragItems(null);
     onDropOnFolder?.(null, null, 'dragLeave');
   }, [onDropOnFolder]);
+
+  const handleConfirmMove = useCallback(() => {
+    if (!pendingMove) return;
+    const { targetNode, targetStorageType, items } = pendingMove;
+    setPendingMove(null);
+    onDropOnFolder?.(targetNode, targetStorageType, 'drop', { items });
+  }, [pendingMove, onDropOnFolder]);
+
+  const handleCancelMove = useCallback(() => {
+    setPendingMove(null);
+  }, []);
 
   if (!isOpen || !message) return null;
 
@@ -339,7 +394,8 @@ export default function ChatAddToNoteModal({
           노트로 추가
         </h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted">
-          폴더를 선택한 뒤 노트를 생성합니다. 새 폴더 만들기·폴더 이동·드래그 앤 드롭도 가능합니다.
+          폴더를 선택한 뒤 노트를 생성합니다. 새 폴더 만들기·폴더 이동이 가능하며,
+          데스크톱에서는 드래그로 폴더를 옮길 수 있습니다(확인 후 적용).
         </p>
 
         <label className="block space-y-1">
@@ -444,6 +500,7 @@ export default function ChatAddToNoteModal({
                     stickyFoldersEnabled={false}
                     foldersOnly
                     folderSelectMode
+                    disableDrag={dragDisabled}
                     isFolderLoading={localFolderLoadingPath}
                   />
                 ))
@@ -453,7 +510,10 @@ export default function ChatAddToNoteModal({
                 </div>
               )}
             </div>
-            <DragOverlay dropAnimation={null}>
+            <DragOverlay
+              dropAnimation={null}
+              style={{ zIndex: DRAG_OVERLAY_Z_INDEX }}
+            >
               {activeDragItems?.length ? (
                 <TreeDragOverlayPreview items={activeDragItems} />
               ) : null}
@@ -500,6 +560,23 @@ export default function ChatAddToNoteModal({
           setConfirmReplaceName(false);
         }}
         onCancel={() => setConfirmReplaceName(false)}
+      />
+      <ConfirmModal
+        isOpen={Boolean(pendingMove)}
+        title="폴더 이동"
+        message={
+          pendingMove
+            ? formatMoveConfirmMessage(
+                pendingMove.items,
+                pendingMove.targetNode,
+                pendingMove.targetStorageType,
+              )
+            : ''
+        }
+        confirmLabel="이동"
+        cancelLabel="취소"
+        onConfirm={handleConfirmMove}
+        onCancel={handleCancelMove}
       />
     </>
   );

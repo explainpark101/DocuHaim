@@ -108,7 +108,7 @@ function ChatWithMyselfEntry({ isActive, onOpen }) {
       }`}
       style={{ paddingLeft: '8px' }}
     >
-      <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
+      <span className="text-violet-400 dark:text-violet-500 w-4 flex justify-center shrink-0">
         <MessageCircle size={14} />
       </span>
       <span className="text-gray-500 dark:text-gray-400 truncate">나와의 채팅</span>

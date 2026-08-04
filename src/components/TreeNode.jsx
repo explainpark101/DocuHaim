@@ -55,6 +55,8 @@ export default function TreeNode({
   activeDragItemIds = null,
   foldersOnly = false,
   folderSelectMode = false,
+  /** When true, node cannot be dragged (e.g. mobile add-to-note picker). */
+  disableDrag = false,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -110,7 +112,7 @@ export default function TreeNode({
   const isLoadingChildren =
     node.type === 'folder' && isFolderLoading && isFolderLoading === node.path;
 
-  const canDrag = !isTrashRoot && !isUnderDeletingFolder;
+  const canDrag = !disableDrag && !isTrashRoot && !isUnderDeletingFolder;
   const isRootLevel = level === 0;
   const effectiveDropTarget =
     isRootLevel && rootDropNode && node.type === 'file' ? rootDropNode : node;
@@ -687,6 +689,7 @@ export default function TreeNode({
               activeDragItemIds={activeDragItemIds}
               foldersOnly={foldersOnly}
               folderSelectMode={folderSelectMode}
+              disableDrag={disableDrag}
             />
           ))}
     </div>

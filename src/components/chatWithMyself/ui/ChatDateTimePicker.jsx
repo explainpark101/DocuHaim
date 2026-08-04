@@ -37,7 +37,7 @@ const popoverClass =
   'z-[220] rounded-xl border border-gray-200 bg-white p-3 shadow-lg outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft';
 
 const cellClass =
-  'flex h-8 w-8 items-center justify-center rounded-full text-xs outline-none data-[disabled]:text-gray-300 data-[outside-month]:text-gray-300 data-[hovered]:bg-gray-100 data-[selected]:bg-blue-600 data-[selected]:text-white data-[focused]:ring-2 data-[focused]:ring-blue-400 dark:data-[disabled]:text-gray-600 dark:data-[outside-month]:text-gray-600 dark:data-[hovered]:bg-odp-focusBg';
+  'flex h-8 w-8 items-center justify-center rounded-full text-xs outline-none data-[disabled]:text-gray-300 data-[unavailable]:text-gray-300 data-[unavailable]:line-through data-[outside-month]:text-gray-300 data-[hovered]:bg-gray-100 data-[selected]:bg-blue-600 data-[selected]:text-white data-[focused]:ring-2 data-[focused]:ring-blue-400 dark:data-[disabled]:text-gray-600 dark:data-[unavailable]:text-gray-600 dark:data-[outside-month]:text-gray-600 dark:data-[hovered]:bg-odp-focusBg';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -63,6 +63,7 @@ function parseDateTimeLocal(value) {
 /**
  * Date+time picker (CalendarDateTime, minute granularity).
  * Value is a datetime-local string: YYYY-MM-DDTHH:mm
+ * @param {(date: import('@internationalized/date').DateValue) => boolean} [isDateUnavailable]
  */
 export default function ChatDateTimePicker({
   label,
@@ -70,6 +71,7 @@ export default function ChatDateTimePicker({
   onChange,
   className = '',
   isDisabled = false,
+  isDateUnavailable,
 }) {
   const dateValue = useMemo(() => parseDateTimeLocal(value), [value]);
 
@@ -79,6 +81,7 @@ export default function ChatDateTimePicker({
       value={dateValue}
       onChange={(next) => onChange?.(toDateTimeLocalString(next))}
       isDisabled={isDisabled}
+      isDateUnavailable={isDateUnavailable}
       granularity="minute"
       hourCycle={24}
     >
