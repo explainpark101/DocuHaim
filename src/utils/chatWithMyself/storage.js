@@ -634,6 +634,19 @@ export async function patchChatMessageMeta(ctx, dateStr, messageId, fields = {})
           ? '1'
           : '';
     }
+    if (fields.reactions !== undefined) {
+      next.reactions = Array.isArray(fields.reactions) ? fields.reactions : [];
+      next.reactionsAt =
+        fields.reactionsAt !== undefined
+          ? fields.reactionsAt
+            ? String(fields.reactionsAt)
+            : ''
+          : next.reactions.length > 0
+            ? new Date().toISOString()
+            : '';
+    } else if (fields.reactionsAt !== undefined) {
+      next.reactionsAt = fields.reactionsAt ? String(fields.reactionsAt) : '';
+    }
     updated = next;
     const messages = parsed.messages.slice();
     messages[idx] = next;

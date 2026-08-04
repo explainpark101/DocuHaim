@@ -8,7 +8,7 @@ const linkClass =
   'break-all wrap-anywhere underline underline-offset-2 text-blue-700 hover:text-blue-900 dark:text-sky-300 dark:hover:text-sky-200';
 
 /**
- * First visible text line when collapsed (no images/files).
+ * First non-empty text line when collapsed (skip images/files and blank lines).
  * @param {ReturnType<typeof splitTextWithUrls>} parts
  */
 function collapsedFirstLine(parts) {
@@ -21,11 +21,21 @@ function collapsedFirstLine(parts) {
     }
     text += part.value || '';
   }
-  const normalized = text.replace(/\r\n/g, '\n');
-  const nl = normalized.indexOf('\n');
-  const firstLine = (nl >= 0 ? normalized.slice(0, nl) : normalized).trimEnd();
-  const hasMore =
-    hasMedia || nl >= 0 || (nl < 0 && normalized.length > firstLine.length);
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  let firstLine = '';
+  let firstIdx = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].trimEnd();
+    if (line.trim()) {
+      firstLine = line;
+      firstIdx = i;
+      break;
+    }
+  }
+  const hasMoreAfter =
+    firstIdx >= 0 &&
+    lines.slice(firstIdx + 1).some((line) => line.trim().length > 0);
+  const hasMore = hasMedia || hasMoreAfter || (firstIdx < 0 && text.length > 0);
   return { firstLine, hasMore };
 }
 

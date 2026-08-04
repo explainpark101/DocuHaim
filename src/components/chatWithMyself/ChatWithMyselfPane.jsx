@@ -79,6 +79,7 @@ import {
   writeChatRailOpenPref,
   flushPendingMessages,
   postChatSyncEvent,
+  toggleReaction,
 } from '@/utils/chatWithMyself';
 import {
   getPendingMessages,
@@ -1343,6 +1344,48 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx, noteLocalDayWrite],
   );
 
+  const handleToggleReaction = useCallback(
+    async (message, reaction) => {
+      if (!storageReady || !message?.id || !reaction) return;
+      const dateStr =
+        message.dateStr || localDateString(new Date(message.at), detectTimeZone());
+      const nextReactions = toggleReaction(message.reactions, reaction);
+      const reactionsAt =
+        nextReactions.length > 0 ? new Date().toISOString() : '';
+      try {
+        const updated = await patchChatMessageMeta(ctx, dateStr, message.id, {
+          reactions: nextReactions,
+          reactionsAt,
+        });
+        if (!updated) {
+          setError('메시지를 찾지 못했습니다.');
+          return;
+        }
+        const patch = { ...updated, dateStr };
+        setMessages((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setPinnedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setNotedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setEditedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setSearchResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+      } catch (e) {
+        setError(e?.message || '반응 변경 실패');
+      }
+    },
+    [storageReady, ctx, noteLocalDayWrite],
+  );
+
   const runPinnedScan = useCallback(async () => {
     if (!storageReady) return;
     setPinnedLoading(true);
@@ -1762,6 +1805,7 @@ export default function ChatWithMyselfPane({
               onViewEditHistory={setHistoryMessage}
               onTogglePin={handleTogglePin}
               onToggleCollapse={handleToggleCollapse}
+              onToggleReaction={handleToggleReaction}
               onOpenNote={onOpenNote}
               onOpenReplyTarget={handleOpenReplyTarget}
               getPresignedUrl={getPresignedUrlForPath}

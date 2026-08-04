@@ -1,4 +1,8 @@
 import { SELF_GROUP } from './paths.js';
+import {
+  parseReactionsAttr,
+  serializeReactionsAttr,
+} from './reactions.js';
 
 const MSG_START =
   /<!--\s*chat-msg\s+([^>]*?)-->\s*/g;
@@ -12,7 +16,9 @@ const EDITS_BLOCK =
 const MAX_MERGE_TS = (msg) => {
   const a = Date.parse(msg?.editedAt || '') || 0;
   const b = Date.parse(msg?.at || '') || 0;
-  return Math.max(a, b);
+  const c = Date.parse(msg?.reactionsAt || '') || 0;
+  const d = Date.parse(msg?.pinnedAt || '') || 0;
+  return Math.max(a, b, c, d);
 };
 
 function parseAttrs(attrStr) {
@@ -59,6 +65,8 @@ function unescapeAttr(value) {
  * @property {string} [pinnedAt]
  * @property {string} [notePath]
  * @property {string} [collapsed] - "1" when folded; empty when expanded
+ * @property {import('./reactions.js').ChatReaction[]} [reactions]
+ * @property {string} [reactionsAt] - ISO when reactions last changed (merge)
  * @property {{ at: string, body: string, group: string }[]} [editHistory]
  */
 
@@ -139,6 +147,8 @@ export function parseDayFile(content) {
       pinnedAt: attrs.pinnedAt || '',
       notePath: attrs.notePath || '',
       collapsed: attrs.collapsed === '1' || attrs.collapsed === 'true' ? '1' : '',
+      reactions: parseReactionsAttr(attrs.reactions || ''),
+      reactionsAt: attrs.reactionsAt || '',
       editHistory,
       body,
     });
@@ -175,6 +185,9 @@ export function serializeMessage(msg) {
     msg.collapsed === '1' || msg.collapsed === true || msg.collapsed === 'true'
       ? '1'
       : '';
+  const reactionsRaw = serializeReactionsAttr(msg.reactions);
+  const reactions = escapeAttr(reactionsRaw);
+  const reactionsAt = escapeAttr(msg.reactionsAt || '');
   const body = String(msg.body ?? '').replace(/\n+$/, '');
   const replyAttrs = replyTo
     ? ` replyTo="${replyTo}" replySnippet="${replySnippet}" replyGroup="${replyGroup}"`
@@ -183,7 +196,10 @@ export function serializeMessage(msg) {
   const pinnedAttr = pinnedAt ? ` pinnedAt="${pinnedAt}"` : '';
   const notePathAttr = notePath ? ` notePath="${notePath}"` : '';
   const collapsedAttr = collapsed ? ` collapsed="${collapsed}"` : '';
-  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr}${collapsedAttr} -->\n${body}\n\n`;
+  const reactionsAttr = reactions ? ` reactions="${reactions}"` : '';
+  const reactionsAtAttr =
+    reactions && reactionsAt ? ` reactionsAt="${reactionsAt}"` : '';
+  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr}${collapsedAttr}${reactionsAttr}${reactionsAtAttr} -->\n${body}\n\n`;
   // Edit history is stored under `.chat-with-myself/edits/<id>/` (not inline).
   return out;
 }

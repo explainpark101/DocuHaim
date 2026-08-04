@@ -13,12 +13,14 @@ import {
   ExternalLink,
   ChevronsDownUp,
   ChevronsUpDown,
+  SmilePlus,
 } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatMessageContextMenu from '@/components/chatWithMyself/ChatMessageContextMenu';
+import ChatMessageReactions from '@/components/chatWithMyself/ChatMessageReactions';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
 import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
 import {
@@ -167,6 +169,7 @@ function MessageActionItems({
   onViewEditHistory,
   onTogglePin,
   onToggleCollapse,
+  onOpenReactionPicker,
   shiftHeldRef,
   _Item,
 }) {
@@ -180,6 +183,13 @@ function MessageActionItems({
       >
         <Reply size={16} className="shrink-0 text-gray-500" />
         답장
+      </_Item>
+      <_Item
+        className={chatMenuItemClass}
+        onSelect={() => onOpenReactionPicker?.(msg)}
+      >
+        <SmilePlus size={16} className="shrink-0 text-gray-500" />
+        반응 추가
       </_Item>
       <_Item
         className={chatMenuItemClass}
@@ -299,6 +309,24 @@ function MessageReplyButton({ msg, onReply }) {
   );
 }
 
+function MessageReactButton({ msg, onOpenReactionPicker }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpenReactionPicker?.(msg);
+      }}
+      className={iconBtnClass}
+      title="반응 추가"
+      aria-label="반응 추가"
+    >
+      <SmilePlus size={16} />
+    </button>
+  );
+}
+
 function MessageMoreButton({
   msg,
   onReply,
@@ -308,6 +336,7 @@ function MessageMoreButton({
   onViewEditHistory,
   onTogglePin,
   onToggleCollapse,
+  onOpenReactionPicker,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -360,6 +389,7 @@ function MessageMoreButton({
             onViewEditHistory={onViewEditHistory}
             onTogglePin={onTogglePin}
             onToggleCollapse={onToggleCollapse}
+            onOpenReactionPicker={onOpenReactionPicker}
             shiftHeldRef={shiftHeldRef}
             _Item={DropdownMenu.Item}
           />
@@ -378,6 +408,7 @@ function MessageSideActions({
   onViewEditHistory,
   onTogglePin,
   onToggleCollapse,
+  onOpenReactionPicker,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -397,6 +428,7 @@ function MessageSideActions({
 
   const buttons = (
     <>
+      <MessageReactButton msg={msg} onOpenReactionPicker={onOpenReactionPicker} />
       <MessageReplyButton msg={msg} onReply={onReply} />
       <MessageMoreButton
         msg={msg}
@@ -407,6 +439,7 @@ function MessageSideActions({
         onViewEditHistory={onViewEditHistory}
         onTogglePin={onTogglePin}
         onToggleCollapse={onToggleCollapse}
+        onOpenReactionPicker={onOpenReactionPicker}
         onOpenMobileSheet={onOpenMobileSheet}
         shiftHeldRef={shiftHeldRef}
         coarse={coarse}
@@ -455,6 +488,7 @@ function MessageBubble({
   onViewEditHistory,
   onTogglePin,
   onToggleCollapse,
+  onToggleReaction,
   onOpenNote,
   onOpenReply,
   onOpenMobileSheet,
@@ -466,6 +500,8 @@ function MessageBubble({
   groupIconPath = null,
   groupLabel = null,
   replyGroupLabel = null,
+  externalReactionPickerOpen = false,
+  onReactionPickerOpenChange,
 }) {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
@@ -482,6 +518,13 @@ function MessageBubble({
   const longPressOpenedRef = useRef(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [pressing, setPressing] = useState(false);
+  const [localReactionPickerOpen, setLocalReactionPickerOpen] = useState(false);
+  const forceReactionPickerOpen = Boolean(externalReactionPickerOpen);
+  const reactionPickerOpen = forceReactionPickerOpen || localReactionPickerOpen;
+  const setReactionPickerOpen = (open) => {
+    setLocalReactionPickerOpen(open);
+    onReactionPickerOpenChange?.(open);
+  };
   const rowActive = contextMenuOpen || rowSelected || isEditing;
   const isDeleting = msg?.pendingSync === 'delete';
   /** Long-press / sheet / context — morph shape without snapping between states. */
@@ -491,6 +534,11 @@ function MessageBubble({
   const dimmed = syncing || isDeleting;
   const pinned = Boolean(msg?.pinnedAt);
   const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
+
+  const openReactionPicker = () => {
+    if (isDeleting) return;
+    setReactionPickerOpen(true);
+  };
 
   const clearLongPress = () => {
     if (longPressThresholdTimer.current) {
@@ -710,6 +758,7 @@ function MessageBubble({
                 onViewEditHistory={onViewEditHistory}
                 onTogglePin={onTogglePin}
                 onToggleCollapse={onToggleCollapse}
+                onOpenReactionPicker={openReactionPicker}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -724,9 +773,11 @@ function MessageBubble({
                   ? 'bg-red-100 text-gray-900 border border-red-300/80 shadow dark:bg-red-950/70 dark:text-odp-fgStrong dark:border-red-700/60'
                   : isEditing
                     ? 'bg-sky-500/25 text-gray-900 border border-sky-400/60 shadow dark:bg-sky-400/25 dark:text-odp-fgStrong dark:border-sky-400/50'
-                    : self
-                      ? 'bg-sky-100 text-gray-900 dark:bg-[#1a2740] dark:text-odp-fgStrong border border-sky-200/80 dark:border-sky-800/50 shadow'
-                      : 'bg-white text-gray-900 dark:bg-[#243044] dark:text-odp-fgStrong border border-white/60 dark:border-white/10 shadow'
+                    : collapsed
+                      ? 'bg-black/[0.06] text-gray-500 border border-black/5 shadow-none dark:bg-white/[0.04] dark:text-gray-400 dark:border-white/5'
+                      : self
+                        ? 'bg-sky-100 text-gray-900 dark:bg-[#1a2740] dark:text-odp-fgStrong border border-sky-200/80 dark:border-sky-800/50 shadow'
+                        : 'bg-white text-gray-900 dark:bg-[#243044] dark:text-odp-fgStrong border border-white/60 dark:border-white/10 shadow'
               }`}
               initial={false}
               animate={{
@@ -812,6 +863,7 @@ function MessageBubble({
                 onViewEditHistory={onViewEditHistory}
                 onTogglePin={onTogglePin}
                 onToggleCollapse={onToggleCollapse}
+                onOpenReactionPicker={openReactionPicker}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -821,6 +873,14 @@ function MessageBubble({
               deletingStatus
             ) : null}
           </div>
+          <ChatMessageReactions
+            reactions={msg.reactions}
+            coarse={coarse}
+            disabled={isDeleting || syncing}
+            pickerOpen={reactionPickerOpen}
+            onPickerOpenChange={setReactionPickerOpen}
+            onToggle={(reaction) => onToggleReaction?.(msg, reaction)}
+          />
         </div>
       </div>
     </div>
@@ -858,6 +918,7 @@ function MessageBubble({
             onViewEditHistory={onViewEditHistory}
             onTogglePin={onTogglePin}
             onToggleCollapse={onToggleCollapse}
+            onOpenReactionPicker={openReactionPicker}
             shiftHeldRef={shiftHeldRef}
             _Item={ContextMenu.Item}
           />
@@ -886,6 +947,7 @@ export default function ChatMessageList({
   onViewEditHistory,
   onTogglePin,
   onToggleCollapse,
+  onToggleReaction,
   onOpenNote,
   onOpenReplyTarget,
   emptyHint,
@@ -902,6 +964,7 @@ export default function ChatMessageList({
   const prevLenRef = useRef(0);
   const initialBottomPinRef = useRef(true);
   const [sheetMessage, setSheetMessage] = useState(null);
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
   const coarse = useIsCoarsePointer();
   const shiftHeldRef = useShiftHeldRef();
   const enterIds = useEnteringMessageIds(messages);
@@ -1210,6 +1273,7 @@ export default function ChatMessageList({
                         onViewEditHistory={onViewEditHistory}
                         onTogglePin={onTogglePin}
                         onToggleCollapse={onToggleCollapse}
+                        onToggleReaction={onToggleReaction}
                         onOpenNote={onOpenNote}
                         onOpenReply={onOpenReplyTarget}
                         onOpenMobileSheet={setSheetMessage}
@@ -1217,6 +1281,12 @@ export default function ChatMessageList({
                         coarse={coarse}
                         rowSelected={sheetMessage?.id === item.msg.id}
                         isEditing={editingMessageId === item.msg.id}
+                        externalReactionPickerOpen={
+                          reactionPickerMsgId === item.msg.id
+                        }
+                        onReactionPickerOpenChange={(open) => {
+                          setReactionPickerMsgId(open ? item.msg.id : null);
+                        }}
                         getPresignedUrl={getPresignedUrl}
                         groupIconPath={
                           groupIconByName instanceof Map
@@ -1272,6 +1342,10 @@ export default function ChatMessageList({
         onViewEditHistory={onViewEditHistory}
         onTogglePin={onTogglePin}
         onToggleCollapse={onToggleCollapse}
+        onOpenReactionPicker={(m) => {
+          setSheetMessage(null);
+          setReactionPickerMsgId(m?.id || null);
+        }}
         shiftHeldRef={shiftHeldRef}
       />
     </>

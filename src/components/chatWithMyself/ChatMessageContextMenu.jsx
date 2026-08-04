@@ -11,6 +11,7 @@ import {
   X,
   ChevronsDownUp,
   ChevronsUpDown,
+  SmilePlus,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
@@ -65,6 +66,7 @@ export default function ChatMessageContextMenu({
   onViewEditHistory,
   onTogglePin,
   onToggleCollapse,
+  onOpenReactionPicker,
   shiftHeldRef,
 }) {
   const dismissGuardUntilRef = useRef(0);
@@ -171,6 +173,17 @@ export default function ChatMessageContextMenu({
               >
                 <Reply size={16} className="shrink-0 text-gray-500" />
                 답장
+              </button>
+              <button
+                type="button"
+                className={menuBtnClass}
+                onClick={() => {
+                  onOpenReactionPicker?.(message);
+                  onOpenChange?.(false);
+                }}
+              >
+                <SmilePlus size={16} className="shrink-0 text-gray-500" />
+                반응 추가
               </button>
               <button
                 type="button"

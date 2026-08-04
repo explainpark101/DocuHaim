@@ -97,6 +97,14 @@ export {
 } from './storage.js';
 export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from './format.js';
 export {
+  parseReactionsAttr,
+  serializeReactionsAttr,
+  toggleReaction,
+  hasReaction,
+  reactionKey,
+  normalizeReaction,
+} from './reactions.js';
+export {
   postChatSyncEvent,
   postChatLocalSyncEvent,
   CHAT_SYNC_CHANNEL,
