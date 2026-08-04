@@ -4,6 +4,7 @@ import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import { Check, Paperclip, Pencil, Send, X, FileText } from 'lucide-react';
 import { Compartment, StateEffect } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
+import { motion as Motion } from 'motion/react';
 import '@/styles/md-editor-rt/style.css';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatAddGroupDialog from '@/components/chatWithMyself/ui/ChatAddGroupDialog';
@@ -44,6 +45,11 @@ config({
 
 const COMPOSER_MIN_H = 40;
 const COMPOSER_MAX_H = 200;
+
+const EDITOR_HEIGHT_TRANSITION = {
+  duration: 0.28,
+  ease: [0.22, 1, 0.36, 1],
+};
 
 /**
  * Cap editor body height against the visual viewport (keyboard-aware).
@@ -978,14 +984,16 @@ export default function ChatComposer({
                 <Paperclip size={18} />
               </button>
             ) : null}
-            <div
+            <Motion.div
               ref={wrapRef}
               className={`chat-composer-editor min-w-0 flex-1 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft ${
                 showLineNumbers ? 'chat-composer-editor--line-numbers' : ''
               } ${showToolbar ? '' : 'chat-composer-editor--no-toolbar'} ${
                 fillParent ? 'h-full min-h-0' : ''
               }`}
-              style={fillParent ? undefined : { height: editorHeight }}
+              initial={false}
+              animate={fillParent ? undefined : { height: editorHeight }}
+              transition={EDITOR_HEIGHT_TRANSITION}
             >
               <MdEditor
                 editorId="chat-with-myself-composer"
@@ -1003,7 +1011,7 @@ export default function ChatComposer({
                   callback([]);
                 }}
               />
-            </div>
+            </Motion.div>
             <button
               type="button"
               onClick={doSend}

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { motion as Motion } from 'motion/react';
 import { useResizablePanelHeight } from '@/hooks/useResizablePanelHeight';
 
 const STORAGE_KEY = 's3haim_chat_composer_dock_height';
@@ -6,6 +7,11 @@ const DEFAULT_H = 280;
 const MIN_H = 140;
 /** Floor while auto-fitting to short edit content (below manual dock min). */
 const MIN_FIT_H = 72;
+
+const HEIGHT_TRANSITION = {
+  duration: 0.32,
+  ease: [0.22, 1, 0.36, 1],
+};
 
 /** Prefer the chat column height; fall back to visual viewport. */
 export function chatComposerAreaMaxHeight() {
@@ -24,6 +30,7 @@ export function chatComposerAreaMaxHeight() {
  * When `autoFit` is true (e.g. message edit), height follows content up to
  * 70% of the message column instead of the persisted dock size.
  * Leaving autoFit restores the pre-edit dock height.
+ * Height changes animate unless the user is actively dragging the resize handle.
  */
 export default function ChatComposerDock({
   children,
@@ -32,6 +39,8 @@ export default function ChatComposerDock({
 }) {
   const [maxHeight, setMaxHeight] = useState(chatComposerAreaMaxHeight);
   const heightBeforeFitRef = useRef(/** @type {number | null} */ (null));
+  const contentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const [fitHeight, setFitHeight] = useState(/** @type {number | null} */ (null));
 
   useEffect(() => {
     const sync = () => setMaxHeight(chatComposerAreaMaxHeight());
@@ -69,14 +78,39 @@ export default function ChatComposerDock({
     return undefined;
   }, [autoFit, height, maxHeight, setHeight]);
 
+  // Measure natural content height while auto-fitting.
+  useLayoutEffect(() => {
+    if (!autoFit) {
+      setFitHeight(null);
+      return undefined;
+    }
+    const el = contentRef.current;
+    if (!el) return undefined;
+
+    const update = () => {
+      const next = Math.min(
+        maxHeight,
+        Math.max(MIN_FIT_H, Math.ceil(el.getBoundingClientRect().height)),
+      );
+      setFitHeight((prev) => (prev === next ? prev : next));
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [autoFit, maxHeight]);
+
+  const targetHeight =
+    autoFit && fitHeight != null ? fitHeight : height;
+
   return (
-    <div
+    <Motion.div
       className={`relative w-full shrink-0 overflow-hidden border-t-2 border-gray-300 bg-slate-100 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] ${className}`}
-      style={
-        autoFit
-          ? { height: 'auto', maxHeight, minHeight: MIN_FIT_H }
-          : { height }
-      }
+      initial={false}
+      animate={{ height: targetHeight }}
+      transition={isResizing ? { duration: 0 } : HEIGHT_TRANSITION}
+      style={{ maxHeight }}
     >
       {!autoFit ? (
         <div
@@ -100,14 +134,15 @@ export default function ChatComposerDock({
         </div>
       ) : null}
       <div
+        ref={contentRef}
         className={
           autoFit
-            ? 'flex max-h-[inherit] min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
+            ? 'flex flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
             : 'flex h-full min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
         }
       >
         {children}
       </div>
-    </div>
+    </Motion.div>
   );
 }
