@@ -226,6 +226,11 @@ export default function LlmAssistPanel({
             ))}
           </select>
         </div>
+        <p className="text-[10px] leading-snug text-gray-500 dark:text-odp-muted">
+          원격 저장소{' '}
+          <code className="rounded bg-gray-100 px-1 dark:bg-odp-bgSoft">.settings/llm-prompt-templates.json</code>
+          에 동기화됩니다.
+        </p>
         <input
           type="text"
           value={templateName}

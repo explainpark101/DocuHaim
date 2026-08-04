@@ -291,15 +291,19 @@ export default function LlmAssistModal({
       alert('템플릿 이름과 지시사항을 모두 입력하세요.');
       return;
     }
-    const saved = await saveLlmPromptTemplate({
-      id: editingTemplateId || createEmptyLlmPromptTemplate().id,
-      name,
-      instruction: inst,
-      updatedAt: Date.now(),
-    });
-    setEditingTemplateId(saved.id);
-    setSelectedTemplateId(saved.id);
-    await loadTemplates();
+    try {
+      const saved = await saveLlmPromptTemplate({
+        id: editingTemplateId || createEmptyLlmPromptTemplate().id,
+        name,
+        instruction: inst,
+        updatedAt: Date.now(),
+      });
+      setEditingTemplateId(saved.id);
+      setSelectedTemplateId(saved.id);
+      await loadTemplates();
+    } catch (err) {
+      alert(err?.message || '템플릿 저장에 실패했습니다.');
+    }
   }, [templateName, instruction, editingTemplateId, loadTemplates]);
 
   const handleNewTemplate = useCallback(() => {
@@ -312,9 +316,13 @@ export default function LlmAssistModal({
   const handleDeleteTemplate = useCallback(async () => {
     if (!editingTemplateId) return;
     if (!window.confirm('이 지시사항 템플릿을 삭제할까요?')) return;
-    await deleteLlmPromptTemplate(editingTemplateId);
-    handleNewTemplate();
-    await loadTemplates();
+    try {
+      await deleteLlmPromptTemplate(editingTemplateId);
+      handleNewTemplate();
+      await loadTemplates();
+    } catch (err) {
+      alert(err?.message || '템플릿 삭제에 실패했습니다.');
+    }
   }, [editingTemplateId, handleNewTemplate, loadTemplates]);
 
   const handleAddImages = useCallback(async (images) => {

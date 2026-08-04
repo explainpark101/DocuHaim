@@ -71,6 +71,10 @@ import { uploadLocalEditorImage, getLocalWikiImageObjectUrl } from '@/utils/loca
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
+import {
+  setLlmPromptTemplatesStore,
+  syncLlmPromptTemplatesToRemote,
+} from '@/utils/llmPromptTemplatesDb';
 import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
 import {
   DEFAULT_STORAGE_MODE,
@@ -1030,7 +1034,19 @@ function MainApp() {
 
   useEffect(() => {
     setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+    setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
   }, [getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig]);
+
+  // Push existing IndexedDB AI templates to remote as soon as storage is ready
+  useEffect(() => {
+    if (!isUnlocked) return;
+    const ready =
+      (storageMode === 'local' && localRootHandle) ||
+      (storageMode === 'webdav' && webdavReady) ||
+      (storageMode === 's3' && s3Creds.bucket);
+    if (!ready) return;
+    syncLlmPromptTemplatesToRemote();
+  }, [isUnlocked, storageMode, localRootHandle, webdavReady, s3Creds.bucket]);
 
   const loadSnippetConfigFromS3 = useCallback(
     async (creds = s3Creds) => {
