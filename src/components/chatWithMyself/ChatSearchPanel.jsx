@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Copy, ExternalLink, Filter, History, Loader2, Pin, Search, FileText, X } from 'lucide-react';
+import {
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  Filter,
+  History,
+  Loader2,
+  Pin,
+  Search,
+  FileText,
+  SmilePlus,
+  X,
+} from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { ContextMenu, Form } from 'radix-ui';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
@@ -7,6 +19,8 @@ import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
+import ChatReactionGlyph from '@/components/chatWithMyself/ChatReactionGlyph';
+import ChatReactionPicker from '@/components/chatWithMyself/ChatReactionPicker';
 import ChatResultEnter from '@/components/chatWithMyself/ChatResultEnter';
 import {
   chatFieldInputClass,
@@ -25,6 +39,9 @@ import {
   chatAttachmentsToMarkdown,
   resolveGroupLabel,
   formatChatMessagePlainText,
+  reactionKey,
+  fuzzyMatchText,
+  reactionsToSearchText,
 } from '@/utils/chatWithMyself';
 
 function useIsCoarsePointer() {
@@ -135,6 +152,24 @@ function SearchResultCard({
   );
   const time = formatMessageTime(result.at, timeZone || detectTimeZone());
   const hasAttachments = attachments.length > 0;
+  const reactions = Array.isArray(result.reactions) ? result.reactions : [];
+  const q = String(query || '').trim();
+  const matchedReactions =
+    q && reactions.length > 0
+      ? reactions.filter((reaction) =>
+          fuzzyMatchText(reactionsToSearchText([reaction]), q),
+        )
+      : [];
+  // Prefer query-matched reactions; otherwise show all when the card would otherwise be empty.
+  const displayReactions =
+    matchedReactions.length > 0
+      ? matchedReactions
+      : !previewSource &&
+          !String(result.ogSearchText || '').trim() &&
+          !hasAttachments
+        ? reactions
+        : [];
+  const showReactions = displayReactions.length > 0;
   const showPreview =
     Boolean(previewSource) || Boolean(String(result.ogSearchText || '').trim());
 
@@ -173,7 +208,7 @@ function SearchResultCard({
           </span>
           <span className="shrink-0 tabular-nums">{time}</span>
         </div>
-        {showPreview || hasAttachments ? (
+        {showPreview || hasAttachments || showReactions ? (
           <div className="max-h-48 overflow-y-auto overscroll-contain">
             {showPreview ? (
               <div
@@ -193,6 +228,22 @@ function SearchResultCard({
                   className="text-sm text-gray-800 dark:text-odp-fg"
                   getPresignedUrl={getPresignedUrl}
                 />
+              </div>
+            ) : null}
+            {showReactions ? (
+              <div
+                className={`${showPreview || hasAttachments ? 'mt-1.5' : ''} flex flex-wrap items-center gap-1`}
+                aria-label="반응"
+              >
+                {displayReactions.map((reaction) => (
+                  <span
+                    key={reactionKey(reaction)}
+                    className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-gray-300/80 bg-white/90 px-1.5 text-xs text-gray-700 shadow-sm dark:border-white/15 dark:bg-[#1a2333] dark:text-odp-fg"
+                    title={reaction.value}
+                  >
+                    <ChatReactionGlyph reaction={reaction} size={14} />
+                  </span>
+                ))}
               </div>
             ) : null}
           </div>
@@ -249,6 +300,7 @@ export default function ChatSearchPanel({
   const [fromDt, setFromDt] = useState('');
   const [toDt, setToDt] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const listRef = useRef(null);
   const queryInputRef = useRef(null);
   const coarse = useIsCoarsePointer();
@@ -277,6 +329,19 @@ export default function ChatSearchPanel({
     Boolean(dateFilter) ||
     Boolean(fromDt) ||
     Boolean(toDt);
+
+  const handleReactionSearchPick = (reaction) => {
+    const token =
+      reaction?.kind === 'lucide'
+        ? String(reaction.value || '').trim()
+        : String(reaction?.value || '').trim();
+    if (!token) return;
+    setQuery(token);
+    window.requestAnimationFrame(() => {
+      queryInputRef.current?.focus();
+      queryInputRef.current?.select?.();
+    });
+  };
 
   const resultItems = useMemo(() => {
     const out = [];
@@ -314,7 +379,10 @@ export default function ChatSearchPanel({
   }, [query, groupFilter, dateFilter, fromDt, toDt, onSearch]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setReactionPickerOpen(false);
+      return;
+    }
     const id = window.requestAnimationFrame(() => {
       queryInputRef.current?.focus();
     });
@@ -324,7 +392,7 @@ export default function ChatSearchPanel({
   if (!open) return null;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-white dark:bg-odp-bgSoft">
+    <div className="@container flex h-full min-h-0 w-full flex-col bg-white dark:bg-odp-bgSoft">
       {/* Sticky chrome: title + search bar (+ optional filters) */}
       <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft">
         <div className="flex items-center gap-2 px-3 py-2">
@@ -346,8 +414,8 @@ export default function ChatSearchPanel({
           className="space-y-2 px-3 pb-2"
           onSubmit={(e) => e.preventDefault()}
         >
-          <div className="flex items-center gap-1.5">
-            <Form.Field name="query" className="relative min-w-0 flex-1">
+          <div className="flex flex-col gap-1.5 @[280px]:flex-row @[280px]:items-center">
+            <Form.Field name="query" className="relative min-w-0 w-full @[280px]:flex-1">
               <Search
                 size={16}
                 className="pointer-events-none absolute left-2.5 top-1/2 z-[1] -translate-y-1/2 text-gray-400"
@@ -376,27 +444,52 @@ export default function ChatSearchPanel({
                 </button>
               ) : null}
             </Form.Field>
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((v) => !v)}
-              className={`inline-flex h-9 items-center gap-1 rounded-md border px-2 text-xs transition ${
-                filtersOpen || filtersActive
-                  ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-odp-borderSoft dark:text-gray-300 dark:hover:bg-odp-focusBg'
-              }`}
-              aria-expanded={filtersOpen}
-              aria-label="필터"
-              title="필터"
-            >
-              <Filter size={14} />
-              <Motion.span
-                animate={{ rotate: filtersOpen ? 180 : 0 }}
-                transition={{ duration: 0.18 }}
-                className="inline-flex"
+            <div className="flex shrink-0 items-center gap-1.5 self-end @[280px]:self-auto">
+              <ChatReactionPicker
+                open={reactionPickerOpen}
+                onOpenChange={setReactionPickerOpen}
+                mode={coarse ? 'dialog' : 'popover'}
+                side="bottom"
+                align="end"
+                title="반응으로 검색"
+                onSelect={handleReactionSearchPick}
               >
-                <ChevronDown size={14} />
-              </Motion.span>
-            </button>
+                <button
+                  type="button"
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition ${
+                    reactionPickerOpen
+                      ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-odp-borderSoft dark:text-gray-300 dark:hover:bg-odp-focusBg'
+                  }`}
+                  aria-label="반응으로 검색"
+                  title="반응으로 검색"
+                  aria-expanded={reactionPickerOpen}
+                >
+                  <SmilePlus size={16} />
+                </button>
+              </ChatReactionPicker>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                className={`inline-flex h-9 items-center gap-1 rounded-md border px-2 text-xs transition ${
+                  filtersOpen || filtersActive
+                    ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-odp-borderSoft dark:text-gray-300 dark:hover:bg-odp-focusBg'
+                }`}
+                aria-expanded={filtersOpen}
+                aria-label="필터"
+                title="필터"
+              >
+                <Filter size={14} />
+                <Motion.span
+                  animate={{ rotate: filtersOpen ? 180 : 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="inline-flex"
+                >
+                  <ChevronDown size={14} />
+                </Motion.span>
+              </button>
+            </div>
           </div>
 
           <AnimatePresence initial={false}>

@@ -36,6 +36,8 @@ type ChatReactionPickerProps = {
   children?: ReactNode;
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
+  /** Accessible dialog title (dialog mode). */
+  title?: string;
 };
 
 /** Close when pointer lands outside this picker instance (capture phase). */
@@ -300,6 +302,7 @@ export default function ChatReactionPicker({
   children,
   side = 'top',
   align = 'center',
+  title = '반응 추가',
 }: ChatReactionPickerProps) {
   const pickerId = useId();
   useCloseOnOutsidePointer(open, pickerId, onOpenChange);
@@ -337,7 +340,7 @@ export default function ChatReactionPicker({
             onInteractOutside={() => onOpenChange(false)}
             onEscapeKeyDown={() => onOpenChange(false)}
           >
-            <Dialog.Title className="sr-only">반응 추가</Dialog.Title>
+            <Dialog.Title className="sr-only">{title}</Dialog.Title>
             <PickerBody onSelect={handleSelect} autoFocusSearch />
           </Dialog.Content>
         </Dialog.Portal>

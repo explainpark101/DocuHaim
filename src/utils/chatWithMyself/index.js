@@ -135,6 +135,7 @@ export {
   loadOgSearchText,
   ogDataToSearchText,
 } from './search.js';
+export { reactionsToSearchText } from './reactionSearch.js';
 export { groupColor, isSelfGroupName } from './groupAvatar.js';
 export {
   COMPOSER_DRAFT_LS_KEY,

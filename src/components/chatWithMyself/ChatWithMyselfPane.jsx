@@ -67,6 +67,7 @@ import {
   touchTimezone,
   fuzzyMatchText,
   loadMessageOgSearchText,
+  reactionsToSearchText,
   readComposerDraftMeta,
   getComposerToolbarVisible,
   readComposerToolbarPref,
@@ -122,6 +123,10 @@ async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
       ) {
         return { ok: true, ogSearchText: '' };
       }
+    }
+    const reactionSearchText = reactionsToSearchText(msg.reactions);
+    if (fuzzyMatchText(reactionSearchText, filters.query)) {
+      return { ok: true, ogSearchText: '' };
     }
     const ogSearchText = await loadMessageOgSearchText(msg, ogStorage);
     if (fuzzyMatchText(ogSearchText, filters.query)) {
