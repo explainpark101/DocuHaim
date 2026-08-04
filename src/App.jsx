@@ -38,6 +38,7 @@ import ChatWithMyselfPane from '@/components/chatWithMyself/ChatWithMyselfPane';
 import ShareTargetGate, {
   useChatStorageCtx,
 } from '@/components/chatWithMyself/ShareTargetGate';
+import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
@@ -351,6 +352,13 @@ function MainApp() {
   const lockChatViewport = isMobile && isChatRoute;
   useVisualViewportLock(lockChatViewport);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  useHistoryOverlayBack(
+    sidebarOpen,
+    closeSidebar,
+    isMobile && isChatRoute,
+    'main-sidebar',
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return typeof window !== 'undefined' && window.localStorage.getItem('s3haim_sidebar_collapsed') === '1';

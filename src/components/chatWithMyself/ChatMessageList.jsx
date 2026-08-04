@@ -36,6 +36,7 @@ import {
   formatChatMessageMarkdownCopy,
   resolveGroupLabel,
 } from '@/utils/chatWithMyself';
+import { scrollChatMessageToStart } from '@/utils/chatWithMyself/scrollToMessage';
 
 /** Shrink feedback starts at this hold duration. */
 const LONG_PRESS_THRESHOLD_MS = 250;
@@ -945,10 +946,33 @@ export default function ChatMessageList({
   }, [messages, highlightId]);
 
   useEffect(() => {
-    if (highlightId) {
-      const node = document.getElementById(`chat-msg-${highlightId}`);
-      node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (!highlightId) return undefined;
+    const scroller = scrollerRef.current;
+    if (!scroller) return undefined;
+
+    let cancelled = false;
+    const align = () => {
+      if (cancelled) return;
+      scrollChatMessageToStart(highlightId, scroller);
+    };
+
+    align();
+    requestAnimationFrame(align);
+    const t1 = window.setTimeout(align, 50);
+    const t2 = window.setTimeout(align, 320);
+
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => align())
+        : null;
+    ro?.observe(scroller);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t1);
+      clearTimeout(t2);
+      ro?.disconnect();
+    };
   }, [highlightId, messages]);
 
   useEffect(() => {
@@ -1050,9 +1074,11 @@ export default function ChatMessageList({
                       layout
                       className="min-w-0 max-w-full"
                       initial={
-                        enterIds.has(item.msg.id)
-                          ? { opacity: 0, y: 14, scale: 0.98 }
-                          : false
+                        highlightId
+                          ? false
+                          : enterIds.has(item.msg.id)
+                            ? { opacity: 0, y: 14, scale: 0.98 }
+                            : false
                       }
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{
