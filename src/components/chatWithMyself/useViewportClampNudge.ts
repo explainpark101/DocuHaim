@@ -22,6 +22,12 @@ function getStatusBarTop(): number {
   return window.innerHeight - STATUS_BAR_FALLBACK_PX;
 }
 
+/** CSSStyleDeclaration lengths are strings; React CSSProperties also allow unitless numbers (px). */
+function cssLength(value: string | number | undefined | null): string {
+  if (value == null || value === '') return '';
+  return typeof value === 'number' ? `${value}px` : String(value);
+}
+
 /**
  * Radix Popper shifts only on the main axis (`crossAxis: false`), so ContextMenu
  * (side=right) can sit under the app status bar. After Radix places the menu,
@@ -102,13 +108,13 @@ export function useViewportClampNudge(
 
       // Apply immediately — don't wait for React commit (avoids one-frame overlap).
       node.style.transform = next.transform ?? '';
-      node.style.maxHeight = next.maxHeight ?? '';
+      node.style.maxHeight = cssLength(next.maxHeight);
 
       setStyle((prev) => {
         const prevT = prev?.transform ?? '';
-        const prevH = prev?.maxHeight ?? '';
+        const prevH = cssLength(prev?.maxHeight);
         const nextT = next.transform ?? '';
-        const nextH = next.maxHeight ?? '';
+        const nextH = cssLength(next.maxHeight);
         if (prevT === nextT && prevH === nextH) return prev;
         return Object.keys(next).length > 0 ? next : undefined;
       });
