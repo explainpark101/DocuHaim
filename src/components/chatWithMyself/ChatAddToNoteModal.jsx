@@ -14,8 +14,9 @@ import {
   treeCollisionDetection,
 } from '@/components/treeDnd';
 import { IconFolderPlus } from '@/components/icons';
-import { FolderInput } from 'lucide-react';
+import { FolderInput, RotateCcw } from 'lucide-react';
 import { findNodeByPath } from '@/utils/s3Tree';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   resolveDragItems,
   parseDroppableId,
@@ -76,6 +77,7 @@ export default function ChatAddToNoteModal({
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [error, setError] = useState('');
+  const [confirmReplaceName, setConfirmReplaceName] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState(() => new Set());
   const [activeDragItems, setActiveDragItems] = useState(null);
   const hasInitializedRef = useRef(false);
@@ -95,6 +97,7 @@ export default function ChatAddToNoteModal({
     }
     setFileName('');
     setError('');
+    setConfirmReplaceName(false);
     setSelectedRoot(true);
     setSelectedFolder(null);
     setExpandedPaths(new Set());
@@ -294,6 +297,14 @@ export default function ChatAddToNoteModal({
   const canSubmit = isS3 ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
   const canMoveFolder = !selectedRoot && selectedFolder?.type === 'folder';
 
+  const applyDefaultFileName = () => {
+    if (fileName.trim()) {
+      setConfirmReplaceName(true);
+      return;
+    }
+    setFileName(defaultBaseName);
+  };
+
   const handleSubmit = async () => {
     if (!onConfirm || isSubmitting) return;
     const raw = (fileName.trim() || defaultBaseName).replace(/\.md$/i, '');
@@ -321,6 +332,7 @@ export default function ChatAddToNoteModal({
   const folderRoots = (tree || []).filter((n) => n.type === 'folder');
 
   return (
+    <>
     <Modal isOpen={isOpen}>
       <div className="flex max-h-[90vh] flex-col gap-4 p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
@@ -342,6 +354,15 @@ export default function ChatAddToNoteModal({
               className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
               autoFocus
             />
+            <button
+              type="button"
+              onClick={applyDefaultFileName}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg dark:hover:text-gray-200"
+              title="기본 이름 적용"
+              aria-label="기본 이름 적용"
+            >
+              <RotateCcw size={15} />
+            </button>
             <span className="shrink-0 text-xs text-gray-400">.md</span>
           </div>
         </label>
@@ -468,5 +489,18 @@ export default function ChatAddToNoteModal({
         </div>
       </div>
     </Modal>
+      <ConfirmModal
+        isOpen={confirmReplaceName}
+        title="파일명 대체"
+        message="입력된 파일명을 기본 이름으로 바꿀까요?"
+        confirmLabel="대체"
+        cancelLabel="취소"
+        onConfirm={() => {
+          setFileName(defaultBaseName);
+          setConfirmReplaceName(false);
+        }}
+        onCancel={() => setConfirmReplaceName(false)}
+      />
+    </>
   );
 }

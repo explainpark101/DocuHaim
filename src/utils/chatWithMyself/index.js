@@ -20,6 +20,10 @@ export {
   isSelfGroup,
   makeReplySnippet,
   formatChatMessageAsNoteMarkdown,
+  formatChatMessagePlainText,
+  formatChatMessageMarkdownCopy,
+  chatMessageHash,
+  chatMessageUrl,
 } from './format.js';
 export { normalizeSharePayload, sharePayloadFromSearch } from './sharePayload.js';
 export {
@@ -57,6 +61,7 @@ export {
   deleteChatMessage,
   updateChatMessage,
   findMessageById,
+  patchChatMessageMeta,
   createOgStorageAdapters,
   readOgArchive,
   writeOgArchive,
@@ -88,6 +93,7 @@ export {
   loadOgSearchText,
   ogDataToSearchText,
 } from './search.js';
+export { groupColor, isSelfGroupName } from './groupAvatar.js';
 export {
   COMPOSER_DRAFT_LS_KEY,
   readComposerDraftMeta,

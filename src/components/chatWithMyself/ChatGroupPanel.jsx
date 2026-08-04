@@ -1,13 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Plus, Users, X } from 'lucide-react';
 import ChatAddGroupDialog from '@/components/chatWithMyself/ui/ChatAddGroupDialog';
+import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
 import { SELF_GROUP, sortGroupsKo } from '@/utils/chatWithMyself';
-
-function groupColor(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return `hsl(${h % 360} 55% 42%)`;
-}
 
 /**
  * Right rail: group list.
@@ -91,9 +86,7 @@ export default function ChatGroupPanel({
           aria-pressed={viewGroup === SELF_GROUP}
           onClick={() => onToggleViewGroup?.(SELF_GROUP)}
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-gray-900">
-            나
-          </span>
+          <ChatGroupAvatar name={SELF_GROUP} size="md" />
           <span className="truncate font-medium">{SELF_GROUP}</span>
         </button>
         {sorted.map((g) => (
@@ -104,12 +97,7 @@ export default function ChatGroupPanel({
             aria-pressed={viewGroup === g}
             onClick={() => onToggleViewGroup?.(g)}
           >
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: groupColor(g) }}
-            >
-              {g.slice(0, 1)}
-            </span>
+            <ChatGroupAvatar name={g} size="md" />
             <span className="truncate">{g}</span>
           </button>
         ))}
