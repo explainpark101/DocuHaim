@@ -256,7 +256,7 @@ export default function Sidebar({
   expandedPathsRef.current = expandedPaths;
   searchTermRef.current = searchTerm;
 
-  const HOVER_EXPAND_MS = 3000;
+  const HOVER_EXPAND_MS = 2000;
 
   const clearHoverExpandTimer = useCallback(() => {
     if (hoverExpandTimerRef.current != null) {
