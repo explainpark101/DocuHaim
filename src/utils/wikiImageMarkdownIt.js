@@ -9,7 +9,7 @@ const DEBUG_WIKI_IMAGE_PLUGIN = true;
 const PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
 
 /**
- * markdown-it 플러그인: ![[path]] / ![[path|size]] 를 data-wiki-path 를 가진 img 로 변환.
+ * markdown-it 플러그인: ![[path]] / ![[path|size]] / ![[path|bg=#hex]] 를 data-wiki-path 를 가진 img 로 변환.
  * Preview Hydration 단계에서 src 에 Pre-signed URL 이 채워짐.
  * src 에는 1x1 투명 placeholder 를 넣어 두어, sanitizer/빈 img 제거를 피함.
  *
@@ -64,6 +64,9 @@ export function wikiImagePlugin(md) {
           }
           if (parsed?.height) {
             imgToken.attrSet('data-wiki-height', parsed.height);
+          }
+          if (parsed?.background) {
+            imgToken.attrSet('data-wiki-bg', parsed.background);
           }
           const style = buildWikiImageStyle(parsed ?? {});
           if (style) imgToken.attrSet('style', style);
@@ -350,6 +353,7 @@ export function wikiImagePlugin(md) {
             const parsed = parseMarkdownImageAttrsBlock(`{${attrMatch[1]}}`);
             if (parsed.width) token.attrSet('data-md-width', parsed.width);
             if (parsed.height) token.attrSet('data-md-height', parsed.height);
+            if (parsed.background) token.attrSet('data-md-bg', parsed.background);
             const style = buildWikiImageStyle(parsed);
             if (style) token.attrSet('style', style);
 

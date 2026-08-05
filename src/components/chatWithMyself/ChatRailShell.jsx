@@ -3,10 +3,10 @@ import { AnimatePresence, motion as Motion } from 'motion/react';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
-const CHAT_RAIL_DEFAULT_WIDTH = 320;
-const CHAT_RAIL_MIN_WIDTH = 200;
-const CHAT_RAIL_HARD_MIN = 120;
-const CHAT_RAIL_MAX_FLOOR = 320;
+const CHAT_RAIL_DEFAULT_WIDTH = 360;
+const CHAT_RAIL_MIN_WIDTH = 240;
+const CHAT_RAIL_HARD_MIN = 140;
+const CHAT_RAIL_MAX_FLOOR = 360;
 const CHAT_RAIL_MAX_VW = 50;
 /** Keep at least this much room for the message column when fitting rails. */
 const CHAT_MAIN_MIN_WIDTH = 280;

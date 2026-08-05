@@ -75,22 +75,30 @@ export default function ChatMessageReactions({
 
   const chips = (
     <>
-      {list.map((reaction) => (
-        <button
-          key={reactionKey(reaction)}
-          type="button"
-          className={chipClass}
-          title={reaction.value}
-          aria-label={`반응 제거: ${reaction.value}`}
-          disabled={disabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!disabled) onToggle(reaction);
-          }}
-        >
-          <ChatReactionGlyph reaction={reaction} size={14} />
-        </button>
-      ))}
+      {list.map((reaction) => {
+        const pending = Boolean(reaction.pending);
+        return (
+          <button
+            key={reactionKey(reaction)}
+            type="button"
+            className={`${chipClass} transition-opacity duration-200 ${
+              pending ? 'pointer-events-none opacity-40' : 'opacity-100'
+            }`}
+            title={pending ? '반응 저장 중' : reaction.value}
+            aria-label={
+              pending ? `반응 저장 중: ${reaction.value}` : `반응 제거: ${reaction.value}`
+            }
+            aria-busy={pending || undefined}
+            disabled={disabled || pending}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!disabled && !pending) onToggle(reaction);
+            }}
+          >
+            <ChatReactionGlyph reaction={reaction} size={14} />
+          </button>
+        );
+      })}
       {!disabled ? (
         <ChatReactionPicker
           open={pickerOpen}

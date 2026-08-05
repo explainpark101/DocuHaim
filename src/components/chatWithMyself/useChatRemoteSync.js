@@ -355,14 +355,24 @@ export function mergeMessagesForDate(
   const localById = new Map(localForDay.map((m) => [m.id, m]));
   const mergedWithFlags = withDate.map((m) => {
     const local = localById.get(m.id);
-    if (!local?.pendingSync) return m;
-    if (
-      local.body === m.body &&
-      (local.editedAt || '') === (m.editedAt || '')
-    ) {
-      return { ...m, pendingSync: local.pendingSync };
+    if (!local) return m;
+    let next = m;
+    if (local.pendingReactionSync) {
+      next = {
+        ...next,
+        reactions: local.reactions,
+        reactionsAt: local.reactionsAt,
+        pendingReactionSync: true,
+      };
     }
-    return m;
+    if (!local.pendingSync) return next;
+    if (
+      local.body === next.body &&
+      (local.editedAt || '') === (next.editedAt || '')
+    ) {
+      return { ...next, pendingSync: local.pendingSync };
+    }
+    return next;
   });
   const deleted = new Set(merged.deletedIds || []);
   const mergedIds = new Set(

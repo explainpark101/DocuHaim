@@ -1,14 +1,33 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import Cropper, { type Area, type MediaSize, type Size } from 'react-easy-crop';
-import { Dialog } from 'radix-ui';
+import { Dialog, Switch } from 'radix-ui';
 import { getCroppedImg } from '@/utils/chatWithMyself/cropImage';
 import {
   chatDialogContentClass,
   chatDialogOverlayClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
+import ChatImageBackgroundPicker from '@/components/chatWithMyself/ChatImageBackgroundPicker';
 
 /** Smallest crop region (source pixels) the zoom slider may reach. */
 export const GROUP_ICON_MIN_CROP_PX = 32;
+
+const switchRootClass =
+  'relative h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent bg-gray-300 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 data-[state=checked]:bg-blue-600 dark:bg-odp-borderStrong dark:data-[state=checked]:bg-blue-500';
+
+const switchThumbClass =
+  'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
+
+const CHECKERBOARD_STYLE: CSSProperties = {
+  backgroundColor: '#ffffff',
+  backgroundImage: [
+    'linear-gradient(45deg, #d4d4d4 25%, transparent 25%)',
+    'linear-gradient(-45deg, #d4d4d4 25%, transparent 25%)',
+    'linear-gradient(45deg, transparent 75%, #d4d4d4 75%)',
+    'linear-gradient(-45deg, transparent 75%, #d4d4d4 75%)',
+  ].join(','),
+  backgroundSize: '16px 16px',
+  backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+};
 
 type ChatGroupIconCropModalProps = {
   open: boolean;
@@ -55,6 +74,8 @@ export default function ChatGroupIconCropModal({
   const [maxZoom, setMaxZoom] = useState(3);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
+  const [keepTransparency, setKeepTransparency] = useState(true);
+  const [backgroundColor, setBackgroundColor] = useState<string | null>('#ffffff');
   const mediaRef = useRef<MediaSize | null>(null);
   const cropSizeRef = useRef<Size | null>(null);
 
@@ -74,6 +95,8 @@ export default function ChatGroupIconCropModal({
     setMaxZoom(3);
     setCroppedAreaPixels(null);
     setBusy(false);
+    setKeepTransparency(true);
+    setBackgroundColor('#ffffff');
     mediaRef.current = null;
     cropSizeRef.current = null;
   }, [open, imageSrc]);
@@ -86,7 +109,10 @@ export default function ChatGroupIconCropModal({
     if (!imageSrc || !croppedAreaPixels || busy) return;
     setBusy(true);
     try {
-      const file = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const file = await getCroppedImg(imageSrc, croppedAreaPixels, {
+        keepTransparency,
+        backgroundColor: keepTransparency ? null : backgroundColor || '#ffffff',
+      });
       await onConfirm(file);
       onOpenChange(false);
     } catch {
@@ -105,7 +131,14 @@ export default function ChatGroupIconCropModal({
           <Dialog.Title className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
             {title}
           </Dialog.Title>
-          <div className="relative mt-3 h-[min(60vh,320px)] w-full overflow-hidden rounded-lg bg-black/90">
+          <div
+            className="relative mt-3 h-[min(60vh,320px)] w-full overflow-hidden rounded-lg"
+            style={
+              keepTransparency
+                ? CHECKERBOARD_STYLE
+                : { backgroundColor: backgroundColor || '#ffffff' }
+            }
+          >
             {imageSrc ? (
               <Cropper
                 image={imageSrc}
@@ -116,6 +149,7 @@ export default function ChatGroupIconCropModal({
                 aspect={1}
                 cropShape="round"
                 showGrid={false}
+                style={{ containerStyle: { backgroundColor: 'transparent' } }}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
@@ -145,6 +179,32 @@ export default function ChatGroupIconCropModal({
           <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
             최대 확대 시 약 {GROUP_ICON_MIN_CROP_PX}×{GROUP_ICON_MIN_CROP_PX}px까지 자를 수 있습니다.
           </p>
+          <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-odp-borderSoft">
+            <span className="min-w-0">
+              <span className="block text-xs font-medium text-gray-800 dark:text-odp-fgStrong">
+                PNG 투명 배경 유지
+              </span>
+              <span className="mt-0.5 block text-[10px] text-gray-500 dark:text-odp-muted">
+                끄면 아래 배경색으로 채운 뒤 JPEG로 저장합니다.
+              </span>
+            </span>
+            <Switch.Root
+              className={switchRootClass}
+              checked={keepTransparency}
+              onCheckedChange={(next) => setKeepTransparency(Boolean(next))}
+              aria-label="PNG 투명 배경 유지"
+            >
+              <Switch.Thumb className={switchThumbClass} />
+            </Switch.Root>
+          </label>
+          <div className={`mt-2 ${keepTransparency ? 'pointer-events-none opacity-50' : ''}`}>
+            <ChatImageBackgroundPicker
+              value={backgroundColor || '#ffffff'}
+              onChange={setBackgroundColor}
+              compact
+              allowNone={false}
+            />
+          </div>
           <div className="mt-3 flex justify-end gap-2">
             <Dialog.Close asChild>
               <button

@@ -37,7 +37,10 @@ import {
   wikiImageWithCaptionBlocksDocFromPaths,
 } from '@/utils/wikiImageHtmlInject';
 import { buildNovelSlashSuggestionItems } from '@/config/novelSlashSuggestionItems';
-import NovelEditorToc, { NOVEL_TOC_MD_PADDING_CLASS } from '@/components/NovelEditorToc';
+import NovelEditorToc, {
+  NOVEL_TOC_DEFAULT_WIDTH,
+  NOVEL_TOC_MD_PADDING_CLASS,
+} from '@/components/NovelEditorToc';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import {
@@ -76,6 +79,7 @@ turndown.addRule('wikiImageData', {
       path,
       width: node.getAttribute('data-wiki-width'),
       height: node.getAttribute('data-wiki-height'),
+      background: node.getAttribute('data-wiki-bg'),
     });
   },
 });
@@ -97,6 +101,7 @@ turndown.addRule('wikiFigureCaption', {
       path,
       width: img?.getAttribute('data-wiki-width'),
       height: img?.getAttribute('data-wiki-height'),
+      background: img?.getAttribute('data-wiki-bg'),
     });
     return cap ? `${wiki}\n\n${cap}` : wiki;
   },
@@ -229,7 +234,7 @@ export default function NovelMarkdownEditor({
   const pasteImageUploadLockRef = useRef(false);
   const [hydrateTick, setHydrateTick] = useState(0);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
-  const [novelTocWidthPx, setNovelTocWidthPx] = useState(224);
+  const [novelTocWidthPx, setNovelTocWidthPx] = useState(NOVEL_TOC_DEFAULT_WIDTH);
 
   const [initialHtml, setInitialHtml] = useState(() => markdownToNovelEditorHtml(value ?? ''));
 

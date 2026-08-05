@@ -149,8 +149,9 @@ export default function ChatLinkedText({
         if (part.type === 'wiki') {
           return (
             <ChatWikiImage
-              key={`w-${i}-${part.value}`}
-              path={part.value}
+              key={`w-${i}-${part.path || part.value}`}
+              path={part.path || part.value}
+              background={part.background}
               getPresignedUrl={getPresignedUrl}
             />
           );

@@ -117,6 +117,7 @@ export function planMarkdownImageExport(
       const attrs = markdownImageAttrsBlockFromSize({
         width: parsed?.width ?? null,
         height: parsed?.height ?? null,
+        background: parsed?.background ?? null,
       });
       const replacement = attrs ? `![](${relativePath})${attrs}` : `![](${relativePath})`;
       const token = `\0MDIMG${placeholders.length}\0`;
@@ -233,4 +234,79 @@ export function formatMissingExportImagesMessage(missing: string[]): string {
   const preview = missing.slice(0, 5).join('\n');
   const more = missing.length > 5 ? `\n… 외 ${missing.length - 5}개` : '';
   return `일부 이미지를 포함하지 못했습니다:\n${preview}${more}`;
+}
+
+export function sniffImageMimeFromBytes(data: Uint8Array, fileName?: string): string {
+  if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return 'image/jpeg';
+  if (data.length >= 4 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47) {
+    return 'image/png';
+  }
+  if (data.length >= 4 && data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46) return 'image/gif';
+  if (
+    data.length >= 12 &&
+    data[0] === 0x52 &&
+    data[1] === 0x49 &&
+    data[2] === 0x46 &&
+    data[3] === 0x46 &&
+    data[8] === 0x57 &&
+    data[9] === 0x45 &&
+    data[10] === 0x42 &&
+    data[11] === 0x50
+  ) {
+    return 'image/webp';
+  }
+  const ext = String(fileName || '')
+    .split('.')
+    .pop()
+    ?.toLowerCase();
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'gif') return 'image/gif';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'svg') return 'image/svg+xml';
+  if (ext === 'bmp') return 'image/bmp';
+  if (ext === 'avif') return 'image/avif';
+  return 'application/octet-stream';
+}
+
+export function uint8ToBase64(data: Uint8Array): string {
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    let part = '';
+    for (let j = 0; j < chunk.length; j += 1) {
+      part += String.fromCharCode(chunk[j] ?? 0);
+    }
+    binary += part;
+  }
+  return btoa(binary);
+}
+
+/**
+ * Replace `.pictures/...` destinations produced by `planMarkdownImageExport`
+ * with `data:` URIs so the note can be downloaded as a single markdown file.
+ */
+export function embedMarkdownImagesAsDataUris(
+  markdown: string,
+  images: Array<{ path: string; data: Uint8Array }>,
+): string {
+  const byPath = new Map(images.map((image) => [image.path, image]));
+  return mapOutsideFences(String(markdown ?? ''), (chunk) =>
+    chunk.replace(
+      new RegExp(MARKDOWN_IMAGE_RE.source, 'g'),
+      (full, alt: string, destination: string, rawAttrs = '') => {
+        const dest = String(destination ?? '');
+        const mdSrc = dest.trim().split(/\s+/)[0] || '';
+        const image = mdSrc ? byPath.get(mdSrc) : undefined;
+        if (!image) return full;
+        const mime = sniffImageMimeFromBytes(image.data, mdSrc);
+        const dataUri = `data:${mime};base64,${uint8ToBase64(image.data)}`;
+        const srcIndex = dest.indexOf(mdSrc);
+        const titlePart = srcIndex >= 0 ? dest.slice(srcIndex + mdSrc.length) : '';
+        return `![${alt}](${dataUri}${titlePart})${rawAttrs || ''}`;
+      },
+    ),
+  );
 }

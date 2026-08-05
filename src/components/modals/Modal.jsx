@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 
 const ANIMATION_DURATION_MS = 200;
 
+/**
+ * @param {{
+ *   isOpen: boolean,
+ *   onClose?: () => void,
+ *   onConfirm?: () => void,
+ *   children?: import('react').ReactNode,
+ * }} props
+ */
 export default function Modal({ isOpen, onClose, onConfirm, children }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);

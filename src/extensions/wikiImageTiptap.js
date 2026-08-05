@@ -38,6 +38,11 @@ export const WikiImage = Node.create({
         parseHTML: (el) => el.getAttribute('data-wiki-height'),
         renderHTML: (attrs) => (attrs.height ? { 'data-wiki-height': attrs.height } : {}),
       },
+      background: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-wiki-bg'),
+        renderHTML: (attrs) => (attrs.background ? { 'data-wiki-bg': attrs.background } : {}),
+      },
     };
   },
 
@@ -53,6 +58,7 @@ export const WikiImage = Node.create({
             path,
             width: el.getAttribute('data-wiki-width'),
             height: el.getAttribute('data-wiki-height'),
+            background: el.getAttribute('data-wiki-bg'),
           };
         },
       },
@@ -63,7 +69,12 @@ export const WikiImage = Node.create({
     const sizeAttrs = {};
     if (node.attrs.width) sizeAttrs['data-wiki-width'] = node.attrs.width;
     if (node.attrs.height) sizeAttrs['data-wiki-height'] = node.attrs.height;
-    const style = buildWikiImageStyle({ width: node.attrs.width, height: node.attrs.height });
+    if (node.attrs.background) sizeAttrs['data-wiki-bg'] = node.attrs.background;
+    const style = buildWikiImageStyle({
+      width: node.attrs.width,
+      height: node.attrs.height,
+      background: node.attrs.background,
+    });
     if (style) sizeAttrs.style = style;
     return [
       'img',

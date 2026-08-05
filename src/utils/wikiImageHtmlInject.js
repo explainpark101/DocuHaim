@@ -104,6 +104,7 @@ export function injectWikiImagesIntoHtml(html) {
     ];
     if (parsed?.width) attrs.push(`data-wiki-width="${escapeAttr(parsed.width)}"`);
     if (parsed?.height) attrs.push(`data-wiki-height="${escapeAttr(parsed.height)}"`);
+    if (parsed?.background) attrs.push(`data-wiki-bg="${escapeAttr(parsed.background)}"`);
     const style = buildWikiImageStyle(parsed ?? {});
     if (style) attrs.push(`style="${escapeAttr(style)}"`);
     return `<img ${attrs.join(' ')} />`;

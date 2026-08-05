@@ -3,7 +3,7 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
 const SIDEBAR_WIDTH_KEY = 's3haim_sidebar_width';
-const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_DEFAULT_WIDTH = 320;
 /** Collapse to fully closed when pointer-up width is at or below this many vw. */
 const SIDEBAR_COLLAPSE_BELOW_VW = 10;
 const SIDEBAR_MIN_VW = 10;

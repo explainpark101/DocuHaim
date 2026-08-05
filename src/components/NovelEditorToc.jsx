@@ -22,7 +22,7 @@ function extractHeadings(editor) {
 }
 
 const NOVEL_TOC_WIDTH_KEY = 's3haim_novel_toc_width';
-const NOVEL_TOC_DEFAULT_WIDTH = 224; // 14rem
+export const NOVEL_TOC_DEFAULT_WIDTH = 280;
 
 /** Default body padding class when TOC open (overridden by inline style when width changes). */
 export const NOVEL_TOC_MD_PADDING_CLASS = 'md:pr-(--novel-toc-width)';
@@ -49,9 +49,9 @@ export default function NovelEditorToc({
   } = useResizablePanelWidth({
     storageKey: NOVEL_TOC_WIDTH_KEY,
     defaultWidth: NOVEL_TOC_DEFAULT_WIDTH,
-    minWidth: 160,
-    collapseBelowWidth: 80,
-    maxWidth: 480,
+    minWidth: 180,
+    collapseBelowWidth: 90,
+    maxWidth: 640,
     edge: 'right',
     onCollapseBelowMin: onRequestClose,
   });

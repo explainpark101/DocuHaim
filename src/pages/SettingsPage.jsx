@@ -212,12 +212,14 @@ export default function SettingsPage({
           </div>
         </div>
 
-        <StorageUsageAnalysis
-          storageMode={storageMode}
-          onScanTree={onScanStorageUsage}
-          canScan={canScanStorageUsage}
-          onOpenFile={onOpenStorageUsageFile}
-        />
+        {canScanStorageUsage && (
+          <StorageUsageAnalysis
+            storageMode={storageMode}
+            onScanTree={onScanStorageUsage}
+            canScan={canScanStorageUsage}
+            onOpenFile={onOpenStorageUsageFile}
+          />
+        )}
 
         {/* S3 Form */}
         <form

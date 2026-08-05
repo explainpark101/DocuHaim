@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import { parseWikiImageInner } from '@/utils/wikiImageSyntax';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
+import { normalizeCssHexColor } from '@/utils/cssColor';
 
 /**
- * Resolve and display a chat wiki image ![[path]].
+ * Resolve and display a chat wiki image ![[path]] / ![[path|bg=#hex]].
  */
-export default function ChatWikiImage({ path, getPresignedUrl }) {
+export default function ChatWikiImage({ path, background, getPresignedUrl }) {
+  const parsed = parseWikiImageInner(path) || { path, background: null };
+  const storagePath = parsed.path || path;
+  const displayBg = normalizeCssHexColor(background ?? parsed.background);
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
   const openChatImage = useChatImageLightbox();
@@ -15,11 +20,11 @@ export default function ChatWikiImage({ path, getPresignedUrl }) {
     let cancelled = false;
     setFailed(false);
     setUrl(null);
-    if (!path || !getPresignedUrl) {
+    if (!storagePath || !getPresignedUrl) {
       setFailed(true);
       return undefined;
     }
-    resolveWikiImageUrl(path, getPresignedUrl)
+    resolveWikiImageUrl(storagePath, getPresignedUrl)
       .then((u) => {
         if (!cancelled) {
           if (u) setUrl(u);
@@ -32,12 +37,12 @@ export default function ChatWikiImage({ path, getPresignedUrl }) {
     return () => {
       cancelled = true;
     };
-  }, [path, getPresignedUrl]);
+  }, [storagePath, getPresignedUrl]);
 
   if (failed) {
     return (
       <div className="mt-1 rounded border border-dashed border-gray-300 px-2 py-1 text-[11px] text-gray-400 dark:border-odp-borderSoft">
-        이미지 로드 실패: {path}
+        이미지 로드 실패: {storagePath}
       </div>
     );
   }
@@ -52,9 +57,10 @@ export default function ChatWikiImage({ path, getPresignedUrl }) {
     <button
       type="button"
       className="mt-1 block max-w-full overflow-hidden rounded-md text-left"
+      style={displayBg ? { backgroundColor: displayBg } : undefined}
       onClick={(e) => {
         e.stopPropagation();
-        openChatImage?.(url, { alt: path || '' });
+        openChatImage?.(url, { alt: storagePath || '', backgroundColor: displayBg });
       }}
       aria-label="이미지 크게 보기"
     >
@@ -62,6 +68,7 @@ export default function ChatWikiImage({ path, getPresignedUrl }) {
         src={url}
         alt=""
         className="max-h-64 max-w-full rounded-md object-contain"
+        style={displayBg ? { backgroundColor: displayBg } : undefined}
         loading="lazy"
       />
     </button>

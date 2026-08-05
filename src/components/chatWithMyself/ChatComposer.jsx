@@ -53,6 +53,23 @@ const EDITOR_HEIGHT_CSS_TRANSITION =
  * Cap editor body height against the visual viewport (keyboard-aware).
  * While editing, allow growth up to ~70% of the message column (minus chrome).
  */
+function imageBackgroundsFromQueue(queue) {
+  const out = {};
+  for (const item of queue || []) {
+    if (!item?.id || !item.background) continue;
+    out[item.id] = item.background;
+  }
+  return out;
+}
+
+function applyDraftBackgrounds(items, backgrounds) {
+  if (!backgrounds || typeof backgrounds !== 'object') return items;
+  return (items || []).map((item) => ({
+    ...item,
+    background: backgrounds[item.id] || item.background || null,
+  }));
+}
+
 function getComposerContentMaxH({ editing = false } = {}) {
   if (typeof window === 'undefined') {
     return editing ? 480 : COMPOSER_MAX_H;
@@ -275,7 +292,9 @@ export default function ChatComposer({
         }
         if (meta?.imageIds?.length) {
           const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
-          if (!cancelled && imgs.length) setImageQueue(imgs);
+          if (!cancelled && imgs.length) {
+            setImageQueue(applyDraftBackgrounds(imgs, meta.imageBackgrounds));
+          }
         }
       } catch {
         /* ignore corrupt draft */
@@ -316,6 +335,7 @@ export default function ChatComposer({
       path: a.path,
       name: a.name,
       size: a.size,
+      background: a.background || null,
       file: null,
       existing: true,
       previewUrl: null,
@@ -398,7 +418,9 @@ export default function ChatComposer({
       });
       if (meta?.imageIds?.length) {
         const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
-        if (!cancelled && imgs.length) setImageQueue(imgs);
+        if (!cancelled && imgs.length) {
+          setImageQueue(applyDraftBackgrounds(imgs, meta?.imageBackgrounds));
+        }
       }
     })();
     return () => {
@@ -433,6 +455,7 @@ export default function ChatComposer({
             }
           : null,
         imageIds,
+        imageBackgrounds: imageBackgroundsFromQueue(imageQueue),
       });
       void syncComposerDraftImages(draftScope, imageQueue);
     }, 280);
@@ -458,6 +481,7 @@ export default function ChatComposer({
             }
           : null,
         imageIds: imageQueueRef.current.map((item) => item.id),
+        imageBackgrounds: imageBackgroundsFromQueue(imageQueueRef.current),
       });
       void syncComposerDraftImages(draftScope, imageQueueRef.current);
     };
@@ -669,7 +693,12 @@ export default function ChatComposer({
     const body = valueRef.current.trim();
     const queued = imageQueueRef.current;
     if (!body && queued.length === 0) return;
-    const newFiles = queued.filter((q) => q.file).map((q) => q.file);
+    const newAttachments = queued
+      .filter((q) => q.file)
+      .map((q) => ({
+        file: q.file,
+        background: q.kind === 'image' ? q.background || null : null,
+      }));
     if (editTarget) {
       const existingMarkdown = chatAttachmentsToMarkdown(
         queued
@@ -679,16 +708,17 @@ export default function ChatComposer({
             path: q.path,
             name: q.name,
             size: q.size,
+            background: q.background || null,
           })),
       );
-      if (!body && !existingMarkdown && newFiles.length === 0) return;
+      if (!body && !existingMarkdown && newAttachments.length === 0) return;
       const removedPaths = [...removedExistingPathsRef.current];
       removedExistingPathsRef.current = [];
       void onSaveEdit?.(
         body,
         selectedGroup || SELF_GROUP,
         editTarget,
-        newFiles,
+        newAttachments,
         { existingMarkdown, removedPaths },
       );
       setValue('');
@@ -696,7 +726,7 @@ export default function ChatComposer({
       onClearEdit?.();
       return;
     }
-    onSend?.(body, selectedGroup || SELF_GROUP, replyTo || null, newFiles);
+    onSend?.(body, selectedGroup || SELF_GROUP, replyTo || null, newAttachments);
     setValue('');
     clearImageQueue();
     onClearReply?.();
@@ -943,6 +973,7 @@ export default function ChatComposer({
                 <div
                   key={item.id}
                   className="relative h-16 w-16 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft"
+                  style={item.background ? { backgroundColor: item.background } : undefined}
                 >
                   <button
                     type="button"
@@ -951,15 +982,24 @@ export default function ChatComposer({
                       if (!item.previewUrl) return;
                       openChatImage?.(item.previewUrl, {
                         alt: item.name || item.file?.name || '첨부 이미지',
+                        backgroundColor: item.background || null,
+                        onBackgroundColorChange: (next) => {
+                          setImageQueue((prev) =>
+                            prev.map((p) =>
+                              p.id === item.id ? { ...p, background: next || null } : p,
+                            ),
+                          );
+                        },
                       });
                     }}
-                    aria-label="이미지 크게 보기"
+                    aria-label="이미지 배경색 설정"
                   >
                     {item.previewUrl ? (
                       <ChatImageFade
                         src={item.previewUrl}
                         alt=""
                         className="h-full w-full object-cover"
+                        style={item.background ? { backgroundColor: item.background } : undefined}
                       />
                     ) : (
                       <div className="h-full w-full animate-pulse bg-black/10 dark:bg-white/10" />

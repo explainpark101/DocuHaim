@@ -5,6 +5,8 @@ export type ChatReactionKind = 'emoji' | 'lucide';
 export type ChatReaction = {
   kind: ChatReactionKind;
   value: string;
+  /** UI-only optimistic add. Never written to day-file attrs. */
+  pending?: boolean;
 };
 
 const KIND_PREFIX: Record<ChatReactionKind, string> = {

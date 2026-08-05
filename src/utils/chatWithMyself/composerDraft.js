@@ -15,6 +15,7 @@ export const COMPOSER_DRAFT_LS_KEY = 's3haim_chat_composer_draft';
  *   group?: string,
  *   replyTo?: object | null,
  *   imageIds?: string[],
+ *   imageBackgrounds?: Record<string, string>,
  *   updatedAt?: number,
  * }} ComposerDraftMeta
  */
@@ -55,6 +56,10 @@ export function writeComposerDraftMeta(scope, meta) {
   try {
     const body = String(meta?.body || '');
     const imageIds = Array.isArray(meta?.imageIds) ? meta.imageIds.filter(Boolean) : [];
+    const imageBackgrounds =
+      meta?.imageBackgrounds && typeof meta.imageBackgrounds === 'object'
+        ? meta.imageBackgrounds
+        : {};
     const replyTo = meta?.replyTo || null;
     const group = meta?.group || '';
     const empty = !body.trim() && imageIds.length === 0 && !replyTo;
@@ -73,6 +78,7 @@ export function writeComposerDraftMeta(scope, meta) {
         group,
         replyTo,
         imageIds,
+        imageBackgrounds,
         updatedAt: Date.now(),
       }),
     );

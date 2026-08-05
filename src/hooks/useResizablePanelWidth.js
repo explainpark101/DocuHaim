@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+/** Bump when default widths change so stale localStorage px values are not reused. */
+const PANEL_WIDTH_STORE_VERSION = 2;
+
+function versionedStorageKey(storageKey) {
+  if (!storageKey) return storageKey;
+  return `${storageKey}::v${PANEL_WIDTH_STORE_VERSION}`;
+}
+
 /**
  * Drag-to-resize panel width. Right-edge panels: drag left increases width.
  *
  * @param {object} [options]
  * @param {string} [options.storageKey]
- * @param {number} [options.defaultWidth=224]
+ * @param {number} [options.defaultWidth=280]
  * @param {number} [options.minWidth=160]
- * @param {number} [options.maxWidth=480]
+ * @param {number} [options.maxWidth=640]
  * @param {number} [options.collapseBelowWidth]
  *   Collapse threshold (and hard floor when onCollapseBelowMin is unset). Defaults to minWidth.
  * @param {'left'|'right'} [options.edge='right'] Panel side; 'right' inverts drag delta.
@@ -20,9 +28,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  */
 export function useResizablePanelWidth({
   storageKey,
-  defaultWidth = 224,
+  defaultWidth = 280,
   minWidth = 160,
-  maxWidth = 480,
+  maxWidth = 640,
   collapseBelowWidth,
   edge = 'right',
   deferReactUpdateUntilEnd = false,
@@ -31,10 +39,12 @@ export function useResizablePanelWidth({
 } = {}) {
   const dragFloor = collapseBelowWidth ?? minWidth;
 
+  const persistKey = versionedStorageKey(storageKey);
+
   const [width, setWidth] = useState(() => {
-    if (!storageKey || typeof window === 'undefined') return defaultWidth;
+    if (!persistKey || typeof window === 'undefined') return defaultWidth;
     try {
-      const raw = window.localStorage.getItem(storageKey);
+      const raw = window.localStorage.getItem(persistKey);
       const n = Number(raw);
       if (Number.isFinite(n)) return Math.min(maxWidth, Math.max(dragFloor, n));
     } catch {
@@ -183,13 +193,13 @@ export function useResizablePanelWidth({
   }, [endResizeSession]);
 
   useEffect(() => {
-    if (!storageKey || isResizing) return;
+    if (!persistKey || isResizing) return;
     try {
-      window.localStorage.setItem(storageKey, String(width));
+      window.localStorage.setItem(persistKey, String(width));
     } catch {
       // ignore
     }
-  }, [storageKey, width, isResizing]);
+  }, [persistKey, width, isResizing]);
 
   useEffect(() => {
     if (!isResizing) return undefined;

@@ -24,7 +24,7 @@ import {
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
-const PRINT_TOC_DEFAULT_WIDTH = 224;
+const PRINT_TOC_DEFAULT_WIDTH = 280;
 
 const headingId = ({ index }) => `pdf-ex-heading-${index}`;
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
@@ -301,9 +301,9 @@ export default function ExportPDFPage() {
   } = useResizablePanelWidth({
     storageKey: PRINT_TOC_WIDTH_KEY,
     defaultWidth: PRINT_TOC_DEFAULT_WIDTH,
-    minWidth: 160,
-    collapseBelowWidth: 80,
-    maxWidth: 480,
+    minWidth: 180,
+    collapseBelowWidth: 90,
+    maxWidth: 640,
     edge: 'right',
     onCollapseBelowMin: () => setTocVisible(false),
   });

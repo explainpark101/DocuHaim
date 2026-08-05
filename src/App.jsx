@@ -151,6 +151,7 @@ import { buildZipBlob } from '@/utils/zipBuilder';
 import {
   buildMarkdownImageZipEntries,
   collectMarkdownExportImageBytes,
+  embedMarkdownImagesAsDataUris,
   formatMissingExportImagesMessage,
   isMarkdownFileName,
   planMarkdownImageExport,
@@ -401,7 +402,7 @@ function MainApp() {
   useHistoryOverlayBack(
     sidebarOpen,
     closeSidebar,
-    isMobile && isChatRoute,
+    isMobile,
     'main-sidebar',
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -2990,8 +2991,21 @@ function MainApp() {
     return true;
   };
 
+  const downloadMarkdownImageBase64 = async (storageType, notePath, fileName, markdownText) => {
+    const plan = planMarkdownImageExport(markdownText, notePath);
+    if (!plan.images.length) return false;
+    const { entries, missing } = await collectMarkdownExportImageBytes(plan.images, (path) =>
+      readBackendBytes(storageType, path),
+    );
+    const markdown = embedMarkdownImagesAsDataUris(plan.markdown, entries);
+    triggerBlobDownload(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), fileName);
+    const missingMessage = formatMissingExportImagesMessage(missing);
+    if (missingMessage) alert(missingMessage);
+    return true;
+  };
+
   /** Object URL 방식: 메모리 제한 ~100–200MB. presigned URL 인코딩 이슈 회피 */
-  const handleDownloadCurrentFile = async () => {
+  const handleDownloadCurrentFile = async (imageMode = 'files') => {
     if (!currentFile) return;
     const storageType = currentFile.type;
     if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
@@ -3001,7 +3015,10 @@ function MainApp() {
       if (isMarkdownFileName(fileName)) {
         const backend = getBackendForType(storageType);
         const { text } = await backend.readText(notePath);
-        const bundled = await downloadMarkdownImageZip(storageType, notePath, fileName, text);
+        const bundled =
+          imageMode === 'base64'
+            ? await downloadMarkdownImageBase64(storageType, notePath, fileName, text)
+            : await downloadMarkdownImageZip(storageType, notePath, fileName, text);
         if (!bundled) {
           triggerBlobDownload(new Blob([text], { type: 'text/markdown;charset=utf-8' }), fileName);
         }
@@ -3093,8 +3110,8 @@ function MainApp() {
     }
   };
 
-  /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시. md+이미지는 zip 없이 md/.pictures 로 저장 */
-  const handleDownloadToFolder = async () => {
+  /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시. md+이미지는 zip 없이 md/.pictures 또는 base64 단일 md */
+  const handleDownloadToFolder = async (imageMode = 'files') => {
     if (!currentFile) return;
     const storageType = currentFile.type;
     if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
@@ -3120,13 +3137,25 @@ function MainApp() {
               setDownloadProgress(Math.min(90, Math.round((completed / Math.max(total, 1)) * 90)));
             },
           );
-          await writeMarkdownImageBundleToDirectory(
-            dirHandle,
-            fileName,
-            plan.markdown,
-            entries,
-            (percent) => setDownloadProgress(90 + Math.round(percent * 0.1)),
-          );
+          if (imageMode === 'base64') {
+            const markdown = embedMarkdownImagesAsDataUris(plan.markdown, entries);
+            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            try {
+              await writable.write(markdown);
+            } finally {
+              await writable.close();
+            }
+            setDownloadProgress(100);
+          } else {
+            await writeMarkdownImageBundleToDirectory(
+              dirHandle,
+              fileName,
+              plan.markdown,
+              entries,
+              (percent) => setDownloadProgress(90 + Math.round(percent * 0.1)),
+            );
+          }
           const missingMessage = formatMissingExportImagesMessage(missing);
           if (missingMessage) alert(missingMessage);
           setDownloadComplete(true);
@@ -6199,6 +6228,9 @@ function MainApp() {
       <DownloadMethodModal
         isOpen={showDownloadMethodModal}
         fileName={currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop()}
+        showImageHandling={isMarkdownFileName(
+          currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop(),
+        )}
         onSelectLegacy={handleDownloadCurrentFile}
         onSelectStorageApi={handleDownloadToFolder}
         onCancel={() => setShowDownloadMethodModal(false)}

@@ -47,6 +47,8 @@ export function useHistoryOverlayBack(
 
     const onPopState = () => {
       if (!pushedRef.current) return;
+      // A higher overlay was popped; this entry is still current.
+      if (isOverlayHistoryState(overlayId)) return;
       pushedRef.current = false;
       closingFromPopRef.current = true;
       onClose();
@@ -54,7 +56,7 @@ export function useHistoryOverlayBack(
 
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [enabled, onClose]);
+  }, [enabled, onClose, overlayId]);
 
   useEffect(() => {
     if (!enabled) return;

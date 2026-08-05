@@ -1,6 +1,7 @@
 import { cacheOg, getCachedOg } from './chatDb.js';
 import { ogArchiveKey } from './paths.js';
 import { parseAppViewPath } from './format.js';
+import { parseWikiImageInner } from '@/utils/wikiImageSyntax';
 
 const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/gi;
 
@@ -109,7 +110,7 @@ function splitTextLinks(ts) {
 /**
  * Split plain text into text / link / note / wiki-image / file-card segments.
  * @param {string} text
- * @returns {Array<{ type: 'text' | 'link' | 'note' | 'wiki' | 'file', value?: string, label?: string, path?: string, name?: string, size?: number | null }>}
+ * @returns {Array<{ type: 'text' | 'link' | 'note' | 'wiki' | 'file', value?: string, label?: string, path?: string, name?: string, size?: number | null, background?: string | null }>}
  */
 export function splitTextWithUrls(text) {
   const s = String(text ?? '');
@@ -126,7 +127,16 @@ export function splitTextWithUrls(text) {
       coarse.push({ type: 'text', value: s.slice(last, tm.index) });
     }
     if (tm[1] != null) {
-      coarse.push({ type: 'wiki', value: tm[1].trim() });
+      const parsed = parseWikiImageInner(tm[1].trim());
+      const path = parsed?.path || tm[1].trim();
+      if (path) {
+        coarse.push({
+          type: 'wiki',
+          value: path,
+          path,
+          background: parsed?.background || null,
+        });
+      }
     } else if (tm[2] != null) {
       const path = String(tm[2] || '').trim();
       const name = String(tm[3] || path.split('/').filter(Boolean).pop() || 'file')

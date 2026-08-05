@@ -1,19 +1,42 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
 import { X } from 'lucide-react';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
+import ChatImageBackgroundPicker from '@/components/chatWithMyself/ChatImageBackgroundPicker';
+import { normalizeCssHexColor } from '@/utils/cssColor';
 
 const ChatImageLightboxContext = createContext(null);
 
 const OVERLAY_TRANSITION = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
 const PANEL_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
 
+const CHECKERBOARD_STYLE = {
+  backgroundColor: '#ffffff',
+  backgroundImage: [
+    'linear-gradient(45deg, #d4d4d4 25%, transparent 25%)',
+    'linear-gradient(-45deg, #d4d4d4 25%, transparent 25%)',
+    'linear-gradient(45deg, transparent 75%, #d4d4d4 75%)',
+    'linear-gradient(-45deg, transparent 75%, #d4d4d4 75%)',
+  ].join(','),
+  backgroundSize: '16px 16px',
+  backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+};
+
 /**
  * Fullscreen in-app image viewer for chat surfaces.
  */
-export function ChatImageLightbox({ src, alt = '', open, onClose }) {
+export function ChatImageLightbox({
+  src,
+  alt = '',
+  open,
+  onClose,
+  backgroundColor = null,
+  onBackgroundColorChange,
+  backgroundLabel = '보기 배경',
+}) {
   const visible = Boolean(open && src);
+  const color = normalizeCssHexColor(backgroundColor);
 
   return (
     <Dialog.Root
@@ -59,14 +82,33 @@ export function ChatImageLightbox({ src, alt = '', open, onClose }) {
                 />
                 <div className="pointer-events-none relative z-[1] flex h-full w-full items-center justify-center p-4 sm:p-8">
                   {src ? (
-                    <ChatImageFade
-                      src={src}
-                      alt={alt || ''}
-                      className="pointer-events-auto max-h-full max-w-full object-contain shadow-2xl"
+                    <div
+                      className="pointer-events-auto max-h-full max-w-full overflow-hidden shadow-2xl"
+                      style={color ? { backgroundColor: color } : CHECKERBOARD_STYLE}
                       onClick={(e) => e.stopPropagation()}
-                      draggable={false}
-                    />
+                    >
+                      <ChatImageFade
+                        src={src}
+                        alt={alt || ''}
+                        className="max-h-[min(100vh-7rem,100%)] max-w-full object-contain"
+                        draggable={false}
+                      />
+                    </div>
                   ) : null}
+                </div>
+                <div
+                  className="pointer-events-auto absolute inset-x-0 bottom-0 z-[2] flex justify-center p-3 sm:p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="max-w-full rounded-xl bg-black/70 px-3 py-2 shadow-lg backdrop-blur-sm">
+                    <ChatImageBackgroundPicker
+                      value={color}
+                      onChange={(next) => onBackgroundColorChange?.(next)}
+                      compact
+                      tone="dark"
+                      label={backgroundLabel}
+                    />
+                  </div>
                 </div>
                 <Dialog.Close asChild>
                   <button
@@ -87,19 +129,41 @@ export function ChatImageLightbox({ src, alt = '', open, onClose }) {
 }
 
 /**
- * Provides `openChatImage(url, { alt })` to chat descendants.
+ * Provides `openChatImage(url, { alt, backgroundColor, onBackgroundColorChange })` to chat descendants.
  */
 export function ChatImageLightboxProvider({ children }) {
-  const [state, setState] = useState({ src: null, alt: '' });
+  const [state, setState] = useState({
+    src: null,
+    alt: '',
+    backgroundColor: null,
+    backgroundLabel: '보기 배경',
+  });
+  const persistRef = useRef(null);
 
   const openChatImage = useCallback((url, options = {}) => {
     const src = String(url || '').trim();
     if (!src) return;
-    setState({ src, alt: String(options.alt || '') });
+    persistRef.current =
+      typeof options.onBackgroundColorChange === 'function'
+        ? options.onBackgroundColorChange
+        : null;
+    setState({
+      src,
+      alt: String(options.alt || ''),
+      backgroundColor: normalizeCssHexColor(options.backgroundColor),
+      backgroundLabel: persistRef.current ? '표시 배경' : '보기 배경',
+    });
   }, []);
 
   const close = useCallback(() => {
-    setState({ src: null, alt: '' });
+    persistRef.current = null;
+    setState({ src: null, alt: '', backgroundColor: null, backgroundLabel: '보기 배경' });
+  }, []);
+
+  const handleBackgroundColorChange = useCallback((next) => {
+    const color = normalizeCssHexColor(next);
+    setState((prev) => ({ ...prev, backgroundColor: color }));
+    persistRef.current?.(color);
   }, []);
 
   const value = useMemo(() => openChatImage, [openChatImage]);
@@ -110,6 +174,9 @@ export function ChatImageLightboxProvider({ children }) {
       <ChatImageLightbox
         src={state.src}
         alt={state.alt}
+        backgroundColor={state.backgroundColor}
+        backgroundLabel={state.backgroundLabel}
+        onBackgroundColorChange={handleBackgroundColorChange}
         open={Boolean(state.src)}
         onClose={close}
       />

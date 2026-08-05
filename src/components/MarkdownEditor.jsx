@@ -58,7 +58,7 @@ import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory
 
 const DEBUG_WIKI_IMAGE = true;
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
-const MD_EDITOR_TOC_DEFAULT_WIDTH = 200;
+const MD_EDITOR_TOC_DEFAULT_WIDTH = 280;
 const buildPreviewHeadingId = (arg1, _arg2, arg3) => {
   const fallbackIndex = Number.isInteger(arg3) ? arg3 : 0;
   const objectIndex = typeof arg1 === 'object' && arg1 !== null ? Number(arg1.index) : NaN;
@@ -508,9 +508,9 @@ export default function MarkdownEditor({
   } = useResizablePanelWidth({
     storageKey: MD_EDITOR_TOC_WIDTH_KEY,
     defaultWidth: MD_EDITOR_TOC_DEFAULT_WIDTH,
-    minWidth: 140,
-    collapseBelowWidth: 70,
-    maxWidth: 480,
+    minWidth: 160,
+    collapseBelowWidth: 80,
+    maxWidth: 640,
     edge: 'right',
     onCollapseBelowMin: () => {
       const api = editorRef.current?.value ?? editorRef.current;

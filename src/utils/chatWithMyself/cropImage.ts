@@ -1,3 +1,5 @@
+import { normalizeCssHexColor } from '@/utils/cssColor';
+
 export type PixelCrop = {
   x: number;
   y: number;
@@ -8,6 +10,8 @@ export type PixelCrop = {
 export type GetCroppedImgOptions = {
   fileName?: string;
   quality?: number;
+  keepTransparency?: boolean;
+  backgroundColor?: string | null;
 };
 
 /**
@@ -24,7 +28,8 @@ function createImage(url: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Crop an image to a pixel area and return a JPEG File.
+ * Crop an image to a pixel area.
+ * PNG + alpha when `keepTransparency` is true; otherwise flatten onto `backgroundColor`.
  */
 export async function getCroppedImg(
   imageSrc: string,
@@ -43,6 +48,12 @@ export async function getCroppedImg(
   canvas.width = w;
   canvas.height = h;
 
+  const keepTransparency = Boolean(options.keepTransparency);
+  if (!keepTransparency) {
+    ctx.fillStyle = normalizeCssHexColor(options.backgroundColor) || '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+  }
+
   ctx.drawImage(
     image,
     pixelCrop.x,
@@ -55,6 +66,7 @@ export async function getCroppedImg(
     h,
   );
 
+  const mime = keepTransparency ? 'image/png' : 'image/jpeg';
   const quality = options.quality ?? 0.92;
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -62,11 +74,12 @@ export async function getCroppedImg(
         if (b) resolve(b);
         else reject(new Error('Crop failed'));
       },
-      'image/jpeg',
-      quality,
+      mime,
+      keepTransparency ? undefined : quality,
     );
   });
 
-  const fileName = options.fileName || 'group-icon.jpg';
-  return new File([blob], fileName, { type: 'image/jpeg' });
+  const fileName =
+    options.fileName || (keepTransparency ? 'group-icon.png' : 'group-icon.jpg');
+  return new File([blob], fileName, { type: mime });
 }

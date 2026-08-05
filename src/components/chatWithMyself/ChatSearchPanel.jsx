@@ -248,8 +248,10 @@ function SearchResultCard({
                 {displayReactions.map((reaction) => (
                   <span
                     key={reactionKey(reaction)}
-                    className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-gray-300/80 bg-white/90 px-1.5 text-xs text-gray-700 shadow-sm dark:border-white/15 dark:bg-[#1a2333] dark:text-odp-fg"
-                    title={reaction.value}
+                    className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-gray-300/80 bg-white/90 px-1.5 text-xs text-gray-700 shadow-sm transition-opacity duration-200 dark:border-white/15 dark:bg-[#1a2333] dark:text-odp-fg ${
+                      reaction.pending ? 'opacity-40' : 'opacity-100'
+                    }`}
+                    title={reaction.pending ? '반응 저장 중' : reaction.value}
                   >
                     <ChatReactionGlyph reaction={reaction} size={14} />
                   </span>

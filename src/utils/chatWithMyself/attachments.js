@@ -10,6 +10,7 @@ import {
   localDateString,
 } from './paths.js';
 import { uploadChatImage } from './images.js';
+import { parseWikiImageInner, wikiImageMarkupFromAttrs } from '@/utils/wikiImageSyntax';
 
 const MAX_CHAT_FILE_BYTES = 50 * 1024 * 1024;
 
@@ -127,13 +128,18 @@ export async function uploadChatAttachment(ctx, file, options = {}) {
 }
 
 /**
- * @param {{ kind: 'image'|'file'|'note', path: string, name?: string, size?: number }[]} items
+ * @param {{ kind: 'image'|'file'|'note', path: string, name?: string, size?: number, background?: string | null }[]} items
  */
 export function chatAttachmentsToMarkdown(items) {
   return (items || [])
     .filter((item) => item?.path)
     .map((item) => {
-      if (item.kind === 'image') return `![[${item.path}]]`;
+      if (item.kind === 'image') {
+        return wikiImageMarkupFromAttrs({
+          path: item.path,
+          background: item.background || null,
+        });
+      }
       if (item.kind === 'note') {
         const name = sanitizeChatFileMeta(
           item.name || item.path.split('/').filter(Boolean).pop() || 'note',
@@ -169,7 +175,7 @@ export function parseChatFileToken(inner) {
 /**
  * Split message body into plain text + attachment descriptors
  * (![[image]] / [[file:...]] / [[note:...]]).
- * @returns {{ text: string, attachments: Array<{ kind: 'image'|'file'|'note', path: string, name: string, size: number | null }> }}
+ * @returns {{ text: string, attachments: Array<{ kind: 'image'|'file'|'note', path: string, name: string, size: number | null, background?: string | null }> }}
  */
 export function extractChatBodyAttachments(body) {
   const s = String(body ?? '');
@@ -184,13 +190,15 @@ export function extractChatBodyAttachments(body) {
   while ((m = tokenRe.exec(s))) {
     if (m.index > last) textParts.push(s.slice(last, m.index));
     if (m[1] != null) {
-      const path = String(m[1] || '').trim();
+      const parsed = parseWikiImageInner(String(m[1] || '').trim());
+      const path = parsed?.path || '';
       if (path) {
         attachments.push({
           kind: 'image',
           path,
           name: sanitizeChatFileMeta(path.split('/').filter(Boolean).pop() || 'image'),
           size: null,
+          background: parsed?.background || null,
         });
       }
     } else if (m[2] != null) {
