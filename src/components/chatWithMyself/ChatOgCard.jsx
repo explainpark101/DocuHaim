@@ -26,9 +26,12 @@ export default function ChatOgCard({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setShowEmbed(false);
-    (async () => {
+
+    const load = async ({ showLoading = true } = {}) => {
+      if (showLoading) {
+        setLoading(true);
+        setShowEmbed(false);
+      }
       try {
         const result = await loadAndArchiveOg(url, ogStorage, {
           onUpdate: (next) => {
@@ -51,9 +54,18 @@ export default function ChatOgCard({
           setLoading(false);
         }
       }
-    })();
+    };
+
+    void load();
+
+    const onOnline = () => {
+      void load({ showLoading: false });
+    };
+    window.addEventListener('online', onOnline);
+
     return () => {
       cancelled = true;
+      window.removeEventListener('online', onOnline);
     };
     // ogStorage identity may change; archive adapters are equivalent for a given url
     // eslint-disable-next-line react-hooks/exhaustive-deps

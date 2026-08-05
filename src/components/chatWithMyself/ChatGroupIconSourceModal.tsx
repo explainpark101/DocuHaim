@@ -5,6 +5,7 @@ import {
   chatDialogContentClass,
   chatDialogOverlayClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
+import { isSvgImageSource } from '@/utils/chatWithMyself/cropPadImage';
 
 const ACCEPT_IMAGE = 'image/*';
 
@@ -16,7 +17,7 @@ type ChatGroupIconSourceModalProps = {
 };
 
 function isImageFile(file: File | null | undefined): file is File {
-  return Boolean(file && file.type.startsWith('image/'));
+  return Boolean(file && (file.type.startsWith('image/') || isSvgImageSource(file)));
 }
 
 function firstImageFromFileList(list: FileList | null | undefined): File | null {

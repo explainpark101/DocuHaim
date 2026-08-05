@@ -196,9 +196,46 @@ export async function hashUrl(url) {
   return `h${h.toString(16)}`;
 }
 
+const OG_FETCH_INIT = Object.freeze({ cache: 'no-store' });
+
+/** @type {Map<string, Promise<object>>} */
+const inflightOgRefresh = new Map();
+
+function isBrowserOnline() {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+
+function isFallbackOg(data) {
+  return !data || data.provider === 'fallback';
+}
+
+function hasOgContent(data) {
+  if (!data || typeof data !== 'object' || isFallbackOg(data)) return false;
+  return Boolean(
+    String(data.title || '').trim() ||
+      String(data.description || '').trim() ||
+      String(data.image || '').trim() ||
+      String(data.embedHtml || '').trim(),
+  );
+}
+
+function makeFallbackOg(url) {
+  return {
+    url,
+    fetchedAt: new Date().toISOString(),
+    title: url,
+    description: '',
+    image: '',
+    siteName: '',
+    type: 'website',
+    provider: 'fallback',
+    embedHtml: '',
+  };
+}
+
 async function fetchYouTubeOembed(url) {
   const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
-  const res = await fetch(endpoint);
+  const res = await fetch(endpoint, OG_FETCH_INIT);
   if (!res.ok) throw new Error(`YouTube oEmbed ${res.status}`);
   const data = await res.json();
   return {
@@ -214,13 +251,15 @@ async function fetchYouTubeOembed(url) {
   };
 }
 
-async function fetchMicrolink(url) {
-  const endpoint = `https://api.microlink.io/?url=${encodeURIComponent(url)}`;
-  const res = await fetch(endpoint);
+async function fetchMicrolink(url, { force = false } = {}) {
+  const params = new URLSearchParams({ url });
+  if (force) params.set('force', 'true');
+  const endpoint = `https://api.microlink.io/?${params.toString()}`;
+  const res = await fetch(endpoint, OG_FETCH_INIT);
   if (!res.ok) throw new Error(`Microlink ${res.status}`);
   const json = await res.json();
   const d = json?.data || {};
-  return {
+  const payload = {
     url,
     fetchedAt: new Date().toISOString(),
     title: d.title || '',
@@ -231,11 +270,13 @@ async function fetchMicrolink(url) {
     provider: 'microlink',
     embedHtml: '',
   };
+  if (!hasOgContent(payload)) throw new Error('Microlink empty payload');
+  return payload;
 }
 
 async function fetchOgHtmlViaProxy(url) {
   const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxy);
+  const res = await fetch(proxy, OG_FETCH_INIT);
   if (!res.ok) throw new Error(`OG proxy ${res.status}`);
   const html = await res.text();
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -269,10 +310,12 @@ async function fetchOgHtmlViaProxy(url) {
 }
 
 /**
- * Always attempts a live fetch (for archive refresh).
+ * Live fetch. Throws when every provider fails (does not persist fallback).
  * @param {string} url
+ * @param {{ force?: boolean }} [options]
  */
-export async function fetchOgMetadata(url) {
+export async function fetchOgMetadata(url, options = {}) {
+  const force = Boolean(options.force);
   if (isYouTubeUrl(url)) {
     try {
       return await fetchYouTubeOembed(url);
@@ -281,29 +324,15 @@ export async function fetchOgMetadata(url) {
     }
   }
   try {
-    return await fetchMicrolink(url);
+    return await fetchMicrolink(url, { force });
   } catch {
     /* fall through */
   }
-  try {
-    return await fetchOgHtmlViaProxy(url);
-  } catch {
-    return {
-      url,
-      fetchedAt: new Date().toISOString(),
-      title: url,
-      description: '',
-      image: '',
-      siteName: '',
-      type: 'website',
-      provider: 'fallback',
-      embedHtml: '',
-    };
-  }
+  return await fetchOgHtmlViaProxy(url);
 }
 
 /**
- * Read OG from IndexedDB, then day-file archive. No network.
+ * Read OG from IndexedDB, then storage archive. Prefers non-fallback records.
  * @returns {Promise<{ urlHash: string, key: string, data: object } | null>}
  */
 export async function readCachedOg(url, storage) {
@@ -311,13 +340,14 @@ export async function readCachedOg(url, storage) {
   const key = ogArchiveKey(urlHash);
 
   const idb = await getCachedOg(urlHash);
-  if (idb?.data) return { urlHash, key, data: idb.data };
+  if (idb?.data && !isFallbackOg(idb.data)) {
+    return { urlHash, key, data: idb.data };
+  }
 
   if (storage?.readArchive) {
     try {
       const archived = await storage.readArchive(key);
-      if (archived) {
-        // Warm IDB for next paint.
+      if (archived && !isFallbackOg(archived)) {
         void cacheOg(urlHash, archived);
         return { urlHash, key, data: archived };
       }
@@ -326,17 +356,17 @@ export async function readCachedOg(url, storage) {
     }
   }
 
+  if (idb?.data) return { urlHash, key, data: idb.data };
   return null;
 }
 
-/**
- * Live fetch + write IDB / archive.
- * @returns {Promise<object>} OG payload
- */
-export async function refreshAndArchiveOg(url, storage, { urlHash, key } = {}) {
+async function refreshAndArchiveOgOnce(url, storage, { urlHash, key, force } = {}) {
   const hash = urlHash || (await hashUrl(url));
   const archiveKey = key || ogArchiveKey(hash);
-  const fresh = await fetchOgMetadata(url);
+  const fresh = await fetchOgMetadata(url, { force });
+  if (!hasOgContent(fresh)) {
+    throw new Error('OG empty payload');
+  }
   await cacheOg(hash, fresh);
   if (storage?.writeArchive) {
     try {
@@ -349,8 +379,25 @@ export async function refreshAndArchiveOg(url, storage, { urlHash, key } = {}) {
 }
 
 /**
- * Stale-while-revalidate: return cache immediately when present; refresh network
- * in the background and call `onUpdate` with the fresh result.
+ * Live fetch + write IDB / archive. Dedupes in-flight requests per URL.
+ * @returns {Promise<object>} OG payload
+ */
+export async function refreshAndArchiveOg(url, storage, { urlHash, key, force = true } = {}) {
+  const existing = inflightOgRefresh.get(url);
+  if (existing) return existing;
+
+  const pending = refreshAndArchiveOgOnce(url, storage, { urlHash, key, force }).finally(
+    () => {
+      if (inflightOgRefresh.get(url) === pending) inflightOgRefresh.delete(url);
+    },
+  );
+  inflightOgRefresh.set(url, pending);
+  return pending;
+}
+
+/**
+ * Cache-first: return archived OG immediately. When online, re-fetch with a
+ * fresh connection in the background and call `onUpdate`.
  *
  * @param {string} url
  * @param {{
@@ -362,25 +409,17 @@ export async function refreshAndArchiveOg(url, storage, { urlHash, key } = {}) {
 export async function loadAndArchiveOg(url, storage, options = {}) {
   const { onUpdate } = options;
   const cached = await readCachedOg(url, storage);
+  const fallback = makeFallbackOg(url);
 
-  const fallback = {
-    url,
-    fetchedAt: new Date().toISOString(),
-    title: url,
-    description: '',
-    image: '',
-    siteName: '',
-    type: 'website',
-    provider: 'fallback',
-    embedHtml: '',
-  };
-
-  if (cached?.data) {
-    const urlHash = cached.urlHash;
-    const key = cached.key;
+  const refreshInBackground = (urlHash, key) => {
+    if (!isBrowserOnline()) return;
     void (async () => {
       try {
-        const fresh = await refreshAndArchiveOg(url, storage, { urlHash, key });
+        const fresh = await refreshAndArchiveOg(url, storage, {
+          urlHash,
+          key,
+          force: true,
+        });
         onUpdate?.({
           urlHash,
           key,
@@ -391,6 +430,12 @@ export async function loadAndArchiveOg(url, storage, options = {}) {
         /* keep showing cached card */
       }
     })();
+  };
+
+  if (cached?.data) {
+    const urlHash = cached.urlHash;
+    const key = cached.key;
+    refreshInBackground(urlHash, key);
     return {
       urlHash,
       key,
@@ -401,18 +446,35 @@ export async function loadAndArchiveOg(url, storage, options = {}) {
 
   const urlHash = await hashUrl(url);
   const key = ogArchiveKey(urlHash);
-  let fresh = null;
-  try {
-    fresh = await refreshAndArchiveOg(url, storage, { urlHash, key });
-  } catch {
-    fresh = null;
+
+  if (!isBrowserOnline()) {
+    return {
+      urlHash,
+      key,
+      data: fallback,
+      fromArchive: false,
+    };
   }
 
-  return {
-    urlHash,
-    key,
-    data: fresh || fallback,
-    fromArchive: false,
-  };
+  try {
+    const fresh = await refreshAndArchiveOg(url, storage, {
+      urlHash,
+      key,
+      force: false,
+    });
+    return {
+      urlHash,
+      key,
+      data: fresh,
+      fromArchive: false,
+    };
+  } catch {
+    return {
+      urlHash,
+      key,
+      data: fallback,
+      fromArchive: false,
+    };
+  }
 }
 

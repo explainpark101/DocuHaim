@@ -5,6 +5,7 @@ import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
 import ChatGroupIconCropModal from '@/components/chatWithMyself/ChatGroupIconCropModal';
 import ChatGroupIconSourceModal from '@/components/chatWithMyself/ChatGroupIconSourceModal';
 import { SELF_GROUP, resolveGroupLabel, sortGroupsKo } from '@/utils/chatWithMyself';
+import { isSvgImageSource } from '@/utils/chatWithMyself/cropPadImage';
 
 const DRAFT_ENTER = {
   type: 'spring',
@@ -37,6 +38,7 @@ export default function ChatGroupPanel({
   const [draftIconUrl, setDraftIconUrl] = useState(null);
   const [draftIconFile, setDraftIconFile] = useState(null);
   const [cropSrc, setCropSrc] = useState(null);
+  const [cropFile, setCropFile] = useState(null);
   const [cropOpen, setCropOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   /** @type {[string|null, function]} null = draft icon, else group id */
@@ -115,9 +117,10 @@ export default function ChatGroupPanel({
   };
 
   const onSourceImageChosen = (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file || !(file.type.startsWith('image/') || isSvgImageSource(file))) return;
     if (cropSrc) URL.revokeObjectURL(cropSrc);
     const url = URL.createObjectURL(file);
+    setCropFile(file);
     setCropSrc(url);
     setCropOpen(true);
   };
@@ -246,11 +249,13 @@ export default function ChatGroupPanel({
       <ChatGroupIconCropModal
         open={cropOpen}
         imageSrc={cropSrc}
+        sourceFile={cropFile}
         onOpenChange={(next) => {
           setCropOpen(next);
           if (!next && cropSrc) {
             URL.revokeObjectURL(cropSrc);
             setCropSrc(null);
+            setCropFile(null);
           }
         }}
         onConfirm={onCropConfirm}

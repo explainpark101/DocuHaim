@@ -1,9 +1,20 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
 import { X } from 'lucide-react';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
-import ChatImageBackgroundPicker from '@/components/chatWithMyself/ChatImageBackgroundPicker';
+import ChatImageBackgroundPicker, {
+  CHAT_COLOR_PICKER_ATTR,
+} from '@/components/chatWithMyself/ChatImageBackgroundPicker';
+import { useAppStatusBarInset } from '@/hooks/useAppStatusBarInset';
 import { normalizeCssHexColor } from '@/utils/cssColor';
 
 const ChatImageLightboxContext = createContext(null);
@@ -37,6 +48,21 @@ export function ChatImageLightbox({
 }) {
   const visible = Boolean(open && src);
   const color = normalizeCssHexColor(backgroundColor);
+  const statusBarInset = useAppStatusBarInset(visible);
+  const [frameEl, setFrameEl] = useState(null);
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+  const stageStyle = { bottom: statusBarInset };
+
+  useLayoutEffect(() => {
+    if (!visible || !frameEl) return undefined;
+    const update = () => {
+      setFrameSize({ width: frameEl.clientWidth, height: frameEl.clientHeight });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(frameEl);
+    return () => ro.disconnect();
+  }, [visible, statusBarInset, src, frameEl]);
 
   return (
     <Dialog.Root
@@ -50,7 +76,8 @@ export function ChatImageLightbox({
           <Dialog.Portal forceMount key="chat-image-lightbox">
             <Dialog.Overlay asChild forceMount>
               <Motion.div
-                className="fixed inset-0 z-[300] bg-black/85"
+                className="fixed inset-x-0 top-0 z-[300] bg-black/85"
+                style={stageStyle}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -61,9 +88,26 @@ export function ChatImageLightbox({
               asChild
               forceMount
               onOpenAutoFocus={(e) => e.preventDefault()}
+              onPointerDownOutside={(event) => {
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest(`[${CHAT_COLOR_PICKER_ATTR}]`)
+                ) {
+                  event.preventDefault();
+                }
+              }}
+              onInteractOutside={(event) => {
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest(`[${CHAT_COLOR_PICKER_ATTR}]`)
+                ) {
+                  event.preventDefault();
+                }
+              }}
             >
               <Motion.div
-                className="fixed inset-0 z-[310] flex outline-none"
+                className="fixed inset-x-0 top-0 z-[310] flex flex-col outline-none"
+                style={stageStyle}
                 aria-label="이미지 크게 보기"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -80,24 +124,33 @@ export function ChatImageLightbox({
                   aria-label="닫기"
                   onClick={() => onClose?.()}
                 />
-                <div className="pointer-events-none relative z-[1] flex h-full w-full items-center justify-center p-4 sm:p-8">
-                  {src ? (
-                    <div
-                      className="pointer-events-auto max-h-full max-w-full overflow-hidden shadow-2xl"
-                      style={color ? { backgroundColor: color } : CHECKERBOARD_STYLE}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <ChatImageFade
-                        src={src}
-                        alt={alt || ''}
-                        className="max-h-[min(100vh-7rem,100%)] max-w-full object-contain"
-                        draggable={false}
-                      />
-                    </div>
-                  ) : null}
+                <div className="pointer-events-none relative z-[1] flex min-h-0 min-w-0 flex-1 p-4 sm:p-8">
+                  <div
+                    ref={setFrameEl}
+                    className="flex min-h-0 min-w-0 flex-1 items-center justify-center"
+                  >
+                    {src ? (
+                      <div
+                        className="pointer-events-auto max-h-full max-w-full overflow-hidden shadow-2xl"
+                        style={color ? { backgroundColor: color } : CHECKERBOARD_STYLE}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ChatImageFade
+                          src={src}
+                          alt={alt || ''}
+                          className="block h-auto w-auto max-h-full max-w-full object-contain"
+                          style={{
+                            maxWidth: frameSize.width || undefined,
+                            maxHeight: frameSize.height || undefined,
+                          }}
+                          draggable={false}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <div
-                  className="pointer-events-auto absolute inset-x-0 bottom-0 z-[2] flex justify-center p-3 sm:p-4"
+                  className="pointer-events-auto relative z-[2] flex shrink-0 justify-center p-3 sm:p-4"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="max-w-full rounded-xl bg-black/70 px-3 py-2 shadow-lg backdrop-blur-sm">

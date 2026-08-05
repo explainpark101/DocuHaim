@@ -4,23 +4,14 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import { getAppStatusBarElement, getAppStatusBarTop } from '@/utils/appStatusBar';
 
 const DEFAULT_PADDING = 12;
-/** Fallback when `[data-app-status-bar]` is missing: md:h-7. */
-const STATUS_BAR_FALLBACK_PX = 28;
 
 export type ViewportClampNudge = {
   ref: (el: HTMLElement | null) => void;
   style: CSSProperties | undefined;
 };
-
-function getStatusBarTop(): number {
-  const bar = document.querySelector('[data-app-status-bar]');
-  if (bar instanceof HTMLElement) {
-    return bar.getBoundingClientRect().top;
-  }
-  return window.innerHeight - STATUS_BAR_FALLBACK_PX;
-}
 
 /** CSSStyleDeclaration lengths are strings; React CSSProperties also allow unitless numbers (px). */
 function cssLength(value: string | number | undefined | null): string {
@@ -65,7 +56,7 @@ export function useViewportClampNudge(
       if (rect.width === 0 && rect.height === 0) return;
 
       const topLimit = padding;
-      const bottomLimit = getStatusBarTop() - padding;
+      const bottomLimit = getAppStatusBarTop() - padding;
       const leftLimit = padding;
       const rightLimit = window.innerWidth - padding;
       const availableH = Math.max(80, bottomLimit - topLimit);
@@ -121,10 +112,10 @@ export function useViewportClampNudge(
     };
 
     const wrapper = node.closest('[data-radix-popper-content-wrapper]');
-    const statusBar = document.querySelector('[data-app-status-bar]');
+    const statusBar = getAppStatusBarElement();
     const ro = new ResizeObserver(clamp);
     ro.observe(node);
-    if (statusBar instanceof HTMLElement) ro.observe(statusBar);
+    if (statusBar) ro.observe(statusBar);
 
     let mo: MutationObserver | null = null;
     if (wrapper) {
