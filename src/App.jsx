@@ -148,6 +148,15 @@ import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { parseViewPathFromAppPathname, isChatAppPathname, isSettingsAppPathname } from '@/utils/appHref';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import { buildZipBlob } from '@/utils/zipBuilder';
+import {
+  buildMarkdownImageZipEntries,
+  collectMarkdownExportImageBytes,
+  formatMissingExportImagesMessage,
+  isMarkdownFileName,
+  planMarkdownImageExport,
+  writeMarkdownImageBundleToDirectory,
+  zipFileNameForMarkdown,
+} from '@/utils/markdownImageExport';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -2962,41 +2971,49 @@ function MainApp() {
     setDownloadComplete(false);
   };
 
+  const readBackendBytes = async (storageType, path) => {
+    const backend = getBackendForType(storageType);
+    const { body } = await backend.readBytes(path);
+    return body instanceof Uint8Array ? body : new Uint8Array(body);
+  };
+
+  const downloadMarkdownImageZip = async (storageType, notePath, fileName, markdownText) => {
+    const plan = planMarkdownImageExport(markdownText, notePath);
+    if (!plan.images.length) return false;
+    const { entries, missing } = await collectMarkdownExportImageBytes(plan.images, (path) =>
+      readBackendBytes(storageType, path),
+    );
+    const zipBlob = await buildZipBlob(buildMarkdownImageZipEntries(fileName, plan.markdown, entries));
+    triggerBlobDownload(zipBlob, zipFileNameForMarkdown(fileName));
+    const missingMessage = formatMissingExportImagesMessage(missing);
+    if (missingMessage) alert(missingMessage);
+    return true;
+  };
+
   /** Object URL 방식: 메모리 제한 ~100–200MB. presigned URL 인코딩 이슈 회피 */
   const handleDownloadCurrentFile = async () => {
     if (!currentFile) return;
-    if (currentFile.type === 's3') {
-      try {
-        const client = getS3Client();
-        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-        const { body } = await getObjectBody(client, s3Creds.bucket, currentFile.id);
-        const blob = new Blob([body]);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = currentFile.name || currentFile.id.split('/').filter(Boolean).pop() || 'download';
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        console.error('S3 다운로드 실패:', e);
-        alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
+    const storageType = currentFile.type;
+    if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
+    const fileName = currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
+    const notePath = currentFile.id || '';
+    try {
+      if (isMarkdownFileName(fileName)) {
+        const backend = getBackendForType(storageType);
+        const { text } = await backend.readText(notePath);
+        const bundled = await downloadMarkdownImageZip(storageType, notePath, fileName, text);
+        if (!bundled) {
+          triggerBlobDownload(new Blob([text], { type: 'text/markdown;charset=utf-8' }), fileName);
+        }
+      } else {
+        const body = await readBackendBytes(storageType, notePath);
+        triggerBlobDownload(new Blob([body]), fileName);
       }
-      setShowDownloadMethodModal(false);
-    } else if (currentFile.type === 'local' && currentFile.handle) {
-      try {
-        const file = await currentFile.handle.getFile();
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = currentFile.name || file.name;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        console.error('로컬 파일 다운로드 실패:', e);
-        alert('다운로드에 실패했습니다.');
-      }
-      setShowDownloadMethodModal(false);
+    } catch (e) {
+      console.error('파일 다운로드 실패:', e);
+      alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
     }
+    setShowDownloadMethodModal(false);
   };
 
   const saveSnippetConfigToS3 = useCallback(
@@ -3076,53 +3093,62 @@ function MainApp() {
     }
   };
 
-  /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시 */
+  /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시. md+이미지는 zip 없이 md/.pictures 로 저장 */
   const handleDownloadToFolder = async () => {
     if (!currentFile) return;
-    if (currentFile.type === 's3') {
-      try {
-        if (!('showDirectoryPicker' in window)) {
-          openUnsupportedFolderDownloadModal();
-          setShowDownloadMethodModal(false);
+    const storageType = currentFile.type;
+    if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
+    try {
+      if (!('showDirectoryPicker' in window)) {
+        openUnsupportedFolderDownloadModal();
+        setShowDownloadMethodModal(false);
+        return;
+      }
+      const dirHandle = await window.showDirectoryPicker();
+      const fileName = currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
+      const notePath = currentFile.id || '';
+
+      if (isMarkdownFileName(fileName)) {
+        const backend = getBackendForType(storageType);
+        const { text } = await backend.readText(notePath);
+        const plan = planMarkdownImageExport(text, notePath);
+        if (plan.images.length) {
+          const { entries, missing } = await collectMarkdownExportImageBytes(
+            plan.images,
+            (path) => readBackendBytes(storageType, path),
+            (completed, total) => {
+              setDownloadProgress(Math.min(90, Math.round((completed / Math.max(total, 1)) * 90)));
+            },
+          );
+          await writeMarkdownImageBundleToDirectory(
+            dirHandle,
+            fileName,
+            plan.markdown,
+            entries,
+            (percent) => setDownloadProgress(90 + Math.round(percent * 0.1)),
+          );
+          const missingMessage = formatMissingExportImagesMessage(missing);
+          if (missingMessage) alert(missingMessage);
+          setDownloadComplete(true);
           return;
         }
-        const dirHandle = await window.showDirectoryPicker();
-        const fileName = currentFile.name || currentFile.id.split('/').filter(Boolean).pop() || 'download';
-        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
+      }
 
+      const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+
+      if (storageType === 's3') {
         const client = getS3Client();
         if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-
         await streamS3ObjectToWritable(
           client,
           s3Creds.bucket,
-          currentFile.id,
+          notePath,
           writable,
           (percent) => setDownloadProgress(percent),
         );
-        setDownloadComplete(true);
-      } catch (e) {
-        if (e?.name === 'AbortError') {
-          setShowDownloadMethodModal(false);
-          return;
-        }
-        console.error('폴더에 저장 실패:', e);
-        alert('폴더에 저장에 실패했습니다: ' + (e?.message || e));
-        setShowDownloadMethodModal(false);
-      }
-    } else if (currentFile.type === 'local' && currentFile.handle) {
-      try {
-        if (!('showDirectoryPicker' in window)) {
-          openUnsupportedFolderDownloadModal();
-          setShowDownloadMethodModal(false);
-          return;
-        }
-        const dirHandle = await window.showDirectoryPicker();
+      } else if (storageType === 'local' && currentFile.handle) {
         const file = await currentFile.handle.getFile();
-        const fileName = currentFile.name || file.name;
-        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
         const total = file.size;
         const reader = file.stream().getReader();
         let received = 0;
@@ -3134,16 +3160,21 @@ function MainApp() {
           if (total) setDownloadProgress(Math.min(100, (received / total) * 100));
         }
         await writable.close();
-        setDownloadComplete(true);
-      } catch (e) {
-        if (e?.name === 'AbortError') {
-          setShowDownloadMethodModal(false);
-          return;
-        }
-        console.error('폴더에 저장 실패:', e);
-        alert('폴더에 저장에 실패했습니다: ' + (e?.message || e));
-        setShowDownloadMethodModal(false);
+      } else {
+        const body = await readBackendBytes(storageType, notePath);
+        await writable.write(body);
+        await writable.close();
+        setDownloadProgress(100);
       }
+      setDownloadComplete(true);
+    } catch (e) {
+      if (e?.name === 'AbortError') {
+        setShowDownloadMethodModal(false);
+        return;
+      }
+      console.error('폴더에 저장 실패:', e);
+      alert('폴더에 저장에 실패했습니다: ' + (e?.message || e));
+      setShowDownloadMethodModal(false);
     }
   };
 
@@ -3291,39 +3322,47 @@ function MainApp() {
       }
       return;
     }
-    if (storageType === 's3') {
-      try {
-        const client = getS3Client();
-        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-        const { body } = await getObjectBody(client, s3Creds.bucket, node.path);
-        const blob = new Blob([body]);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = node.name || node.path.split('/').filter(Boolean).pop() || 'download';
-        a.click();
-        URL.revokeObjectURL(url);
+    const fileName = node.name || node.path?.split('/').filter(Boolean).pop() || 'download';
+    try {
+      if (isMarkdownFileName(fileName)) {
+        const backend = getBackendForType(storageType);
+        const { text } = await backend.readText(node.path);
+        const bundled = await downloadMarkdownImageZip(storageType, node.path, fileName, text);
+        if (bundled) {
+          const zipName = zipFileNameForMarkdown(fileName);
+          setOperationStatus(`다운로드: ${zipName}`);
+          showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${zipName}`);
+          return;
+        }
+        triggerBlobDownload(new Blob([text], { type: 'text/markdown;charset=utf-8' }), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
         showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
-      } catch (e) {
-        console.error('S3 다운로드 실패:', e);
-        alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
+        return;
       }
-    } else if (storageType === 'local' && node.handle) {
-      try {
+
+      if (storageType === 's3') {
+        const body = await readBackendBytes(storageType, node.path);
+        triggerBlobDownload(new Blob([body]), fileName);
+        setOperationStatus(`다운로드: ${downloadedName}`);
+        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
+        return;
+      }
+      if (storageType === 'local' && node.handle) {
         const file = await node.handle.getFile();
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = node.name || file.name;
-        a.click();
-        URL.revokeObjectURL(url);
+        triggerBlobDownload(file, node.name || file.name);
         setOperationStatus(`다운로드: ${downloadedName}`);
         showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
-      } catch (e) {
-        console.error('로컬 파일 다운로드 실패:', e);
-        alert('다운로드에 실패했습니다.');
+        return;
       }
+      if (storageType === 'webdav') {
+        const body = await readBackendBytes(storageType, node.path);
+        triggerBlobDownload(new Blob([body]), fileName);
+        setOperationStatus(`다운로드: ${downloadedName}`);
+        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
+      }
+    } catch (e) {
+      console.error('파일 다운로드 실패:', e);
+      alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
     }
   };
 
