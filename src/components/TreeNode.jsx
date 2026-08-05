@@ -23,6 +23,36 @@ import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeM
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
 
+function EmptyItemHint({ label }) {
+  return (
+    <Tooltip.Provider delayDuration={280} skipDelayDuration={120}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <button
+            type="button"
+            className="inline-flex shrink-0 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 rounded-full"
+            aria-label={label}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <AlertCircle size={12} strokeWidth={2.5} />
+          </button>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            side="top"
+            sideOffset={6}
+            className="z-[100001] max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] leading-snug text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+          >
+            {label}
+            <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
+  );
+}
+
 export default function TreeNode({
   node,
   level,
@@ -112,6 +142,20 @@ export default function TreeNode({
 
   const isLoadingChildren =
     node.type === 'folder' && isFolderLoading && isFolderLoading === node.path;
+  const isZeroByteFile = node.type === 'file' && node.size === 0;
+  const isEmptyFolder =
+    node.type === 'folder' &&
+    !isTrashRoot &&
+    !isSearching &&
+    !isLoadingChildren &&
+    node.childrenLoaded !== false &&
+    Array.isArray(node.children) &&
+    node.children.length === 0;
+  const emptyHintLabel = isZeroByteFile
+    ? '파일 크기가 0 byte 입니다.'
+    : isEmptyFolder
+      ? '하위에 내용이 없는 빈 폴더입니다.'
+      : null;
 
   const canDrag = !disableDrag && !isTrashRoot && !isUnderDeletingFolder;
   // Dropping on a file targets its parent folder (sibling placement).
@@ -574,33 +618,7 @@ export default function TreeNode({
                 ? <IconTrash />
                 : <FileIconComponent />
               : <FileIconComponent />}
-            {node.type === 'file' && node.size === 0 ? (
-              <Tooltip.Provider delayDuration={280} skipDelayDuration={120}>
-                <Tooltip.Root>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex shrink-0 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 rounded-full"
-                      aria-label="파일 크기가 0 byte 입니다."
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                    >
-                      <AlertCircle size={12} strokeWidth={2.5} />
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Portal>
-                    <Tooltip.Content
-                      side="top"
-                      sideOffset={6}
-                      className="z-[100001] max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] leading-snug text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
-                    >
-                      파일 크기가 0 byte 입니다.
-                      <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-                    </Tooltip.Content>
-                  </Tooltip.Portal>
-                </Tooltip.Root>
-              </Tooltip.Provider>
-            ) : null}
+            {emptyHintLabel ? <EmptyItemHint label={emptyHintLabel} /> : null}
           </span>
           {isRenaming && !isTrashRoot && (node.type === 'file' || node.type === 'folder') ? (
             <span className="flex items-baseline gap-1 min-w-0">

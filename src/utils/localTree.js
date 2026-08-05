@@ -18,8 +18,16 @@ async function collectDirectoryEntries(dirHandle) {
   return entries;
 }
 
+async function directoryHasEntries(dirHandle) {
+  for await (const _ of dirHandle.values()) {
+    return true;
+  }
+  return false;
+}
+
 /**
- * Read one directory level only (lazy tree). Subfolders start with childrenLoaded: false.
+ * Read one directory level only (lazy tree).
+ * Empty subfolders are marked childrenLoaded: true; others start unloaded.
  * @param {FileSystemDirectoryHandle} dirHandle
  * @param {string} [basePath]
  * @param {FileSystemDirectoryHandle | null} [parentHandle]
@@ -52,6 +60,7 @@ export async function readLocalDirectoryLevel(dirHandle, basePath = '', parentHa
         };
       }
       if (entry.kind === 'directory') {
+        const hasEntries = await directoryHasEntries(entry);
         return {
           name: entry.name,
           type: 'folder',
@@ -59,7 +68,7 @@ export async function readLocalDirectoryLevel(dirHandle, basePath = '', parentHa
           handle: entry,
           parentHandle: resolvedParent,
           children: [],
-          childrenLoaded: false,
+          childrenLoaded: !hasEntries,
         };
       }
       return null;
