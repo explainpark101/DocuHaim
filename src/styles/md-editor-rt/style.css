@@ -3392,6 +3392,24 @@ div.smart-blue-theme hr {
   line-height: inherit
 }
 
+.md-editor .cm-base64-image-fold {
+  display: inline;
+  padding-block: 0;
+  padding-inline: 0.25em;
+  border-radius: 3px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--color-blue-600);
+  background-color: color-mix(in srgb, var(--color-blue-500) 12%, transparent);
+}
+
+.md-editor-dark .cm-base64-image-fold,
+.dark .md-editor .cm-base64-image-fold {
+  color: var(--color-odp-accentBlue);
+  background-color: color-mix(in srgb, var(--color-odp-accentBlue) 18%, transparent);
+}
+
 .md-editor .ͼ1 .cm-scroller {
   font-family: var(--font-mono);
   line-height: 20px

@@ -13,9 +13,16 @@ import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import MarkdownDeepHeadingToolbar from '@/components/MarkdownDeepHeadingToolbar';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
+import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { EditorView, drawSelection, lineNumbers, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
+import { useBase64ImageFold } from '@/hooks/useBase64ImageFold';
+import {
+  applyBase64ImageFoldEnabled,
+  base64ImageFoldExtension,
+} from '@/utils/base64ImageFoldExtension';
+import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
 import {
   addCursorAbove,
   addCursorBelow,
@@ -356,6 +363,10 @@ config({
         type: 'keymap',
         extension: keymap.of(multiCursorKeyBindings),
       },
+      {
+        type: 'base64ImageFold',
+        extension: base64ImageFoldExtension(loadBase64ImageFoldEnabled()),
+      },
     );
 
     return nextExtensions;
@@ -419,6 +430,7 @@ export default function MarkdownEditor({
   const [catalogHandleBox, setCatalogHandleBox] = useState(null);
   const activeTransformRef = useRef(null);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
+  const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
   const {
     width: catalogWidth,
     isResizing: catalogResizing,
@@ -439,6 +451,23 @@ export default function MarkdownEditor({
   useEffect(() => {
     snippetConfigRef.current = snippetConfig || { snippets: [] };
   }, [snippetConfig]);
+
+  useEffect(() => {
+    const apply = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view) return false;
+      applyBase64ImageFoldEnabled(view, foldBase64Images);
+      return true;
+    };
+    if (apply()) return undefined;
+    const t1 = window.setTimeout(apply, 50);
+    const t2 = window.setTimeout(apply, 250);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [foldBase64Images]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1126,7 +1155,13 @@ export default function MarkdownEditor({
       onChange={setWrapTitles}
       theme={theme}
     />,
-  ], [value, theme, currentFile, wrapTitles, setWrapTitles]);
+    <Base64ImageFoldToolbar
+      key="base64-image-fold"
+      checked={foldBase64Images}
+      onChange={setFoldBase64Images}
+      theme={theme}
+    />,
+  ], [value, theme, currentFile, wrapTitles, setWrapTitles, foldBase64Images, setFoldBase64Images]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
@@ -1135,6 +1170,7 @@ export default function MarkdownEditor({
     'revoke', 'next', 0, '=',
     'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
     ...(catalogEl ? [4] : []),
+    6,
   ], [catalogEl]);
 
   const onUploadImg = useMemo(() => {
