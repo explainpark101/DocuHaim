@@ -86,7 +86,7 @@ import {
 
 const DEBUG_WIKI_IMAGE = true;
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
-const MD_EDITOR_TOC_DEFAULT_WIDTH = 280;
+const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
 const buildPreviewHeadingId = (arg1, _arg2, arg3) => {
   const fallbackIndex = Number.isInteger(arg3) ? arg3 : 0;
   const objectIndex = typeof arg1 === 'object' && arg1 !== null ? Number(arg1.index) : NaN;

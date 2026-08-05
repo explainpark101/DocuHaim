@@ -22,7 +22,7 @@ function extractHeadings(editor) {
 }
 
 const NOVEL_TOC_WIDTH_KEY = 's3haim_novel_toc_width';
-export const NOVEL_TOC_DEFAULT_WIDTH = 280;
+export const NOVEL_TOC_DEFAULT_WIDTH = 360;
 
 /** Default body padding class when TOC open (overridden by inline style when width changes). */
 export const NOVEL_TOC_MD_PADDING_CLASS = 'md:pr-(--novel-toc-width)';

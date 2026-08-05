@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** Bump when default widths change so stale localStorage px values are not reused. */
-const PANEL_WIDTH_STORE_VERSION = 2;
+const PANEL_WIDTH_STORE_VERSION = 3;
 
 function versionedStorageKey(storageKey) {
   if (!storageKey) return storageKey;
@@ -13,7 +13,7 @@ function versionedStorageKey(storageKey) {
  *
  * @param {object} [options]
  * @param {string} [options.storageKey]
- * @param {number} [options.defaultWidth=280]
+ * @param {number} [options.defaultWidth=360]
  * @param {number} [options.minWidth=160]
  * @param {number} [options.maxWidth=640]
  * @param {number} [options.collapseBelowWidth]
@@ -28,7 +28,7 @@ function versionedStorageKey(storageKey) {
  */
 export function useResizablePanelWidth({
   storageKey,
-  defaultWidth = 280,
+  defaultWidth = 360,
   minWidth = 160,
   maxWidth = 640,
   collapseBelowWidth,

@@ -2904,14 +2904,14 @@ div.smart-blue-theme hr {
   inset-block-start: 0;
   inset-inline-end: 0;
   z-index: 10002;
-  width: var(--md-catalog-width, 280px);
+  width: var(--md-catalog-width, 360px);
   box-sizing: border-box
 }
 
 .md-editor-catalog-flat {
   position: relative;
   flex-shrink: 0;
-  width: var(--md-catalog-width, 280px);
+  width: var(--md-catalog-width, 360px);
   box-sizing: border-box
 }
 
