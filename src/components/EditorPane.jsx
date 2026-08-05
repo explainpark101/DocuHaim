@@ -32,6 +32,8 @@ export default function EditorPane({
   onChangeEditor,
   onSave,
   isSaving,
+  onRefreshFromDisk,
+  isRefreshingFromDisk = false,
   onRequestDelete,
   editedFileName = '',
   setEditedFileName,
@@ -86,6 +88,11 @@ export default function EditorPane({
     novelFlushBeforeSaveRef.current?.();
     onSave?.();
   }, [onSave]);
+
+  const handleToolbarRefreshFromDisk = useCallback(() => {
+    novelFlushBeforeSaveRef.current?.();
+    onRefreshFromDisk?.();
+  }, [onRefreshFromDisk]);
 
   useLayoutEffect(() => {
     if (!isMobileLayout) return;
@@ -313,6 +320,20 @@ export default function EditorPane({
             >
               <IconRefresh size={14} />
               <span className="hidden md:inline"> 새로고침</span>
+            </Button>
+          )}
+          {typeof onRefreshFromDisk === 'function' && isEditableViewer && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleToolbarRefreshFromDisk}
+              disabled={isSaving || isRefreshingFromDisk}
+              title={isRefreshingFromDisk ? '새로고침 중...' : '디스크에서 새로고침'}
+              className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"
+            >
+              <IconRefresh size={14} className={isRefreshingFromDisk ? 'animate-spin' : undefined} />
+              <span className="hidden md:inline"> {isRefreshingFromDisk ? '새로고침 중...' : '새로고침'}</span>
             </Button>
           )}
           <div ref={fileManagementRef} className="relative">

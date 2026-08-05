@@ -15,6 +15,7 @@ export type AppBuildCheckResult =
       ok: false;
       localId: string;
       error: string;
+      remoteId?: string;
     };
 
 /**
@@ -124,7 +125,12 @@ export async function checkAppBuildUpdate(): Promise<AppBuildCheckResult> {
     return { ok: false, localId, error: remote.error };
   }
   if (!localId) {
-    return { ok: false, localId, error: 'local build id missing' };
+    return {
+      ok: false,
+      localId,
+      error: 'local build id missing',
+      remoteId: remote.remoteId,
+    };
   }
   return {
     ok: true,

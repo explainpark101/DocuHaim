@@ -143,6 +143,7 @@ import {
   getMemoDraft,
   deleteMemoDraft,
 } from '@/utils/memoDraftsDb';
+import { rebaseMergeTexts, buildTimestampedCopyName } from '@/utils/textRebaseMerge';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -237,6 +238,7 @@ function MainApp() {
   /** 저장 시점의 최신 문자열 (Novel 디바운스 onChange 직후에도 동기 반영) */
   const editorContentRef = useRef('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [emptyTrashTarget, setEmptyTrashTarget] = useState(null);
   const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
@@ -613,7 +615,7 @@ function MainApp() {
         setAppUpdateCheckError('');
         setAppUpdateAvailable(Boolean(buildCheck.updateAvailable || waiting));
       } else {
-        setAppBuildRemoteId('');
+        setAppBuildRemoteId(buildCheck.remoteId || '');
         setAppUpdateCheckError(buildCheck.error || 'unknown');
         setAppUpdateAvailable(waiting);
         console.warn('App update check failed:', buildCheck.error);
@@ -3472,6 +3474,99 @@ function MainApp() {
     saveFileRef.current = saveFile;
   }, [saveFile]);
 
+  const refreshLocalFileFromDisk = async () => {
+    const fileToRefresh = currentFileRef.current;
+    if (!fileToRefresh || fileToRefresh.type !== 'local' || !fileToRefresh.handle) return;
+    const viewer = fileToRefresh.viewer || 'markdown';
+    const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
+    if (!editableViewers.includes(viewer)) return;
+
+    setIsRefreshingFromDisk(true);
+    const indicatorId = addIndicator({
+      id: 'note-refresh-local',
+      type: ActivityTypes.NOTE_PROCESSING,
+      label: '디스크에서 새로고침 중',
+      detail: fileToRefresh.name,
+    });
+    try {
+      const diskFile = await fileToRefresh.handle.getFile();
+      let diskText = await diskFile.text();
+      if (viewer === 'json' && diskText.length <= 100000) {
+        try {
+          diskText = JSON.stringify(JSON.parse(diskText), null, 2);
+        } catch {
+          // keep raw json text
+        }
+      }
+
+      const base = typeof fileToRefresh.content === 'string' ? fileToRefresh.content : '';
+      const ours = editorContentRef.current ?? '';
+      const merge = rebaseMergeTexts(base, ours, diskText);
+
+      let nextEditorText = diskText;
+      let backupName = null;
+      if (merge.status === 'conflict') {
+        if (!localRootHandle) throw new Error('로컬 폴더가 열려 있지 않습니다.');
+        const backend = createLocalBackend(localRootHandle);
+        const fileId = String(fileToRefresh.id || '');
+        const lastSlash = fileId.lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? fileId.slice(0, lastSlash + 1) : '';
+        const now = new Date();
+        let disambiguator = 1;
+        let candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
+        while (await backend.head(`${dirPrefix}${candidate}`)) {
+          disambiguator += 1;
+          candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
+        }
+        await backend.writeText(`${dirPrefix}${candidate}`, ours);
+        backupName = candidate;
+        await refreshLocalTree();
+      } else {
+        nextEditorText = merge.text;
+      }
+
+      setCurrentFile((prev) => {
+        if (prev?.id !== fileToRefresh.id) return prev;
+        const next = {
+          ...prev,
+          content: diskText,
+          size: typeof diskFile.size === 'number' ? diskFile.size : prev?.size ?? null,
+          lastModified: diskFile.lastModified,
+        };
+        currentFileRef.current = next;
+        return next;
+      });
+      setEditorContent(nextEditorText);
+      editorContentRef.current = nextEditorText;
+      await deleteMemoDraft(getDraftKey('local', fileToRefresh.id));
+
+      if (backupName) {
+        setOperationStatus(`충돌: 현재 문서를 ${backupName}으로 저장하고 디스크 내용으로 교체했습니다`);
+        showAlert({
+          title: '새로고침 충돌',
+          message:
+            '디스크 내용과 현재 문서가 충돌하여, 현재 문서를 새 파일로 저장한 뒤 디스크 내용으로 교체했습니다.',
+          detail: backupName,
+        });
+      } else if (nextEditorText === diskText && ours === diskText) {
+        setOperationStatus('디스크 내용과 동일합니다');
+      } else if (nextEditorText === diskText) {
+        setOperationStatus('디스크 내용으로 새로고침했습니다');
+      } else {
+        setOperationStatus('디스크 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
+      }
+    } catch (e) {
+      console.error('Local refresh failed:', e);
+      showAlert({
+        title: '새로고침 실패',
+        message: e?.message || String(e),
+      });
+    } finally {
+      removeIndicator(indicatorId);
+      setIsRefreshingFromDisk(false);
+    }
+  };
+
   const renameS3File = async (file, newName, contentOverride = null) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
@@ -5377,6 +5472,10 @@ function MainApp() {
                   onChangeEditor={handleEditorChange}
                   onSave={saveFile}
                   isSaving={isSaving}
+                  onRefreshFromDisk={
+                    currentFile?.type === 'local' ? refreshLocalFileFromDisk : undefined
+                  }
+                  isRefreshingFromDisk={isRefreshingFromDisk}
                   editedFileName={editedFileName}
                   setEditedFileName={setEditedFileName}
                   onRenameFullName={renameCurrentFileFullName}
@@ -5452,6 +5551,10 @@ function MainApp() {
                   onChangeEditor={handleEditorChange}
                   onSave={saveFile}
                   isSaving={isSaving}
+                  onRefreshFromDisk={
+                    currentFile?.type === 'local' ? refreshLocalFileFromDisk : undefined
+                  }
+                  isRefreshingFromDisk={isRefreshingFromDisk}
                   editedFileName={editedFileName}
                   setEditedFileName={setEditedFileName}
                   onRenameFullName={renameCurrentFileFullName}

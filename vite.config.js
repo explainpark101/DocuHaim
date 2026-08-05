@@ -35,17 +35,6 @@ function emitBuildIdPlugin() {
         res.end(payload);
       });
     },
-    configurePreviewServer(server) {
-      server.middlewares.use((req, res, next) => {
-        if (!isBuildIdRequest(req.url)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Cache-Control', 'no-store');
-        res.end(payload);
-      });
-    },
     generateBundle() {
       this.emitFile({
         type: 'asset',
@@ -70,9 +59,10 @@ if (!isElectron) {
       includeAssets: ['vite.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         id: normalizedBase,
+        lang: 'ko',
         name: 'S3 Haim - Markdown Notes',
         short_name: 'S3 Haim',
-        description: 'S3에 저장하는 마크다운 메모 앱',
+        description: 'S3, 로컬, WebDAV에 저장하는 마크다운 메모 앱',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
