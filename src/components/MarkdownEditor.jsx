@@ -414,7 +414,7 @@ config({
       {
         type: 'markdownSingleNewlineEnter',
         extension: MARKDOWN_SINGLE_NEWLINE_ENTER_KEYMAP,
-      },)
+      },
       {
         type: 'lineNumbers',
         extension: lineNumbers(),
