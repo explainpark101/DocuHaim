@@ -11,7 +11,8 @@ import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloati
 import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
-import MarkdownDeepHeadingToolbar from '@/components/MarkdownDeepHeadingToolbar';
+import MarkdownHeadingRemapToolbar from '@/components/MarkdownHeadingRemapToolbar';
+import HeadingRemapModal from '@/components/modals/HeadingRemapModal';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
@@ -422,6 +423,7 @@ export default function MarkdownEditor({
     enabled: !previewOnly,
   });
   const [llmAssistOpen, setLlmAssistOpen] = useState(false);
+  const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
   const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
@@ -1135,7 +1137,12 @@ export default function MarkdownEditor({
       language="ko-KR"
     />,
     <MarkdownPageBreakToolbar key="insert-pgbr" editorRef={editorRef} />,
-    <MarkdownDeepHeadingToolbar key="deep-heading" editorRef={editorRef} />,
+    <MarkdownHeadingRemapToolbar
+      key="heading-remap"
+      onOpen={() => {
+        setHeadingRemapOpen(true);
+      }}
+    />,
     <LlmAssistToolbar
       key="llm-assist"
       onOpen={() => {
@@ -1302,6 +1309,15 @@ export default function MarkdownEditor({
         onConfirm={handleConfirmTransformApply}
         onCancel={() => setFreeTransformConfirmOpen(false)}
         onDiscard={handleConfirmTransformReset}
+      />
+      <HeadingRemapModal
+        isOpen={headingRemapOpen}
+        markdown={value}
+        onClose={() => setHeadingRemapOpen(false)}
+        onApply={(next) => {
+          onChangeWithUndoHistory(next);
+          setHeadingRemapOpen(false);
+        }}
       />
       <LlmAssistModal
         editorRef={editorRef}

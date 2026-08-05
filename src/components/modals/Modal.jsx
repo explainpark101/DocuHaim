@@ -8,9 +8,10 @@ const ANIMATION_DURATION_MS = 200;
  *   onClose?: () => void,
  *   onConfirm?: () => void,
  *   children?: import('react').ReactNode,
+ *   contentClassName?: string,
  * }} props
  */
-export default function Modal({ isOpen, onClose, onConfirm, children }) {
+export default function Modal({ isOpen, onClose, onConfirm, children, contentClassName = 'max-w-md' }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
 
@@ -65,7 +66,7 @@ export default function Modal({ isOpen, onClose, onConfirm, children }) {
       aria-hidden={!visible}
     >
       <div
-        className={`bg-white dark:bg-odp-surface text-gray-800 dark:text-odp-fgStrong rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col transition-all duration-200 ease-out ${
+        className={`bg-white dark:bg-odp-surface text-gray-800 dark:text-odp-fgStrong rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden flex flex-col transition-all duration-200 ease-out ${contentClassName} ${
           visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
         }`}
       >

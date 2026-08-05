@@ -11,10 +11,10 @@ import {
 } from '@/utils/downloadImageModeSettings';
 import {
   defaultExportHeadingMax,
-  describeHeadingRemap,
-  detectMaxHeadingLevel,
+  detectHeadingLevels,
   EXPORT_HEADING_LEVELS,
   isExportHeadingLevel,
+  planHeadingRemap,
   type ExportHeadingLevel,
 } from '@/utils/markdownHeadings';
 
@@ -77,8 +77,8 @@ export function DownloadMethodModal({
   const [imageMode, setImageMode] = useState<DownloadImageMode>(() => loadDownloadImageMode());
   const [headingMax, setHeadingMax] = useState<ExportHeadingLevel>(1);
 
-  const sourceMax = useMemo(
-    () => (showImageHandling ? detectMaxHeadingLevel(markdownText) : null),
+  const sourceLevels = useMemo(
+    () => (showImageHandling ? detectHeadingLevels(markdownText) : []),
     [markdownText, showImageHandling],
   );
 
@@ -95,7 +95,7 @@ export function DownloadMethodModal({
   };
 
   const choice: DownloadMethodChoice = { imageMode, headingMax };
-  const remapHint = showImageHandling ? describeHeadingRemap(sourceMax, headingMax) : '';
+  const remapPlan = showImageHandling ? planHeadingRemap(sourceLevels, headingMax) : null;
 
   return (
     <Modal isOpen={isOpen} onClose={onCancel}>
@@ -188,11 +188,29 @@ export function DownloadMethodModal({
 
             {showImageHandling ? (
               <div className="mb-4">
-                <label
-                  htmlFor="download-heading-max"
-                  className="mb-2 block text-xs font-medium text-gray-500 dark:text-odp-muted"
-                >
+                <div className="mb-2 text-xs font-medium text-gray-500 dark:text-odp-muted">
                   최대 heading
+                </div>
+                {remapPlan?.sourceMax ? (
+                  <p className="mb-2 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    감지:{' '}
+                    {remapPlan.sourceLevels.map((level, index) => (
+                      <span key={level}>
+                        {index > 0 ? ', ' : ''}
+                        <span className={level === remapPlan.sourceMax ? 'font-medium text-gray-700 dark:text-odp-fg' : undefined}>
+                          h{level}
+                          {level === remapPlan.sourceMax ? ' (최대)' : ''}
+                        </span>
+                      </span>
+                    ))}
+                  </p>
+                ) : (
+                  <p className="mb-2 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    문서에 heading이 없습니다.
+                  </p>
+                )}
+                <label className="sr-only" htmlFor="download-heading-max">
+                  최대 heading을 다음 단계로 변경
                 </label>
                 <Select.Root
                   value={String(headingMax)}
@@ -203,7 +221,7 @@ export function DownloadMethodModal({
                 >
                   <Select.Trigger
                     id="download-heading-max"
-                    aria-label="최대 heading"
+                    aria-label="최대 heading을 다음 단계로 변경"
                     className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
                   >
                     <Select.Value />
@@ -234,14 +252,25 @@ export function DownloadMethodModal({
                     </Select.Content>
                   </Select.Portal>
                 </Select.Root>
-                <p className="mt-1.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
-                  다른 문서에 넣을 때 heading 단계를 조절합니다. 기본값은 이 문서의 최대 heading입니다.
-                </p>
-                {remapHint ? (
-                  <p className="mt-1 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
-                    {remapHint}
+                {remapPlan?.sourceMax ? (
+                  <p className="mt-1.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    변경:{' '}
+                    {remapPlan.mappings.map((item, index) => (
+                      <span key={item.from}>
+                        {index > 0 ? ', ' : ''}
+                        h{item.from}→h{item.to}
+                      </span>
+                    ))}
                   </p>
                 ) : null}
+                {remapPlan?.deepCollapsed ? (
+                  <p className="mt-1 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    h7 이상은 내보낼 때 h6 이하로 맞춥니다.
+                  </p>
+                ) : null}
+                <p className="mt-1.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                  감지된 최대 heading을 선택한 단계로 바꾸고, 하위 heading도 같은 간격으로 이동합니다.
+                </p>
               </div>
             ) : null}
 
