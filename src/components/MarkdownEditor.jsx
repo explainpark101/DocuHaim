@@ -1168,9 +1168,8 @@ export default function MarkdownEditor({
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
     'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, '-',
     'revoke', 'next', 0, '=',
-    'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
+    6, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
     ...(catalogEl ? [4] : []),
-    6,
   ], [catalogEl]);
 
   const onUploadImg = useMemo(() => {
