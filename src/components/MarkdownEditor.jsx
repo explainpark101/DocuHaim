@@ -51,10 +51,27 @@ import {
 } from '@/utils/wikiImageSyntax';
 import {
   clearPreviewSelectionMirror,
+  isPointInLivePreviewSelection,
+  isPointInMirroredPreviewSelection,
   mirrorCurrentPreviewSelection,
+  restoreMirroredPreviewSelection,
   syncPreviewSelectionToEditor,
 } from '@/utils/previewSelectionSync';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
+import {
+  toggleBoldForSelection,
+  toggleHeadingForSelection,
+  toggleItalicForSelection,
+  toggleListTypeBetweenUlAndOl,
+  toggleOrderedListForSelection,
+  toggleStrikeForSelection,
+  toggleSubForSelection,
+  toggleSupForSelection,
+  toggleTaskCheckboxBetweenChecked,
+  toggleUnderlineForSelection,
+  toggleUnorderedListForSelection,
+  wrapSelectionWithInlineCode,
+} from '@/utils/editorMarkdownStyle';
 
 const DEBUG_WIKI_IMAGE = true;
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
@@ -144,182 +161,6 @@ function isInlineCodeFenceTriggerKey(e) {
   return false;
 }
 
-function wrapSelectionWithInlineCode(view) {
-  if (!view?.state) return false;
-  const selection = view.state.selection?.main;
-  if (!selection || selection.empty) return false;
-  const selectedText = view.state.doc.sliceString(selection.from, selection.to);
-  if (!selectedText) return false;
-  let fence = '`';
-  while (selectedText.includes(fence)) fence += '`';
-  const wrapped = `${fence}${selectedText}${fence}`;
-  view.dispatch({
-    changes: { from: selection.from, to: selection.to, insert: wrapped },
-    selection: {
-      anchor: selection.from + fence.length,
-      head: selection.from + fence.length + selectedText.length,
-    },
-  });
-  return true;
-}
-
-function toggleBoldForSelection(view) {
-  if (!view?.state) return false;
-
-  const selection = view.state.selection?.main;
-  if (!selection) return false;
-
-  const boldMark = '**';
-  const boldMarkLength = boldMark.length;
-  const { from, to, empty } = selection;
-  const selectedText = view.state.doc.sliceString(from, to);
-
-  if (empty) {
-    const inserted = `${boldMark}${boldMark}`;
-    view.dispatch({
-      changes: { from, to, insert: inserted },
-      selection: { anchor: from + boldMarkLength },
-    });
-    return true;
-  }
-
-  // 선택 영역 자체가 **text** 형태면 언래핑
-  if (
-    selectedText.length >= boldMarkLength * 2 &&
-    selectedText.startsWith(boldMark) &&
-    selectedText.endsWith(boldMark)
-  ) {
-    const unwrapped = selectedText.slice(boldMarkLength, -boldMarkLength);
-    view.dispatch({
-      changes: { from, to, insert: unwrapped },
-      selection: {
-        anchor: from,
-        head: from + unwrapped.length,
-      },
-    });
-    return true;
-  }
-
-  // 선택 영역 바깥이 ** | ** 로 감싸져 있으면 언래핑
-  const doc = view.state.doc;
-  const leftMarkFrom = Math.max(0, from - boldMarkLength);
-  const rightMarkTo = Math.min(doc.length, to + boldMarkLength);
-  const leftMark = doc.sliceString(leftMarkFrom, from);
-  const rightMark = doc.sliceString(to, rightMarkTo);
-
-  if (leftMark === boldMark && rightMark === boldMark) {
-    view.dispatch({
-      changes: {
-        from: leftMarkFrom,
-        to: rightMarkTo,
-        insert: selectedText,
-      },
-      selection: {
-        anchor: leftMarkFrom,
-        head: leftMarkFrom + selectedText.length,
-      },
-    });
-    return true;
-  }
-
-  // 그 외에는 볼드 래핑
-  const wrapped = `${boldMark}${selectedText}${boldMark}`;
-  view.dispatch({
-    changes: { from, to, insert: wrapped },
-    selection: {
-      anchor: from + boldMarkLength,
-      head: from + boldMarkLength + selectedText.length,
-    },
-  });
-  return true;
-}
-
-const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
-const ORDERED_LIST_LINE_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
-/** GFM task list: `- [ ]` / `- [x]` (also *, +, ordered). */
-const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX])\](.*)$/;
-
-function toggleListLineMarker(text) {
-  const unordered = text.match(UNORDERED_LIST_LINE_RE);
-  if (unordered) {
-    return `${unordered[1]}1. ${unordered[4]}`;
-  }
-  const ordered = text.match(ORDERED_LIST_LINE_RE);
-  if (ordered) {
-    return `${ordered[1]}- ${ordered[5]}`;
-  }
-  return null;
-}
-
-/** Flip `- [ ]` <-> `- [x]` on a single line; null if not a task checkbox line. */
-function toggleTaskCheckboxMarker(text) {
-  const match = text.match(TASK_CHECKBOX_LINE_RE);
-  if (!match) return null;
-  const [, prefix, checked, rest] = match;
-  const nextChecked = checked === ' ' ? 'x' : ' ';
-  return `${prefix}[${nextChecked}]${rest}`;
-}
-
-/** Alt+- : unordered (-) <-> ordered (1.) on current or selected list lines. */
-function toggleListTypeBetweenUlAndOl(view) {
-  if (!view?.state) return false;
-
-  const { state } = view;
-  const lineNumbers = new Set();
-
-  for (const range of state.selection.ranges) {
-    const fromLine = state.doc.lineAt(range.from).number;
-    const toLine = state.doc.lineAt(range.to).number;
-    for (let n = fromLine; n <= toLine; n += 1) {
-      lineNumbers.add(n);
-    }
-  }
-
-  const changes = [];
-  for (const lineNumber of lineNumbers) {
-    const line = state.doc.line(lineNumber);
-    const nextText = toggleListLineMarker(line.text);
-    if (nextText !== null && nextText !== line.text) {
-      changes.push({ from: line.from, to: line.to, insert: nextText });
-    }
-  }
-
-  if (changes.length === 0) return false;
-
-  view.dispatch({ changes });
-  return true;
-}
-
-/** Ctrl-Tab: cycle task checkbox checked state on current or selected lines. */
-function toggleTaskCheckboxBetweenChecked(view) {
-  if (!view?.state) return false;
-
-  const { state } = view;
-  const lineNumbers = new Set();
-
-  for (const range of state.selection.ranges) {
-    const fromLine = state.doc.lineAt(range.from).number;
-    const toLine = state.doc.lineAt(range.to).number;
-    for (let n = fromLine; n <= toLine; n += 1) {
-      lineNumbers.add(n);
-    }
-  }
-
-  const changes = [];
-  for (const lineNumber of lineNumbers) {
-    const line = state.doc.line(lineNumber);
-    const nextText = toggleTaskCheckboxMarker(line.text);
-    if (nextText !== null && nextText !== line.text) {
-      changes.push({ from: line.from, to: line.to, insert: nextText });
-    }
-  }
-
-  if (changes.length === 0) return false;
-
-  view.dispatch({ changes });
-  return true;
-}
-
 function runAltVimNavigation(view, command) {
   if (!loadAltVimNavigationEnabled()) return false;
   return command(view);
@@ -368,7 +209,22 @@ config({
         mac !== 'cmd-d' &&
         key !== 'ctrl-b' &&
         key !== 'mod-b' &&
-        mac !== 'cmd-b'
+        mac !== 'cmd-b' &&
+        key !== 'ctrl-u' &&
+        key !== 'mod-u' &&
+        mac !== 'cmd-u' &&
+        key !== 'ctrl-o' &&
+        key !== 'mod-o' &&
+        mac !== 'cmd-o' &&
+        key !== 'ctrl-arrowup' &&
+        key !== 'mod-arrowup' &&
+        mac !== 'cmd-arrowup' &&
+        key !== 'ctrl-arrowdown' &&
+        key !== 'mod-arrowdown' &&
+        mac !== 'cmd-arrowdown' &&
+        !/^ctrl-[1-6]$/.test(key) &&
+        !/^mod-[1-6]$/.test(key) &&
+        !/^cmd-[1-6]$/.test(mac)
       );
     });
 
@@ -397,6 +253,57 @@ config({
         mac: 'Cmd-b',
         preventDefault: true,
         run: toggleBoldForSelection,
+      },
+      {
+        key: 'Ctrl-i',
+        mac: 'Cmd-i',
+        preventDefault: true,
+        run: toggleItalicForSelection,
+      },
+      {
+        key: 'Ctrl-u',
+        mac: 'Cmd-u',
+        preventDefault: true,
+        run: toggleUnderlineForSelection,
+        shift: toggleUnorderedListForSelection,
+      },
+      {
+        key: 'Ctrl-o',
+        mac: 'Cmd-o',
+        preventDefault: true,
+        run: toggleOrderedListForSelection,
+      },
+      {
+        key: 'Shift-Ctrl-s',
+        mac: 'Shift-Cmd-s',
+        preventDefault: true,
+        run: toggleStrikeForSelection,
+      },
+      {
+        key: 'Ctrl-ArrowUp',
+        mac: 'Cmd-ArrowUp',
+        preventDefault: true,
+        run: toggleSupForSelection,
+      },
+      {
+        key: 'Ctrl-ArrowDown',
+        mac: 'Cmd-ArrowDown',
+        preventDefault: true,
+        run: toggleSubForSelection,
+      },
+      ...[1, 2, 3, 4, 5, 6].map((level) => ({
+        key: `Ctrl-${level}`,
+        mac: `Cmd-${level}`,
+        preventDefault: true,
+        run: (view) => toggleHeadingForSelection(view, level),
+      })),
+      {
+        any: (view, event) => {
+          if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyC') {
+            return wrapSelectionWithInlineCode(view);
+          }
+          return false;
+        },
       },
       { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
       { key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
@@ -662,11 +569,26 @@ export default function MarkdownEditor({
       syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
     };
 
+    const isContextMenuMouseDown = (e) => (
+      e.button === 2 || (e.button === 0 && e.ctrlKey)
+    );
+
+    const restorePreviewSelectionForContextMenu = (e, previewRoot) => {
+      if (isPointInLivePreviewSelection(previewRoot, e.clientX, e.clientY)) return true;
+      if (!isPointInMirroredPreviewSelection(e.clientX, e.clientY)) return false;
+      return restoreMirroredPreviewSelection(previewRoot);
+    };
+
     const onMouseDown = (e) => {
       const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
       const target = e.target;
       if (!(target instanceof Node)) return;
+
+      if (previewRoot.contains(target) && isContextMenuMouseDown(e)) {
+        restorePreviewSelectionForContextMenu(e, previewRoot);
+        return;
+      }
 
       if (previewRoot.contains(target)) {
         clearPreviewSelectionMirror(previewRoot);
@@ -676,11 +598,19 @@ export default function MarkdownEditor({
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (view?.dom.contains(target)) {
+        if (isContextMenuMouseDown(e)) return;
         clearPreviewSelectionMirror(previewRoot);
       }
     };
 
+    const onContextMenuCapture = (e) => {
+      const previewRoot = getPreviewRoot();
+      if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
+      restorePreviewSelectionForContextMenu(e, previewRoot);
+    };
+
     const onMouseUp = (e) => {
+      if (isContextMenuMouseDown(e)) return;
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
@@ -725,13 +655,15 @@ export default function MarkdownEditor({
       }
     };
 
-    root.addEventListener('mousedown', onMouseDown);
+    root.addEventListener('mousedown', onMouseDown, true);
+    root.addEventListener('contextmenu', onContextMenuCapture, true);
     root.addEventListener('mouseup', onMouseUp);
     root.addEventListener('touchend', onTouchEnd, { passive: true });
     root.addEventListener('keydown', onKeyDownCapture, true);
     return () => {
       clearPreviewSelectionMirror(getPreviewRoot());
-      root.removeEventListener('mousedown', onMouseDown);
+      root.removeEventListener('mousedown', onMouseDown, true);
+      root.removeEventListener('contextmenu', onContextMenuCapture, true);
       root.removeEventListener('mouseup', onMouseUp);
       root.removeEventListener('touchend', onTouchEnd);
       root.removeEventListener('keydown', onKeyDownCapture, true);
@@ -873,6 +805,14 @@ export default function MarkdownEditor({
     const root = containerRef.current;
     if (!root) return;
     const onContextMenu = (event) => {
+      const previewRoot = root.querySelector('.md-editor-preview');
+      if (
+        previewRoot
+        && (isPointInLivePreviewSelection(previewRoot, event.clientX, event.clientY)
+          || isPointInMirroredPreviewSelection(event.clientX, event.clientY))
+      ) {
+        return;
+      }
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
       if (!img || !root.contains(img)) return;
       const attrs = getResizableImageAttrsFromElement(img);

@@ -8,6 +8,13 @@ import type { EditorView } from '@codemirror/view';
 
 export const PREVIEW_SYNC_HIGHLIGHT_NAME = 's3haim-preview-sync-sel';
 const PREVIEW_SYNC_OVERLAY_ATTR = 'data-preview-sel-mirror';
+const MIRROR_HIT_SLOP_PX = 4;
+
+let mirroredPreviewRange: Range | null = null;
+
+function setMirroredPreviewRange(range: Range | null): void {
+  mirroredPreviewRange = range ? range.cloneRange() : null;
+}
 
 export function findDataLineElement(node: Node | null, previewRoot: Element): HTMLElement | null {
   let el: Node | null | undefined = node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
@@ -287,8 +294,77 @@ function removePreviewSelectionOverlay(previewRoot: Element): void {
 }
 
 export function clearPreviewSelectionMirror(previewRoot?: Element | null): void {
+  setMirroredPreviewRange(null);
   cssHighlights()?.delete(PREVIEW_SYNC_HIGHLIGHT_NAME);
   if (previewRoot) removePreviewSelectionOverlay(previewRoot);
+}
+
+function isPointInClientRect(rect: DOMRect, x: number, y: number, slop = 0): boolean {
+  return (
+    x >= rect.left - slop
+    && x <= rect.right + slop
+    && y >= rect.top - slop
+    && y <= rect.bottom + slop
+  );
+}
+
+export function isPointInMirroredPreviewSelection(x: number, y: number): boolean {
+  if (!mirroredPreviewRange || mirroredPreviewRange.collapsed) return false;
+  try {
+    for (const rect of mirroredPreviewRange.getClientRects()) {
+      if (isPointInClientRect(rect, x, y, MIRROR_HIT_SLOP_PX)) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export function isPointInLivePreviewSelection(
+  previewRoot: Element,
+  x: number,
+  y: number,
+): boolean {
+  const sel = window.getSelection?.();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed) return false;
+  if (!previewRoot.contains(range.commonAncestorContainer)) return false;
+  try {
+    for (const rect of range.getClientRects()) {
+      if (isPointInClientRect(rect, x, y, MIRROR_HIT_SLOP_PX)) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Put the mirrored preview range back into window.getSelection so a right-click
+ * is treated as a Selection context menu (Copy, search, …).
+ */
+export function restoreMirroredPreviewSelection(previewRoot: Element): boolean {
+  if (!mirroredPreviewRange || mirroredPreviewRange.collapsed) return false;
+  try {
+    if (!previewRoot.contains(mirroredPreviewRange.commonAncestorContainer)) {
+      return false;
+    }
+    const sel = window.getSelection?.();
+    if (!sel) return false;
+    const next = mirroredPreviewRange.cloneRange();
+    sel.removeAllRanges();
+    sel.addRange(next);
+
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !previewRoot.contains(active)) {
+      active.blur();
+    }
+
+    return Boolean(sel.rangeCount && !sel.getRangeAt(0)?.collapsed);
+  } catch {
+    return false;
+  }
 }
 
 function applyPreviewSelectionOverlay(previewRoot: Element, range: Range): void {
@@ -329,6 +405,8 @@ export function mirrorPreviewSelection(previewRoot: Element, range: Range): bool
     clearPreviewSelectionMirror(previewRoot);
     return false;
   }
+
+  setMirroredPreviewRange(range);
 
   const highlights = cssHighlights();
   if (highlights) {
