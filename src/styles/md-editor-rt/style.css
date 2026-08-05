@@ -1,5 +1,6 @@
 /* ODP dark theme colors (from tailwind.config) - defined locally for md-editor-rt */
 :root {
+  --s3haim-preview-sync-sel-bg: color-mix(in srgb, var(--color-blue-500) 32%, transparent);
   --color-odp-bg: #23272e;
   --color-odp-bgSoft: #1e2227;
   --color-odp-bgSofter: #181a1f;
@@ -41,6 +42,12 @@ html {
   --md-scrollbar-thumb-hover-color: var(--color-gray-400);
   --md-scrollbar-thumb-active-color: var(--color-gray-500);
   --md-border-color: var(--color-odp-muted);
+}
+[data-theme="dark"],
+.dark,
+.md-editor-dark,
+.md-editor.md-editor-dark {
+  --s3haim-preview-sync-sel-bg: color-mix(in srgb, var(--color-odp-accentBlue) 40%, transparent);
 }
 .md-editor .md-editor-preview {
   --md-theme-color: var(--md-color);
@@ -3291,6 +3298,37 @@ div.smart-blue-theme hr {
 
 .md-editor .cm-editor.cm-focused {
   outline: none
+}
+
+::highlight(s3haim-preview-sync-sel) {
+  color: inherit;
+  background-color: var(--s3haim-preview-sync-sel-bg);
+}
+
+.md-editor .md-editor-preview {
+  position: relative;
+}
+
+.md-editor .s3haim-preview-sel-mirror {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.md-editor .s3haim-preview-sel-mirror-box {
+  position: absolute;
+  pointer-events: none;
+  background-color: var(--s3haim-preview-sync-sel-bg);
+}
+
+.md-editor .cm-editor .cm-selectionBackground {
+  background-color: var(--s3haim-preview-sync-sel-bg) !important;
+}
+
+.md-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background-color: var(--s3haim-preview-sync-sel-bg) !important;
 }
 
 .md-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete {

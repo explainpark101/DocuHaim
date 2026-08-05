@@ -1,15 +1,16 @@
 /**
  * Map a text selection in md-editor-rt preview (HTML) back to CodeMirror
- * source offsets using [data-line] block markers.
+ * source offsets using [data-line] block markers, and keep a visual
+ * selection mirror in the preview after focus moves to the editor.
  */
 
-/**
- * @param {Node | null} node
- * @param {Element} previewRoot
- * @returns {HTMLElement | null}
- */
-export function findDataLineElement(node, previewRoot) {
-  let el = node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+import type { EditorView } from '@codemirror/view';
+
+export const PREVIEW_SYNC_HIGHLIGHT_NAME = 's3haim-preview-sync-sel';
+const PREVIEW_SYNC_OVERLAY_ATTR = 'data-preview-sel-mirror';
+
+export function findDataLineElement(node: Node | null, previewRoot: Element): HTMLElement | null {
+  let el: Node | null | undefined = node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
   while (el && el !== previewRoot) {
     if (el instanceof HTMLElement && el.hasAttribute('data-line')) return el;
     el = el.parentElement;
@@ -17,13 +18,7 @@ export function findDataLineElement(node, previewRoot) {
   return null;
 }
 
-/**
- * @param {Element} rootEl
- * @param {Node} node
- * @param {number} offset
- * @returns {number}
- */
-function getTextOffsetInElement(rootEl, node, offset) {
+function getTextOffsetInElement(rootEl: Element, node: Node, offset: number): number {
   if (!rootEl.contains(node)) return 0;
   const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
   let total = 0;
@@ -38,14 +33,12 @@ function getTextOffsetInElement(rootEl, node, offset) {
   return total;
 }
 
-/**
- * @param {import('@codemirror/view').EditorView} view
- * @param {Element} previewRoot
- * @param {number} startLine0
- * @param {number} endLine0
- * @returns {{ from: number, to: number }}
- */
-function getSourceBoundsForLineRange(view, previewRoot, startLine0, endLine0) {
+function getSourceBoundsForLineRange(
+  view: EditorView,
+  previewRoot: Element,
+  startLine0: number,
+  endLine0: number,
+): { from: number; to: number } {
   const doc = view.state.doc;
   const line0Start = Math.max(0, Math.min(startLine0, endLine0));
   const line0End = Math.max(startLine0, endLine0);
@@ -59,7 +52,7 @@ function getSourceBoundsForLineRange(view, previewRoot, startLine0, endLine0) {
   const fromLine = Math.min(doc.lines, Math.max(1, line0Start + 1));
   const from = doc.line(fromLine).from;
 
-  let to;
+  let to: number;
   if (nextAfterEnd != null && nextAfterEnd + 1 <= doc.lines) {
     to = doc.line(nextAfterEnd + 1).from;
   } else {
@@ -73,13 +66,8 @@ function getSourceBoundsForLineRange(view, previewRoot, startLine0, endLine0) {
 /**
  * Greedy aligner: map a plain-text (preview) offset into a markdown source offset
  * by matching characters and skipping markdown syntax that is not visible.
- *
- * @param {string} source
- * @param {string} plain
- * @param {number} plainOffset
- * @returns {number}
  */
-export function mapPlainOffsetToSource(source, plain, plainOffset) {
+export function mapPlainOffsetToSource(source: string, plain: string, plainOffset: number): number {
   const target = Math.max(0, Math.min(plainOffset, plain.length));
   let si = 0;
   let pi = 0;
@@ -87,6 +75,7 @@ export function mapPlainOffsetToSource(source, plain, plainOffset) {
   while (si < source.length && pi < target) {
     const sc = source[si];
     const pc = plain[pi];
+    if (sc === undefined || pc === undefined) break;
 
     if (sc === pc) {
       si += 1;
@@ -95,24 +84,18 @@ export function mapPlainOffsetToSource(source, plain, plainOffset) {
     }
 
     if (/\s/.test(sc) || /\s/.test(pc)) {
-      while (si < source.length && /\s/.test(source[si])) si += 1;
-      while (pi < target && /\s/.test(plain[pi])) pi += 1;
+      while (si < source.length && /\s/.test(source[si] ?? '')) si += 1;
+      while (pi < target && /\s/.test(plain[pi] ?? '')) pi += 1;
       continue;
     }
 
-    // Skip markdown / punctuation in source that does not appear in preview text.
     si += 1;
   }
 
   return si;
 }
 
-/**
- * @param {string} haystack
- * @param {string} needle
- * @returns {number}
- */
-function countOccurrences(haystack, needle) {
+function countOccurrences(haystack: string, needle: string): number {
   if (!needle) return 0;
   let count = 0;
   let from = 0;
@@ -125,13 +108,11 @@ function countOccurrences(haystack, needle) {
   return count;
 }
 
-/**
- * @param {string} source
- * @param {string} needle
- * @param {number} nth zero-based occurrence index among exact matches
- * @returns {{ from: number, to: number } | null}
- */
-function findNthExactInSource(source, needle, nth) {
+function findNthExactInSource(
+  source: string,
+  needle: string,
+  nth: number,
+): { from: number; to: number } | null {
   if (!needle) return null;
   let from = 0;
   let found = -1;
@@ -149,14 +130,17 @@ function findNthExactInSource(source, needle, nth) {
 /**
  * Try to match `needle` as visible text starting at `from` in markdown source.
  * `from` must be the index of the first visible character (not a leading marker).
- * @param {string} source
- * @param {number} from
- * @param {string} needle
- * @returns {{ from: number, to: number } | null}
  */
-function tryMatchPlainAt(source, from, needle) {
+function tryMatchPlainAt(
+  source: string,
+  from: number,
+  needle: string,
+): { from: number; to: number } | null {
   if (!needle || from >= source.length) return null;
-  if (source[from] !== needle[0] && !( /\s/.test(source[from]) && /\s/.test(needle[0]) )) {
+  const startChar = source[from];
+  const needleStart = needle[0];
+  if (startChar === undefined || needleStart === undefined) return null;
+  if (startChar !== needleStart && !( /\s/.test(startChar) && /\s/.test(needleStart) )) {
     return null;
   }
 
@@ -165,17 +149,17 @@ function tryMatchPlainAt(source, from, needle) {
   while (si < source.length && pi < needle.length) {
     const sc = source[si];
     const pc = needle[pi];
+    if (sc === undefined || pc === undefined) break;
     if (sc === pc) {
       si += 1;
       pi += 1;
       continue;
     }
     if (/\s/.test(sc) && /\s/.test(pc)) {
-      while (si < source.length && /\s/.test(source[si])) si += 1;
-      while (pi < needle.length && /\s/.test(needle[pi])) pi += 1;
+      while (si < source.length && /\s/.test(source[si] ?? '')) si += 1;
+      while (pi < needle.length && /\s/.test(needle[pi] ?? '')) pi += 1;
       continue;
     }
-    // Skip markdown markers in the middle (e.g. **bold** markers around matched run).
     if (sc !== pc && !/\s/.test(pc)) {
       si += 1;
       continue;
@@ -186,16 +170,13 @@ function tryMatchPlainAt(source, from, needle) {
   return { from, to: si };
 }
 
-/**
- * Locate needle as a visible-text span inside markdown source via alignment.
- * @param {string} source
- * @param {string} needle
- * @param {number} nth
- * @returns {{ from: number, to: number } | null}
- */
-function findNthAlignedInSource(source, needle, nth) {
+function findNthAlignedInSource(
+  source: string,
+  needle: string,
+  nth: number,
+): { from: number; to: number } | null {
   if (!needle) return null;
-  const matches = [];
+  const matches: Array<{ from: number; to: number }> = [];
   for (let i = 0; i < source.length; i += 1) {
     const hit = tryMatchPlainAt(source, i, needle);
     if (!hit) continue;
@@ -208,12 +189,11 @@ function findNthAlignedInSource(source, needle, nth) {
 
 /**
  * Map the current window selection inside previewRoot to CM document offsets.
- *
- * @param {import('@codemirror/view').EditorView} view
- * @param {Element} previewRoot
- * @returns {{ from: number, to: number } | null}
  */
-export function mapPreviewSelectionToEditorRange(view, previewRoot) {
+export function mapPreviewSelectionToEditorRange(
+  view: EditorView,
+  previewRoot: Element,
+): { from: number; to: number } | null {
   if (!view?.state || !previewRoot) return null;
 
   const sel = window.getSelection?.();
@@ -226,8 +206,8 @@ export function mapPreviewSelectionToEditorRange(view, previewRoot) {
   const endBlock = findDataLineElement(range.endContainer, previewRoot);
   if (!startBlock && !endBlock) return null;
 
-  const startLine0 = Number((startBlock || endBlock).getAttribute('data-line'));
-  const endLine0 = Number((endBlock || startBlock).getAttribute('data-line'));
+  const startLine0 = Number((startBlock || endBlock)?.getAttribute('data-line'));
+  const endLine0 = Number((endBlock || startBlock)?.getAttribute('data-line'));
   if (!Number.isFinite(startLine0) || !Number.isFinite(endLine0)) return null;
 
   const { from: blockFrom, to: blockTo } = getSourceBoundsForLineRange(
@@ -255,7 +235,6 @@ export function mapPreviewSelectionToEditorRange(view, previewRoot) {
   const selectedText = sel.toString();
   if (!selectedText) return null;
 
-  // Occurrence index among identical strings before the selection in the preview.
   let occurrence = 0;
   try {
     const before = document.createRange();
@@ -272,7 +251,6 @@ export function mapPreviewSelectionToEditorRange(view, previewRoot) {
     return { from: blockFrom + exact.from, to: blockFrom + exact.to };
   }
 
-  // Align start/end using block plain text when selection stays in one block.
   if (startBlock && startBlock === endBlock) {
     const plain = startBlock.textContent ?? '';
     const plainFrom = getTextOffsetInElement(startBlock, range.startContainer, range.startOffset);
@@ -293,20 +271,103 @@ export function mapPreviewSelectionToEditorRange(view, previewRoot) {
     return { from: blockFrom + aligned.from, to: blockFrom + aligned.to };
   }
 
-  // Fallback: select the whole mapped block range.
   return { from: blockFrom, to: blockTo };
+}
+
+function cssHighlights(): HighlightRegistry | null {
+  const css = globalThis.CSS;
+  if (!css || !('highlights' in css) || typeof Highlight === 'undefined') return null;
+  return css.highlights;
+}
+
+function removePreviewSelectionOverlay(previewRoot: Element): void {
+  previewRoot.querySelectorAll(`[${PREVIEW_SYNC_OVERLAY_ATTR}]`).forEach((el) => el.remove());
+  const wrapper = previewRoot.closest('.md-editor-preview-wrapper');
+  wrapper?.querySelectorAll(`[${PREVIEW_SYNC_OVERLAY_ATTR}]`).forEach((el) => el.remove());
+}
+
+export function clearPreviewSelectionMirror(previewRoot?: Element | null): void {
+  cssHighlights()?.delete(PREVIEW_SYNC_HIGHLIGHT_NAME);
+  if (previewRoot) removePreviewSelectionOverlay(previewRoot);
+}
+
+function applyPreviewSelectionOverlay(previewRoot: Element, range: Range): void {
+  removePreviewSelectionOverlay(previewRoot);
+  const host = previewRoot instanceof HTMLElement ? previewRoot : null;
+  if (!host) return;
+
+  if (getComputedStyle(host).position === 'static') {
+    host.style.position = 'relative';
+  }
+
+  const hostRect = host.getBoundingClientRect();
+  const layer = document.createElement('div');
+  layer.setAttribute(PREVIEW_SYNC_OVERLAY_ATTR, '');
+  layer.className = 's3haim-preview-sel-mirror';
+  layer.setAttribute('aria-hidden', 'true');
+
+  for (const rect of range.getClientRects()) {
+    if (rect.width <= 0 || rect.height <= 0) continue;
+    const box = document.createElement('div');
+    box.className = 's3haim-preview-sel-mirror-box';
+    box.style.left = `${rect.left - hostRect.left}px`;
+    box.style.top = `${rect.top - hostRect.top}px`;
+    box.style.width = `${rect.width}px`;
+    box.style.height = `${rect.height}px`;
+    layer.appendChild(box);
+  }
+
+  if (!layer.childElementCount) return;
+  host.appendChild(layer);
+}
+
+/**
+ * Keep preview text looking selected after the browser selection moves to CodeMirror.
+ */
+export function mirrorPreviewSelection(previewRoot: Element, range: Range): boolean {
+  if (range.collapsed) {
+    clearPreviewSelectionMirror(previewRoot);
+    return false;
+  }
+
+  const highlights = cssHighlights();
+  if (highlights) {
+    try {
+      removePreviewSelectionOverlay(previewRoot);
+      highlights.set(PREVIEW_SYNC_HIGHLIGHT_NAME, new Highlight(range.cloneRange()));
+      return true;
+    } catch {
+      // fall through to overlay
+    }
+  }
+
+  applyPreviewSelectionOverlay(previewRoot, range);
+  return true;
+}
+
+export function mirrorCurrentPreviewSelection(previewRoot: Element): boolean {
+  const sel = window.getSelection?.();
+  if (!sel || sel.rangeCount === 0) {
+    clearPreviewSelectionMirror(previewRoot);
+    return false;
+  }
+  const range = sel.getRangeAt(0);
+  if (!previewRoot.contains(range.commonAncestorContainer)) {
+    clearPreviewSelectionMirror(previewRoot);
+    return false;
+  }
+  return mirrorPreviewSelection(previewRoot, range);
 }
 
 /**
  * Apply preview DOM selection onto the CodeMirror view and focus it for typing.
- *
- * @param {import('@codemirror/view').EditorView} view
- * @param {Element} previewRoot
- * @param {{ focus?: boolean }} [options]
- * @returns {boolean}
  */
-export function syncPreviewSelectionToEditor(view, previewRoot, options = {}) {
-  const { focus = true } = options;
+export function syncPreviewSelectionToEditor(
+  view: EditorView,
+  previewRoot: Element,
+  options: { focus?: boolean } = {},
+): boolean {
+  const focus = options.focus ?? true;
   const mapped = mapPreviewSelectionToEditorRange(view, previewRoot);
   if (!mapped || !view) return false;
 

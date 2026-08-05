@@ -13,6 +13,7 @@ import {
   getChatSyncTabId,
   openChatSyncChannel,
 } from '@/utils/chatWithMyself/syncChannel.js';
+import { getStorageScopeId } from '@/utils/storageScope';
 
 const POLL_MS = 10_000;
 
@@ -66,13 +67,20 @@ export function useChatRemoteSync({
       return undefined;
     }
 
+    metaStampRef.current = null;
+    dayStampRef.current.clear();
+    pullGenerationRef.current += 1;
+    queuedRef.current = null;
+    busyRef.current = false;
+
     const tabId = getChatSyncTabId();
+    const scope = getStorageScopeId(ctx);
 
     const pullDay = async (dateStr, generation) => {
       const parsed = await readDayFileParsed(ctx, dateStr);
       // Drop stale pulls that finished after a newer local write invalidated the day
       if (generation !== pullGenerationRef.current) return null;
-      await cacheDay(dayFileKey(dateStr), parsed.content || '');
+      await cacheDay(scope, dayFileKey(dateStr), parsed.content || '');
       callbacksRef.current.onDayMerged(
         dateStr,
         parsed.messages.map((m) => ({ ...m, dateStr })),

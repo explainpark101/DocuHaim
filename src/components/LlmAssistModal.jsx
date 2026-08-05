@@ -4,6 +4,7 @@ import {
   createEmptyLlmPromptTemplate,
   deleteLlmPromptTemplate,
   listLlmPromptTemplates,
+  LLM_PROMPT_TEMPLATES_SCOPE_EVENT,
   saveLlmPromptTemplate,
 } from '@/utils/llmPromptTemplatesDb';
 import { withGeminiApiKey } from '@/utils/geminiApiKeySession';
@@ -180,6 +181,18 @@ export default function LlmAssistModal({
     loadTemplates();
     setError('');
   }, [open, refreshSelection, loadTemplates, setGeminiModel]);
+
+  useEffect(() => {
+    const onScopeChange = () => {
+      setSelectedTemplateId('');
+      setEditingTemplateId(null);
+      void loadTemplates();
+    };
+    window.addEventListener(LLM_PROMPT_TEMPLATES_SCOPE_EVENT, onScopeChange);
+    return () => {
+      window.removeEventListener(LLM_PROMPT_TEMPLATES_SCOPE_EVENT, onScopeChange);
+    };
+  }, [loadTemplates]);
 
   useEffect(() => {
     if (!open || hidden || popoutActive) return undefined;

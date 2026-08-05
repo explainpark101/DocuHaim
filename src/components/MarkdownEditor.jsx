@@ -13,7 +13,7 @@ import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import { EditorView, lineNumbers, keymap } from '@codemirror/view';
+import { EditorView, drawSelection, lineNumbers, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import {
   addCursorAbove,
@@ -49,7 +49,11 @@ import {
   updateMarkdownImageSizeInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
-import { syncPreviewSelectionToEditor } from '@/utils/previewSelectionSync';
+import {
+  clearPreviewSelectionMirror,
+  mirrorCurrentPreviewSelection,
+  syncPreviewSelectionToEditor,
+} from '@/utils/previewSelectionSync';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
 
 const DEBUG_WIKI_IMAGE = true;
@@ -399,11 +403,18 @@ config({
       ...baseKeyBindings,
     ];
 
+    if (!nextExtensions.some((item) => item.type === 'drawSelection')) {
+      nextExtensions.push({
+        type: 'drawSelection',
+        extension: drawSelection(),
+      });
+    }
+
     nextExtensions.push(
       {
         type: 'markdownSingleNewlineEnter',
         extension: MARKDOWN_SINGLE_NEWLINE_ENTER_KEYMAP,
-      },
+      },)
       {
         type: 'lineNumbers',
         extension: lineNumbers(),
@@ -614,11 +625,13 @@ export default function MarkdownEditor({
     api?.togglePreviewOnly?.(true);
   }, [previewOnly]);
 
-  // Preview selection → CodeMirror selection + focus so typing edits the source.
+  // Preview selection → CodeMirror selection + mirrored highlight on both panes.
   useEffect(() => {
     if (previewOnly) return undefined;
     const root = containerRef.current;
     if (!root) return undefined;
+
+    const getPreviewRoot = () => root.querySelector('.md-editor-preview');
 
     const shouldIgnoreTarget = (target) => {
       if (!(target instanceof Element)) return false;
@@ -630,7 +643,7 @@ export default function MarkdownEditor({
     };
 
     const syncFromPreview = () => {
-      const previewRoot = root.querySelector('.md-editor-preview');
+      const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
       const sel = window.getSelection?.();
       if (!sel || sel.rangeCount === 0) return;
@@ -641,16 +654,42 @@ export default function MarkdownEditor({
       const view = api?.getEditorView?.();
       if (!view) return;
 
+      if (range.collapsed) {
+        clearPreviewSelectionMirror(previewRoot);
+      } else {
+        mirrorCurrentPreviewSelection(previewRoot);
+      }
       syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
     };
 
+    const onMouseDown = (e) => {
+      const previewRoot = getPreviewRoot();
+      if (!previewRoot) return;
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+
+      if (previewRoot.contains(target)) {
+        clearPreviewSelectionMirror(previewRoot);
+        return;
+      }
+
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (view?.dom.contains(target)) {
+        clearPreviewSelectionMirror(previewRoot);
+      }
+    };
+
     const onMouseUp = (e) => {
+      const previewRoot = getPreviewRoot();
+      if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
-      // Wait until the browser finalizes the selection.
       requestAnimationFrame(syncFromPreview);
     };
 
     const onTouchEnd = (e) => {
+      const previewRoot = getPreviewRoot();
+      if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
       requestAnimationFrame(syncFromPreview);
     };
@@ -658,7 +697,7 @@ export default function MarkdownEditor({
     // If focus/selection is still on the preview, move editing into CodeMirror.
     // Do not synthesize insertText here — that breaks IME (e.g. Korean).
     const onKeyDownCapture = (e) => {
-      const previewRoot = root.querySelector('.md-editor-preview');
+      const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
 
       const target = e.target;
@@ -671,28 +710,39 @@ export default function MarkdownEditor({
 
       if (!focusInPreview && !selInPreview) return;
 
-      // Let browser shortcuts / IME composition alone once CM already has focus.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return;
       if (view.hasFocus) return;
 
       if (selInPreview) {
+        if (!sel.getRangeAt(0).collapsed) {
+          mirrorCurrentPreviewSelection(previewRoot);
+        }
         syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
       } else {
         view.focus();
       }
     };
 
+    root.addEventListener('mousedown', onMouseDown);
     root.addEventListener('mouseup', onMouseUp);
     root.addEventListener('touchend', onTouchEnd, { passive: true });
     root.addEventListener('keydown', onKeyDownCapture, true);
     return () => {
+      clearPreviewSelectionMirror(getPreviewRoot());
+      root.removeEventListener('mousedown', onMouseDown);
       root.removeEventListener('mouseup', onMouseUp);
       root.removeEventListener('touchend', onTouchEnd);
       root.removeEventListener('keydown', onKeyDownCapture, true);
     };
   }, [previewOnly]);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    const previewRoot = root?.querySelector('.md-editor-preview');
+    if (previewRoot) clearPreviewSelectionMirror(previewRoot);
+  }, [value, currentFile?.id]);
 
   useEffect(() => {
     if (previewOnly) return;

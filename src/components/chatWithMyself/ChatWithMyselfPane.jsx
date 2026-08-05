@@ -91,6 +91,7 @@ import {
   deletePendingMessage,
 } from '@/utils/chatWithMyself/chatDb.js';
 import { findFileNodeByPath } from '@/utils/s3Tree';
+import { getStorageScopeId } from '@/utils/storageScope';
 
 async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   if (!filters) return { ok: true, ogSearchText: '' };
@@ -192,6 +193,11 @@ export default function ChatWithMyselfPane({
     (ctx.mode === 'local' && ctx.localRootHandle) ||
     (ctx.mode === 'webdav' &&
       Boolean(ctx.webdavConfig?.endpoint && ctx.webdavConfig?.username));
+
+  const storageScope = useMemo(
+    () => (storageReady ? getStorageScopeId(ctx) : ''),
+    [storageReady, ctx],
+  );
 
   const fileTree = useMemo(() => {
     if (storageMode === 'local') return localTree || [];
@@ -529,6 +535,17 @@ export default function ChatWithMyselfPane({
   }, [storageReady, refreshing, ctx, refreshMeta]);
 
   useEffect(() => {
+    setMessages([]);
+    setGroups([]);
+    setDayKeys([]);
+    setDayCounts({});
+    setWindowNewestIndex(0);
+    setLoadedDayIndex(0);
+    setActiveJumpDate(null);
+    localTombstonesRef.current.clear();
+  }, [storageScope]);
+
+  useEffect(() => {
     loadInitial();
   }, [loadInitial]);
 
@@ -536,10 +553,11 @@ export default function ChatWithMyselfPane({
   useEffect(() => {
     if (!storageReady) return undefined;
     let cancelled = false;
+    const scope = getStorageScopeId(ctx);
     (async () => {
       try {
         const { flushed, dateStrs } = await flushPendingMessages(ctx, {
-          getPendingMessages,
+          getPendingMessages: () => getPendingMessages(scope),
           deletePendingMessage,
         });
         if (!cancelled && flushed > 0) {

@@ -28,6 +28,7 @@ import {
   messageNeedsNoteUnlink,
   pathAffectedByDelete,
 } from './noteRefs.js';
+import { getStorageScopeId } from '@/utils/storageScope';
 
 const MAX_WRITE_RETRIES = 5;
 
@@ -45,6 +46,15 @@ const MAX_WRITE_RETRIES = 5;
  */
 function backend(ctx) {
   return createChatBackend(ctx);
+}
+
+function scopeOf(ctx) {
+  return getStorageScopeId({
+    mode: ctx?.mode,
+    bucket: ctx?.bucket,
+    localRootHandle: ctx?.localRootHandle,
+    webdavConfig: ctx?.webdavConfig,
+  });
 }
 
 async function readText(ctx, key) {
@@ -92,7 +102,7 @@ async function mutateDayFile(ctx, dateStr, mutator) {
     const content = serializeDayFile(next.messages, next.deletedAtById);
     // Avoid no-op puts (also reduces stale-poll races after conflict retries)
     if (content === raw) {
-      await cacheDay(key, content);
+      await cacheDay(scopeOf(ctx), key, content);
       return next;
     }
     try {
@@ -106,7 +116,7 @@ async function mutateDayFile(ctx, dateStr, mutator) {
           meta?.etag || null,
         );
       }
-      await cacheDay(key, content);
+      await cacheDay(scopeOf(ctx), key, content);
       return next;
     } catch (e) {
       if (!(e instanceof ChatPreconditionFailedError)) throw e;
@@ -490,11 +500,12 @@ export async function listDayKeys(ctx) {
  */
 export async function readDayMessages(ctx, dateStr) {
   const key = dayFileKey(dateStr);
-  const cached = await getCachedDay(key);
+  const scope = scopeOf(ctx);
+  const cached = await getCachedDay(scope, key);
   let content = await readText(ctx, key);
   if (content == null && cached?.content) content = cached.content;
   if (content == null) return [];
-  await cacheDay(key, content);
+  await cacheDay(scope, key, content);
   return parseDayFile(content).messages.map((m) => ({ ...m, dateStr }));
 }
 
@@ -571,6 +582,7 @@ export async function appendChatMessages(ctx, items = []) {
     for (const msg of msgs) {
       try {
         await savePendingMessage({
+          scope: scopeOf(ctx),
           dayKey: key,
           dateStr,
           message: msg,
