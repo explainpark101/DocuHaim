@@ -28,6 +28,20 @@ const PRINT_TOC_DEFAULT_WIDTH = 280;
 
 const headingId = ({ index }) => `pdf-ex-heading-${index}`;
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
+/** TOC stays active until the next heading crosses this viewport ratio from the top. */
+const TOC_ACTIVE_SCAN_RATIO = 2 / 3;
+
+function getActiveHeadingId(headingEls) {
+  const scanY = window.innerHeight * TOC_ACTIVE_SCAN_RATIO;
+  let activeId = null;
+  for (const el of headingEls) {
+    if (!el?.id) continue;
+    if (el.getBoundingClientRect().top <= scanY) {
+      activeId = el.id;
+    }
+  }
+  return activeId;
+}
 
 function isFenceStart(line) {
   return /^\s*(```+|~~~+)/.test(line);
@@ -395,43 +409,46 @@ export default function ExportPDFPage() {
       return undefined;
     }
 
-    const visibleSet = new Set();
-    headingEls.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      if (rect.bottom > 0 && rect.top < window.innerHeight) {
-        visibleSet.add(el.id);
-      }
-    });
-    setVisibleHeadingIds(headingEls.map((el) => el.id).filter((id) => visibleSet.has(id)));
+    const scrollRoot = previewContainerRef.current;
+    let rafId = 0;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let changed = false;
-        entries.forEach((entry) => {
-          const id = entry.target?.id;
-          if (!id) return;
-          if (entry.isIntersecting && entry.intersectionRatio > 0) {
-            if (!visibleSet.has(id)) {
-              visibleSet.add(id);
-              changed = true;
-            }
-          } else if (visibleSet.delete(id)) {
-            changed = true;
-          }
-        });
-        if (changed) {
-          setVisibleHeadingIds(headingEls.map((el) => el.id).filter((id) => visibleSet.has(id)));
-        }
-      },
-      {
-        root: null,
-        threshold: [0, 0.01, 0.1, 0.25, 0.5],
-      },
-    );
+    const applyActiveHeading = () => {
+      const activeId = getActiveHeadingId(headingEls);
+      const nextIds = activeId ? [activeId] : [];
+      setVisibleHeadingIds((prev) => (
+        prev.length === nextIds.length && prev.every((id, index) => id === nextIds[index])
+          ? prev
+          : nextIds
+      ));
+    };
 
-    headingEls.forEach((el) => observer.observe(el));
+    const scheduleUpdate = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        applyActiveHeading();
+      });
+    };
 
-    return () => observer.disconnect();
+    applyActiveHeading();
+    scrollRoot?.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('scroll', scheduleUpdate, { passive: true, capture: true });
+    window.addEventListener('resize', scheduleUpdate);
+
+    let resizeObserver = null;
+    const resizeTarget = scrollRoot?.querySelector(`#${EDITOR_ID}`) ?? scrollRoot;
+    if (typeof ResizeObserver !== 'undefined' && resizeTarget) {
+      resizeObserver = new ResizeObserver(scheduleUpdate);
+      resizeObserver.observe(resizeTarget);
+    }
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      scrollRoot?.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate, { capture: true });
+      window.removeEventListener('resize', scheduleUpdate);
+      resizeObserver?.disconnect();
+    };
   }, [tocItems, previewValue]);
 
   useEffect(() => {

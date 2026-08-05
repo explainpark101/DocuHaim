@@ -288,6 +288,66 @@ export function uint8ToBase64(data: Uint8Array): string {
  * Replace `.pictures/...` destinations produced by `planMarkdownImageExport`
  * with `data:` URIs so the note can be downloaded as a single markdown file.
  */
+export function imageExtensionFromMime(mime: string): string {
+  const normalized = String(mime || '').toLowerCase();
+  if (normalized.includes('jpeg') || normalized.includes('jpg')) return '.jpg';
+  if (normalized.includes('png')) return '.png';
+  if (normalized.includes('gif')) return '.gif';
+  if (normalized.includes('webp')) return '.webp';
+  if (normalized.includes('svg')) return '.svg';
+  if (normalized.includes('bmp')) return '.bmp';
+  if (normalized.includes('avif')) return '.avif';
+  return '.png';
+}
+
+export function base64ToUint8Array(b64: string): Uint8Array {
+  const cleaned = String(b64 || '').replace(/\s/g, '');
+  const binary = atob(cleaned);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    out[i] = binary.charCodeAt(i);
+  }
+  return out;
+}
+
+/**
+ * Turn inlined `data:image/...;base64,...` markdown images into `.pictures/` files.
+ */
+export function extractMarkdownDataUriImages(
+  markdown: string,
+  options?: { reservedNames?: Iterable<string> },
+): {
+  markdown: string;
+  images: Array<{ path: string; data: Uint8Array }>;
+} {
+  const used = new Set<string>();
+  for (const name of options?.reservedNames ?? []) {
+    const fileName = basename(String(name || ''));
+    if (fileName) used.add(fileName.toLowerCase());
+  }
+  const images: Array<{ path: string; data: Uint8Array }> = [];
+  const rewritten = mapOutsideFences(String(markdown ?? ''), (chunk) =>
+    chunk.replace(
+      new RegExp(MARKDOWN_IMAGE_RE.source, 'g'),
+      (full, alt: string, destination: string, rawAttrs = '') => {
+        const dest = String(destination ?? '');
+        const mdSrc = dest.trim().split(/\s+/)[0] || '';
+        const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(mdSrc);
+        if (!match) return full;
+        const mime = match[1] || 'image/png';
+        const data = base64ToUint8Array(match[2] || '');
+        const fileName = uniqueExportName(`image${imageExtensionFromMime(mime)}`, used);
+        const relativePath = `${MARKDOWN_PICTURES_DIR}/${fileName}`;
+        images.push({ path: relativePath, data });
+        const srcIndex = dest.indexOf(mdSrc);
+        const titlePart = srcIndex >= 0 ? dest.slice(srcIndex + mdSrc.length) : '';
+        return `![${alt}](${relativePath}${titlePart})${rawAttrs || ''}`;
+      },
+    ),
+  );
+  return { markdown: rewritten, images };
+}
+
 export function embedMarkdownImagesAsDataUris(
   markdown: string,
   images: Array<{ path: string; data: Uint8Array }>,

@@ -42,9 +42,12 @@ export type DownloadMethodChoice = {
 
 type Props = {
   isOpen: boolean;
+  title?: string;
   fileName?: string;
   markdownText?: string;
   showImageHandling?: boolean;
+  showDeliveryMethods?: boolean;
+  confirmLabel?: string;
   onSelectLegacy: (choice: DownloadMethodChoice) => void;
   onSelectStorageApi: (choice: DownloadMethodChoice) => void;
   onCancel: () => void;
@@ -56,9 +59,12 @@ type Props = {
 
 export function DownloadMethodModal({
   isOpen,
+  title = '다운로드 방식 선택',
   fileName,
   markdownText = '',
   showImageHandling = false,
+  showDeliveryMethods = true,
+  confirmLabel = '다운로드',
   onSelectLegacy,
   onSelectStorageApi,
   onCancel,
@@ -95,7 +101,7 @@ export function DownloadMethodModal({
     <Modal isOpen={isOpen} onClose={onCancel}>
       <div className="p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2">
-          다운로드 방식 선택
+          {title}
         </h2>
         {fileName && (
           <p className="text-sm text-gray-500 dark:text-odp-muted mb-4 truncate" title={fileName}>
@@ -239,6 +245,7 @@ export function DownloadMethodModal({
               </div>
             ) : null}
 
+            {showDeliveryMethods ? (
             <div className="space-y-2 mb-4">
               <button
                 type="button"
@@ -273,7 +280,12 @@ export function DownloadMethodModal({
                 </div>
               </button>
             </div>
-            <div className="flex justify-end">
+            ) : (
+              <p className="mb-4 text-xs text-gray-500 dark:text-odp-muted">
+                Base64 이미지는 파일로 분리해 ZIP으로, 파일 이미지는 단일 MD로 바꿀 수 있습니다.
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={onCancel}
@@ -281,6 +293,16 @@ export function DownloadMethodModal({
               >
                 취소
               </button>
+              {!showDeliveryMethods ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectLegacy(choice)}
+                  disabled={isDownloading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 dark:bg-blue-600 dark:hover:bg-blue-700 rounded transition"
+                >
+                  {confirmLabel}
+                </button>
+              ) : null}
             </div>
           </>
         )}

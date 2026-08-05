@@ -23,7 +23,7 @@ import RecordingPlayer from '@/components/RecordingPlayer';
 import MonacoTextEditor from '@/components/MonacoTextEditor';
 import HtmlSvgPreviewEditor from '@/components/HtmlSvgPreviewEditor';
 import Button from '@/components/Button';
-import { ListTree, PenLine, X } from 'lucide-react';
+import { ArrowLeftRight, ListTree, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 
@@ -57,6 +57,8 @@ export default function EditorPane({
   onOpenSessionDirectory,
   onDropSessionTransfer,
   isOpeningSession = false,
+  onSaveSessionToNote,
+  onRequestSessionTransformDownload,
   isRecording = false,
   audioLevel = 0,
   onToggleRecording,
@@ -249,6 +251,9 @@ export default function EditorPane({
   }
 
   const viewer = currentFile.viewer || 'markdown';
+  const isSessionMarkdown =
+    currentFile.type === 'session' &&
+    (viewer === 'markdown' || /\.(md|markdown)$/i.test(currentFile.name || currentFile.id || ''));
   const isEditableViewer =
     viewer === 'markdown' || viewer === 'json' || viewer === 'raw' || viewer === 'html' || viewer === 'svg';
   const hasUnsavedChanges = isEditableViewer && currentFile.content !== editorContent;
@@ -358,6 +363,7 @@ export default function EditorPane({
               <span className="hidden md:inline"> {isRefreshingFromDisk ? '새로고침 중...' : '새로고침'}</span>
             </Button>
           )}
+          {(currentFile.type !== 'session' || isSessionMarkdown) && (
           <div ref={fileManagementRef} className="relative">
             <Button
               type="button"
@@ -375,6 +381,32 @@ export default function EditorPane({
                 className="absolute right-0 top-full z-100 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
                 role="menu"
               >
+                {isSessionMarkdown && typeof onSaveSessionToNote === 'function' ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
+                    onClick={() => {
+                      onSaveSessionToNote();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <IconSave size={14} />
+                    내 노트에 저장
+                  </button>
+                ) : null}
+                {isSessionMarkdown && typeof onRequestSessionTransformDownload === 'function' ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
+                    onClick={() => {
+                      onRequestSessionTransformDownload();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <ArrowLeftRight size={14} />
+                    변형 다운로드
+                  </button>
+                ) : null}
                 {currentFile.type !== 'session' ? (
                 <button
                   type="button"
@@ -430,6 +462,7 @@ export default function EditorPane({
               </div>
             )}
           </div>
+          )}
           <Button
             type="button"
             variant="primary"

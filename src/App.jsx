@@ -174,7 +174,12 @@ import {
   writeMarkdownImageBundleToDirectory,
   zipFileNameForMarkdown,
 } from '@/utils/markdownImageExport';
+import {
+  bundleSessionMarkdownImages,
+  prepareSessionMarkdownForVault,
+} from '@/utils/sessionNoteImport';
 import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
+import SaveSessionToNoteModal from '@/components/modals/SaveSessionToNoteModal';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -319,6 +324,10 @@ function MainApp() {
   const [dropTarget, setDropTarget] = useState(null);
   const expandPathsRef = useRef(null);
   const [showDownloadMethodModal, setShowDownloadMethodModal] = useState(false);
+  const [downloadModalMode, setDownloadModalMode] = useState('default');
+  const [showSaveSessionToNoteModal, setShowSaveSessionToNoteModal] = useState(false);
+  const [saveSessionToNoteSelectPath, setSaveSessionToNoteSelectPath] = useState(null);
+  const [isSavingSessionToNote, setIsSavingSessionToNote] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadComplete, setDownloadComplete] = useState(false);
   const [downloadResultModal, setDownloadResultModal] = useState({
@@ -3283,9 +3292,134 @@ function MainApp() {
   };
 
   const handleRequestDownload = () => {
+    setDownloadModalMode('default');
     setShowDownloadMethodModal(true);
     setDownloadProgress(0);
     setDownloadComplete(false);
+  };
+
+  const handleRequestSessionTransformDownload = () => {
+    setDownloadModalMode('session-transform');
+    setShowDownloadMethodModal(true);
+    setDownloadProgress(0);
+    setDownloadComplete(false);
+  };
+
+  const readSessionBytes = async (path) => {
+    const ws = sessionWorkspaceRef.current;
+    const cur = currentFileRef.current;
+    const candidates = [
+      path,
+      String(path || '').replace(/^\/+/, ''),
+      cur?.id ? resolveStorageImagePath(path, cur.id) : null,
+    ].filter(Boolean);
+    for (const key of candidates) {
+      const record = ws?.files?.[key];
+      if (record) return record.bytes;
+    }
+    throw new Error(`이미지를 찾지 못했습니다: ${path}`);
+  };
+
+  const downloadSessionTransformed = async ({ imageMode = 'files', headingMax = 1 } = {}) => {
+    flushSessionEditorToWorkspace();
+    const cur = currentFileRef.current;
+    if (!cur || cur.type !== SESSION_STORAGE_TYPE) return;
+    const fileName = cur.name || 'untitled.md';
+    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(cur.viewer || 'markdown');
+    if (!editable || !isMarkdownFileName(fileName)) {
+      await downloadSessionWorkspace();
+      return;
+    }
+    const bundled = await bundleSessionMarkdownImages({
+      markdown: remapMarkdownHeadingLevels(editorContentRef.current ?? '', headingMax),
+      notePath: cur.id,
+      readBytes: readSessionBytes,
+    });
+    if (imageMode === 'base64') {
+      const markdown = bundled.images.length
+        ? embedMarkdownImagesAsDataUris(bundled.markdown, bundled.images)
+        : bundled.markdown;
+      triggerBlobDownload(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), fileName);
+    } else if (bundled.images.length) {
+      const zipBlob = await buildZipBlob(
+        buildMarkdownImageZipEntries(fileName, bundled.markdown, bundled.images),
+      );
+      triggerBlobDownload(zipBlob, zipFileNameForMarkdown(fileName));
+    } else {
+      triggerBlobDownload(
+        new Blob([bundled.markdown], { type: 'text/markdown;charset=utf-8' }),
+        fileName,
+      );
+    }
+    const missingMessage = formatMissingExportImagesMessage(bundled.missing);
+    if (missingMessage) alert(missingMessage);
+    setOperationStatus('변형 다운로드 완료');
+  };
+
+  const handleRequestSaveSessionToNote = () => {
+    const ready =
+      storageMode === 's3'
+        ? Boolean(s3Creds.bucket)
+        : storageMode === 'local'
+          ? Boolean(localRootHandle)
+          : storageMode === 'webdav'
+            ? webdavReady
+            : false;
+    if (!ready) {
+      alert(
+        storageMode === 'local'
+          ? '로컬 폴더를 먼저 열어 주세요.'
+          : '저장소를 먼저 연결해 주세요.',
+      );
+      return;
+    }
+    setShowSaveSessionToNoteModal(true);
+  };
+
+  const handleConfirmSaveSessionToNote = async ({ path, fileName }) => {
+    let finalName = String(fileName || '').trim() || 'untitled.md';
+    if (!/\.[^./\\]+$/.test(finalName)) finalName += '.md';
+    if (finalName.includes('/') || finalName.includes('\\')) {
+      alert('파일명에 / 를 넣을 수 없습니다.');
+      return;
+    }
+    const destPath = `${path || ''}${finalName}`;
+    const storageType =
+      storageMode === 'local' ? 'local' : storageMode === 'webdav' ? 'webdav' : 's3';
+    setIsSavingSessionToNote(true);
+    try {
+      flushSessionEditorToWorkspace();
+      const cur = currentFileRef.current;
+      const backend = getBackendForType(storageType);
+      const existing = await backend.head?.(destPath);
+      if (existing && !window.confirm(`이미 있는 파일입니다. 덮어쓸까요?\n${destPath}`)) return;
+      const prepared = await prepareSessionMarkdownForVault({
+        markdown: editorContentRef.current ?? '',
+        sessionNotePath: cur?.id || finalName,
+        destNotePath: destPath,
+        readBytes: readSessionBytes,
+      });
+      await backend.writeText(destPath, prepared.markdown, 'text/markdown; charset=utf-8');
+      for (const image of prepared.images) {
+        await backend.writeBytes(image.path, image.data, mimeForSessionFileName(image.path));
+      }
+      if (prepared.missing.length) alert(formatMissingExportImagesMessage(prepared.missing));
+      if (storageType === 's3') loadS3Files();
+      else if (storageType === 'local') await refreshLocalTree();
+      else await refreshWebdavTree();
+      setShowSaveSessionToNoteModal(false);
+      setOperationStatus(`노트 저장 완료: ${destPath}`);
+      showAlert({
+        title: '내 노트에 저장',
+        message: '노트를 저장했습니다.',
+        detail: destPath,
+      });
+    } catch (error) {
+      console.error('Save session to note failed:', error);
+      alert('노트 저장에 실패했습니다: ' + (error?.message || error));
+    } finally {
+      setIsSavingSessionToNote(false);
+    }
   };
 
   const readBackendBytes = async (storageType, path) => {
@@ -3326,12 +3460,17 @@ function MainApp() {
     const storageType = currentFile.type;
     if (storageType === SESSION_STORAGE_TYPE) {
       try {
-        await downloadSessionWorkspace();
+        if (downloadModalMode === 'session-transform') {
+          await downloadSessionTransformed({ imageMode, headingMax });
+        } else {
+          await downloadSessionWorkspace();
+        }
       } catch (e) {
         console.error('세션 다운로드 실패:', e);
         alert('다운로드에 실패했습니다: ' + (e?.message || e));
       }
       setShowDownloadMethodModal(false);
+      setDownloadModalMode('default');
       return;
     }
     if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
@@ -4521,6 +4660,7 @@ function MainApp() {
       type,
       fromMoveModal,
       fromAddToNoteModal,
+      fromSaveSessionModal,
     } = createModalContext;
     setIsCreateSubmitting(true);
     try {
@@ -4530,6 +4670,7 @@ function MainApp() {
         const newPath = parentPath + trimmed + '/';
         if (fromMoveModal) setMoveModalSelectPath(newPath);
         if (fromAddToNoteModal) setAddToNoteSelectPath(newPath);
+        if (fromSaveSessionModal) setSaveSessionToNoteSelectPath(newPath);
       }
       setCreateModalOpen(false);
       setCreateModalContext(null);
@@ -6129,6 +6270,8 @@ function MainApp() {
                     }
                   }}
                   onOpenChatWithMyself={() => navigate('/chat')}
+                  onSaveSessionToNote={handleRequestSaveSessionToNote}
+                  onRequestSessionTransformDownload={handleRequestSessionTransformDownload}
                   onOpenSessionFiles={handleOpenSessionFiles}
                   onOpenSessionDirectory={
                     typeof window !== 'undefined' && 'showDirectoryPicker' in window
@@ -6221,6 +6364,8 @@ function MainApp() {
                     }
                   }}
                   onOpenChatWithMyself={() => navigate('/chat')}
+                  onSaveSessionToNote={handleRequestSaveSessionToNote}
+                  onRequestSessionTransformDownload={handleRequestSessionTransformDownload}
                   onOpenSessionFiles={handleOpenSessionFiles}
                   onOpenSessionDirectory={
                     typeof window !== 'undefined' && 'showDirectoryPicker' in window
@@ -6614,14 +6759,20 @@ function MainApp() {
 
       <DownloadMethodModal
         isOpen={showDownloadMethodModal}
+        title={downloadModalMode === 'session-transform' ? '변형 다운로드' : '다운로드 방식 선택'}
         fileName={currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop()}
         markdownText={editorContent}
         showImageHandling={isMarkdownFileName(
           currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop(),
         )}
+        showDeliveryMethods={downloadModalMode !== 'session-transform'}
+        confirmLabel="다운로드"
         onSelectLegacy={handleDownloadCurrentFile}
         onSelectStorageApi={handleDownloadToFolder}
-        onCancel={() => setShowDownloadMethodModal(false)}
+        onCancel={() => {
+          setShowDownloadMethodModal(false);
+          setDownloadModalMode('default');
+        }}
         isDownloading={downloadProgress > 0 && downloadProgress < 100 && !downloadComplete}
         downloadProgress={downloadProgress}
         downloadComplete={downloadComplete}
@@ -6629,7 +6780,33 @@ function MainApp() {
           setShowDownloadMethodModal(false);
           setDownloadProgress(0);
           setDownloadComplete(false);
+          setDownloadModalMode('default');
         }}
+      />
+
+      <SaveSessionToNoteModal
+        isOpen={showSaveSessionToNoteModal}
+        storageType={storageMode}
+        s3Tree={s3Tree}
+        localTree={localTree}
+        webdavTree={webdavTree}
+        localRootHandle={localRootHandle}
+        defaultFileName={currentFile?.name || 'untitled.md'}
+        isSaving={isSavingSessionToNote}
+        onClose={() => setShowSaveSessionToNoteModal(false)}
+        onConfirm={handleConfirmSaveSessionToNote}
+        onRequestCreateFolder={(parentPath, parentDirHandle) => {
+          setCreateModalContext({
+            storageType: storageMode,
+            parentPath,
+            parentDirHandle,
+            type: 'folder',
+            fromSaveSessionModal: true,
+          });
+          setCreateModalOpen(true);
+        }}
+        selectPathAfterCreate={saveSessionToNoteSelectPath}
+        onSelectPathAfterCreateApplied={() => setSaveSessionToNoteSelectPath(null)}
       />
 
       <Modal
