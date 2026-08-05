@@ -43,6 +43,16 @@ export function parseViewPathFromAppPathname(pathname: string): string | null {
   return null;
 }
 
+export function isChatAppPathname(pathname: string): boolean {
+  const normalized = stripAppBase(pathname);
+  return normalized === '/chat' || normalized.endsWith('/chat');
+}
+
+export function isSettingsAppPathname(pathname: string): boolean {
+  const normalized = stripAppBase(pathname);
+  return normalized === '/settings' || normalized.endsWith('/settings');
+}
+
 export function resolveRelativeNotePath(currentViewPath: string | null | undefined, href: string): string {
   const currentDir = currentViewPath?.includes('/')
     ? currentViewPath.slice(0, currentViewPath.lastIndexOf('/') + 1)

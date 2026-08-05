@@ -93,27 +93,72 @@ export async function getCachedOg(urlHash) {
   return chatDb.ogCache.get(urlHash);
 }
 
+const DRAFT_IMAGE_SEP = '::';
+
+export function scopedDraftImageId(scope, id) {
+  return `${scope}${DRAFT_IMAGE_SEP}${id}`;
+}
+
+function isUnscopedDraftImageId(id) {
+  return typeof id === 'string' && !id.includes(DRAFT_IMAGE_SEP);
+}
+
 export async function putComposerDraftImage(record) {
+  const scope = typeof record.scope === 'string' ? record.scope : '';
+  const logicalId = record.id;
+  if (!logicalId) return undefined;
+  const storeId = scope ? scopedDraftImageId(scope, logicalId) : logicalId;
   return chatDb.composerDraftImages.put({
     ...record,
+    id: storeId,
+    logicalId,
+    scope,
     updatedAt: record.updatedAt ?? Date.now(),
   });
 }
 
-export async function getComposerDraftImages(ids = []) {
+export async function getComposerDraftImages(scope, ids = []) {
   if (!ids.length) return [];
-  const rows = await chatDb.composerDraftImages.bulkGet(ids);
-  return rows.filter(Boolean);
+  /** @type {object[]} */
+  const out = [];
+  for (const id of ids) {
+    let row = scope
+      ? await chatDb.composerDraftImages.get(scopedDraftImageId(scope, id))
+      : null;
+    if (!row) row = await chatDb.composerDraftImages.get(id);
+    if (row) out.push({ ...row, id });
+  }
+  return out;
 }
 
-export async function deleteComposerDraftImage(id) {
-  return chatDb.composerDraftImages.delete(id);
+export async function deleteComposerDraftImage(scope, id) {
+  if (scope) {
+    await chatDb.composerDraftImages.delete(scopedDraftImageId(scope, id));
+  }
+  if (!scope || isS3StorageScope(scope)) {
+    await chatDb.composerDraftImages.delete(id);
+  }
 }
 
-export async function clearComposerDraftImages() {
-  return chatDb.composerDraftImages.clear();
+export async function clearComposerDraftImages(scope) {
+  if (!scope) return;
+  const keys = await chatDb.composerDraftImages.toCollection().primaryKeys();
+  const prefix = `${scope}${DRAFT_IMAGE_SEP}`;
+  const mine = keys.filter((key) => String(key).startsWith(prefix));
+  const legacy =
+    isS3StorageScope(scope) ? keys.filter((key) => isUnscopedDraftImageId(key)) : [];
+  const toDelete = [...new Set([...mine, ...legacy])];
+  if (toDelete.length) await chatDb.composerDraftImages.bulkDelete(toDelete);
 }
 
-export async function listComposerDraftImageIds() {
-  return chatDb.composerDraftImages.toCollection().primaryKeys();
+export async function listComposerDraftImageIds(scope) {
+  const keys = await chatDb.composerDraftImages.toCollection().primaryKeys();
+  if (!scope) return [];
+  const prefix = `${scope}${DRAFT_IMAGE_SEP}`;
+  const scoped = keys
+    .filter((key) => String(key).startsWith(prefix))
+    .map((key) => String(key).slice(prefix.length));
+  if (!isS3StorageScope(scope)) return scoped;
+  const legacy = keys.filter((key) => isUnscopedDraftImageId(key));
+  return [...new Set([...legacy, ...scoped])];
 }

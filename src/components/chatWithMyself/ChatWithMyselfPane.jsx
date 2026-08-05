@@ -339,11 +339,18 @@ export default function ChatWithMyselfPane({
 
   // Restore compose draft group / reply target (body+images restored in ChatComposer).
   useEffect(() => {
-    const meta = readComposerDraftMeta();
-    if (!meta) return;
+    if (!storageScope) return;
+    const meta = readComposerDraftMeta(storageScope);
+    if (!meta) {
+      setSelectedGroup(SELF_GROUP);
+      setReplyTo(null);
+      return;
+    }
     if (meta.group) setSelectedGroup(meta.group);
+    else setSelectedGroup(SELF_GROUP);
     if (meta.replyTo?.id) setReplyTo(meta.replyTo);
-  }, []);
+    else setReplyTo(null);
+  }, [storageScope]);
 
   // Once groups load, map legacy draft/selected names → stable ids.
   useEffect(() => {
@@ -1947,8 +1954,10 @@ export default function ChatWithMyselfPane({
                   }
                 >
                   <ChatComposer
+                    key={storageScope || 'pending'}
                     bare
                     fillParent={!editTarget}
+                    draftScope={storageScope}
                     groups={groups}
                     selectedGroup={selectedGroup}
                     onSelectedGroupChange={setSelectedGroup}

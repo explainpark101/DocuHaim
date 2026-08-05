@@ -184,6 +184,8 @@ export default function ChatComposer({
   onSeedConsumed,
   /** Fill parent height (resizable dock); editor expands to remaining space. */
   fillParent = false,
+  /** Storage-backend scope so drafts never cross S3 / Local / WebDAV. */
+  draftScope = '',
 }) {
   const [value, setValue] = useState('');
   const [inlineAddOpen, setInlineAddOpen] = useState(false);
@@ -267,12 +269,12 @@ export default function ChatComposer({
     let cancelled = false;
     (async () => {
       try {
-        const meta = readComposerDraftMeta();
+        const meta = readComposerDraftMeta(draftScope);
         if (meta?.body) {
           setValue(meta.body);
         }
         if (meta?.imageIds?.length) {
-          const imgs = await loadComposerDraftImageQueue(meta.imageIds);
+          const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
           if (!cancelled && imgs.length) setImageQueue(imgs);
         }
       } catch {
@@ -291,14 +293,14 @@ export default function ChatComposer({
     if (!seedBody?.id || seedBody.body == null || !draftReady || editTarget) return;
     const nextBody = String(seedBody.body);
     setValue(nextBody);
-    const meta = readComposerDraftMeta() || {};
-    writeComposerDraftMeta({
+    const meta = readComposerDraftMeta(draftScope) || {};
+    writeComposerDraftMeta(draftScope, {
       ...meta,
       body: nextBody,
       group: selectedGroup || SELF_GROUP,
     });
     onSeedConsumed?.();
-  }, [seedBody?.id, seedBody?.body, draftReady, editTarget, selectedGroup, onSeedConsumed]);
+  }, [seedBody?.id, seedBody?.body, draftReady, editTarget, selectedGroup, onSeedConsumed, draftScope]);
 
   const getPresignedUrlRef = useRef(getPresignedUrl);
   getPresignedUrlRef.current = getPresignedUrl;
@@ -383,7 +385,7 @@ export default function ChatComposer({
     removedExistingPathsRef.current = [];
     let cancelled = false;
     (async () => {
-      const meta = readComposerDraftMeta();
+      const meta = readComposerDraftMeta(draftScope);
       if (cancelled) return;
       setValue(meta?.body || '');
       setImageQueue((prevQueue) => {
@@ -395,14 +397,14 @@ export default function ChatComposer({
         return [];
       });
       if (meta?.imageIds?.length) {
-        const imgs = await loadComposerDraftImageQueue(meta.imageIds);
+        const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
         if (!cancelled && imgs.length) setImageQueue(imgs);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [editTarget, draftReady]);
+  }, [editTarget, draftReady, draftScope]);
 
   useEffect(() => {
     return () => {
@@ -417,7 +419,7 @@ export default function ChatComposer({
     if (!draftReady || editTarget) return undefined;
     const t = window.setTimeout(() => {
       const imageIds = imageQueue.map((item) => item.id);
-      writeComposerDraftMeta({
+      writeComposerDraftMeta(draftScope, {
         body: value,
         group: selectedGroup || SELF_GROUP,
         replyTo: replyTo
@@ -432,17 +434,17 @@ export default function ChatComposer({
           : null,
         imageIds,
       });
-      void syncComposerDraftImages(imageQueue);
+      void syncComposerDraftImages(draftScope, imageQueue);
     }, 280);
     return () => window.clearTimeout(t);
-  }, [draftReady, editTarget, value, imageQueue, selectedGroup, replyTo]);
+  }, [draftReady, editTarget, value, imageQueue, selectedGroup, replyTo, draftScope]);
 
   // Flush draft on hide / unload.
   useEffect(() => {
     if (!draftReady) return undefined;
     const flush = () => {
       if (editTarget) return;
-      writeComposerDraftMeta({
+      writeComposerDraftMeta(draftScope, {
         body: valueRef.current,
         group: selectedGroup || SELF_GROUP,
         replyTo: replyTo
@@ -457,7 +459,7 @@ export default function ChatComposer({
           : null,
         imageIds: imageQueueRef.current.map((item) => item.id),
       });
-      void syncComposerDraftImages(imageQueueRef.current);
+      void syncComposerDraftImages(draftScope, imageQueueRef.current);
     };
     const onVis = () => {
       if (document.visibilityState === 'hidden') flush();
@@ -468,7 +470,7 @@ export default function ChatComposer({
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [draftReady, editTarget, selectedGroup, replyTo]);
+  }, [draftReady, editTarget, selectedGroup, replyTo, draftScope]);
 
   const syncEditorHeight = useCallback(() => {
     if (fillParent) return;
@@ -698,7 +700,7 @@ export default function ChatComposer({
     setValue('');
     clearImageQueue();
     onClearReply?.();
-    await clearComposerDraft();
+    await clearComposerDraft(draftScope);
   }, [
     onSend,
     onSaveEdit,
@@ -708,6 +710,7 @@ export default function ChatComposer({
     onClearReply,
     onClearEdit,
     clearImageQueue,
+    draftScope,
   ]);
 
   useEffect(() => {

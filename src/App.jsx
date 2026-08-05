@@ -145,7 +145,8 @@ import {
 } from '@/utils/memoDraftsDb';
 import { rebaseMergeTexts, buildTimestampedCopyName } from '@/utils/textRebaseMerge';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { parseViewPathFromAppPathname } from '@/utils/appHref';
+import { parseViewPathFromAppPathname, isChatAppPathname, isSettingsAppPathname } from '@/utils/appHref';
+import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -455,6 +456,7 @@ function MainApp() {
   const hasPromptedLocalFolderRestoreRef = useRef(false);
   const [localFolderRestoreSettled, setLocalFolderRestoreSettled] = useState(false);
   const saveFileRef = useRef(null);
+  const selectFileRawRef = useRef(null);
   const prevEditorContentRef = useRef('');
 
   const saveLastOpenedFile = useCallback((value) => {
@@ -1018,19 +1020,31 @@ function MainApp() {
     return editable && file.content !== editorContentRef.current;
   }, []);
 
-  useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      if (!hasUnsavedEditorChanges()) return;
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedEditorChanges]);
+  const navGuard = useUnsavedNavigationGuard({ isDirty: hasUnsavedEditorChanges });
+
+  const revokeOpenFileObjectUrl = (file) => {
+    if (
+      file &&
+      (file.viewer === 'image' || file.viewer === 'pdf' || file.viewer === 'audio' || file.viewer === 'video') &&
+      file.objectUrl
+    ) {
+      URL.revokeObjectURL(file.objectUrl);
+    }
+  };
+
+  const clearOpenFileState = useCallback(() => {
+    setCurrentFile((prev) => {
+      revokeOpenFileObjectUrl(prev);
+      return null;
+    });
+    currentFileRef.current = null;
+    setEditorContent('');
+    editorContentRef.current = '';
+    clearLastOpenedFile();
+  }, [clearLastOpenedFile]);
 
   const closeCurrentFile = () => {
-    setCurrentFile(null);
-    clearLastOpenedFile();
+    clearOpenFileState();
     navigate('/');
   };
 
@@ -1059,6 +1073,15 @@ function MainApp() {
   const handleCloseFileConfirmDiscard = () => {
     setShowCloseFileConfirmModal(false);
     closeCurrentFile();
+  };
+
+  const handleNavGuardConfirmSave = async () => {
+    await saveFileRef.current?.(null, { skipSuffixCheck: true });
+    navGuard.proceed();
+  };
+
+  const handleNavGuardConfirmDiscard = () => {
+    navGuard.proceed();
   };
 
   // 3. S3 Actions (using @aws-sdk/client-s3)
@@ -1888,8 +1911,12 @@ function MainApp() {
   };
 
   // 5. File Read & Save
-  const selectFileRaw = async (type, node) => {
+  const selectFileRaw = async (type, node, options = {}) => {
     if (node.type === 'folder') return;
+    const skipNavigate = options.skipNavigate === true;
+    const goToViewPath = () => {
+      if (!skipNavigate) navigate(`/view/${node.path}`);
+    };
 
     if (type === 'webdav') {
       if (!webdavReady) return;
@@ -1903,7 +1930,7 @@ function MainApp() {
           return openedFile;
         });
         setEditorContent(content);
-        navigate(`/view/${node.path}`);
+        goToViewPath();
       } catch (err) {
         console.error('WebDAV Read Error:', err);
       }
@@ -1939,7 +1966,7 @@ function MainApp() {
             };
           });
           setEditorContent('');
-          navigate(`/view/${node.path}`);
+          goToViewPath();
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -1966,7 +1993,7 @@ function MainApp() {
             };
           });
           setEditorContent('');
-          navigate(`/view/${node.path}`);
+          goToViewPath();
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2015,7 +2042,7 @@ function MainApp() {
             lastModified: serverLastModified ?? node.lastModified,
           });
           setEditorContent(contentToUse);
-          navigate(`/view/${node.path}`);
+          goToViewPath();
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2046,7 +2073,7 @@ function MainApp() {
             lastModified: node.lastModified,
           });
           setEditorContent(display);
-          navigate(`/view/${node.path}`);
+          goToViewPath();
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2068,7 +2095,7 @@ function MainApp() {
             lastModified: node.lastModified,
           });
           setEditorContent(text);
-          navigate(`/view/${node.path}`);
+          goToViewPath();
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2101,7 +2128,7 @@ function MainApp() {
             };
           });
           setEditorContent('');
-          navigate(`/view/${node.path}`);
+          goToViewPath();
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2129,7 +2156,7 @@ function MainApp() {
             };
           });
           setEditorContent('');
-          navigate(`/view/${node.path}`);
+          goToViewPath();
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2145,7 +2172,7 @@ function MainApp() {
         lastModified: node.lastModified,
       });
       setEditorContent('');
-      navigate(`/view/${node.path}`);
+      goToViewPath();
     } else if (type === 'local') {
       const file = await node.handle.getFile();
       const serverLastModTs = file.lastModified ?? 0;
@@ -2174,7 +2201,7 @@ function MainApp() {
           };
         });
         setEditorContent('');
-        navigate(`/view/${node.path}`);
+        goToViewPath();
       };
 
       if (imageExts.includes(ext)) {
@@ -2223,7 +2250,7 @@ function MainApp() {
           lastModified: file.lastModified,
         });
         setEditorContent(display);
-        navigate(`/view/${node.path}`);
+        goToViewPath();
         return;
       }
 
@@ -2242,7 +2269,7 @@ function MainApp() {
           lastModified: file.lastModified,
         });
         setEditorContent(text);
-        navigate(`/view/${node.path}`);
+        goToViewPath();
         return;
       }
 
@@ -2258,7 +2285,7 @@ function MainApp() {
           lastModified: file.lastModified,
         });
         setEditorContent('');
-        navigate(`/view/${node.path}`);
+        goToViewPath();
         return;
       }
 
@@ -2295,7 +2322,7 @@ function MainApp() {
         lastModified: file.lastModified,
       });
       setEditorContent(contentToUse);
-      navigate(`/view/${node.path}`);
+      goToViewPath();
     }
   };
 
@@ -2633,6 +2660,72 @@ function MainApp() {
     selectFile,
     loadLastOpenedFile,
     navigate,
+  ]);
+
+  selectFileRawRef.current = selectFileRaw;
+
+  // Keep the open note in sync with browser history (back/forward, history.back, …).
+  useEffect(() => {
+    if (!isUnlocked || !hasProcessedOpenFromUrlRef.current) return;
+    if (isChatAppPathname(location.pathname) || isSettingsAppPathname(location.pathname)) return;
+
+    const routeViewPath = parseViewPathFromAppPathname(location.pathname);
+    if (!routeViewPath) {
+      if (currentFileRef.current) clearOpenFileState();
+      return;
+    }
+
+    if (currentFileRef.current?.id === routeViewPath) return;
+
+    const type =
+      storageMode === STORAGE_MODE_LOCAL
+        ? 'local'
+        : storageMode === STORAGE_MODE_WEBDAV
+          ? 'webdav'
+          : 's3';
+
+    if (type === 'local') {
+      if (!localRootHandle) return;
+    } else if (type === 'webdav') {
+      if (!webdavReady || !webdavTree?.length) return;
+    } else if (!s3Tree?.length) {
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      let node = null;
+      if (type === 'local') {
+        node =
+          findFileNodeByPath(localTree, routeViewPath) ||
+          findNodeByPath(localTree, routeViewPath) ||
+          (await resolveLocalFileNode(localRootHandle, routeViewPath));
+      } else if (type === 'webdav') {
+        node = findFileNodeByPath(webdavTree, routeViewPath) || findNodeByPath(webdavTree, routeViewPath);
+      } else {
+        node = findFileNodeByPath(s3Tree, routeViewPath) || findNodeByPath(s3Tree, routeViewPath);
+      }
+      if (cancelled) return;
+      if (node?.type === 'file') {
+        await selectFileRawRef.current?.(type, node, { skipNavigate: true });
+        return;
+      }
+      if (currentFileRef.current) clearOpenFileState();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isUnlocked,
+    location.pathname,
+    storageMode,
+    localRootHandle,
+    localTree,
+    webdavReady,
+    webdavTree,
+    s3Tree,
+    clearOpenFileState,
   ]);
 
   // Prompt to restore last local folder when returning in local mode
@@ -6035,6 +6128,18 @@ function MainApp() {
         onConfirm={handleCloseFileConfirmSave}
         onCancel={() => setShowCloseFileConfirmModal(false)}
         onDiscard={handleCloseFileConfirmDiscard}
+      />
+
+      <ConfirmModal
+        isOpen={navGuard.isBlocked}
+        title="저장하지 않은 변경사항"
+        message="저장하지 않은 변경사항이 있습니다. 이동하면 변경사항이 사라집니다."
+        confirmLabel="저장 후 이동"
+        cancelLabel="취소"
+        discardLabel="저장 안 하고 이동"
+        onConfirm={handleNavGuardConfirmSave}
+        onCancel={navGuard.reset}
+        onDiscard={handleNavGuardConfirmDiscard}
       />
 
       <ExportPasswordModal

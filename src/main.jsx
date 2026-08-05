@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, HashRouter } from 'react-router'
+import { createBrowserRouter, createHashRouter, RouterProvider } from 'react-router'
 import { marked } from 'marked'
 import '@/index.css'
 import '@/config/mdEditorConfig'
@@ -11,9 +11,26 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
-const Router = import.meta.env.VITE_ELECTRON === 'true' ? HashRouter : BrowserRouter
-const routerBasename = import.meta.env.VITE_ELECTRON === 'true' ? '/' : base
+const isElectron = import.meta.env.VITE_ELECTRON === 'true'
+const routerBasename = isElectron ? '/' : base
 if (typeof window !== 'undefined') window.marked = marked
+
+function AppShell() {
+  return (
+    <ActivityIndicatorProvider>
+      <AlertModalProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </AlertModalProvider>
+    </ActivityIndicatorProvider>
+  )
+}
+
+const router = (isElectron ? createHashRouter : createBrowserRouter)(
+  [{ path: '/*', Component: AppShell }],
+  { basename: routerBasename },
+)
 
 async function bootstrap() {
   const canRender = await ensureLatestAppBuild()
@@ -24,15 +41,7 @@ async function bootstrap() {
 
   createRoot(root).render(
     <StrictMode>
-      <Router basename={routerBasename}>
-        <ActivityIndicatorProvider>
-          <AlertModalProvider>
-            <AuthProvider>
-              <App />
-            </AuthProvider>
-          </AlertModalProvider>
-        </ActivityIndicatorProvider>
-      </Router>
+      <RouterProvider router={router} />
     </StrictMode>,
   )
 }
