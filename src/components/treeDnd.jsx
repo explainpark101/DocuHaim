@@ -128,7 +128,7 @@ export function RootDropZone({
   );
 }
 
-export function TreeDragOverlayPreview({ items }) {
+export function TreeDragOverlayPreview({ items, isCopy = false }) {
   if (!items?.length) return null;
   const primary = items[0];
   const count = items.length;
@@ -137,11 +137,20 @@ export function TreeDragOverlayPreview({ items }) {
       initial={{ scale: 0.92, opacity: 0.75 }}
       animate={{ scale: 1.04, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-      className="pointer-events-none flex items-center gap-2 rounded-md border border-blue-300 bg-white px-3 py-2 text-sm shadow-lg dark:border-blue-700 dark:bg-odp-surface"
+      className={`pointer-events-none flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm shadow-lg dark:bg-odp-surface ${
+        isCopy
+          ? 'border-emerald-300 dark:border-emerald-700'
+          : 'border-blue-300 dark:border-blue-700'
+      }`}
     >
       <span className="max-w-[180px] truncate font-medium text-gray-800 dark:text-odp-fgStrong">
         {primary.name || primary.path}
       </span>
+      {isCopy ? (
+        <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+          복제
+        </span>
+      ) : null}
       {count > 1 && (
         <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">
           {count}

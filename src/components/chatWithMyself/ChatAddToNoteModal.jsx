@@ -23,6 +23,7 @@ import {
   parseDroppableId,
   toTreeSelectKey,
 } from '@/utils/treeMove';
+import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import {
   detectTimeZone,
   formatMessageFileNameBase,
@@ -80,16 +81,17 @@ function formatMoveTargetLabel(targetNode, storageType) {
   return targetNode.name || targetNode.path;
 }
 
-function formatMoveConfirmMessage(items, targetNode, storageType) {
+function formatMoveConfirmMessage(items, targetNode, storageType, { copy = false } = {}) {
   const targetLabel = formatMoveTargetLabel(targetNode, storageType);
+  const verb = copy ? '복제' : '이동';
   if (!items?.length) {
-    return `"${targetLabel}"(으)로 이동할까요?`;
+    return `"${targetLabel}"(으)로 ${verb}할까요?`;
   }
   if (items.length === 1) {
     const name = items[0].name || items[0].path || '항목';
-    return `"${name}"을(를) "${targetLabel}"(으)로 이동할까요?`;
+    return `"${name}"을(를) "${targetLabel}"(으)로 ${verb}할까요?`;
   }
-  return `${items.length}개 항목을 "${targetLabel}"(으)로 이동할까요?`;
+  return `${items.length}개 항목을 "${targetLabel}"(으)로 ${verb}할까요?`;
 }
 
 /**
@@ -131,6 +133,8 @@ export default function ChatAddToNoteModal({
   const [pendingMove, setPendingMove] = useState(null);
   const [expandedPaths, setExpandedPaths] = useState(() => new Set());
   const [activeDragItems, setActiveDragItems] = useState(null);
+  const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
+    useTreeCopyDragModifier(Boolean(activeDragItems?.length));
   const [includeReplyThread, setIncludeReplyThread] = useState(true);
   const hasInitializedRef = useRef(false);
   const activeDragItemsRef = useRef(null);
@@ -291,8 +295,9 @@ export default function ChatAddToNoteModal({
       const items = resolveDragItems(activeId, selectedIds, findTreeNode);
       activeDragItemsRef.current = items;
       setActiveDragItems(items);
+      syncCopyModifierFromEvent(event.activatorEvent);
     },
-    [dragDisabled, selectedIds, findTreeNode],
+    [dragDisabled, selectedIds, findTreeNode, syncCopyModifierFromEvent],
   );
 
   const handleDndDragOver = useCallback(
@@ -332,9 +337,10 @@ export default function ChatAddToNoteModal({
         targetNode,
         targetStorageType: parsed.storageType,
         items,
+        copy: isCopyDragRef.current,
       });
     },
-    [dragDisabled, onDropOnFolder, resolveDropTargetNode],
+    [dragDisabled, isCopyDragRef, onDropOnFolder, resolveDropTargetNode],
   );
 
   const handleDndDragCancel = useCallback(() => {
@@ -345,9 +351,9 @@ export default function ChatAddToNoteModal({
 
   const handleConfirmMove = useCallback(() => {
     if (!pendingMove) return;
-    const { targetNode, targetStorageType, items } = pendingMove;
+    const { targetNode, targetStorageType, items, copy } = pendingMove;
     setPendingMove(null);
-    onDropOnFolder?.(targetNode, targetStorageType, 'drop', { items });
+    onDropOnFolder?.(targetNode, targetStorageType, 'drop', { items, copy });
   }, [pendingMove, onDropOnFolder]);
 
   const handleCancelMove = useCallback(() => {
@@ -509,6 +515,7 @@ export default function ChatAddToNoteModal({
                     onDropOnFolder={onDropOnFolder}
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
+                    isCopyDrag={isCopyDrag}
                     stickyFoldersEnabled={false}
                     foldersOnly
                     folderSelectMode
@@ -527,7 +534,7 @@ export default function ChatAddToNoteModal({
               style={{ zIndex: DRAG_OVERLAY_Z_INDEX }}
             >
               {activeDragItems?.length ? (
-                <TreeDragOverlayPreview items={activeDragItems} />
+                <TreeDragOverlayPreview items={activeDragItems} isCopy={isCopyDrag} />
               ) : null}
             </DragOverlay>
           </DndContext>
@@ -600,17 +607,18 @@ export default function ChatAddToNoteModal({
       />
       <ConfirmModal
         isOpen={Boolean(pendingMove)}
-        title="폴더 이동"
+        title={pendingMove?.copy ? '폴더 복제' : '폴더 이동'}
         message={
           pendingMove
             ? formatMoveConfirmMessage(
                 pendingMove.items,
                 pendingMove.targetNode,
                 pendingMove.targetStorageType,
+                { copy: Boolean(pendingMove.copy) },
               )
             : ''
         }
-        confirmLabel="이동"
+        confirmLabel={pendingMove?.copy ? '복제' : '이동'}
         cancelLabel="취소"
         onConfirm={handleConfirmMove}
         onCancel={handleCancelMove}

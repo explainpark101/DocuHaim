@@ -84,6 +84,7 @@ export default function TreeNode({
   stickyTopOffset = 0,
   isFolderLoading = null,
   activeDragItemIds = null,
+  isCopyDrag = false,
   foldersOnly = false,
   folderSelectMode = false,
   /** When true, node cannot be dragged (e.g. mobile add-to-note picker). */
@@ -226,7 +227,7 @@ export default function TreeNode({
   );
 
   const isDragGhost =
-    isDragging || (activeDragItemIds?.has?.(selectKey) ?? false);
+    !isCopyDrag && (isDragging || (activeDragItemIds?.has?.(selectKey) ?? false));
 
   const getFileIcon = () => {
     if (node.type === 'folder') {
@@ -745,6 +746,7 @@ export default function TreeNode({
               stickyTopOffset={stickyTopOffset}
               isFolderLoading={isFolderLoading}
               activeDragItemIds={activeDragItemIds}
+              isCopyDrag={isCopyDrag}
               foldersOnly={foldersOnly}
               folderSelectMode={folderSelectMode}
               disableDrag={disableDrag}

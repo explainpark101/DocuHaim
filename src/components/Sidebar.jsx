@@ -24,6 +24,7 @@ import {
   parseDroppableId,
   toTreeSelectKey,
 } from '@/utils/treeMove';
+import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 
 const EXPANDED_FOLDERS_KEY = 's3haim_expandedFolders';
 const EMPTY_SELECTED_IDS = new Set();
@@ -257,6 +258,8 @@ export default function Sidebar({
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
   const [activeDragItems, setActiveDragItems] = useState(null);
+  const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
+    useTreeCopyDragModifier(Boolean(activeDragItems?.length));
   const scrollContainerRef = useRef(null);
   const isDraggingRef = useRef(false);
   const activeDragItemsRef = useRef(null);
@@ -406,9 +409,10 @@ export default function Sidebar({
       const items = resolveDragItems(activeId, selectedIds, findTreeNode);
       activeDragItemsRef.current = items;
       setActiveDragItems(items);
+      syncCopyModifierFromEvent(event.activatorEvent);
       handleDragStartNode();
     },
-    [selectedIds, findTreeNode, handleDragStartNode],
+    [selectedIds, findTreeNode, handleDragStartNode, syncCopyModifierFromEvent],
   );
 
   const handleDndDragOver = useCallback(
@@ -453,6 +457,7 @@ export default function Sidebar({
     (event) => {
       const { over } = event;
       const items = activeDragItemsRef.current;
+      const copy = isCopyDragRef.current;
       activeDragItemsRef.current = null;
       setActiveDragItems(null);
       clearHoverExpandTimer();
@@ -475,9 +480,9 @@ export default function Sidebar({
         return;
       }
 
-      onDropOnFolder?.(targetNode, parsed.storageType, 'drop', { items });
+      onDropOnFolder?.(targetNode, parsed.storageType, 'drop', { items, copy });
     },
-    [clearHoverExpandTimer, handleDragEndNode, onDropOnFolder, resolveDropTargetNode],
+    [clearHoverExpandTimer, handleDragEndNode, isCopyDragRef, onDropOnFolder, resolveDropTargetNode],
   );
 
   const handleDndDragCancel = useCallback(() => {
@@ -1193,6 +1198,7 @@ export default function Sidebar({
                     onDropOnFolder={onDropOnFolder}
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
+                    isCopyDrag={isCopyDrag}
                     onOpenContextMenu={(e, n) => {
                       activateTreeNode('s3', n);
                       setContextMenu({
@@ -1371,6 +1377,7 @@ export default function Sidebar({
                     onDropOnFolder={onDropOnFolder}
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
+                    isCopyDrag={isCopyDrag}
                     onOpenContextMenu={(e, n) => {
                       activateTreeNode('local', n);
                       setContextMenu({
@@ -1528,6 +1535,7 @@ export default function Sidebar({
                     onDropOnFolder={onDropOnFolder}
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
+                    isCopyDrag={isCopyDrag}
                     onOpenContextMenu={(e, n) => {
                       activateTreeNode('webdav', n);
                       setContextMenu({
@@ -1557,7 +1565,7 @@ export default function Sidebar({
         )}
       </div>
       <DragOverlay dropAnimation={null}>
-        <TreeDragOverlayPreview items={activeDragItems} />
+        <TreeDragOverlayPreview items={activeDragItems} isCopy={isCopyDrag} />
       </DragOverlay>
       </DndContext>
     </div>

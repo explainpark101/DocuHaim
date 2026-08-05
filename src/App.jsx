@@ -16,7 +16,8 @@ import {
   updateWebAuthnWrappedPassword,
 } from '@/utils/webauthn';
 import { buildS3Tree, getFileLastModifiedMap, findFileNodeByPath, findNodeByPath, flattenTreeToPaths, getRecordingKeysFromTree } from '@/utils/s3Tree';
-import { pruneNestedMovePaths } from '@/utils/treeMove';
+import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/treeMove';
+import { allocateUniqueCopyName, getTreeChildNames } from '@/utils/treeCopy';
 import {
   createS3Client,
   listObjectsV2,
@@ -3238,6 +3239,135 @@ function MainApp() {
     await refreshWebdavTree();
   };
 
+  const copyS3FileToFolder = async (file, destFolderPath, destFileName) => {
+    const client = getS3Client();
+    if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+    const bucket = s3Creds.bucket;
+    const fileName = destFileName || file.name;
+    const newKey = `${destFolderPath || ''}${fileName}`;
+    const oldKey = file.id;
+    if (newKey === oldKey) return file;
+    await copyObject(client, bucket, oldKey, newKey);
+    await loadS3Files();
+    return { ...file, id: newKey };
+  };
+
+  const copyLocalFileToFolder = async (file, destDirHandle, destDirPath, destFileName) => {
+    if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
+    if (!file.handle) throw new Error('원본 파일을 찾을 수 없습니다.');
+    const fileName = destFileName || file.name;
+    const oldPath = file.id ?? file.path;
+    const newPath = `${destDirPath || ''}${fileName}`;
+    if (!oldPath) throw new Error('원본 파일 경로를 찾을 수 없습니다.');
+    if (newPath === oldPath) return file;
+
+    const srcFile = await file.handle.getFile();
+    const newFileHandle = await destDirHandle.getFileHandle(fileName, { create: true });
+    const writable = await newFileHandle.createWritable();
+    await writable.write(await srcFile.arrayBuffer());
+    await writable.close();
+    await refreshLocalTree();
+    return {
+      ...file,
+      id: newPath,
+      handle: newFileHandle,
+      parentHandle: destDirHandle,
+      size: typeof srcFile.size === 'number' ? srcFile.size : file.size ?? null,
+    };
+  };
+
+  const copyS3FolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+    const client = getS3Client();
+    if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+    const bucket = s3Creds.bucket;
+    const prefix = folderNode.path;
+    if (!prefix) return;
+    const folderName = newFolderName ?? folderNode.name;
+    const newFolderPrefix = `${destParentPath || ''}${folderName}/`;
+    if (newFolderPrefix === prefix) return;
+    if (newFolderPrefix.startsWith(prefix) || prefix.startsWith(newFolderPrefix)) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 복제할 수 없습니다.');
+    }
+    await putObject(client, { Bucket: bucket, Key: newFolderPrefix, Body: '' });
+    const contents = await listObjectsV2(client, bucket, prefix);
+    for (const { Key } of contents) {
+      const relative = Key.slice(prefix.length);
+      const newKey = newFolderPrefix + relative;
+      if (!relative || newKey === Key) continue;
+      await copyObject(client, bucket, Key, newKey);
+    }
+    await loadS3Files();
+  };
+
+  const copyLocalFolderToFolder = async (folderNode, destDirHandle, destDirPath, newFolderName) => {
+    if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
+    if (!folderNode.handle) throw new Error('원본 폴더를 찾을 수 없습니다.');
+    const nameToUse = newFolderName != null ? newFolderName : folderNode.name;
+    const destFolderPath = `${destDirPath || ''}${nameToUse}/`;
+    if (destFolderPath === folderNode.path) return;
+    if (
+      folderNode.path &&
+      (destFolderPath.startsWith(folderNode.path) || folderNode.path.startsWith(destFolderPath))
+    ) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 복제할 수 없습니다.');
+    }
+    const newFolderHandle = await destDirHandle.getDirectoryHandle(nameToUse, { create: true });
+    const copyDirRecursive = async (srcHandle, destHandle) => {
+      for await (const entry of srcHandle.values()) {
+        if (entry.kind === 'file') {
+          const file = await entry.getFile();
+          const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
+          const writable = await newFileHandle.createWritable();
+          await writable.write(await file.arrayBuffer());
+          await writable.close();
+        } else if (entry.kind === 'directory') {
+          const newDirHandle = await destHandle.getDirectoryHandle(entry.name, { create: true });
+          await copyDirRecursive(entry, newDirHandle);
+        }
+      }
+    };
+    await copyDirRecursive(folderNode.handle, newFolderHandle);
+    await refreshLocalTree();
+  };
+
+  const copyWebdavFileToFolder = async (file, destFolderPath, destFileName) => {
+    const backend = createWebdavBackend(webdavConfig);
+    const fileName = destFileName || file.name;
+    const newKey = `${destFolderPath || ''}${fileName}`;
+    const oldKey = file.id;
+    if (newKey === oldKey) return file;
+    await backend.copy(oldKey, newKey);
+    await refreshWebdavTree();
+    return { ...file, id: newKey };
+  };
+
+  const copyWebdavFolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+    const backend = createWebdavBackend(webdavConfig);
+    const prefix = folderNode.path;
+    if (!prefix) return;
+    const folderName = newFolderName ?? folderNode.name;
+    const destPrefix = `${destParentPath || ''}${folderName}/`;
+    if (destPrefix === prefix) return;
+    if (destPrefix.startsWith(prefix) || prefix.startsWith(destPrefix)) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 복제할 수 없습니다.');
+    }
+    try {
+      await backend.mkdir(destPrefix);
+    } catch {
+      /* destination may already exist or be created implicitly */
+    }
+    const entries = await webdavPropfindDeep(webdavConfig, prefix);
+    const fileKeys = entries
+      .filter((e) => e.key && !e.isCollection && e.key !== prefix)
+      .map((e) => e.key)
+      .sort((a, b) => a.length - b.length);
+    for (const key of fileKeys) {
+      const relative = key.startsWith(prefix) ? key.slice(prefix.length) : key;
+      await backend.copy(key, destPrefix + relative);
+    }
+    await refreshWebdavTree();
+  };
+
   const handleViewUnsupportedAsText = async () => {
     if (!currentFile || currentFile.viewer !== 'unsupported') return;
     if (currentFile.type === 's3') {
@@ -5437,6 +5567,8 @@ function MainApp() {
         : null);
 
     if (rawItems) {
+      const isCopy = Boolean(payload?.copy);
+      const verb = isCopy ? '복제' : '이동';
       const items = pruneNestedMovePaths(rawItems).filter((item) => {
         if (item.storageType !== targetStorageType) return false;
         if (item.path === destPath) return false;
@@ -5454,13 +5586,14 @@ function MainApp() {
           : targetStorageType === 'webdav'
             ? webdavTree
             : localTree;
+      const usedDestNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
       let successCount = 0;
       let failCount = 0;
       let lastError = null;
       let lastSuccessName = null;
 
       if (items.length > 1) {
-        setOperationStatus(`${items.length}개 항목 이동 중…`);
+        setOperationStatus(`${items.length}개 항목 ${verb} 중…`);
       }
 
       for (const item of items) {
@@ -5468,21 +5601,67 @@ function MainApp() {
         const srcNode = findNodeByPath(tree, srcPath);
         if (!srcNode) {
           failCount += 1;
-          lastError = new Error('이동할 항목을 트리에서 찾을 수 없습니다.');
+          lastError = new Error(`${verb}할 항목을 트리에서 찾을 수 없습니다.`);
           continue;
         }
 
-        if (nodeType === 'file') {
-          const destFilePath = `${destPath || ''}${srcNode.name}`;
-          if (destFilePath === srcPath) continue;
-        } else if (nodeType === 'folder') {
-          const destFolderPrefix = `${destPath || ''}${srcNode.name}/`;
-          if (destFolderPrefix === srcPath) continue;
-          if (destFolderPrefix.startsWith(srcPath) || srcPath.startsWith(destFolderPrefix)) continue;
+        if (!isCopy) {
+          if (nodeType === 'file') {
+            const destFilePath = `${destPath || ''}${srcNode.name}`;
+            if (destFilePath === srcPath) continue;
+          } else if (nodeType === 'folder') {
+            const destFolderPrefix = `${destPath || ''}${srcNode.name}/`;
+            if (destFolderPrefix === srcPath) continue;
+            if (destFolderPrefix.startsWith(srcPath) || srcPath.startsWith(destFolderPrefix)) continue;
+          }
         }
 
         try {
-          if (nodeType === 'file') {
+          if (isCopy) {
+            const isFolder = nodeType === 'folder';
+            const forceSuffix = getParentFolderPath(srcPath) === destPath;
+            let destName = allocateUniqueCopyName(srcNode.name, usedDestNames, {
+              forceSuffix,
+              isFolder,
+            });
+            if (srcStorageType === 'local' && destHandle) {
+              const existing = new Set(usedDestNames);
+              while (true) {
+                try {
+                  if (isFolder) await destHandle.getDirectoryHandle(destName);
+                  else await destHandle.getFileHandle(destName);
+                  existing.add(destName);
+                  destName = allocateUniqueCopyName(srcNode.name, existing, {
+                    forceSuffix: true,
+                    isFolder,
+                  });
+                } catch {
+                  break;
+                }
+              }
+            }
+            usedDestNames.add(destName);
+
+            if (nodeType === 'file') {
+              const fileNode = srcStorageType === 's3'
+                ? { id: srcPath, name: srcNode.name }
+                : { ...srcNode, id: srcNode.path };
+              if (srcStorageType === 's3') {
+                await copyS3FileToFolder(fileNode, destPath, destName);
+              } else if (srcStorageType === 'webdav') {
+                await copyWebdavFileToFolder(fileNode, destPath, destName);
+              } else {
+                await copyLocalFileToFolder(fileNode, destHandle, destPath, destName);
+              }
+            } else if (srcStorageType === 's3') {
+              await copyS3FolderToFolder(srcNode, destPath, destName);
+            } else if (srcStorageType === 'webdav') {
+              await copyWebdavFolderToFolder(srcNode, destPath, destName);
+            } else {
+              await copyLocalFolderToFolder(srcNode, destHandle, destPath, destName);
+            }
+            lastSuccessName = destName;
+          } else if (nodeType === 'file') {
             const fileNode = srcStorageType === 's3'
               ? { id: srcPath, name: srcNode.name }
               : { ...srcNode, id: srcNode.path };
@@ -5502,6 +5681,7 @@ function MainApp() {
                 setCurrentFile(updated);
               }
             }
+            lastSuccessName = srcNode.name;
           } else {
             if (srcStorageType === 's3') {
               await moveS3FolderToFolder(srcNode, destPath);
@@ -5510,9 +5690,9 @@ function MainApp() {
             } else {
               await moveLocalFolderToFolder(srcNode, destHandle, destPath);
             }
+            lastSuccessName = srcNode.name;
           }
           successCount += 1;
-          lastSuccessName = srcNode.name;
         } catch (e) {
           failCount += 1;
           lastError = e;
@@ -5521,22 +5701,26 @@ function MainApp() {
 
       if (successCount === 0 && failCount === 0) return;
 
-      if (successCount > 0) {
+      if (successCount > 0 && !isCopy) {
         setSelectedIds(new Set());
+      }
+      if (successCount > 0 && isCopy) {
+        const parentPaths = getParentPathsToExpand(destPath);
+        expandPathsRef.current?.(targetStorageType, parentPaths);
       }
 
       if (failCount === 0) {
         setOperationStatus(
           successCount > 1
-            ? `${successCount}개 항목 이동 완료`
-            : `${items[0].nodeType === 'folder' ? '폴더' : '파일'} 이동 완료: ${lastSuccessName || items[0].name || items[0].path}`,
+            ? `${successCount}개 항목 ${verb} 완료`
+            : `${items[0].nodeType === 'folder' ? '폴더' : '파일'} ${verb} 완료: ${lastSuccessName || items[0].name || items[0].path}`,
         );
       } else if (successCount === 0) {
-        alert('이동 실패: ' + (lastError?.message || '알 수 없는 오류'));
-        setOperationStatus(`이동 실패: ${lastError?.message || ''}`);
+        alert(`${verb} 실패: ` + (lastError?.message || '알 수 없는 오류'));
+        setOperationStatus(`${verb} 실패: ${lastError?.message || ''}`);
       } else {
-        alert(`${successCount}개 이동 완료, ${failCount}개 실패` + (lastError ? `: ${lastError.message}` : ''));
-        setOperationStatus(`${successCount}개 이동, ${failCount}개 실패`);
+        alert(`${successCount}개 ${verb} 완료, ${failCount}개 실패` + (lastError ? `: ${lastError.message}` : ''));
+        setOperationStatus(`${successCount}개 ${verb}, ${failCount}개 실패`);
       }
       return;
     }
