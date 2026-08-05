@@ -485,6 +485,7 @@ function MessageBubble({
   externalReactionPickerOpen = false,
   onReactionPickerOpenChange,
   noteExists,
+  allowOgEmbed = true,
 }) {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
@@ -840,7 +841,12 @@ function MessageBubble({
               ) : null}
               {!collapsed
                 ? urls.map((u) => (
-                    <ChatOgCard key={u} url={u} ogStorage={ogStorage} />
+                    <ChatOgCard
+                      key={u}
+                      url={u}
+                      ogStorage={ogStorage}
+                      allowEmbed={allowOgEmbed}
+                    />
                   ))
                 : null}
             </Motion.div>
@@ -868,6 +874,7 @@ function MessageBubble({
             reactions={msg.reactions}
             coarse={coarse}
             disabled={isDeleting || syncing}
+            expanded={rowActive}
             pickerOpen={reactionPickerOpen}
             onPickerOpenChange={setReactionPickerOpen}
             onToggle={(reaction) => onToggleReaction?.(msg, reaction)}
@@ -1058,8 +1065,9 @@ export default function ChatMessageList({
       nextLen > prevLen && prevLen > 0 && !stickBottomRef.current;
     prevLenRef.current = nextLen;
 
-    // Skip auto-stick when highlighting a jumped-to message.
-    if (highlightId) {
+    // Skip auto-stick when highlighting a jumped-to message or editing
+    // (OG/iframe height changes must not yank the composer).
+    if (highlightId || editingMessageId) {
       initialBottomPinRef.current = false;
       return;
     }
@@ -1079,12 +1087,12 @@ export default function ChatMessageList({
     if (stickBottomRef.current && grewAtEnd && !prepended) {
       scrollScrollerToBottom(el);
     }
-  }, [messages, highlightId]);
+  }, [messages, highlightId, editingMessageId]);
 
   // Keep pinned to bottom while content height changes (images / OG) if sticky.
   useEffect(() => {
     const el = scrollerRef.current;
-    if (!el || highlightId) return undefined;
+    if (!el || highlightId || editingMessageId) return undefined;
     const content = el.firstElementChild;
     if (!content) return undefined;
 
@@ -1097,7 +1105,7 @@ export default function ChatMessageList({
         : null;
     ro?.observe(content);
     return () => ro?.disconnect();
-  }, [highlightId, messages.length]);
+  }, [highlightId, editingMessageId, messages.length]);
 
   useEffect(() => {
     if (!highlightId) return undefined;
@@ -1225,7 +1233,7 @@ export default function ChatMessageList({
                   {group.messages.map((item, msgIndex) => (
                     <Motion.div
                       key={item.key}
-                      layout
+                      layout={!editingMessageId}
                       className={`min-w-0 max-w-full ${
                         item.clustered
                           ? 'mt-0.5'
@@ -1261,6 +1269,7 @@ export default function ChatMessageList({
                         clustered={item.clustered}
                         highlight={highlightId === item.msg.id}
                         ogStorage={ogStorage}
+                        allowOgEmbed={!editingMessageId}
                         timeZone={timeZone}
                         onReply={onReply}
                         onDelete={onDelete}

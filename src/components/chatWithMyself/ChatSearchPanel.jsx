@@ -305,6 +305,7 @@ export default function ChatSearchPanel({
   timeZone,
   getPresignedUrl,
   noteExists,
+  focusTick = 0,
 }) {
   const [query, setQuery] = useState('');
   const [groupFilter, setGroupFilter] = useState('__all__');
@@ -397,9 +398,10 @@ export default function ChatSearchPanel({
     }
     const id = window.requestAnimationFrame(() => {
       queryInputRef.current?.focus();
+      if (focusTick > 0) queryInputRef.current?.select?.();
     });
     return () => window.cancelAnimationFrame(id);
-  }, [open]);
+  }, [open, focusTick]);
 
   if (!open) return null;
 

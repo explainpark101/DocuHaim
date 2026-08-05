@@ -262,6 +262,37 @@ export function mergeDayMessages(local, remote) {
   };
 }
 
+/** Drop later copies so React list keys (`msg.id`) stay unique. */
+export function dedupeMessagesById(messages) {
+  const seen = new Set();
+  const out = [];
+  for (const msg of messages || []) {
+    const id = msg?.id;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(msg);
+  }
+  return out;
+}
+
+export function prependUniqueMessages(head, tail) {
+  const existing = new Set(
+    (tail || []).map((m) => m?.id).filter(Boolean),
+  );
+  const uniqueHead = (head || []).filter((m) => m?.id && !existing.has(m.id));
+  if (!uniqueHead.length) return tail || [];
+  return [...uniqueHead, ...(tail || [])];
+}
+
+export function appendUniqueMessages(head, more) {
+  const existing = new Set(
+    (head || []).map((m) => m?.id).filter(Boolean),
+  );
+  const uniqueMore = (more || []).filter((m) => m?.id && !existing.has(m.id));
+  if (!uniqueMore.length) return head || [];
+  return [...(head || []), ...uniqueMore];
+}
+
 export function appendMessageToContent(existingContent, msg) {
   const base = existingContent ? String(existingContent).replace(/\s*$/, '\n\n') : '';
   return base + serializeMessage(msg);

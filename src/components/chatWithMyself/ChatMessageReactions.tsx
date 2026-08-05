@@ -15,6 +15,8 @@ type ChatMessageReactionsProps = {
   /** Controlled picker open state (optional). */
   pickerOpen?: boolean;
   onPickerOpenChange?: (open: boolean) => void;
+  /** Keep empty hover-row expanded (context menu / selection / editing). */
+  expanded?: boolean;
 };
 
 const chipClass =
@@ -36,6 +38,7 @@ export default function ChatMessageReactions({
   disabled = false,
   pickerOpen: pickerOpenProp,
   onPickerOpenChange,
+  expanded = false,
 }: ChatMessageReactionsProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const controlled = typeof pickerOpenProp === 'boolean';
@@ -45,8 +48,11 @@ export default function ChatMessageReactions({
     onPickerOpenChange?.(open);
   };
   const list = Array.isArray(reactions) ? reactions : [];
+  const rowOpen = pickerOpen || expanded;
 
-  if (disabled && list.length === 0) return null;
+  // Mobile: only show the row when reactions exist (or picker was forced open).
+  if (coarse && list.length === 0 && !pickerOpen) return null;
+  if (disabled && list.length === 0 && !rowOpen) return null;
 
   // Empty add-row: collapse height until hover/open so clustered messages
   // do not keep a blank reaction gap (animate open/close to avoid jumps).
@@ -104,7 +110,7 @@ export default function ChatMessageReactions({
     return (
       <div
         className={`${rowInnerClass} ${className}`.trim()}
-        data-open={pickerOpen ? 'true' : undefined}
+        data-open={rowOpen ? 'true' : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         {chips}
@@ -115,7 +121,7 @@ export default function ChatMessageReactions({
   return (
     <div
       className={`grid grid-rows-[0fr] opacity-0 pointer-events-none transition-[grid-template-rows,opacity] duration-300 ease-out group-hover:grid-rows-[1fr] group-hover:opacity-100 group-hover:pointer-events-auto focus-within:grid-rows-[1fr] focus-within:opacity-100 focus-within:pointer-events-auto data-[open=true]:grid-rows-[1fr] data-[open=true]:opacity-100 data-[open=true]:pointer-events-auto ${className}`.trim()}
-      data-open={pickerOpen ? 'true' : undefined}
+      data-open={rowOpen ? 'true' : undefined}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="min-h-0 overflow-hidden">

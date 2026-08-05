@@ -15,15 +15,42 @@ const appBuildId =
 // Expose to the client as import.meta.env.VITE_APP_BUILD_ID
 process.env.VITE_APP_BUILD_ID = appBuildId;
 
+function isBuildIdRequest(urlPath) {
+  const pathname = String(urlPath || '').split('?')[0];
+  return pathname === '/build-id.json' || pathname === `${normalizedBase}build-id.json`;
+}
+
 function emitBuildIdPlugin() {
+  const payload = JSON.stringify({ id: appBuildId });
   return {
     name: 'emit-build-id',
-    apply: 'build',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!isBuildIdRequest(req.url)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(payload);
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!isBuildIdRequest(req.url)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(payload);
+      });
+    },
     generateBundle() {
       this.emitFile({
         type: 'asset',
         fileName: 'build-id.json',
-        source: JSON.stringify({ id: appBuildId }),
+        source: payload,
       });
     },
   };

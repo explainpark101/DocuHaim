@@ -63,6 +63,9 @@ import {
   localDateString,
   makeReplySnippet,
   createMessageId,
+  dedupeMessagesById,
+  prependUniqueMessages,
+  appendUniqueMessages,
   readDayMessages,
   touchTimezone,
   fuzzyMatchText,
@@ -247,6 +250,7 @@ export default function ChatWithMyselfPane({
   const [searchOpen, setSearchOpen] = useState(() =>
     getChatRailOpen('search', { isMobileLayout }),
   );
+  const [searchFocusTick, setSearchFocusTick] = useState(0);
   const [pinnedOpen, setPinnedOpen] = useState(() =>
     getChatRailOpen('pinned', { isMobileLayout }),
   );
@@ -295,6 +299,8 @@ export default function ChatWithMyselfPane({
   const flushingSendRef = useRef(false);
   const syncApiRef = useRef(null);
   const localTombstonesRef = useRef(new Set());
+  const loadingOlderRef = useRef(false);
+  const loadingNewerRef = useRef(false);
 
   const noteLocalDayWrite = useCallback((dateStr) => {
     if (dateStr) syncApiRef.current?.invalidateDay(dateStr);
@@ -374,10 +380,12 @@ export default function ChatWithMyselfPane({
   const hasMoreNewer = windowNewestIndex > 0;
 
   const visibleMessages = useMemo(() => {
-    if (!viewGroupFilter) return messages;
-    return messages.filter((m) =>
-      groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter),
-    );
+    const source = !viewGroupFilter
+      ? messages
+      : messages.filter((m) =>
+          groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter),
+        );
+    return dedupeMessagesById(source);
   }, [messages, viewGroupFilter, groups]);
 
   const pendingSend = useMemo(
@@ -496,7 +504,7 @@ export default function ChatWithMyselfPane({
       for (let i = parts.length - 1; i >= 0; i -= 1) {
         msgs.push(...(parts[i] || []));
       }
-      setMessages(msgs);
+      setMessages(dedupeMessagesById(msgs));
 
       if (loadDates.length) {
         const firstIdx = unique.indexOf(loadDates[0]);
@@ -644,30 +652,54 @@ export default function ChatWithMyselfPane({
   }, [onShareGroupSendConsumed]);
 
   const handleLoadOlder = useCallback(async () => {
-    if (!storageReady || loadingOlder || loadedDayIndex >= dayKeys.length) return;
+    if (!storageReady || loadingOlderRef.current) return;
+    const keys = dayKeysRef.current;
+    const idx = loadedDayIndexRef.current;
+    if (idx >= keys.length) return;
+    const dateStr = keys[idx];
+    if (!dateStr) return;
+
+    loadingOlderRef.current = true;
+    loadedDayIndexRef.current = idx + 1;
     setLoadingOlder(true);
+    setLoadedDayIndex(idx + 1);
     try {
-      const dateStr = dayKeys[loadedDayIndex];
       const older = await readDayMessages(ctx, dateStr);
-      setMessages((prev) => [...older, ...prev]);
-      setLoadedDayIndex((i) => i + 1);
+      setMessages((prev) => prependUniqueMessages(older, prev));
+    } catch (e) {
+      loadedDayIndexRef.current = idx;
+      setLoadedDayIndex(idx);
+      setError(e?.message || '이전 대화 로드 실패');
     } finally {
+      loadingOlderRef.current = false;
       setLoadingOlder(false);
     }
-  }, [storageReady, loadingOlder, loadedDayIndex, dayKeys, ctx]);
+  }, [storageReady, ctx]);
 
   const handleLoadNewer = useCallback(async () => {
-    if (!storageReady || loadingNewer || windowNewestIndex <= 0) return;
+    if (!storageReady || loadingNewerRef.current) return;
+    const newestIdx = windowNewestIndexRef.current;
+    if (newestIdx <= 0) return;
+    const nextIdx = newestIdx - 1;
+    const dateStr = dayKeysRef.current[nextIdx];
+    if (!dateStr) return;
+
+    loadingNewerRef.current = true;
+    windowNewestIndexRef.current = nextIdx;
     setLoadingNewer(true);
+    setWindowNewestIndex(nextIdx);
     try {
-      const nextIdx = windowNewestIndex - 1;
-      const newer = await readDayMessages(ctx, dayKeys[nextIdx]);
-      setMessages((prev) => [...prev, ...newer]);
-      setWindowNewestIndex(nextIdx);
+      const newer = await readDayMessages(ctx, dateStr);
+      setMessages((prev) => appendUniqueMessages(prev, newer));
+    } catch (e) {
+      windowNewestIndexRef.current = newestIdx;
+      setWindowNewestIndex(newestIdx);
+      setError(e?.message || '이후 대화 로드 실패');
     } finally {
+      loadingNewerRef.current = false;
       setLoadingNewer(false);
     }
-  }, [storageReady, loadingNewer, windowNewestIndex, dayKeys, ctx]);
+  }, [storageReady, ctx]);
 
   const scrollToDayFirstMessage = useCallback((dateStr, messageId = null) => {
     const id =
@@ -1616,6 +1648,32 @@ export default function ChatWithMyselfPane({
     else if (groupOpen) setGroupOpen(false);
   }, [searchOpen, pinnedOpen, dateOpen, groupOpen]);
 
+  const openSearchRail = useCallback(() => {
+    if (isMobileLayout) closeOtherMobileRails('search');
+    setSearchOpen(true);
+    setSearchFocusTick((n) => n + 1);
+  }, [isMobileLayout, closeOtherMobileRails]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+      if (e.key !== 'f' && e.key !== 'F') return;
+      const target = e.target;
+      if (
+        target instanceof Element &&
+        target.closest('[role="dialog"], [data-radix-dialog-content]')
+      ) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      openSearchRail();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [openSearchRail]);
+
   const mobileRailOpen = groupOpen || dateOpen || searchOpen || pinnedOpen;
   useHistoryOverlayBack(
     mobileRailOpen,
@@ -1666,6 +1724,7 @@ export default function ChatWithMyselfPane({
     timeZone,
     getPresignedUrl: getPresignedUrlForPath,
     noteExists,
+    focusTick: searchFocusTick,
   };
 
   const pinnedPanelProps = {

@@ -357,7 +357,12 @@ export function mergeMessagesForDate(
     return m;
   });
   const deleted = new Set(merged.deletedIds || []);
-  const rest = otherDays.filter((m) => !deleted.has(m.id));
+  const mergedIds = new Set(
+    mergedWithFlags.map((m) => m.id).filter(Boolean),
+  );
+  const rest = otherDays.filter(
+    (m) => !deleted.has(m.id) && !mergedIds.has(m.id),
+  );
   return [...rest, ...mergedWithFlags].sort(
     (a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0),
   );

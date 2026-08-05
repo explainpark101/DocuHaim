@@ -1,5 +1,22 @@
 const BUILD_RELOAD_GUARD_KEY = 's3haim_build_reload_guard';
 
+export type RemoteBuildIdResult =
+  | { ok: true; remoteId: string }
+  | { ok: false; error: string };
+
+export type AppBuildCheckResult =
+  | {
+      ok: true;
+      localId: string;
+      remoteId: string;
+      updateAvailable: boolean;
+    }
+  | {
+      ok: false;
+      localId: string;
+      error: string;
+    };
+
 /**
  * Ask the browser to check for a newer service worker and resolve whether
  * an update is waiting (or becomes waiting within timeoutMs).
@@ -70,6 +87,62 @@ async function clearServiceWorkerCaches(): Promise<void> {
   }
 }
 
+export function getLocalAppBuildId(): string {
+  const id = import.meta.env.VITE_APP_BUILD_ID;
+  return typeof id === 'string' ? id.trim() : '';
+}
+
+function buildIdRequestUrl(): string {
+  const base = import.meta.env.BASE_URL || '/';
+  return `${base}build-id.json?t=${Date.now()}`;
+}
+
+export async function fetchRemoteBuildId(): Promise<RemoteBuildIdResult> {
+  try {
+    const response = await fetch(buildIdRequestUrl(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (!response.ok) {
+      return { ok: false, error: `HTTP ${response.status}` };
+    }
+    const payload = (await response.json()) as { id?: unknown };
+    if (typeof payload?.id !== 'string' || !payload.id.trim()) {
+      return { ok: false, error: 'invalid build-id payload' };
+    }
+    return { ok: true, remoteId: payload.id.trim() };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: message || 'network error' };
+  }
+}
+
+export async function checkAppBuildUpdate(): Promise<AppBuildCheckResult> {
+  const localId = getLocalAppBuildId();
+  const remote = await fetchRemoteBuildId();
+  if (!remote.ok) {
+    return { ok: false, localId, error: remote.error };
+  }
+  if (!localId) {
+    return { ok: false, localId, error: 'local build id missing' };
+  }
+  return {
+    ok: true,
+    localId,
+    remoteId: remote.remoteId,
+    updateAvailable: localId !== remote.remoteId,
+  };
+}
+
+export async function applyForcedAppUpdate(): Promise<void> {
+  try {
+    await clearServiceWorkerCaches();
+  } catch (error: unknown) {
+    console.warn('Failed to clear service worker caches:', error);
+  }
+  window.location.reload();
+}
+
 /**
  * Compare the network build-id.json against this bundle's build id.
  * On mismatch, wipe SW/caches and reload once so every path gets the latest build.
@@ -79,27 +152,15 @@ export async function ensureLatestAppBuild(): Promise<boolean> {
   if (!import.meta.env.PROD) return true;
   if (import.meta.env.VITE_ELECTRON === 'true') return true;
 
-  const localId = import.meta.env.VITE_APP_BUILD_ID;
-  if (!localId || typeof localId !== 'string') return true;
+  const localId = getLocalAppBuildId();
+  if (!localId) return true;
 
-  const base = import.meta.env.BASE_URL || '/';
-  const url = `${base}build-id.json?t=${Date.now()}`;
-
-  let remoteId: string | undefined;
-  try {
-    const response = await fetch(url, {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' },
-    });
-    if (!response.ok) return true;
-    const payload = (await response.json()) as { id?: unknown };
-    if (typeof payload?.id !== 'string' || !payload.id) return true;
-    remoteId = payload.id;
-  } catch (error: unknown) {
-    // Offline or blocked — keep the currently loaded build.
-    console.warn('Build id check failed:', error);
+  const remote = await fetchRemoteBuildId();
+  if (!remote.ok) {
+    console.warn('Build id check failed:', remote.error);
     return true;
   }
+  const remoteId = remote.remoteId;
 
   if (remoteId === localId) {
     try {
@@ -120,12 +181,6 @@ export async function ensureLatestAppBuild(): Promise<boolean> {
     // sessionStorage unavailable — still attempt a single clear + reload
   }
 
-  try {
-    await clearServiceWorkerCaches();
-  } catch (error: unknown) {
-    console.warn('Failed to clear service worker caches:', error);
-  }
-
-  window.location.reload();
+  await applyForcedAppUpdate();
   return false;
 }

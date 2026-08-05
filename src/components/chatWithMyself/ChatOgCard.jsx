@@ -7,9 +7,14 @@ import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefs
 
 /**
  * OG / YouTube card rendered inside a chat bubble (bottom attached).
- * @param {{ url: string, ogStorage?: object, compact?: boolean }} props
+ * @param {{ url: string, ogStorage?: object, compact?: boolean, allowEmbed?: boolean }} props
  */
-export default function ChatOgCard({ url, ogStorage, compact = false }) {
+export default function ChatOgCard({
+  url,
+  ogStorage,
+  compact = false,
+  allowEmbed = true,
+}) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEmbed, setShowEmbed] = useState(false);
@@ -53,6 +58,10 @@ export default function ChatOgCard({ url, ogStorage, compact = false }) {
     // ogStorage identity may change; archive adapters are equivalent for a given url
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
+
+  useEffect(() => {
+    if (!allowEmbed) setShowEmbed(false);
+  }, [allowEmbed]);
 
   if (loading && !data) {
     return (
@@ -113,7 +122,7 @@ export default function ChatOgCard({ url, ogStorage, compact = false }) {
 
   return (
     <div className="mt-2 max-w-full min-w-0 overflow-hidden rounded-md border border-black/10 dark:border-white/15 bg-white/80 dark:bg-odp-bgSoft/90 text-left">
-      {showEmbed && yt && data.embedHtml ? (
+      {showEmbed && allowEmbed && yt && data.embedHtml ? (
         <div
           className="aspect-video w-full bg-black [&_iframe]:h-full [&_iframe]:w-full"
           // oEmbed HTML from YouTube

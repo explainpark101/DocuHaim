@@ -150,7 +150,12 @@ import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import { clearGeminiApiKeySession } from '@/utils/geminiApiKeySession';
 import { tryRestoreAuthSession } from '@/utils/authSession';
 import { applyDocumentTheme } from '@/utils/documentTheme';
-import { checkServiceWorkerUpdate } from '@/utils/pwaUpdate';
+import {
+  applyForcedAppUpdate,
+  checkAppBuildUpdate,
+  checkServiceWorkerUpdate,
+  getLocalAppBuildId,
+} from '@/utils/pwaUpdate';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
@@ -420,6 +425,9 @@ function MainApp() {
   const [isCheckingAppUpdate, setIsCheckingAppUpdate] = useState(false);
   const [showAppUpdateConfirmModal, setShowAppUpdateConfirmModal] = useState(false);
   const [appUpdateAvailable, setAppUpdateAvailable] = useState(false);
+  const [appBuildLocalId, setAppBuildLocalId] = useState(() => getLocalAppBuildId());
+  const [appBuildRemoteId, setAppBuildRemoteId] = useState('');
+  const [appUpdateCheckError, setAppUpdateCheckError] = useState('');
   const appName = getAppNameByStorageMode(storageMode || DEFAULT_STORAGE_MODE);
   const {
     needRefresh: [needRefresh],
@@ -589,10 +597,32 @@ function MainApp() {
   const handleCheckAppUpdate = useCallback(async () => {
     setIsCheckingAppUpdate(true);
     try {
-      const found = await checkServiceWorkerUpdate(swRegistration);
-      setAppUpdateAvailable(Boolean(found || needRefresh || swRegistration?.waiting));
+      const buildCheck = await checkAppBuildUpdate();
+      setAppBuildLocalId(buildCheck.localId || getLocalAppBuildId());
+
+      let swFound = false;
+      try {
+        swFound = await checkServiceWorkerUpdate(swRegistration, 2500);
+      } catch (error) {
+        console.warn('Service worker update check failed:', error);
+      }
+
+      const waiting = Boolean(needRefresh || swRegistration?.waiting || swFound);
+      if (buildCheck.ok) {
+        setAppBuildRemoteId(buildCheck.remoteId);
+        setAppUpdateCheckError('');
+        setAppUpdateAvailable(Boolean(buildCheck.updateAvailable || waiting));
+      } else {
+        setAppBuildRemoteId('');
+        setAppUpdateCheckError(buildCheck.error || 'unknown');
+        setAppUpdateAvailable(waiting);
+        console.warn('App update check failed:', buildCheck.error);
+      }
     } catch (error) {
       console.warn('App update check failed:', error);
+      setAppBuildLocalId(getLocalAppBuildId());
+      setAppBuildRemoteId('');
+      setAppUpdateCheckError(error?.message || String(error) || 'unknown');
       setAppUpdateAvailable(Boolean(needRefresh || swRegistration?.waiting));
     } finally {
       setIsCheckingAppUpdate(false);
@@ -603,8 +633,15 @@ function MainApp() {
   const handleConfirmAppUpdate = useCallback(async () => {
     setShowAppUpdateConfirmModal(false);
     setHidePwaUpdateToast(true);
+    const buildMismatch = Boolean(
+      appBuildLocalId && appBuildRemoteId && appBuildLocalId !== appBuildRemoteId,
+    );
     try {
       setIsApplyingPwaUpdate(true);
+      if (buildMismatch) {
+        await applyForcedAppUpdate();
+        return;
+      }
       if (needRefresh || appUpdateAvailable || swRegistration?.waiting) {
         await updateServiceWorker(true);
         return;
@@ -615,7 +652,7 @@ function MainApp() {
       setIsApplyingPwaUpdate(false);
       window.location.reload();
     }
-  }, [appUpdateAvailable, needRefresh, swRegistration, updateServiceWorker]);
+  }, [appBuildLocalId, appBuildRemoteId, appUpdateAvailable, needRefresh, swRegistration, updateServiceWorker]);
 
   useEffect(() => {
     try {
@@ -768,7 +805,14 @@ function MainApp() {
         }
       }
       loadS3Files(creds);
-      if (!stayOnSettings) navigate('/');
+      if (stayOnSettings) {
+        showAlert({
+          title: '연결 정보',
+          message: '연결 정보 업데이트가 완료되었습니다.',
+        });
+      } else {
+        navigate('/');
+      }
     } catch (e) {
       alert("설정 저장 중 오류가 발생했습니다: " + e.message);
     }
@@ -795,6 +839,10 @@ function MainApp() {
     loadS3Files(creds);
     setShowSaveMethodModal(false);
     setSaveMethodModalCreds(null);
+    showAlert({
+      title: '연결 정보',
+      message: '연결 정보 업데이트가 완료되었습니다.',
+    });
   };
 
   const handleSaveWithPasswordFromModal = () => {
@@ -824,6 +872,10 @@ function MainApp() {
         setShowSaveMethodModal(false);
         setSaveMethodModalCreds(null);
         setPendingWebAuthnSave(null);
+        showAlert({
+          title: '연결 정보',
+          message: '연결 정보 업데이트가 완료되었습니다.',
+        });
       } else if (pendingPasswordSave) {
         await saveEncryptedSettings(
           pendingPasswordSave.creds,
@@ -5263,6 +5315,10 @@ function MainApp() {
                     if (storageMode === STORAGE_MODE_WEBDAV) {
                       await refreshWebdavTree();
                     }
+                    showAlert({
+                      title: '연결 정보',
+                      message: '연결 정보 업데이트가 완료되었습니다.',
+                    });
                   }}
                   onExportCreds={handleExportCreds}
                   onImportClick={() => fileInputRef.current?.click()}
@@ -5304,6 +5360,7 @@ function MainApp() {
                   getGeminiApiKey={getGeminiApiKey}
                   onCheckAppUpdate={handleCheckAppUpdate}
                   isCheckingAppUpdate={isCheckingAppUpdate}
+                  latestAppBuildId={appBuildRemoteId}
                   onScanStorageUsage={scanActiveStorageUsageTree}
                   canScanStorageUsage={canScanStorageUsage}
                   onOpenStorageUsageFile={handleOpenStorageUsageFile}
@@ -5681,12 +5738,40 @@ function MainApp() {
       <ConfirmModal
         isOpen={showAppUpdateConfirmModal}
         title="앱 업데이트"
-        message={
-          appUpdateAvailable
-            ? '새 버전이 준비되었습니다. 저장 중인 작업을 확인한 뒤 최신 버전으로 업데이트하세요.'
-            : '새 업데이트를 찾지 못했습니다. 그래도 앱을 다시 로드해 최신 상태를 적용할 수 있습니다.'
+        message={(() => {
+          const localLabel = appBuildLocalId || '알 수 없음';
+          const remoteLabel = appBuildRemoteId;
+          if (appUpdateCheckError && !appUpdateAvailable) {
+            return [
+              '최신 버전을 확인할 수 없습니다.',
+              `현재 버전: ${localLabel}`,
+              `사유: ${appUpdateCheckError}`,
+              '',
+              '그래도 앱을 다시 로드해 최신 상태를 적용할 수 있습니다.',
+            ].join('\n');
+          }
+          if (appUpdateAvailable) {
+            return [
+              '새 버전이 준비되었습니다. 저장 중인 작업을 확인한 뒤 최신 버전으로 업데이트하세요.',
+              `현재 버전: ${localLabel}`,
+              remoteLabel ? `최신 버전: ${remoteLabel}` : null,
+            ].filter(Boolean).join('\n');
+          }
+          return [
+            '현재 최신 버전입니다.',
+            `현재 버전: ${localLabel}`,
+            remoteLabel ? `확인된 버전: ${remoteLabel}` : null,
+            '',
+            '그래도 앱을 다시 로드할 수 있습니다.',
+          ].filter(Boolean).join('\n');
+        })()}
+        confirmLabel={
+          isApplyingPwaUpdate
+            ? '업데이트 중...'
+            : appUpdateAvailable
+              ? '최신 버전으로 업데이트'
+              : '다시 로드'
         }
-        confirmLabel={isApplyingPwaUpdate ? '업데이트 중...' : '최신 버전으로 업데이트'}
         cancelLabel="취소"
         onConfirm={() => {
           if (isApplyingPwaUpdate) return;

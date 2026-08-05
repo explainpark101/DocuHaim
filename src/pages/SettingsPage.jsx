@@ -35,6 +35,7 @@ import {
 } from '@/utils/treeHoverExpandSettings';
 import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModelSelect';
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
+import { getLocalAppBuildId } from '@/utils/pwaUpdate';
 import { RadioGroup } from 'radix-ui';
 
 export default function SettingsPage({
@@ -77,6 +78,7 @@ export default function SettingsPage({
   getGeminiApiKey,
   onCheckAppUpdate,
   isCheckingAppUpdate = false,
+  latestAppBuildId = '',
   onScanStorageUsage,
   canScanStorageUsage = false,
   onOpenStorageUsageFile,
@@ -916,8 +918,20 @@ export default function SettingsPage({
         <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">앱 업데이트</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
-            서비스 워커(PWA)와 캐시를 포함해 최신 버전이 있는지 확인하고, 바로 적용할 수 있습니다.
+            배포 빌드 해시와 서비스 워커(PWA) 캐시를 확인해 최신 버전이 있는지 확인하고, 바로 적용할 수 있습니다.
           </p>
+          <dl className="mb-3 space-y-1 text-xs text-gray-600 dark:text-odp-muted">
+            <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+              <dt className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">현재 버전</dt>
+              <dd className="min-w-0 break-all font-mono">{getLocalAppBuildId() || '알 수 없음'}</dd>
+            </div>
+            {latestAppBuildId ? (
+              <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                <dt className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">최신 버전</dt>
+                <dd className="min-w-0 break-all font-mono">{latestAppBuildId}</dd>
+              </div>
+            ) : null}
+          </dl>
           <button
             type="button"
             onClick={() => onCheckAppUpdate?.()}

@@ -300,21 +300,14 @@ export default function ChatComposer({
     onSeedConsumed?.();
   }, [seedBody?.id, seedBody?.body, draftReady, editTarget, selectedGroup, onSeedConsumed]);
 
+  const getPresignedUrlRef = useRef(getPresignedUrl);
+  getPresignedUrlRef.current = getPresignedUrl;
+
   useEffect(() => {
     if (!editTarget) return undefined;
     let cancelled = false;
     removedExistingPathsRef.current = [];
     const { text, attachments } = extractChatBodyAttachments(editTarget.body || '');
-    setValue(text);
-    setImageQueue((prev) => {
-      prev.forEach((item) => {
-        if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(item.previewUrl);
-        }
-      });
-      return [];
-    });
-
     const items = attachments.map((a, i) => ({
       id: `existing-${a.path}-${i}`,
       kind: a.kind,
@@ -325,14 +318,23 @@ export default function ChatComposer({
       existing: true,
       previewUrl: null,
     }));
-    setImageQueue(items);
+    setValue(text);
+    setImageQueue((prev) => {
+      prev.forEach((item) => {
+        if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
+      return items;
+    });
 
+    const resolver = getPresignedUrlRef.current;
     (async () => {
-      if (!getPresignedUrl) return;
+      if (!resolver) return;
       for (const item of items) {
         if (item.kind !== 'image' || !item.path) continue;
         try {
-          const url = await resolveWikiImageUrl(item.path, getPresignedUrl);
+          const url = await resolveWikiImageUrl(item.path, resolver);
           if (cancelled || !url) continue;
           setImageQueue((prev) =>
             prev.map((p) => (p.id === item.id ? { ...p, previewUrl: url } : p)),
@@ -346,7 +348,32 @@ export default function ChatComposer({
     return () => {
       cancelled = true;
     };
-  }, [editTarget?.id, getPresignedUrl]);
+    // Hydrate once per edit target. Do not reset draft when resolver identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- editTarget.body snapshotted on id change
+  }, [editTarget?.id]);
+
+  useEffect(() => {
+    if (!editTarget) return undefined;
+    const root = wrapRef.current;
+    if (!root) return undefined;
+
+    const focusComposer = () => {
+      const cmEl = root.querySelector('.cm-editor');
+      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+      if (view) view.focus();
+      else root.querySelector('.cm-content')?.focus?.();
+    };
+
+    const onWindowBlur = () => {
+      window.setTimeout(() => {
+        const active = document.activeElement;
+        if (active?.tagName === 'IFRAME') focusComposer();
+      }, 0);
+    };
+
+    window.addEventListener('blur', onWindowBlur);
+    return () => window.removeEventListener('blur', onWindowBlur);
+  }, [editTarget]);
 
   // Leaving edit mode → restore compose draft into the editor.
   useEffect(() => {
