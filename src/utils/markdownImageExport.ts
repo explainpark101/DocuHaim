@@ -218,7 +218,7 @@ export async function writeMarkdownImageBundleToDirectory(
     const fileHandle = await picturesDir.getFileHandle(fileName, { create: true });
     const writable = await fileHandle.createWritable();
     try {
-      await writable.write(image.data);
+      await writable.write(new Blob([image.data]));
     } finally {
       await writable.close();
     }
