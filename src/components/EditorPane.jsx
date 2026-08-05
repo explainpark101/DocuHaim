@@ -66,6 +66,7 @@ export default function EditorPane({
   uploadImagePercent = 0,
   onCancelUploadImage,
   onResolveWikiImageUrl,
+  onOpenViewPath,
   snippetConfig = { snippets: [] },
   editorType,
   hideRecordingCompanions = false,
@@ -558,6 +559,7 @@ export default function EditorPane({
                   uploadImagePercent={uploadImagePercent}
                   onCancelUploadImage={onCancelUploadImage}
                   onResolveWikiImageUrl={onResolveWikiImageUrl}
+                  onOpenViewPath={onOpenViewPath}
                   snippetConfig={snippetConfig}
                   getGeminiApiKey={getGeminiApiKey}
                 />

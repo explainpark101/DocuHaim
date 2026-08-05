@@ -144,6 +144,8 @@ import {
   deleteMemoDraft,
 } from '@/utils/memoDraftsDb';
 import { rebaseMergeTexts, buildTimestampedCopyName } from '@/utils/textRebaseMerge';
+import { resolveLocalFileNode } from '@/utils/localFileNode';
+import { parseViewPathFromAppPathname } from '@/utils/appHref';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -451,6 +453,7 @@ function MainApp() {
   const hasProcessedOpenFromUrlRef = useRef(false);
   const hasRestoredFromPrintRef = useRef(false);
   const hasPromptedLocalFolderRestoreRef = useRef(false);
+  const [localFolderRestoreSettled, setLocalFolderRestoreSettled] = useState(false);
   const saveFileRef = useRef(null);
   const prevEditorContentRef = useRef('');
 
@@ -1868,12 +1871,14 @@ function MainApp() {
     try {
       const handle = await tryRestoreLocalRootHandle();
       if (!handle) {
+        setLocalFolderRestoreSettled(true);
         alert('폴더 접근 권한이 없습니다. 사이드바에서 폴더를 다시 선택해 주세요.');
         return;
       }
       setStorageMode(STORAGE_MODE_LOCAL);
       await attachLocalRootFolder(handle);
     } catch (e) {
+      setLocalFolderRestoreSettled(true);
       alert(`폴더를 다시 열지 못했습니다: ${e?.message || e}`);
     }
   };
@@ -2448,6 +2453,17 @@ function MainApp() {
       }
 
       const url = new URL(window.location.href);
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+      const encodedView = String(path)
+        .split('/')
+        .filter(Boolean)
+        .map((segment) => encodeURIComponent(segment))
+        .join('/');
+      if (import.meta.env.VITE_ELECTRON === 'true') {
+        url.hash = `/view/${encodedView}`;
+      } else {
+        url.pathname = `${base && base !== '/' ? base : ''}/view/${encodedView}`;
+      }
       url.searchParams.set('open', `${storageType}:${path}`);
       window.open(url.toString(), '_blank');
     },
@@ -2486,64 +2502,134 @@ function MainApp() {
     saveLastOpenedFile({ type: currentFile.type, path: currentFile.id });
   }, [isUnlocked, currentFile, location.pathname, saveLastOpenedFile]);
 
-  // Open file from URL ?open=storageType:path (e.g. from "새 창에서 열기")
+  // Open file from ?open=, /view/* route, or last-file cache once storage is ready.
   useEffect(() => {
     if (!isUnlocked || hasProcessedOpenFromUrlRef.current) return;
-    const openParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('open') : null;
-    if (!openParam) return;
-    const colonIdx = openParam.indexOf(':');
-    const type = colonIdx >= 0 ? openParam.slice(0, colonIdx) : null;
-    const path = colonIdx >= 0 ? openParam.slice(colonIdx + 1) : null;
-    if ((type !== 's3' && type !== 'local' && type !== 'webdav') || !path) {
-      hasProcessedOpenFromUrlRef.current = true;
-      return;
-    }
-    const tree = type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
-    if (!tree || tree.length === 0) return;
-    const node = findFileNodeByPath(tree, path);
-    if (node) {
-      selectFile(type, node);
-    }
-    hasProcessedOpenFromUrlRef.current = true;
-  }, [isUnlocked, s3Tree, localTree, webdavTree, selectFile]);
 
-  // Restore last opened file or chat once unlocked (trees needed for files)
-  useEffect(() => {
-    if (!isUnlocked || hasRestoredLastFileRef.current) return;
-    if (hasProcessedOpenFromUrlRef.current) return;
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('open')) return;
     const onChat =
       location.pathname === '/chat' || location.pathname.endsWith('/chat');
-    // share_target (and direct /chat) already chose chat — don't yank to last note
-    if (onChat) {
+    const openParam =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('open')
+        : null;
+    const routeViewPath = parseViewPathFromAppPathname(location.pathname);
+
+    let type = null;
+    let path = null;
+
+    if (openParam) {
+      const colonIdx = openParam.indexOf(':');
+      const openType = colonIdx >= 0 ? openParam.slice(0, colonIdx) : null;
+      const openPath = colonIdx >= 0 ? openParam.slice(colonIdx + 1) : null;
+      if (
+        (openType !== 's3' && openType !== 'local' && openType !== 'webdav') ||
+        !openPath
+      ) {
+        hasProcessedOpenFromUrlRef.current = true;
+        return;
+      }
+      type = openType;
+      path = openPath;
+    } else if (routeViewPath) {
+      type =
+        storageMode === STORAGE_MODE_LOCAL
+          ? 'local'
+          : storageMode === STORAGE_MODE_WEBDAV
+            ? 'webdav'
+            : 's3';
+      path = routeViewPath;
+    } else if (onChat) {
       hasRestoredLastFileRef.current = true;
+      hasProcessedOpenFromUrlRef.current = true;
+      return;
+    } else {
+      if (hasRestoredLastFileRef.current) return;
+      const saved = loadLastOpenedFile();
+      if (!saved || typeof saved !== 'object') {
+        hasRestoredLastFileRef.current = true;
+        return;
+      }
+      if (saved.type === 'chat') {
+        hasRestoredLastFileRef.current = true;
+        hasProcessedOpenFromUrlRef.current = true;
+        navigate('/chat');
+        return;
+      }
+      if (saved.type !== 's3' && saved.type !== 'local' && saved.type !== 'webdav') {
+        hasRestoredLastFileRef.current = true;
+        return;
+      }
+      type = saved.type;
+      path = saved.path;
+    }
+
+    if (!type || !path) return;
+
+    if (type === 'local') {
+      if (!localRootHandle) {
+        if (localFolderRestoreSettled) {
+          hasProcessedOpenFromUrlRef.current = true;
+          hasRestoredLastFileRef.current = true;
+        }
+        return;
+      }
+    } else if (type === 'webdav') {
+      if (!webdavReady || !webdavTree?.length) return;
+    } else if (!s3Tree?.length) {
       return;
     }
-    const saved = loadLastOpenedFile();
-    if (!saved) return;
-    if (typeof saved !== 'object' || saved == null) {
+
+    let cancelled = false;
+    (async () => {
+      let node = null;
+      if (type === 'local') {
+        node =
+          findFileNodeByPath(localTree, path) ||
+          findNodeByPath(localTree, path) ||
+          (await resolveLocalFileNode(localRootHandle, path));
+      } else if (type === 'webdav') {
+        node = findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
+      } else {
+        node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
+      }
+      if (cancelled) return;
+      hasProcessedOpenFromUrlRef.current = true;
       hasRestoredLastFileRef.current = true;
-      return;
-    }
-    const { type, path } = saved;
-    if (type === 'chat') {
-      hasRestoredLastFileRef.current = true;
-      navigate('/chat');
-      return;
-    }
-    if (type !== 's3' && type !== 'local' && type !== 'webdav') {
-      hasRestoredLastFileRef.current = true;
-      return;
-    }
-    const tree = type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
-    if (!tree || tree.length === 0) {
-      if (type === 'local' || type === 'webdav') hasRestoredLastFileRef.current = true;
-      return;
-    }
-    const node = findFileNodeByPath(tree, path);
-    if (node) selectFile(type, node);
-    hasRestoredLastFileRef.current = true;
-  }, [isUnlocked, s3Tree, localTree, webdavTree, selectFile, loadLastOpenedFile, navigate, location.pathname]);
+      if (openParam) {
+        const params = new URLSearchParams(location.search);
+        params.delete('open');
+        const nextSearch = params.toString();
+        navigate(
+          {
+            pathname: `/view/${path}`,
+            search: nextSearch ? `?${nextSearch}` : '',
+          },
+          { replace: true },
+        );
+      }
+      if (node?.type === 'file') {
+        selectFile(type, node);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isUnlocked,
+    localRootHandle,
+    localFolderRestoreSettled,
+    localTree,
+    webdavReady,
+    webdavTree,
+    s3Tree,
+    storageMode,
+    location.pathname,
+    location.search,
+    selectFile,
+    loadLastOpenedFile,
+    navigate,
+  ]);
 
   // Prompt to restore last local folder when returning in local mode
   useEffect(() => {
@@ -2554,7 +2640,11 @@ function MainApp() {
     (async () => {
       const stored = await hasStoredLocalRootHandle();
       const name = loadLastLocalFolderName();
-      if (cancelled || !stored || !name) return;
+      if (cancelled) return;
+      if (!stored || !name) {
+        setLocalFolderRestoreSettled(true);
+        return;
+      }
       hasPromptedLocalFolderRestoreRef.current = true;
       setPendingLocalFolderName(name);
       setShowRestoreLocalFolderModal(true);
@@ -4490,14 +4580,19 @@ function MainApp() {
     async (notePath) => {
       if (!notePath) return;
       const path = String(notePath);
+      const type =
+        storageMode === STORAGE_MODE_LOCAL
+          ? 'local'
+          : storageMode === STORAGE_MODE_WEBDAV
+            ? 'webdav'
+            : 's3';
       const tree =
-        storageMode === 's3'
-          ? s3Tree
-          : storageMode === 'webdav'
-            ? webdavTree
-            : localTree;
-      const node = findNodeByPath(tree, path) || findFileNodeByPath(tree, path);
-      if (!node) {
+        type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
+      let node = findNodeByPath(tree, path) || findFileNodeByPath(tree, path);
+      if ((!node || node.type !== 'file') && type === 'local') {
+        node = await resolveLocalFileNode(localRootHandle, path);
+      }
+      if (!node || node.type !== 'file') {
         showAlert({
           title: '노트 열기',
           message: '해당 노트가 삭제되어 열 수 없습니다',
@@ -4505,17 +4600,17 @@ function MainApp() {
         });
         return;
       }
-      if (storageMode === 's3') {
-        await selectFileRaw('s3', node);
-        return;
-      }
-      if (storageMode === 'webdav') {
-        await selectFileRaw('webdav', node);
-        return;
-      }
-      await selectFileRaw('local', node);
+      await selectFile(type, node);
     },
-    [storageMode, s3Tree, webdavTree, localTree, selectFileRaw, showAlert],
+    [
+      storageMode,
+      s3Tree,
+      webdavTree,
+      localTree,
+      localRootHandle,
+      selectFile,
+      showAlert,
+    ],
   );
 
   const handleOpenStorageUsageFile = useCallback(
@@ -5524,6 +5619,7 @@ function MainApp() {
                   uploadImagePercent={editorImageUploadPercent}
                   onCancelUploadImage={cancelEditorImageUpload}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
+                  onOpenViewPath={handleOpenNoteFromChat}
                   snippetConfig={snippetConfig}
                   getGeminiApiKey={getGeminiApiKey}
                   onRequestDelete={() =>
@@ -5603,6 +5699,7 @@ function MainApp() {
                   uploadImagePercent={editorImageUploadPercent}
                   onCancelUploadImage={cancelEditorImageUpload}
                   onResolveWikiImageUrl={getPresignedUrlForPath}
+                  onOpenViewPath={handleOpenNoteFromChat}
                   snippetConfig={snippetConfig}
                   getGeminiApiKey={getGeminiApiKey}
                   onRequestDelete={() =>
@@ -5835,7 +5932,10 @@ function MainApp() {
         onConfirm={() => {
           void handleConfirmRestoreLocalFolder();
         }}
-        onCancel={() => setShowRestoreLocalFolderModal(false)}
+        onCancel={() => {
+          setShowRestoreLocalFolderModal(false);
+          setLocalFolderRestoreSettled(true);
+        }}
       />
 
       <ConfirmModal

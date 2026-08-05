@@ -33,6 +33,7 @@ import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMark
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
+import { resolvePreviewHref } from '@/utils/appHref';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
@@ -463,6 +464,7 @@ export default function MarkdownEditor({
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
   getGeminiApiKey,
+  onOpenViewPath,
 }) {
   const navigate = useNavigate();
   const editorRef = useRef(null);
@@ -869,19 +871,42 @@ export default function MarkdownEditor({
     if (!root) return undefined;
     const onClick = (event) => {
       const card = event.target?.closest?.('[data-chat-saved-note]');
-      if (!card || !root.contains(card)) return;
+      if (card && root.contains(card)) {
+        event.preventDefault();
+        event.stopPropagation();
+        navigate(
+          chatSavedNoteLinkTo({
+            id: card.getAttribute('data-chat-id') || '',
+            href: card.getAttribute('data-chat-href') || card.getAttribute('href') || '',
+          }),
+        );
+        return;
+      }
+
+      const anchor = event.target?.closest?.('a[href]');
+      if (!anchor || !root.contains(anchor)) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (typeof event.button === 'number' && event.button !== 0) return;
+
+      const href = anchor.getAttribute('href') || '';
+      const resolved = resolvePreviewHref(href, {
+        currentViewPath: currentFile?.type ? currentFile.id : null,
+      });
+      if (resolved.kind !== 'app') return;
+
       event.preventDefault();
       event.stopPropagation();
-      navigate(
-        chatSavedNoteLinkTo({
-          id: card.getAttribute('data-chat-id') || '',
-          href: card.getAttribute('data-chat-href') || card.getAttribute('href') || '',
-        }),
-      );
+      if (resolved.viewPath && typeof onOpenViewPath === 'function') {
+        onOpenViewPath(resolved.viewPath);
+        return;
+      }
+      const search = resolved.search || '';
+      const hash = resolved.hash || '';
+      navigate(`${resolved.pathname || '/'}${search}${hash}`);
     };
     root.addEventListener('click', onClick);
     return () => root.removeEventListener('click', onClick);
-  }, [navigate]);
+  }, [navigate, currentFile?.id, currentFile?.type, onOpenViewPath]);
 
   const handleApplyWikiImageSize = useCallback(
     ({ width, height }) => {
