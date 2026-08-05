@@ -35,7 +35,10 @@ import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
 import { resolvePreviewHref } from '@/utils/appHref';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
-import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import {
+  hydrateStorageImagesInRoot,
+  markdownLikelyHasStorageImages,
+} from '@/utils/storageImageHydration';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { useTocTitleWrap } from '@/hooks/useTocTitleWrap';
@@ -581,44 +584,19 @@ export default function MarkdownEditor({
         if (DEBUG_WIKI_IMAGE && attempt === 0) console.log('[wiki-image] Hydration: no containerRef.current');
         return;
       }
-      let imgs = root.querySelectorAll('img[data-wiki-path]');
-      if (imgs.length === 0) {
-        const inDoc = document.querySelectorAll('img[data-wiki-path]');
-        if (inDoc.length > 0) {
-          if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] Hydration: imgs found in document but not in containerRef, using document');
-          imgs = inDoc;
-        } else if (/!\[\[/.test(value)) {
-          if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] Hydration: value contains ![[ but no img[data-wiki-path] in DOM (attempt ' + (attempt + 1) + ', will retry)');
-          return;
-        }
-      }
-      if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] Hydration: found imgs', { count: imgs.length, paths: [...imgs].map((el) => el.getAttribute('data-wiki-path')), attempt: attempt + 1 });
-      const MAX_RETRIES = 1;
-      imgs.forEach((img) => {
-        const path = img.getAttribute('data-wiki-path');
-        if (!path) return;
-        let retryCount = 0;
-        const setSrc = (url) => {
-          if (url) img.src = url;
-          else if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] Hydration: setSrc skipped (no url)', { path });
-        };
-        const loadWithFreshUrl = () => {
-          if (retryCount >= MAX_RETRIES) {
-            if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] Hydration: onerror max retries reached', { path });
-            return;
-          }
-          retryCount += 1;
-          if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] Hydration: onerror retry (skipCache)', { path, retryCount });
-          resolveWikiImageUrl(path, onResolveWikiImageUrl, { skipCache: true }).then((url) => {
-            if (url) setSrc(url);
-          });
-        };
-        img.onerror = loadWithFreshUrl;
-        resolveWikiImageUrl(path, onResolveWikiImageUrl).then((url) => {
-          if (url) setSrc(url);
-          else if (DEBUG_WIKI_IMAGE) console.log('[wiki-image] Hydration: no url resolved', { path });
-        });
+      const count = hydrateStorageImagesInRoot(root, {
+        getPresignedUrl: onResolveWikiImageUrl,
+        currentNotePath: currentFile?.id,
       });
+      if (count === 0 && markdownLikelyHasStorageImages(value)) {
+        if (DEBUG_WIKI_IMAGE) {
+          console.log('[wiki-image] Hydration: storage images in markdown but none in DOM yet', {
+            attempt: attempt + 1,
+          });
+        }
+      } else if (DEBUG_WIKI_IMAGE) {
+        console.log('[wiki-image] Hydration: bound imgs', { count, attempt: attempt + 1 });
+      }
     };
 
     const delays = [100, 350, 700, 1200];
@@ -628,7 +606,7 @@ export default function MarkdownEditor({
       }, delay)
     );
     return () => timers.forEach((t) => clearTimeout(t));
-  }, [value, onResolveWikiImageUrl]);
+  }, [value, onResolveWikiImageUrl, currentFile?.id]);
 
   useEffect(() => {
     if (!previewOnly) return;

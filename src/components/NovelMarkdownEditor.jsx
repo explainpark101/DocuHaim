@@ -40,7 +40,10 @@ import { buildNovelSlashSuggestionItems } from '@/config/novelSlashSuggestionIte
 import NovelEditorToc, { NOVEL_TOC_MD_PADDING_CLASS } from '@/components/NovelEditorToc';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
-import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import {
+  hydrateStorageImagesInRoot,
+  markdownLikelyHasStorageImages,
+} from '@/utils/storageImageHydration';
 import {
   getWikiImageAttrsFromElement,
   getWikiImageOccurrenceInContainer,
@@ -434,23 +437,12 @@ export default function NovelMarkdownEditor({
     (ed) => {
       const dom = ed?.view?.dom;
       if (!dom || typeof onResolveWikiImageUrl !== 'function') return;
-      const imgs = dom.querySelectorAll('img[data-wiki-path]');
-      imgs.forEach((img) => {
-        const path = img.getAttribute('data-wiki-path');
-        if (!path) return;
-        let retried = false;
-        const setSrc = (url) => {
-          if (url) img.src = url;
-        };
-        img.onerror = () => {
-          if (retried) return;
-          retried = true;
-          resolveWikiImageUrl(path, onResolveWikiImageUrl, { skipCache: true }).then(setSrc);
-        };
-        resolveWikiImageUrl(path, onResolveWikiImageUrl).then(setSrc);
+      hydrateStorageImagesInRoot(dom, {
+        getPresignedUrl: onResolveWikiImageUrl,
+        currentNotePath: currentFile?.id,
       });
     },
-    [onResolveWikiImageUrl],
+    [onResolveWikiImageUrl, currentFile?.id],
   );
 
   useEffect(() => {
@@ -470,55 +462,29 @@ export default function NovelMarkdownEditor({
         dbgClipboard('novel:hydrate:skip', { reason: 'no prosemirror root' });
         return;
       }
-      let imgs = pm.querySelectorAll('img[data-wiki-path]');
+      let count = hydrateStorageImagesInRoot(pm, {
+        getPresignedUrl: onResolveWikiImageUrl,
+        currentNotePath: currentFile?.id,
+      });
       let usedFallback = false;
-      if (imgs.length === 0) {
-        const inDoc = document.querySelectorAll('.ProseMirror img[data-wiki-path]');
-        if (inDoc.length > 0) {
-          imgs = inDoc;
-          usedFallback = true;
-        } else if (/!\[\[/.test(value ?? '')) {
-          dbgClipboard('novel:hydrate:skip', { reason: 'wiki syntax in md but no img in DOM yet' });
-          return;
-        }
+      if (count === 0 && markdownLikelyHasStorageImages(value ?? '')) {
+        count = hydrateStorageImagesInRoot(document.querySelector('.ProseMirror') || document, {
+          getPresignedUrl: onResolveWikiImageUrl,
+          currentNotePath: currentFile?.id,
+        });
+        usedFallback = count > 0;
       }
       dbgClipboard('novel:hydrate:run', {
-        imgCount: imgs.length,
+        imgCount: count,
         usedDocumentFallback: usedFallback,
         hydrateTick,
-      });
-      const MAX_RETRIES = 1;
-      imgs.forEach((img) => {
-        const path = img.getAttribute('data-wiki-path');
-        if (!path) return;
-        let retryCount = 0;
-        const setSrc = (url) => {
-          if (url) img.src = url;
-        };
-        const loadWithFreshUrl = () => {
-          if (retryCount >= MAX_RETRIES) return;
-          retryCount += 1;
-          resolveWikiImageUrl(path, onResolveWikiImageUrl, { skipCache: true }).then((url) => {
-            dbgClipboard('novel:hydrate:retryUrl', { path, hasUrl: Boolean(url) });
-            if (url) setSrc(url);
-          });
-        };
-        img.onerror = loadWithFreshUrl;
-        resolveWikiImageUrl(path, onResolveWikiImageUrl).then((url) => {
-          dbgClipboard('novel:hydrate:url', {
-            path,
-            hasUrl: Boolean(url),
-            urlLength: url?.length ?? 0,
-          });
-          if (url) setSrc(url);
-        });
       });
     };
 
     const delays = [80, 200, 450, 900];
     const timers = delays.map((delay) => setTimeout(() => runHydration(), delay));
     return () => timers.forEach((t) => clearTimeout(t));
-  }, [value, onResolveWikiImageUrl, hydrateTick]);
+  }, [value, onResolveWikiImageUrl, hydrateTick, currentFile?.id]);
 
   /**
    * 업로드 직후 Tiptap onCreate 직전이면 editorRef 가 비어 있을 수 있어 rAF 로 재시도한다.

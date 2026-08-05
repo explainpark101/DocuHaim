@@ -15,6 +15,22 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
   div: ['class', 'data-md-pgbr'],
   span: ['class', 'data-md-pgbr', 'aria-hidden'],
   a: ['href', 'class', 'target', 'rel', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
+  img: [
+    'src',
+    'alt',
+    'title',
+    'class',
+    'style',
+    'width',
+    'height',
+    'data-wiki-path',
+    'data-wiki-width',
+    'data-wiki-height',
+    'data-md-src',
+    'data-md-width',
+    'data-md-height',
+    'data-storage-image',
+  ],
 };
 
 config({

@@ -60,7 +60,7 @@ if (!isElectron) {
       manifest: {
         id: normalizedBase,
         lang: 'ko',
-        name: 'S3 Haim - Markdown Notes',
+        name: 'S3 Haim',
         short_name: 'S3 Haim',
         description: 'S3, 로컬, WebDAV에 저장하는 마크다운 메모 앱',
         theme_color: '#0f172a',

@@ -309,7 +309,12 @@ export default function ExportPDFPage() {
   });
   const getPresignedUrl = useMemo(() => getPresignedUrlResolver(currentFile?.type), [currentFile?.type]);
 
-  useWikiImageHydration(previewContainerRef, previewValue, getPresignedUrl ?? undefined);
+  useWikiImageHydration(
+    previewContainerRef,
+    previewValue,
+    getPresignedUrl ?? undefined,
+    currentFile?.id,
+  );
 
   useEffect(() => {
     let cancelled = false;

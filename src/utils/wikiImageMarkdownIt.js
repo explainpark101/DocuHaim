@@ -3,6 +3,10 @@ import {
   parseMarkdownImageAttrsBlock,
   parseWikiImageInner,
 } from '@/utils/wikiImageSyntax';
+import { decodeMarkdownImageSrc, isStorageImageSrc } from '@/utils/storageImagePath';
+
+const DEBUG_WIKI_IMAGE_PLUGIN = true;
+const PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
 
 /**
  * markdown-it 플러그인: ![[path]] / ![[path|size]] 를 data-wiki-path 를 가진 img 로 변환.
@@ -11,9 +15,6 @@ import {
  *
  * @param {import('markdown-it')} md
  */
-const DEBUG_WIKI_IMAGE_PLUGIN = true;
-const PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
-
 export function wikiImagePlugin(md) {
   // ![[path]] 또는 ![[path|size]] 형식 지원
   const WIKI_IMAGE_RE = /!\[\[([^[\]]+)\]\]/g;
@@ -336,6 +337,10 @@ export function wikiImagePlugin(md) {
 
         const src = token.attrGet('src');
         if (src) token.attrSet('data-md-src', src);
+        if (src && isStorageImageSrc(decodeMarkdownImageSrc(src))) {
+          token.attrSet('src', PLACEHOLDER_SRC);
+          token.attrSet('data-storage-image', '1');
+        }
 
         const nextToken = children[i + 1];
         if (nextToken?.type === 'text') {

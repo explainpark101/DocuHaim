@@ -503,8 +503,12 @@ function MainApp() {
   }, [currentFile]);
 
   useEffect(() => {
-    const onChat =
-      location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    const pathname = location.pathname || '/';
+    if (pathname === '/') {
+      document.title = 'S3 Haim - Markdown Notes';
+      return;
+    }
+    const onChat = pathname === '/chat' || pathname.endsWith('/chat');
     if (onChat) {
       document.title = `${appName} - 나와의 채팅`;
       return;
@@ -514,9 +518,9 @@ function MainApp() {
         || (typeof currentFile.id === 'string' && currentFile.id.split('/').filter(Boolean).pop())
         || 'Untitled';
       document.title = `${appName} - ${fileName}`;
-    } else {
-      document.title = appName;
+      return;
     }
+    document.title = appName;
   }, [appName, currentFile, location.pathname]);
 
   useEffect(() => {
