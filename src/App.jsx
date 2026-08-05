@@ -3498,6 +3498,7 @@ function MainApp() {
             ...prev,
             content: textToSave,
             size: typeof file.size === 'number' ? file.size : prev?.size ?? null,
+            lastModified: file.lastModified,
           };
           currentFileRef.current = next;
           return next;
