@@ -167,7 +167,7 @@ export default function NovelEditorToc({
                 <li
                   key={`${item.pos}-${i}`}
                   className="min-w-0"
-                  style={{ paddingLeft: `${Math.min(item.level - 1, 5) * 0.45}rem` }}
+                  style={{ paddingLeft: `${Math.min(item.level - 1, 9) * 0.45}rem` }}
                 >
                   <button
                     type="button"

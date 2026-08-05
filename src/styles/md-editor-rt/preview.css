@@ -813,11 +813,10 @@
 .md-editor-preview h4 {
   font-size: var(--text-base);
 }
-.md-editor-preview h5 {
-  font-size: var(--text-sm);
-}
-.md-editor-preview h6 {
-  font-size: var(--text-xs);
+.md-editor-preview h5,
+.md-editor-preview h6,
+.md-editor-preview h6[data-heading-level] {
+  font-size: var(--text-base);
 }
 .md-editor-preview hr {
   height: 1px;

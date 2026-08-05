@@ -25,6 +25,7 @@ import HtmlSvgPreviewEditor from '@/components/HtmlSvgPreviewEditor';
 import Button from '@/components/Button';
 import { ListTree, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
+import SessionOpenPanel from '@/components/SessionOpenPanel';
 
 export default function EditorPane({
   currentFile,
@@ -52,6 +53,10 @@ export default function EditorPane({
   onOpenSidebar,
   onRequestCreateFile,
   onOpenChatWithMyself,
+  onOpenSessionFiles,
+  onOpenSessionDirectory,
+  onDropSessionTransfer,
+  isOpeningSession = false,
   isRecording = false,
   audioLevel = 0,
   onToggleRecording,
@@ -185,44 +190,58 @@ export default function EditorPane({
         )}
         <div className="flex flex-1 flex-col items-center justify-center px-4">
           <IconFolder />
-          <p className="mt-4 text-center">사이드바에서 파일을 선택하거나 새 파일을 생성하세요.</p>
-          <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
-            {typeof onRequestCreateFile === 'function' ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                className="w-full"
-                onClick={onRequestCreateFile}
-              >
-                <IconFilePlus size={16} />
-                파일 생성
-              </Button>
-            ) : null}
-            {typeof onOpenSidebar === 'function' ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                className="w-full"
-                onClick={onOpenSidebar}
-              >
-                <IconMenu size={16} />
-                사이드바 열기
-              </Button>
-            ) : null}
-            {typeof onOpenChatWithMyself === 'function' ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                className="w-full"
-                onClick={onOpenChatWithMyself}
-              >
-                <IconMessage size={16} />
-                나와의 채팅 열기
-              </Button>
-            ) : null}
+          <p className="mt-4 text-center">사이드바에서 파일을 선택하거나, 로컬 파일을 열어 편집하세요.</p>
+          <div className="mt-6 flex w-full justify-center">
+            {typeof onOpenSessionFiles === 'function' && typeof onDropSessionTransfer === 'function' ? (
+              <SessionOpenPanel
+                onOpenFiles={onOpenSessionFiles}
+                onOpenDirectoryHandle={onOpenSessionDirectory}
+                onDropTransfer={onDropSessionTransfer}
+                onRequestCreateFile={onRequestCreateFile}
+                onOpenSidebar={onOpenSidebar}
+                onOpenChatWithMyself={onOpenChatWithMyself}
+                isBusy={isOpeningSession}
+              />
+            ) : (
+              <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
+                {typeof onRequestCreateFile === 'function' ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    className="w-full"
+                    onClick={onRequestCreateFile}
+                  >
+                    <IconFilePlus size={16} />
+                    파일 생성
+                  </Button>
+                ) : null}
+                {typeof onOpenSidebar === 'function' ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    className="w-full"
+                    onClick={onOpenSidebar}
+                  >
+                    <IconMenu size={16} />
+                    사이드바 열기
+                  </Button>
+                ) : null}
+                {typeof onOpenChatWithMyself === 'function' ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    className="w-full"
+                    onClick={onOpenChatWithMyself}
+                  >
+                    <IconMessage size={16} />
+                    나와의 채팅 열기
+                  </Button>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -285,6 +304,8 @@ export default function EditorPane({
             <AudioLevelIndicator level={audioLevel} size={16} />
           ) : currentFile.type === 's3' || currentFile.type === 'webdav' ? (
             <IconCloud />
+          ) : currentFile.type === 'session' ? (
+            <IconDownload />
           ) : (
             <IconFolder />
           )}
@@ -354,6 +375,7 @@ export default function EditorPane({
                 className="absolute right-0 top-full z-100 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
                 role="menu"
               >
+                {currentFile.type !== 'session' ? (
                 <button
                   type="button"
                   className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
@@ -365,7 +387,8 @@ export default function EditorPane({
                   <IconFolder size={14} />
                   파일 이동
                 </button>
-                {onRequestDownload && (
+                ) : null}
+                {onRequestDownload && currentFile.type !== 'session' && (
                   <button
                     type="button"
                     className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
@@ -378,7 +401,7 @@ export default function EditorPane({
                     다운로드
                   </button>
                 )}
-                {onShareToChatWithMyself && (
+                {onShareToChatWithMyself && currentFile.type !== 'session' && (
                   <button
                     type="button"
                     className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
@@ -391,6 +414,7 @@ export default function EditorPane({
                     나와의 채팅에 공유하기
                   </button>
                 )}
+                {currentFile.type !== 'session' ? (
                 <button
                   type="button"
                   className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
@@ -402,6 +426,7 @@ export default function EditorPane({
                   <IconTrash size={14} />
                   삭제
                 </button>
+                ) : null}
               </div>
             )}
           </div>
@@ -411,11 +436,28 @@ export default function EditorPane({
             size="sm"
             onClick={handleToolbarSave}
             disabled={isSaving || !isEditableViewer}
-            title={isSaving ? '저장 중...' : '저장'}
+            title={
+              isSaving
+                ? currentFile.type === 'session'
+                  ? '다운로드 중...'
+                  : '저장 중...'
+                : currentFile.type === 'session'
+                  ? '다운로드로 저장'
+                  : '저장'
+            }
             className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"
           >
-            <IconSave />
-            <span className="hidden md:inline"> {isSaving ? '저장 중...' : '저장'}</span>
+            {currentFile.type === 'session' ? <IconDownload /> : <IconSave />}
+            <span className="hidden md:inline">
+              {' '}
+              {isSaving
+                ? currentFile.type === 'session'
+                  ? '다운로드 중...'
+                  : '저장 중...'
+                : currentFile.type === 'session'
+                  ? '다운로드'
+                  : '저장'}
+            </span>
           </Button>
           {!previewOnly && (
             <Button

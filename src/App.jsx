@@ -145,9 +145,25 @@ import {
 } from '@/utils/memoDraftsDb';
 import { rebaseMergeTexts, buildTimestampedCopyName } from '@/utils/textRebaseMerge';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
+import { resolveStorageImagePath } from '@/utils/storageImagePath';
 import { parseViewPathFromAppPathname, isChatAppPathname, isSettingsAppPathname } from '@/utils/appHref';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import { buildZipBlob } from '@/utils/zipBuilder';
+import {
+  SESSION_STORAGE_TYPE,
+  buildSessionDownload,
+  buildSessionTree,
+  decodeSessionText,
+  mimeForSessionFileName,
+  pickDefaultSessionOpenPath,
+  putSessionFileBytes,
+  renameSessionFile,
+  sessionViewerForName,
+  updateSessionFileText,
+  workspaceFromDataTransfer,
+  workspaceFromDirectoryHandle,
+  workspaceFromFileList,
+} from '@/utils/sessionWorkspace';
 import {
   buildMarkdownImageZipEntries,
   collectMarkdownExportImageBytes,
@@ -158,6 +174,7 @@ import {
   writeMarkdownImageBundleToDirectory,
   zipFileNameForMarkdown,
 } from '@/utils/markdownImageExport';
+import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -237,6 +254,10 @@ function MainApp() {
   const [s3Tree, setS3Tree] = useState([]);
   const [localTree, setLocalTree] = useState([]);
   const [webdavTree, setWebdavTree] = useState([]);
+  const [sessionWorkspace, setSessionWorkspace] = useState(null);
+  const sessionWorkspaceRef = useRef(null);
+  const sessionObjectUrlsRef = useRef(new Map());
+  const [isOpeningSession, setIsOpeningSession] = useState(false);
   const [isWebdavTreeLoading, setIsWebdavTreeLoading] = useState(false);
   const [webdavFolderLoadingPath, setWebdavFolderLoadingPath] = useState(null);
   const [localRootHandle, setLocalRootHandle] = useState(null);
@@ -510,6 +531,9 @@ function MainApp() {
   useEffect(() => {
     webdavTreeRef.current = webdavTree;
   }, [webdavTree]);
+  useEffect(() => {
+    sessionWorkspaceRef.current = sessionWorkspace;
+  }, [sessionWorkspace]);
   useEffect(() => {
     currentFileRef.current = currentFile;
   }, [currentFile]);
@@ -1053,6 +1077,212 @@ function MainApp() {
     clearLastOpenedFile();
   }, [clearLastOpenedFile]);
 
+  const revokeSessionObjectUrls = useCallback(() => {
+    for (const url of sessionObjectUrlsRef.current.values()) {
+      URL.revokeObjectURL(url);
+    }
+    sessionObjectUrlsRef.current.clear();
+  }, []);
+
+  const getSessionObjectUrl = useCallback((path, bytes, mime) => {
+    const existing = sessionObjectUrlsRef.current.get(path);
+    if (existing) return existing;
+    const url = URL.createObjectURL(new Blob([bytes], { type: mime || 'application/octet-stream' }));
+    sessionObjectUrlsRef.current.set(path, url);
+    return url;
+  }, []);
+
+  const flushSessionEditorToWorkspace = useCallback(() => {
+    const cur = currentFileRef.current;
+    const ws = sessionWorkspaceRef.current;
+    if (!cur || cur.type !== SESSION_STORAGE_TYPE || !cur.id || !ws) return ws;
+    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(cur.viewer || 'markdown');
+    if (!editable) return ws;
+    const next = updateSessionFileText(ws, cur.id, editorContentRef.current ?? '');
+    sessionWorkspaceRef.current = next;
+    setSessionWorkspace(next);
+    return next;
+  }, []);
+
+  const closeSessionWorkspace = useCallback(() => {
+    if (
+      currentFileRef.current?.type === SESSION_STORAGE_TYPE &&
+      hasUnsavedEditorChanges() &&
+      !window.confirm('저장하지 않은 변경이 있습니다. 세션을 닫으면 사라집니다. 닫을까요?')
+    ) {
+      return;
+    }
+    revokeSessionObjectUrls();
+    sessionWorkspaceRef.current = null;
+    setSessionWorkspace(null);
+    if (currentFileRef.current?.type === SESSION_STORAGE_TYPE) {
+      clearOpenFileState();
+      navigate('/');
+    }
+  }, [clearOpenFileState, hasUnsavedEditorChanges, navigate, revokeSessionObjectUrls]);
+
+  const applySessionFileToEditor = useCallback(
+    (path, workspace, options = {}) => {
+      const record = workspace?.files?.[path];
+      if (!record) return false;
+      const skipNavigate = options.skipNavigate === true;
+      const viewer = sessionViewerForName(record.name);
+      const size = record.bytes.byteLength;
+      const mime = mimeForSessionFileName(record.name);
+
+      if (viewer === 'image' || viewer === 'pdf' || viewer === 'audio' || viewer === 'video') {
+        const url = getSessionObjectUrl(path, record.bytes, mime);
+        setCurrentFile((prev) => {
+          revokeOpenFileObjectUrl(prev);
+          return {
+            type: SESSION_STORAGE_TYPE,
+            id: path,
+            name: record.name,
+            viewer,
+            objectUrl: url,
+            size,
+          };
+        });
+        setEditorContent('');
+        editorContentRef.current = '';
+        if (!skipNavigate) navigate(`/view/${path}`);
+        return true;
+      }
+
+      if (viewer === 'unsupported') {
+        setCurrentFile((prev) => {
+          revokeOpenFileObjectUrl(prev);
+          return {
+            type: SESSION_STORAGE_TYPE,
+            id: path,
+            name: record.name,
+            viewer: 'unsupported',
+            size,
+          };
+        });
+        setEditorContent('');
+        editorContentRef.current = '';
+        if (!skipNavigate) navigate(`/view/${path}`);
+        return true;
+      }
+
+      const text = decodeSessionText(record.bytes);
+      setCurrentFile((prev) => {
+        revokeOpenFileObjectUrl(prev);
+        return {
+          type: SESSION_STORAGE_TYPE,
+          id: path,
+          name: record.name,
+          content: text,
+          viewer,
+          size,
+        };
+      });
+      setEditorContent(text);
+      editorContentRef.current = text;
+      if (!skipNavigate) navigate(`/view/${path}`);
+      return true;
+    },
+    [getSessionObjectUrl, navigate],
+  );
+
+  const openSessionWorkspace = useCallback(
+    async (workspace) => {
+      if (
+        sessionWorkspaceRef.current &&
+        !window.confirm('이미 열린 다운로드 세션이 있습니다. 새 파일로 바꾸면 현재 세션은 사라집니다. 계속할까요?')
+      ) {
+        return;
+      }
+      revokeSessionObjectUrls();
+      sessionWorkspaceRef.current = workspace;
+      setSessionWorkspace(workspace);
+      const path = pickDefaultSessionOpenPath(workspace);
+      if (!path) {
+        alert('열 수 있는 파일이 없습니다.');
+        return;
+      }
+      applySessionFileToEditor(path, workspace);
+      if (isMobile) setSidebarOpen(false);
+    },
+    [applySessionFileToEditor, isMobile, revokeSessionObjectUrls],
+  );
+
+  const handleOpenSessionFiles = useCallback(
+    async (fileList, origin) => {
+      setIsOpeningSession(true);
+      try {
+        const workspace = await workspaceFromFileList(fileList, origin);
+        await openSessionWorkspace(workspace);
+      } catch (error) {
+        console.error('Session open failed:', error);
+        alert(error?.message || '파일을 열지 못했습니다.');
+      } finally {
+        setIsOpeningSession(false);
+      }
+    },
+    [openSessionWorkspace],
+  );
+
+  const handleOpenSessionDirectory = useCallback(async () => {
+    if (!('showDirectoryPicker' in window)) {
+      alert('이 브라우저는 폴더 선택을 지원하지 않습니다. ZIP 또는 MD 파일을 열어 주세요.');
+      return;
+    }
+    setIsOpeningSession(true);
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      const workspace = await workspaceFromDirectoryHandle(dirHandle);
+      await openSessionWorkspace(workspace);
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      console.error('Session folder open failed:', error);
+      alert(error?.message || '폴더를 열지 못했습니다.');
+    } finally {
+      setIsOpeningSession(false);
+    }
+  }, [openSessionWorkspace]);
+
+  const handleDropSessionTransfer = useCallback(
+    async (dataTransfer) => {
+      setIsOpeningSession(true);
+      try {
+        const workspace = await workspaceFromDataTransfer(dataTransfer);
+        await openSessionWorkspace(workspace);
+      } catch (error) {
+        console.error('Session drop failed:', error);
+        alert(error?.message || '드롭한 항목을 열지 못했습니다.');
+      } finally {
+        setIsOpeningSession(false);
+      }
+    },
+    [openSessionWorkspace],
+  );
+
+  const downloadSessionWorkspace = useCallback(async () => {
+    const flushed = flushSessionEditorToWorkspace() ?? sessionWorkspaceRef.current;
+    if (!flushed) return;
+    const { blob, fileName } = await buildSessionDownload(flushed);
+    triggerBlobDownload(blob, fileName);
+    setLastAutoSaveAt(Date.now());
+    const cur = currentFileRef.current;
+    if (cur?.type === SESSION_STORAGE_TYPE && cur.id) {
+      const record = flushed.files[cur.id];
+      const text = editorContentRef.current ?? '';
+      setCurrentFile((prev) => {
+        if (!prev || prev.type !== SESSION_STORAGE_TYPE || prev.id !== cur.id) return prev;
+        const next = {
+          ...prev,
+          content: ['markdown', 'json', 'raw', 'html', 'svg'].includes(prev.viewer || '') ? text : prev.content,
+          size: record?.bytes.byteLength ?? prev.size,
+        };
+        currentFileRef.current = next;
+        return next;
+      });
+    }
+    setOperationStatus(`다운로드: ${fileName}`);
+  }, [flushSessionEditorToWorkspace, triggerBlobDownload]);
+
   const closeCurrentFile = () => {
     clearOpenFileState();
     navigate('/');
@@ -1406,15 +1636,18 @@ function MainApp() {
       });
       const isLocalUpload = currentFile?.type === 'local' && localRootHandle;
       const isWebdavUpload = currentFile?.type === 'webdav' && webdavReady;
+      const isSessionUpload = currentFile?.type === SESSION_STORAGE_TYPE;
       const client = getS3Client();
-      if (!isLocalUpload && !isWebdavUpload && (!client || !s3Creds.bucket)) {
+      if (!isLocalUpload && !isWebdavUpload && !isSessionUpload && (!client || !s3Creds.bucket)) {
         dbgClipboard('app:upload:abort', { reason: 'no storage backend ready' });
         setOperationStatus(
           currentFile?.type === 'webdav'
             ? '이미지 업로드는 WebDAV 연결 후 사용할 수 있습니다.'
             : currentFile?.type === 'local'
               ? '이미지 업로드는 로컬 폴더를 연 뒤 사용할 수 있습니다.'
-              : '이미지 업로드는 S3 연결 후 사용할 수 있습니다.',
+              : currentFile?.type === SESSION_STORAGE_TYPE
+                ? '이미지 업로드는 열린 세션에서만 사용할 수 있습니다.'
+                : '이미지 업로드는 S3 연결 후 사용할 수 있습니다.',
         );
         return [];
       }
@@ -1458,7 +1691,8 @@ function MainApp() {
       const imagePathPrefix =
         (currentFile?.type === 's3' ||
           currentFile?.type === 'local' ||
-          currentFile?.type === 'webdav') &&
+          currentFile?.type === 'webdav' ||
+          currentFile?.type === SESSION_STORAGE_TYPE) &&
         currentFile?.id
           ? buildEditorImagePathPrefix(currentFile.id)
           : '.images/note';
@@ -1513,6 +1747,41 @@ function MainApp() {
             }
             await backend.writeBytes(path, body, mime || 'application/octet-stream');
             reportProgress(file, 100);
+          } else if (isSessionUpload) {
+            const {
+              normalizeEditorImagePathPrefix,
+              sniffImageMimeFromFile,
+              getExtensionFromMime,
+            } = await import('@/utils/editorImageUpload');
+            const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
+            const uuid =
+              typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            let mime = file.type;
+            if (!mime || mime === 'application/octet-stream') {
+              mime = (await sniffImageMimeFromFile(file)) || mime;
+            }
+            const ext = getExtensionFromMime(mime);
+            path = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
+            reportProgress(file, 0);
+            const body = new Uint8Array(await file.arrayBuffer());
+            if (uploadController.signal.aborted) {
+              throw new DOMException('Aborted', 'AbortError');
+            }
+            const nextWs = putSessionFileBytes(
+              flushSessionEditorToWorkspace() ?? sessionWorkspaceRef.current ?? {
+                origin: 'md',
+                originName: 'untitled',
+                files: {},
+              },
+              path,
+              body,
+            );
+            sessionWorkspaceRef.current = nextWs;
+            setSessionWorkspace(nextWs);
+            sessionObjectUrlsRef.current.delete(path);
+            reportProgress(file, 100);
           } else {
             path = await uploadEditorImage(client, s3Creds.bucket, file, {
               imagePathPrefix,
@@ -1557,12 +1826,28 @@ function MainApp() {
       dbgClipboard('app:upload:return', { paths, pathCount: paths.length });
       return paths;
     },
-    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType, refreshWebdavTree, addIndicator, removeIndicator, updateIndicator]
+    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType, refreshWebdavTree, addIndicator, removeIndicator, updateIndicator, flushSessionEditorToWorkspace]
   );
 
   /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬/WebDAV: blob URL) */
   const getPresignedUrlForPath = useCallback(
     async (path) => {
+      if (currentFile?.type === SESSION_STORAGE_TYPE) {
+        const ws = sessionWorkspaceRef.current;
+        const candidates = [
+          path,
+          String(path || '').replace(/^\/+/, ''),
+          resolveStorageImagePath(path, currentFile.id),
+        ].filter(Boolean);
+        for (const key of candidates) {
+          const record = ws?.files?.[key];
+          if (record) {
+            return getSessionObjectUrl(record.path, record.bytes, mimeForSessionFileName(record.name));
+          }
+        }
+        console.warn('[wiki-image] getPresignedUrlForPath: session failed', { path });
+        return null;
+      }
       if (currentFile?.type === 'local' && localRootHandle) {
         const url = await getLocalWikiImageObjectUrl(localRootHandle, path);
         if (url) {
@@ -1595,7 +1880,7 @@ function MainApp() {
         return null;
       }
     },
-    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType]
+    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType, getSessionObjectUrl]
   );
 
   /** Chat with Myself: resolve by storageMode (not current editor file). */
@@ -2333,6 +2618,11 @@ function MainApp() {
       });
       setEditorContent(contentToUse);
       goToViewPath();
+    } else if (type === SESSION_STORAGE_TYPE) {
+      flushSessionEditorToWorkspace();
+      const workspace = sessionWorkspaceRef.current;
+      if (!workspace) return;
+      applySessionFileToEditor(node.path, workspace, { skipNavigate });
     }
   };
 
@@ -2343,6 +2633,10 @@ function MainApp() {
       const cur = currentFileRef.current;
       if (!cur?.viewer || cur.viewer !== 'markdown') return;
       if (cur.type === storageType && cur.id === node.path) return;
+      if (cur.type === SESSION_STORAGE_TYPE) {
+        flushSessionEditorToWorkspace();
+        return;
+      }
       const draftKey = getDraftKey(cur.type, cur.id);
       const origLastMod = cur.lastModified;
       const ts =
@@ -2362,7 +2656,7 @@ function MainApp() {
         console.error('memoDraft save before switch:', e);
       }
     },
-    [editorContent]
+    [editorContent, flushSessionEditorToWorkspace]
   );
 
   const handleTreeNodeSelect = useCallback(
@@ -2371,7 +2665,15 @@ function MainApp() {
       const isRange = shiftKey;
 
       const tree =
-        storageType === 's3' ? s3Tree : storageType === 'webdav' ? webdavTree : localTree;
+        storageType === 's3'
+          ? s3Tree
+          : storageType === 'webdav'
+            ? webdavTree
+            : storageType === SESSION_STORAGE_TYPE
+              ? sessionWorkspace
+                ? buildSessionTree(sessionWorkspace)
+                : []
+              : localTree;
       const flatPaths = flattenTreeToPaths(tree);
       const path = node.path;
       const key = toSelectKey(storageType, path);
@@ -2425,7 +2727,7 @@ function MainApp() {
         await selectFileRaw(storageType, node);
       }
     },
-    [isMobile, s3Tree, localTree, webdavTree, selectFileRaw, saveCurrentMarkdownBeforeSwitch, confirmAndCancelEditorImageUpload]
+    [isMobile, s3Tree, localTree, webdavTree, sessionWorkspace, selectFileRaw, saveCurrentMarkdownBeforeSwitch, confirmAndCancelEditorImageUpload]
   );
 
   const selectFile = useCallback(
@@ -2934,6 +3236,20 @@ function MainApp() {
         console.error('S3 파일 로드 실패:', e);
         alert('파일을 텍스트로 불러오지 못했습니다.');
       }
+    } else if (currentFile.type === SESSION_STORAGE_TYPE) {
+      const record = sessionWorkspaceRef.current?.files?.[currentFile.id];
+      if (!record) {
+        alert('파일을 텍스트로 불러오지 못했습니다.');
+        return;
+      }
+      const content = decodeSessionText(record.bytes);
+      setCurrentFile((prev) => ({
+        ...prev,
+        content,
+        viewer: 'raw',
+        size: record.bytes.byteLength,
+      }));
+      setEditorContent(content);
     } else if (currentFile.type === 'local' && currentFile.handle) {
       try {
         const content = await currentFile.handle.getFile().then((f) => f.text());
@@ -3005,9 +3321,19 @@ function MainApp() {
   };
 
   /** Object URL 방식: 메모리 제한 ~100–200MB. presigned URL 인코딩 이슈 회피 */
-  const handleDownloadCurrentFile = async (imageMode = 'files') => {
+  const handleDownloadCurrentFile = async ({ imageMode = 'files', headingMax = 1 } = {}) => {
     if (!currentFile) return;
     const storageType = currentFile.type;
+    if (storageType === SESSION_STORAGE_TYPE) {
+      try {
+        await downloadSessionWorkspace();
+      } catch (e) {
+        console.error('세션 다운로드 실패:', e);
+        alert('다운로드에 실패했습니다: ' + (e?.message || e));
+      }
+      setShowDownloadMethodModal(false);
+      return;
+    }
     if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
     const fileName = currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
     const notePath = currentFile.id || '';
@@ -3015,12 +3341,13 @@ function MainApp() {
       if (isMarkdownFileName(fileName)) {
         const backend = getBackendForType(storageType);
         const { text } = await backend.readText(notePath);
+        const markdown = remapMarkdownHeadingLevels(text, headingMax);
         const bundled =
           imageMode === 'base64'
-            ? await downloadMarkdownImageBase64(storageType, notePath, fileName, text)
-            : await downloadMarkdownImageZip(storageType, notePath, fileName, text);
+            ? await downloadMarkdownImageBase64(storageType, notePath, fileName, markdown)
+            : await downloadMarkdownImageZip(storageType, notePath, fileName, markdown);
         if (!bundled) {
-          triggerBlobDownload(new Blob([text], { type: 'text/markdown;charset=utf-8' }), fileName);
+          triggerBlobDownload(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), fileName);
         }
       } else {
         const body = await readBackendBytes(storageType, notePath);
@@ -3111,7 +3438,7 @@ function MainApp() {
   };
 
   /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시. md+이미지는 zip 없이 md/.pictures 또는 base64 단일 md */
-  const handleDownloadToFolder = async (imageMode = 'files') => {
+  const handleDownloadToFolder = async ({ imageMode = 'files', headingMax = 1 } = {}) => {
     if (!currentFile) return;
     const storageType = currentFile.type;
     if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
@@ -3128,7 +3455,8 @@ function MainApp() {
       if (isMarkdownFileName(fileName)) {
         const backend = getBackendForType(storageType);
         const { text } = await backend.readText(notePath);
-        const plan = planMarkdownImageExport(text, notePath);
+        const markdown = remapMarkdownHeadingLevels(text, headingMax);
+        const plan = planMarkdownImageExport(markdown, notePath);
         if (plan.images.length) {
           const { entries, missing } = await collectMarkdownExportImageBytes(
             plan.images,
@@ -3138,11 +3466,11 @@ function MainApp() {
             },
           );
           if (imageMode === 'base64') {
-            const markdown = embedMarkdownImagesAsDataUris(plan.markdown, entries);
+            const bundled = embedMarkdownImagesAsDataUris(plan.markdown, entries);
             const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
             try {
-              await writable.write(markdown);
+              await writable.write(bundled);
             } finally {
               await writable.close();
             }
@@ -3161,6 +3489,16 @@ function MainApp() {
           setDownloadComplete(true);
           return;
         }
+        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        try {
+          await writable.write(markdown);
+        } finally {
+          await writable.close();
+        }
+        setDownloadProgress(100);
+        setDownloadComplete(true);
+        return;
       }
 
       const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
@@ -3666,6 +4004,9 @@ function MainApp() {
         });
         setIsSaving(false);
         return;
+      } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
+        await downloadSessionWorkspace();
+        return;
       } else if (fileToSave.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         await backend.writeText(fileToSave.id, textToSave, contentTypeForViewer);
@@ -3900,6 +4241,16 @@ function MainApp() {
         updated = await renameS3File(currentFile, trimmed, contentOverride);
       } else if (currentFile.type === 'local') {
         updated = await renameLocalFile(currentFile, trimmed);
+      } else if (currentFile.type === SESSION_STORAGE_TYPE) {
+        const ws = flushSessionEditorToWorkspace() ?? sessionWorkspaceRef.current;
+        if (!ws) return null;
+        const nextWs = renameSessionFile(ws, currentFile.id, trimmed);
+        sessionWorkspaceRef.current = nextWs;
+        setSessionWorkspace(nextWs);
+        const lastSlash = String(currentFile.id || '').lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? currentFile.id.slice(0, lastSlash + 1) : '';
+        const newKey = dirPrefix + trimmed;
+        updated = { ...currentFile, id: newKey, name: trimmed };
       } else if (currentFile.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         const oldKey = currentFile.id;
@@ -5360,7 +5711,10 @@ function MainApp() {
   };
 
   const isEditableStorage =
-    currentFile?.type === 's3' || currentFile?.type === 'local' || currentFile?.type === 'webdav';
+    currentFile?.type === 's3' ||
+    currentFile?.type === 'local' ||
+    currentFile?.type === 'webdav' ||
+    currentFile?.type === SESSION_STORAGE_TYPE;
   const hasUnsavedChanges =
     isEditableStorage && currentFile && currentFile.content !== editorContent;
   const hasAutoSaved = isEditableStorage && !!lastAutoSaveAt;
@@ -5587,6 +5941,9 @@ function MainApp() {
                 navigate('/chat');
               }}
               chatWithMyselfActive={location.pathname === '/chat' || location.pathname.endsWith('/chat')}
+              sessionWorkspace={sessionWorkspace}
+              sessionTree={sessionWorkspace ? buildSessionTree(sessionWorkspace) : []}
+              onCloseSessionWorkspace={closeSessionWorkspace}
             />
           </ResizableSidebarPanel>
 
@@ -5749,7 +6106,9 @@ function MainApp() {
                   onViewUnsupportedAsText={handleViewUnsupportedAsText}
                   onRequestDownload={handleRequestDownload}
                   onShareToChatWithMyself={
-                    currentFile ? handleShareNoteToChatWithMyself : undefined
+                    currentFile && currentFile.type !== SESSION_STORAGE_TYPE
+                      ? handleShareNoteToChatWithMyself
+                      : undefined
                   }
                   theme={theme}
                   previewOnly={false}
@@ -5770,10 +6129,20 @@ function MainApp() {
                     }
                   }}
                   onOpenChatWithMyself={() => navigate('/chat')}
+                  onOpenSessionFiles={handleOpenSessionFiles}
+                  onOpenSessionDirectory={
+                    typeof window !== 'undefined' && 'showDirectoryPicker' in window
+                      ? handleOpenSessionDirectory
+                      : undefined
+                  }
+                  onDropSessionTransfer={handleDropSessionTransfer}
+                  isOpeningSession={isOpeningSession}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}
-                  onToggleRecording={handleToggleRecording}
+                  onToggleRecording={
+                    currentFile?.type === SESSION_STORAGE_TYPE ? undefined : handleToggleRecording
+                  }
                   recordingPipelineStatus={recordingPipelineStatus}
                   recordingsList={recordingsList}
                   selectedRecordingKey={selectedRecordingKey}
@@ -5829,7 +6198,9 @@ function MainApp() {
                   onViewUnsupportedAsText={handleViewUnsupportedAsText}
                   onRequestDownload={handleRequestDownload}
                   onShareToChatWithMyself={
-                    currentFile ? handleShareNoteToChatWithMyself : undefined
+                    currentFile && currentFile.type !== SESSION_STORAGE_TYPE
+                      ? handleShareNoteToChatWithMyself
+                      : undefined
                   }
                   theme={theme}
                   previewOnly={false}
@@ -5850,10 +6221,20 @@ function MainApp() {
                     }
                   }}
                   onOpenChatWithMyself={() => navigate('/chat')}
+                  onOpenSessionFiles={handleOpenSessionFiles}
+                  onOpenSessionDirectory={
+                    typeof window !== 'undefined' && 'showDirectoryPicker' in window
+                      ? handleOpenSessionDirectory
+                      : undefined
+                  }
+                  onDropSessionTransfer={handleDropSessionTransfer}
+                  isOpeningSession={isOpeningSession}
                   hideRecordingCompanions={hideRecordingCompanions}
                   isRecording={isRecording}
                   audioLevel={audioLevel}
-                  onToggleRecording={handleToggleRecording}
+                  onToggleRecording={
+                    currentFile?.type === SESSION_STORAGE_TYPE ? undefined : handleToggleRecording
+                  }
                   recordingPipelineStatus={recordingPipelineStatus}
                   recordingsList={recordingsList}
                   selectedRecordingKey={selectedRecordingKey}
@@ -5926,8 +6307,10 @@ function MainApp() {
                     ? `S3 (${s3Creds.bucket || '-'})`
                     : currentFile?.type === 'local'
                       ? '로컬'
-                      : currentFile?.type === 'webdav'
-                        ? 'WebDAV'
+                    : currentFile?.type === 'webdav'
+                      ? 'WebDAV'
+                      : currentFile?.type === SESSION_STORAGE_TYPE
+                        ? '다운로드 세션'
                         : '없음'
                 }>
                   <span className="md:hidden">
@@ -5937,7 +6320,9 @@ function MainApp() {
                         ? '로컬'
                         : currentFile?.type === 'webdav'
                           ? 'WebDAV'
-                          : '없음'}
+                          : currentFile?.type === SESSION_STORAGE_TYPE
+                            ? '세션'
+                            : '없음'}
                   </span>
                   <span className="hidden md:inline">
                     저장소:{' '}
@@ -5947,7 +6332,9 @@ function MainApp() {
                         ? '로컬'
                         : currentFile?.type === 'webdav'
                           ? 'WebDAV'
-                          : '없음'}
+                          : currentFile?.type === SESSION_STORAGE_TYPE
+                            ? '다운로드 세션'
+                            : '없음'}
                   </span>
                 </span>
                 {currentFile && (
@@ -6228,6 +6615,7 @@ function MainApp() {
       <DownloadMethodModal
         isOpen={showDownloadMethodModal}
         fileName={currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop()}
+        markdownText={editorContent}
         showImageHandling={isMarkdownFileName(
           currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop(),
         )}

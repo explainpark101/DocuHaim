@@ -9,7 +9,7 @@ const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
 const ORDERED_LIST_LINE_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
 const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX])\](.*)$/;
 const QUOTE_LINE_RE = /^(\s*)>\s?(.*)$/;
-const HEADING_LINE_RE = /^(#{1,6})\s+(.*)$/;
+const HEADING_LINE_RE = /^(#{1,10})\s+(.*)$/;
 
 type WrapPlan = {
   change?: { from: number; to: number; insert: string };
@@ -292,7 +292,7 @@ export function toggleQuoteForSelection(view: EditorView): boolean {
 }
 
 export function toggleHeadingForSelection(view: EditorView, level: number): boolean {
-  if (level < 1 || level > 6) return false;
+  if (level < 1 || level > 10) return false;
   const marks = '#'.repeat(level);
   return dispatchLineTextChanges(view, (text) => {
     const heading = text.match(HEADING_LINE_RE);

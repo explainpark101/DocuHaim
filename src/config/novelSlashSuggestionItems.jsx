@@ -134,6 +134,42 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       },
     },
     {
+      title: '제목 7',
+      description: '7단계 제목 (본문 크기·굵게)',
+      searchTerms: ['h7', 'heading'],
+      icon: <Heading6 className="h-4 w-4" />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).setHeading({ level: 7 }).run();
+      },
+    },
+    {
+      title: '제목 8',
+      description: '8단계 제목 (본문 크기·굵게)',
+      searchTerms: ['h8', 'heading'],
+      icon: <Heading6 className="h-4 w-4" />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).setHeading({ level: 8 }).run();
+      },
+    },
+    {
+      title: '제목 9',
+      description: '9단계 제목 (본문 크기·굵게)',
+      searchTerms: ['h9', 'heading'],
+      icon: <Heading6 className="h-4 w-4" />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).setHeading({ level: 9 }).run();
+      },
+    },
+    {
+      title: '제목 10',
+      description: '10단계 제목 (본문 크기·굵게)',
+      searchTerms: ['h10', 'heading'],
+      icon: <Heading6 className="h-4 w-4" />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).setHeading({ level: 10 }).run();
+      },
+    },
+    {
       title: '글머리 목록',
       description: '순서 없는 목록',
       searchTerms: ['bullet', 'unordered', 'ul'],

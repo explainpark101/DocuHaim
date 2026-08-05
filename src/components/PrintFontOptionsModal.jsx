@@ -86,7 +86,7 @@ export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsC
           </label>
           <label className="block">
             <span className="block text-sm font-medium text-gray-700 dark:text-odp-fgStrong mb-1">
-              제목 (h1~h6)
+              제목 (h1~h10)
             </span>
             <FontFamilyInput
               id="print-font-heading"

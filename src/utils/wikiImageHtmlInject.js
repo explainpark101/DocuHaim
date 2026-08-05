@@ -6,6 +6,7 @@
  */
 
 import { marked } from 'marked';
+import '@/utils/markedHeadingLevels';
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
 import {
   buildWikiImageStyle,

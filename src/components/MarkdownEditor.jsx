@@ -10,6 +10,7 @@ import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloati
 import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
+import MarkdownDeepHeadingToolbar from '@/components/MarkdownDeepHeadingToolbar';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -31,6 +32,7 @@ import { Loader2 } from 'lucide-react';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
+import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
 import { resolvePreviewHref } from '@/utils/appHref';
@@ -222,9 +224,9 @@ config({
         key !== 'ctrl-arrowdown' &&
         key !== 'mod-arrowdown' &&
         mac !== 'cmd-arrowdown' &&
-        !/^ctrl-[1-6]$/.test(key) &&
-        !/^mod-[1-6]$/.test(key) &&
-        !/^cmd-[1-6]$/.test(mac)
+        !/^ctrl-[0-9]$/.test(key) &&
+        !/^mod-[0-9]$/.test(key) &&
+        !/^cmd-[0-9]$/.test(mac)
       );
     });
 
@@ -291,12 +293,18 @@ config({
         preventDefault: true,
         run: toggleSubForSelection,
       },
-      ...[1, 2, 3, 4, 5, 6].map((level) => ({
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
         key: `Ctrl-${level}`,
         mac: `Cmd-${level}`,
         preventDefault: true,
         run: (view) => toggleHeadingForSelection(view, level),
       })),
+      {
+        key: 'Ctrl-0',
+        mac: 'Cmd-0',
+        preventDefault: true,
+        run: (view) => toggleHeadingForSelection(view, 10),
+      },
       {
         any: (view, event) => {
           if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyC') {
@@ -355,6 +363,9 @@ config({
   markdownItPlugins(plugins) {
     let next = plugins;
     // wiki_image는 @/config/mdEditorConfig에서 전역 등록됨. 여기서는 중복 추가 방지.
+    if (!next.some((p) => p.type === 'heading_levels')) {
+      next = [...next, { type: 'heading_levels', plugin: headingLevelsMarkdownItPlugin, options: {} }];
+    }
     if (!next.some((p) => p.type === 'wiki_image')) {
       next = [...next, { type: 'wiki_image', plugin: wikiImagePlugin, options: {} }];
     }
@@ -1096,6 +1107,7 @@ export default function MarkdownEditor({
       language="ko-KR"
     />,
     <MarkdownPageBreakToolbar key="insert-pgbr" editorRef={editorRef} />,
+    <MarkdownDeepHeadingToolbar key="deep-heading" editorRef={editorRef} />,
     <LlmAssistToolbar
       key="llm-assist"
       onOpen={() => {

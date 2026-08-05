@@ -301,6 +301,7 @@ button {
 .md-editor-preview h4,
 .md-editor-preview h5,
 .md-editor-preview h6,
+.md-editor-preview h6[data-heading-level],
 .md-editor-preview b,
 .md-editor-preview strong,
 .md-editor-preview th {

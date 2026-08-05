@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { RadioGroup } from 'radix-ui';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, ChevronDown } from 'lucide-react';
+import { RadioGroup, Select } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import { IconDownload, IconFolder } from '@/components/icons';
 import {
@@ -8,6 +9,14 @@ import {
   loadDownloadImageMode,
   saveDownloadImageMode,
 } from '@/utils/downloadImageModeSettings';
+import {
+  defaultExportHeadingMax,
+  describeHeadingRemap,
+  detectMaxHeadingLevel,
+  EXPORT_HEADING_LEVELS,
+  isExportHeadingLevel,
+  type ExportHeadingLevel,
+} from '@/utils/markdownHeadings';
 
 const IMAGE_MODE_OPTIONS: {
   value: DownloadImageMode;
@@ -26,12 +35,18 @@ const IMAGE_MODE_OPTIONS: {
   },
 ];
 
+export type DownloadMethodChoice = {
+  imageMode: DownloadImageMode;
+  headingMax: ExportHeadingLevel;
+};
+
 type Props = {
   isOpen: boolean;
   fileName?: string;
+  markdownText?: string;
   showImageHandling?: boolean;
-  onSelectLegacy: (imageMode: DownloadImageMode) => void;
-  onSelectStorageApi: (imageMode: DownloadImageMode) => void;
+  onSelectLegacy: (choice: DownloadMethodChoice) => void;
+  onSelectStorageApi: (choice: DownloadMethodChoice) => void;
   onCancel: () => void;
   isDownloading?: boolean;
   downloadProgress?: number;
@@ -42,6 +57,7 @@ type Props = {
 export function DownloadMethodModal({
   isOpen,
   fileName,
+  markdownText = '',
   showImageHandling = false,
   onSelectLegacy,
   onSelectStorageApi,
@@ -53,16 +69,27 @@ export function DownloadMethodModal({
 }: Props) {
   const showProgress = Boolean(isDownloading || downloadComplete);
   const [imageMode, setImageMode] = useState<DownloadImageMode>(() => loadDownloadImageMode());
+  const [headingMax, setHeadingMax] = useState<ExportHeadingLevel>(1);
+
+  const sourceMax = useMemo(
+    () => (showImageHandling ? detectMaxHeadingLevel(markdownText) : null),
+    [markdownText, showImageHandling],
+  );
 
   useEffect(() => {
-    if (isOpen) setImageMode(loadDownloadImageMode());
-  }, [isOpen]);
+    if (!isOpen) return;
+    setImageMode(loadDownloadImageMode());
+    if (showImageHandling) setHeadingMax(defaultExportHeadingMax(markdownText));
+  }, [isOpen, markdownText, showImageHandling]);
 
   const handleImageModeChange = (next: string) => {
     if (!isDownloadImageMode(next)) return;
     setImageMode(next);
     saveDownloadImageMode(next);
   };
+
+  const choice: DownloadMethodChoice = { imageMode, headingMax };
+  const remapHint = showImageHandling ? describeHeadingRemap(sourceMax, headingMax) : '';
 
   return (
     <Modal isOpen={isOpen} onClose={onCancel}>
@@ -153,10 +180,69 @@ export function DownloadMethodModal({
               </div>
             ) : null}
 
+            {showImageHandling ? (
+              <div className="mb-4">
+                <label
+                  htmlFor="download-heading-max"
+                  className="mb-2 block text-xs font-medium text-gray-500 dark:text-odp-muted"
+                >
+                  최대 heading
+                </label>
+                <Select.Root
+                  value={String(headingMax)}
+                  onValueChange={(next) => {
+                    const parsed = Number(next);
+                    if (isExportHeadingLevel(parsed)) setHeadingMax(parsed);
+                  }}
+                >
+                  <Select.Trigger
+                    id="download-heading-max"
+                    aria-label="최대 heading"
+                    className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+                  >
+                    <Select.Value />
+                    <Select.Icon className="text-gray-500">
+                      <ChevronDown size={14} />
+                    </Select.Icon>
+                  </Select.Trigger>
+                  <Select.Portal>
+                    <Select.Content
+                      className="z-100010 max-h-60 min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                      position="popper"
+                      sideOffset={4}
+                    >
+                      <Select.Viewport className="p-1">
+                        {EXPORT_HEADING_LEVELS.map((level) => (
+                          <Select.Item
+                            key={level}
+                            value={String(level)}
+                            className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-7 pr-3 text-sm text-gray-800 outline-none data-[highlighted]:bg-gray-100 dark:text-odp-fg dark:data-[highlighted]:bg-odp-focusBg"
+                          >
+                            <Select.ItemIndicator className="absolute left-1.5 inline-flex items-center">
+                              <Check size={12} />
+                            </Select.ItemIndicator>
+                            <Select.ItemText>{`h${level}`}</Select.ItemText>
+                          </Select.Item>
+                        ))}
+                      </Select.Viewport>
+                    </Select.Content>
+                  </Select.Portal>
+                </Select.Root>
+                <p className="mt-1.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                  다른 문서에 넣을 때 heading 단계를 조절합니다. 기본값은 이 문서의 최대 heading입니다.
+                </p>
+                {remapHint ? (
+                  <p className="mt-1 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    {remapHint}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="space-y-2 mb-4">
               <button
                 type="button"
-                onClick={() => onSelectLegacy(imageMode)}
+                onClick={() => onSelectLegacy(choice)}
                 disabled={isDownloading}
                 className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 dark:border-odp-borderSoft hover:bg-gray-50 dark:hover:bg-odp-bgSoft transition flex items-center gap-3"
               >
@@ -172,7 +258,7 @@ export function DownloadMethodModal({
               </button>
               <button
                 type="button"
-                onClick={() => onSelectStorageApi(imageMode)}
+                onClick={() => onSelectStorageApi(choice)}
                 disabled={isDownloading}
                 className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 dark:border-odp-borderSoft hover:bg-gray-50 dark:hover:bg-odp-bgSoft transition flex items-center gap-3"
               >

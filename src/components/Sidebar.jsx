@@ -67,8 +67,9 @@ import {
   IconUpload,
   IconRefresh,
 } from '@/components/icons';
-import { ArrowRightToLine, ChevronsLeft, Loader2, MessageCircle, Search, X } from 'lucide-react';
+import { ArrowRightToLine, ChevronsLeft, Download, Loader2, MessageCircle, Search, X } from 'lucide-react';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
+import SessionTreeList from '@/components/SessionTreeList';
 
 function getParentPathFromFilePath(filePath) {
   return getParentFolderPath(filePath);
@@ -230,6 +231,9 @@ export default function Sidebar({
   onOpenChatWithMyself,
   chatWithMyselfActive = false,
   onBrandClick,
+  sessionWorkspace = null,
+  sessionTree = [],
+  onCloseSessionWorkspace,
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
   const [searchInput, setSearchInput] = useState('');
@@ -1020,6 +1024,35 @@ export default function Sidebar({
         }}
         role="presentation"
       >
+        {sessionWorkspace ? (
+          <div>
+            <div className="sticky top-0 z-9999 mb-1 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:border-odp-surface dark:bg-odp-bgSoft">
+              <span className="flex min-w-0 items-center gap-1">
+                <Download size={14} />
+                <span className="truncate">다운로드 세션</span>
+              </span>
+              {typeof onCloseSessionWorkspace === 'function' ? (
+                <button
+                  type="button"
+                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg dark:hover:text-odp-fg"
+                  title="세션 닫기"
+                  aria-label="세션 닫기"
+                  onClick={onCloseSessionWorkspace}
+                >
+                  <X size={14} />
+                </button>
+              ) : null}
+            </div>
+            <p className="px-3 pb-1 text-[11px] text-gray-400 dark:text-odp-muted truncate" title={sessionWorkspace.originName}>
+              {sessionWorkspace.originName}
+            </p>
+            <SessionTreeList
+              nodes={sessionTree}
+              currentPath={treeCurrentFile?.type === 'session' ? treeCurrentFile.id : null}
+              onSelectFile={(node) => onSelectFile?.('session', node, {})}
+            />
+          </div>
+        ) : null}
         {/* S3 Section */}
         {isS3Mode && (
         <div>

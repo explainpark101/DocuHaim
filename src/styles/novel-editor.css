@@ -69,14 +69,11 @@
 .novel-editor-surface h3 {
   font-size: 1.25em;
 }
-.novel-editor-surface h4 {
+.novel-editor-surface h4,
+.novel-editor-surface h5,
+.novel-editor-surface h6,
+.novel-editor-surface h6[data-heading-level] {
   font-size: 1em;
-}
-.novel-editor-surface h5 {
-  font-size: 0.875em;
-}
-.novel-editor-surface h6 {
-  font-size: 0.85em;
 }
 
 .novel-editor-surface p {

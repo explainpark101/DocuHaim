@@ -812,12 +812,10 @@ html {
   font-size: 1em
 }
 
-.md-editor-preview h5 {
-  font-size: .875em
-}
-
-.md-editor-preview h6 {
-  font-size: .85em
+.md-editor-preview h5,
+.md-editor-preview h6,
+.md-editor-preview h6[data-heading-level] {
+  font-size: 1em
 }
 
 .md-editor-preview hr {
@@ -3598,6 +3596,7 @@ div.smart-blue-theme hr {
 .md-editor-preview h4,
 .md-editor-preview h5,
 .md-editor-preview h6,
+.md-editor-preview h6[data-heading-level],
 .md-editor-preview b,
 .md-editor-preview strong,
 .md-editor-preview th {

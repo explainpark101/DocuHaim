@@ -31,6 +31,7 @@ import { Loader2 } from 'lucide-react';
 import { WikiImage } from '@/extensions/wikiImageTiptap';
 import { NovelParagraph } from '@/extensions/novelParagraph';
 import { NovelTaskItem } from '@/extensions/novelTaskItem';
+import { NovelHeading } from '@/extensions/novelHeading';
 import {
   markdownToNovelEditorHtml,
   mergeWikiCaptionPairsForTurndown,
@@ -64,6 +65,22 @@ const turndown = new TurndownService({
   headingStyle: 'atx',
   codeBlockStyle: 'fenced',
   bulletListMarker: '-',
+});
+
+turndown.addRule('deepHeading', {
+  filter: (node) => {
+    if (!node?.nodeName) return false;
+    const dataLevel = Number(node.getAttribute?.('data-heading-level'));
+    if (Number.isInteger(dataLevel) && dataLevel >= 7) return true;
+    const tagLevel = Number(String(node.nodeName).replace(/^H/i, ''));
+    return Number.isInteger(tagLevel) && tagLevel >= 7;
+  },
+  replacement: (content, node) => {
+    const dataLevel = Number(node.getAttribute?.('data-heading-level'));
+    const tagLevel = Number(String(node.nodeName).replace(/^H/i, ''));
+    const level = Number.isInteger(dataLevel) && dataLevel >= 1 ? dataLevel : tagLevel;
+    return `\n\n${'#'.repeat(level)} ${content}\n\n`;
+  },
 });
 
 turndown.addRule('wikiImageData', {
@@ -274,9 +291,10 @@ export default function NovelMarkdownEditor({
       StarterKit.configure({
         horizontalRule: false,
         paragraph: false,
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
+        heading: false,
         dropcursor: { color: '#3b82f6', width: 3 },
       }),
+      NovelHeading,
       NovelParagraph,
       WikiImage,
       HorizontalRule,

@@ -8,12 +8,15 @@ import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
+import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
+import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 
 const PGBR_XSS_EXTENDED_WHITELIST = {
   pgbr: [],
   div: ['class', 'data-md-pgbr'],
   span: ['class', 'data-md-pgbr', 'aria-hidden'],
+  h6: ['id', 'class', 'data-heading-level'],
   a: ['href', 'class', 'target', 'rel', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
   img: [
     'src',
@@ -42,6 +45,7 @@ config({
   markdownItPlugins(plugins) {
     return [
       ...plugins,
+      { type: 'heading_levels', plugin: headingLevelsMarkdownItPlugin, options: {} },
       { type: 'wiki_image', plugin: wikiImagePlugin, options: {} },
       { type: 'preview_link_target_blank', plugin: previewLinkTargetBlankPlugin, options: {} },
       { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} },
