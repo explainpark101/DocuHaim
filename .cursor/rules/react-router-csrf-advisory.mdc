@@ -1,0 +1,33 @@
+---
+description: React Router CSRF advisory (CVE-2026-22030) — not applicable in current modes; delete this rule when adopting Framework/RSC
+alwaysApply: true
+---
+
+# React Router CSRF advisory (temporary)
+
+**Delete this rule** (`.cursor/rules/react-router-csrf-advisory.mdc`) in the same change when you **apply** any of:
+
+- React Router **Framework Mode** (`@react-router/dev` Vite plugin, `routes.ts`, server `action` / `ServerRouter`)
+- **Unstable RSC** / React Server Actions via React Router
+
+Until then, keep this file. Do not leave it in place after those modes ship.
+
+## Why it exists
+
+[CVE-2026-22030](https://nvd.nist.gov/vuln/detail/CVE-2026-22030) / [GHSA-h5cw-625j-3rxh](https://github.com/remix-run/react-router/security/advisories/GHSA-h5cw-625j-3rxh): CSRF on document POST to UI routes with **server-side route `action` handlers** (Framework Mode) or **RSC Server Actions**. Origin check can fail after the action already ran. Patched in `react-router@7.12.0` and `@remix-run/server-runtime@2.17.3`.
+
+Vendor note: **no impact** for Declarative Mode (`<BrowserRouter>` / `<HashRouter>`) or Data Mode (`createBrowserRouter` / `<RouterProvider>`).
+
+## Current project (not affected)
+
+- Mode: **Declarative** — `BrowserRouter` (web) / `HashRouter` (Electron) in `src/main.jsx`
+- Mutations are client-side (S3 / WebDAV / IndexedDB), not RR server actions
+- Keep `react-router` **>= 7.12.0** (lockfile is already past this)
+- Do **not** add `@remix-run/server-runtime` or Framework/RSC solely to “address” this alert
+- Dismiss Dependabot/GHSA for this CVE while staying on Declarative or Data Mode
+
+```text
+❌ BAD — treat CVE-2026-22030 as a required app CSRF fix in BrowserRouter
+❌ BAD — adopt Framework/RSC without deleting this rule
+✅ GOOD — ignore the advisory until Framework/RSC; then delete this file and stay on react-router >= 7.12.0
+```
