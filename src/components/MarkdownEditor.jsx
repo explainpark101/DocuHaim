@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { MdEditor, config } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
@@ -492,33 +493,31 @@ export default function MarkdownEditor({
     root.style.setProperty('--md-catalog-width', `${catalogWidth}px`);
   }, [catalogWidth]);
 
-  // Do not portal into md-editor-rt catalog DOM: that host is reconciled by MdEditor
-  // and wipes foreign children. Track geometry and render the handle in our tree.
-  useEffect(() => {
-    const root = containerRef.current;
-    if (!root || !catalogEl) {
+  // MdEditor reconcile wipes foreign catalog children, so overlay the handle on document.body.
+  useLayoutEffect(() => {
+    if (!catalogEl) {
       setCatalogHandleBox(null);
       return undefined;
     }
 
     const updateBox = () => {
-      const rootRect = root.getBoundingClientRect();
       const catRect = catalogEl.getBoundingClientRect();
       if (catRect.width <= 0 || catRect.height <= 0) {
         setCatalogHandleBox(null);
         return;
       }
       setCatalogHandleBox({
-        top: catRect.top - rootRect.top,
-        left: catRect.left - rootRect.left,
+        top: catRect.top,
+        left: catRect.left,
         height: catRect.height,
       });
     };
 
     updateBox();
     const ro = new ResizeObserver(updateBox);
-    ro.observe(root);
     ro.observe(catalogEl);
+    const root = containerRef.current;
+    if (root) ro.observe(root);
     window.addEventListener('resize', updateBox);
     window.addEventListener('scroll', updateBox, true);
     return () => {
@@ -1166,10 +1165,10 @@ export default function MarkdownEditor({
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
-    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, '-',
+    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, 4, '-',
     'revoke', 'next', 0, '=',
     6, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
-    ...(catalogEl ? [4] : []),
+    ...(catalogEl ? [5] : []),
   ], [catalogEl]);
 
   const onUploadImg = useMemo(() => {
@@ -1187,21 +1186,24 @@ export default function MarkdownEditor({
       className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}`}
       style={{ '--md-catalog-width': `${catalogWidth}px` }}
     >
-      {catalogHandleBox && (
-        <TocResizeHandle
-          handleProps={catalogResizeHandleProps}
-          isResizing={catalogResizing}
-          visibleOnHover
-          label="목차 너비 조절"
-          className="z-10003"
-          style={{
-            top: catalogHandleBox.top,
-            left: catalogHandleBox.left,
-            height: catalogHandleBox.height,
-            bottom: 'auto',
-          }}
-        />
-      )}
+      {catalogHandleBox &&
+        createPortal(
+          <TocResizeHandle
+            handleProps={catalogResizeHandleProps}
+            isResizing={catalogResizing}
+            visibleOnHover
+            label="목차 너비 조절"
+            style={{
+              position: 'fixed',
+              top: catalogHandleBox.top,
+              left: catalogHandleBox.left,
+              height: catalogHandleBox.height,
+              bottom: 'auto',
+              zIndex: 10003,
+            }}
+          />,
+          document.body,
+        )}
       {isUploadingEditorImage && (
         <div
           className="absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center gap-2 py-2 text-sm bg-blue-300/40 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 border-b border-blue-500/20"

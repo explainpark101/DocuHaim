@@ -490,6 +490,8 @@ function MainApp() {
   const s3TreeRef = useRef([]);
   const webdavTreeRef = useRef([]);
   const currentFileRef = useRef(null);
+  const prevHistoryViewPathRef = useRef(undefined);
+  const suppressUnsavedNavGuardRef = useRef(false);
   const hasRestoredLastFileRef = useRef(false);
   const hasProcessedOpenFromUrlRef = useRef(false);
   const hasRestoredFromPrintRef = useRef(false);
@@ -1057,6 +1059,7 @@ function MainApp() {
   };
 
   const hasUnsavedEditorChanges = useCallback(() => {
+    if (suppressUnsavedNavGuardRef.current) return false;
     const file = currentFileRef.current;
     if (!file) return false;
     const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(file.viewer || 'markdown');
@@ -2992,11 +2995,15 @@ function MainApp() {
 
     const routeViewPath = parseViewPathFromAppPathname(location.pathname);
     if (!routeViewPath) {
+      prevHistoryViewPathRef.current = null;
       if (currentFileRef.current) clearOpenFileState();
       return;
     }
 
-    if (currentFileRef.current?.id === routeViewPath) return;
+    if (currentFileRef.current?.id === routeViewPath) {
+      prevHistoryViewPathRef.current = routeViewPath;
+      return;
+    }
 
     const type =
       storageMode === STORAGE_MODE_LOCAL
@@ -3012,6 +3019,9 @@ function MainApp() {
     } else if (!s3Tree?.length) {
       return;
     }
+
+    const routeChanged = prevHistoryViewPathRef.current !== routeViewPath;
+    prevHistoryViewPathRef.current = routeViewPath;
 
     let cancelled = false;
     (async () => {
@@ -3031,7 +3041,9 @@ function MainApp() {
         await selectFileRawRef.current?.(type, node, { skipNavigate: true });
         return;
       }
-      if (currentFileRef.current) clearOpenFileState();
+      // Tree refresh after rename updates the open file id but not the URL yet.
+      // Only close when the route itself changed to a missing path (back/forward).
+      if (routeChanged && currentFileRef.current) clearOpenFileState();
     })();
 
     return () => {
@@ -4364,7 +4376,23 @@ function MainApp() {
 
     await refreshLocalTree();
 
-    return { ...file, id: newPath, name: newName, handle: newFileHandle };
+    return { ...file, id: newPath, name: newName, handle: newFileHandle, content: editorContent };
+  };
+
+  const applyOpenFileIdentityChange = (updated) => {
+    if (!updated) return null;
+    currentFileRef.current = updated;
+    setCurrentFile(updated);
+    const nextPath = updated.id;
+    if (typeof nextPath !== 'string' || !nextPath) return updated;
+    if (parseViewPathFromAppPathname(location.pathname) === nextPath) return updated;
+    suppressUnsavedNavGuardRef.current = true;
+    try {
+      navigate(`/view/${nextPath}`, { replace: true });
+    } finally {
+      suppressUnsavedNavGuardRef.current = false;
+    }
+    return updated;
   };
 
   const renameCurrentFileFullName = async (newFullName) => {
@@ -4389,7 +4417,7 @@ function MainApp() {
         const lastSlash = String(currentFile.id || '').lastIndexOf('/');
         const dirPrefix = lastSlash >= 0 ? currentFile.id.slice(0, lastSlash + 1) : '';
         const newKey = dirPrefix + trimmed;
-        updated = { ...currentFile, id: newKey, name: trimmed };
+        updated = { ...currentFile, id: newKey, name: trimmed, content: editorContent };
       } else if (currentFile.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         const oldKey = currentFile.id;
@@ -4405,11 +4433,16 @@ function MainApp() {
             await backend.move(oldKey, newKey);
           }
           await refreshWebdavTree();
-          updated = { ...currentFile, id: newKey, name: trimmed };
+          updated = {
+            ...currentFile,
+            id: newKey,
+            name: trimmed,
+            ...(hasUnsaved ? { content: editorContent } : {}),
+          };
         }
       }
       if (updated) {
-        setCurrentFile(updated);
+        return applyOpenFileIdentityChange(updated);
       }
       return updated ?? null;
     } catch (e) {
@@ -5038,7 +5071,7 @@ function MainApp() {
           await loadS3Files();
           if (currentFile && currentFile.type === 's3' && currentFile.id.startsWith(node.path)) {
             const newPath = currentFile.id.replace(prefix, destPrefix);
-            setCurrentFile((prev) => (prev && prev.type === 's3' ? { ...prev, id: newPath } : prev));
+            applyOpenFileIdentityChange({ ...currentFile, id: newPath });
           }
         } else if (storageType === 'local') {
           const parentHandle = node.parentHandle || localRootHandle;
@@ -5049,7 +5082,7 @@ function MainApp() {
             const newPathForFile = currentFile.id.startsWith(node.path)
               ? newPath + currentFile.id.slice(node.path.length)
               : currentFile.id;
-            setCurrentFile((prev) => (prev && prev.type === 'local' ? { ...prev, id: newPathForFile } : prev));
+            applyOpenFileIdentityChange({ ...currentFile, id: newPathForFile });
           }
         } else if (storageType === 'webdav') {
           await moveWebdavFolderToFolder(node, '', trimmed);
@@ -5058,7 +5091,7 @@ function MainApp() {
             const newPathForFile = currentFile.id.startsWith(node.path)
               ? destPrefix + currentFile.id.slice(node.path.length)
               : currentFile.id;
-            setCurrentFile((prev) => (prev && prev.type === 'webdav' ? { ...prev, id: newPathForFile } : prev));
+            applyOpenFileIdentityChange({ ...currentFile, id: newPathForFile });
           }
         }
         return;
@@ -5075,7 +5108,7 @@ function MainApp() {
         const contentOverride = hasUnsaved ? editorContent : null;
 
         const updated = await renameS3File(fileToRename, newName, contentOverride);
-        if (isCurrentFile) setCurrentFile(updated);
+        if (isCurrentFile) applyOpenFileIdentityChange(updated);
       } else if (storageType === 'local') {
         const pHandle = node.parentHandle || localRootHandle;
         if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
@@ -5102,7 +5135,7 @@ function MainApp() {
         await refreshLocalTree();
 
         if (currentFile && currentFile.type === 'local' && currentFile.id === node.path) {
-          setCurrentFile({
+          applyOpenFileIdentityChange({
             ...currentFile,
             id: newPath,
             name: newName,
@@ -5131,7 +5164,7 @@ function MainApp() {
         }
         await refreshWebdavTree();
         if (isCurrentFile) {
-          setCurrentFile({ ...currentFile, id: newPath, name: newName });
+          applyOpenFileIdentityChange({ ...currentFile, id: newPath, name: newName });
         }
       }
     } catch (e) {
