@@ -63,6 +63,17 @@ export function setPrintSettingsStore(payload) {
   }
 }
 
+/** Snapshot for print-page markdown save (S3 / local / WebDAV). */
+export function getPrintSettingsStoreSnapshot() {
+  return {
+    getS3Client: store.getS3Client,
+    s3Creds: store.s3Creds,
+    localRootHandle: store.localRootHandle,
+    storageMode: store.storageMode,
+    webdavConfig: store.webdavConfig,
+  };
+}
+
 function parseFontsJson(parsed) {
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_PRINT_FONTS };
   return {

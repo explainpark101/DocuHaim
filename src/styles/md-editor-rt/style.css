@@ -3867,10 +3867,30 @@ svg.md-editor-icon {
     print-color-adjust: exact;
   }
 
-  /* wiki ![[path]] + caption figure: keep image and caption on the same page when possible */
-  .md-editor-preview figure:has(img[data-wiki-path]) {
+  /* Keep photos (and caption figures) on one sheet; browser breaks above them */
+  .md-editor-preview figure:has(img),
+  .md-editor-preview img {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  .md-editor-preview p,
+  .md-editor-preview li,
+  .md-editor-preview blockquote {
+    orphans: 2;
+    widows: 2;
+  }
+
+  .md-editor-preview h1,
+  .md-editor-preview h2,
+  .md-editor-preview h3,
+  .md-editor-preview h4,
+  .md-editor-preview h5,
+  .md-editor-preview h6 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* break-after: following content starts on a new sheet */

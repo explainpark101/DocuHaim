@@ -158,6 +158,33 @@ export function getWikiImageOccurrenceInContainer(container, img, path) {
   return occurrence >= 0 ? occurrence : 0;
 }
 
+export function updateWikiImagePathInMarkdown(markdown, {
+  path,
+  occurrence = 0,
+  nextPath,
+  width,
+  height,
+}) {
+  if (!path || !nextPath) return { markdown, updated: false };
+  const source = String(markdown ?? '');
+  let matchedCount = -1;
+  let updated = false;
+  const next = source.replace(WIKI_IMAGE_RE, (full, rawInner) => {
+    const parsed = parseWikiImageInner(rawInner);
+    if (!parsed || parsed.path !== path) return full;
+    matchedCount += 1;
+    if (matchedCount !== occurrence) return full;
+    updated = true;
+    return wikiImageMarkupFromAttrs({
+      path: nextPath,
+      width: width === undefined ? parsed.width : width,
+      height: height === undefined ? parsed.height : height,
+      background: parsed.background,
+    });
+  });
+  return { markdown: next, updated };
+}
+
 export function updateWikiImageSizeInMarkdown(markdown, { path, occurrence = 0, width = null, height = null }) {
   if (!path) return { markdown, updated: false };
   const source = String(markdown ?? '');
@@ -249,6 +276,36 @@ export function getMarkdownImageOccurrenceInContainer(container, img, src) {
   const matches = imgs.filter((el) => el.getAttribute('data-md-src') === src);
   const occurrence = matches.findIndex((el) => el === img);
   return occurrence >= 0 ? occurrence : 0;
+}
+
+export function replaceMarkdownImageWithWikiPath(markdown, {
+  src,
+  occurrence = 0,
+  nextPath,
+  width,
+  height,
+}) {
+  if (!src || !nextPath) return { markdown, updated: false };
+  const source = String(markdown ?? '');
+  const IMAGE_RE = /!\[([^\]]*)\]\(([^)\n]+)\)(\{[^}\n]*\})?/g;
+  let matchedCount = -1;
+  let updated = false;
+  const next = source.replace(IMAGE_RE, (full, _alt, destination, rawAttrs = '') => {
+    const dest = String(destination ?? '');
+    const mdSrc = dest.trim().split(/\s+/)[0];
+    if (!mdSrc || mdSrc !== src) return full;
+    matchedCount += 1;
+    if (matchedCount !== occurrence) return full;
+    updated = true;
+    const existing = parseMarkdownImageAttrsBlock(rawAttrs);
+    return wikiImageMarkupFromAttrs({
+      path: nextPath,
+      width: width === undefined ? existing.width : width,
+      height: height === undefined ? existing.height : height,
+      background: existing.background,
+    });
+  });
+  return { markdown: next, updated };
 }
 
 export function updateMarkdownImageSizeInMarkdown(markdown, { src, occurrence = 0, width = null, height = null }) {

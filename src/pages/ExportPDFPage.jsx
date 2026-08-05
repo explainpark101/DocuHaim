@@ -2,34 +2,43 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
-import { ArrowLeft, ListTree, Settings } from 'lucide-react';
+import { ArrowLeft, ListTree, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintPageBreakOverlay from '@/components/print/PrintPageBreakOverlay';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
+import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
 import {
   buildPrintLayoutCssVars,
   buildPrintPageAtRule,
+  getPrintPageInnerSizePx,
   loadPrintPageLayout,
   savePrintPageLayout,
 } from '@/utils/printPageLayout';
 import { withFontFallback } from '@/utils/fontFallback';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
 import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
+import { usePrintPageStarts } from '@/hooks/usePrintPageStarts';
 import { usePrintPgbrSpacers } from '@/hooks/usePrintPgbrSpacers';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { savePrintMarkdownToStorage } from '@/utils/printMarkdownSave';
+import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
+import { getVisualLineAtPoint, insertPgbrBeforeVisualLine } from '@/utils/printVisualLinePgbr';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   getMarkdownImageOccurrenceInContainer,
   getResizableImageAttrsFromElement,
   getWikiImageOccurrenceInContainer,
+  replaceMarkdownImageWithWikiPath,
   updateMarkdownImageSizeInMarkdown,
+  updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 
@@ -273,12 +282,10 @@ const printFontStyles = `
   #export-pdf-preview .md-editor-preview h6 {
     cursor: pointer;
   }
-  #export-pdf-preview img,
-  #export-pdf-preview .md-editor-preview img {
+  #export-pdf-preview img:not([data-print-free-transform]),
+  #export-pdf-preview .md-editor-preview img:not([data-print-free-transform]) {
     max-width: var(--print-img-max-width, 100%);
     max-height: var(--print-img-max-height, var(--print-page-inner-height, 100vh));
-    width: auto;
-    height: auto;
     object-fit: contain;
   }
   .export-pdf-paper .md-pgbr {
@@ -347,6 +354,8 @@ export default function ExportPDFPage() {
   const navigate = useNavigate();
   const { value = '', currentFile = null } = location.state ?? {};
   const [previewValue, setPreviewValue] = useState(() => value);
+  const [savedValue, setSavedValue] = useState(() => value);
+  const [isSaving, setIsSaving] = useState(false);
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
   const [printLayout, setPrintLayout] = useState(() => loadPrintPageLayout());
   const [fontModalOpen, setFontModalOpen] = useState(false);
@@ -357,6 +366,7 @@ export default function ExportPDFPage() {
   const [visibleHeadingIds, setVisibleHeadingIds] = useState([]);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
+  const [linePgbrModalState, setLinePgbrModalState] = useState(null);
   const [hrPgbrModalState, setHrPgbrModalState] = useState(null);
   const [pgbrDeleteModalState, setPgbrDeleteModalState] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
@@ -366,9 +376,17 @@ export default function ExportPDFPage() {
   const headerRef = useRef(null);
   const previewContainerRef = useRef(null);
   const paperContentRef = useRef(null);
+  const imageMaxProbeRef = useRef(null);
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
+  usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
   usePrintPgbrSpacers(paperContentRef, pageInnerHeightPx, printLayoutKey);
+  const { pageStarts, contentHeight } = usePrintPageStarts(
+    paperContentRef,
+    pageInnerHeightPx,
+    `${printLayoutKey}|${previewValue}`,
+  );
+  const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
   const tocListRef = useRef(null);
   const tocProgrammaticScrollRef = useRef(false);
   const tocProgrammaticResetTimerRef = useRef(null);
@@ -411,6 +429,7 @@ export default function ExportPDFPage() {
 
   useEffect(() => {
     setPreviewValue(value);
+    setSavedValue(value);
   }, [value]);
 
   useEffect(() => {
@@ -560,6 +579,43 @@ export default function ExportPDFPage() {
     window.print();
   }, []);
 
+  const isDirty = previewValue !== savedValue;
+
+  const handleSave = useCallback(async () => {
+    if (!currentFile?.id || isSaving) return;
+    setIsSaving(true);
+    try {
+      savePrintPageLayout(printLayout);
+      const nextFile = {
+        ...currentFile,
+        content: previewValue,
+      };
+      setPendingPrintReturnState({
+        currentFile: nextFile,
+        editorContent: previewValue,
+      });
+      const result = await savePrintMarkdownToStorage(currentFile, previewValue);
+      setSavedValue(previewValue);
+      if (result.mode === 'pending-only') {
+        alert('세션 노트는 뒤로 가면 편집기에 반영됩니다.');
+      }
+    } catch (error) {
+      alert(`저장 실패: ${error?.message || error}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentFile, isSaving, previewValue, printLayout]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;
+      event.preventDefault();
+      handleSave();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleSave]);
+
   const handleTocItemClick = useCallback((id) => {
     if (!id) return;
     const el = document.getElementById(id);
@@ -596,6 +652,7 @@ export default function ExportPDFPage() {
           width: attrs.width,
           height: attrs.height,
           occurrence,
+          imageSrc: img.currentSrc || img.src || '',
         });
         return;
       }
@@ -614,12 +671,21 @@ export default function ExportPDFPage() {
       }
 
       const hr = event.target?.closest?.('hr');
-      if (!hr || !root.contains(hr)) return;
+      if (hr && root.contains(hr)) {
+        event.preventDefault();
+        const hrs = [...root.querySelectorAll('hr')];
+        const index = hrs.findIndex((el) => el === hr);
+        if (!Number.isInteger(index) || index < 0) return;
+        setHrPgbrModalState({ hrIndex: index });
+        return;
+      }
+
+      const contentRoot = paperContentRef.current;
+      if (!contentRoot) return;
+      const visualLine = getVisualLineAtPoint(contentRoot, event.clientX, event.clientY);
+      if (!visualLine?.lineText) return;
       event.preventDefault();
-      const hrs = [...root.querySelectorAll('hr')];
-      const index = hrs.findIndex((el) => el === hr);
-      if (!Number.isInteger(index) || index < 0) return;
-      setHrPgbrModalState({ hrIndex: index });
+      setLinePgbrModalState(visualLine);
     };
     root.addEventListener('contextmenu', onContextMenu);
     return () => root.removeEventListener('contextmenu', onContextMenu);
@@ -642,6 +708,35 @@ export default function ExportPDFPage() {
               occurrence: modal.occurrence ?? 0,
               width,
               height,
+            });
+      if (!next.updated || next.markdown === previewValue) return;
+      setPreviewValue(next.markdown);
+      setPendingPrintReturnState({
+        currentFile,
+        editorContent: next.markdown,
+      });
+    },
+    [currentFile, previewValue, wikiImageModalState],
+  );
+
+  const handleCropWikiImage = useCallback(
+    async ({ file }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.key) {
+        throw new Error('자를 이미지를 찾을 수 없습니다.');
+      }
+      const nextPath = await uploadPrintEditorImage(file, currentFile);
+      const next =
+        modal.kind === 'wiki'
+          ? updateWikiImagePathInMarkdown(previewValue, {
+              path: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextPath,
+            })
+          : replaceMarkdownImageWithWikiPath(previewValue, {
+              src: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextPath,
             });
       if (!next.updated || next.markdown === previewValue) return;
       setPreviewValue(next.markdown);
@@ -688,6 +783,7 @@ export default function ExportPDFPage() {
     };
     img.style.width = `${widthPx}px`;
     img.style.height = `${heightPx}px`;
+    img.setAttribute('data-print-free-transform', '1');
     activeTransformRef.current = next;
     setFreeTransformState(next);
     setFreeTransformConfirmOpen(false);
@@ -824,10 +920,12 @@ export default function ExportPDFPage() {
         editorContent: next.markdown,
       });
     }
+    const img = findResizableImageElement(active);
+    img?.removeAttribute('data-print-free-transform');
     setFreeTransformState(null);
     activeTransformRef.current = null;
     setFreeTransformConfirmOpen(false);
-  }, [currentFile, freeTransformState, previewValue]);
+  }, [currentFile, findResizableImageElement, freeTransformState, previewValue]);
 
   const handleConfirmTransformReset = useCallback(() => {
     const active = activeTransformRef.current || freeTransformState;
@@ -836,6 +934,7 @@ export default function ExportPDFPage() {
     if (img) {
       img.style.width = `${active.originalWidthPx}px`;
       img.style.height = `${active.originalHeightPx}px`;
+      img.removeAttribute('data-print-free-transform');
     }
     setFreeTransformState(null);
     activeTransformRef.current = null;
@@ -873,6 +972,22 @@ export default function ExportPDFPage() {
     });
     setPgbrDeleteModalState(null);
   }, [currentFile, pgbrDeleteModalState, previewValue]);
+
+  const handleInsertPgbrBeforeLine = useCallback(() => {
+    const modal = linePgbrModalState;
+    if (!modal?.lineText || !Number.isInteger(modal.occurrence)) return;
+    const next = insertPgbrBeforeVisualLine(previewValue, modal.lineText, modal.occurrence);
+    if (!next.updated || next.markdown === previewValue) {
+      setLinePgbrModalState(null);
+      return;
+    }
+    setPreviewValue(next.markdown);
+    setPendingPrintReturnState({
+      currentFile,
+      editorContent: next.markdown,
+    });
+    setLinePgbrModalState(null);
+  }, [currentFile, linePgbrModalState, previewValue]);
 
   const handleInsertPgbrBeforeHr = useCallback(() => {
     const modal = hrPgbrModalState;
@@ -912,7 +1027,7 @@ export default function ExportPDFPage() {
 
   return (
     <div
-      className="export-pdf-page flex flex-col min-h-full print:min-h-0 bg-neutral-200 dark:bg-neutral-800 print:bg-white min-w-0"
+      className="export-pdf-page flex flex-col h-full min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible bg-neutral-200 dark:bg-neutral-800 print:bg-white min-w-0"
       style={fontStyleVars}
     >
       <style>{printFontStyles}</style>
@@ -954,6 +1069,17 @@ export default function ExportPDFPage() {
             </button>
             <button
               type="button"
+              onClick={handleSave}
+              disabled={!currentFile?.id || isSaving || !isDirty}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded transition disabled:opacity-50 disabled:cursor-not-allowed text-white bg-blue-600 hover:bg-blue-700"
+              aria-label="저장"
+              title="이미지 크기와 페이지 나누기를 노트에 저장 (Ctrl+S)"
+            >
+              <Save size={16} />
+              {isSaving ? '저장 중…' : '저장'}
+            </button>
+            <button
+              type="button"
               className="md-editor-btn"
               onClick={handleExport}
             >
@@ -969,6 +1095,8 @@ export default function ExportPDFPage() {
           <PrintImageMaxSizeControls
             maxWidth={printLayout.imageMaxWidth}
             maxHeight={printLayout.imageMaxHeight}
+            widthFallback={`${printPageInnerPx.widthPx}px`}
+            heightFallback={`${printPageInnerPx.heightPx}px`}
             onChange={({ maxWidth, maxHeight }) => updatePrintLayout({
               imageMaxWidth: maxWidth,
               imageMaxHeight: maxHeight,
@@ -978,12 +1106,12 @@ export default function ExportPDFPage() {
       </div>
 
       <div
-        className="relative flex-1 min-h-0"
+        className="relative flex min-h-0 flex-1 flex-col"
         style={{ '--export-toc-width': `${tocWidth}px` }}
       >
         <div
           ref={previewContainerRef}
-          className={`export-pdf-preview-scroll px-4 py-6 flex-1 overflow-auto min-h-0 bg-neutral-200 dark:bg-neutral-800 text-gray-900 h-full print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
+          className={`export-pdf-preview-scroll px-4 py-6 min-h-0 flex-1 overflow-auto bg-neutral-200 dark:bg-neutral-800 text-gray-900 print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
             tocVisible ? 'md:pr-(--export-toc-width)' : ''
           }`}
         >
@@ -1001,10 +1129,18 @@ export default function ExportPDFPage() {
               aria-hidden
             />
             <div ref={paperContentRef} className="export-pdf-paper-content relative">
+              <div
+                ref={imageMaxProbeRef}
+                className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0 print:hidden"
+                style={{
+                  width: 'var(--print-img-max-width)',
+                  height: 'var(--print-img-max-height)',
+                }}
+                aria-hidden
+              />
               <PrintPageBreakOverlay
-                contentRef={paperContentRef}
-                pageInnerHeightPx={pageInnerHeightPx}
-                layoutKey={printLayoutKey}
+                pageStarts={pageStarts}
+                contentHeight={contentHeight}
               />
               <MdPreview
                 id={EDITOR_ID}
@@ -1018,6 +1154,12 @@ export default function ExportPDFPage() {
             </div>
           </div>
         </div>
+        <PrintVisiblePageBadge
+          pageStarts={pageStarts}
+          contentHeight={contentHeight}
+          paperRef={paperContentRef}
+          scrollRef={previewContainerRef}
+        />
         {tocVisible && (
           <aside
             className="hidden md:flex fixed right-0 bottom-0 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
@@ -1121,8 +1263,10 @@ export default function ExportPDFPage() {
         kind={wikiImageModalState?.kind ?? 'wiki'}
         initialWidth={wikiImageModalState?.width ?? ''}
         initialHeight={wikiImageModalState?.height ?? ''}
+        imageSrc={wikiImageModalState?.imageSrc ?? ''}
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
+        onCrop={handleCropWikiImage}
       />
       {freeTransformState && freeTransformOverlayRect && (
         <div
@@ -1184,6 +1328,15 @@ export default function ExportPDFPage() {
         cancelLabel="취소"
         onConfirm={handleInsertPgbrBeforeHeading}
         onCancel={() => setHeadingPgbrModalState(null)}
+      />
+      <ConfirmModal
+        isOpen={Boolean(linePgbrModalState)}
+        title="페이지 나누기 삽입"
+        message={`아래 줄 앞에 <pgbr/> 를 삽입합니다.\n\n${linePgbrModalState?.lineText || '(텍스트 없음)'}`}
+        confirmLabel="삽입"
+        cancelLabel="취소"
+        onConfirm={handleInsertPgbrBeforeLine}
+        onCancel={() => setLinePgbrModalState(null)}
       />
       <ConfirmModal
         isOpen={Boolean(pgbrDeleteModalState)}

@@ -57,7 +57,9 @@ import {
   getMarkdownImageOccurrenceInContainer,
   getResizableImageAttrsFromElement,
   getWikiImageOccurrenceInContainer,
+  replaceMarkdownImageWithWikiPath,
   updateMarkdownImageSizeInMarkdown,
+  updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 import {
@@ -869,6 +871,7 @@ export default function MarkdownEditor({
         width: attrs.width,
         height: attrs.height,
         occurrence,
+        imageSrc: img.currentSrc || img.src || '',
       });
     };
     root.addEventListener('contextmenu', onContextMenu);
@@ -940,6 +943,37 @@ export default function MarkdownEditor({
       }
     },
     [wikiImageModalState, onChangeWithUndoHistory, value],
+  );
+
+  const handleCropWikiImage = useCallback(
+    async ({ file }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.key || typeof onUploadImage !== 'function') {
+        throw new Error('이미지 업로드를 사용할 수 없습니다.');
+      }
+      const paths = await onUploadImage([file]);
+      const nextPath = paths?.[0];
+      if (!nextPath) {
+        throw new Error('자른 이미지 업로드에 실패했습니다.');
+      }
+      if (typeof onChangeWithUndoHistory !== 'function') return;
+      const next =
+        modal.kind === 'wiki'
+          ? updateWikiImagePathInMarkdown(value, {
+              path: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextPath,
+            })
+          : replaceMarkdownImageWithWikiPath(value, {
+              src: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextPath,
+            });
+      if (next.updated && next.markdown !== value) {
+        onChangeWithUndoHistory(next.markdown);
+      }
+    },
+    [onChangeWithUndoHistory, onUploadImage, value, wikiImageModalState],
   );
 
   const findResizableImageElement = useCallback((target) => {
@@ -1255,8 +1289,10 @@ export default function MarkdownEditor({
         kind={wikiImageModalState?.kind ?? 'wiki'}
         initialWidth={wikiImageModalState?.width ?? ''}
         initialHeight={wikiImageModalState?.height ?? ''}
+        imageSrc={wikiImageModalState?.imageSrc ?? ''}
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
+        onCrop={handleCropWikiImage}
       />
       {freeTransformState && freeTransformOverlayRect && (
         <div

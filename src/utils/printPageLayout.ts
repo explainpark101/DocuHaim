@@ -30,8 +30,8 @@ export type PrintPageLayout = {
 
 export const DEFAULT_PRINT_PAGE_LAYOUT: PrintPageLayout = {
   pageSizeId: 'a4',
-  imageMaxWidth: '100%',
-  imageMaxHeight: '',
+  imageMaxWidth: '703px',
+  imageMaxHeight: '1032px',
 };
 
 const PAGE_SIZE_IDS = new Set<string>(PRINT_PAGE_SIZES.map((size) => size.id));
@@ -56,6 +56,100 @@ export function normalizePrintSizeValue(raw: string): string | null {
   return `${match[1]}${match[2].toLowerCase()}`;
 }
 
+export function mmToCssPx(mm: number): number {
+  return (mm * 96) / 25.4;
+}
+
+export function getPrintPageInnerSizeMm(pageSizeId: PrintPageSizeId): {
+  widthMm: number;
+  heightMm: number;
+} {
+  const page = getPrintPageSize(pageSizeId);
+  return {
+    widthMm: Math.max(0, page.widthMm - PRINT_PAGE_MARGIN_MM * 2),
+    heightMm: Math.max(0, page.heightMm - PRINT_PAGE_MARGIN_MM * 2),
+  };
+}
+
+export function getPrintPageInnerSizePx(pageSizeId: PrintPageSizeId): {
+  widthPx: number;
+  heightPx: number;
+} {
+  const inner = getPrintPageInnerSizeMm(pageSizeId);
+  return {
+    widthPx: Math.max(1, Math.round(mmToCssPx(inner.widthMm))),
+    heightPx: Math.max(1, Math.round(mmToCssPx(inner.heightMm))),
+  };
+}
+
+const PRINT_IMAGE_MAX_PX_MIN = 1;
+const PRINT_IMAGE_MAX_PX_MAX = 20000;
+
+/** Print preview image max W/H: px only. Bare numbers become px. */
+export function normalizePrintImageMaxPx(raw: string): string | null {
+  const value = String(raw ?? '').trim();
+  if (!value) return null;
+  if (/^\d+$/.test(value)) {
+    return formatPrintImageMaxPx(Number(value));
+  }
+  const match = value.match(/^(\d+(?:\.\d+)?)px$/i);
+  if (!match?.[1]) return null;
+  return formatPrintImageMaxPx(Number(match[1]));
+}
+
+export function coercePrintImageMaxToPx(
+  raw: unknown,
+  fallbackPx: number,
+  percentBasePx: number,
+): string {
+  if (typeof raw !== 'string') return formatPrintImageMaxPx(fallbackPx);
+  const value = raw.trim();
+  if (!value) return formatPrintImageMaxPx(fallbackPx);
+  if (/^\d+$/.test(value)) return formatPrintImageMaxPx(Number(value));
+  const match = value.match(/^(\d+(?:\.\d+)?)(px|%|vh|vw|mm|cm|in)$/i);
+  if (!match?.[1] || !match[2]) return formatPrintImageMaxPx(fallbackPx);
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return formatPrintImageMaxPx(fallbackPx);
+  const unit = match[2].toLowerCase();
+  let px = fallbackPx;
+  if (unit === 'px') px = amount;
+  else if (unit === '%') px = (amount / 100) * percentBasePx;
+  else if (unit === 'mm') px = mmToCssPx(amount);
+  else if (unit === 'cm') px = mmToCssPx(amount * 10);
+  else if (unit === 'in') px = amount * 96;
+  else if (unit === 'vh') {
+    px = (amount / 100) * (typeof window === 'undefined' ? percentBasePx : window.innerHeight);
+  } else if (unit === 'vw') {
+    px = (amount / 100) * (typeof window === 'undefined' ? percentBasePx : window.innerWidth);
+  }
+  return formatPrintImageMaxPx(px);
+}
+
+function formatPrintImageMaxPx(value: number): string {
+  const rounded = Math.round(value);
+  const clamped = Math.min(
+    PRINT_IMAGE_MAX_PX_MAX,
+    Math.max(PRINT_IMAGE_MAX_PX_MIN, Number.isFinite(rounded) ? rounded : PRINT_IMAGE_MAX_PX_MIN),
+  );
+  return `${clamped}px`;
+}
+
+export function stepPrintImageMaxPx(
+  raw: string,
+  direction: 1 | -1,
+  options?: { shiftKey?: boolean; altKey?: boolean; emptyFallback?: string },
+): string | null {
+  const source = String(raw ?? '').trim() || options?.emptyFallback || '';
+  const normalized =
+    normalizePrintImageMaxPx(source) ??
+    (options?.emptyFallback ? normalizePrintImageMaxPx(options.emptyFallback) : null);
+  if (!normalized) return null;
+  const current = Number(normalized.slice(0, -2));
+  if (!Number.isFinite(current)) return null;
+  const step = options?.altKey ? 1 : options?.shiftKey ? 50 : 10;
+  return formatPrintImageMaxPx(current + direction * step);
+}
+
 export function loadPrintPageLayout(): PrintPageLayout {
   if (typeof window === 'undefined') return { ...DEFAULT_PRINT_PAGE_LAYOUT };
   try {
@@ -67,16 +161,17 @@ export function loadPrintPageLayout(): PrintPageLayout {
     const pageSizeId = isPrintPageSizeId(record.pageSizeId)
       ? record.pageSizeId
       : DEFAULT_PRINT_PAGE_LAYOUT.pageSizeId;
-    const parsedWidth =
-      typeof record.imageMaxWidth === 'string'
-        ? normalizePrintSizeValue(record.imageMaxWidth)
-        : null;
-    const parsedHeight =
-      typeof record.imageMaxHeight === 'string'
-        ? normalizePrintSizeValue(record.imageMaxHeight)
-        : null;
-    const imageMaxWidth = parsedWidth ?? DEFAULT_PRINT_PAGE_LAYOUT.imageMaxWidth;
-    const imageMaxHeight = parsedHeight ?? DEFAULT_PRINT_PAGE_LAYOUT.imageMaxHeight;
+    const inner = getPrintPageInnerSizePx(pageSizeId);
+    const imageMaxWidth = coercePrintImageMaxToPx(
+      record.imageMaxWidth,
+      inner.widthPx,
+      inner.widthPx,
+    );
+    const imageMaxHeight = coercePrintImageMaxToPx(
+      record.imageMaxHeight,
+      inner.heightPx,
+      inner.heightPx,
+    );
     return { pageSizeId, imageMaxWidth, imageMaxHeight };
   } catch {
     return { ...DEFAULT_PRINT_PAGE_LAYOUT };
@@ -96,8 +191,9 @@ export function buildPrintLayoutCssVars(layout: PrintPageLayout): Record<string,
   const page = getPrintPageSize(layout.pageSizeId);
   const innerWidthMm = Math.max(0, page.widthMm - PRINT_PAGE_MARGIN_MM * 2);
   const innerHeightMm = Math.max(0, page.heightMm - PRINT_PAGE_MARGIN_MM * 2);
-  const maxWidth = layout.imageMaxWidth.trim() || '100%';
-  const maxHeight = layout.imageMaxHeight.trim() || 'var(--print-page-inner-height)';
+  const innerPx = getPrintPageInnerSizePx(layout.pageSizeId);
+  const maxWidth = layout.imageMaxWidth.trim() || `${innerPx.widthPx}px`;
+  const maxHeight = layout.imageMaxHeight.trim() || `${innerPx.heightPx}px`;
   return {
     '--print-page-width': `${page.widthMm}mm`,
     '--print-page-height': `${page.heightMm}mm`,

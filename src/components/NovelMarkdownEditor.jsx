@@ -51,6 +51,7 @@ import {
 import {
   getWikiImageAttrsFromElement,
   getWikiImageOccurrenceInContainer,
+  updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
   wikiImageMarkupFromAttrs,
 } from '@/utils/wikiImageSyntax';
@@ -659,6 +660,7 @@ export default function NovelMarkdownEditor({
         height: attrs.height,
         occurrence,
         nodePos,
+        imageSrc: img.currentSrc || img.src || '',
       });
     };
     root.addEventListener('contextmenu', onContextMenu);
@@ -701,6 +703,48 @@ export default function NovelMarkdownEditor({
       }
     },
     [flushPendingMarkdown, onChange, value, wikiImageModalState],
+  );
+
+  const handleCropWikiImage = useCallback(
+    async ({ file }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.path || typeof onUploadImage !== 'function') {
+        throw new Error('이미지 업로드를 사용할 수 없습니다.');
+      }
+      const paths = await onUploadImage([file]);
+      const nextPath = paths?.[0];
+      if (!nextPath) {
+        throw new Error('자른 이미지 업로드에 실패했습니다.');
+      }
+
+      const ed = editorRef.current;
+      const view = ed?.view;
+      const pos = modal.nodePos;
+      if (view && Number.isInteger(pos)) {
+        const node = view.state.doc.nodeAt(pos);
+        if (node?.type?.name === 'wikiImage') {
+          view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            path: nextPath,
+          }, node.marks));
+          setHydrateTick((t) => t + 1);
+          flushPendingMarkdown();
+          return;
+        }
+      }
+
+      if (typeof onChange === 'function') {
+        const next = updateWikiImagePathInMarkdown(value, {
+          path: modal.path,
+          occurrence: modal.occurrence ?? 0,
+          nextPath,
+        });
+        if (next.updated && next.markdown !== value) {
+          onChange(next.markdown);
+        }
+      }
+    },
+    [flushPendingMarkdown, onChange, onUploadImage, value, wikiImageModalState],
   );
 
   return (
@@ -809,7 +853,9 @@ export default function NovelMarkdownEditor({
         path={wikiImageModalState?.path ?? ''}
         initialWidth={wikiImageModalState?.width ?? ''}
         initialHeight={wikiImageModalState?.height ?? ''}
+        imageSrc={wikiImageModalState?.imageSrc ?? ''}
         onApply={handleApplyWikiImageSize}
+        onCrop={handleCropWikiImage}
       />
     </div>
   );
