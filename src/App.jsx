@@ -114,7 +114,13 @@ import {
 import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
 import { patchWebdavTreeChildren } from '@/utils/webdavTree.js';
 import { webdavPropfindDeep } from '@/utils/webdavClient';
-import { readLocalDirectoryLevel, readLocalDirectoryTree, patchLocalTreeChildren } from '@/utils/localTree';
+import {
+  readLocalDirectoryLevel,
+  readLocalDirectoryTree,
+  patchLocalTreeChildren,
+  hydrateExpandedLocalFolders,
+} from '@/utils/localTree';
+import { loadExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import {
   hasStoredLocalRootHandle,
   loadLastLocalFolderName,
@@ -199,7 +205,7 @@ export default function App() {
   const location = useLocation();
   if (location.pathname === '/export-pdf') {
     return (
-      <div className="export-pdf-layout min-h-screen print:min-h-0 max-w-screen bg-white dark:bg-odp-bgSofter print:bg-white print:dark:bg-white">
+      <div className="export-pdf-layout min-h-screen print:min-h-0 max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white">
         <ExportPDFPage />
       </div>
     );
@@ -269,6 +275,7 @@ function MainApp() {
   const [localRootHandle, setLocalRootHandle] = useState(null);
   const [isLocalTreeLoading, setIsLocalTreeLoading] = useState(false);
   const [localFolderLoadingPath, setLocalFolderLoadingPath] = useState(null);
+  const localFolderLoadInFlightRef = useRef(new Set());
   const [showRestoreLocalFolderModal, setShowRestoreLocalFolderModal] = useState(false);
   const [pendingLocalFolderName, setPendingLocalFolderName] = useState('');
   
@@ -2151,9 +2158,12 @@ function MainApp() {
     setLocalRootHandle(dirHandle);
     try {
       await saveLocalRootHandle(dirHandle);
-      const tree = fullScan
+      let tree = fullScan
         ? await readLocalDirectoryTree(dirHandle, '', dirHandle)
         : await readLocalDirectoryLevel(dirHandle, '', dirHandle);
+      if (!fullScan) {
+        tree = await hydrateExpandedLocalFolders(tree, loadExpandedFolderPaths().local);
+      }
       setLocalTree(tree);
     } finally {
       setIsLocalTreeLoading(false);
@@ -2162,16 +2172,20 @@ function MainApp() {
 
   const loadLocalFolderChildren = useCallback(async (folderNode) => {
     if (!folderNode?.handle || folderNode.childrenLoaded === true) return;
-    setLocalFolderLoadingPath(folderNode.path);
+    const folderPath = folderNode.path;
+    if (!folderPath || localFolderLoadInFlightRef.current.has(folderPath)) return;
+    localFolderLoadInFlightRef.current.add(folderPath);
+    setLocalFolderLoadingPath(folderPath);
     try {
       const children = await readLocalDirectoryLevel(
         folderNode.handle,
-        folderNode.path,
+        folderPath,
         folderNode.handle,
       );
-      setLocalTree((prev) => patchLocalTreeChildren(prev, folderNode.path, children));
+      setLocalTree((prev) => patchLocalTreeChildren(prev, folderPath, children));
     } finally {
-      setLocalFolderLoadingPath((current) => (current === folderNode.path ? null : current));
+      localFolderLoadInFlightRef.current.delete(folderPath);
+      setLocalFolderLoadingPath((current) => (current === folderPath ? null : current));
     }
   }, []);
 

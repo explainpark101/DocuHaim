@@ -140,6 +140,8 @@ export {
 } from './attachments.js';
 export {
   fuzzyMatchText,
+  splitSearchTokens,
+  fuzzyMatchTokensInHaystacks,
   highlightHtmlMatches,
   renderSearchResultHtml,
   buildSearchPreviewText,

@@ -4,11 +4,22 @@ import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import { ArrowLeft, ListTree, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
+import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
+import PrintPageBreakOverlay from '@/components/print/PrintPageBreakOverlay';
+import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
+import {
+  buildPrintLayoutCssVars,
+  buildPrintPageAtRule,
+  loadPrintPageLayout,
+  savePrintPageLayout,
+} from '@/utils/printPageLayout';
 import { withFontFallback } from '@/utils/fontFallback';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
+import { usePrintPgbrSpacers } from '@/hooks/usePrintPgbrSpacers';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
@@ -24,7 +35,7 @@ import {
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
-const PRINT_TOC_DEFAULT_WIDTH = 280;
+const PRINT_TOC_DEFAULT_WIDTH = 360;
 
 const headingId = ({ index }) => `pdf-ex-heading-${index}`;
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
@@ -262,18 +273,67 @@ const printFontStyles = `
   #export-pdf-preview .md-editor-preview h6 {
     cursor: pointer;
   }
-  #export-pdf-preview img {
-    max-height: 100vh;
+  #export-pdf-preview img,
+  #export-pdf-preview .md-editor-preview img {
+    max-width: var(--print-img-max-width, 100%);
+    max-height: var(--print-img-max-height, var(--print-page-inner-height, 100vh));
+    width: auto;
+    height: auto;
     object-fit: contain;
+  }
+  .export-pdf-paper .md-pgbr {
+    height: auto;
+    min-height: 1px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-block-start: 2px dashed #ef4444;
+    background-color: #f3f4f6;
+    background-image: repeating-linear-gradient(
+      -45deg,
+      #f9fafb,
+      #f9fafb 6px,
+      #f3f4f6 6px,
+      #f3f4f6 12px
+    );
+  }
+  .export-pdf-paper-metric {
+    height: var(--print-page-inner-height);
+  }
+  .export-pdf-paper #export-pdf-preview,
+  .export-pdf-paper #export-pdf-preview .md-editor,
+  .export-pdf-paper #export-pdf-preview .md-editor-content,
+  .export-pdf-paper #export-pdf-preview .md-editor-preview-wrapper,
+  .export-pdf-paper #export-pdf-preview .md-editor-preview {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
   }
   @media print {
     .export-pdf-preview-scroll {
       overflow: visible !important;
       max-height: none !important;
+      background: #ffffff !important;
+      padding: 0 !important;
     }
     .export-pdf-page {
       display: block !important;
       overflow: visible !important;
+      background: #ffffff !important;
+    }
+    .export-pdf-paper {
+      width: auto !important;
+      max-width: none !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      background: #ffffff !important;
+    }
+    .export-pdf-paper .md-pgbr {
+      background: transparent !important;
+      background-image: none !important;
+      border: none !important;
     }
     #export-pdf-preview .md-editor-preview-wrapper {
       overflow: visible !important;
@@ -288,6 +348,7 @@ export default function ExportPDFPage() {
   const { value = '', currentFile = null } = location.state ?? {};
   const [previewValue, setPreviewValue] = useState(() => value);
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
+  const [printLayout, setPrintLayout] = useState(() => loadPrintPageLayout());
   const [fontModalOpen, setFontModalOpen] = useState(false);
   const [tocVisible, setTocVisible] = useState(true);
   const [tocTopPx, setTocTopPx] = useState(0);
@@ -304,6 +365,10 @@ export default function ExportPDFPage() {
   const activeTransformRef = useRef(null);
   const headerRef = useRef(null);
   const previewContainerRef = useRef(null);
+  const paperContentRef = useRef(null);
+  const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
+  const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
+  usePrintPgbrSpacers(paperContentRef, pageInnerHeightPx, printLayoutKey);
   const tocListRef = useRef(null);
   const tocProgrammaticScrollRef = useRef(false);
   const tocProgrammaticResetTimerRef = useRef(null);
@@ -825,7 +890,16 @@ export default function ExportPDFPage() {
     setHrPgbrModalState(null);
   }, [currentFile, hrPgbrModalState, previewValue]);
 
+  const updatePrintLayout = useCallback((partial) => {
+    setPrintLayout((prev) => {
+      const next = { ...prev, ...partial };
+      savePrintPageLayout(next);
+      return next;
+    });
+  }, []);
+
   const fontStyleVars = {
+    ...buildPrintLayoutCssVars(printLayout),
     '--print-font-body': withFontFallback(fonts.body),
     '--print-font-heading': withFontFallback(fonts.heading),
     '--print-font-bold': withFontFallback(fonts.bold),
@@ -838,51 +912,68 @@ export default function ExportPDFPage() {
 
   return (
     <div
-      className="export-pdf-page flex flex-col min-h-full print:min-h-0 bg-white dark:bg-odp-bgSofter print:bg-white min-w-0"
+      className="export-pdf-page flex flex-col min-h-full print:min-h-0 bg-neutral-200 dark:bg-neutral-800 print:bg-white min-w-0"
       style={fontStyleVars}
     >
       <style>{printFontStyles}</style>
-      <div ref={headerRef} className="sticky top-0 z-20 flex items-center justify-between gap-4 px-4 py-3 border-b border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shrink-0 print:hidden">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="flex items-center gap-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg px-3 py-2 rounded transition"
-          aria-label="뒤로 가기"
-        >
-          <ArrowLeft size={18} />
-          뒤로 가기
-        </button>
-        <h2 className="font-semibold text-gray-800 dark:text-odp-fg truncate flex-1 text-center">
-          PDF로 내보내기
-        </h2>
-        <div className="flex items-center gap-2">
+      <style>{buildPrintPageAtRule(printLayout.pageSizeId)}</style>
+      <div ref={headerRef} className="sticky top-0 z-20 flex flex-col gap-2 px-4 py-3 border-b border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shrink-0 print:hidden">
+        <div className="flex items-center justify-between gap-4">
           <button
             type="button"
-            onClick={() => setFontModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
-            aria-label="폰트 설정"
+            onClick={handleBack}
+            className="flex items-center gap-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg px-3 py-2 rounded transition"
+            aria-label="뒤로 가기"
           >
-            <Settings size={16} />
-            폰트 설정
+            <ArrowLeft size={18} />
+            뒤로 가기
           </button>
-          <button
-            type="button"
-            onClick={() => setTocVisible((v) => !v)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
-            aria-label={tocVisible ? '목차 숨기기' : '목차 보이기'}
-            aria-pressed={tocVisible}
-            title={tocVisible ? '목차 숨기기' : '목차 보이기'}
-          >
-            <ListTree size={16} />
-            목차
-          </button>
-          <button
-            type="button"
-            className="md-editor-btn"
-            onClick={handleExport}
-          >
-            내보내기
-          </button>
+          <h2 className="font-semibold text-gray-800 dark:text-odp-fg truncate flex-1 text-center">
+            PDF로 내보내기
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFontModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
+              aria-label="폰트 설정"
+            >
+              <Settings size={16} />
+              폰트 설정
+            </button>
+            <button
+              type="button"
+              onClick={() => setTocVisible((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
+              aria-label={tocVisible ? '목차 숨기기' : '목차 보이기'}
+              aria-pressed={tocVisible}
+              title={tocVisible ? '목차 숨기기' : '목차 보이기'}
+            >
+              <ListTree size={16} />
+              목차
+            </button>
+            <button
+              type="button"
+              className="md-editor-btn"
+              onClick={handleExport}
+            >
+              내보내기
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <PrintPageSizeSelect
+            value={printLayout.pageSizeId}
+            onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
+          />
+          <PrintImageMaxSizeControls
+            maxWidth={printLayout.imageMaxWidth}
+            maxHeight={printLayout.imageMaxHeight}
+            onChange={({ maxWidth, maxHeight }) => updatePrintLayout({
+              imageMaxWidth: maxWidth,
+              imageMaxHeight: maxHeight,
+            })}
+          />
         </div>
       </div>
 
@@ -892,19 +983,40 @@ export default function ExportPDFPage() {
       >
         <div
           ref={previewContainerRef}
-          className={`export-pdf-preview-scroll px-2 flex-1 overflow-auto min-h-0 bg-white text-gray-900 h-full print:h-auto print:max-h-none print:overflow-visible ${
+          className={`export-pdf-preview-scroll px-4 py-6 flex-1 overflow-auto min-h-0 bg-neutral-200 dark:bg-neutral-800 text-gray-900 h-full print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
             tocVisible ? 'md:pr-(--export-toc-width)' : ''
           }`}
         >
-          <MdPreview
-            id={EDITOR_ID}
-            theme="light"
-            language="ko-KR"
-            value={previewValue}
-            mdHeadingId={headingId}
-            codeFoldable={false}
-            showCodeRowNumber={false}
-          />
+          <div
+            className="export-pdf-paper relative mx-auto bg-white text-gray-900 shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
+            style={{
+              width: 'var(--print-page-width)',
+              minHeight: 'var(--print-page-height)',
+              padding: 'var(--print-page-margin)',
+            }}
+          >
+            <div
+              ref={metricRef}
+              className="export-pdf-paper-metric pointer-events-none absolute top-0 left-0 -z-10 w-px opacity-0 print:hidden"
+              aria-hidden
+            />
+            <div ref={paperContentRef} className="export-pdf-paper-content relative">
+              <PrintPageBreakOverlay
+                contentRef={paperContentRef}
+                pageInnerHeightPx={pageInnerHeightPx}
+                layoutKey={printLayoutKey}
+              />
+              <MdPreview
+                id={EDITOR_ID}
+                theme="light"
+                language="ko-KR"
+                value={previewValue}
+                mdHeadingId={headingId}
+                codeFoldable={false}
+                showCodeRowNumber={false}
+              />
+            </div>
+          </div>
         </div>
         {tocVisible && (
           <aside

@@ -25,38 +25,10 @@ import {
   toTreeSelectKey,
 } from '@/utils/treeMove';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
-
-const EXPANDED_FOLDERS_KEY = 's3haim_expandedFolders';
-const EMPTY_SELECTED_IDS = new Set();
-
-function loadExpandedPaths() {
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(EXPANDED_FOLDERS_KEY) : null;
-    if (!raw) return { s3: new Set(), local: new Set(), webdav: new Set() };
-    const data = JSON.parse(raw);
-    return {
-      s3: new Set(Array.isArray(data.s3) ? data.s3 : []),
-      local: new Set(Array.isArray(data.local) ? data.local : []),
-      webdav: new Set(Array.isArray(data.webdav) ? data.webdav : []),
-    };
-  } catch {
-    return { s3: new Set(), local: new Set(), webdav: new Set() };
-  }
-}
-
-function saveExpandedPaths(expanded) {
-  try {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(
-      EXPANDED_FOLDERS_KEY,
-      JSON.stringify({
-        s3: Array.from(expanded.s3),
-        local: Array.from(expanded.local),
-        webdav: Array.from(expanded.webdav),
-      }),
-    );
-  } catch (_) {}
-}
+import {
+  loadExpandedFolderPaths,
+  saveExpandedFolderPaths,
+} from '@/utils/expandedFoldersStore';
 import {
   IconCloud,
   IconFilePlus,
@@ -71,6 +43,8 @@ import {
 import { ArrowRightToLine, ChevronsLeft, Download, Loader2, MessageCircle, Search, X } from 'lucide-react';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 import SessionTreeList from '@/components/SessionTreeList';
+
+const EMPTY_SELECTED_IDS = new Set();
 
 function getParentPathFromFilePath(filePath) {
   return getParentFolderPath(filePath);
@@ -251,7 +225,7 @@ export default function Sidebar({
   const treeSelectedIds = chatWithMyselfActive ? EMPTY_SELECTED_IDS : selectedIds;
   const treeCurrentFile = chatWithMyselfActive ? null : currentFile;
 
-  const [expandedPaths, setExpandedPaths] = useState(loadExpandedPaths);
+  const [expandedPaths, setExpandedPaths] = useState(loadExpandedFolderPaths);
   const [contextMenu, setContextMenu] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
   const [lastActivatedNode, setLastActivatedNode] = useState(null);
@@ -600,7 +574,7 @@ export default function Sidebar({
       const set = expandedSetForStorageType(next, storageType);
       if (isOpen) set.add(path);
       else set.delete(path);
-      saveExpandedPaths(next);
+      saveExpandedFolderPaths(next);
       return next;
     });
 
@@ -621,6 +595,23 @@ export default function Sidebar({
 
   handleExpandedChangeRef.current = handleExpandedChange;
 
+  useEffect(() => {
+    if (!onLoadLocalFolderChildren || !localTree?.length) return;
+    const expanded = expandedPaths.local;
+    if (!expanded?.size) return;
+
+    const visit = (nodes) => {
+      for (const node of nodes) {
+        if (node?.type !== 'folder') continue;
+        if (expanded.has(node.path) && node.childrenLoaded !== true) {
+          void onLoadLocalFolderChildren(node);
+        }
+        if (node.children?.length) visit(node.children);
+      }
+    };
+    visit(localTree);
+  }, [localTree, expandedPaths.local, onLoadLocalFolderChildren]);
+
   const expandPathsForNewItem = useCallback((storageType, paths) => {
     if (!paths?.length) return;
     setExpandedPaths((prev) => {
@@ -631,7 +622,7 @@ export default function Sidebar({
       };
       const set = expandedSetForStorageType(next, storageType);
       paths.forEach((p) => set.add(p));
-      saveExpandedPaths(next);
+      saveExpandedFolderPaths(next);
       return next;
     });
   }, []);

@@ -150,3 +150,45 @@ export function patchLocalTreeChildren(nodes, folderPath, children) {
     return node;
   });
 }
+
+/**
+ * Recursively load children for expanded folders (breadth-first by visible depth).
+ * Nested expanded folders are loaded after their parents appear in the tree.
+ * @param {Array} nodes
+ * @param {Set<string> | Iterable<string> | null | undefined} expandedPaths
+ */
+export async function hydrateExpandedLocalFolders(nodes, expandedPaths) {
+  const expanded =
+    expandedPaths instanceof Set ? expandedPaths : new Set(expandedPaths ?? []);
+  if (!Array.isArray(nodes) || nodes.length === 0 || expanded.size === 0) {
+    return nodes;
+  }
+
+  let tree = nodes;
+  for (;;) {
+    const toLoad = [];
+    const visit = (list) => {
+      if (!list?.length) return;
+      for (const node of list) {
+        if (node?.type !== 'folder') continue;
+        if (expanded.has(node.path) && node.childrenLoaded !== true && node.handle) {
+          toLoad.push(node);
+        }
+        if (node.children?.length) visit(node.children);
+      }
+    };
+    visit(tree);
+    if (toLoad.length === 0) return tree;
+
+    const loaded = await Promise.all(
+      toLoad.map(async (folder) => ({
+        path: folder.path,
+        children: await readLocalDirectoryLevel(folder.handle, folder.path, folder.handle),
+      })),
+    );
+
+    for (const { path, children } of loaded) {
+      tree = patchLocalTreeChildren(tree, path, children);
+    }
+  }
+}

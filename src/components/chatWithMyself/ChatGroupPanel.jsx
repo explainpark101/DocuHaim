@@ -18,8 +18,8 @@ const iconBtnClass =
 
 /**
  * Right rail: group list.
- * Click toggles view-only filter for that group; click again clears filter.
- * Inline draft row adds groups. Avatar click crops icon. Pencil renames inline.
+ * Click name or avatar toggles view-only filter; click again clears filter.
+ * Pencil enters edit mode (rename + icon change). Draft row adds groups.
  */
 export default function ChatGroupPanel({
   groups = [],
@@ -51,6 +51,9 @@ export default function ChatGroupPanel({
   const editInputRef = useRef(null);
   const commitGuardRef = useRef(false);
   const renameGuardRef = useRef(false);
+  const iconPickerOpenRef = useRef(false);
+  const sourceOpenRef = useRef(false);
+  const cropOpenRef = useRef(false);
   const sorted = useMemo(() => sortGroupsKo(groups), [groups]);
   const filtering = viewGroup != null;
   const viewLabel = resolveGroupLabel(groups, viewGroup);
@@ -111,9 +114,32 @@ export default function ChatGroupPanel({
     setEditName(g.name);
   };
 
+  const syncIconPickerOpen = () => {
+    iconPickerOpenRef.current = sourceOpenRef.current || cropOpenRef.current;
+  };
+
   const openIconSource = (targetId) => {
+    iconPickerOpenRef.current = true;
+    sourceOpenRef.current = true;
     setCropTarget(targetId);
     setSourceOpen(true);
+  };
+
+  const setSourceModalOpen = (next) => {
+    sourceOpenRef.current = next;
+    setSourceOpen(next);
+    syncIconPickerOpen();
+  };
+
+  const setCropModalOpen = (next) => {
+    cropOpenRef.current = next;
+    setCropOpen(next);
+    if (!next && cropSrc) {
+      URL.revokeObjectURL(cropSrc);
+      setCropSrc(null);
+      setCropFile(null);
+    }
+    syncIconPickerOpen();
   };
 
   const onSourceImageChosen = (file) => {
@@ -122,6 +148,8 @@ export default function ChatGroupPanel({
     const url = URL.createObjectURL(file);
     setCropFile(file);
     setCropSrc(url);
+    cropOpenRef.current = true;
+    iconPickerOpenRef.current = true;
     setCropOpen(true);
   };
 
@@ -190,14 +218,20 @@ export default function ChatGroupPanel({
     const next = e.relatedTarget;
     if (next && e.currentTarget.parentElement?.contains(next)) return;
     if (commitGuardRef.current) return;
-    void commitDraft();
+    window.setTimeout(() => {
+      if (iconPickerOpenRef.current || commitGuardRef.current) return;
+      void commitDraft();
+    }, 0);
   };
 
   const onRenameBlur = (e) => {
     const next = e.relatedTarget;
     if (next && e.currentTarget.parentElement?.contains(next)) return;
     if (renameGuardRef.current) return;
-    void commitRename();
+    window.setTimeout(() => {
+      if (iconPickerOpenRef.current || renameGuardRef.current) return;
+      void commitRename();
+    }, 0);
   };
 
   const rowShell = (active) => {
@@ -242,7 +276,7 @@ export default function ChatGroupPanel({
 
       <ChatGroupIconSourceModal
         open={sourceOpen}
-        onOpenChange={setSourceOpen}
+        onOpenChange={setSourceModalOpen}
         onImageChosen={onSourceImageChosen}
         title={cropTarget ? '그룹 아이콘 변경' : '그룹 아이콘'}
       />
@@ -250,14 +284,7 @@ export default function ChatGroupPanel({
         open={cropOpen}
         imageSrc={cropSrc}
         sourceFile={cropFile}
-        onOpenChange={(next) => {
-          setCropOpen(next);
-          if (!next && cropSrc) {
-            URL.revokeObjectURL(cropSrc);
-            setCropSrc(null);
-            setCropFile(null);
-          }
-        }}
+        onOpenChange={setCropModalOpen}
         onConfirm={onCropConfirm}
         title="그룹 아이콘 자르기"
       />
@@ -286,17 +313,17 @@ export default function ChatGroupPanel({
           const isEditing = editingId === g.id;
           return (
             <div key={g.id} className={rowShell(active)}>
-              <div className="flex min-w-0 flex-1 items-center gap-2 px-1 py-0.5">
-                <ChatGroupAvatar
-                  name={g.name}
-                  colorKey={g.id}
-                  size="md"
-                  iconPath={g.iconPath}
-                  getPresignedUrl={getPresignedUrl}
-                  editable={Boolean(onSetGroupIcon) && !isEditing}
-                  onRequestEdit={() => openIconSource(g.id)}
-                />
-                {isEditing ? (
+              {isEditing ? (
+                <div className="flex min-w-0 flex-1 items-center gap-2 px-1 py-0.5">
+                  <ChatGroupAvatar
+                    name={g.name}
+                    colorKey={g.id}
+                    size="md"
+                    iconPath={g.iconPath}
+                    getPresignedUrl={getPresignedUrl}
+                    editable={Boolean(onSetGroupIcon)}
+                    onRequestEdit={() => openIconSource(g.id)}
+                  />
                   <input
                     ref={editInputRef}
                     value={editName}
@@ -315,17 +342,25 @@ export default function ChatGroupPanel({
                     className="min-w-0 flex-1 rounded-md border border-gray-300 bg-transparent px-2 py-0.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:text-odp-fgStrong"
                     aria-label="그룹명 수정"
                   />
-                ) : (
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 truncate text-left"
-                    aria-pressed={active}
-                    onClick={() => onToggleViewGroup?.(g.id)}
-                  >
-                    {g.name}
-                  </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 text-left"
+                  aria-pressed={active}
+                  title={active ? '전체 보기' : `${g.name}만 보기`}
+                  onClick={() => onToggleViewGroup?.(g.id)}
+                >
+                  <ChatGroupAvatar
+                    name={g.name}
+                    colorKey={g.id}
+                    size="md"
+                    iconPath={g.iconPath}
+                    getPresignedUrl={getPresignedUrl}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{g.name}</span>
+                </button>
+              )}
               {isEditing ? (
                 <button
                   type="button"
@@ -341,8 +376,8 @@ export default function ChatGroupPanel({
               ) : (
                 <button
                   type="button"
-                  title="이름 수정"
-                  aria-label="이름 수정"
+                  title="그룹 수정"
+                  aria-label="그룹 수정"
                   disabled={drafting || committing || Boolean(editingId)}
                   className={iconBtnClass}
                   onClick={(e) => {

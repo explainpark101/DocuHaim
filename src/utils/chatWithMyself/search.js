@@ -17,6 +17,28 @@ export function fuzzyMatchText(haystack, needle) {
   return tokens.every((token) => fuzzySubsequence(text, token));
 }
 
+export function splitSearchTokens(query) {
+  return String(query || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/**
+ * Space-separated tokens are AND across the message, OR across fields:
+ * each token must match at least one haystack.
+ */
+export function fuzzyMatchTokensInHaystacks(haystacks, query) {
+  const tokens = splitSearchTokens(query);
+  if (tokens.length === 0) return true;
+  const texts = (Array.isArray(haystacks) ? haystacks : [haystacks]).map((h) =>
+    String(h || ''),
+  );
+  return tokens.every((token) =>
+    texts.some((text) => fuzzyMatchText(text, token)),
+  );
+}
+
 function fuzzySubsequence(haystack, needle) {
   if (!needle) return true;
   if (haystack.includes(needle)) return true;

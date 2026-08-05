@@ -7,6 +7,7 @@ import {
   History,
   Loader2,
   Pin,
+  RefreshCw,
   Search,
   FileText,
   SmilePlus,
@@ -41,6 +42,7 @@ import {
   formatChatMessagePlainText,
   reactionKey,
   fuzzyMatchText,
+  splitSearchTokens,
   reactionsToSearchText,
 } from '@/utils/chatWithMyself';
 
@@ -158,22 +160,19 @@ function SearchResultCard({
   const hasAttachments = attachments.length > 0;
   const reactions = Array.isArray(result.reactions) ? result.reactions : [];
   const q = String(query || '').trim();
-  const matchedReactions =
-    q && reactions.length > 0
-      ? reactions.filter((reaction) =>
-          fuzzyMatchText(reactionsToSearchText([reaction]), q),
-        )
-      : [];
-  // Prefer query-matched reactions; otherwise show all when the card would otherwise be empty.
-  const displayReactions =
-    matchedReactions.length > 0
-      ? matchedReactions
-      : !previewSource &&
-          !String(result.ogSearchText || '').trim() &&
-          !hasAttachments
-        ? reactions
-        : [];
-  const showReactions = displayReactions.length > 0;
+  const queryTokens = splitSearchTokens(q);
+  const matchedReactionKeys = new Set(
+    queryTokens.length > 0
+      ? reactions
+          .filter((reaction) =>
+            queryTokens.some((token) =>
+              fuzzyMatchText(reactionsToSearchText([reaction]), token),
+            ),
+          )
+          .map((reaction) => reactionKey(reaction))
+      : [],
+  );
+  const showReactions = reactions.length > 0;
   const showPreview =
     Boolean(previewSource) || Boolean(String(result.ogSearchText || '').trim());
 
@@ -245,17 +244,22 @@ function SearchResultCard({
                 className={`${showPreview || hasAttachments ? 'mt-1.5' : ''} flex flex-wrap items-center gap-1`}
                 aria-label="반응"
               >
-                {displayReactions.map((reaction) => (
-                  <span
-                    key={reactionKey(reaction)}
-                    className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-gray-300/80 bg-white/90 px-1.5 text-xs text-gray-700 shadow-sm transition-opacity duration-200 dark:border-white/15 dark:bg-[#1a2333] dark:text-odp-fg ${
-                      reaction.pending ? 'opacity-40' : 'opacity-100'
-                    }`}
-                    title={reaction.pending ? '반응 저장 중' : reaction.value}
-                  >
-                    <ChatReactionGlyph reaction={reaction} size={14} />
-                  </span>
-                ))}
+                {reactions.map((reaction) => {
+                  const matched = matchedReactionKeys.has(reactionKey(reaction));
+                  return (
+                    <span
+                      key={reactionKey(reaction)}
+                      className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-1.5 text-xs shadow-sm transition-[opacity,border-color,background-color] duration-200 ${
+                        matched
+                          ? 'border-amber-400 bg-amber-50 text-gray-800 dark:border-amber-500/50 dark:bg-amber-500/20 dark:text-odp-fg'
+                          : 'border-gray-300/80 bg-white/90 text-gray-700 dark:border-white/15 dark:bg-[#1a2333] dark:text-odp-fg'
+                      } ${reaction.pending ? 'opacity-40' : 'opacity-100'}`}
+                      title={reaction.pending ? '반응 저장 중' : reaction.value}
+                    >
+                      <ChatReactionGlyph reaction={reaction} size={14} />
+                    </span>
+                  );
+                })}
               </div>
             ) : null}
           </div>
@@ -344,6 +348,19 @@ export default function ChatSearchPanel({
     Boolean(dateFilter) ||
     Boolean(fromDt) ||
     Boolean(toDt);
+  const canSearch = Boolean(query.trim()) || filtersActive;
+
+  const handleRefreshResults = () => {
+    if (!canSearch || loading) return;
+    if (listRef.current) listRef.current.scrollTop = 0;
+    onSearch?.({
+      query: query.trim(),
+      groupFilter,
+      dateFilter,
+      fromDt,
+      toDt,
+    });
+  };
 
   const handleReactionSearchPick = (reaction) => {
     const token =
@@ -351,10 +368,15 @@ export default function ChatSearchPanel({
         ? String(reaction.value || '').trim()
         : String(reaction?.value || '').trim();
     if (!token) return;
-    setQuery(token);
-    window.requestAnimationFrame(() => {
-      queryInputRef.current?.focus();
-      queryInputRef.current?.select?.();
+    setQuery((prev) => {
+      const parts = splitSearchTokens(prev);
+      const idx = parts.findIndex(
+        (part) => part.toLowerCase() === token.toLowerCase(),
+      );
+      if (idx >= 0) {
+        return [...parts.slice(0, idx), ...parts.slice(idx + 1)].join(' ');
+      }
+      return [...parts, token].join(' ');
     });
   };
 
@@ -418,6 +440,20 @@ export default function ChatSearchPanel({
           </span>
           <button
             type="button"
+            onClick={handleRefreshResults}
+            disabled={!canSearch || loading}
+            className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-odp-focusBg"
+            aria-label="검색 결과 새로고침"
+            title="검색 결과 새로고침"
+          >
+            <RefreshCw
+              size={16}
+              className={loading && canSearch ? 'animate-spin' : undefined}
+              aria-hidden
+            />
+          </button>
+          <button
+            type="button"
             onClick={onClose}
             className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
             aria-label="검색 닫기"
@@ -468,6 +504,7 @@ export default function ChatSearchPanel({
                 side="bottom"
                 align="end"
                 title="반응으로 검색"
+                closeOnSelect={false}
                 onSelect={handleReactionSearchPick}
               >
                 <button

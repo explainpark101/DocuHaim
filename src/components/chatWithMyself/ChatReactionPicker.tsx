@@ -38,6 +38,8 @@ type ChatReactionPickerProps = {
   align?: 'start' | 'center' | 'end';
   /** Accessible dialog title (dialog mode). */
   title?: string;
+  /** Close after a pick. Set false to select several reactions (search). */
+  closeOnSelect?: boolean;
 };
 
 /** Close when pointer lands outside this picker instance (capture phase). */
@@ -303,13 +305,14 @@ export default function ChatReactionPicker({
   side = 'top',
   align = 'center',
   title = '반응 추가',
+  closeOnSelect = true,
 }: ChatReactionPickerProps) {
   const pickerId = useId();
   useCloseOnOutsidePointer(open, pickerId, onOpenChange);
 
   const handleSelect = (reaction: ChatReaction) => {
     onSelect(reaction);
-    onOpenChange(false);
+    if (closeOnSelect) onOpenChange(false);
   };
 
   const trigger =

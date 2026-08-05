@@ -113,6 +113,11 @@ export default function ChatGroupAvatar({
         aria-label={title || '그룹 아이콘 변경'}
         className={`group/avatar ${shellClass} ${shellBg} outline-none ring-offset-1 transition-[box-shadow,transform] duration-150 hover:scale-105 focus-visible:ring-2 focus-visible:ring-blue-400`}
         style={shellStyle}
+        onMouseDown={(e) => {
+          // Keep a sibling rename/draft input focused until the picker opens.
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

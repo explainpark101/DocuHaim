@@ -68,7 +68,7 @@ import {
   appendUniqueMessages,
   readDayMessages,
   touchTimezone,
-  fuzzyMatchText,
+  fuzzyMatchTokensInHaystacks,
   loadMessageOgSearchText,
   reactionsToSearchText,
   readComposerDraftMeta,
@@ -121,24 +121,19 @@ async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   if (filters.query) {
     const body = msg.body || '';
     const group = msg.group || '';
-    if (fuzzyMatchText(body, filters.query) || fuzzyMatchText(group, filters.query)) {
-      return { ok: true, ogSearchText: '' };
-    }
     const { attachments } = extractChatBodyAttachments(body);
-    for (const att of attachments) {
-      if (
-        fuzzyMatchText(att.name || '', filters.query) ||
-        fuzzyMatchText(att.path || '', filters.query)
-      ) {
-        return { ok: true, ogSearchText: '' };
-      }
-    }
     const reactionSearchText = reactionsToSearchText(msg.reactions);
-    if (fuzzyMatchText(reactionSearchText, filters.query)) {
+    const localHaystacks = [
+      body,
+      group,
+      ...attachments.flatMap((att) => [att.name || '', att.path || '']),
+      reactionSearchText,
+    ];
+    if (fuzzyMatchTokensInHaystacks(localHaystacks, filters.query)) {
       return { ok: true, ogSearchText: '' };
     }
     const ogSearchText = await loadMessageOgSearchText(msg, ogStorage);
-    if (fuzzyMatchText(ogSearchText, filters.query)) {
+    if (fuzzyMatchTokensInHaystacks([...localHaystacks, ogSearchText], filters.query)) {
       return { ok: true, ogSearchText };
     }
     return { ok: false, ogSearchText: '' };
@@ -314,6 +309,7 @@ export default function ChatWithMyselfPane({
   const [editedResults, setEditedResults] = useState([]);
   const [pinnedLoading, setPinnedLoading] = useState(false);
   const searchDayKeysRef = useRef([]);
+  const searchGenRef = useRef(0);
   const pinnedDayKeysRef = useRef([]);
   const messagesRef = useRef(messages);
   const dayKeysRef = useRef(dayKeys);
@@ -1707,6 +1703,7 @@ export default function ChatWithMyselfPane({
 
   const handleSearch = useCallback(
     async (filters) => {
+      const gen = ++searchGenRef.current;
       setSearchFilters(filters);
       const active =
         filters?.query ||
@@ -1723,10 +1720,11 @@ export default function ChatWithMyselfPane({
       searchDayKeysRef.current = [];
       try {
         const { results, nextIndex } = await runSearchScan(filters, 0, []);
+        if (gen !== searchGenRef.current) return;
         setSearchResults(results);
         setSearchCursor(nextIndex);
       } finally {
-        setSearchLoading(false);
+        if (gen === searchGenRef.current) setSearchLoading(false);
       }
     },
     [runSearchScan],
@@ -1734,6 +1732,7 @@ export default function ChatWithMyselfPane({
 
   const handleSearchLoadMore = useCallback(async () => {
     if (!searchFilters || searchLoading) return;
+    const gen = searchGenRef.current;
     setSearchLoading(true);
     try {
       const { results, nextIndex } = await runSearchScan(
@@ -1741,10 +1740,11 @@ export default function ChatWithMyselfPane({
         searchCursor,
         searchResults,
       );
+      if (gen !== searchGenRef.current) return;
       setSearchResults(results);
       setSearchCursor(nextIndex);
     } finally {
-      setSearchLoading(false);
+      if (gen === searchGenRef.current) setSearchLoading(false);
     }
   }, [searchFilters, searchLoading, searchCursor, searchResults, runSearchScan]);
 
@@ -2108,7 +2108,7 @@ export default function ChatWithMyselfPane({
                 open={dateOpen}
                 onClose={() => setDateOpen(false)}
                 storageKey="s3haim_chat_date_rail_width"
-                defaultWidth={320}
+                defaultWidth={380}
                 reservedAside={0}
                 openResizableCount={desktopResizableCount}
                 label="날짜 사이드바 너비 조절"
@@ -2128,7 +2128,7 @@ export default function ChatWithMyselfPane({
                 open={groupOpen}
                 onClose={() => setGroupOpen(false)}
                 storageKey="s3haim_chat_group_rail_width"
-                defaultWidth={320}
+                defaultWidth={380}
                 reservedAside={0}
                 openResizableCount={desktopResizableCount}
                 label="그룹 사이드바 너비 조절"
@@ -2142,7 +2142,7 @@ export default function ChatWithMyselfPane({
                 open={searchOpen}
                 onClose={() => setSearchOpen(false)}
                 storageKey="s3haim_chat_search_rail_width"
-                defaultWidth={360}
+                defaultWidth={400}
                 reservedAside={0}
                 openResizableCount={desktopResizableCount}
                 label="검색 사이드바 너비 조절"
@@ -2157,7 +2157,7 @@ export default function ChatWithMyselfPane({
                 open={pinnedOpen}
                 onClose={() => setPinnedOpen(false)}
                 storageKey="s3haim_chat_pinned_rail_width"
-                defaultWidth={340}
+                defaultWidth={380}
                 reservedAside={0}
                 openResizableCount={desktopResizableCount}
                 label="모아보기 사이드바 너비 조절"
