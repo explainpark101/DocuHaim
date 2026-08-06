@@ -773,6 +773,7 @@ export default function CoverEditor({
   }, [placeMode, onPlaceModeChange]);
 
   const beginMarquee = (event: ReactPointerEvent) => {
+    if (event.button !== 0) return;
     const frame = frameRef.current;
     if (!frame) return;
     const rect = frame.getBoundingClientRect();
@@ -802,6 +803,7 @@ export default function CoverEditor({
   };
 
   const beginPlaceOrMarquee = (event: ReactPointerEvent) => {
+    if (event.button !== 0) return;
     if (placeMode) {
       const frame = frameRef.current;
       if (!frame) return;
@@ -833,6 +835,7 @@ export default function CoverEditor({
   };
 
   const beginMove = (id: string, event: ReactPointerEvent) => {
+    if (event.button !== 0) return;
     const frame = frameRef.current;
     const el = findEl(id);
     if (!frame || !el) return;

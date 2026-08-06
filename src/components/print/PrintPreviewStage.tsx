@@ -23,6 +23,7 @@ import {
   type PrintSpreadPair,
 } from '@/utils/printPreviewView';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
+import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 
 type Props = {
   navigation: PrintPreviewNavigation;
@@ -308,7 +309,14 @@ export default function PrintPreviewStage({
 }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const scrollListRef = useRef<HTMLDivElement>(null);
+  const [scrollPanRoot, setScrollPanRoot] = useState<HTMLDivElement | null>(null);
+  const setScrollListRef = useCallback((node: HTMLDivElement | null) => {
+    scrollListRef.current = node;
+    setScrollPanRoot(node);
+  }, []);
   const [previewHtml, setPreviewHtml] = useState('');
+
+  useScrollPointerPan(scrollPanRoot, navigation === 'scroll' && pages === 2);
 
   const { widthPx, heightPx } = useMemo(
     () => getPrintPageOuterSizePx(pageSizeId),
@@ -566,7 +574,7 @@ export default function PrintPreviewStage({
     const scale = zoomPercent / 100;
     return (
       <div
-        ref={scrollListRef}
+        ref={setScrollListRef}
         className="export-pdf-preview-stage h-full min-h-0 w-full overflow-auto print:hidden"
       >
         <div style={zoomStyle}>

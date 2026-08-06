@@ -27,6 +27,7 @@ import CoverSidebar, {
   saveCoverLayersDetached,
 } from '@/components/noteCover/CoverSidebar';
 import { useCoverUndoHistory } from '@/hooks/useCoverUndoHistory';
+import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
@@ -593,6 +594,11 @@ export default function ExportPDFPage({
   const activeTransformRef = useRef(null);
   const headerRef = useRef(null);
   const previewContainerRef = useRef(null);
+  const [previewPanRoot, setPreviewPanRoot] = useState(null);
+  const setPreviewContainerRef = useCallback((node) => {
+    previewContainerRef.current = node;
+    setPreviewPanRoot(node);
+  }, []);
   const paperContentRef = useRef(null);
   const imageMaxProbeRef = useRef(null);
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
@@ -1622,7 +1628,10 @@ export default function ExportPDFPage({
     };
     root.addEventListener('wheel', onWheel, { passive: false });
     return () => root.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [previewPanRoot]);
+
+  // Space+drag / middle-mouse drag pans the preview scroll area.
+  useScrollPointerPan(previewPanRoot);
 
   const fontStyleVars = {
     ...buildPrintLayoutCssVars(printLayout),
@@ -1798,7 +1807,7 @@ export default function ExportPDFPage({
         }}
       >
         <div
-          ref={previewContainerRef}
+          ref={setPreviewContainerRef}
           className={`export-pdf-preview-scroll relative px-4 py-6 min-h-0 flex-1 bg-neutral-200 dark:bg-neutral-800 text-gray-900 print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
             isLiveScroll1 ? 'overflow-auto' : 'overflow-hidden'
           } ${tocVisible ? 'md:pr-(--export-toc-width)' : ''} ${
