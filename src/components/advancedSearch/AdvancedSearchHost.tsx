@@ -54,6 +54,9 @@ const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
   'print-focus-export': 'export',
   'print-focus-paper': 'paper',
   'print-focus-image-max': 'image-max',
+  'print-focus-view-nav': 'view-nav',
+  'print-focus-view-pages': 'view-pages',
+  'print-focus-zoom': 'zoom',
 };
 
 type TreeNode = {

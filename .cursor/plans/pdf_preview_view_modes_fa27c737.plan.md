@@ -4,22 +4,22 @@ overview: PDF 내보내기 미리보기에 [스크롤/넘기기]·[1페이지/2�
 todos:
   - id: view-utils
     content: "printPreviewView.ts: types, spread pairing, fit%, localStorage"
-    status: pending
+    status: completed
   - id: toolbar-controls
     content: Nav/Pages Selects (icons), firstPage Switch, ZoomControls
-    status: pending
+    status: completed
   - id: zoom-scroll1
     content: Wire zoom + Ctrl/Cmd+wheel on existing scroll 1-page preview
-    status: pending
+    status: completed
   - id: preview-stage
     content: "PrintPreviewStage: flip 1/2 then scroll 2-up with page slots"
-    status: pending
+    status: completed
   - id: toc-badge-as
     content: Adapt TOC/badge navigation; register printActions + ExportPDFPage handlers
-    status: pending
+    status: completed
   - id: cover-lock
     content: Lock view to scroll+1 while coverEditMode; keep print CSS unchanged
-    status: pending
+    status: completed
 isProject: false
 ---
 

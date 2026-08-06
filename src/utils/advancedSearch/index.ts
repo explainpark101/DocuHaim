@@ -46,6 +46,7 @@ export type { EditorActionId } from './editorActions';
 export {
   registerPrintActions,
   registerPrintTocProvider,
+  registerPrintPreviewNavigator,
   runPrintAction,
   hasPrintActions,
   subscribePrintActions,
@@ -54,7 +55,7 @@ export {
   PRINT_ACTION_COMMANDS,
   PRINT_PAPER_SIZE_COMMANDS,
 } from './printActions';
-export type { PrintActionId, PrintTocEntry } from './printActions';
+export type { PrintActionId, PrintTocEntry, PrintPreviewNavigator } from './printActions';
 export {
   registerChatActions,
   runChatAction,

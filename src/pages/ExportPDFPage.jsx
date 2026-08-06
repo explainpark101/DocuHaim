@@ -2,11 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
-import { ArrowLeft, LayoutTemplate, ListTree, Save, Settings } from 'lucide-react';
+import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintPageBreakOverlay from '@/components/print/PrintPageBreakOverlay';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
+import PrintPreviewFirstPageSingleSwitch from '@/components/print/PrintPreviewFirstPageSingleSwitch';
+import PrintPreviewNavSelect from '@/components/print/PrintPreviewNavSelect';
+import PrintPreviewPagesSelect from '@/components/print/PrintPreviewPagesSelect';
+import PrintPreviewStage, {
+  logicalPageIndexForHeading,
+  spreadIndexForLogicalPage,
+} from '@/components/print/PrintPreviewStage';
+import PrintPreviewZoomControls from '@/components/print/PrintPreviewZoomControls';
 import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
 import CoverEditor from '@/components/noteCover/CoverEditor';
 import CoverSlide from '@/components/noteCover/CoverSlide';
@@ -34,8 +42,15 @@ import {
 import {
   paperActionId,
   registerPrintActions,
+  registerPrintPreviewNavigator,
   registerPrintTocProvider,
 } from '@/utils/advancedSearch/printActions';
+import {
+  clampZoomPercent,
+  loadPrintPreviewView,
+  savePrintPreviewView,
+  stepZoomPercent,
+} from '@/utils/printPreviewView';
 import { withFontFallback } from '@/utils/fontFallback';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
@@ -52,6 +67,7 @@ import { getVisualLineAtPoint, insertPgbrBeforeVisualLine } from '@/utils/printV
 import {
   createDefaultNoteCover,
   formatNoteCoverIssues,
+  nudgeCoverFontSizes,
   parseNoteCover,
   stripNoteCoverComment,
   upsertNoteCoverComment,
@@ -238,8 +254,8 @@ function removePgbrByOccurrence(markdown, targetOccurrence) {
 }
 
 const printFontStyles = `
-  #export-pdf-preview,
-  #export-pdf-preview .md-editor-preview {
+  :is(#export-pdf-preview, [data-export-pdf-preview]),
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview {
     background: #ffffff;
     color: #111827;
     font-family: var(--print-font-body, inherit);
@@ -259,8 +275,8 @@ const printFontStyles = `
     --md-theme-border-color: #e5e7eb;
     --md-theme-bg-color: #ffffff;
   }
-  #export-pdf-preview .md-editor,
-  #export-pdf-preview .md-editor-preview [class$="-theme"] {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview [class$="-theme"] {
     color-scheme: light;
     --md-theme-table-stripe-color: #f9fafb;
     --md-theme-table-tr-bg-color: #ffffff;
@@ -274,49 +290,49 @@ const printFontStyles = `
     --md-theme-table-trh-color: #f3f4f6;
     --md-theme-table-color: #111827;
   }
-  #export-pdf-preview .md-editor-preview table,
-  #export-pdf-preview .md-editor-preview table tr,
-  #export-pdf-preview .md-editor-preview table tr th,
-  #export-pdf-preview .md-editor-preview table tr td {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr th,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr td {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  #export-pdf-preview .md-editor-preview table tr {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr {
     background-color: #ffffff !important;
   }
-  #export-pdf-preview .md-editor-preview table tr:nth-child(2n) {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr:nth-child(2n) {
     background-color: #f9fafb !important;
   }
-  #export-pdf-preview .md-editor-preview table thead,
-  #export-pdf-preview .md-editor-preview table thead tr,
-  #export-pdf-preview .md-editor-preview table tr th {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table thead,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table thead tr,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr th {
     background-color: #f3f4f6 !important;
     color: #111827 !important;
   }
-  #export-pdf-preview .md-editor-preview table tr th,
-  #export-pdf-preview .md-editor-preview table tr td {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr th,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr td {
     border-color: #e5e7eb !important;
     color: #111827;
   }
-  #export-pdf-preview .md-editor-preview h1,
-  #export-pdf-preview .md-editor-preview h2,
-  #export-pdf-preview .md-editor-preview h3,
-  #export-pdf-preview .md-editor-preview h4,
-  #export-pdf-preview .md-editor-preview h5,
-  #export-pdf-preview .md-editor-preview h6 {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h1,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h2,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h3,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h4,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h5,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h6 {
     font-family: var(--print-font-heading, inherit);
   }
-  #export-pdf-preview .md-editor-preview b,
-  #export-pdf-preview .md-editor-preview strong {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview b,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview strong {
     font-family: var(--print-font-bold, inherit);
   }
-  #export-pdf-preview .md-editor-preview code,
-  #export-pdf-preview .md-editor-preview pre,
-  #export-pdf-preview .md-editor-preview .md-editor-code pre,
-  #export-pdf-preview .md-editor-preview .md-editor-code pre code {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview code,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview pre,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
     font-family: var(--print-font-code, inherit);
   }
-  #export-pdf-preview .md-editor-preview .md-editor-code {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code {
     --md-theme-code-block-color: #0f172a;
     --md-theme-code-block-bg-color: #f1f5f9;
     --md-theme-code-before-bg-color: #e2e8f0;
@@ -327,21 +343,21 @@ const printFontStyles = `
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
     background-color: #f1f5f9;
   }
-  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head {
     background-color: #e2e8f0;
     border-bottom: 1px solid #cbd5e1;
     color: #475569;
   }
-  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-lang,
-  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-flag span,
-  #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-action {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-lang,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-flag span,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-action {
     color: #475569;
   }
-  #export-pdf-preview .md-editor-preview .md-editor-code pre {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre {
     margin: 0;
     background-color: #f8fafc;
   }
-  #export-pdf-preview .md-editor-preview .md-editor-code pre code {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
     background-color: #f8fafc;
     color: #0f172a;
     border: none;
@@ -351,7 +367,7 @@ const printFontStyles = `
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  #export-pdf-preview .md-editor-preview :not(pre) > code {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview :not(pre) > code {
     background-color: rgba(135, 131, 120, 0.15);
     color: #eb5757;
     border: none;
@@ -359,27 +375,27 @@ const printFontStyles = `
     padding: 0.2em 0.4em;
     font-size: 0.92em;
   }
-  #export-pdf-preview .md-editor-preview figure {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview figure {
     display: flex;
     flex-direction: column;
     text-align: left;
     margin: 0 0 1em;
   }
-  #export-pdf-preview .md-editor-preview figure figcaption {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview figure figcaption {
     text-align: left;
   }
-  #export-pdf-preview .md-editor-preview .md-pgbr,
-  #export-pdf-preview .md-editor-preview hr,
-  #export-pdf-preview .md-editor-preview h1,
-  #export-pdf-preview .md-editor-preview h2,
-  #export-pdf-preview .md-editor-preview h3,
-  #export-pdf-preview .md-editor-preview h4,
-  #export-pdf-preview .md-editor-preview h5,
-  #export-pdf-preview .md-editor-preview h6 {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-pgbr,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview hr,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h1,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h2,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h3,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h4,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h5,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h6 {
     cursor: pointer;
   }
-  #export-pdf-preview img:not([data-print-free-transform]),
-  #export-pdf-preview .md-editor-preview img:not([data-print-free-transform]) {
+  :is(#export-pdf-preview, [data-export-pdf-preview]) img:not([data-print-free-transform]),
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview img:not([data-print-free-transform]) {
     max-width: var(--print-img-max-width, 100%);
     max-height: var(--print-img-max-height, var(--print-page-inner-height, 100vh));
     object-fit: contain;
@@ -423,11 +439,29 @@ const printFontStyles = `
     align-items: center;
     gap: 1.5rem;
   }
-  .export-pdf-paper #export-pdf-preview,
-  .export-pdf-paper #export-pdf-preview .md-editor,
-  .export-pdf-paper #export-pdf-preview .md-editor-content,
-  .export-pdf-paper #export-pdf-preview .md-editor-preview-wrapper,
-  .export-pdf-paper #export-pdf-preview .md-editor-preview {
+  .export-pdf-source-measure {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    /* Prefer visibility over opacity so print engines still paint with @media print. */
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-content,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-preview-wrapper,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-preview {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+  .export-pdf-paper :is(#export-pdf-preview, [data-export-pdf-preview]),
+  .export-pdf-paper :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor,
+  .export-pdf-paper :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-content,
+  .export-pdf-paper :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview-wrapper,
+  .export-pdf-paper :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview {
     height: auto !important;
     max-height: none !important;
     min-height: 0 !important;
@@ -439,6 +473,17 @@ const printFontStyles = `
       background: #ffffff !important;
       padding: 0 !important;
     }
+    .export-pdf-preview-stage {
+      display: none !important;
+    }
+    .export-pdf-source-measure {
+      position: static !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      z-index: auto !important;
+      width: auto !important;
+    }
     .export-pdf-page {
       display: block !important;
       overflow: visible !important;
@@ -449,14 +494,19 @@ const printFontStyles = `
       align-items: stretch !important;
     }
     .export-pdf-cover {
-      width: auto !important;
+      width: 100% !important;
       max-width: none !important;
-      height: auto !important;
-      min-height: 0 !important;
+      /* Absolute-positioned cover elements need an explicit page box or the slide collapses. */
+      height: var(--print-page-inner-height) !important;
+      min-height: var(--print-page-inner-height) !important;
+      max-height: var(--print-page-inner-height) !important;
       margin: 0 !important;
       box-shadow: none !important;
+      overflow: hidden !important;
       break-after: page !important;
       page-break-after: always !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .export-pdf-paper {
       width: auto !important;
@@ -472,7 +522,7 @@ const printFontStyles = `
       background-image: none !important;
       border: none !important;
     }
-    #export-pdf-preview .md-editor-preview-wrapper {
+    :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview-wrapper {
       overflow: visible !important;
       max-height: none !important;
     }
@@ -537,6 +587,9 @@ export default function ExportPDFPage({
   );
   const [coverPlacePreview, setCoverPlacePreview] = useState(() => loadCoverPlacePreviewEnabled());
   const [coverLayersDetached, setCoverLayersDetached] = useState(() => loadCoverLayersDetached());
+  const [previewView, setPreviewView] = useState(() => loadPrintPreviewView());
+  const [flipIndex, setFlipIndex] = useState(0);
+  const [stageVisiblePages, setStageVisiblePages] = useState(null);
   const activeTransformRef = useRef(null);
   const headerRef = useRef(null);
   const previewContainerRef = useRef(null);
@@ -614,6 +667,63 @@ export default function ExportPDFPage({
   const parsedCoverResult = useMemo(() => parseNoteCover(previewValue), [previewValue]);
   const parsedCover = parsedCoverResult.cover;
   const activeCover = parsedCover;
+  const effectiveNavigation = coverEditMode ? 'scroll' : previewView.navigation;
+  const effectivePages = coverEditMode ? 1 : previewView.pages;
+  const isLiveScroll1 = effectiveNavigation === 'scroll' && effectivePages === 1;
+  const viewControlsLocked = Boolean(coverEditMode);
+
+  const updatePreviewView = useCallback((partial) => {
+    setPreviewView((prev) => {
+      const next = { ...prev, ...partial };
+      if (Object.prototype.hasOwnProperty.call(partial, 'zoomPercent')) {
+        next.zoomPercent = clampZoomPercent(partial.zoomPercent);
+      }
+      savePrintPreviewView(next);
+      return next;
+    });
+  }, []);
+
+  const handleStageZoomChange = useCallback((zoomPercent) => {
+    updatePreviewView({ zoomPercent });
+  }, [updatePreviewView]);
+
+  const navigatePreviewToHeading = useCallback((headingId) => {
+    if (!headingId) return;
+    const el = document.getElementById(headingId);
+    if (!el) return;
+
+    if (isLiveScroll1) {
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
+
+    const paper = paperContentRef.current;
+    if (!paper) {
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
+    const logical = logicalPageIndexForHeading(
+      el,
+      paper,
+      pageStarts,
+      Boolean(activeCover?.enabled),
+    );
+    const totalLogical =
+      (activeCover?.enabled ? 1 : 0) + Math.max(1, pageStarts.length);
+    const nextFlip = spreadIndexForLogicalPage(
+      logical,
+      totalLogical,
+      effectivePages,
+      previewView.firstPageSingle,
+    );
+    setFlipIndex(nextFlip);
+  }, [
+    activeCover?.enabled,
+    effectivePages,
+    isLiveScroll1,
+    pageStarts,
+    previewView.firstPageSingle,
+  ]);
 
   useEffect(() => {
     const { issues } = parsedCoverResult;
@@ -960,11 +1070,8 @@ export default function ExportPDFPage({
   }, [handleSave]);
 
   const handleTocItemClick = useCallback((id) => {
-    if (!id) return;
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }, []);
+    navigatePreviewToHeading(id);
+  }, [navigatePreviewToHeading]);
 
   useEffect(() => {
     const root = previewContainerRef.current;
@@ -1402,6 +1509,68 @@ export default function ExportPDFPage({
       'print-font-settings': () => setFontModalOpen(true),
       'print-export': () => handleExport(),
       'print-toggle-toc': () => setTocVisible((v) => !v),
+      'print-view-scroll': () => updatePreviewView({ navigation: 'scroll' }),
+      'print-view-flip': () => updatePreviewView({ navigation: 'flip' }),
+      'print-view-pages-1': () => updatePreviewView({ pages: 1 }),
+      'print-view-pages-2': () => updatePreviewView({ pages: 2 }),
+      'print-toggle-first-page-single': () => {
+        setPreviewView((prev) => {
+          const next = { ...prev, firstPageSingle: !prev.firstPageSingle };
+          savePrintPreviewView(next);
+          return next;
+        });
+      },
+      'print-zoom-in': () => {
+        setPreviewView((prev) => {
+          const next = { ...prev, zoomPercent: stepZoomPercent(prev.zoomPercent, 1) };
+          savePrintPreviewView(next);
+          return next;
+        });
+      },
+      'print-zoom-out': () => {
+        setPreviewView((prev) => {
+          const next = { ...prev, zoomPercent: stepZoomPercent(prev.zoomPercent, -1) };
+          savePrintPreviewView(next);
+          return next;
+        });
+      },
+      'print-zoom-reset': () => updatePreviewView({ zoomPercent: 100 }),
+      'print-cover-place-text': () => {
+        if (!coverEditMode) {
+          toggleCoverEditMode();
+        }
+        setCoverPlaceMode((prev) => (prev?.kind === 'text' ? null : { kind: 'text' }));
+      },
+      'print-cover-place-rect': () => {
+        if (!coverEditMode) {
+          toggleCoverEditMode();
+        }
+        setCoverPlaceMode((prev) => (
+          prev?.kind === 'shape' && prev.shapeType === 'rect'
+            ? null
+            : { kind: 'shape', shapeType: 'rect' }
+        ));
+      },
+      'print-cover-place-ellipse': () => {
+        if (!coverEditMode) {
+          toggleCoverEditMode();
+        }
+        setCoverPlaceMode((prev) => (
+          prev?.kind === 'shape' && prev.shapeType === 'ellipse'
+            ? null
+            : { kind: 'shape', shapeType: 'ellipse' }
+        ));
+      },
+      'print-cover-font-size-up': () => {
+        if (!coverEditMode || !activeCover || !coverSelectedIds.length) return;
+        const next = nudgeCoverFontSizes(activeCover, coverSelectedIds, 1);
+        if (next !== activeCover) onCoverChange(next);
+      },
+      'print-cover-font-size-down': () => {
+        if (!coverEditMode || !activeCover || !coverSelectedIds.length) return;
+        const next = nudgeCoverFontSizes(activeCover, coverSelectedIds, -1);
+        if (next !== activeCover) onCoverChange(next);
+      },
     };
     for (const size of PRINT_PAGE_SIZES) {
       handlers[paperActionId(size.id)] = () => {
@@ -1409,7 +1578,23 @@ export default function ExportPDFPage({
       };
     }
     return registerPrintActions(handlers);
-  }, [handleSave, handleExport, updatePrintLayout]);
+  }, [
+    handleSave,
+    handleExport,
+    updatePrintLayout,
+    updatePreviewView,
+    coverEditMode,
+    toggleCoverEditMode,
+    activeCover,
+    coverSelectedIds,
+    onCoverChange,
+  ]);
+
+  useEffect(() => {
+    return registerPrintPreviewNavigator(({ headingId }) => {
+      navigatePreviewToHeading(headingId);
+    });
+  }, [navigatePreviewToHeading]);
 
   useEffect(() => {
     return registerPrintTocProvider(() =>
@@ -1420,6 +1605,24 @@ export default function ExportPDFPage({
       })),
     );
   }, [tocItems]);
+
+  // Ctrl/Cmd + wheel zoom on preview.
+  useEffect(() => {
+    const root = previewContainerRef.current;
+    if (!root) return undefined;
+    const onWheel = (event) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      const direction = event.deltaY < 0 ? 1 : -1;
+      setPreviewView((prev) => {
+        const next = { ...prev, zoomPercent: stepZoomPercent(prev.zoomPercent, direction) };
+        savePrintPreviewView(next);
+        return next;
+      });
+    };
+    root.addEventListener('wheel', onWheel, { passive: false });
+    return () => root.removeEventListener('wheel', onWheel);
+  }, []);
 
   const fontStyleVars = {
     ...buildPrintLayoutCssVars(printLayout),
@@ -1514,10 +1717,12 @@ export default function ExportPDFPage({
             </button>
             <button
               type="button"
-              className="md-editor-btn"
+              className="md-editor-btn inline-flex items-center gap-1.5"
               data-print-toolbar="export"
               onClick={handleExport}
+              aria-label="내보내기"
             >
+              <Printer size={16} />
               내보내기
             </button>
           </div>
@@ -1543,6 +1748,35 @@ export default function ExportPDFPage({
             value={printLayout.pageSizeId}
             onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
           />
+          <PrintPreviewNavSelect
+            value={effectiveNavigation}
+            disabled={viewControlsLocked}
+            onValueChange={(navigation) => {
+              updatePreviewView({ navigation });
+              setFlipIndex(0);
+            }}
+          />
+          <PrintPreviewPagesSelect
+            value={effectivePages}
+            disabled={viewControlsLocked}
+            onValueChange={(pages) => {
+              updatePreviewView({ pages });
+              setFlipIndex(0);
+            }}
+          />
+          {effectivePages === 2 && !viewControlsLocked ? (
+            <PrintPreviewFirstPageSingleSwitch
+              checked={previewView.firstPageSingle}
+              onCheckedChange={(firstPageSingle) => {
+                updatePreviewView({ firstPageSingle });
+                setFlipIndex(0);
+              }}
+            />
+          ) : null}
+          <PrintPreviewZoomControls
+            value={previewView.zoomPercent}
+            onChange={(zoomPercent) => updatePreviewView({ zoomPercent })}
+          />
           <PrintImageMaxSizeControls
             maxWidth={printLayout.imageMaxWidth}
             maxHeight={printLayout.imageMaxHeight}
@@ -1565,32 +1799,86 @@ export default function ExportPDFPage({
       >
         <div
           ref={previewContainerRef}
-          className={`export-pdf-preview-scroll px-4 py-6 min-h-0 flex-1 overflow-auto bg-neutral-200 dark:bg-neutral-800 text-gray-900 print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
-            tocVisible ? 'md:pr-(--export-toc-width)' : ''
-          } ${coverEditMode ? 'md:pl-(--export-cover-sidebar-width)' : ''}`}
+          className={`export-pdf-preview-scroll relative px-4 py-6 min-h-0 flex-1 bg-neutral-200 dark:bg-neutral-800 text-gray-900 print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
+            isLiveScroll1 ? 'overflow-auto' : 'overflow-hidden'
+          } ${tocVisible ? 'md:pr-(--export-toc-width)' : ''} ${
+            coverEditMode ? 'md:pl-(--export-cover-sidebar-width)' : ''
+          }`}
         >
-          <div className="export-pdf-cover-stack mx-auto w-full print:mx-0">
+          {!isLiveScroll1 ? (
+            <div
+              className={`absolute inset-0 print:hidden ${
+                tocVisible ? 'md:right-(--export-toc-width)' : ''
+              }`}
+            >
+              <PrintPreviewStage
+                navigation={effectiveNavigation}
+                pages={effectivePages}
+                firstPageSingle={previewView.firstPageSingle}
+                zoomPercent={previewView.zoomPercent}
+                onZoomChange={handleStageZoomChange}
+                pageSizeId={printLayout.pageSizeId}
+                pageStarts={pageStarts}
+                pageInnerHeightPx={pageInnerHeightPx}
+                hasCover={Boolean(activeCover?.enabled)}
+                coverNode={
+                  activeCover?.enabled ? (
+                    <CoverSlide
+                      cover={activeCover}
+                      getPresignedUrl={getPresignedUrl}
+                      className="h-full w-full shadow-none"
+                    />
+                  ) : null
+                }
+                sourceContentRef={paperContentRef}
+                layoutKey={`${printLayoutKey}|${bodyMarkdown}|${pageInnerHeightPx}`}
+                flipIndex={flipIndex}
+                onFlipIndexChange={setFlipIndex}
+                onVisibleLogicalPagesChange={setStageVisiblePages}
+              />
+            </div>
+          ) : null}
+          <div
+            className={`export-pdf-cover-stack mx-auto w-full print:mx-0 ${
+              isLiveScroll1 ? '' : 'export-pdf-source-measure'
+            }`}
+            style={
+              isLiveScroll1
+                ? { zoom: previewView.zoomPercent / 100 }
+                : undefined
+            }
+            aria-hidden={isLiveScroll1 ? undefined : true}
+          >
             {activeCover?.enabled || coverEditMode ? (
               coverEditMode && activeCover ? (
-                <CoverEditor
-                  cover={activeCover}
-                  selectedIds={coverSelectedIds}
-                  onSelectIds={setCoverSelectedIds}
-                  onChange={onCoverChange}
-                  getPresignedUrl={getPresignedUrl}
-                  currentFile={currentFile}
-                  centerSnapEnabled={coverCenterSnap}
-                  centerSnapTolerance={coverCenterSnapTolerance}
-                  objectSnapEnabled={coverObjectSnap}
-                  objectSnapTolerance={coverObjectSnapTolerance}
-                  textContainerOutlineEnabled={coverTextContainerOutline}
-                  placePreviewEnabled={coverPlacePreview}
-                  placeMode={coverPlaceMode}
-                  onPlaceModeChange={setCoverPlaceMode}
-                  onUndo={undoCover}
-                  onRedo={redoCover}
-                  className="mx-auto print:mx-0"
-                />
+                <>
+                  <CoverEditor
+                    cover={activeCover}
+                    selectedIds={coverSelectedIds}
+                    onSelectIds={setCoverSelectedIds}
+                    onChange={onCoverChange}
+                    getPresignedUrl={getPresignedUrl}
+                    currentFile={currentFile}
+                    centerSnapEnabled={coverCenterSnap}
+                    centerSnapTolerance={coverCenterSnapTolerance}
+                    objectSnapEnabled={coverObjectSnap}
+                    objectSnapTolerance={coverObjectSnapTolerance}
+                    textContainerOutlineEnabled={coverTextContainerOutline}
+                    placePreviewEnabled={coverPlacePreview}
+                    placeMode={coverPlaceMode}
+                    onPlaceModeChange={setCoverPlaceMode}
+                    onUndo={undoCover}
+                    onRedo={redoCover}
+                    className="mx-auto print:hidden print:mx-0"
+                  />
+                  {activeCover.enabled ? (
+                    <CoverSlide
+                      cover={activeCover}
+                      getPresignedUrl={getPresignedUrl}
+                      className="mx-auto hidden shadow-none print:block print:mx-0"
+                    />
+                  ) : null}
+                </>
               ) : activeCover?.enabled ? (
                 <CoverSlide
                   cover={activeCover}
@@ -1644,6 +1932,7 @@ export default function ExportPDFPage({
           contentHeight={contentHeight}
           paperRef={paperContentRef}
           scrollRef={previewContainerRef}
+          overridePages={isLiveScroll1 ? null : stageVisiblePages}
         />
         {coverEditMode && activeCover ? (
           <CoverSidebar

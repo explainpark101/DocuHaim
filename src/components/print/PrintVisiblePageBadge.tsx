@@ -5,6 +5,8 @@ type Props = {
   contentHeight: number;
   paperRef: RefObject<HTMLElement | null>;
   scrollRef: RefObject<HTMLElement | null>;
+  /** When set, show these 1-based pages instead of scroll-intersection detection. */
+  overridePages?: number[] | null;
 };
 
 function visualViewportBand(): { top: number; bottom: number } {
@@ -49,10 +51,16 @@ export default function PrintVisiblePageBadge({
   contentHeight,
   paperRef,
   scrollRef,
+  overridePages = null,
 }: Props) {
   const [pages, setPages] = useState<number[]>([1]);
 
   useEffect(() => {
+    if (overridePages && overridePages.length > 0) {
+      setPages(overridePages);
+      return undefined;
+    }
+
     const paperEl = paperRef.current;
     const scrollEl = scrollRef.current;
     if (!paperEl || !scrollEl) return undefined;
@@ -88,7 +96,7 @@ export default function PrintVisiblePageBadge({
       window.visualViewport?.removeEventListener('resize', schedule);
       window.visualViewport?.removeEventListener('scroll', schedule);
     };
-  }, [contentHeight, pageStarts, paperRef, scrollRef]);
+  }, [contentHeight, overridePages, pageStarts, paperRef, scrollRef]);
 
   const first = pages[0] ?? 1;
   const last = pages[pages.length - 1] ?? first;

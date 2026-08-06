@@ -453,4 +453,61 @@ export function filterUnlockedElementIds(
   return ids.filter((id) => !isElementEffectivelyLocked(cover, id));
 }
 
+/**
+ * True if any id is a locked element/group (effective), or a group that
+ * contains a locked descendant element.
+ */
+export function layerIdsIncludeLocked(
+  cover: NoteCover,
+  ids: ReadonlyArray<string>,
+): boolean {
+  return ids.some((id) => {
+    if (isGroupId(cover, id)) {
+      if (isGroupEffectivelyLocked(cover, id)) return true;
+      return collectDescendantElementIds(cover, id).some((eid) =>
+        isElementEffectivelyLocked(cover, eid),
+      );
+    }
+    return isElementEffectivelyLocked(cover, id);
+  });
+}
+
+const COVER_FONT_SIZE_MIN = 6;
+const COVER_FONT_SIZE_MAX = 400;
+
+/** Nudge fontSize on selected text / shape elements by `delta` px (clamped). */
+export function nudgeCoverFontSizes(
+  cover: NoteCover,
+  ids: ReadonlyArray<string>,
+  delta: number,
+): NoteCover {
+  if (!ids.length || !Number.isFinite(delta) || delta === 0) return cover;
+  const idSet = new Set(ids);
+  let changed = false;
+  const elements = cover.elements.map((el) => {
+    if (!idSet.has(el.id)) return el;
+    if (el.type === 'text') {
+      const next = Math.min(
+        COVER_FONT_SIZE_MAX,
+        Math.max(COVER_FONT_SIZE_MIN, Math.round(el.fontSize + delta)),
+      );
+      if (next === el.fontSize) return el;
+      changed = true;
+      return { ...el, fontSize: next };
+    }
+    if (el.type === 'rect' || el.type === 'ellipse' || el.type === 'roundRect') {
+      const current = el.fontSize ?? 24;
+      const next = Math.min(
+        COVER_FONT_SIZE_MAX,
+        Math.max(COVER_FONT_SIZE_MIN, Math.round(current + delta)),
+      );
+      if (next === current && el.fontSize === next) return el;
+      changed = true;
+      return { ...el, fontSize: next };
+    }
+    return el;
+  });
+  return changed ? { ...cover, elements } : cover;
+}
+
 export { createEmptyGroup, registerNewElement };

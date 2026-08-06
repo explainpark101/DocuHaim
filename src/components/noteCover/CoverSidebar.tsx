@@ -46,6 +46,7 @@ import {
 import ChatImageBackgroundPicker from '@/components/chatWithMyself/ChatImageBackgroundPicker';
 import FontFamilyInput from '@/components/FontFamilyInput';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import NumberStepControls from '@/components/NumberStepControls';
 import SliderWithScrubInput from '@/components/SliderWithScrubInput';
 import {
   COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
@@ -67,7 +68,9 @@ import {
   coverElementLabel,
   createEmptyGroup,
   deleteElements,
+  deleteLayers,
   filterUnlockedElementIds,
+  layerIdsIncludeLocked,
   groupSelectedElements,
   isCoverShapeElement,
   restackElementsByGap,
@@ -464,6 +467,43 @@ export default function CoverSidebar({
   /** Remembered consent to align inside a sole selected group (until deselected / mixed). */
   const [groupAlignConsentId, setGroupAlignConsentId] = useState<string | null>(null);
   const [pendingAlignMode, setPendingAlignMode] = useState<CoverObjectAlign | null>(null);
+  /** 0 = closed; 1 = first confirm; 2 = second confirm (locked only). */
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<0 | 1 | 2>(0);
+  const [deleteConfirmDouble, setDeleteConfirmDouble] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{
+    ids: string[];
+    mode: 'elements' | 'layers';
+  } | null>(null);
+  const deleteConfirmAwaitingSecondRef = useRef(false);
+  const deleteConfirmSecondTimerRef = useRef<number | null>(null);
+
+  const clearDeleteConfirmSecondTimer = () => {
+    if (deleteConfirmSecondTimerRef.current != null) {
+      window.clearTimeout(deleteConfirmSecondTimerRef.current);
+      deleteConfirmSecondTimerRef.current = null;
+    }
+  };
+
+  const resetDeleteConfirm = () => {
+    clearDeleteConfirmSecondTimer();
+    deleteConfirmAwaitingSecondRef.current = false;
+    setDeleteConfirmStep(0);
+    setDeleteConfirmDouble(false);
+    setPendingDelete(null);
+  };
+
+  const advanceLockedDeleteConfirm = () => {
+    deleteConfirmAwaitingSecondRef.current = true;
+    setDeleteConfirmStep(0);
+    clearDeleteConfirmSecondTimer();
+    deleteConfirmSecondTimerRef.current = window.setTimeout(() => {
+      deleteConfirmSecondTimerRef.current = null;
+      deleteConfirmAwaitingSecondRef.current = false;
+      setDeleteConfirmStep(2);
+    }, 220);
+  };
+
+  useEffect(() => () => clearDeleteConfirmSecondTimer(), []);
 
   useEffect(() => {
     const onWebfonts = () => setFontOptionsTick((n) => n + 1);
@@ -583,10 +623,30 @@ export default function CoverSidebar({
     onChange(ungroupElements(cover, sharedGroupId));
   };
 
+  const commitPendingDelete = (ids: string[], mode: 'elements' | 'layers') => {
+    if (mode === 'layers') {
+      onChange(deleteLayers(cover, ids));
+    } else {
+      onChange(deleteElements(cover, ids));
+    }
+    onSelectIds([]);
+  };
+
+  const requestDeleteLayers = (ids: string[], mode: 'elements' | 'layers' = 'layers') => {
+    if (!ids.length) return;
+    const locked = layerIdsIncludeLocked(cover, ids);
+    if (!locked) {
+      commitPendingDelete(ids, mode);
+      return;
+    }
+    setPendingDelete({ ids, mode });
+    setDeleteConfirmDouble(true);
+    setDeleteConfirmStep(1);
+  };
+
   const handleDelete = () => {
     if (!selectedIds.length) return;
-    onChange(deleteElements(cover, selectedIds));
-    onSelectIds([]);
+    requestDeleteLayers(selectedIds, 'elements');
   };
 
   const restack = () => {
@@ -662,6 +722,7 @@ export default function CoverSidebar({
       onChange={onChange}
       collapsedGroups={collapsedGroups}
       onCollapsedGroupsChange={setCollapsedGroups}
+      onRequestDeleteLayers={(ids) => requestDeleteLayers(ids, 'layers')}
     />
   );
 
@@ -669,7 +730,7 @@ export default function CoverSidebar({
     <div className="space-y-1.5">
       <div className="grid grid-cols-2 gap-1.5">
         <TipButton
-          tip={placeMode?.kind === 'text' ? '클릭 삽입 취소 (Esc)' : '텍스트 상자 추가 — 캔버스를 클릭해 배치'}
+          tip={placeMode?.kind === 'text' ? '클릭 삽입 취소 (Esc)' : '텍스트 상자 추가 (T) — 캔버스를 클릭해 배치'}
           className={`${btnClass} ${placeMode?.kind === 'text' ? `${btnActiveClass} shadow-inner` : ''}`}
           pressed={placeMode?.kind === 'text'}
           onClick={togglePlaceText}
@@ -703,17 +764,22 @@ export default function CoverSidebar({
       <div className="grid grid-cols-3 gap-1.5">
         {(
           [
-            { type: 'rect' as const, tip: '사각형', Icon: Square },
-            { type: 'ellipse' as const, tip: '타원', Icon: Circle },
-            { type: 'roundRect' as const, tip: '둥근 사각형', Icon: Squircle },
+            { type: 'rect' as const, tip: '사각형', shortcut: 'M', Icon: Square },
+            { type: 'ellipse' as const, tip: '타원', shortcut: 'O', Icon: Circle },
+            { type: 'roundRect' as const, tip: '둥근 사각형', shortcut: null, Icon: Squircle },
           ] as const
-        ).map(({ type, tip, Icon }) => {
+        ).map(({ type, tip, shortcut, Icon }) => {
           const active =
             placeMode?.kind === 'shape' && placeMode.shapeType === type;
+          const tipText = active
+            ? '클릭 삽입 취소 (Esc)'
+            : shortcut
+              ? `${tip} 추가 (${shortcut}) — 캔버스를 클릭해 배치`
+              : `${tip} 추가 — 캔버스를 클릭해 배치`;
           return (
             <TipButton
               key={type}
-              tip={active ? '클릭 삽입 취소 (Esc)' : `${tip} 추가 — 캔버스를 클릭해 배치`}
+              tip={tipText}
               className={`${btnClass} ${active ? `${btnActiveClass} shadow-inner` : ''}`}
               pressed={active}
               onClick={() => togglePlaceShape(type)}
@@ -1179,14 +1245,16 @@ export default function CoverSidebar({
               >
                 <label className="block space-y-1">
                   <span className="text-[10px] text-gray-400">글자 크기</span>
-                  <SliderWithScrubInput
-                    unit="css"
-                    suffix="px"
+                  <NumberStepControls
                     min={6}
                     max={400}
                     step={1}
+                    suffix="px"
                     value={(selected as CoverTextElement).fontSize}
+                    resetValue={36}
                     aria-label="글자 크기"
+                    decreaseLabel="글자 크기 줄이기"
+                    increaseLabel="글자 크기 키우기"
                     onChange={(fontSize) =>
                       onChange(patchElement(cover, selected.id, { fontSize }))
                     }
@@ -1526,14 +1594,16 @@ export default function CoverSidebar({
                 </label>
                 <label className="block space-y-1">
                   <span className="text-[10px] text-gray-400">글자 크기</span>
-                  <SliderWithScrubInput
-                    unit="css"
-                    suffix="px"
+                  <NumberStepControls
                     min={6}
                     max={400}
                     step={1}
+                    suffix="px"
                     value={selected.fontSize ?? 24}
+                    resetValue={24}
                     aria-label="도형 글자 크기"
+                    decreaseLabel="글자 크기 줄이기"
+                    increaseLabel="글자 크기 키우기"
                     onChange={(fontSize) =>
                       onChange(patchElement(cover, selected.id, { fontSize }))
                     }
@@ -1717,6 +1787,30 @@ export default function CoverSidebar({
           cancelLabel="취소"
           onConfirm={confirmGroupInternalAlign}
           onCancel={() => setPendingAlignMode(null)}
+        />
+        <ConfirmModal
+          key={`cover-sidebar-delete-${deleteConfirmStep}`}
+          isOpen={deleteConfirmStep > 0}
+          title={deleteConfirmStep === 2 ? '잠긴 개체 삭제' : '개체 삭제'}
+          message={
+            deleteConfirmStep === 2
+              ? '잠긴 개체가 포함되어 있습니다. 정말 삭제할까요?'
+              : '선택한 개체를 삭제할까요?'
+          }
+          confirmLabel="삭제"
+          cancelLabel="취소"
+          variant="danger"
+          onConfirm={() => {
+            if (deleteConfirmDouble && deleteConfirmStep === 1) {
+              advanceLockedDeleteConfirm();
+              return;
+            }
+            const pending = pendingDelete;
+            resetDeleteConfirm();
+            if (!pending?.ids.length) return;
+            commitPendingDelete(pending.ids, pending.mode);
+          }}
+          onCancel={resetDeleteConfirm}
         />
       </>
     </Tooltip.Provider>

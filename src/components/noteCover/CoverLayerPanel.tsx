@@ -88,6 +88,8 @@ export type CoverLayerPanelProps = {
   onChange: (next: NoteCover) => void;
   collapsedGroups: Record<string, boolean>;
   onCollapsedGroupsChange: (next: Record<string, boolean>) => void;
+  /** When set, context-menu delete goes through this (e.g. locked double-confirm). */
+  onRequestDeleteLayers?: (layerIds: string[]) => void;
 };
 
 const collisionDetection: CollisionDetection = (args) => {
@@ -123,6 +125,7 @@ function LayerContextMenu({
   selectedIds,
   onChange,
   onSelectIds,
+  onRequestDeleteLayers,
 }: {
   children: ReactNode;
   cover: NoteCover;
@@ -131,6 +134,7 @@ function LayerContextMenu({
   selectedIds: string[];
   onChange: (next: NoteCover) => void;
   onSelectIds: (ids: string[]) => void;
+  onRequestDeleteLayers?: (layerIds: string[]) => void;
 }) {
   const tree = ensureLayerTree(cover);
   const memberIds =
@@ -237,6 +241,12 @@ function LayerContextMenu({
           <ContextMenu.Item
             className={`${menuItemClass} text-red-600 dark:text-red-400`}
             onSelect={() => {
+              const layerIds =
+                kind === 'group' ? [targetId] : selectionForTarget;
+              if (onRequestDeleteLayers) {
+                onRequestDeleteLayers(layerIds);
+                return;
+              }
               if (kind === 'group') {
                 onChange(deleteLayers(cover, [targetId]));
               } else {
@@ -272,6 +282,7 @@ type SortableRowProps = {
   onSelectGroup: (groupId: string, e: MouseEvent) => void;
   onChange: (next: NoteCover) => void;
   onSelectIds: (ids: string[]) => void;
+  onRequestDeleteLayers?: (layerIds: string[]) => void;
 };
 
 function SortableLayerRow({
@@ -288,6 +299,7 @@ function SortableLayerRow({
   onSelectGroup,
   onChange,
   onSelectIds,
+  onRequestDeleteLayers,
 }: SortableRowProps) {
   const {
     attributes,
@@ -473,6 +485,7 @@ function SortableLayerRow({
       selectedIds={selectedIds}
       onChange={onChange}
       onSelectIds={onSelectIds}
+      onRequestDeleteLayers={onRequestDeleteLayers}
     >
       <Motion.div layout transition={{ duration: 0.18, ease: 'easeOut' }}>
         {body}
@@ -505,6 +518,7 @@ export default function CoverLayerPanel({
   onChange,
   collapsedGroups,
   onCollapsedGroupsChange,
+  onRequestDeleteLayers,
 }: CoverLayerPanelProps) {
   const tree = useMemo(() => ensureLayerTree(cover), [cover]);
   const flat = useMemo(
@@ -723,6 +737,7 @@ export default function CoverLayerPanel({
                 onSelectGroup={selectGroup}
                 onChange={onChange}
                 onSelectIds={onSelectIds}
+                onRequestDeleteLayers={onRequestDeleteLayers}
               />
             ))}
           </SortableContext>

@@ -15,7 +15,11 @@ export type PrintToolbarFocusTarget =
   | 'save'
   | 'export'
   | 'paper'
-  | 'image-max';
+  | 'image-max'
+  | 'view-nav'
+  | 'view-pages'
+  | 'zoom'
+  | 'first-page-single';
 
 export type PrintActionId =
   | 'print-save'
@@ -23,6 +27,19 @@ export type PrintActionId =
   | 'print-export'
   | 'print-change-paper'
   | 'print-toggle-toc'
+  | 'print-view-scroll'
+  | 'print-view-flip'
+  | 'print-view-pages-1'
+  | 'print-view-pages-2'
+  | 'print-toggle-first-page-single'
+  | 'print-zoom-in'
+  | 'print-zoom-out'
+  | 'print-zoom-reset'
+  | 'print-cover-place-text'
+  | 'print-cover-place-rect'
+  | 'print-cover-place-ellipse'
+  | 'print-cover-font-size-up'
+  | 'print-cover-font-size-down'
   | 'print-focus-back'
   | 'print-focus-font'
   | 'print-focus-toc'
@@ -30,6 +47,9 @@ export type PrintActionId =
   | 'print-focus-export'
   | 'print-focus-paper'
   | 'print-focus-image-max'
+  | 'print-focus-view-nav'
+  | 'print-focus-view-pages'
+  | 'print-focus-zoom'
   | 'print-scroll-heading'
   | `print-paper-${PrintPageSizeId}`;
 
@@ -41,11 +61,14 @@ export type PrintTocEntry = {
   level: number;
 };
 
+export type PrintPreviewNavigator = (opts: { headingId: string }) => void;
+
 type Listener = () => void;
 
 const handlers = new Map<PrintActionId, PrintActionHandler>();
 const listeners = new Set<Listener>();
 let tocProvider: (() => PrintTocEntry[]) | null = null;
+let previewNavigator: PrintPreviewNavigator | null = null;
 
 function notify(): void {
   for (const l of listeners) {
@@ -81,6 +104,16 @@ export function registerPrintTocProvider(
   return () => {
     if (tocProvider === provider) tocProvider = null;
     notify();
+  };
+}
+
+/** Navigate preview to a heading (flip/2-up aware). */
+export function registerPrintPreviewNavigator(
+  navigator: PrintPreviewNavigator | null,
+): () => void {
+  previewNavigator = navigator;
+  return () => {
+    if (previewNavigator === navigator) previewNavigator = null;
   };
 }
 
@@ -123,6 +156,10 @@ export function focusPrintToolbar(target: PrintToolbarFocusTarget): void {
 
 export function scrollPrintHeading(headingId: string): void {
   if (!headingId) return;
+  if (previewNavigator) {
+    previewNavigator({ headingId });
+    return;
+  }
   const el = document.getElementById(headingId);
   if (!el) return;
   el.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -168,6 +205,84 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     keywords: ['toc', '목차', 'outline', 'sidebar'],
   },
   {
+    id: 'print-view-scroll',
+    title: '미리보기: 스크롤',
+    description: '미리보기 보기 방식을 스크롤로 설정',
+    keywords: ['scroll', 'view', '스크롤', '보기', 'preview'],
+  },
+  {
+    id: 'print-view-flip',
+    title: '미리보기: 넘기기',
+    description: '미리보기 보기 방식을 페이지 넘기기로 설정',
+    keywords: ['flip', 'page', '넘기기', '보기', 'preview', 'spread'],
+  },
+  {
+    id: 'print-view-pages-1',
+    title: '미리보기: 1페이지',
+    description: '미리보기를 한 페이지씩 표시',
+    keywords: ['1 page', 'single', '1페이지', '보기'],
+  },
+  {
+    id: 'print-view-pages-2',
+    title: '미리보기: 2페이지',
+    description: '미리보기를 두 페이지 펼침으로 표시',
+    keywords: ['2 page', 'spread', '2페이지', '펼침', '보기'],
+  },
+  {
+    id: 'print-toggle-first-page-single',
+    title: '첫장 단면 토글',
+    description: '2페이지 보기에서 첫 장을 단면으로 표시',
+    keywords: ['first page', 'single', 'cover', '첫장', '단면'],
+  },
+  {
+    id: 'print-zoom-in',
+    title: '미리보기 확대',
+    description: '미리보기 확대 비율 +5%',
+    keywords: ['zoom in', '확대', 'zoom', '+'],
+  },
+  {
+    id: 'print-zoom-out',
+    title: '미리보기 축소',
+    description: '미리보기 확대 비율 -5%',
+    keywords: ['zoom out', '축소', 'zoom', '-'],
+  },
+  {
+    id: 'print-zoom-reset',
+    title: '미리보기 확대 100%',
+    description: '미리보기 확대 비율을 100%로 초기화',
+    keywords: ['zoom reset', '100%', '확대', '초기화'],
+  },
+  {
+    id: 'print-cover-place-text',
+    title: '표지: 텍스트 추가 (T)',
+    description: '표지 편집에서 텍스트 상자 배치 모드',
+    keywords: ['cover', '표지', 'text', '텍스트', 't', 'place', '추가'],
+  },
+  {
+    id: 'print-cover-place-rect',
+    title: '표지: 사각형 추가 (M)',
+    description: '표지 편집에서 사각형 도형 배치 모드',
+    keywords: ['cover', '표지', 'rect', 'rectangle', '사각형', '네모', 'm', 'shape', '도형'],
+  },
+  {
+    id: 'print-cover-place-ellipse',
+    title: '표지: 타원 추가 (O)',
+    description: '표지 편집에서 원/타원 도형 배치 모드',
+    keywords: ['cover', '표지', 'ellipse', 'circle', '원', '타원', 'o', 'shape', '도형'],
+  },
+  {
+    id: 'print-cover-font-size-up',
+    title: '표지: 글자 크기 +1px',
+    description: '선택 개체 글자 크기 키우기 (⌘/Ctrl+Shift+>)',
+    keywords: ['cover', '표지', 'font', 'size', '글자', '크기', '크게', 'increase'],
+  },
+  {
+    id: 'print-cover-font-size-down',
+    title: '표지: 글자 크기 -1px',
+    description: '선택 개체 글자 크기 줄이기 (⌘/Ctrl+Shift+<)',
+    keywords: ['cover', '표지', 'font', 'size', '글자', '크기', '작게', 'decrease'],
+  },
+  {
     id: 'print-focus-back',
     title: '뒤로 가기 버튼으로 포커스',
     description: '툴바 · 뒤로 가기',
@@ -208,6 +323,24 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     title: '이미지 최대 크기로 포커스',
     description: '툴바 · 이미지 최대 너비/높이',
     keywords: ['focus', 'image', '포커스', '이미지'],
+  },
+  {
+    id: 'print-focus-view-nav',
+    title: '보기(스크롤/넘기기)로 포커스',
+    description: '툴바 · 미리보기 보기 방식',
+    keywords: ['focus', 'view', 'scroll', 'flip', '포커스', '보기'],
+  },
+  {
+    id: 'print-focus-view-pages',
+    title: '페이지(1/2)로 포커스',
+    description: '툴바 · 미리보기 페이지 수',
+    keywords: ['focus', 'pages', '포커스', '페이지'],
+  },
+  {
+    id: 'print-focus-zoom',
+    title: '확대로 포커스',
+    description: '툴바 · 미리보기 확대 비율',
+    keywords: ['focus', 'zoom', '포커스', '확대'],
   },
 ] as const;
 

@@ -30,9 +30,11 @@ import {
   isCoverShapeElement,
   isElementEffectivelyLocked,
   isLayerDirectlyLocked,
+  layerIdsIncludeLocked,
   moveElementsByDelta,
   nextPastePlacement,
   normalizePctRect,
+  nudgeCoverFontSizes,
   registerNewElement,
   resizeCoverImageBox,
   restoreCoverImageNaturalAspect,
@@ -329,12 +331,47 @@ export default function CoverEditor({
     path: string;
     imageSrc: string;
   } | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  /** 0 = closed; 1 = first confirm; 2 = second confirm (locked only). */
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<0 | 1 | 2>(0);
+  const [deleteConfirmDouble, setDeleteConfirmDouble] = useState(false);
   const deleteConfirmOpenRef = useRef(false);
-  deleteConfirmOpenRef.current = deleteConfirmOpen;
+  const deleteConfirmAwaitingSecondRef = useRef(false);
+  const deleteConfirmSecondTimerRef = useRef<number | null>(null);
+  deleteConfirmOpenRef.current =
+    deleteConfirmStep > 0 || deleteConfirmAwaitingSecondRef.current;
+
+  const clearDeleteConfirmSecondTimer = () => {
+    if (deleteConfirmSecondTimerRef.current != null) {
+      window.clearTimeout(deleteConfirmSecondTimerRef.current);
+      deleteConfirmSecondTimerRef.current = null;
+    }
+  };
+
+  const resetDeleteConfirm = () => {
+    clearDeleteConfirmSecondTimer();
+    deleteConfirmAwaitingSecondRef.current = false;
+    setDeleteConfirmStep(0);
+    setDeleteConfirmDouble(false);
+  };
+
+  const advanceLockedDeleteConfirm = () => {
+    // Close briefly so a double-click cannot skip the second ask.
+    deleteConfirmAwaitingSecondRef.current = true;
+    setDeleteConfirmStep(0);
+    clearDeleteConfirmSecondTimer();
+    deleteConfirmSecondTimerRef.current = window.setTimeout(() => {
+      deleteConfirmSecondTimerRef.current = null;
+      deleteConfirmAwaitingSecondRef.current = false;
+      setDeleteConfirmStep(2);
+    }, 220);
+  };
+
+  useEffect(() => () => clearDeleteConfirmSecondTimer(), []);
+
   const dragRef = useRef<DragState | null>(null);
   const coverRef = useRef(cover);
   const selectedIdsRef = useRef(selectedIds);
+  const placeModeRef = useRef(placeMode);
   const centerSnapEnabledRef = useRef(centerSnapEnabled);
   const centerSnapToleranceRef = useRef(centerSnapTolerance);
   const objectSnapEnabledRef = useRef(objectSnapEnabled);
@@ -342,6 +379,7 @@ export default function CoverEditor({
   const pastingRef = useRef(false);
   coverRef.current = cover;
   selectedIdsRef.current = selectedIds;
+  placeModeRef.current = placeMode;
   centerSnapEnabledRef.current = centerSnapEnabled;
   centerSnapToleranceRef.current = centerSnapTolerance;
   objectSnapEnabledRef.current = objectSnapEnabled;
@@ -1246,6 +1284,16 @@ export default function CoverEditor({
       onSelectIds([]);
     };
 
+    const openDeleteConfirm = () => {
+      const ids = selectedIdsRef.current;
+      if (!ids.length) return;
+      const locked = layerIdsIncludeLocked(coverRef.current, ids);
+      clearDeleteConfirmSecondTimer();
+      deleteConfirmAwaitingSecondRef.current = false;
+      setDeleteConfirmDouble(locked);
+      setDeleteConfirmStep(1);
+    };
+
     const pressedArrows = new Set<string>();
     let arrowGestureStartMs: number | null = null;
 
@@ -1326,17 +1374,84 @@ export default function CoverEditor({
         if (deleteConfirmOpenRef.current) return;
         event.preventDefault();
         event.stopPropagation();
-        if (event.key === 'Backspace') {
-          setDeleteConfirmOpen(true);
+        const locked = layerIdsIncludeLocked(
+          coverRef.current,
+          selectedIdsRef.current,
+        );
+        if (event.key === 'Backspace' || locked) {
+          openDeleteConfirm();
           return;
         }
         removeSelected();
         return;
       }
 
+      // Place tools: T = text, M = rect, O = ellipse (toggle; no modifiers).
+      if (
+        !event.metaKey
+        && !event.ctrlKey
+        && !event.altKey
+        && !event.shiftKey
+        && !event.repeat
+      ) {
+        const placeKey = event.key.toLowerCase();
+        if (placeKey === 't' || placeKey === 'm' || placeKey === 'o') {
+          if (editingTextId) return;
+          if (deleteConfirmOpenRef.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const current = placeModeRef.current;
+          if (placeKey === 't') {
+            onPlaceModeChange?.(
+              current?.kind === 'text' ? null : { kind: 'text' },
+            );
+            return;
+          }
+          if (placeKey === 'm') {
+            onPlaceModeChange?.(
+              current?.kind === 'shape' && current.shapeType === 'rect'
+                ? null
+                : { kind: 'shape', shapeType: 'rect' },
+            );
+            return;
+          }
+          onPlaceModeChange?.(
+            current?.kind === 'shape' && current.shapeType === 'ellipse'
+              ? null
+              : { kind: 'shape', shapeType: 'ellipse' },
+          );
+          return;
+        }
+      }
+
       const mod = event.metaKey || event.ctrlKey;
       if (!mod || event.altKey) return;
       const key = event.key.toLowerCase();
+
+      // Cmd/Ctrl+Shift+< / > : font size −1 / +1 px on selected text/shapes.
+      if (event.shiftKey) {
+        const decrease =
+          key === '<'
+          || key === ','
+          || event.code === 'Comma';
+        const increase =
+          key === '>'
+          || key === '.'
+          || event.code === 'Period';
+        if (decrease || increase) {
+          if (editingTextId) return;
+          if (!selectedIdsRef.current.length) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const next = nudgeCoverFontSizes(
+            coverRef.current,
+            selectedIdsRef.current,
+            decrease ? -1 : 1,
+          );
+          if (next !== coverRef.current) onChange(next);
+          return;
+        }
+      }
 
       if (key === 'z' && event.shiftKey) {
         event.preventDefault();
@@ -1395,7 +1510,7 @@ export default function CoverEditor({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [editingTextId, onChange, onSelectIds, onUndo, onRedo]);
+  }, [editingTextId, onChange, onSelectIds, onUndo, onRedo, onPlaceModeChange]);
 
   const selectedSet = new Set(selectedIds);
   const singleSelected = selectedIds.length === 1 ? findEl(selectedIds[0]!) : null;
@@ -1726,20 +1841,29 @@ export default function CoverEditor({
         ) : null}
       </Modal>
       <ConfirmModal
-        isOpen={deleteConfirmOpen}
-        title="개체 삭제"
-        message="선택한 개체를 삭제할까요?"
+        key={`cover-delete-confirm-${deleteConfirmStep}`}
+        isOpen={deleteConfirmStep > 0}
+        title={deleteConfirmStep === 2 ? '잠긴 개체 삭제' : '개체 삭제'}
+        message={
+          deleteConfirmStep === 2
+            ? '잠긴 개체가 포함되어 있습니다. 정말 삭제할까요?'
+            : '선택한 개체를 삭제할까요?'
+        }
         confirmLabel="삭제"
         cancelLabel="취소"
         variant="danger"
         onConfirm={() => {
+          if (deleteConfirmDouble && deleteConfirmStep === 1) {
+            advanceLockedDeleteConfirm();
+            return;
+          }
           const ids = selectedIdsRef.current;
-          setDeleteConfirmOpen(false);
+          resetDeleteConfirm();
           if (!ids.length) return;
           onChange(deleteElements(coverRef.current, ids));
           onSelectIds([]);
         }}
-        onCancel={() => setDeleteConfirmOpen(false)}
+        onCancel={resetDeleteConfirm}
       />
       {placeMode && placeTipPos
         ? createPortal(

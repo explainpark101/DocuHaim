@@ -113,6 +113,8 @@ export {
   setLayerLocked,
   toggleLayerLocked,
   filterUnlockedElementIds,
+  layerIdsIncludeLocked,
+  nudgeCoverFontSizes,
 } from '@/utils/noteCover/layers';
 export type { CoverLayerRow } from '@/utils/noteCover/layers';
 export {
