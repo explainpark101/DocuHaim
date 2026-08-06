@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   MoreHorizontal,
   Reply,
@@ -456,7 +463,7 @@ function MessageSideActions({
   );
 }
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   msg,
   showName,
   clustered = false,
@@ -486,6 +493,8 @@ function MessageBubble({
   onReactionPickerOpenChange,
   noteExists,
   allowOgEmbed = true,
+  /** will-change + brightness press filter (perf toggle). */
+  enableBubblePressFx = true,
 }) {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
@@ -753,7 +762,9 @@ function MessageBubble({
               deletingStatus
             ) : null}
             <Motion.div
-              className={`min-w-0 max-w-full overflow-hidden px-3 py-2 text-sm shadow-sm select-none origin-center will-change-transform [-webkit-touch-callout:none] transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${
+              className={`min-w-0 max-w-full overflow-hidden px-3 py-2 text-sm shadow-sm select-none origin-center [-webkit-touch-callout:none] transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-out ${
+                enableBubblePressFx ? 'will-change-transform' : ''
+              } ${
                 isDeleting
                   ? 'bg-red-100 text-gray-900 border border-red-300/80 shadow dark:bg-red-950/70 dark:text-odp-fgStrong dark:border-red-700/60'
                   : isEditing
@@ -772,10 +783,14 @@ function MessageBubble({
                   : self
                     ? BUBBLE_RADIUS_SELF
                     : BUBBLE_RADIUS_OTHER,
-                filter:
-                  pressing && !isDeleting
-                    ? 'brightness(0.92)'
-                    : 'brightness(1)',
+                ...(enableBubblePressFx
+                  ? {
+                      filter:
+                        pressing && !isDeleting
+                          ? 'brightness(0.92)'
+                          : 'brightness(1)',
+                    }
+                  : { filter: 'none' }),
               }}
               transition={BUBBLE_SHAPE_SPRING}
               style={dimmed ? { opacity: 0.7 } : undefined}
@@ -927,7 +942,7 @@ function MessageBubble({
       </ContextMenu.Portal>
     </ContextMenu.Root>
   );
-}
+});
 
 export default function ChatMessageList({
   messages,
@@ -959,6 +974,10 @@ export default function ChatMessageList({
   groupLabelByKey = null,
   /** @type {((path: string) => boolean) | null | undefined} */
   noteExists,
+  /** Motion layout / popLayout / exit blur on list items. */
+  enableMessageLayoutAnim = true,
+  /** Bubble will-change + brightness press filter. */
+  enableBubblePressFx = true,
 }) {
   const scrollerRef = useRef(null);
   const topSentinelRef = useRef(null);
@@ -1229,40 +1248,14 @@ export default function ChatMessageList({
                 />
               ) : null}
               <div className="mx-auto flex w-full max-w-full min-w-0 flex-col px-3 md:max-w-[min(100%,50vw)]">
-                <AnimatePresence initial={false} mode="popLayout">
-                  {group.messages.map((item, msgIndex) => (
-                    <Motion.div
-                      key={item.key}
-                      layout={!editingMessageId}
-                      className={`min-w-0 max-w-full ${
-                        item.clustered
-                          ? 'mt-0.5'
-                          : msgIndex === 0
-                            ? ''
-                            : 'mt-3'
-                      }`}
-                      initial={
-                        highlightId
-                          ? false
-                          : enterIds.has(item.msg.id)
-                            ? { opacity: 0, y: 14, scale: 0.98 }
-                            : false
-                      }
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{
-                        opacity: 0,
-                        scale: 0.94,
-                        y: -10,
-                        filter: 'blur(2px)',
-                        transition: { duration: 0.22, ease: [0.4, 0, 1, 1] },
-                      }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 420,
-                        damping: 30,
-                        mass: 0.8,
-                      }}
-                    >
+                {(() => {
+                  const rows = group.messages.map((item, msgIndex) => {
+                    const gapClass = item.clustered
+                      ? 'mt-0.5'
+                      : msgIndex === 0
+                        ? ''
+                        : 'mt-3';
+                    const bubble = (
                       <MessageBubble
                         msg={item.msg}
                         showName={item.showName}
@@ -1294,6 +1287,7 @@ export default function ChatMessageList({
                         }}
                         getPresignedUrl={getPresignedUrl}
                         noteExists={noteExists}
+                        enableBubblePressFx={enableBubblePressFx}
                         groupIconPath={
                           groupIconByName instanceof Map
                             ? groupIconByName.get(item.msg.group) || null
@@ -1308,9 +1302,58 @@ export default function ChatMessageList({
                               item.msg.replyGroup
                         }
                       />
-                    </Motion.div>
-                  ))}
-                </AnimatePresence>
+                    );
+                    if (!enableMessageLayoutAnim) {
+                      return (
+                        <div
+                          key={item.key}
+                          className={`min-w-0 max-w-full ${gapClass}`}
+                        >
+                          {bubble}
+                        </div>
+                      );
+                    }
+                    return (
+                      <Motion.div
+                        key={item.key}
+                        layout={!editingMessageId}
+                        className={`min-w-0 max-w-full ${gapClass}`}
+                        initial={
+                          highlightId
+                            ? false
+                            : enterIds.has(item.msg.id)
+                              ? { opacity: 0, y: 14, scale: 0.98 }
+                              : false
+                        }
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{
+                          opacity: 0,
+                          scale: 0.94,
+                          y: -10,
+                          filter: 'blur(2px)',
+                          transition: {
+                            duration: 0.22,
+                            ease: [0.4, 0, 1, 1],
+                          },
+                        }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 420,
+                          damping: 30,
+                          mass: 0.8,
+                        }}
+                      >
+                        {bubble}
+                      </Motion.div>
+                    );
+                  });
+                  if (!enableMessageLayoutAnim) return rows;
+                  return (
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {rows}
+                    </AnimatePresence>
+                  );
+                })()}
               </div>
             </div>
           ))}

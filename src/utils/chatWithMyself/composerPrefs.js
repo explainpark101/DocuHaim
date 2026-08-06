@@ -6,11 +6,32 @@ export const CHAT_PREF_KEYS = {
   composerLineNumbers: `${CHAT_PREF_PREFIX}composer_line_numbers`,
   composerHelperText: `${CHAT_PREF_PREFIX}composer_helper_text`,
   openLinksInNewWindow: `${CHAT_PREF_PREFIX}open_links_new_window`,
+  /**
+   * Performance: when true, disable message-list layout / popLayout / exit blur.
+   * Safari defaults on; other browsers default off.
+   */
+  perfReduceLayoutAnim: `${CHAT_PREF_PREFIX}perf_reduce_layout_anim`,
+  /**
+   * Performance: when true, disable bubble will-change + brightness filter.
+   * Safari defaults on; other browsers default off.
+   */
+  perfReduceBubblePressFx: `${CHAT_PREF_PREFIX}perf_reduce_bubble_press_fx`,
   railGroupOpen: `${CHAT_PREF_PREFIX}rail_group_open`,
   railDateOpen: `${CHAT_PREF_PREFIX}rail_date_open`,
   railSearchOpen: `${CHAT_PREF_PREFIX}rail_search_open`,
   railPinnedOpen: `${CHAT_PREF_PREFIX}rail_pinned_open`,
 };
+
+/**
+ * True for Safari (macOS / iOS), not Chrome/Edge/Firefox/CriOS etc.
+ * Used only for unset localStorage defaults.
+ */
+export function isSafariBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  if (!/Safari/i.test(ua)) return false;
+  return !/Chrome|Chromium|CriOS|Edg|FxiOS|OPiOS|Android/i.test(ua);
+}
 
 function readBoolPref(key) {
   if (typeof window === 'undefined') return null;
@@ -103,6 +124,52 @@ export function writeOpenLinksInNewWindowPref(enabled) {
 /** Effective: open http(s) links in a new window/tab (default off). */
 export function getOpenLinksInNewWindow() {
   return readOpenLinksInNewWindowPref() === true;
+}
+
+/**
+ * Default for performance toggles that strip heavy motion: on in Safari, off elsewhere.
+ * Stored preference wins when set.
+ */
+export function defaultChatPerfReduceEnabled() {
+  return isSafariBrowser();
+}
+
+/** Stored layout-anim reduction preference, or null if unset. */
+export function readPerfReduceLayoutAnimPref() {
+  return readBoolPref(CHAT_PREF_KEYS.perfReduceLayoutAnim);
+}
+
+export function writePerfReduceLayoutAnimPref(enabled) {
+  writeBoolPref(CHAT_PREF_KEYS.perfReduceLayoutAnim, Boolean(enabled));
+}
+
+/**
+ * Effective: reduce list layout / popLayout / exit blur (Safari default on).
+ * When true, performance improves by skipping those animations.
+ */
+export function getPerfReduceLayoutAnimEnabled() {
+  const stored = readPerfReduceLayoutAnimPref();
+  if (stored != null) return stored;
+  return defaultChatPerfReduceEnabled();
+}
+
+/** Stored bubble-press-fx reduction preference, or null if unset. */
+export function readPerfReduceBubblePressFxPref() {
+  return readBoolPref(CHAT_PREF_KEYS.perfReduceBubblePressFx);
+}
+
+export function writePerfReduceBubblePressFxPref(enabled) {
+  writeBoolPref(CHAT_PREF_KEYS.perfReduceBubblePressFx, Boolean(enabled));
+}
+
+/**
+ * Effective: reduce bubble will-change + brightness (Safari default on).
+ * When true, performance improves by skipping those effects.
+ */
+export function getPerfReduceBubblePressFxEnabled() {
+  const stored = readPerfReduceBubblePressFxPref();
+  if (stored != null) return stored;
+  return defaultChatPerfReduceEnabled();
 }
 
 /** @typedef {'group'|'date'|'search'|'pinned'} ChatRailId */

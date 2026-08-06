@@ -40,7 +40,7 @@ function SettingsSwitchRow({ id, label, description, checked, onCheckedChange })
 }
 
 /**
- * Chat settings dialog (composer display + link behavior).
+ * Chat settings dialog (composer display + link behavior + motion performance).
  */
 export default function ChatComposerSettingsModal({
   open = false,
@@ -51,6 +51,10 @@ export default function ChatComposerSettingsModal({
   onShowLineNumbersChange,
   openLinksInNewWindow = false,
   onOpenLinksInNewWindowChange,
+  perfReduceLayoutAnim = false,
+  onPerfReduceLayoutAnimChange,
+  perfReduceBubblePressFx = false,
+  onPerfReduceBubblePressFxChange,
 }) {
   return (
     <Dialog.Root open={Boolean(open)} onOpenChange={(next) => onOpenChange?.(next)}>
@@ -90,6 +94,26 @@ export default function ChatComposerSettingsModal({
               description="메시지·미리보기의 http(s) 링크를 새 탭에서 엽니다"
               checked={openLinksInNewWindow}
               onCheckedChange={onOpenLinksInNewWindowChange}
+            />
+          </div>
+
+          <div className="space-y-2 border-t border-gray-200 pt-3 dark:border-odp-borderSoft">
+            <p className="px-0.5 text-xs font-medium text-gray-500 dark:text-odp-muted">
+              성능 (이 기기에만 저장 · 켜면 가벼워짐)
+            </p>
+            <SettingsSwitchRow
+              id="chat-settings-perf-reduce-layout-anim"
+              label="레이아웃 모션 줄이기"
+              description="리스트 layout·popLayout·blur 애니메이션 끔 (Safari 기본 켬)"
+              checked={perfReduceLayoutAnim}
+              onCheckedChange={onPerfReduceLayoutAnimChange}
+            />
+            <SettingsSwitchRow
+              id="chat-settings-perf-reduce-bubble-press-fx"
+              label="말풍선 필터 줄이기"
+              description="will-change·brightness 누름 효과 끔 (Safari 기본 켬)"
+              checked={perfReduceBubblePressFx}
+              onCheckedChange={onPerfReduceBubblePressFxChange}
             />
           </div>
 

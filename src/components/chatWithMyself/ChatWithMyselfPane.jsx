@@ -79,6 +79,10 @@ import {
   writeComposerLineNumbersPref,
   getOpenLinksInNewWindow,
   writeOpenLinksInNewWindowPref,
+  getPerfReduceLayoutAnimEnabled,
+  writePerfReduceLayoutAnimPref,
+  getPerfReduceBubblePressFxEnabled,
+  writePerfReduceBubblePressFxPref,
   getChatRailOpen,
   writeChatRailOpenPref,
   flushPendingMessages,
@@ -288,6 +292,12 @@ export default function ChatWithMyselfPane({
   const [openLinksInNewWindow, setOpenLinksInNewWindow] = useState(
     getOpenLinksInNewWindow,
   );
+  const [perfReduceLayoutAnim, setPerfReduceLayoutAnim] = useState(
+    getPerfReduceLayoutAnimEnabled,
+  );
+  const [perfReduceBubblePressFx, setPerfReduceBubblePressFx] = useState(
+    getPerfReduceBubblePressFxEnabled,
+  );
   const [composerSettingsOpen, setComposerSettingsOpen] = useState(false);
   const [activeJumpDate, setActiveJumpDate] = useState(null);
   const [searchFilters, setSearchFilters] = useState(null);
@@ -405,6 +415,18 @@ export default function ChatWithMyselfPane({
     setOpenLinksInNewWindow(value);
     writeOpenLinksInNewWindowPref(value);
   }, [openLinksInNewWindow]);
+
+  const togglePerfReduceLayoutAnim = useCallback((next) => {
+    const value = typeof next === 'boolean' ? next : !perfReduceLayoutAnim;
+    setPerfReduceLayoutAnim(value);
+    writePerfReduceLayoutAnimPref(value);
+  }, [perfReduceLayoutAnim]);
+
+  const togglePerfReduceBubblePressFx = useCallback((next) => {
+    const value = typeof next === 'boolean' ? next : !perfReduceBubblePressFx;
+    setPerfReduceBubblePressFx(value);
+    writePerfReduceBubblePressFxPref(value);
+  }, [perfReduceBubblePressFx]);
 
   const hasMore = loadedDayIndex < dayKeys.length;
   const hasMoreNewer = windowNewestIndex > 0;
@@ -1937,8 +1959,8 @@ export default function ChatWithMyselfPane({
             type="button"
             onClick={() => setComposerSettingsOpen(true)}
             className={toolbarBtnClass(composerSettingsOpen)}
-            aria-label="입력창 설정"
-            title="입력창 설정"
+            aria-label="채팅 설정"
+            title="채팅 설정"
             aria-pressed={composerSettingsOpen}
           >
             <Settings size={18} />
@@ -1966,6 +1988,16 @@ export default function ChatWithMyselfPane({
               checked={openLinksInNewWindow}
               onCheckedChange={toggleOpenLinksInNewWindow}
             />
+            <button
+              type="button"
+              onClick={() => setComposerSettingsOpen(true)}
+              className={toolbarBtnClass(composerSettingsOpen)}
+              aria-label="채팅 설정"
+              title="채팅 설정"
+              aria-pressed={composerSettingsOpen}
+            >
+              <Settings size={18} />
+            </button>
           </div>
         )}
         <button
@@ -2049,6 +2081,8 @@ export default function ChatWithMyselfPane({
               noteExists={noteExists}
               groupIconByName={groupIconByName}
               groupLabelByKey={groupLabelByKey}
+              enableMessageLayoutAnim={!perfReduceLayoutAnim}
+              enableBubblePressFx={!perfReduceBubblePressFx}
               emptyHint={
                 viewGroupFilter
                   ? `「${resolveGroupLabel(groups, viewGroupFilter)}」 그룹 메시지가 없습니다`
@@ -2301,6 +2335,10 @@ export default function ChatWithMyselfPane({
         onShowLineNumbersChange={toggleComposerLineNumbers}
         openLinksInNewWindow={openLinksInNewWindow}
         onOpenLinksInNewWindowChange={toggleOpenLinksInNewWindow}
+        perfReduceLayoutAnim={perfReduceLayoutAnim}
+        onPerfReduceLayoutAnimChange={togglePerfReduceLayoutAnim}
+        perfReduceBubblePressFx={perfReduceBubblePressFx}
+        onPerfReduceBubblePressFxChange={togglePerfReduceBubblePressFx}
       />
       <ChatEditHistoryModal
         open={Boolean(historyMessage)}
