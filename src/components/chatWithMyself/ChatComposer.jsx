@@ -282,6 +282,7 @@ export default function ChatComposer({
       if (!markdownUserOffRef.current) setMarkdownEnabled(true);
     } else {
       markdownUserOffRef.current = false;
+      setMarkdownEnabled(false);
     }
   }, []);
 
@@ -314,12 +315,8 @@ export default function ChatComposer({
         if (meta?.body) {
           setValue(meta.body);
         }
-        setMarkdownEnabled(
-          Boolean(meta?.markdown) || looksLikeMarkdown(meta?.body),
-        );
-        if (Boolean(meta?.markdown) || looksLikeMarkdown(meta?.body)) {
-          markdownUserOffRef.current = false;
-        }
+        setMarkdownEnabled(looksLikeMarkdown(meta?.body));
+        markdownUserOffRef.current = false;
         if (meta?.imageIds?.length) {
           const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
           if (!cancelled && imgs.length) {
@@ -347,7 +344,7 @@ export default function ChatComposer({
       ...meta,
       body: nextBody,
       group: selectedGroup || SELF_GROUP,
-      markdown: Boolean(meta.markdown) || looksLikeMarkdown(nextBody),
+      markdown: looksLikeMarkdown(nextBody),
     });
     onSeedConsumed?.();
   }, [
@@ -450,9 +447,7 @@ export default function ChatComposer({
       const meta = readComposerDraftMeta(draftScope);
       if (cancelled) return;
       setValue(meta?.body || '');
-      setMarkdownEnabled(
-        Boolean(meta?.markdown) || looksLikeMarkdown(meta?.body),
-      );
+      setMarkdownEnabled(looksLikeMarkdown(meta?.body));
       markdownUserOffRef.current = false;
       setImageQueue((prevQueue) => {
         prevQueue.forEach((item) => {
