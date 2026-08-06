@@ -215,7 +215,15 @@ function SearchResultCard({
           <span className="shrink-0 tabular-nums">{time}</span>
         </div>
         {showPreview || hasAttachments || showReactions ? (
-          <div className="max-h-48 overflow-y-auto overscroll-contain">
+          /* Mobile: clip preview so vertical pans scroll the results list (global),
+             not a nested bubble scroller. Desktop keeps in-card scroll. */
+          <div
+            className={`max-h-48 ${
+              coarse
+                ? 'overflow-hidden'
+                : 'overflow-y-auto overscroll-contain'
+            }`}
+          >
             {showPreview ? (
               <div
                 className="chat-search-md text-sm leading-relaxed text-gray-800 dark:text-odp-fg [&_a]:text-blue-600 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:text-[12px] dark:[&_a]:text-blue-300 dark:[&_code]:bg-white/10 [&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_pre]:m-0 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/5 [&_pre]:p-2 dark:[&_pre]:bg-black/30 [&_p+p]:mt-1"
@@ -315,13 +323,19 @@ export default function ChatSearchPanel({
   getPresignedUrl,
   noteExists,
   focusTick = 0,
+  query = '',
+  onQueryChange,
+  groupFilter = '__all__',
+  onGroupFilterChange,
+  dateFilter = '',
+  onDateFilterChange,
+  fromDt = '',
+  onFromDtChange,
+  toDt = '',
+  onToDtChange,
+  filtersOpen = false,
+  onFiltersOpenChange,
 }) {
-  const [query, setQuery] = useState('');
-  const [groupFilter, setGroupFilter] = useState('__all__');
-  const [dateFilter, setDateFilter] = useState('');
-  const [fromDt, setFromDt] = useState('');
-  const [toDt, setToDt] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const listRef = useRef(null);
   const queryInputRef = useRef(null);
@@ -370,8 +384,8 @@ export default function ChatSearchPanel({
       reaction?.kind === 'lucide'
         ? String(reaction.value || '').trim()
         : String(reaction?.value || '').trim();
-    if (!token) return;
-    setQuery((prev) => {
+    if (!token || !onQueryChange) return;
+    onQueryChange((prev) => {
       const parts = splitSearchTokens(prev);
       const idx = parts.findIndex(
         (part) => part.toLowerCase() === token.toLowerCase(),
@@ -480,7 +494,7 @@ export default function ChatSearchPanel({
                 <input
                   ref={queryInputRef}
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => onQueryChange?.(e.target.value)}
                   placeholder="부분 일치로 메시지 검색…"
                   className={`${chatFieldInputClass} pl-9 ${query ? 'pr-9' : ''}`}
                   autoComplete="off"
@@ -490,7 +504,7 @@ export default function ChatSearchPanel({
               {query ? (
                 <button
                   type="button"
-                  onClick={() => setQuery('')}
+                  onClick={() => onQueryChange?.('')}
                   className="absolute right-1 top-1/2 z-[1] inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg dark:hover:text-gray-200"
                   aria-label="검색어 지우기"
                   title="검색어 지우기"
@@ -526,7 +540,7 @@ export default function ChatSearchPanel({
               </ChatReactionPicker>
               <button
                 type="button"
-                onClick={() => setFiltersOpen((v) => !v)}
+                onClick={() => onFiltersOpenChange?.((v) => !v)}
                 className={`inline-flex h-9 items-center gap-1 rounded-md border px-2 text-xs transition ${
                   filtersOpen || filtersActive
                     ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
@@ -564,7 +578,7 @@ export default function ChatSearchPanel({
                     <ChatSelect
                       ariaLabel="그룹 필터"
                       value={groupFilter}
-                      onValueChange={setGroupFilter}
+                      onValueChange={onGroupFilterChange}
                       options={groupOptions}
                       showGroupAvatars
                       getPresignedUrl={getPresignedUrl}
@@ -576,7 +590,7 @@ export default function ChatSearchPanel({
                   <ChatDatePicker
                     label="날짜"
                     value={dateFilter}
-                    onChange={setDateFilter}
+                    onChange={onDateFilterChange}
                     isDateUnavailable={isDateUnavailable}
                   />
 
@@ -584,13 +598,13 @@ export default function ChatSearchPanel({
                     <ChatDateTimePicker
                       label="부터"
                       value={fromDt}
-                      onChange={setFromDt}
+                      onChange={onFromDtChange}
                       isDateUnavailable={isDateUnavailable}
                     />
                     <ChatDateTimePicker
                       label="까지"
                       value={toDt}
-                      onChange={setToDt}
+                      onChange={onToDtChange}
                       isDateUnavailable={isDateUnavailable}
                     />
                   </div>

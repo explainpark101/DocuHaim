@@ -93,6 +93,12 @@ export async function getCachedOg(urlHash) {
   return chatDb.ogCache.get(urlHash);
 }
 
+/** Remove one URL hash from the OG IndexedDB cache. */
+export async function deleteCachedOg(urlHash) {
+  if (!urlHash) return;
+  await chatDb.ogCache.delete(urlHash);
+}
+
 const DRAFT_IMAGE_SEP = '::';
 
 export function scopedDraftImageId(scope, id) {

@@ -78,6 +78,8 @@ export {
   loadAndArchiveOg,
   readCachedOg,
   refreshAndArchiveOg,
+  reloadOgCache,
+  reloadOgCacheForMessageBody,
   hashUrl,
 } from './og.js';
 export {

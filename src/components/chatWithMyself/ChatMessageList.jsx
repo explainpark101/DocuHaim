@@ -25,6 +25,8 @@ import {
   ChevronsUpDown,
   SmilePlus,
   Share2,
+  RefreshCw,
+  TextSelect,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import { VList } from 'virtua';
@@ -32,6 +34,7 @@ import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
 import ChatMessageContextMenu from '@/components/chatWithMyself/ChatMessageContextMenu';
+import ChatMessageSelectCopyModal from '@/components/chatWithMyself/ChatMessageSelectCopyModal';
 import ChatMessageReactions from '@/components/chatWithMyself/ChatMessageReactions';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
 import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
@@ -155,6 +158,8 @@ function MessageActionItems({
   onTogglePin,
   onToggleCollapse,
   onOpenReactionPicker,
+  onReloadOg,
+  onSelectCopy,
   shiftHeldRef,
   getPresignedUrl,
   _Item,
@@ -162,6 +167,7 @@ function MessageActionItems({
   const pinned = Boolean(msg?.pinnedAt);
   const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
   const shareAvailable = canOfferWebShare();
+  const hasLinks = extractUrls(msg?.body || '').length > 0;
   return (
     <>
       <_Item
@@ -223,6 +229,13 @@ function MessageActionItems({
       </_Item>
       <_Item
         className={chatMenuItemClass}
+        onSelect={() => onSelectCopy?.(msg)}
+      >
+        <TextSelect size={16} className="shrink-0 text-gray-500" />
+        내용 선택 복사
+      </_Item>
+      <_Item
+        className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessageMarkdownCopy(msg));
         }}
@@ -230,6 +243,15 @@ function MessageActionItems({
         <FileText size={16} className="shrink-0 text-gray-500" />
         MD 복사
       </_Item>
+      {hasLinks ? (
+        <_Item
+          className={chatMenuItemClass}
+          onSelect={() => onReloadOg?.(msg)}
+        >
+          <RefreshCw size={16} className="shrink-0 text-gray-500" />
+          OpenGraph 캐시 재로딩
+        </_Item>
+      ) : null}
       {shareAvailable ? (
         <_Item
           className={chatMenuItemClass}
@@ -317,6 +339,8 @@ function MessageMoreButton({
   onTogglePin,
   onToggleCollapse,
   onOpenReactionPicker,
+  onReloadOg,
+  onSelectCopy,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -371,6 +395,8 @@ function MessageMoreButton({
             onTogglePin={onTogglePin}
             onToggleCollapse={onToggleCollapse}
             onOpenReactionPicker={onOpenReactionPicker}
+            onReloadOg={onReloadOg}
+            onSelectCopy={onSelectCopy}
             shiftHeldRef={shiftHeldRef}
             getPresignedUrl={getPresignedUrl}
             _Item={DropdownMenu.Item}
@@ -391,6 +417,8 @@ function MessageSideActions({
   onTogglePin,
   onToggleCollapse,
   onOpenReactionPicker,
+  onReloadOg,
+  onSelectCopy,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
@@ -422,6 +450,8 @@ function MessageSideActions({
         onTogglePin={onTogglePin}
         onToggleCollapse={onToggleCollapse}
         onOpenReactionPicker={onOpenReactionPicker}
+        onReloadOg={onReloadOg}
+        onSelectCopy={onSelectCopy}
         onOpenMobileSheet={onOpenMobileSheet}
         shiftHeldRef={shiftHeldRef}
         coarse={coarse}
@@ -475,6 +505,9 @@ const MessageBubble = memo(function MessageBubble({
   onOpenNote,
   onOpenReply,
   onOpenMobileSheet,
+  onSelectCopy,
+  onReloadOg,
+  ogReloadKey = 0,
   shiftHeldRef,
   coarse,
   rowSelected = false,
@@ -750,6 +783,8 @@ const MessageBubble = memo(function MessageBubble({
                 onTogglePin={onTogglePin}
                 onToggleCollapse={onToggleCollapse}
                 onOpenReactionPicker={openReactionPicker}
+                onReloadOg={onReloadOg}
+                onSelectCopy={onSelectCopy}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -864,6 +899,7 @@ const MessageBubble = memo(function MessageBubble({
                       url={u}
                       ogStorage={ogStorage}
                       allowEmbed={allowOgEmbed}
+                      reloadKey={ogReloadKey}
                     />
                   ))
                 : null}
@@ -879,6 +915,8 @@ const MessageBubble = memo(function MessageBubble({
                 onTogglePin={onTogglePin}
                 onToggleCollapse={onToggleCollapse}
                 onOpenReactionPicker={openReactionPicker}
+                onReloadOg={onReloadOg}
+                onSelectCopy={onSelectCopy}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -940,6 +978,8 @@ const MessageBubble = memo(function MessageBubble({
             onTogglePin={onTogglePin}
             onToggleCollapse={onToggleCollapse}
             onOpenReactionPicker={openReactionPicker}
+            onReloadOg={onReloadOg}
+            onSelectCopy={onSelectCopy}
             shiftHeldRef={shiftHeldRef}
             getPresignedUrl={getPresignedUrl}
             _Item={ContextMenu.Item}
@@ -996,6 +1036,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   const loadingNewerLockRef = useRef(false);
   const listHostRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [sheetMessage, setSheetMessage] = useState(null);
+  const [selectCopyMessage, setSelectCopyMessage] = useState(null);
+  const [ogReloadById, setOgReloadById] = useState(
+    /** @type {Record<string, number>} */ ({}),
+  );
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
   const [overlayDate, setOverlayDate] = useState(
     /** @type {{ label: string, dateStr: string } | null} */ (null),
@@ -1010,6 +1054,29 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       setSheetMessage(null);
     }
   }, [messages, sheetMessage]);
+
+  useEffect(() => {
+    if (!selectCopyMessage?.id) return;
+    const current = messages.find((m) => m.id === selectCopyMessage.id);
+    if (!current || current.pendingSync === 'delete') {
+      setSelectCopyMessage(null);
+    }
+  }, [messages, selectCopyMessage]);
+
+  const handleSelectCopy = useCallback((msg) => {
+    if (!msg) return;
+    setSheetMessage(null);
+    setSelectCopyMessage(msg);
+  }, []);
+
+  const handleReloadOg = useCallback((msg) => {
+    const id = msg?.id;
+    if (!id) return;
+    setOgReloadById((prev) => ({
+      ...prev,
+      [id]: (prev[id] || 0) + 1,
+    }));
+  }, []);
 
   const items = useMemo(() => {
     const tz = timeZone || detectTimeZone();
@@ -1381,6 +1448,9 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             onOpenNote={onOpenNote}
             onOpenReply={onOpenReplyTarget}
             onOpenMobileSheet={setSheetMessage}
+            onSelectCopy={handleSelectCopy}
+            onReloadOg={handleReloadOg}
+            ogReloadKey={ogReloadById[row.msg.id] || 0}
             shiftHeldRef={shiftHeldRef}
             coarse={coarse}
             rowSelected={sheetMessage?.id === row.msg.id}
@@ -1436,6 +1506,9 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       groupIconByName,
       groupLabelByKey,
       lastMessageRowIndex,
+      handleSelectCopy,
+      handleReloadOg,
+      ogReloadById,
     ],
   );
 
@@ -1489,8 +1562,31 @@ const ChatMessageList = forwardRef(function ChatMessageList(
           setSheetMessage(null);
           setReactionPickerMsgId(m?.id || null);
         }}
+        onReloadOg={handleReloadOg}
+        onSelectCopy={handleSelectCopy}
         getPresignedUrl={getPresignedUrl}
         shiftHeldRef={shiftHeldRef}
+      />
+      <ChatMessageSelectCopyModal
+        open={Boolean(selectCopyMessage)}
+        message={selectCopyMessage}
+        onOpenChange={(next) => {
+          if (!next) setSelectCopyMessage(null);
+        }}
+        ogStorage={ogStorage}
+        timeZone={timeZone}
+        getPresignedUrl={getPresignedUrl}
+        noteExists={noteExists}
+        onOpenNote={onOpenNote}
+        groupLabel={
+          selectCopyMessage
+            ? groupLabelByKey instanceof Map
+              ? groupLabelByKey.get(selectCopyMessage.group) ||
+                selectCopyMessage.group
+              : groupLabelByKey?.[selectCopyMessage.group] ||
+                selectCopyMessage.group
+            : undefined
+        }
       />
     </>
   );

@@ -310,6 +310,13 @@ export default function ChatWithMyselfPane({
   const [searchResults, setSearchResults] = useState([]);
   const [searchCursor, setSearchCursor] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
+  // Persist across rail/drawer unmount so open/close never wipes the search form.
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchGroupFilter, setSearchGroupFilter] = useState('__all__');
+  const [searchDateFilter, setSearchDateFilter] = useState('');
+  const [searchFromDt, setSearchFromDt] = useState('');
+  const [searchToDt, setSearchToDt] = useState('');
+  const [searchFiltersUiOpen, setSearchFiltersUiOpen] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
@@ -1913,6 +1920,18 @@ export default function ChatWithMyselfPane({
     getPresignedUrl: getPresignedUrlForPath,
     noteExists,
     focusTick: searchFocusTick,
+    query: searchQuery,
+    onQueryChange: setSearchQuery,
+    groupFilter: searchGroupFilter,
+    onGroupFilterChange: setSearchGroupFilter,
+    dateFilter: searchDateFilter,
+    onDateFilterChange: setSearchDateFilter,
+    fromDt: searchFromDt,
+    onFromDtChange: setSearchFromDt,
+    toDt: searchToDt,
+    onToDtChange: setSearchToDt,
+    filtersOpen: searchFiltersUiOpen,
+    onFiltersOpenChange: setSearchFiltersUiOpen,
   };
 
   const pinnedPanelProps = {

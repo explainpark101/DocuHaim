@@ -1,4 +1,4 @@
-import { cacheOg, getCachedOg } from './chatDb.js';
+import { cacheOg, deleteCachedOg, getCachedOg } from './chatDb.js';
 import { ogArchiveKey } from './paths.js';
 import { parseAppViewPath } from './format.js';
 import { parseWikiImageInner } from '@/utils/wikiImageSyntax';
@@ -393,6 +393,50 @@ export async function refreshAndArchiveOg(url, storage, { urlHash, key, force = 
   );
   inflightOgRefresh.set(url, pending);
   return pending;
+}
+
+/**
+ * User-initiated OG reload: drop IDB cache + in-flight fetch, then force-refresh.
+ * @param {string} url
+ * @param {{ writeArchive?: Function } | null | undefined} storage
+ * @returns {Promise<object>}
+ */
+export async function reloadOgCache(url, storage) {
+  const target = String(url || '').trim();
+  if (!target) throw new Error('Invalid OG url');
+  const urlHash = await hashUrl(target);
+  const key = ogArchiveKey(urlHash);
+  try {
+    await deleteCachedOg(urlHash);
+  } catch {
+    /* ignore */
+  }
+  inflightOgRefresh.delete(target);
+  return refreshAndArchiveOg(target, storage, { urlHash, key, force: true });
+}
+
+/**
+ * Reload OG for every http(s) URL found in a message body.
+ * @param {string} body
+ * @param {{ writeArchive?: Function } | null | undefined} storage
+ * @returns {Promise<{ urls: string[], results: Array<{ url: string, ok: boolean, error?: string }> }>}
+ */
+export async function reloadOgCacheForMessageBody(body, storage) {
+  const urls = extractUrls(body);
+  const results = [];
+  for (const url of urls) {
+    try {
+      await reloadOgCache(url, storage);
+      results.push({ url, ok: true });
+    } catch (e) {
+      results.push({
+        url,
+        ok: false,
+        error: String(e?.message || e || 'reload failed'),
+      });
+    }
+  }
+  return { urls, results };
 }
 
 /**

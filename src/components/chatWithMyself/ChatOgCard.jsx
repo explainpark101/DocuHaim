@@ -1,23 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ExternalLink, Play } from 'lucide-react';
-import { isYouTubeUrl, loadAndArchiveOg } from '@/utils/chatWithMyself/og.js';
+import {
+  isYouTubeUrl,
+  loadAndArchiveOg,
+  reloadOgCache,
+} from '@/utils/chatWithMyself/og.js';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';
 
 /**
  * OG / YouTube card rendered inside a chat bubble (bottom attached).
- * @param {{ url: string, ogStorage?: object, compact?: boolean, allowEmbed?: boolean }} props
+ * @param {{ url: string, ogStorage?: object, compact?: boolean, allowEmbed?: boolean, reloadKey?: number }} props
  */
 export default function ChatOgCard({
   url,
   ogStorage,
   compact = false,
   allowEmbed = true,
+  /** Bump (while mounted) to force-refresh OG from the network. */
+  reloadKey = 0,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEmbed, setShowEmbed] = useState(false);
+  const prevReloadKeyRef = useRef(reloadKey);
   const openChatImage = useChatImageLightbox();
   const openInNewWindow = useOpenLinksInNewWindow();
   const linkTargetProps = openInNewWindow
@@ -26,13 +33,23 @@ export default function ChatOgCard({
 
   useEffect(() => {
     let cancelled = false;
+    const shouldForce = reloadKey > prevReloadKeyRef.current;
+    prevReloadKeyRef.current = reloadKey;
 
-    const load = async ({ showLoading = true } = {}) => {
+    const load = async ({ showLoading = true, force = false } = {}) => {
       if (showLoading) {
         setLoading(true);
         setShowEmbed(false);
       }
       try {
+        if (force) {
+          const fresh = await reloadOgCache(url, ogStorage);
+          if (!cancelled) {
+            setData(fresh);
+            setLoading(false);
+          }
+          return;
+        }
         const result = await loadAndArchiveOg(url, ogStorage, {
           onUpdate: (next) => {
             if (!cancelled && next?.data) setData(next.data);
@@ -56,10 +73,10 @@ export default function ChatOgCard({
       }
     };
 
-    void load();
+    void load({ force: shouldForce });
 
     const onOnline = () => {
-      void load({ showLoading: false });
+      void load({ showLoading: false, force: false });
     };
     window.addEventListener('online', onOnline);
 
@@ -69,7 +86,7 @@ export default function ChatOgCard({
     };
     // ogStorage identity may change; archive adapters are equivalent for a given url
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  }, [url, reloadKey]);
 
   useEffect(() => {
     if (!allowEmbed) setShowEmbed(false);

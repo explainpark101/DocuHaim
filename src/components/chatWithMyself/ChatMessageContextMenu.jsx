@@ -13,6 +13,8 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   SmilePlus,
+  RefreshCw,
+  TextSelect,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
@@ -24,6 +26,7 @@ import {
 } from '@/components/chatWithMyself/ui/chatUiStyles';
 import {
   canOfferWebShare,
+  extractUrls,
   formatChatMessageMarkdownCopy,
   formatChatMessagePlainText,
   shareChatMessage,
@@ -70,6 +73,8 @@ export default function ChatMessageContextMenu({
   onTogglePin,
   onToggleCollapse,
   onOpenReactionPicker,
+  onReloadOg,
+  onSelectCopy,
   getPresignedUrl,
   shiftHeldRef,
 }) {
@@ -107,6 +112,7 @@ export default function ChatMessageContextMenu({
   const collapsed =
     message?.collapsed === '1' || message?.collapsed === true;
   const shareAvailable = canOfferWebShare();
+  const hasLinks = extractUrls(message?.body || '').length > 0;
 
   const guardOutside = (event) => {
     if (Date.now() < dismissGuardUntilRef.current) {
@@ -255,6 +261,17 @@ export default function ChatMessageContextMenu({
                 type="button"
                 className={menuBtnClass}
                 onClick={() => {
+                  onSelectCopy?.(message);
+                  onOpenChange?.(false);
+                }}
+              >
+                <TextSelect size={16} className="shrink-0 text-gray-500" />
+                내용 선택 복사
+              </button>
+              <button
+                type="button"
+                className={menuBtnClass}
+                onClick={() => {
                   void copyText(formatChatMessageMarkdownCopy(message));
                   onOpenChange?.(false);
                 }}
@@ -262,6 +279,19 @@ export default function ChatMessageContextMenu({
                 <FileText size={16} className="shrink-0 text-gray-500" />
                 MD 복사
               </button>
+              {hasLinks ? (
+                <button
+                  type="button"
+                  className={menuBtnClass}
+                  onClick={() => {
+                    onReloadOg?.(message);
+                    onOpenChange?.(false);
+                  }}
+                >
+                  <RefreshCw size={16} className="shrink-0 text-gray-500" />
+                  OpenGraph 캐시 재로딩
+                </button>
+              ) : null}
               {shareAvailable ? (
                 <button
                   type="button"
