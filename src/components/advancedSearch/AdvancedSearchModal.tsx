@@ -16,6 +16,7 @@ import {
   Settings,
   Sparkles,
   TextCursorInput,
+  FlipHorizontal2,
   X,
 } from 'lucide-react';
 import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
@@ -153,6 +154,9 @@ function HitIcon({
     if (commandId === 'editor-llm-assist') return <Sparkles size={16} className={className} />;
     if (commandId === 'editor-autocomplete-toggle') {
       return <TextCursorInput size={16} className={className} />;
+    }
+    if (commandId === 'editor-mirror-edit-toggle') {
+      return <FlipHorizontal2 size={16} className={className} />;
     }
     if (commandId === 'editor-bold') return <Bold size={16} className={className} />;
     if (commandId?.startsWith('editor-')) return <Bold size={16} className={className} />;

@@ -40,6 +40,7 @@ export type AppCommandId =
   | 'settings-snippets'
   | 'settings-webfonts'
   | 'settings-cover'
+  | 'settings-table-styles'
   | 'settings-app-update'
   | 'chat'
   | 'chat-settings'
@@ -53,6 +54,7 @@ export type AppCommandId =
   | 'export-pdf'
   | 'export-current'
   | 'editor-autocomplete-toggle'
+  | 'editor-mirror-edit-toggle'
   | 'browse-directory'
   | 'browse-new-file'
   | 'browse-new-folder'
@@ -91,6 +93,8 @@ export type AppCommandContext = {
   printPaperPickerMode?: boolean;
   /** Current editor autocomplete suggestion preference (localStorage). */
   editorAutocompleteEnabled?: boolean;
+  /** Current Mirror Edit preference (localStorage). */
+  editorMirrorEditEnabled?: boolean;
   /**
    * When true, getAppCommands also includes editor/print toolbar actions.
    * Prefer matchAppCommands which attaches page actions only for non-empty queries.
@@ -265,6 +269,21 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '허용 오차',
       '개체 스냅',
       '가운데 스냅',
+    ],
+  },
+  {
+    id: 'settings-table-styles',
+    title: '설정 · 표 스타일 템플릿',
+    description: 'haim-table 구역/행·열 스타일 YAML 템플릿',
+    path: '/settings#settings-table-styles',
+    keywords: [
+      '표 스타일',
+      'table style',
+      'haim-table',
+      '셀 병합',
+      'thead',
+      'tbody',
+      '테이블 템플릿',
     ],
   },
   {
@@ -459,6 +478,45 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
             'suggestion',
             '자동완성',
             '추천',
+            '켜기',
+            'on',
+            'enable',
+          ],
+        },
+  );
+
+  const mirrorEditOn = context?.editorMirrorEditEnabled === true;
+  list.push(
+    mirrorEditOn
+      ? {
+          id: 'editor-mirror-edit-toggle',
+          title: 'Mirror Edit 끄기',
+          description: '양쪽 커서·즉시 프리뷰 동기화를 끕니다',
+          path: '',
+          keywords: [
+            'mirror edit',
+            'mirror',
+            'preview edit',
+            'contenteditable',
+            '더블클릭',
+            '프리뷰 편집',
+            '끄기',
+            'off',
+            'disable',
+          ],
+        }
+      : {
+          id: 'editor-mirror-edit-toggle',
+          title: 'Mirror Edit 켜기',
+          description: '프리뷰·마크다운에 커서를 함께 두고 즉시 동기화합니다',
+          path: '',
+          keywords: [
+            'mirror edit',
+            'mirror',
+            'preview edit',
+            'contenteditable',
+            '더블클릭',
+            '프리뷰 편집',
             '켜기',
             'on',
             'enable',

@@ -1,0 +1,49 @@
+---
+description: Standalone editors must support Cmd/Ctrl+Z undo and Cmd/Ctrl+Shift+Z or Y redo; clear session history on leave.
+alwaysApply: true
+---
+
+# Editor undo / redo (session history)
+
+Every **standalone editor** (modal, panel, or dedicated edit surface that owns editable document state) must support undo/redo while open, then **drop history when the editor closes / unmounts / the user leaves that session**.
+
+## Shortcuts
+
+| Action | Keys |
+|--------|------|
+| Undo | `Ctrl/Cmd + Z` |
+| Redo | `Ctrl/Cmd + Shift + Z` **or** `Ctrl/Cmd + Y` |
+
+When the editor is nested over another undoable surface, bind with **capture-phase** `keydown`, `preventDefault` + `stopPropagation` (+ `stopImmediatePropagation` if needed) so the parent does not also undo.
+
+## Lifecycle
+
+1. **Open** — baseline snapshot (or empty CM history).
+2. **While editing** — push checkpoints (debounced OK for continuous drags/typing).
+3. **Leave** — clear in-memory stack **and** any temporary persistence (IndexedDB/session keys). Reopening must start with a fresh history.
+
+Do **not** keep undo stacks across close for these sessions. (Exception: the main note `MarkdownEditor` per-file CM bridge already has its own persistence contract — do not extend that pattern to new modal/panel editors.)
+
+## Implementation preference
+
+1. **CodeMirror 6 text editors** — `history()` + `historyKeymap` (see `CssCodeMirrorEditor`). Destroying the view on unmount clears history.
+2. **Structured / non-CM editors** — follow `useImageCropUndoHistory` + capture-phase keys in `NoteImageCropPanel` (`Mod+Z` / `Mod+Shift+Z` / `Mod+Y`).
+3. Prefer a shared hook over a one-off stack when adding another structured editor (`TableEditModal`, crop-like panels, etc.).
+
+## In scope / out of scope
+
+**In scope:** `TableEditModal`, `WebfontCssEditorModal` / `CssCodeMirrorEditor`, image crop, cover edit surfaces, and any new modal/panel editor.
+
+**Out of scope:** plain form fields, settings toggles, browser/router history overlays.
+
+```text
+❌ BAD — TableEditModal with no undo stack / no Mod+Z
+❌ BAD — keep IndexedDB undo after modal close “just in case”
+❌ BAD — only Mod+Z; no Mod+Shift+Z / Mod+Y redo
+❌ BAD — nested editor lets parent Markdown/cover undo steal the shortcut
+✅ GOOD — CM: history() + historyKeymap; destroy on leave
+✅ GOOD — structured: session stack + clear/delete on unmount (image-crop pattern)
+✅ GOOD — capture-phase keydown while nested editor is open
+```
+
+Prefer English in new code comments if Korean Unicode might corrupt.

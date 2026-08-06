@@ -1,4 +1,4 @@
-/* Note cover comment → preview mount host (CoverSlide hydrates into [data-note-cover-mount]) */
+/* Note cover comment → preview mount host (CoverSlide mounts on click) */
 .md-editor-preview .md-note-cover-placeholder {
   display: block;
   box-sizing: border-box;
@@ -19,6 +19,7 @@
   min-height: 0;
 }
 
+.md-editor-preview .md-note-cover-placeholder--pending,
 .md-editor-preview .md-note-cover-placeholder--empty {
   display: flex;
   align-items: center;
@@ -28,6 +29,11 @@
   border: 1.5px dashed color-mix(in srgb, #d1d5db 85%, #64748b);
   background: color-mix(in srgb, #f3f4f6 70%, #fff);
   color: #374151;
+}
+
+.md-editor-preview .md-note-cover-placeholder--pending .md-note-cover-placeholder__mount:empty,
+.md-editor-preview .md-note-cover-placeholder--empty .md-note-cover-placeholder__mount:empty {
+  display: none;
 }
 
 .md-editor-preview .md-note-cover-placeholder:hover,
@@ -54,8 +60,11 @@
   display: none;
 }
 
+.md-editor-preview .md-note-cover-placeholder--pending .md-note-cover-placeholder__fallback,
 .md-editor-preview .md-note-cover-placeholder--empty .md-note-cover-placeholder__fallback {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -69,11 +78,15 @@
   color-scheme: light;
   background: #ffffff;
   color: #111827;
+  /* Scale design px fonts with the preview column width (vs full page mm). */
+  container-type: inline-size;
 }
 
 .md-editor-preview .md-note-cover-preview-slide {
   display: block;
   max-width: 100%;
+  /* 100cqi = preview host width; --print-page-width is design paper width. */
+  --cover-font-scale: calc(100cqi / var(--print-page-width));
 }
 
 @media print {

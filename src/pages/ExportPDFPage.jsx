@@ -5,6 +5,7 @@ import '@/styles/md-editor-rt/style.css';
 import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
+import PrintCoverPageChrome from '@/components/print/PrintCoverPageChrome';
 import PrintPageBreakOverlay from '@/components/print/PrintPageBreakOverlay';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import PrintPreviewFirstPageSingleSwitch from '@/components/print/PrintPreviewFirstPageSingleSwitch';
@@ -26,12 +27,13 @@ import CoverSidebar, {
   loadCoverLayersDetached,
   saveCoverLayersDetached,
 } from '@/components/noteCover/CoverSidebar';
+import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
 import { useCoverUndoHistory } from '@/hooks/useCoverUndoHistory';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
-import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
+import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver, getPrintSettingsStoreEpoch, PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/printSettingsStore';
 import {
   PRINT_PAGE_SIZES,
   buildPrintLayoutCssVars,
@@ -429,6 +431,7 @@ const printFontStyles = `
     /* Prefer cover hit-testing if paper box ever overlaps the cover sibling. */
     position: relative;
     z-index: 2;
+    --cover-font-scale: 1;
   }
   .export-pdf-cover [data-cover-el],
   .export-pdf-cover [data-cover-shape] {
@@ -494,14 +497,19 @@ const printFontStyles = `
     .export-pdf-cover-stack {
       gap: 0 !important;
       align-items: stretch !important;
+      /* Preview CSS zoom must not scale print layout / paper size. */
+      zoom: 1 !important;
     }
     .export-pdf-cover {
-      width: 100% !important;
+      /* Same aspect as editor full page, fitted inside @page margins so the
+         print dialog keeps the named paper size (e.g. A4) instead of Custom. */
+      width: var(--print-cover-fit-width) !important;
       max-width: none !important;
-      /* Absolute-positioned cover elements need an explicit page box or the slide collapses. */
-      height: var(--print-page-inner-height) !important;
-      min-height: var(--print-page-inner-height) !important;
-      max-height: var(--print-page-inner-height) !important;
+      height: var(--print-cover-fit-height) !important;
+      min-height: var(--print-cover-fit-height) !important;
+      max-height: var(--print-cover-fit-height) !important;
+      /* Keep design px fonts proportional to the smaller print cover box. */
+      --cover-font-scale: calc(var(--print-cover-fit-height) / var(--print-page-height)) !important;
       margin: 0 !important;
       box-shadow: none !important;
       overflow: hidden !important;
@@ -607,6 +615,7 @@ export default function ExportPDFPage({
     setPreviewPanRoot(node);
   }, []);
   const paperContentRef = useRef(null);
+  const coverPageRef = useRef(null);
   const imageMaxProbeRef = useRef(null);
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
@@ -659,7 +668,20 @@ export default function ExportPDFPage({
   });
   const coverChromeWidth =
     coverSidebarWidth + (coverLayersDetached ? coverLayersSidebarWidth : 0);
-  const getPresignedUrl = useMemo(() => getPresignedUrlResolver(currentFile?.type), [currentFile?.type]);
+  const [printStoreEpoch, setPrintStoreEpoch] = useState(() => getPrintSettingsStoreEpoch());
+  useEffect(() => {
+    const onStore = () => setPrintStoreEpoch(getPrintSettingsStoreEpoch());
+    window.addEventListener(PRINT_SETTINGS_STORE_CHANGED_EVENT, onStore);
+    // Store may already be injected before this page mounted (refresh / HMR).
+    setPrintStoreEpoch(getPrintSettingsStoreEpoch());
+    return () => window.removeEventListener(PRINT_SETTINGS_STORE_CHANGED_EVENT, onStore);
+  }, []);
+  const getPresignedUrl = useMemo(
+    () => getPresignedUrlResolver(currentFile?.type),
+    // printStoreEpoch: MainApp injects S3/local/WebDAV after mount; type alone is not enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- epoch proxies store readiness
+    [currentFile?.type, printStoreEpoch],
+  );
   const hydratedFileIdRef = useRef(
     locationState?.value != null ? (initialFile?.id ?? null) : null,
   );
@@ -680,6 +702,9 @@ export default function ExportPDFPage({
   const parsedCoverResult = useMemo(() => parseNoteCover(previewValue), [previewValue]);
   const parsedCover = parsedCoverResult.cover;
   const activeCover = parsedCover;
+  const hasEnabledCover = Boolean(activeCover?.enabled);
+  /** Cover always consumes logical page 1; body pageStarts continue from page 2. */
+  const bodyFirstPageNumber = hasEnabledCover ? 2 : 1;
   const effectiveNavigation = coverEditMode ? 'scroll' : previewView.navigation;
   const effectivePages = coverEditMode ? 1 : previewView.pages;
   const isLiveScroll1 = effectiveNavigation === 'scroll' && effectivePages === 1;
@@ -789,7 +814,7 @@ export default function ExportPDFPage({
     setPreviewValue((md) => {
       if (coverEditMode) return md;
       if (parseNoteCover(md).cover) return md;
-      const created = createDefaultNoteCover();
+      const created = createDefaultNoteCover({ pageSizeId: printLayout.pageSizeId });
       const next = upsertNoteCoverComment(md, created);
       setPendingPrintReturnState({
         currentFile,
@@ -797,7 +822,19 @@ export default function ExportPDFPage({
       });
       return next;
     });
-  }, [coverEditMode, currentFile]);
+  }, [coverEditMode, currentFile, printLayout.pageSizeId]);
+
+  // When editing a cover, honor its saved paper size in the Export toolbar.
+  useEffect(() => {
+    if (!coverEditMode || !activeCover?.pageSizeId) return;
+    if (activeCover.pageSizeId === printLayout.pageSizeId) return;
+    setPrintLayout((prev) => {
+      if (prev.pageSizeId === activeCover.pageSizeId) return prev;
+      const next = { ...prev, pageSizeId: activeCover.pageSizeId };
+      savePrintPageLayout(next);
+      return next;
+    });
+  }, [activeCover?.pageSizeId, coverEditMode, printLayout.pageSizeId]);
 
   const handleCoverCenterSnapChange = useCallback((enabled) => {
     setCoverCenterSnap(enabled);
@@ -1538,7 +1575,14 @@ export default function ExportPDFPage({
       savePrintPageLayout(next);
       return next;
     });
-  }, []);
+    if (
+      partial.pageSizeId
+      && activeCover
+      && partial.pageSizeId !== activeCover.pageSizeId
+    ) {
+      handleCoverChange({ ...activeCover, pageSizeId: partial.pageSizeId });
+    }
+  }, [activeCover, handleCoverChange]);
 
   // Advanced Search: print toolbar actions + live TOC headings.
   useEffect(() => {
@@ -1752,18 +1796,6 @@ export default function ExportPDFPage({
             </button>
             <button
               type="button"
-              onClick={() => setTocVisible((v) => !v)}
-              data-print-toolbar="toc"
-              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
-              aria-label={tocVisible ? '목차 숨기기' : '목차 보이기'}
-              aria-pressed={tocVisible}
-              title={tocVisible ? '목차 숨기기' : '목차 보이기'}
-            >
-              <ListTree size={16} />
-              목차
-            </button>
-            <button
-              type="button"
               onClick={handleSave}
               data-print-toolbar="save"
               disabled={!currentFile?.id || isSaving || !isDirty}
@@ -1786,66 +1818,80 @@ export default function ExportPDFPage({
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <button
-            type="button"
-            onClick={toggleCoverEditMode}
-            data-print-toolbar="cover"
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded transition ${
-              coverEditMode
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
-                : 'text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg'
-            }`}
-            aria-label={parsedCover ? '표지 편집' : '표지 추가'}
-            aria-pressed={coverEditMode}
-            title={parsedCover ? '표지 편집' : '표지 추가'}
-          >
-            <LayoutTemplate size={16} />
-            {parsedCover ? '표지 편집' : '표지 추가'}
-          </button>
-          <PrintPageSizeSelect
-            value={printLayout.pageSizeId}
-            onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
-          />
-          <PrintPreviewNavSelect
-            value={effectiveNavigation}
-            disabled={viewControlsLocked}
-            onValueChange={(navigation) => {
-              updatePreviewView({ navigation });
-              setFlipIndex(0);
-            }}
-          />
-          <PrintPreviewPagesSelect
-            value={effectivePages}
-            disabled={viewControlsLocked}
-            onValueChange={(pages) => {
-              updatePreviewView({ pages });
-              setFlipIndex(0);
-            }}
-          />
-          {effectivePages === 2 && !viewControlsLocked ? (
-            <PrintPreviewFirstPageSingleSwitch
-              checked={previewView.firstPageSingle}
-              onCheckedChange={(firstPageSingle) => {
-                updatePreviewView({ firstPageSingle });
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+            <button
+              type="button"
+              onClick={toggleCoverEditMode}
+              data-print-toolbar="cover"
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded transition ${
+                coverEditMode
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
+                  : 'text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg'
+              }`}
+              aria-label={parsedCover ? '표지 편집' : '표지 추가'}
+              aria-pressed={coverEditMode}
+              title={parsedCover ? '표지 편집' : '표지 추가'}
+            >
+              <LayoutTemplate size={16} />
+              {parsedCover ? '표지 편집' : '표지 추가'}
+            </button>
+            <PrintPageSizeSelect
+              value={printLayout.pageSizeId}
+              onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
+            />
+            <PrintPreviewNavSelect
+              value={effectiveNavigation}
+              disabled={viewControlsLocked}
+              onValueChange={(navigation) => {
+                updatePreviewView({ navigation });
                 setFlipIndex(0);
               }}
             />
-          ) : null}
-          <PrintPreviewZoomControls
-            value={previewView.zoomPercent}
-            onChange={(zoomPercent) => updatePreviewView({ zoomPercent })}
-          />
-          <PrintImageMaxSizeControls
-            maxWidth={printLayout.imageMaxWidth}
-            maxHeight={printLayout.imageMaxHeight}
-            widthFallback={`${printPageInnerPx.widthPx}px`}
-            heightFallback={`${printPageInnerPx.heightPx}px`}
-            onChange={({ maxWidth, maxHeight }) => updatePrintLayout({
-              imageMaxWidth: maxWidth,
-              imageMaxHeight: maxHeight,
-            })}
-          />
+            <PrintPreviewPagesSelect
+              value={effectivePages}
+              disabled={viewControlsLocked}
+              onValueChange={(pages) => {
+                updatePreviewView({ pages });
+                setFlipIndex(0);
+              }}
+            />
+            {effectivePages === 2 && !viewControlsLocked ? (
+              <PrintPreviewFirstPageSingleSwitch
+                checked={previewView.firstPageSingle}
+                onCheckedChange={(firstPageSingle) => {
+                  updatePreviewView({ firstPageSingle });
+                  setFlipIndex(0);
+                }}
+              />
+            ) : null}
+            <PrintPreviewZoomControls
+              value={previewView.zoomPercent}
+              onChange={(zoomPercent) => updatePreviewView({ zoomPercent })}
+            />
+            <PrintImageMaxSizeControls
+              maxWidth={printLayout.imageMaxWidth}
+              maxHeight={printLayout.imageMaxHeight}
+              widthFallback={`${printPageInnerPx.widthPx}px`}
+              heightFallback={`${printPageInnerPx.heightPx}px`}
+              onChange={({ maxWidth, maxHeight }) => updatePrintLayout({
+                imageMaxWidth: maxWidth,
+                imageMaxHeight: maxHeight,
+              })}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setTocVisible((v) => !v)}
+            data-print-toolbar="toc"
+            className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
+            aria-label={tocVisible ? '목차 숨기기' : '목차 보이기'}
+            aria-pressed={tocVisible}
+            title={tocVisible ? '목차 숨기기' : '목차 보이기'}
+          >
+            <ListTree size={16} />
+            목차
+          </button>
         </div>
       </div>
 
@@ -1911,25 +1957,32 @@ export default function ExportPDFPage({
             {activeCover?.enabled || coverEditMode ? (
               coverEditMode && activeCover ? (
                 <>
-                  <CoverEditor
-                    cover={activeCover}
-                    selectedIds={coverSelectedIds}
-                    onSelectIds={setCoverSelectedIds}
-                    onChange={onCoverChange}
-                    getPresignedUrl={getPresignedUrl}
-                    currentFile={currentFile}
-                    centerSnapEnabled={coverCenterSnap}
-                    centerSnapTolerance={coverCenterSnapTolerance}
-                    objectSnapEnabled={coverObjectSnap}
-                    objectSnapTolerance={coverObjectSnapTolerance}
-                    textContainerOutlineEnabled={coverTextContainerOutline}
-                    placePreviewEnabled={coverPlacePreview}
-                    placeMode={coverPlaceMode}
-                    onPlaceModeChange={setCoverPlaceMode}
-                    onUndo={undoCover}
-                    onRedo={redoCover}
-                    className="mx-auto print:hidden print:mx-0"
-                  />
+                  <div ref={coverPageRef}>
+                    <PrintCoverPageChrome
+                      showPageMarker={hasEnabledCover && isLiveScroll1}
+                      className="mx-auto w-fit max-w-full"
+                    >
+                      <CoverEditor
+                        cover={activeCover}
+                        selectedIds={coverSelectedIds}
+                        onSelectIds={setCoverSelectedIds}
+                        onChange={onCoverChange}
+                        getPresignedUrl={getPresignedUrl}
+                        currentFile={currentFile}
+                        centerSnapEnabled={coverCenterSnap}
+                        centerSnapTolerance={coverCenterSnapTolerance}
+                        objectSnapEnabled={coverObjectSnap}
+                        objectSnapTolerance={coverObjectSnapTolerance}
+                        textContainerOutlineEnabled={coverTextContainerOutline}
+                        placePreviewEnabled={coverPlacePreview}
+                        placeMode={coverPlaceMode}
+                        onPlaceModeChange={setCoverPlaceMode}
+                        onUndo={undoCover}
+                        onRedo={redoCover}
+                        className="mx-auto print:hidden print:mx-0"
+                      />
+                    </PrintCoverPageChrome>
+                  </div>
                   {activeCover.enabled ? (
                     <CoverSlide
                       cover={activeCover}
@@ -1939,11 +1992,18 @@ export default function ExportPDFPage({
                   ) : null}
                 </>
               ) : activeCover?.enabled ? (
-                <CoverSlide
-                  cover={activeCover}
-                  getPresignedUrl={getPresignedUrl}
-                  className="mx-auto shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
-                />
+                <div ref={coverPageRef}>
+                  <PrintCoverPageChrome
+                    showPageMarker={isLiveScroll1}
+                    className="mx-auto w-fit max-w-full"
+                  >
+                    <CoverSlide
+                      cover={activeCover}
+                      getPresignedUrl={getPresignedUrl}
+                      className="mx-auto shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
+                    />
+                  </PrintCoverPageChrome>
+                </div>
               ) : null
             ) : null}
             <div
@@ -1972,6 +2032,7 @@ export default function ExportPDFPage({
                 <PrintPageBreakOverlay
                   pageStarts={pageStarts}
                   contentHeight={contentHeight}
+                  firstPageNumber={bodyFirstPageNumber}
                 />
                 <MdPreview
                   id={EDITOR_ID}
@@ -1991,6 +2052,8 @@ export default function ExportPDFPage({
           contentHeight={contentHeight}
           paperRef={paperContentRef}
           scrollRef={previewContainerRef}
+          coverRef={coverPageRef}
+          hasCover={hasEnabledCover}
           overridePages={isLiveScroll1 ? null : stageVisiblePages}
         />
         {coverEditMode && activeCover ? (
@@ -2137,9 +2200,14 @@ export default function ExportPDFPage({
         onStartFreeTransform={startFreeTransform}
         onCrop={handleCropWikiImage}
       />
+      <HaimTableBoxResizeLayer
+        containerRef={previewContainerRef}
+        getMarkdown={() => previewValueRef.current ?? ''}
+        setMarkdown={(next) => setPreviewValue(next)}
+      />
       {freeTransformState && freeTransformOverlayRect && (
         <div
-          className="fixed z-70 pointer-events-none border-2 border-blue-500"
+          className="fixed z-70 pointer-events-none border-2 border-blue-500 print:hidden"
           style={{
             left: `${freeTransformOverlayRect.left}px`,
             top: `${freeTransformOverlayRect.top}px`,

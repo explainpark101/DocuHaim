@@ -102,6 +102,10 @@ import {
   setWebfontSettingsStore,
 } from '@/utils/webfontSettingsStore';
 import {
+  loadTableStylesFromStorage,
+  setTableStyleSettingsStore,
+} from '@/utils/tableStyleSettingsStore';
+import {
   loadCoverSettingsFromStorage,
   notifyCoverSettingsChanged,
   setCoverSettingsStore,
@@ -905,9 +909,30 @@ function MainApp() {
     }
   };
 
+  /** Fields the settings S3/Gemini forms can change; missing/null ≡ ''. */
+  const CREDS_COMPARE_KEYS = [
+    'accessKeyId',
+    'secretAccessKey',
+    'region',
+    'bucket',
+    'endpoint',
+    'googleAiStudioApiKey',
+  ];
+
+  const normalizeCredsForCompare = (creds) => {
+    if (!creds || typeof creds !== 'object') return null;
+    const out = {};
+    for (const key of CREDS_COMPARE_KEYS) {
+      out[key] = creds[key] == null ? '' : String(creds[key]);
+    }
+    return out;
+  };
+
   const isCredsDirty = (formCreds, savedCreds) => {
-    if (!formCreds || !savedCreds) return !!formCreds !== !!savedCreds;
-    return JSON.stringify(formCreds) !== JSON.stringify(savedCreds);
+    const a = normalizeCredsForCompare(formCreds);
+    const b = normalizeCredsForCompare(savedCreds);
+    if (!a || !b) return !!a !== !!b;
+    return CREDS_COMPARE_KEYS.some((key) => a[key] !== b[key]);
   };
 
   const handleSaveS3Creds = (creds) => {
@@ -1618,11 +1643,13 @@ function MainApp() {
   useEffect(() => {
     setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setWebfontSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+    setTableStyleSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setCoverSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     void loadWebfontsFromStorage().then((settings) => {
       notifyWebfontsChanged(settings);
     });
+    void loadTableStylesFromStorage();
     void loadCoverSettingsFromStorage().then((settings) => {
       notifyCoverSettingsChanged(settings);
     });
@@ -3845,7 +3872,11 @@ function MainApp() {
   };
 
   /** Object URL 방식: 메모리 제한 ~100–200MB. presigned URL 인코딩 이슈 회피 */
-  const handleDownloadCurrentFile = async ({ imageMode = 'files', headingMax = 1 } = {}) => {
+  const handleDownloadCurrentFile = async ({
+    imageMode = 'files',
+    headingMax = 1,
+    tableFormat = 'haim',
+  } = {}) => {
     if (!currentFile) return;
     const storageType = currentFile.type;
     if (storageType === SESSION_STORAGE_TYPE) {
@@ -3870,7 +3901,14 @@ function MainApp() {
       if (isMarkdownFileName(fileName)) {
         const backend = getBackendForType(storageType);
         const { text } = await backend.readText(notePath);
-        const markdown = remapMarkdownHeadingLevels(text, headingMax);
+        let markdown = remapMarkdownHeadingLevels(text, headingMax);
+        if (tableFormat === 'html') {
+          const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
+          const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
+          markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
+            getCachedTableStyleTemplate(id),
+          );
+        }
         const bundled =
           imageMode === 'base64'
             ? await downloadMarkdownImageBase64(storageType, notePath, fileName, markdown)
@@ -3967,7 +4005,11 @@ function MainApp() {
   };
 
   /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시. md+이미지는 zip 없이 md/.pictures 또는 base64 단일 md */
-  const handleDownloadToFolder = async ({ imageMode = 'files', headingMax = 1 } = {}) => {
+  const handleDownloadToFolder = async ({
+    imageMode = 'files',
+    headingMax = 1,
+    tableFormat = 'haim',
+  } = {}) => {
     if (!currentFile) return;
     const storageType = currentFile.type;
     if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
@@ -3984,7 +4026,14 @@ function MainApp() {
       if (isMarkdownFileName(fileName)) {
         const backend = getBackendForType(storageType);
         const { text } = await backend.readText(notePath);
-        const markdown = remapMarkdownHeadingLevels(text, headingMax);
+        let markdown = remapMarkdownHeadingLevels(text, headingMax);
+        if (tableFormat === 'html') {
+          const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
+          const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
+          markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
+            getCachedTableStyleTemplate(id),
+          );
+        }
         const plan = planMarkdownImageExport(markdown, notePath);
         if (plan.images.length) {
           const { entries, missing } = await collectMarkdownExportImageBytes(

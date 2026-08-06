@@ -1,41 +1,78 @@
 ---
-description: Form UI library choice — Radix by default; React Aria for date/time
+description: Mandatory UI libraries — forms (Radix/React Aria), color (react-colorful), animation (motion), DnD (dnd-kit), tooltip (Radix). Ask before any alternative.
 alwaysApply: true
 ---
 
-# Form components
+# Mandatory UI libraries
 
-## Default: Radix UI
+Use only the libraries below for these concerns. Prefer existing project wrappers when present.
 
-Use **Radix UI** (`radix-ui` / `@radix-ui/*`) for general forms and overlays:
+Do **not** introduce alternate libraries, native stand-ins, or ad-hoc reimplementations on your own. If the mandated stack is judged genuinely insufficient for the task, **stop, ask the user**, explain why an alternative is needed and what you propose, and **wait for explicit approval** before adding or using anything else.
+
+## Forms & overlays: Radix UI
+
+Use **Radix UI** (`radix-ui` / `@radix-ui/*`) for all general forms and overlays:
 
 - Text, Select, Checkbox, Switch, Radio, Slider
 - Dialog, Alert Dialog, Popover, Dropdown Menu, Context Menu, Tabs
+- **Tooltip** (see below)
 - Native `input` / `textarea` only when wrapped by Radix Form (or project ChatSelect / ConfirmModal patterns)
 
 Do **not** use native `type="date"`, `type="datetime-local"`, or `type="time"` for new UI.
 
 ## Dates & times: React Aria Components
 
-Use **`react-aria-components`** + **`@internationalized/date`** for:
+Use **`react-aria-components`** + **`@internationalized/date`** for date, date range, datetime, datetime range, and dedicated time pickers.
 
-- date
-- date range
-- datetime
-- datetime range
-- time (when a dedicated picker is needed)
-
-Prefer existing wrappers when present (e.g. `ChatDatePicker`, `ChatDateTimePicker`). Compose `DatePicker` / `DateRangePicker` / `DateField` / `TimeField` with `Calendar` / `RangeCalendar` rather than browser date inputs.
+Prefer wrappers (`ChatDatePicker`, `ChatDateTimePicker`). Compose `DatePicker` / `DateRangePicker` / `DateField` / `TimeField` with `Calendar` / `RangeCalendar`. Wire values as `CalendarDate` / `CalendarDateTime` (and ranges); convert at API/storage boundaries if needed.
 
 ```jsx
 // ❌ BAD
 <input type="date" value={date} onChange={...} />
-<input type="datetime-local" value={from} onChange={...} />
 
 // ✅ GOOD
-import { parseDate, parseDateTime } from '@internationalized/date';
-import { DatePicker, DateRangePicker } from 'react-aria-components';
-// or project wrappers: ChatDatePicker, ChatDateTimePicker
+import { parseDate } from '@internationalized/date';
+import { DatePicker } from 'react-aria-components';
 ```
 
-Wire values through `@internationalized/date` (`CalendarDate`, `CalendarDateTime`, ranges) and convert at the boundary if storage/API still needs ISO / `YYYY-MM-DD` / `datetime-local` strings.
+## Color picker: react-colorful
+
+Use **`react-colorful`** only (`HexAlphaColorPicker` / `HexColorPicker`, `HexColorInput`, etc.). Prefer **`HexAlphaColorPicker`** (+ `HexColorInput` with `alpha`) when the value may include transparency.
+
+```text
+❌ BAD — react-color, @uiw/react-color, native <input type="color">, custom canvas pickers
+✅ GOOD — import { HexAlphaColorPicker, HexColorInput } from 'react-colorful'
+```
+
+## Animation: motion
+
+Use the **`motion`** package only (`motion`, `motion/react`). Do not add `framer-motion` as a separate dependency or use other animation libs for UI motion.
+
+```text
+❌ BAD — framer-motion package, GSAP, anime.js, CSS-only hacks when a motion component/API is the fit
+✅ GOOD — import { motion, AnimatePresence, animate } from 'motion/react' (or `motion`)
+```
+
+## Drag and drop: dnd-kit
+
+Use **`@dnd-kit/core`**, **`@dnd-kit/sortable`**, and **`@dnd-kit/utilities`** only.
+
+```text
+❌ BAD — react-beautiful-dnd, @hello-pangea/dnd, react-dnd, native HTML5 DnD for app UI
+✅ GOOD — DndContext, SortableContext, useSortable, CSS.Transform from @dnd-kit/*
+```
+
+## Tooltip: Radix only
+
+Tooltips **must** use Radix (`Tooltip` from `radix-ui` or `@radix-ui/react-tooltip`). Do not use `title=`, custom hover divs, or other tooltip libraries as the product tooltip UI.
+
+```jsx
+// ❌ BAD
+<button title="Save">...</button>
+
+// ✅ GOOD
+import { Tooltip } from 'radix-ui';
+<Tooltip.Provider>
+  <Tooltip.Root>...</Tooltip.Root>
+</Tooltip.Provider>
+```

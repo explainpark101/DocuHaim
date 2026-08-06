@@ -15,6 +15,7 @@ export type EditorActionId =
   | 'editor-code'
   | 'editor-link'
   | 'editor-table'
+  | 'editor-table-edit'
   | 'editor-h1'
   | 'editor-h2'
   | 'editor-h3'
@@ -181,6 +182,20 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     description: '마크다운 표 삽입',
     keywords: ['table', '표', '테이블'],
     directive: 'table',
+  },
+  {
+    id: 'editor-table-edit',
+    title: '표 편집',
+    description: '선택/커서 위치의 haim-table 병합·스타일 편집',
+    keywords: [
+      'table edit',
+      '표 편집',
+      '셀 병합',
+      'colspan',
+      'rowspan',
+      'haim-table',
+      '테이블 편집',
+    ],
   },
   {
     id: 'editor-h1',

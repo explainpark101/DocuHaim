@@ -6,7 +6,7 @@
 
 ```html
 <!-- note-cover
-{"v":2,"enabled":true,"layout":{…},"bg":{…},"rootLayerIds":[…],"groups":[…],"elements":[…]}
+{"v":2,"enabled":true,"pageSizeId":"a4","layout":{…},"bg":{…},"rootLayerIds":[…],"groups":[…],"elements":[…]}
 -->
 ```
 
@@ -51,6 +51,7 @@ Canonical serialize:
 type NoteCover = {
   v: 2;
   enabled: boolean;           // default true; only false when explicitly false
+  pageSizeId: PrintPageSizeId; // paper while designing; default 'a4' if missing/invalid
   layout: {
     align: 'left' | 'center' | 'right';  // default 'center'
     containerWidthPct: number;           // always normalized to 100
@@ -128,6 +129,7 @@ type CoverElement =
 **Normalize on read** (`normalizeNoteCover`):
 
 - Always write/emit `v: 2` after normalize (v1 payloads accepted).
+- Missing / invalid `pageSizeId` → `'a4'` (must be a `PRINT_PAGE_SIZES` id).
 - Unknown / invalid elements dropped; missing `id` → `cover-el-{index}`.
 - Position defaults (if missing): text ≈ `(10,20,80,12)`, image ≈ `(20,40,50,35)`, shape ≈ `(10,20,80,30)`; `x,y` clamp 0–100; `w,h` clamp 1–100.
 - Orphan `groupId`s get synthetic groups; then `ensureLayerTree` repairs `rootLayerIds` / `childIds` consistency (host must keep a valid layer tree; see `layerTree.ts`).
@@ -144,8 +146,8 @@ type CoverElement =
 
 | Stage | Behavior |
 |-------|----------|
-| Note MdPreview | Replace leading cover comment with a mount host; hydrate `CoverSlide` when `enabled` (cover paper always **light** background; body below follows editor theme) |
-| Export / print | Parse cover; if `enabled`, render cover surface from JSON; body follows |
+| Note MdPreview | Replace leading cover comment with a mount host; **auto-mount** `CoverSlide` when `enabled` (re-hydrate if preview DOM recreates). Cover uses `cover.pageSizeId` aspect + scaled fonts. Cover paper always **light**; body below follows editor theme. Click opens Export cover editor confirm. |
+| Export / print | Persist toolbar paper size onto `cover.pageSizeId` while editing; restore toolbar from cover when entering cover edit. Render/print as before (`--print-cover-fit-*`, named `@page size`, logical page 1). |
 | Editor | Mutate JSON via upsert; fold cover JSON with gutter chevron (persisted in IndexedDB per document); never rely on in-body shortcodes for cover |
 
 Image `path` / `bg.imagePath` are storage keys; URL resolution is host-specific (same as wiki images).

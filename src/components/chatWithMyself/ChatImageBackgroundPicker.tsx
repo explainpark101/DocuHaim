@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { Popover } from 'radix-ui';
-import { HexColorInput, HexColorPicker } from 'react-colorful';
-import { cssHexToInputValue, normalizeCssHexColor } from '@/utils/cssColor';
+import { HexAlphaColorPicker, HexColorInput } from 'react-colorful';
+import {
+  CSS_HEX_CHECKER_STYLE,
+  cssHexToInputValue,
+  normalizeCssHexColor,
+} from '@/utils/cssColor';
 
 const PRESETS: { id: string; label: string; value: string | null; swatch?: string }[] = [
   { id: 'none', label: '없음', value: null },
@@ -86,13 +90,7 @@ export default function ChatImageBackgroundPicker({
             ) : (
               <span
                 className="h-3 w-3 rounded-sm border border-black/20"
-                style={{
-                  backgroundColor: '#fff',
-                  backgroundImage:
-                    'linear-gradient(45deg,#d4d4d4 25%,transparent 25%),linear-gradient(-45deg,#d4d4d4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d4d4d4 75%),linear-gradient(-45deg,transparent 75%,#d4d4d4 75%)',
-                  backgroundSize: '6px 6px',
-                  backgroundPosition: '0 0,0 3px,3px -3px,-3px 0',
-                }}
+                style={CSS_HEX_CHECKER_STYLE}
               />
             )}
             {preset.value == null ? noneLabel : preset.label}
@@ -109,10 +107,18 @@ export default function ChatImageBackgroundPicker({
             aria-label="배경색 직접 선택"
             aria-expanded={open}
           >
-            <span
-              className="h-3 w-3 rounded-sm border border-black/20"
-              style={{ backgroundColor: hex }}
-            />
+            <span className="relative h-3 w-3 overflow-hidden rounded-sm border border-black/20">
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={CSS_HEX_CHECKER_STYLE}
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={{ backgroundColor: hex }}
+              />
+            </span>
             직접
           </button>
         </Popover.Trigger>
@@ -130,13 +136,14 @@ export default function ChatImageBackgroundPicker({
             }`}
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
-            <div className="[&_.react-colorful]:h-36 [&_.react-colorful]:w-full">
-              <HexColorPicker color={hex} onChange={setHex} />
+            <div className="[&_.react-colorful]:h-40 [&_.react-colorful]:w-full">
+              <HexAlphaColorPicker color={hex} onChange={setHex} />
             </div>
             <HexColorInput
               color={hex}
               onChange={setHex}
               prefixed
+              alpha
               aria-label="HEX 색상"
               className={`mt-2 w-full rounded-md border px-2 py-1 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
                 isDark

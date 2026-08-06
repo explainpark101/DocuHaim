@@ -1,5 +1,6 @@
 import {
   NOTE_COVER_VERSION,
+  DEFAULT_COVER_PAGE_SIZE_ID,
   createDefaultNoteCover,
   isCoverShapeType,
   type CoverAlign,
@@ -17,6 +18,7 @@ import {
   type NoteCover,
 } from '@/utils/noteCover/types';
 import { ensureLayerTree } from '@/utils/noteCover/layerTree';
+import { isPrintPageSizeId, type PrintPageSizeId } from '@/utils/printPageLayout';
 
 const COVER_COMMENT_RE =
   /^[\uFEFF\s]*<!--\s*note-cover\s*([\s\S]*?)-->/;
@@ -46,6 +48,10 @@ function isTextAlign(v: unknown): v is CoverTextAlign {
 
 function isTextVAlign(v: unknown): v is CoverTextVAlign {
   return v === 'top' || v === 'middle' || v === 'bottom';
+}
+
+function normalizePageSizeId(raw: unknown): PrintPageSizeId {
+  return isPrintPageSizeId(raw) ? raw : DEFAULT_COVER_PAGE_SIZE_ID;
 }
 
 function normalizeLayout(raw: unknown): CoverLayout {
@@ -321,6 +327,7 @@ export function normalizeNoteCoverWithIssues(raw: unknown): NormalizeNoteCoverRe
   const base: NoteCover = {
     v: NOTE_COVER_VERSION,
     enabled: o.enabled !== false,
+    pageSizeId: normalizePageSizeId(o.pageSizeId),
     layout: normalizeLayout(o.layout),
     bg: normalizeBg(o.bg),
     rootLayerIds,

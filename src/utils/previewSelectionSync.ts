@@ -5,9 +5,21 @@
  */
 
 import type { EditorView } from '@codemirror/view';
+import {
+  caretRectBesideImage,
+  findImageHostFromRange,
+  mapEditorPosToImageRange,
+} from '@/utils/previewImageCaretSync';
+import {
+  caretRectForTableCell,
+  findTableCell,
+  mapEditorPosToTableCellRange,
+  mapPreviewTableCellToEditorRange,
+} from '@/utils/previewTableCellSync';
 
 export const PREVIEW_SYNC_HIGHLIGHT_NAME = 's3haim-preview-sync-sel';
 const PREVIEW_SYNC_OVERLAY_ATTR = 'data-preview-sel-mirror';
+const PREVIEW_CARET_OVERLAY_ATTR = 'data-preview-caret-mirror';
 const MIRROR_HIT_SLOP_PX = 4;
 
 let mirroredPreviewRange: Range | null = null;
@@ -26,21 +38,82 @@ export function findDataLineElement(node: Node | null, previewRoot: Element): HT
 }
 
 function getTextOffsetInElement(rootEl: Element, node: Node, offset: number): number {
-  if (!rootEl.contains(node)) return 0;
-  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
+  if (!rootEl.contains(node) && node !== rootEl) return 0;
+
   let total = 0;
-  let current = walker.nextNode();
-  while (current) {
+  const walk = (current: Node): boolean => {
     if (current === node) {
-      return total + Math.max(0, Math.min(offset, current.textContent?.length ?? 0));
+      if (current.nodeType === Node.TEXT_NODE) {
+        total += Math.max(0, Math.min(offset, current.textContent?.length ?? 0));
+        return true;
+      }
+      // Element caret: offset is child index.
+      if (current instanceof Element) {
+        for (let i = 0; i < Math.min(offset, current.childNodes.length); i += 1) {
+          total += plainLengthOfNode(current.childNodes[i]!);
+        }
+        return true;
+      }
     }
-    total += current.textContent?.length ?? 0;
-    current = walker.nextNode();
-  }
+    if (current.nodeType === Node.TEXT_NODE) {
+      total += current.textContent?.length ?? 0;
+      return false;
+    }
+    if (current instanceof HTMLBRElement) {
+      total += 1;
+      return false;
+    }
+    if (current instanceof Element) {
+      for (const child of current.childNodes) {
+        if (walk(child)) return true;
+      }
+    }
+    return false;
+  };
+
+  walk(rootEl);
   return total;
 }
 
-function getSourceBoundsForLineRange(
+function plainLengthOfNode(node: Node): number {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent?.length ?? 0;
+  if (node instanceof HTMLBRElement) return 1;
+  let n = 0;
+  if (node instanceof Element) {
+    for (const child of node.childNodes) n += plainLengthOfNode(child);
+  }
+  return n;
+}
+
+/** Preview plain text with <br> treated as `\\n` (textContent alone concatenates lines). */
+export function getPreviewPlainWithBreaks(root: Element): string {
+  let out = '';
+  const walk = (node: Node): void => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.textContent ?? '';
+      return;
+    }
+    if (node instanceof HTMLBRElement) {
+      out += '\n';
+      return;
+    }
+    if (node instanceof Element) {
+      for (const child of node.childNodes) walk(child);
+    }
+  };
+  walk(root);
+  return out;
+}
+
+function positionAfterNode(node: Node): { node: Node; offset: number } | null {
+  const parent = node.parentNode;
+  if (!parent) return null;
+  const index = Array.prototype.indexOf.call(parent.childNodes, node);
+  if (index < 0) return null;
+  return { node: parent, offset: index + 1 };
+}
+
+export function getSourceBoundsForLineRange(
   view: EditorView,
   previewRoot: Element,
   startLine0: number,
@@ -100,6 +173,192 @@ export function mapPlainOffsetToSource(source: string, plain: string, plainOffse
   }
 
   return si;
+}
+
+/**
+ * Inverse of mapPlainOffsetToSource: source caret offset → visible plain offset.
+ */
+export function mapSourceOffsetToPlain(source: string, plain: string, sourceOffset: number): number {
+  const target = Math.max(0, Math.min(sourceOffset, source.length));
+  let si = 0;
+  let pi = 0;
+
+  while (si < target && si < source.length) {
+    const sc = source[si];
+    const pc = plain[pi];
+    if (sc === undefined) break;
+
+    if (pc !== undefined && sc === pc) {
+      si += 1;
+      pi += 1;
+      continue;
+    }
+
+    if (pc !== undefined && (/\s/.test(sc) || /\s/.test(pc))) {
+      while (si < target && /\s/.test(source[si] ?? '')) si += 1;
+      while (pi < plain.length && /\s/.test(plain[pi] ?? '')) pi += 1;
+      continue;
+    }
+
+    si += 1;
+  }
+
+  return Math.max(0, Math.min(pi, plain.length));
+}
+
+function setPlainOffsetInElement(
+  rootEl: Element,
+  plainOffset: number,
+): { node: Node; offset: number } | null {
+  let remaining = Math.max(0, plainOffset);
+  let lastText: { node: Node; offset: number } | null = null;
+
+  const walk = (node: Node): { node: Node; offset: number } | null => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.textContent?.length ?? 0;
+      if (remaining <= len) {
+        return { node, offset: remaining };
+      }
+      remaining -= len;
+      lastText = { node, offset: len };
+      return null;
+    }
+
+    if (node instanceof HTMLBRElement) {
+      // Plain uses one `\\n` per <br>.
+      if (remaining === 0) {
+        return positionAfterNode(node);
+      }
+      remaining -= 1;
+      // Caret immediately after the break character sits after the <br>.
+      if (remaining === 0) {
+        return positionAfterNode(node);
+      }
+      return null;
+    }
+
+    if (node instanceof Element) {
+      for (const child of node.childNodes) {
+        const hit = walk(child);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  };
+
+  const hit = walk(rootEl);
+  if (hit) return hit;
+  if (lastText) return lastText;
+  return { node: rootEl, offset: 0 };
+}
+
+function findDataLineBlockForSourceLine(
+  previewRoot: Element,
+  line0: number,
+): HTMLElement | null {
+  let best: HTMLElement | null = null;
+  let bestLine = -1;
+  for (const el of previewRoot.querySelectorAll('[data-line]')) {
+    if (!(el instanceof HTMLElement)) continue;
+    const n = Number(el.getAttribute('data-line'));
+    if (!Number.isFinite(n)) continue;
+    if (n <= line0 && n >= bestLine) {
+      best = el;
+      bestLine = n;
+    }
+  }
+  return best;
+}
+
+/**
+ * Map CodeMirror main selection to a Range inside the preview DOM.
+ */
+export function mapEditorSelectionToPreviewRange(
+  view: EditorView,
+  previewRoot: Element,
+): Range | null {
+  if (!view?.state || !previewRoot) return null;
+
+  const main = view.state.selection.main;
+  const fromPos = main.from;
+  const toPos = main.to;
+
+  // Images first: atomic before/after the rendered <img>.
+  if (fromPos === toPos) {
+    const imageRange = mapEditorPosToImageRange(view, previewRoot, fromPos);
+    if (imageRange) return imageRange;
+  } else {
+    const startImg = mapEditorPosToImageRange(view, previewRoot, fromPos);
+    const endImg = mapEditorPosToImageRange(view, previewRoot, toPos);
+    if (startImg && endImg) {
+      try {
+        const range = document.createRange();
+        range.setStart(startImg.startContainer, startImg.startOffset);
+        range.setEnd(endImg.startContainer, endImg.startOffset);
+        return range;
+      } catch {
+        // fall through
+      }
+    }
+  }
+
+  // Table cells (esp. empty): pipe/row mapping beats plain-text alignment.
+  if (fromPos === toPos) {
+    const cellRange = mapEditorPosToTableCellRange(view, previewRoot, fromPos);
+    if (cellRange) return cellRange;
+  } else {
+    const startCellRange = mapEditorPosToTableCellRange(view, previewRoot, fromPos);
+    const endCellRange = mapEditorPosToTableCellRange(view, previewRoot, toPos);
+    if (startCellRange && endCellRange) {
+      try {
+        const range = document.createRange();
+        range.setStart(startCellRange.startContainer, startCellRange.startOffset);
+        range.setEnd(endCellRange.startContainer, endCellRange.startOffset);
+        return range;
+      } catch {
+        // fall through
+      }
+    }
+  }
+
+  const fromLine0 = view.state.doc.lineAt(fromPos).number - 1;
+  const toLine0 = view.state.doc.lineAt(toPos).number - 1;
+
+  const startBlock = findDataLineBlockForSourceLine(previewRoot, fromLine0);
+  const endBlock = findDataLineBlockForSourceLine(previewRoot, toLine0);
+  if (!startBlock || !endBlock) return null;
+
+  const resolve = (pos: number, block: HTMLElement) => {
+    const line0 = Number(block.getAttribute('data-line'));
+    if (!Number.isFinite(line0)) return null;
+    const { from: blockFrom, to: blockTo } = getSourceBoundsForLineRange(
+      view,
+      previewRoot,
+      line0,
+      line0,
+    );
+    const sourceSlice = view.state.doc.sliceString(blockFrom, blockTo);
+    const plain = getPreviewPlainWithBreaks(block);
+    const plainOffset = mapSourceOffsetToPlain(
+      sourceSlice,
+      plain,
+      Math.max(0, Math.min(pos, blockTo) - blockFrom),
+    );
+    return setPlainOffsetInElement(block, plainOffset);
+  };
+
+  const start = resolve(fromPos, startBlock);
+  const end = resolve(toPos, endBlock);
+  if (!start || !end) return null;
+
+  try {
+    const range = document.createRange();
+    range.setStart(start.node, start.offset);
+    range.setEnd(end.node, end.offset);
+    return range;
+  } catch {
+    return null;
+  }
 }
 
 function countOccurrences(haystack: string, needle: string): number {
@@ -209,6 +468,9 @@ export function mapPreviewSelectionToEditorRange(
   const range = sel.getRangeAt(0);
   if (!previewRoot.contains(range.commonAncestorContainer)) return null;
 
+  const tableMapped = mapPreviewTableCellToEditorRange(view, previewRoot, range);
+  if (tableMapped) return tableMapped;
+
   const startBlock = findDataLineElement(range.startContainer, previewRoot);
   const endBlock = findDataLineElement(range.endContainer, previewRoot);
   if (!startBlock && !endBlock) return null;
@@ -230,7 +492,7 @@ export function mapPreviewSelectionToEditorRange(
 
   if (range.collapsed) {
     const block = startBlock || endBlock;
-    const plain = block?.textContent ?? '';
+    const plain = block ? getPreviewPlainWithBreaks(block) : '';
     const plainOffset = block
       ? getTextOffsetInElement(block, range.startContainer, range.startOffset)
       : 0;
@@ -259,7 +521,7 @@ export function mapPreviewSelectionToEditorRange(
   }
 
   if (startBlock && startBlock === endBlock) {
-    const plain = startBlock.textContent ?? '';
+    const plain = getPreviewPlainWithBreaks(startBlock);
     const plainFrom = getTextOffsetInElement(startBlock, range.startContainer, range.startOffset);
     const plainTo = getTextOffsetInElement(startBlock, range.endContainer, range.endOffset);
     const a = Math.min(plainFrom, plainTo);
@@ -289,14 +551,207 @@ function cssHighlights(): HighlightRegistry | null {
 
 function removePreviewSelectionOverlay(previewRoot: Element): void {
   previewRoot.querySelectorAll(`[${PREVIEW_SYNC_OVERLAY_ATTR}]`).forEach((el) => el.remove());
+  previewRoot.querySelectorAll(`[${PREVIEW_CARET_OVERLAY_ATTR}]`).forEach((el) => el.remove());
   const wrapper = previewRoot.closest('.md-editor-preview-wrapper');
   wrapper?.querySelectorAll(`[${PREVIEW_SYNC_OVERLAY_ATTR}]`).forEach((el) => el.remove());
+  wrapper?.querySelectorAll(`[${PREVIEW_CARET_OVERLAY_ATTR}]`).forEach((el) => el.remove());
 }
 
 export function clearPreviewSelectionMirror(previewRoot?: Element | null): void {
   setMirroredPreviewRange(null);
   cssHighlights()?.delete(PREVIEW_SYNC_HIGHLIGHT_NAME);
   if (previewRoot) removePreviewSelectionOverlay(previewRoot);
+}
+
+function ensurePreviewHostPositioned(host: HTMLElement): void {
+  if (getComputedStyle(host).position === 'static') {
+    host.style.position = 'relative';
+  }
+}
+
+const PREVIEW_SCROLL_PAD_PX = 32;
+
+function findPreviewScrollContainer(previewRoot: Element): HTMLElement | null {
+  const wrapper = previewRoot.closest('.md-editor-preview-wrapper');
+  if (wrapper instanceof HTMLElement) return wrapper;
+
+  let el: HTMLElement | null =
+    previewRoot instanceof HTMLElement ? previewRoot : previewRoot.parentElement;
+  while (el) {
+    const style = getComputedStyle(el);
+    if (
+      /(auto|scroll|overlay)/.test(style.overflowY)
+      || /(auto|scroll|overlay)/.test(style.overflowX)
+    ) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
+
+/** Keep the mirrored caret/selection inside the preview pane's scrollport. */
+function scrollPreviewCaretIntoView(previewRoot: Element, range: Range): void {
+  const scroller = findPreviewScrollContainer(previewRoot);
+  if (!scroller) return;
+
+  let rect: DOMRect | null = null;
+  const bar = previewRoot.querySelector('.s3haim-preview-caret-mirror-bar');
+  if (bar instanceof HTMLElement) {
+    const br = bar.getBoundingClientRect();
+    if (br.height > 0 || br.width > 0) rect = br;
+  }
+  if (!rect) {
+    try {
+      const rects = range.getClientRects();
+      if (rects.length > 0) {
+        rect = range.collapsed ? rects[0]! : rects[rects.length - 1]!;
+      } else {
+        const b = range.getBoundingClientRect();
+        if (b.height > 0 || b.width > 0) rect = b;
+      }
+    } catch {
+      return;
+    }
+  }
+  if (!rect) return;
+
+  const pad = PREVIEW_SCROLL_PAD_PX;
+  const sRect = scroller.getBoundingClientRect();
+  let dy = 0;
+  let dx = 0;
+
+  if (rect.top < sRect.top + pad) {
+    dy = rect.top - (sRect.top + pad);
+  } else if (rect.bottom > sRect.bottom - pad) {
+    dy = rect.bottom - (sRect.bottom - pad);
+  }
+
+  if (rect.left < sRect.left + pad) {
+    dx = rect.left - (sRect.left + pad);
+  } else if (rect.right > sRect.right - pad) {
+    dx = rect.right - (sRect.right - pad);
+  }
+
+  if (dy !== 0) scroller.scrollTop += dy;
+  if (dx !== 0) scroller.scrollLeft += dx;
+}
+
+function applyPreviewCaretOverlay(
+  previewRoot: Element,
+  range: Range,
+  caretRect?: DOMRect | null,
+): void {
+  const host = previewRoot instanceof HTMLElement ? previewRoot : null;
+  if (!host) return;
+  ensurePreviewHostPositioned(host);
+
+  let rect: DOMRect | null = caretRect ?? null;
+  const imageHost = rect ? null : findImageHostFromRange(range, previewRoot);
+  const cell = rect ? null : findTableCell(range.startContainer, previewRoot);
+
+  if (rect) {
+    // Explicit blank-gap / caller-provided caret box.
+  } else if (imageHost) {
+    rect = caretRectBesideImage(imageHost.host, imageHost.side);
+  } else if (cell) {
+    // Always anchor to the cell box so 2nd/3rd columns stay visible even when
+    // the native Range has no client rects (empty / whitespace-only cells).
+    rect = caretRectForTableCell(cell);
+    try {
+      const rects = range.getClientRects();
+      const textRect = rects.length > 0 ? rects[0] : null;
+      if (textRect && textRect.height > 0 && textRect.width >= 0) {
+        const br = cell.getBoundingClientRect();
+        if (
+          textRect.left >= br.left - 1
+          && textRect.right <= br.right + 1
+          && textRect.top >= br.top - 1
+          && textRect.bottom <= br.bottom + 1
+        ) {
+          rect = new DOMRect(
+            textRect.left,
+            textRect.top,
+            0,
+            Math.max(textRect.height, 14),
+          );
+        }
+      }
+    } catch {
+      // keep cell rect
+    }
+  } else {
+    try {
+      const rects = range.getClientRects();
+      if (rects.length > 0) {
+        rect = rects[0]!;
+      } else {
+        const b = range.getBoundingClientRect();
+        if (b.height > 0 || b.width > 0) rect = b;
+      }
+    } catch {
+      rect = null;
+    }
+
+    if (!rect || rect.height <= 0) {
+      // Caret after a <br> often has empty client rects — sit on the next visual line.
+      if (range.collapsed && range.startContainer instanceof Element) {
+        const prev = range.startContainer.childNodes[range.startOffset - 1];
+        if (prev instanceof HTMLBRElement) {
+          const parentEl = prev.parentElement ?? host;
+          const style = getComputedStyle(parentEl);
+          const lh =
+            Number.parseFloat(style.lineHeight)
+            || (Number.parseFloat(style.fontSize) || 16) * 1.5;
+          let left = parentEl.getBoundingClientRect().left;
+          let top = prev.getBoundingClientRect().bottom;
+          const before = prev.previousSibling;
+          if (before) {
+            try {
+              const probe = document.createRange();
+              probe.selectNodeContents(before);
+              const box = probe.getBoundingClientRect();
+              if (box.height > 0 || box.width > 0) {
+                left = box.left;
+                top = box.bottom;
+              }
+            } catch {
+              // keep defaults
+            }
+          }
+          rect = new DOMRect(left, top, 0, Math.max(lh * 0.85, 14));
+        }
+      }
+    }
+
+    if (!rect || rect.height <= 0) {
+      const block =
+        findDataLineElement(range.startContainer, previewRoot)
+        || (range.startContainer instanceof HTMLElement ? range.startContainer : null);
+      if (block) {
+        const br = block.getBoundingClientRect();
+        rect = new DOMRect(br.left, br.top, 0, Math.max(br.height || 0, 16));
+      }
+    }
+  }
+
+  if (!rect || rect.height <= 0) return;
+
+  removePreviewSelectionOverlay(previewRoot);
+
+  const hostRect = host.getBoundingClientRect();
+  const layer = document.createElement('div');
+  layer.setAttribute(PREVIEW_CARET_OVERLAY_ATTR, '');
+  layer.className = 's3haim-preview-caret-mirror';
+  layer.setAttribute('aria-hidden', 'true');
+
+  const caret = document.createElement('div');
+  caret.className = 's3haim-preview-caret-mirror-bar';
+  caret.style.left = `${rect.left - hostRect.left}px`;
+  caret.style.top = `${rect.top - hostRect.top}px`;
+  caret.style.height = `${Math.max(rect.height, 14)}px`;
+  layer.appendChild(caret);
+  host.appendChild(layer);
 }
 
 function isPointInClientRect(rect: DOMRect, x: number, y: number, slop = 0): boolean {
@@ -372,9 +827,7 @@ function applyPreviewSelectionOverlay(previewRoot: Element, range: Range): void 
   const host = previewRoot instanceof HTMLElement ? previewRoot : null;
   if (!host) return;
 
-  if (getComputedStyle(host).position === 'static') {
-    host.style.position = 'relative';
-  }
+  ensurePreviewHostPositioned(host);
 
   const hostRect = host.getBoundingClientRect();
   const layer = document.createElement('div');
@@ -398,21 +851,36 @@ function applyPreviewSelectionOverlay(previewRoot: Element, range: Range): void 
 }
 
 /**
- * Keep preview text looking selected after the browser selection moves to CodeMirror.
+ * Keep preview text looking selected (or show a caret) after focus moves to CodeMirror.
+ * Pass `allowCollapsed: true` (Mirror Edit) to keep a blinking caret for collapsed ranges.
  */
-export function mirrorPreviewSelection(previewRoot: Element, range: Range): boolean {
-  if (range.collapsed) {
+export function mirrorPreviewSelection(
+  previewRoot: Element,
+  range: Range,
+  options: { allowCollapsed?: boolean; caretRect?: DOMRect | null } = {},
+): boolean {
+  const allowCollapsed = options.allowCollapsed === true;
+
+  if (range.collapsed && !allowCollapsed) {
     clearPreviewSelectionMirror(previewRoot);
     return false;
   }
 
   setMirroredPreviewRange(range);
 
+  if (range.collapsed) {
+    cssHighlights()?.delete(PREVIEW_SYNC_HIGHLIGHT_NAME);
+    applyPreviewCaretOverlay(previewRoot, range, options.caretRect);
+    scrollPreviewCaretIntoView(previewRoot, range);
+    return true;
+  }
+
   const highlights = cssHighlights();
   if (highlights) {
     try {
       removePreviewSelectionOverlay(previewRoot);
       highlights.set(PREVIEW_SYNC_HIGHLIGHT_NAME, new Highlight(range.cloneRange()));
+      scrollPreviewCaretIntoView(previewRoot, range);
       return true;
     } catch {
       // fall through to overlay
@@ -420,10 +888,14 @@ export function mirrorPreviewSelection(previewRoot: Element, range: Range): bool
   }
 
   applyPreviewSelectionOverlay(previewRoot, range);
+  scrollPreviewCaretIntoView(previewRoot, range);
   return true;
 }
 
-export function mirrorCurrentPreviewSelection(previewRoot: Element): boolean {
+export function mirrorCurrentPreviewSelection(
+  previewRoot: Element,
+  options: { allowCollapsed?: boolean } = {},
+): boolean {
   const sel = window.getSelection?.();
   if (!sel || sel.rangeCount === 0) {
     clearPreviewSelectionMirror(previewRoot);
@@ -434,19 +906,66 @@ export function mirrorCurrentPreviewSelection(previewRoot: Element): boolean {
     clearPreviewSelectionMirror(previewRoot);
     return false;
   }
-  return mirrorPreviewSelection(previewRoot, range);
+  return mirrorPreviewSelection(previewRoot, range, options);
+}
+
+/**
+ * Mirror the current CodeMirror selection onto the preview (selection highlight or caret).
+ */
+export function syncEditorSelectionToPreview(
+  view: EditorView,
+  previewRoot: Element,
+  options: { allowCollapsed?: boolean } = {},
+): boolean {
+  const range = mapEditorSelectionToPreviewRange(view, previewRoot);
+  if (!range) {
+    if (!options.allowCollapsed) clearPreviewSelectionMirror(previewRoot);
+    return false;
+  }
+  return mirrorPreviewSelection(previewRoot, range, {
+    ...(options.allowCollapsed ? { allowCollapsed: true } : {}),
+  });
 }
 
 /**
  * Apply preview DOM selection onto the CodeMirror view and focus it for typing.
+ * When clicking an empty table cell, pass `target` so we can map by cell even if
+ * the browser could not place a native caret inside it.
  */
 export function syncPreviewSelectionToEditor(
   view: EditorView,
   previewRoot: Element,
-  options: { focus?: boolean } = {},
+  options: {
+    focus?: boolean;
+    target?: EventTarget | null;
+  } = {},
 ): boolean {
   const focus = options.focus ?? true;
-  const mapped = mapPreviewSelectionToEditorRange(view, previewRoot);
+
+  let mapped: { from: number; to: number } | null = null;
+
+  const cellHit =
+    options.target instanceof Element
+      ? options.target.closest('td, th')
+      : null;
+  if (cellHit instanceof HTMLTableCellElement && previewRoot.contains(cellHit)) {
+    try {
+      const cellRange = document.createRange();
+      cellRange.selectNodeContents(cellHit);
+      cellRange.collapse(true);
+      mapped = mapPreviewTableCellToEditorRange(view, previewRoot, cellRange);
+      if (mapped) {
+        // Keep a preview caret on this cell after focus moves to CM.
+        mirrorPreviewSelection(previewRoot, cellRange, { allowCollapsed: true });
+      }
+    } catch {
+      mapped = null;
+    }
+  }
+
+  if (!mapped) {
+    mapped = mapPreviewSelectionToEditorRange(view, previewRoot);
+  }
   if (!mapped || !view) return false;
 
   const docLen = view.state.doc.length;

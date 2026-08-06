@@ -1,0 +1,44 @@
+---
+description: When opening Select/Popover/Tooltip/DatePicker/Confirm/color pickers or other overlays inside a modal, verify z-index so nested UI is never hidden behind the parent modal.
+alwaysApply: true
+---
+
+# Modal nested overlays — z-index check
+
+Whenever a **modal / dialog** hosts another tool or overlay (Select, Popover, Dropdown, Context Menu, Tooltip, Date/DateTime picker, second Confirm, color picker popover, custom portal UI, Advanced Search nested picker, etc.), **verify stacking before shipping**. Nested content that portals to `document.body` with a lower or default z-index will render **behind** the parent modal and appear “broken” or invisible.
+
+## Project baseline
+
+| Layer | Typical class / value |
+|-------|------------------------|
+| `Modal` / `ConfirmModal` backdrop+panel | `z-100000` |
+| Nested portal content (Select, etc.) | **above** parent — e.g. `z-100010` |
+
+Match existing patterns (`DownloadMethodModal`, `HeadingRemapModal`: `Select.Content` with `z-100010`). Do not invent a lower stack than the parent.
+
+## Checklist (required)
+
+1. Identify the **parent** modal/dialog z-index (or stacking context).
+2. For every nested tool that uses **Portal** / fixed / absolute overlay, set content z-index **strictly greater** than the parent.
+3. Smoke-check: open the parent modal → open the nested tool → confirm it is **fully visible and clickable** (not clipped under the backdrop).
+4. If nesting a second modal/confirm on top of the first, ensure the top layer also stacks above the first.
+
+```jsx
+// ❌ BAD — Select portal defaults / low z under Modal (z-100000)
+<Select.Portal>
+  <Select.Content className="…">…</Select.Content>
+</Select.Portal>
+
+// ✅ GOOD — nested overlay above Modal
+<Select.Portal>
+  <Select.Content className="z-100010 …">…</Select.Content>
+</Select.Portal>
+```
+
+```text
+❌ BAD — ship Popover/Tooltip/DatePicker/color UI inside a modal without checking z-index
+❌ BAD — assume Radix/React Aria default portal z beats Modal z-100000
+✅ GOOD — explicit z above parent; verify visually with the nested tool open
+```
+
+Prefer English in new code comments if Korean Unicode might corrupt.

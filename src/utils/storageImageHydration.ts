@@ -5,7 +5,7 @@ import {
   resolveStorageImagePath,
 } from '@/utils/storageImagePath';
 
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 2;
 
 type HydrateOptions = {
   getPresignedUrl: (path: string) => Promise<string | null>;
@@ -17,16 +17,39 @@ function bindResolvedSrc(
   path: string,
   getPresignedUrl: (path: string) => Promise<string | null>,
 ) {
-  if (img.dataset.storageHydrated === path) return;
-  img.dataset.storageHydrated = path;
+  // Already showing a resolved URL for this path.
+  if (img.dataset.storageHydrated === path && img.getAttribute('src') && !img.src.startsWith('data:')) {
+    return;
+  }
+  // In-flight for the same path — avoid duplicate fetch storms.
+  if (img.dataset.storageHydrating === path) return;
+
+  img.dataset.storageHydrating = path;
+  delete img.dataset.storageHydrated;
 
   let retryCount = 0;
+  const finishFail = () => {
+    if (img.dataset.storageHydrating === path) {
+      delete img.dataset.storageHydrating;
+    }
+  };
   const setSrc = (url: string | null | undefined) => {
-    if (url) img.src = url;
+    if (url) {
+      img.src = url;
+      img.dataset.storageHydrated = path;
+      delete img.dataset.storageHydrating;
+      return;
+    }
+    finishFail();
   };
   img.onerror = () => {
-    if (retryCount >= MAX_RETRIES) return;
+    delete img.dataset.storageHydrated;
+    if (retryCount >= MAX_RETRIES) {
+      finishFail();
+      return;
+    }
     retryCount += 1;
+    img.dataset.storageHydrating = path;
     void resolveWikiImageUrl(path, getPresignedUrl, { skipCache: true }).then(setSrc);
   };
   void resolveWikiImageUrl(path, getPresignedUrl).then(setSrc);

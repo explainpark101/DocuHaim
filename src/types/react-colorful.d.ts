@@ -5,11 +5,14 @@ declare module 'react-colorful' {
     InputHTMLAttributes,
   } from 'react';
 
-  export type HexColorPickerProps = {
-    color?: string;
-    onChange?: (newColor: string) => void;
-    onChangeEnd?: (newColor: string) => void;
+  type ColorPickerBaseProps<T extends string> = {
+    color?: T;
+    onChange?: (newColor: T) => void;
+    onChangeEnd?: (newColor: T) => void;
   } & Omit<HTMLAttributes<HTMLDivElement>, 'color' | 'onChange' | 'onChangeCapture'>;
+
+  export type HexColorPickerProps = ColorPickerBaseProps<string>;
+  export type HexAlphaColorPickerProps = ColorPickerBaseProps<string>;
 
   export type HexColorInputProps = {
     color?: string;
@@ -21,5 +24,6 @@ declare module 'react-colorful' {
   } & Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'>;
 
   export const HexColorPicker: ComponentType<HexColorPickerProps>;
+  export const HexAlphaColorPicker: ComponentType<HexAlphaColorPickerProps>;
   export const HexColorInput: ComponentType<HexColorInputProps>;
 }

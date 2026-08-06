@@ -5,6 +5,7 @@ import {
   coverShapeTextBoxStyle,
   coverShapeTextContentStyle,
 } from '@/utils/noteCover/shapeStyle';
+import { coverPlainTextStyle } from '@/utils/noteCover/textStyle';
 import {
   isCoverShapeElement,
   type CoverElement,
@@ -82,13 +83,20 @@ function elementStyle(el: CoverElement): CSSProperties {
 }
 
 /** Read-only shape body (fill/border + optional in-shape text). */
-export function CoverShapeBody({ el }: { el: CoverShapeElement }) {
+export function CoverShapeBody({
+  el,
+  strictClip = false,
+}: {
+  el: CoverShapeElement;
+  /** Match CoverEditor: hide partial overflow glyphs. */
+  strictClip?: boolean;
+}) {
   const text = el.text ?? '';
   return (
     <div className="h-full w-full" style={coverShapeShellStyle(el)} data-cover-shape={el.type}>
       {text ? (
         <div style={coverShapeTextBoxStyle(el)}>
-          <div style={coverShapeTextContentStyle(el)}>{text}</div>
+          <div style={coverShapeTextContentStyle(el, { strictClip })}>{text}</div>
         </div>
       ) : null}
     </div>
@@ -147,15 +155,7 @@ export default function CoverSlide({
                     data-cover-el={el.id}
                     style={{
                       ...elementStyle(el),
-                      color: el.color,
-                      fontSize: `${el.fontSize}px`,
-                      fontWeight: el.fontWeight,
-                      textAlign: el.textAlign,
-                      fontFamily: el.fontFamily || undefined,
-                      overflow: 'hidden',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      lineHeight: 1.25,
+                      ...coverPlainTextStyle(el),
                     }}
                   >
                     {el.text}

@@ -1,3 +1,5 @@
+import type { PrintPageSizeId } from '@/utils/printPageLayout';
+
 export const NOTE_COVER_VERSION = 2 as const;
 
 export type CoverAlign = 'left' | 'center' | 'right';
@@ -105,6 +107,11 @@ export function isCoverShapeElement(el: CoverElement): el is CoverShapeElement {
 export type NoteCover = {
   v: typeof NOTE_COVER_VERSION;
   enabled: boolean;
+  /**
+   * Paper size used while designing the cover (Export PDF page size).
+   * Preview / print should honor this aspect.
+   */
+  pageSizeId: PrintPageSizeId;
   layout: CoverLayout;
   bg: CoverBackground;
   /** Root layer stack (element or group ids), front-first. */
@@ -112,6 +119,8 @@ export type NoteCover = {
   groups: CoverGroup[];
   elements: CoverElement[];
 };
+
+export const DEFAULT_COVER_PAGE_SIZE_ID: PrintPageSizeId = 'a4';
 
 export const DEFAULT_COVER_LAYOUT: CoverLayout = {
   align: 'center',
@@ -124,10 +133,13 @@ export const DEFAULT_COVER_BG: CoverBackground = {
   imagePath: '',
 };
 
-export function createDefaultNoteCover(): NoteCover {
+export function createDefaultNoteCover(
+  options?: { pageSizeId?: PrintPageSizeId },
+): NoteCover {
   return {
     v: NOTE_COVER_VERSION,
     enabled: true,
+    pageSizeId: options?.pageSizeId ?? DEFAULT_COVER_PAGE_SIZE_ID,
     layout: { ...DEFAULT_COVER_LAYOUT },
     bg: { ...DEFAULT_COVER_BG },
     rootLayerIds: [],

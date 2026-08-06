@@ -30,4 +30,4 @@ docs/node_modules
 docs/.vitepress/cache
 docs/.vitepress/dist
 public/llms.txt
-.vitepress
+.vitepress/cache/**/*

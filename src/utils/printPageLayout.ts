@@ -194,22 +194,72 @@ export function buildPrintLayoutCssVars(layout: PrintPageLayout): Record<string,
   const innerPx = getPrintPageInnerSizePx(layout.pageSizeId);
   const maxWidth = layout.imageMaxWidth.trim() || `${innerPx.widthPx}px`;
   const maxHeight = layout.imageMaxHeight.trim() || `${innerPx.heightPx}px`;
+  // Fit full-page aspect into the printable (margin) box so cover images are not
+  // stretched, without overflowing @page and forcing a custom paper size.
+  const coverFitScale = Math.min(
+    innerWidthMm / Math.max(page.widthMm, 1e-6),
+    innerHeightMm / Math.max(page.heightMm, 1e-6),
+  );
+  const coverFitWidthMm = page.widthMm * coverFitScale;
+  const coverFitHeightMm = page.heightMm * coverFitScale;
   return {
     '--print-page-width': `${page.widthMm}mm`,
     '--print-page-height': `${page.heightMm}mm`,
     '--print-page-margin': `${PRINT_PAGE_MARGIN_MM}mm`,
     '--print-page-inner-width': `${innerWidthMm}mm`,
     '--print-page-inner-height': `${innerHeightMm}mm`,
+    '--print-cover-fit-width': `${coverFitWidthMm}mm`,
+    '--print-cover-fit-height': `${coverFitHeightMm}mm`,
     '--print-img-max-width': maxWidth,
     '--print-img-max-height': maxHeight,
   };
 }
 
+/**
+ * CSS `@page size` keyword (e.g. `A4`) so the print/PDF dialog selects the
+ * named preset instead of a custom mm×mm size.
+ */
+export function getCssPageSizeDescriptor(pageSizeId: PrintPageSizeId): string {
+  switch (pageSizeId) {
+    case 'a4':
+      return 'A4';
+    case 'a4-landscape':
+      return 'A4 landscape';
+    case 'a3':
+      return 'A3';
+    case 'a3-landscape':
+      return 'A3 landscape';
+    case 'a5':
+      return 'A5';
+    case 'a5-landscape':
+      return 'A5 landscape';
+    case 'b5':
+      return 'B5';
+    case 'b5-landscape':
+      return 'B5 landscape';
+    case 'letter':
+      return 'letter';
+    case 'letter-landscape':
+      return 'letter landscape';
+    case 'legal':
+      return 'legal';
+    case 'legal-landscape':
+      return 'legal landscape';
+    case 'tabloid':
+      return 'tabloid';
+    case 'tabloid-landscape':
+      return 'ledger';
+    default: {
+      const page = getPrintPageSize(pageSizeId);
+      return `${page.widthMm}mm ${page.heightMm}mm`;
+    }
+  }
+}
+
 export function buildPrintPageAtRule(pageSizeId: PrintPageSizeId): string {
-  const page = getPrintPageSize(pageSizeId);
   return `
     @page {
-      size: ${page.widthMm}mm ${page.heightMm}mm;
+      size: ${getCssPageSizeDescriptor(pageSizeId)};
       margin: ${PRINT_PAGE_MARGIN_MM}mm;
     }
   `;

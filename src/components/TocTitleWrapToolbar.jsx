@@ -1,4 +1,5 @@
-import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
+import { WrapText } from 'lucide-react';
+import MdEditorToolbarToggle from '@/components/MdEditorToolbarToggle';
 
 /** md-editor-rt defToolbars: TOC title wrap switch (place after catalog). */
 export default function TocTitleWrapToolbar({
@@ -7,12 +8,13 @@ export default function TocTitleWrapToolbar({
   theme = 'light',
 }) {
   return (
-    <span className="md-editor-toolbar-item inline-flex items-center !w-auto !min-w-0 px-1">
-      <TocTitleWrapToggle
-        checked={checked}
-        onChange={onChange}
-        isDark={theme === 'dark'}
-      />
-    </span>
+    <MdEditorToolbarToggle
+      checked={checked}
+      onChange={onChange}
+      theme={theme}
+      icon={WrapText}
+      title={checked ? '목차 제목 줄바꿈 켜짐' : '목차 제목 말줄임(...)'}
+      ariaLabel="목차 제목 줄바꿈"
+    />
   );
 }

@@ -1,0 +1,53 @@
+import { defineConfig } from 'vitepress';
+
+/** App public base, e.g. `/` or `/s3haim/` (GitHub Pages). */
+const appBase = (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/');
+/** Docs site lives at `{appBase}docs/`. */
+const base = `${appBase}docs/`;
+
+export default defineConfig({
+  title: 'S3 Haim Docs',
+  description: 'S3 Haim custom Markdown syntax and interop specs',
+  lang: 'ko-KR',
+  base,
+  outDir: '../dist/docs',
+  cleanUrls: false,
+  ignoreDeadLinks: [
+    /^https?:\/\/localhost/,
+    /\.cursor\//,
+  ],
+  themeConfig: {
+    nav: [
+      { text: 'Custom Markdown', link: '/custom-markdown/' },
+      // Relative: VitePress prepends `base` to absolute `/...` links, so `/` becomes `/docs/`.
+      { text: '앱으로', link: '../' },
+    ],
+    sidebar: {
+      '/custom-markdown/': [
+        {
+          text: 'Custom Markdown',
+          items: [
+            { text: '개요', link: '/custom-markdown/' },
+            { text: 'Wiki image', link: '/custom-markdown/wiki-image' },
+            { text: 'Image attrs', link: '/custom-markdown/markdown-image-attrs' },
+            { text: 'Page break', link: '/custom-markdown/page-break' },
+            { text: 'Heading levels', link: '/custom-markdown/heading-levels' },
+            { text: 'Chat file', link: '/custom-markdown/chat-file' },
+            { text: 'Chat note', link: '/custom-markdown/chat-note' },
+            { text: 'Chat day-file comments', link: '/custom-markdown/chat-day-file-comments' },
+            { text: 'Chat saved note', link: '/custom-markdown/chat-saved-note' },
+            { text: 'Note cover', link: '/custom-markdown/note-cover' },
+            { text: 'Haim table', link: '/custom-markdown/haim-table' },
+            { text: 'Preview hard break', link: '/custom-markdown/preview-hard-break' },
+          ],
+        },
+      ],
+    },
+    search: {
+      provider: 'local',
+    },
+    outline: {
+      level: [2, 3],
+    },
+  },
+});

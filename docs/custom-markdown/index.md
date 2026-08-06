@@ -19,6 +19,8 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [chat-day-file-comments.md](./chat-day-file-comments.md) | `<!-- chat-msg … -->` 등 | 채팅 일별 파일 |
 | [chat-saved-note.md](./chat-saved-note.md) | `<!-- chat-with-myself … -->` + 카드 | 채팅→노트 |
 | [note-cover.md](./note-cover.md) | `<!-- note-cover … -->` | 인쇄 표지 |
+| [haim-table.md](./haim-table.md) | `<!-- haim-table … -->` + GFM 표 | 에디터 / 미리보기 / 인쇄 / 다운로드 |
+| [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
 
 ## Spec conventions (all features)
 

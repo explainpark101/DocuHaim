@@ -10,9 +10,19 @@ const ANIMATION_DURATION_MS = 200;
  *   onConfirm?: () => void,
  *   children?: import('react').ReactNode,
  *   contentClassName?: string,
+ *   contentStyle?: import('react').CSSProperties,
+ *   overlayClassName?: string,
  * }} props
  */
-export default function Modal({ isOpen, onClose, onConfirm, children, contentClassName = 'max-w-md' }) {
+export default function Modal({
+  isOpen,
+  onClose,
+  onConfirm,
+  children,
+  contentClassName = 'max-w-md max-h-[90vh]',
+  contentStyle,
+  overlayClassName = '',
+}) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
 
@@ -63,13 +73,14 @@ export default function Modal({ isOpen, onClose, onConfirm, children, contentCla
     <div
       className={`fixed inset-0 z-100000 flex items-center justify-center p-4 transition-opacity duration-200 ease-out ${
         visible ? 'opacity-100 bg-black/40' : 'opacity-0 bg-black/0'
-      }`}
+      } ${overlayClassName}`}
       aria-hidden={!visible}
     >
       <div
-        className={`bg-white dark:bg-odp-surface text-gray-800 dark:text-odp-fgStrong rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden flex flex-col transition-all duration-200 ease-out ${contentClassName} ${
-          visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+        className={`flex w-full flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl transition-[opacity,transform] duration-200 ease-out dark:bg-odp-surface dark:text-odp-fgStrong ${contentClassName} ${
+          visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-95 opacity-0'
         }`}
+        style={contentStyle}
       >
         {children}
       </div>

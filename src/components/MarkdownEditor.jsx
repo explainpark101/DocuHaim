@@ -17,6 +17,7 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
+import MirrorEditToolbar from '@/components/MirrorEditToolbar';
 import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
@@ -31,21 +32,38 @@ import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { useBase64ImageFold } from '@/hooks/useBase64ImageFold';
 import { useEditorAutocomplete } from '@/hooks/useEditorAutocomplete';
+import { useMirrorEdit } from '@/hooks/useMirrorEdit';
 import {
   applyBase64ImageFoldEnabled,
   base64ImageFoldExtension,
 } from '@/utils/base64ImageFoldExtension';
 import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
+import { notifyMirrorEditCaretUpdate } from '@/utils/mirrorEditCaretBridge';
+import {
+  markMirrorEditCaretFromEditor,
+  markMirrorEditCaretFromPreview,
+  moveCaretSkippingImages,
+  runMotionSkippingImages,
+} from '@/utils/previewImageCaretSync';
+import { insertPreviewHardBreak } from '@/utils/previewHardBreak';
 import {
   addCursorAbove,
   addCursorBelow,
   cursorCharLeft,
   cursorCharRight,
+  cursorGroupLeft,
+  cursorGroupRight,
   cursorLineDown,
   cursorLineUp,
+  cursorSyntaxLeft,
+  cursorSyntaxRight,
   insertNewline,
   redo,
+  selectGroupLeft,
+  selectGroupRight,
+  selectSyntaxLeft,
+  selectSyntaxRight,
   undo,
 } from '@codemirror/commands';
 import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
@@ -58,6 +76,12 @@ import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
+import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
+import { TableEditModal } from '@/components/haimTable/TableEditModal';
+import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
+import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
+import { useHaimTableEdit } from '@/hooks/useHaimTableEdit';
+import { findHaimTableBlockAt } from '@/utils/haimTable';
 import {
   createNoteCoverFoldExtension,
   setNoteCoverFoldDocKey,
@@ -105,6 +129,19 @@ import {
   restoreMirroredPreviewSelection,
   syncPreviewSelectionToEditor,
 } from '@/utils/previewSelectionSync';
+import {
+  attachPreviewMirrorEdit,
+  abandonDetachedPreviewMirrorEdit,
+  cancelPreviewMirrorEdit,
+  isMirrorEditActiveIn,
+  isMirrorEditTarget,
+} from '@/utils/previewMirrorEdit';
+import { setMirrorEditCaretHandler } from '@/utils/mirrorEditCaretBridge';
+import {
+  scheduleMirrorEditPreviewRemirror,
+  startMirrorEditPreviewRemirror,
+  stopMirrorEditPreviewRemirror,
+} from '@/utils/mirrorEditPreviewRemirror';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
 import {
   toggleBoldForSelection,
@@ -182,6 +219,8 @@ function markdownEnterSingleNewline(view) {
     collapseEmptyLineBeforeListItem(view);
     return true;
   }
+  // Preview Mirror Edit: keep a real <br> in the same block (not a blank gap line).
+  if (insertPreviewHardBreak(view)) return true;
   return insertNewline(view);
 }
 
@@ -242,6 +281,8 @@ config({
     languageUserDefined: {
       'ko-KR': KO_KR,
     },
+    // Default library value is 500ms; Mirror Edit / dual-pane needs near-instant preview.
+    renderDelay: 0,
   },
   codeMirrorExtensions(extensions, { keyBindings }) {
     const nextExtensions = [...extensions].filter(
@@ -280,6 +321,39 @@ config({
     });
 
     const multiCursorKeyBindings = [
+      {
+        key: 'ArrowLeft',
+        run: (view) => moveCaretSkippingImages(view, -1),
+      },
+      {
+        key: 'ArrowRight',
+        run: (view) => moveCaretSkippingImages(view, 1),
+      },
+      // Ctrl/Alt+Arrow: CM group & syntax motion — keep image markup atomic.
+      {
+        key: 'Ctrl-ArrowLeft',
+        mac: 'Alt-ArrowLeft',
+        run: (view) => runMotionSkippingImages(view, -1, cursorGroupLeft),
+        shift: (view) => runMotionSkippingImages(view, -1, selectGroupLeft),
+      },
+      {
+        key: 'Ctrl-ArrowRight',
+        mac: 'Alt-ArrowRight',
+        run: (view) => runMotionSkippingImages(view, 1, cursorGroupRight),
+        shift: (view) => runMotionSkippingImages(view, 1, selectGroupRight),
+      },
+      {
+        key: 'Alt-ArrowLeft',
+        mac: 'Ctrl-ArrowLeft',
+        run: (view) => runMotionSkippingImages(view, -1, cursorSyntaxLeft),
+        shift: (view) => runMotionSkippingImages(view, -1, selectSyntaxLeft),
+      },
+      {
+        key: 'Alt-ArrowRight',
+        mac: 'Ctrl-ArrowRight',
+        run: (view) => runMotionSkippingImages(view, 1, cursorSyntaxRight),
+        shift: (view) => runMotionSkippingImages(view, 1, selectSyntaxRight),
+      },
       ...ALT_VIM_NAVIGATION_KEY_BINDINGS,
       {
         key: 'Alt--',
@@ -413,6 +487,7 @@ config({
         // md-editor-rt re-injects built-in completions; close them when preference is off.
         type: 'autocompleteGate',
         extension: EditorView.updateListener.of((update) => {
+          notifyMirrorEditCaretUpdate(update);
           if (loadEditorAutocompleteEnabled()) return;
           if (completionStatus(update.state) === 'active') {
             closeCompletion(update.view);
@@ -446,6 +521,9 @@ config({
         ...next,
         { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
       ];
+    }
+    if (!next.some((p) => p.type === 'haim_table')) {
+      next = [...next, { type: 'haim_table', plugin: haimTableMarkdownItPlugin, options: {} }];
     }
     return next;
   },
@@ -515,6 +593,17 @@ export default function MarkdownEditor({
     editorRef,
     enabled: !previewOnly,
   });
+
+  const haimTableEdit = useHaimTableEdit({
+    getMarkdown: () => valueRef.current ?? '',
+    setMarkdown: (next) => {
+      if (typeof onChange === 'function') onChange(next);
+    },
+  });
+  const openHaimTableEditRef = useRef(haimTableEdit.openAtOffset);
+  const openHaimTablePreviewRef = useRef(haimTableEdit.openPreviewTable);
+  openHaimTableEditRef.current = haimTableEdit.openAtOffset;
+  openHaimTablePreviewRef.current = haimTableEdit.openPreviewTable;
   const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
   const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
@@ -529,6 +618,7 @@ export default function MarkdownEditor({
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
   const [autocompleteEnabled, setAutocompleteEnabled] = useEditorAutocomplete();
+  const [mirrorEditEnabled, setMirrorEditEnabled] = useMirrorEdit();
 
   /** Selection before Advanced Search steals focus (so bold/etc still apply to the prior range). */
   const asSelectionSnapshotRef = useRef(null);
@@ -634,9 +724,22 @@ export default function MarkdownEditor({
     };
     handlers['editor-heading-remap'] = () => setHeadingRemapOpen(true);
     handlers['editor-checklist-progress'] = () => setChecklistProgressOpen(true);
+    handlers['editor-table-edit'] = () => {
+      restoreSelectionIfNeeded();
+      const view = getApi()?.getEditorView?.();
+      if (!view) return;
+      const { from, to } = view.state.selection.main;
+      const opened = openHaimTableEditRef.current(from, to);
+      if (!opened) {
+        showAlert({
+          title: '표 편집',
+          message: '커서 또는 선택 영역이 마크다운 표 안에 있어야 합니다.',
+        });
+      }
+    };
 
     return registerEditorActions(handlers);
-  }, [previewOnly, navigateToExportPdf]);
+  }, [previewOnly, navigateToExportPdf, showAlert]);
   const {
     width: catalogWidth,
     isResizing: catalogResizing,
@@ -770,19 +873,48 @@ export default function MarkdownEditor({
     return () => timers.forEach((t) => clearTimeout(t));
   }, [value, onResolveWikiImageUrl, currentFile?.id]);
 
-  // Mount CoverSlide into preview note-cover hosts (always light-mode paper).
+  // Auto-mount note-cover CoverSlide in preview; re-run when preview DOM settles/recreates.
   useEffect(() => {
     const root = containerRef.current;
     if (!root || !value) return undefined;
 
+    let rafId = 0;
     const runCoverHydration = () => {
-      hydrateNoteCoverPreviewsInRoot(root, value, onResolveWikiImageUrl);
+      hydrateNoteCoverPreviewsInRoot(root, value, onResolveWikiImageUrl, {
+        load: true,
+      });
+    };
+    const scheduleIfNeeded = () => {
+      const hosts = root.querySelectorAll('[data-note-cover-mount]');
+      if (!hosts.length) return;
+      const needs =
+        root.querySelector('.md-note-cover-placeholder--pending')
+        || [...hosts].some((host) => host.childNodes.length === 0);
+      if (!needs) return;
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        runCoverHydration();
+      });
     };
 
-    const delays = [80, 280, 600, 1100];
+    const delays = [0, 80, 280, 600, 1100, 2000];
     const timers = delays.map((delay) => setTimeout(runCoverHydration, delay));
+
+    const preview = root.querySelector('.md-editor-preview') || root;
+    const mutationObserver =
+      typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(scheduleIfNeeded)
+        : null;
+    mutationObserver?.observe(preview, {
+      childList: true,
+      subtree: true,
+    });
+
     return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
       timers.forEach((t) => clearTimeout(t));
+      mutationObserver?.disconnect();
     };
   }, [value, onResolveWikiImageUrl, currentFile?.id]);
 
@@ -853,16 +985,18 @@ export default function MarkdownEditor({
     api?.togglePreviewOnly?.(true);
   }, [previewOnly]);
 
-  // Preview selection → CodeMirror selection + mirrored highlight on both panes.
+  // Preview selection → CodeMirror selection + mirrored highlight/caret on both panes.
   useEffect(() => {
     if (previewOnly) return undefined;
     const root = containerRef.current;
     if (!root) return undefined;
 
     const getPreviewRoot = () => root.querySelector('.md-editor-preview');
+    const mirrorEditOn = () => mirrorEditEnabled;
 
     const shouldIgnoreTarget = (target) => {
       if (!(target instanceof Element)) return false;
+      if (isMirrorEditTarget(target)) return true;
       return Boolean(
         target.closest(
           'a, button, input, textarea, select, .md-editor-code-action, [data-transform-handle]',
@@ -870,24 +1004,45 @@ export default function MarkdownEditor({
       );
     };
 
-    const syncFromPreview = () => {
+    const syncFromPreview = (eventTarget) => {
       const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
+      if (isMirrorEditActiveIn(previewRoot)) return;
       const sel = window.getSelection?.();
-      if (!sel || sel.rangeCount === 0) return;
-      const range = sel.getRangeAt(0);
-      if (!previewRoot.contains(range.commonAncestorContainer)) return;
+      if (!sel || sel.rangeCount === 0) {
+        // Empty table cells often cannot host a native selection — still map by target.
+        if (!(eventTarget instanceof Element) || !eventTarget.closest('td, th')) return;
+      } else {
+        const range = sel.getRangeAt(0);
+        if (
+          !previewRoot.contains(range.commonAncestorContainer)
+          && !(eventTarget instanceof Element && eventTarget.closest('td, th'))
+        ) {
+          return;
+        }
+      }
 
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return;
 
-      if (range.collapsed) {
-        clearPreviewSelectionMirror(previewRoot);
-      } else {
-        mirrorCurrentPreviewSelection(previewRoot);
+      const allowCollapsed = mirrorEditOn();
+      if (sel?.rangeCount && previewRoot.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        const range = sel.getRangeAt(0);
+        if (allowCollapsed || !range.collapsed) {
+          mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed });
+        } else {
+          clearPreviewSelectionMirror(previewRoot);
+        }
       }
-      syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
+      syncPreviewSelectionToEditor(view, previewRoot, {
+        focus: true,
+        target: eventTarget,
+      });
+      if (allowCollapsed) {
+        markMirrorEditCaretFromPreview();
+        scheduleMirrorEditPreviewRemirror({ withRetries: true });
+      }
     };
 
     const isContextMenuMouseDown = (e) => (
@@ -912,7 +1067,9 @@ export default function MarkdownEditor({
       }
 
       if (previewRoot.contains(target)) {
-        clearPreviewSelectionMirror(previewRoot);
+        if (!isMirrorEditTarget(target) && !mirrorEditOn()) {
+          clearPreviewSelectionMirror(previewRoot);
+        }
         return;
       }
 
@@ -920,7 +1077,8 @@ export default function MarkdownEditor({
       const view = api?.getEditorView?.();
       if (view?.dom.contains(target)) {
         if (isContextMenuMouseDown(e)) return;
-        clearPreviewSelectionMirror(previewRoot);
+        markMirrorEditCaretFromEditor();
+        if (!mirrorEditOn()) clearPreviewSelectionMirror(previewRoot);
       }
     };
 
@@ -935,21 +1093,23 @@ export default function MarkdownEditor({
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
-      requestAnimationFrame(syncFromPreview);
+      requestAnimationFrame(() => syncFromPreview(e.target));
     };
 
     const onTouchEnd = (e) => {
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
-      requestAnimationFrame(syncFromPreview);
+      requestAnimationFrame(() => syncFromPreview(e.target));
     };
 
     // If focus/selection is still on the preview, move editing into CodeMirror.
     // Do not synthesize insertText here — that breaks IME (e.g. Korean).
     const onKeyDownCapture = (e) => {
+      if (isMirrorEditTarget(e.target)) return;
       const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
+      if (isMirrorEditActiveIn(previewRoot)) return;
 
       const target = e.target;
       const focusInPreview =
@@ -966,11 +1126,15 @@ export default function MarkdownEditor({
       if (!view) return;
       if (view.hasFocus) return;
 
+      const allowCollapsed = mirrorEditOn();
       if (selInPreview) {
-        if (!sel.getRangeAt(0).collapsed) {
-          mirrorCurrentPreviewSelection(previewRoot);
+        if (allowCollapsed || !sel.getRangeAt(0).collapsed) {
+          mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed });
         }
         syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
+        if (allowCollapsed) {
+          scheduleMirrorEditPreviewRemirror({ withRetries: true });
+        }
       } else {
         view.focus();
       }
@@ -989,13 +1153,70 @@ export default function MarkdownEditor({
       root.removeEventListener('touchend', onTouchEnd);
       root.removeEventListener('keydown', onKeyDownCapture, true);
     };
-  }, [previewOnly]);
+  }, [previewOnly, mirrorEditEnabled]);
+
+  // Mirror Edit: keep preview caret/selection aligned while typing in CodeMirror.
+  useEffect(() => {
+    if (previewOnly || !mirrorEditEnabled) {
+      setMirrorEditCaretHandler(null);
+      stopMirrorEditPreviewRemirror();
+      markMirrorEditCaretFromEditor();
+      return undefined;
+    }
+
+    const root = containerRef.current;
+    startMirrorEditPreviewRemirror({
+      getPreviewRoot: () =>
+        (root ?? containerRef.current)?.querySelector('.md-editor-preview'),
+      getView: () => {
+        const api = editorRef.current?.value ?? editorRef.current;
+        return api?.getEditorView?.();
+      },
+    });
+
+    setMirrorEditCaretHandler((_view, update) => {
+      scheduleMirrorEditPreviewRemirror({ withRetries: update.docChanged });
+    });
+
+    return () => {
+      setMirrorEditCaretHandler(null);
+      stopMirrorEditPreviewRemirror();
+    };
+  }, [previewOnly, mirrorEditEnabled]);
+
+  // Mirror Edit: double-click preview block → contentEditable in place.
+  useEffect(() => {
+    if (previewOnly || !mirrorEditEnabled) {
+      cancelPreviewMirrorEdit();
+      return undefined;
+    }
+    const root = containerRef.current;
+    if (!root) return undefined;
+
+    return attachPreviewMirrorEdit(root, {
+      getPreviewRoot: () => root.querySelector('.md-editor-preview'),
+      getView: () => {
+        const api = editorRef.current?.value ?? editorRef.current;
+        return api?.getEditorView?.();
+      },
+      isEnabled: () => mirrorEditEnabled,
+    });
+  }, [previewOnly, mirrorEditEnabled]);
 
   useEffect(() => {
     const root = containerRef.current;
     const previewRoot = root?.querySelector('.md-editor-preview');
-    if (previewRoot) clearPreviewSelectionMirror(previewRoot);
-  }, [value, currentFile?.id]);
+    abandonDetachedPreviewMirrorEdit();
+    if (!previewRoot) return;
+
+    if (mirrorEditEnabled && !isMirrorEditActiveIn(previewRoot)) {
+      // Preview HTML rebuilds with `value`; remirror after that settles.
+      scheduleMirrorEditPreviewRemirror({ withRetries: true });
+      return;
+    }
+
+    if (!mirrorEditEnabled) clearPreviewSelectionMirror(previewRoot);
+  }, [value, currentFile?.id, mirrorEditEnabled]);
 
   useEffect(() => {
     if (previewOnly) return;
@@ -1127,6 +1348,11 @@ export default function MarkdownEditor({
     if (!root) return;
     const onContextMenu = (event) => {
       const previewRoot = root.querySelector('.md-editor-preview');
+
+      // Preview tables: PreviewTableContextMenu owns the menu.
+      const table = event.target?.closest?.('table');
+      if (table && previewRoot && previewRoot.contains(table)) return;
+
       if (
         previewRoot
         && (isPointInLivePreviewSelection(previewRoot, event.clientX, event.clientY)
@@ -1134,6 +1360,24 @@ export default function MarkdownEditor({
       ) {
         return;
       }
+
+      // Editor (CodeMirror) selection in a GFM / haim-table block
+      const cm = event.target?.closest?.('.cm-editor');
+      if (cm && root.contains(cm)) {
+        const api = editorRef.current?.value ?? editorRef.current;
+        const view = api?.getEditorView?.();
+        if (view) {
+          const { from, to } = view.state.selection.main;
+          const md = valueRef.current ?? '';
+          const block = findHaimTableBlockAt(md, from, to);
+          if (block) {
+            event.preventDefault();
+            openHaimTableEditRef.current(from, to);
+            return;
+          }
+        }
+      }
+
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
       if (!img || !root.contains(img)) return;
       const attrs = getResizableImageAttrsFromElement(img);
@@ -1154,17 +1398,60 @@ export default function MarkdownEditor({
     };
     root.addEventListener('contextmenu', onContextMenu);
     return () => root.removeEventListener('contextmenu', onContextMenu);
-  }, []);
+  }, [showAlert]);
+
+  // Double-click preview table → table editor (mirror-edit already ignores tables).
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return undefined;
+
+    const onDblClick = (event) => {
+      if (
+        event.target?.closest?.(
+          '[data-haim-table-resize-handle], [data-haim-table-resize-overlay]',
+        )
+      ) {
+        return;
+      }
+      const previewRoot = root.querySelector('.md-editor-preview');
+      const table = event.target?.closest?.('table');
+      if (!table || !previewRoot || !previewRoot.contains(table)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      const opened = openHaimTablePreviewRef.current(table, previewRoot);
+      if (!opened) {
+        showAlert({
+          title: '표 편집',
+          message: '이 표를 마크다운 표로 찾지 못했습니다. 소스의 파이프 표인지 확인해 주세요.',
+        });
+      }
+    };
+
+    root.addEventListener('dblclick', onDblClick, true);
+    return () => root.removeEventListener('dblclick', onDblClick, true);
+  }, [showAlert]);
 
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return undefined;
+    const onCoverPlaceholderActivate = (coverPlaceholder) => {
+      // Auto-loaded cover (or empty): open Export cover editor confirm.
+      if (
+        coverPlaceholder.classList.contains('md-note-cover-placeholder--ready')
+        || coverPlaceholder.classList.contains('md-note-cover-placeholder--empty')
+        || coverPlaceholder.classList.contains('md-note-cover-placeholder--pending')
+      ) {
+        setCoverExportConfirmOpen(true);
+      }
+    };
+
     const onClick = (event) => {
       const coverPlaceholder = event.target?.closest?.('[data-note-cover-placeholder]');
       if (coverPlaceholder && root.contains(coverPlaceholder)) {
         event.preventDefault();
         event.stopPropagation();
-        setCoverExportConfirmOpen(true);
+        onCoverPlaceholderActivate(coverPlaceholder);
         return;
       }
 
@@ -1209,7 +1496,7 @@ export default function MarkdownEditor({
       if (!coverPlaceholder || !root.contains(coverPlaceholder)) return;
       event.preventDefault();
       event.stopPropagation();
-      setCoverExportConfirmOpen(true);
+      onCoverPlaceholderActivate(coverPlaceholder);
     };
 
     root.addEventListener('click', onClick);
@@ -1507,14 +1794,20 @@ export default function MarkdownEditor({
       onChange={setAutocompleteEnabled}
       theme={theme}
     />,
-  ], [value, theme, currentFile, wrapTitles, setWrapTitles, foldBase64Images, setFoldBase64Images, autocompleteEnabled, setAutocompleteEnabled]);
+    <MirrorEditToolbar
+      key="mirror-edit"
+      checked={mirrorEditEnabled}
+      onChange={setMirrorEditEnabled}
+      theme={theme}
+    />,
+  ], [value, theme, currentFile, wrapTitles, setWrapTitles, foldBase64Images, setFoldBase64Images, autocompleteEnabled, setAutocompleteEnabled, mirrorEditEnabled, setMirrorEditEnabled]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
     'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, 4, '-',
     'revoke', 'next', 0, '=',
-    6, 7, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
+    6, 7, 8, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
     ...(catalogEl ? [5] : []),
   ], [catalogEl]);
 
@@ -1600,6 +1893,36 @@ export default function MarkdownEditor({
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
         onCrop={handleCropWikiImage}
+      />
+      <TableEditModal
+        isOpen={haimTableEdit.isOpen}
+        initialMeta={haimTableEdit.editState?.meta ?? null}
+        initialGrid={haimTableEdit.editState?.grid ?? { rows: [['']], aligns: [null] }}
+        onClose={haimTableEdit.close}
+        onSave={haimTableEdit.apply}
+      />
+      <PreviewTableContextMenu
+        containerRef={containerRef}
+        getMarkdown={() => valueRef.current ?? ''}
+        setMarkdown={(next) => {
+          if (typeof onChangeWithUndoHistory === 'function') onChangeWithUndoHistory(next);
+          else if (typeof onChange === 'function') onChange(next);
+        }}
+        onEditTable={(table, previewRoot) => openHaimTablePreviewRef.current(table, previewRoot)}
+        onEditFailed={() => {
+          showAlert({
+            title: '표 편집',
+            message: '이 표를 마크다운 표로 찾지 못했습니다. 소스의 파이프 표인지 확인해 주세요.',
+          });
+        }}
+      />
+      <HaimTableBoxResizeLayer
+        containerRef={containerRef}
+        getMarkdown={() => valueRef.current ?? ''}
+        setMarkdown={(next) => {
+          if (typeof onChangeWithUndoHistory === 'function') onChangeWithUndoHistory(next);
+        }}
+        enabled={!haimTableEdit.isOpen}
       />
       {freeTransformState && freeTransformOverlayRect && (
         <div

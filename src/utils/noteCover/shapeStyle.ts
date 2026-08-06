@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { CoverShapeElement } from '@/utils/noteCover/types';
+import { coverFontSizeCss } from '@/utils/noteCover/textStyle';
 
 /** Outer shell styles for a shape element (fill + border + radius). */
 export function coverShapeShellStyle(el: CoverShapeElement): CSSProperties {
@@ -49,8 +50,16 @@ export function coverShapeTextBoxStyle(el: CoverShapeElement): CSSProperties {
   };
 }
 
+type CoverShapeTextContentOptions = {
+  /** Editor: hide partial overflow glyphs that print would clip. */
+  strictClip?: boolean;
+};
+
 /** Typography for in-shape text / textarea (content-sized; parent places it). */
-export function coverShapeTextContentStyle(el: CoverShapeElement): CSSProperties {
+export function coverShapeTextContentStyle(
+  el: CoverShapeElement,
+  options?: CoverShapeTextContentOptions,
+): CSSProperties {
   return {
     boxSizing: 'border-box',
     width: '100%',
@@ -63,12 +72,18 @@ export function coverShapeTextContentStyle(el: CoverShapeElement): CSSProperties
     overflow: 'hidden',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
+    overflowWrap: 'break-word',
     lineHeight: 1.25,
     color: el.color || '#0c4a6e',
-    fontSize: `${el.fontSize ?? 24}px`,
+    fontSize: coverFontSizeCss(el.fontSize ?? 24),
     fontWeight: el.fontWeight ?? 'normal',
     textAlign: el.textAlign ?? 'center',
     fontFamily: el.fontFamily || undefined,
+    ...(options?.strictClip
+      ? {
+          clipPath: 'inset(0 0.2em 0.16em 0)',
+        }
+      : null),
   };
 }
 

@@ -12,13 +12,17 @@ import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
+import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import '@/styles/md-editor-rt/preview-heading-fold.css';
 
+const TABLE_XSS_ATTRS = ['style', 'class', 'colspan', 'rowspan', 'align', 'valign', 'width', 'height', 'data-haim-table', 'data-haim-r', 'data-haim-c', 'data-haim-section', 'data-haim-width', 'data-haim-align', 'data-haim-box-w', 'data-haim-box-h'];
+
 const PGBR_XSS_EXTENDED_WHITELIST = {
+  br: [],
   pgbr: [],
   div: [
     'class',
@@ -33,6 +37,13 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
   span: ['class', 'data-md-pgbr', 'aria-hidden', 'data-note-cover-fallback'],
   h6: ['id', 'class', 'data-heading-level'],
   a: ['href', 'class', 'target', 'rel', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
+  table: TABLE_XSS_ATTRS,
+  thead: TABLE_XSS_ATTRS,
+  tbody: TABLE_XSS_ATTRS,
+  tfoot: TABLE_XSS_ATTRS,
+  tr: ['class', 'style'],
+  th: TABLE_XSS_ATTRS,
+  td: TABLE_XSS_ATTRS,
   img: [
     'src',
     'alt',
@@ -66,6 +77,7 @@ config({
       { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} },
       { type: 'chat_saved_note', plugin: chatSavedNotePlugin, options: {} },
       { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
+      { type: 'haim_table', plugin: haimTableMarkdownItPlugin, options: {} },
     ];
   },
   // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).

@@ -47,6 +47,7 @@ import {
   setLayerLocked,
   sharedGroupIdForSelection,
   snapBoundsToObjects,
+  snapResizeBoundsToObjects,
   ungroupElements,
   withCoverImageNaturalMetrics,
   type CoverPlaceMode,
@@ -60,6 +61,7 @@ import type {
   NoteCover,
 } from '@/utils/noteCover/types';
 import { CoverShapeBody } from '@/components/noteCover/CoverSlide';
+import { coverPlainTextStyle } from '@/utils/noteCover/textStyle';
 import { extractImageFilesFromClipboard } from '@/utils/llmAssistImages';
 import {
   convertSvgToPngFile,
@@ -245,15 +247,8 @@ function EditorImage({
 function EditorText({ el }: { el: CoverTextElement }) {
   return (
     <div
-      className="h-full w-full overflow-hidden whitespace-pre-wrap break-words"
-      style={{
-        color: el.color,
-        fontSize: `${el.fontSize}px`,
-        fontWeight: el.fontWeight,
-        textAlign: el.textAlign,
-        fontFamily: el.fontFamily || undefined,
-        lineHeight: 1.25,
-      }}
+      className="h-full w-full"
+      style={coverPlainTextStyle(el, { strictClip: true })}
     >
       {el.text}
     </div>
@@ -271,7 +266,7 @@ function EditorShape({
   onTextChange: (text: string) => void;
   onBlur: () => void;
 }) {
-  if (!isEditing) return <CoverShapeBody el={el} />;
+  if (!isEditing) return <CoverShapeBody el={el} strictClip />;
   return (
     <div className="h-full w-full" style={coverShapeShellStyle(el)} data-cover-shape={el.type}>
       <div style={coverShapeTextBoxStyle(el)}>
@@ -488,12 +483,9 @@ export default function CoverEditor({
 
       setSnapGuides({ v: [], h: [] });
       const orig = drag.orig;
-      if (orig.type === 'image') {
-        onChange(
-          updateElement(
-            coverRef.current,
-            drag.id,
-            resizeCoverImageBox(
+      let nextEl: CoverElement =
+        orig.type === 'image'
+          ? resizeCoverImageBox(
               orig,
               drag.handle,
               dxPct,
@@ -501,18 +493,43 @@ export default function CoverEditor({
               drag.frameW,
               drag.frameH,
               { lockToCurrentAspect: event.shiftKey },
-            ),
-          ),
+            )
+          : applyResize(orig, drag.handle, dxPct, dyPct);
+
+      const centerOn = centerSnapEnabledRef.current;
+      const objectOn = objectSnapEnabledRef.current;
+      if ((centerOn || objectOn) && !event.shiftKey) {
+        const peers = objectOn
+          ? collectObjectSnapTargets(coverRef.current, [drag.id])
+          : [];
+        const snapped = snapResizeBoundsToObjects(
+          { x: nextEl.x, y: nextEl.y, w: nextEl.w, h: nextEl.h },
+          drag.handle,
+          peers,
+          {
+            objectSnapEnabled: objectOn,
+            frameCenterSnapEnabled: centerOn,
+            objectThresholdPx: objectSnapToleranceRef.current,
+            frameCenterThresholdPx: centerSnapToleranceRef.current,
+            frameWidthPx: drag.frameW,
+            frameHeightPx: drag.frameH,
+            minSizePct: MIN_SIZE,
+          },
         );
-        return;
+        nextEl = {
+          ...nextEl,
+          x: snapped.x,
+          y: snapped.y,
+          w: snapped.w,
+          h: snapped.h,
+        };
+        setSnapGuides({
+          v: snapped.verticalGuides,
+          h: snapped.horizontalGuides,
+        });
       }
-      onChange(
-        updateElement(
-          coverRef.current,
-          drag.id,
-          applyResize(orig, drag.handle, dxPct, dyPct),
-        ),
-      );
+
+      onChange(updateElement(coverRef.current, drag.id, nextEl));
     },
     [onChange, onSelectIds],
   );
@@ -1739,14 +1756,7 @@ export default function CoverEditor({
               {isEditing && el.type === 'text' ? (
                 <textarea
                   className="h-full w-full resize-none border-0 bg-transparent p-0 outline-none"
-                  style={{
-                    color: el.color,
-                    fontSize: `${el.fontSize}px`,
-                    fontWeight: el.fontWeight,
-                    textAlign: el.textAlign,
-                    fontFamily: el.fontFamily || undefined,
-                    lineHeight: 1.25,
-                  }}
+                  style={coverPlainTextStyle(el)}
                   value={el.text}
                   autoFocus
                   onChange={(e) => {

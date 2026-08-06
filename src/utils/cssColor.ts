@@ -1,4 +1,5 @@
 const HEX3 = /^[0-9a-fA-F]{3}$/;
+const HEX4 = /^[0-9a-fA-F]{4}$/;
 const HEX6 = /^[0-9a-fA-F]{6}$/;
 const HEX8 = /^[0-9a-fA-F]{8}$/;
 
@@ -18,15 +19,35 @@ export function normalizeCssHexColor(raw: string | null | undefined): string | n
     const c = hex.charAt(2);
     return `#${a}${a}${b}${b}${c}${c}`.toLowerCase();
   }
-  if (HEX6.test(hex) || HEX8.test(hex)) {
+  if (HEX4.test(hex)) {
+    const r = hex.charAt(0);
+    const g = hex.charAt(1);
+    const b = hex.charAt(2);
+    const a = hex.charAt(3);
+    return `#${r}${r}${g}${g}${b}${b}${a}${a}`.toLowerCase();
+  }
+  if (HEX6.test(hex)) {
     return `#${hex.toLowerCase()}`;
+  }
+  if (HEX8.test(hex)) {
+    const lower = hex.toLowerCase();
+    // Opaque alpha → prefer #rrggbb for stable comparisons / presets
+    if (lower.endsWith('ff')) return `#${lower.slice(0, 6)}`;
+    return `#${lower}`;
   }
   return null;
 }
 
+/** Value for HexAlphaColorPicker / HexColorInput (always `#rrggbb` or `#rrggbbaa`). */
 export function cssHexToInputValue(raw: string | null | undefined): string {
   const normalized = normalizeCssHexColor(raw);
-  if (!normalized) return '#ffffff';
-  if (normalized.length === 9) return normalized.slice(0, 7);
+  if (!normalized) return '#ffffffff';
   return normalized;
 }
+
+export const CSS_HEX_CHECKER_STYLE = {
+  backgroundImage:
+    'linear-gradient(45deg,#d4d4d4 25%,transparent 25%),linear-gradient(-45deg,#d4d4d4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d4d4d4 75%),linear-gradient(-45deg,transparent 75%,#d4d4d4 75%)',
+  backgroundSize: '6px 6px',
+  backgroundPosition: '0 0,0 3px,3px -3px,-3px 0',
+} as const;

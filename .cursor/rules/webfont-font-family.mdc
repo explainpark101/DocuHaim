@@ -1,0 +1,67 @@
+---
+description: Font-family and webfont management conventions for s3haim
+alwaysApply: true
+---
+
+# Font family & webfonts
+
+## Always use shared pickers
+
+Wherever the user chooses a **font-family** (cover, print, table styles, settings, new UI):
+
+1. Use **`FontFamilyInput`** (`src/components/FontFamilyInput.tsx`) — do not invent a new combobox/`<select>` for fonts.
+2. Prefer **omitting** the `options` prop so it uses `buildFontFamilyOptions()`, **or** pass `buildFontFamilyOptions(...)` explicitly.
+3. Do **not** pass only `getCachedWebfontFamilyNames()` — that skips built-in Paperozi / A2z / D2Coding / KoPub / JoseonShinmyeongjo and system fallbacks.
+
+```tsx
+// ❌ BAD
+const opts = getCachedWebfontFamilyNames();
+<FontFamilyInput options={opts} ... />
+
+// ✅ GOOD
+<FontFamilyInput value={font} onChange={setFont} />
+// or
+<FontFamilyInput options={buildFontFamilyOptions()} ... />
+```
+
+`FontFamilyInput` already includes a **「웹폰트 추가」** action that opens `WebfontCssEditorModal` (CodeMirror CSS → vault).
+
+## Built-in fonts
+
+Always treat these as available (bundled in `src/index.css`, listed in `APP_BUILTIN_FONT_FAMILY_OPTIONS` / `BUILTIN_WEBFONT_ENTRIES`):
+
+- **Paperozi** (sans)
+- **A2z** (display / headings)
+- **D2Coding** (mono)
+- **KoPub Dotum** (sans)
+- **KoPub Batang** (serif)
+- **JoseonShinmyeongjo** (serif)
+
+`buildFontFamilyOptions()` order: **app built-ins → user webfonts → system fonts**.
+
+Do not require them to exist as vault webfont files. Do not remove them from default suggestion lists.
+
+## User webfont storage (multi-file)
+
+User CSS is **not** a single growing blob. Store under vault:
+
+| Path | Role |
+|------|------|
+| `.settings/webfonts/index.json` | Manifest `{ version: 2, files: [{ id, name, filename }] }` |
+| `.settings/webfonts/{id}.css` | One CSS file per webfont pack |
+
+APIs in `src/utils/webfontSettingsStore.ts`:
+
+- `loadWebfontsFromStorage()` — load index + files (migrates legacy `.settings/webfonts.json` v1)
+- `saveWebfontFile({ id?, name?, css })` — create/update one file
+- `deleteWebfontFile(id)` — remove one file
+- `getCachedWebfontCss()` / `notifyWebfontsChanged` / `WEBFONTS_CHANGED_EVENT` — inject via `UserWebfontStyles`
+
+Settings UI: `WebfontSettings` — list built-ins + user files; add / edit / delete. CSS editing: `WebfontCssEditorModal` + `CssCodeMirrorEditor`.
+
+## Checklist for new font UI
+
+1. `FontFamilyInput` (+ optional `buildFontFamilyOptions`)
+2. Listen to `WEBFONTS_CHANGED_EVENT` only if you cache options outside `FontFamilyInput`
+3. Never append endlessly into one JSON `css` string — add a **new** `.css` file via `saveWebfontFile`
+4. English comments in new code if Korean Unicode might corrupt

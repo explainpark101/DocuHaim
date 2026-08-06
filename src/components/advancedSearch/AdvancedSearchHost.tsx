@@ -39,6 +39,11 @@ import {
   toggleEditorAutocompleteEnabled,
 } from '@/utils/editorAutocompleteSettings';
 import {
+  loadMirrorEditEnabled,
+  subscribeMirrorEdit,
+  toggleMirrorEditEnabled,
+} from '@/utils/mirrorEditSettings';
+import {
   isSettingsToggleId,
   subscribeSettingsToggles,
   toggleSettingsToggle,
@@ -136,6 +141,9 @@ export default function AdvancedSearchHost({
   const [editorAutocompleteEnabled, setEditorAutocompleteEnabled] = useState(() =>
     loadEditorAutocompleteEnabled(),
   );
+  const [editorMirrorEditEnabled, setEditorMirrorEditEnabled] = useState(() =>
+    loadMirrorEditEnabled(),
+  );
 
   const [settingsToggleEpoch, setSettingsToggleEpoch] = useState(0);
 
@@ -168,6 +176,12 @@ export default function AdvancedSearchHost({
   useEffect(() => {
     return subscribeEditorAutocomplete((enabled) => {
       setEditorAutocompleteEnabled(enabled);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeMirrorEdit((enabled) => {
+      setEditorMirrorEditEnabled(enabled);
     });
   }, []);
 
@@ -262,6 +276,7 @@ export default function AdvancedSearchHost({
         printActionsAvailable,
         chatActionsAvailable,
         editorAutocompleteEnabled,
+        editorMirrorEditEnabled,
       });
 
       if (!printActionsAvailable) return hits;
@@ -305,6 +320,7 @@ export default function AdvancedSearchHost({
       printActionsAvailable,
       chatActionsAvailable,
       editorAutocompleteEnabled,
+      editorMirrorEditEnabled,
       pickerMode,
       browsePath,
       getChatGroups,
@@ -382,6 +398,11 @@ export default function AdvancedSearchHost({
 
         if (commandId === 'editor-autocomplete-toggle') {
           toggleEditorAutocompleteEnabled();
+          return;
+        }
+
+        if (commandId === 'editor-mirror-edit-toggle') {
+          toggleMirrorEditEnabled();
           return;
         }
 

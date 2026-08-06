@@ -10,6 +10,12 @@ import {
   saveDownloadImageMode,
 } from '@/utils/downloadImageModeSettings';
 import {
+  type DownloadTableFormat,
+  isDownloadTableFormat,
+  loadDownloadTableFormat,
+  saveDownloadTableFormat,
+} from '@/utils/downloadTableFormatSettings';
+import {
   defaultExportHeadingMax,
   detectHeadingLevels,
   EXPORT_HEADING_LEVELS,
@@ -17,6 +23,7 @@ import {
   planHeadingRemap,
   type ExportHeadingLevel,
 } from '@/utils/markdownHeadings';
+import { findHaimTableBlocks } from '@/utils/haimTable';
 
 const IMAGE_MODE_OPTIONS: {
   value: DownloadImageMode;
@@ -35,9 +42,27 @@ const IMAGE_MODE_OPTIONS: {
   },
 ];
 
+const TABLE_FORMAT_OPTIONS: {
+  value: DownloadTableFormat;
+  title: string;
+  description: string;
+}[] = [
+  {
+    value: 'haim',
+    title: 'Haim 마크다운 유지',
+    description: 'haim-table 주석 + GFM 표 그대로',
+  },
+  {
+    value: 'html',
+    title: 'HTML table로 변환',
+    description: '병합·스타일을 HTML <table>로 변환',
+  },
+];
+
 export type DownloadMethodChoice = {
   imageMode: DownloadImageMode;
   headingMax: ExportHeadingLevel;
+  tableFormat: DownloadTableFormat;
 };
 
 type Props = {
@@ -76,15 +101,24 @@ export function DownloadMethodModal({
   const showProgress = Boolean(isDownloading || downloadComplete);
   const [imageMode, setImageMode] = useState<DownloadImageMode>(() => loadDownloadImageMode());
   const [headingMax, setHeadingMax] = useState<ExportHeadingLevel>(1);
+  const [tableFormat, setTableFormat] = useState<DownloadTableFormat>(() =>
+    loadDownloadTableFormat(),
+  );
 
   const sourceLevels = useMemo(
     () => (showImageHandling ? detectHeadingLevels(markdownText) : []),
     [markdownText, showImageHandling],
   );
 
+  const hasHaimTables = useMemo(
+    () => findHaimTableBlocks(markdownText, { onlyWithComment: true }).length > 0,
+    [markdownText],
+  );
+
   useEffect(() => {
     if (!isOpen) return;
     setImageMode(loadDownloadImageMode());
+    setTableFormat(loadDownloadTableFormat());
     if (showImageHandling) setHeadingMax(defaultExportHeadingMax(markdownText));
   }, [isOpen, markdownText, showImageHandling]);
 
@@ -94,7 +128,13 @@ export function DownloadMethodModal({
     saveDownloadImageMode(next);
   };
 
-  const choice: DownloadMethodChoice = { imageMode, headingMax };
+  const handleTableFormatChange = (next: string) => {
+    if (!isDownloadTableFormat(next)) return;
+    setTableFormat(next);
+    saveDownloadTableFormat(next);
+  };
+
+  const choice: DownloadMethodChoice = { imageMode, headingMax, tableFormat };
   const remapPlan = showImageHandling ? planHeadingRemap(sourceLevels, headingMax) : null;
 
   return (
@@ -159,6 +199,46 @@ export function DownloadMethodModal({
                 >
                   {IMAGE_MODE_OPTIONS.map((option) => {
                     const selected = imageMode === option.value;
+                    return (
+                      <RadioGroup.Item
+                        key={option.value}
+                        value={option.value}
+                        className={[
+                          'flex-1 rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200',
+                          'focus-visible:ring-2 focus-visible:ring-blue-500/40',
+                          selected
+                            ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
+                            : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
+                        ].join(' ')}
+                      >
+                        <div className={selected ? '' : 'opacity-50'}>
+                          <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                            {option.title}
+                          </div>
+                          <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                            {option.description}
+                          </div>
+                        </div>
+                      </RadioGroup.Item>
+                    );
+                  })}
+                </RadioGroup.Root>
+              </div>
+            ) : null}
+
+            {showImageHandling && hasHaimTables ? (
+              <div className="mb-4">
+                <div className="mb-2 text-xs font-medium text-gray-500 dark:text-odp-muted">
+                  표 (haim-table) 형식
+                </div>
+                <RadioGroup.Root
+                  className="flex items-center gap-2"
+                  value={tableFormat}
+                  onValueChange={handleTableFormatChange}
+                  aria-label="표 다운로드 형식"
+                >
+                  {TABLE_FORMAT_OPTIONS.map((option) => {
+                    const selected = tableFormat === option.value;
                     return (
                       <RadioGroup.Item
                         key={option.value}

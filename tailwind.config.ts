@@ -7,6 +7,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ink: '#111827',
         odp: {
           bg: '#23272e', // editor.background
           bgSoft: '#1e2227', // sideBar.background

@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import { IconDownload, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
+import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
@@ -1339,6 +1340,8 @@ export default function SettingsPage({
         </div>
 
         <WebfontSettings />
+
+        <TableStyleSettings />
 
         <CoverSettings />
 

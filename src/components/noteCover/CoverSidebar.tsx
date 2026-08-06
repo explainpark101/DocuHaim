@@ -28,6 +28,7 @@ import {
   Group,
   Image,
   ImagePlus,
+  Keyboard,
   LayoutList,
   MousePointer2,
   Redo2,
@@ -45,6 +46,7 @@ import {
 } from 'lucide-react';
 import ChatImageBackgroundPicker from '@/components/chatWithMyself/ChatImageBackgroundPicker';
 import FontFamilyInput from '@/components/FontFamilyInput';
+import Kbd, { KbdChord, getAltKeyLabel, getModKeyLabel } from '@/components/Kbd';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import NumberStepControls from '@/components/NumberStepControls';
 import SliderWithScrubInput from '@/components/SliderWithScrubInput';
@@ -177,14 +179,117 @@ const btnActiveClass =
 const tooltipContentClass =
   'z-[10050] max-w-[220px] rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] leading-snug text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong';
 
-type SectionId = 'settings' | 'layers' | 'background' | 'selection';
+type SectionId = 'settings' | 'shortcuts' | 'layers' | 'background' | 'selection';
 
 const DEFAULT_SECTION_OPEN: Record<SectionId, boolean> = {
   settings: false,
+  shortcuts: true,
   layers: true,
   background: true,
   selection: true,
 };
+
+function CoverShortcutItem({
+  keys,
+  children,
+}: {
+  keys: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <li className="flex flex-col gap-1.5 rounded-md border border-gray-200/80 bg-gray-50/90 px-2.5 py-2 dark:border-odp-borderStrong/60 dark:bg-odp-focusBg/45">
+      <div className="flex max-w-full flex-wrap items-center gap-x-1 gap-y-1.5">{keys}</div>
+      <p className="text-[11px] font-medium leading-snug text-ink dark:text-odp-fgStrong">
+        {children}
+      </p>
+    </li>
+  );
+}
+
+function CoverShortcutOr() {
+  return (
+    <span className="shrink-0 px-0.5 text-xs text-gray-400 dark:text-odp-muted" aria-hidden>
+      /
+    </span>
+  );
+}
+
+function CoverShortcutsList() {
+  const mod = getModKeyLabel();
+  const alt = getAltKeyLabel();
+  return (
+    <ul className="flex flex-col gap-5" aria-label="표지 편집 단축키">
+      <CoverShortcutItem keys={<Kbd>드래그</Kbd>}>빈 곳을 드래그해 영역 선택</CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={[mod, 'G']} />}>선택한 요소 그룹</CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={[mod, 'Shift', 'G']} />}>
+        그룹 해제
+      </CoverShortcutItem>
+      <CoverShortcutItem
+        keys={
+          <>
+            <KbdChord keys={[alt, '드래그']} />
+            <CoverShortcutOr />
+            <KbdChord keys={[mod, '드래그']} />
+          </>
+        }
+      >
+        복제하며 이동
+      </CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={['Shift', '드래그']} />}>
+        축 고정 이동
+      </CoverShortcutItem>
+      <CoverShortcutItem
+        keys={
+          <>
+            <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd>
+            <Kbd>←</Kbd>
+            <Kbd>→</Kbd>
+          </>
+        }
+      >
+        이동 (기본 10px)
+      </CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={[alt, '화살표']} />}>미세 이동</CoverShortcutItem>
+      <CoverShortcutItem
+        keys={
+          <>
+            <KbdChord keys={['Shift', '화살표']} />
+            <CoverShortcutOr />
+            <KbdChord keys={[mod, '화살표']} />
+          </>
+        }
+      >
+        크게 이동
+      </CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={[alt, 'L']} />}>텍스트 왼쪽 정렬</CoverShortcutItem>
+      <CoverShortcutItem
+        keys={
+          <>
+            <KbdChord keys={[alt, 'M']} />
+            <CoverShortcutOr />
+            <KbdChord keys={[alt, 'E']} />
+          </>
+        }
+      >
+        텍스트 가운데 정렬
+      </CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={[alt, 'R']} />}>텍스트 오른쪽 정렬</CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={[mod, 'Z']} />}>실행 취소</CoverShortcutItem>
+      <CoverShortcutItem
+        keys={
+          <>
+            <KbdChord keys={[mod, 'Shift', 'Z']} />
+            <CoverShortcutOr />
+            <KbdChord keys={[mod, 'Y']} />
+          </>
+        }
+      >
+        다시 실행
+      </CoverShortcutItem>
+    </ul>
+  );
+}
 
 function TipButton({
   tip,
@@ -234,6 +339,8 @@ function CollapsibleSection({
   children,
   headerRight,
   icon: Icon,
+  titleClassName,
+  iconClassName,
 }: {
   title: string;
   open: boolean;
@@ -241,6 +348,8 @@ function CollapsibleSection({
   children: ReactNode;
   headerRight?: ReactNode;
   icon?: ComponentType<{ size?: number; className?: string; 'aria-hidden'?: boolean }>;
+  titleClassName?: string;
+  iconClassName?: string;
 }) {
   return (
     <section className="border-b border-gray-200 dark:border-odp-borderSoft">
@@ -257,11 +366,18 @@ function CollapsibleSection({
               {Icon ? (
                 <Icon
                   size={14}
-                  className="shrink-0 text-gray-700 dark:text-odp-fgStrong"
+                  className={
+                    iconClassName ?? 'shrink-0 text-gray-700 dark:text-odp-fgStrong'
+                  }
                   aria-hidden
                 />
               ) : null}
-              <span className="truncate text-[11px] font-semibold tracking-wide text-gray-800 dark:text-odp-fgStrong">
+              <span
+                className={
+                  titleClassName ??
+                  'truncate text-[11px] font-semibold tracking-wide text-gray-800 dark:text-odp-fgStrong'
+                }
+              >
                 {title}
               </span>
             </button>
@@ -1164,12 +1280,6 @@ export default function CoverSidebar({
                     </Tooltip.Portal>
                   </Tooltip.Root>
                 </div>
-                <p className="text-[10px] leading-snug text-gray-400 dark:text-odp-fgMuted">
-                  빈 곳 드래그로 영역 선택. Mod+G 그룹 / Mod+Shift+G 해제.
-                  Opt·Cmd 드래그 복제 · Shift 드래그 축 고정.
-                  화살표 키로 이동 (기본 10px · Alt 미세 · Shift/Mod 크게).
-                  텍스트 정렬 Alt+L / Alt+M·E / Alt+R.
-                </p>
               </div>
             </CollapsibleSection>
 
@@ -1741,6 +1851,17 @@ export default function CoverSidebar({
                 </ul>
               </CollapsibleSection>
             ) : null}
+
+            <CollapsibleSection
+              title="단축키"
+              icon={Keyboard}
+              open={sectionOpen.shortcuts}
+              onToggle={() => toggleSection('shortcuts')}
+              titleClassName="truncate text-[11px] font-semibold tracking-wide text-ink dark:text-odp-fgStrong"
+              iconClassName="shrink-0 text-ink dark:text-odp-fgStrong"
+            >
+              <CoverShortcutsList />
+            </CollapsibleSection>
           </div>
 
           <TocResizeHandle

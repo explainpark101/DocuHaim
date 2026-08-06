@@ -17,6 +17,7 @@ export {
   NOTE_COVER_VERSION,
   DEFAULT_COVER_BG,
   DEFAULT_COVER_LAYOUT,
+  DEFAULT_COVER_PAGE_SIZE_ID,
   coverElementLabel,
   coverElementFallbackLabel,
   coverElementFallbackLabelFull,
@@ -85,9 +86,11 @@ export {
 export {
   collectObjectSnapTargets,
   snapBoundsToObjects,
+  snapResizeBoundsToObjects,
 } from '@/utils/noteCover/objectSnap';
 export type {
   CoverObjectSnapResult,
+  CoverResizeSnapResult,
   CoverSnapBounds,
 } from '@/utils/noteCover/objectSnap';
 export {
@@ -167,3 +170,8 @@ export {
   coverShapeTextContentStyle,
   coverShapeTextStyle,
 } from '@/utils/noteCover/shapeStyle';
+export {
+  COVER_FONT_SCALE_CSS,
+  coverFontSizeCss,
+  coverPlainTextStyle,
+} from '@/utils/noteCover/textStyle';

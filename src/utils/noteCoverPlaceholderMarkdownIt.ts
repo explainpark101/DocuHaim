@@ -1,7 +1,7 @@
 /**
  * Preview host for `<!-- note-cover ... -->` HTML comments.
  * Must run before md-editor-rt XSS (which strips HTML comments).
- * Source keeps the comment; preview mounts CoverSlide into the host.
+ * Source keeps the comment; preview auto-mounts CoverSlide when enabled.
  */
 
 const NOTE_COVER_COMMENT_RE = /<!--\s*note-cover\b[\s\S]*?-->/i;
@@ -12,9 +12,9 @@ export function isNoteCoverHtmlBlockContent(content: string): boolean {
 
 export function buildNoteCoverPlaceholderHtml(): string {
   return [
-    '<div class="md-note-cover-placeholder" data-note-cover-placeholder="1" role="button" tabindex="0">',
+    '<div class="md-note-cover-placeholder md-note-cover-placeholder--pending" data-note-cover-placeholder="1" role="button" tabindex="0" title="표지 편집으로 이동">',
     '<div class="md-note-cover-placeholder__mount" data-note-cover-mount="1"></div>',
-    '<span class="md-note-cover-placeholder__fallback">표지</span>',
+    '<span class="md-note-cover-placeholder__fallback">표지 불러오는 중…</span>',
     '</div>',
   ].join('');
 }

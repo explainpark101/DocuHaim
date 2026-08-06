@@ -1,10 +1,13 @@
 import { useMemo, type CSSProperties } from 'react';
 import CoverSlide from '@/components/noteCover/CoverSlide';
 import type { NoteCover } from '@/utils/noteCover/types';
+import { DEFAULT_COVER_PAGE_SIZE_ID } from '@/utils/noteCover/types';
 import {
   buildPrintLayoutCssVars,
   getPrintPageSize,
+  isPrintPageSizeId,
   loadPrintPageLayout,
+  type PrintPageLayout,
 } from '@/utils/printPageLayout';
 
 type GetPresignedUrl = ((path: string) => Promise<string | null>) | null | undefined;
@@ -16,14 +19,21 @@ type NoteCoverPreviewMountProps = {
 
 /**
  * md-editor-rt preview host: always light-mode paper for the cover surface.
+ * Uses the page size saved on the cover so the preview matches Export PDF.
  * Body below the host keeps the editor theme.
  */
 export default function NoteCoverPreviewMount({
   cover,
   getPresignedUrl,
 }: NoteCoverPreviewMountProps) {
-  const layout = useMemo(() => loadPrintPageLayout(), []);
-  const page = useMemo(() => getPrintPageSize(layout.pageSizeId), [layout.pageSizeId]);
+  const pageSizeId = isPrintPageSizeId(cover.pageSizeId)
+    ? cover.pageSizeId
+    : DEFAULT_COVER_PAGE_SIZE_ID;
+  const layout = useMemo((): PrintPageLayout => {
+    const base = loadPrintPageLayout();
+    return { ...base, pageSizeId };
+  }, [pageSizeId]);
+  const page = useMemo(() => getPrintPageSize(pageSizeId), [pageSizeId]);
   const cssVars = useMemo(() => buildPrintLayoutCssVars(layout), [layout]);
 
   return (
@@ -31,6 +41,7 @@ export default function NoteCoverPreviewMount({
       className="md-note-cover-preview-light w-full bg-white text-gray-900"
       data-note-cover-preview="1"
       data-color-mode="light"
+      data-cover-page-size={pageSizeId}
       style={cssVars as CSSProperties}
     >
       <CoverSlide

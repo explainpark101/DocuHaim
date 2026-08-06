@@ -4,28 +4,28 @@ overview: GFM 표 위에 HTML 주석 메타로 셀 병합(colspan/rowspan)·셀/
 todos:
   - id: syntax-utils
     content: haim-table 타입/parse/serialize/merge/nth/styleResolve(sections+typography)/toHtml 유틸
-    status: pending
+    status: completed
   - id: markdown-it
     content: markdown-it 플러그인(thead/tbody/tfoot)·XSS whitelist·mdEditorConfig 등록
-    status: pending
+    status: completed
   - id: template-store-ui
     content: .settings/table-styles.yaml store + Settings YAML/GUI (sections + fonts)
-    status: pending
+    status: completed
   - id: table-edit-modal
     content: TableEditModal (셀·구역 스타일·타이포·병합·템플릿 적용/오버라이드)
-    status: pending
+    status: completed
   - id: context-menus
     content: 에디터 선택 + 프리뷰 우클릭/500ms 롱프레스 → 표 편집
-    status: pending
+    status: completed
   - id: download-format
     content: DownloadMethodModal tableFormat + HTML 변환 전처리
-    status: pending
+    status: completed
   - id: advanced-search
     content: settings-table-styles 명령 + editor-table-edit 액션
-    status: pending
+    status: completed
   - id: custom-markdown-docs
     content: docs/custom-markdown/haim-table.md (Syntax+Spec) + README 인덱스 행
-    status: pending
+    status: completed
 isProject: false
 ---
 

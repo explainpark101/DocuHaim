@@ -4,6 +4,8 @@ import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 
 const PRINT_JSON_KEY = '.settings/print.json';
 const LOCAL_STORAGE_KEY = 's3haim_print_fonts';
+/** Fired when MainApp injects S3/local/WebDAV accessors into the print store. */
+export const PRINT_SETTINGS_STORE_CHANGED_EVENT = 's3haim-print-settings-store-changed';
 
 export const DEFAULT_PRINT_FONTS = {
   bold: '',
@@ -18,6 +20,8 @@ const store = {
   localRootHandle: null,
   storageMode: 's3',
   webdavConfig: null,
+  /** Bumps on each setPrintSettingsStore so React can refresh resolvers. */
+  epoch: 0,
 };
 
 /**
@@ -48,6 +52,10 @@ export function getPresignedUrlResolver(fileType = null) {
   return null;
 }
 
+export function getPrintSettingsStoreEpoch() {
+  return store.epoch;
+}
+
 /**
  * Inject S3/local/WebDAV access from MainApp.
  * @param {{ getS3Client: Function, s3Creds: object | null, localRootHandle: FileSystemDirectoryHandle | null, storageMode?: string, webdavConfig?: object | null }} payload
@@ -60,6 +68,12 @@ export function setPrintSettingsStore(payload) {
       payload.localRootHandle !== undefined ? payload.localRootHandle : store.localRootHandle;
     if (payload.storageMode !== undefined) store.storageMode = payload.storageMode;
     if (payload.webdavConfig !== undefined) store.webdavConfig = payload.webdavConfig;
+    store.epoch += 1;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent(PRINT_SETTINGS_STORE_CHANGED_EVENT, { detail: { epoch: store.epoch } }),
+      );
+    }
   }
 }
 

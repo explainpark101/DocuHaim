@@ -222,3 +222,120 @@ export function snapBoundsToObjects(
 
   return { x, y, verticalGuides, horizontalGuides };
 }
+
+export type CoverResizeSnapResult = CoverSnapBounds & {
+  verticalGuides: number[];
+  horizontalGuides: number[];
+};
+
+const RESIZE_MIN_SIZE_PCT = 2;
+
+/**
+ * Snap the edges being resized (per handle) to peer object edges/centers.
+ * Keeps the opposite edge fixed when possible.
+ */
+export function snapResizeBoundsToObjects(
+  bounds: CoverSnapBounds,
+  handle: string,
+  peers: ReadonlyArray<CoverSnapBounds>,
+  options: {
+    objectSnapEnabled?: boolean;
+    frameCenterSnapEnabled?: boolean;
+    objectThresholdPx?: number;
+    frameCenterThresholdPx?: number;
+    frameWidthPx?: number;
+    frameHeightPx?: number;
+    minSizePct?: number;
+  } = {},
+): CoverResizeSnapResult {
+  const {
+    objectSnapEnabled = false,
+    frameCenterSnapEnabled = false,
+    objectThresholdPx,
+    frameCenterThresholdPx: _frameCenterThresholdPx,
+    frameWidthPx = 0,
+    frameHeightPx = 0,
+    minSizePct = RESIZE_MIN_SIZE_PCT,
+  } = options;
+  void _frameCenterThresholdPx;
+
+  if (!objectSnapEnabled && !frameCenterSnapEnabled) {
+    return { ...bounds, verticalGuides: [], horizontalGuides: [] };
+  }
+
+  const pxToPctX = (px: number) =>
+    frameWidthPx > 0 ? (px / frameWidthPx) * 100 : COVER_CENTER_SNAP_THRESHOLD_PCT;
+  const pxToPctY = (px: number) =>
+    frameHeightPx > 0 ? (px / frameHeightPx) * 100 : COVER_CENTER_SNAP_THRESHOLD_PCT;
+
+  const objectThreshX =
+    objectThresholdPx != null && frameWidthPx > 0
+      ? pxToPctX(objectThresholdPx)
+      : COVER_CENTER_SNAP_THRESHOLD_PCT;
+  const objectThreshY =
+    objectThresholdPx != null && frameHeightPx > 0
+      ? pxToPctY(objectThresholdPx)
+      : COVER_CENTER_SNAP_THRESHOLD_PCT;
+
+  const peerXs: number[] = [];
+  const peerYs: number[] = [];
+  if (objectSnapEnabled) {
+    for (const peer of peers) {
+      peerXs.push(peer.x, peer.x + peer.w / 2, peer.x + peer.w);
+      peerYs.push(peer.y, peer.y + peer.h / 2, peer.y + peer.h);
+    }
+  }
+  if (frameCenterSnapEnabled) {
+    peerXs.push(50);
+    peerYs.push(50);
+  }
+
+  let { x, y, w, h } = bounds;
+  const verticalGuides: number[] = [];
+  const horizontalGuides: number[] = [];
+
+  const snapLeft = handle.includes('w');
+  const snapRight = handle.includes('e');
+  const snapTop = handle.includes('n');
+  const snapBottom = handle.includes('s');
+
+  if (snapRight) {
+    const right = x + w;
+    const hit = bestAxisSnap([right], peerXs, objectThreshX);
+    if (hit) {
+      w = clampPct(right + hit.delta - x, minSizePct, 100 - x);
+      verticalGuides.push(hit.guide);
+    }
+  } else if (snapLeft) {
+    const left = x;
+    const right = x + w;
+    const hit = bestAxisSnap([left], peerXs, objectThreshX);
+    if (hit) {
+      const nextLeft = clampPct(left + hit.delta, 0, right - minSizePct);
+      w = right - nextLeft;
+      x = nextLeft;
+      verticalGuides.push(hit.guide);
+    }
+  }
+
+  if (snapBottom) {
+    const bottom = y + h;
+    const hit = bestAxisSnap([bottom], peerYs, objectThreshY);
+    if (hit) {
+      h = clampPct(bottom + hit.delta - y, minSizePct, 100 - y);
+      horizontalGuides.push(hit.guide);
+    }
+  } else if (snapTop) {
+    const top = y;
+    const bottom = y + h;
+    const hit = bestAxisSnap([top], peerYs, objectThreshY);
+    if (hit) {
+      const nextTop = clampPct(top + hit.delta, 0, bottom - minSizePct);
+      h = bottom - nextTop;
+      y = nextTop;
+      horizontalGuides.push(hit.guide);
+    }
+  }
+
+  return { x, y, w, h, verticalGuides, horizontalGuides };
+}

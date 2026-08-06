@@ -1,10 +1,22 @@
 import { getCachedWebfontFamilyNames } from '@/utils/webfontSettingsStore';
 
-/** Built-in / common font-family suggestions for FontFamilyInput. */
-export const BASE_FONT_FAMILY_OPTIONS: readonly string[] = [
+/**
+ * App-bundled webfonts (index.css + BUILTIN_WEBFONT_ENTRIES).
+ * Always listed first in FontFamilyInput.
+ */
+export const APP_BUILTIN_FONT_FAMILY_OPTIONS: readonly string[] = [
   'Paperozi',
   'A2z',
   'D2Coding',
+  'KoPub Dotum',
+  'KoPub Batang',
+  'JoseonShinmyeongjo',
+];
+
+/**
+ * Common system / generic font-family suggestions (after app + user webfonts).
+ */
+export const SYSTEM_FONT_FAMILY_OPTIONS: readonly string[] = [
   'Georgia',
   'Times New Roman',
   'Palatino Linotype',
@@ -27,18 +39,35 @@ export const BASE_FONT_FAMILY_OPTIONS: readonly string[] = [
   'Fira Code',
 ];
 
-/** Merge base + user webfonts (+ optional extras), de-duplicated. */
+/** @deprecated Prefer APP_BUILTIN + SYSTEM; kept as concat for older imports. */
+export const BASE_FONT_FAMILY_OPTIONS: readonly string[] = [
+  ...APP_BUILTIN_FONT_FAMILY_OPTIONS,
+  ...SYSTEM_FONT_FAMILY_OPTIONS,
+];
+
+/**
+ * Font-family suggestions in order:
+ * 1) app built-ins (Paperozi / A2z / D2Coding / KoPub / JoseonShinmyeongjo)
+ * 2) user webfonts from vault
+ * 3) system / generic fonts
+ * 4) optional extras
+ */
 export function buildFontFamilyOptions(extra: readonly string[] = []): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const name of [...extra, ...getCachedWebfontFamilyNames(), ...BASE_FONT_FAMILY_OPTIONS]) {
+  const push = (name: string) => {
     const trimmed = name.trim();
-    if (!trimmed) continue;
+    if (!trimmed) return;
     const key = trimmed.toLowerCase();
-    if (seen.has(key)) continue;
+    if (seen.has(key)) return;
     seen.add(key);
     out.push(trimmed);
-  }
+  };
+
+  for (const name of APP_BUILTIN_FONT_FAMILY_OPTIONS) push(name);
+  for (const name of getCachedWebfontFamilyNames()) push(name);
+  for (const name of SYSTEM_FONT_FAMILY_OPTIONS) push(name);
+  for (const name of extra) push(name);
   return out;
 }
 
