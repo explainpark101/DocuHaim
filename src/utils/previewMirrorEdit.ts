@@ -29,6 +29,18 @@ export function isMirrorEditActiveIn(previewRoot: Element | null | undefined): b
   return Boolean(previewRoot?.querySelector(`[${MIRROR_EDIT_ACTIVE_ATTR}]`));
 }
 
+/** True when md-editor-rt toolbar "preview only" hides the source pane (input width 0%). */
+export function isMdEditorPreviewOnlyUi(root: Element | null | undefined): boolean {
+  if (!root) return false;
+  const editor =
+    (root instanceof Element && root.classList.contains('md-editor')
+      ? root
+      : null)
+    || root.querySelector?.('.md-editor')
+    || (root instanceof Element ? root.closest('.md-editor') : null);
+  return Boolean(editor?.classList.contains('md-editor-previewOnly'));
+}
+
 function normalizeEditableSource(sourceSlice: string): {
   body: string;
   trailing: string;
@@ -416,6 +428,27 @@ export function attachPreviewMirrorEdit(
 /** Cancel an open session without writing (e.g. toggle off / unmount). */
 export function cancelPreviewMirrorEdit(): void {
   endSession(true);
+}
+
+/** Commit the active contentEditable session into CodeMirror (no-op if none). */
+export function commitPreviewMirrorEdit(view: EditorView | null | undefined): boolean {
+  if (!view || !activeSession) return false;
+  commitSession(view);
+  return true;
+}
+
+/**
+ * Start (or refocus) an in-preview contentEditable session.
+ * Used for toolbar preview-only mode where the source CM is width:0% and cannot host IME.
+ */
+export function beginPreviewMirrorEditSession(
+  block: HTMLElement,
+  view: EditorView,
+  previewRoot: Element,
+  clientX: number,
+  clientY: number,
+): boolean {
+  return beginSession(block, view, previewRoot, clientX, clientY);
 }
 
 /** Drop a session whose editable node was destroyed by a preview re-render. */

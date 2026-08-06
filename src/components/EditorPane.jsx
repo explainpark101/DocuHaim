@@ -635,6 +635,7 @@ export default function EditorPane({
                   theme={theme}
                   currentFile={currentFile}
                   previewOnly={previewOnly}
+                  isMobileLayout={isMobileLayout}
                   onUploadImage={onUploadImage}
                   isUploadingEditorImage={isUploadingEditorImage}
                   uploadImagePercent={uploadImagePercent}

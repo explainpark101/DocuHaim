@@ -123,6 +123,7 @@ import {
 } from '@/utils/wikiImageSyntax';
 import {
   clearPreviewSelectionMirror,
+  findDataLineElement,
   isPointInLivePreviewSelection,
   isPointInMirroredPreviewSelection,
   mirrorCurrentPreviewSelection,
@@ -132,7 +133,10 @@ import {
 import {
   attachPreviewMirrorEdit,
   abandonDetachedPreviewMirrorEdit,
+  beginPreviewMirrorEditSession,
   cancelPreviewMirrorEdit,
+  commitPreviewMirrorEdit,
+  isMdEditorPreviewOnlyUi,
   isMirrorEditActiveIn,
   isMirrorEditTarget,
 } from '@/utils/previewMirrorEdit';
@@ -536,6 +540,7 @@ export default function MarkdownEditor({
   theme = 'light',
   currentFile = null,
   previewOnly = false,
+  isMobileLayout = false,
   onUploadImage,
   isUploadingEditorImage = false,
   uploadImagePercent = 0,
@@ -985,6 +990,25 @@ export default function MarkdownEditor({
     api?.togglePreviewOnly?.(true);
   }, [previewOnly]);
 
+  // Mobile: opening a note starts in toolbar Preview Only with Mirror Edit off.
+  // Do not lock the `previewOnly` prop — user can still toggle either control.
+  useEffect(() => {
+    if (!isMobileLayout || previewOnly) return undefined;
+    if (!currentFile?.id) return undefined;
+
+    setMirrorEditEnabled(false);
+
+    const applyPreviewOnly = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      api?.togglePreviewOnly?.(true);
+    };
+    applyPreviewOnly();
+    const timers = [80, 240, 600].map((ms) => setTimeout(applyPreviewOnly, ms));
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [isMobileLayout, previewOnly, currentFile?.id, setMirrorEditEnabled]);
+
   // Preview selection → CodeMirror selection + mirrored highlight/caret on both panes.
   useEffect(() => {
     if (previewOnly) return undefined;
@@ -993,6 +1017,7 @@ export default function MarkdownEditor({
 
     const getPreviewRoot = () => root.querySelector('.md-editor-preview');
     const mirrorEditOn = () => mirrorEditEnabled;
+    let pointerDown = null;
 
     const shouldIgnoreTarget = (target) => {
       if (!(target instanceof Element)) return false;
@@ -1008,6 +1033,23 @@ export default function MarkdownEditor({
       const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
       if (isMirrorEditActiveIn(previewRoot)) return;
+
+      // Mirror Edit OFF: preview may keep a non-collapsed selection for copy,
+      // but must not drive the markdown caret or steal focus for typing.
+      if (!mirrorEditOn()) {
+        const sel = window.getSelection?.();
+        if (
+          sel?.rangeCount
+          && previewRoot.contains(sel.getRangeAt(0).commonAncestorContainer)
+          && !sel.getRangeAt(0).collapsed
+        ) {
+          mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed: false });
+        } else {
+          clearPreviewSelectionMirror(previewRoot);
+        }
+        return;
+      }
+
       const sel = window.getSelection?.();
       if (!sel || sel.rangeCount === 0) {
         // Empty table cells often cannot host a native selection — still map by target.
@@ -1026,23 +1068,15 @@ export default function MarkdownEditor({
       const view = api?.getEditorView?.();
       if (!view) return;
 
-      const allowCollapsed = mirrorEditOn();
       if (sel?.rangeCount && previewRoot.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-        const range = sel.getRangeAt(0);
-        if (allowCollapsed || !range.collapsed) {
-          mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed });
-        } else {
-          clearPreviewSelectionMirror(previewRoot);
-        }
+        mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed: true });
       }
       syncPreviewSelectionToEditor(view, previewRoot, {
         focus: true,
         target: eventTarget,
       });
-      if (allowCollapsed) {
-        markMirrorEditCaretFromPreview();
-        scheduleMirrorEditPreviewRemirror({ withRetries: true });
-      }
+      markMirrorEditCaretFromPreview();
+      scheduleMirrorEditPreviewRemirror({ withRetries: true });
     };
 
     const isContextMenuMouseDown = (e) => (
@@ -1067,12 +1101,14 @@ export default function MarkdownEditor({
       }
 
       if (previewRoot.contains(target)) {
+        pointerDown = { x: e.clientX, y: e.clientY };
         if (!isMirrorEditTarget(target) && !mirrorEditOn()) {
           clearPreviewSelectionMirror(previewRoot);
         }
         return;
       }
 
+      pointerDown = null;
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (view?.dom.contains(target)) {
@@ -1093,6 +1129,29 @@ export default function MarkdownEditor({
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
+
+      // Toolbar preview-only: source CM is width 0% — never focus it (breaks Hangul IME).
+      if (isMdEditorPreviewOnlyUi(root)) {
+        const dragged = Boolean(
+          pointerDown
+          && Math.hypot(e.clientX - pointerDown.x, e.clientY - pointerDown.y) > 6,
+        );
+        pointerDown = null;
+        if (!mirrorEditOn() || dragged) return;
+        const api = editorRef.current?.value ?? editorRef.current;
+        const view = api?.getEditorView?.();
+        const block =
+          e.target instanceof Element
+            ? findDataLineElement(e.target, previewRoot)
+            : null;
+        if (view && block) {
+          markMirrorEditCaretFromPreview();
+          beginPreviewMirrorEditSession(block, view, previewRoot, e.clientX, e.clientY);
+        }
+        return;
+      }
+
+      pointerDown = null;
       requestAnimationFrame(() => syncFromPreview(e.target));
     };
 
@@ -1100,16 +1159,46 @@ export default function MarkdownEditor({
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
+
+      if (isMdEditorPreviewOnlyUi(root)) {
+        if (!mirrorEditOn()) return;
+        const api = editorRef.current?.value ?? editorRef.current;
+        const view = api?.getEditorView?.();
+        const touch = e.changedTouches?.[0];
+        const block =
+          e.target instanceof Element
+            ? findDataLineElement(e.target, previewRoot)
+            : null;
+        if (view && block && touch) {
+          markMirrorEditCaretFromPreview();
+          beginPreviewMirrorEditSession(
+            block,
+            view,
+            previewRoot,
+            touch.clientX,
+            touch.clientY,
+          );
+        }
+        return;
+      }
+
       requestAnimationFrame(() => syncFromPreview(e.target));
     };
 
-    // If focus/selection is still on the preview, move editing into CodeMirror.
-    // Do not synthesize insertText here — that breaks IME (e.g. Korean).
+    // Mirror Edit ON only: if focus/selection is still on the preview, move editing
+    // into CodeMirror. Skip while composing (Korean IME). In preview-only UI, never
+    // steal focus to the zero-width source pane — contentEditable handles input instead.
     const onKeyDownCapture = (e) => {
+      if (!mirrorEditOn()) return;
+      if (e.isComposing || e.keyCode === 229 || e.key === 'Process') return;
+      if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+        return;
+      }
       if (isMirrorEditTarget(e.target)) return;
       const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
       if (isMirrorEditActiveIn(previewRoot)) return;
+      if (isMdEditorPreviewOnlyUi(root)) return;
 
       const target = e.target;
       const focusInPreview =
@@ -1126,15 +1215,10 @@ export default function MarkdownEditor({
       if (!view) return;
       if (view.hasFocus) return;
 
-      const allowCollapsed = mirrorEditOn();
       if (selInPreview) {
-        if (allowCollapsed || !sel.getRangeAt(0).collapsed) {
-          mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed });
-        }
+        mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed: true });
         syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
-        if (allowCollapsed) {
-          scheduleMirrorEditPreviewRemirror({ withRetries: true });
-        }
+        scheduleMirrorEditPreviewRemirror({ withRetries: true });
       } else {
         view.focus();
       }
@@ -1331,16 +1415,36 @@ export default function MarkdownEditor({
   }, [previewOnly, snippetConfig]);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el || typeof onSave !== 'function') return;
+    if (typeof onSave !== 'function') return undefined;
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        onSave();
-      }
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      if (e.key !== 's' && e.key !== 'S' && e.code !== 'KeyS') return;
+
+      const root = containerRef.current;
+      if (!root) return;
+
+      const target = e.target;
+      const inEditor = target instanceof Node && root.contains(target);
+      const previewRoot = root.querySelector('.md-editor-preview');
+      const sel = window.getSelection?.();
+      const selInPreview = Boolean(
+        previewRoot
+        && sel?.rangeCount
+        && previewRoot.contains(sel.getRangeAt(0).commonAncestorContainer),
+      );
+      if (!inEditor && !selInPreview && !isMirrorEditActiveIn(previewRoot)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation?.();
+
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      commitPreviewMirrorEdit(view);
+      onSave();
     };
-    el.addEventListener('keydown', handleKeyDown, true);
-    return () => el.removeEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [onSave]);
 
   useEffect(() => {
