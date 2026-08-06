@@ -4,22 +4,22 @@ overview: Export PDF에서 표지(텍스트/이미지/배경)를 편집하고, c
 todos:
   - id: cover-schema-utils
     content: noteCover types + parse/strip/upsert (top comment JSON; layout align/width/gap + elements)
-    status: pending
+    status: completed
   - id: cover-slide-render
     content: "CoverSlide: layout frame + absolute/% elements, bg, print page-break"
-    status: pending
+    status: completed
   - id: cover-sidebar
     content: "CoverSidebar: left panel; storageKey s3haim_cover_sidebar_width (not PRINT_TOC); layout + actions"
-    status: pending
+    status: completed
   - id: cover-editor
     content: "CoverEditor: free place text/image, drag/resize; sync with layout helpers"
-    status: pending
+    status: completed
   - id: export-page-wire
     content: "Wire ExportPDFPage: cover mode, left sidebar, cover paper, strip MdPreview, save/print"
-    status: pending
+    status: completed
   - id: followup-shapes-plan
     content: "After v1: author follow-up PLAN for shapes (in-shape text, fill, border, resize)"
-    status: pending
+    status: completed
 isProject: false
 ---
 

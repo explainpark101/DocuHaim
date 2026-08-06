@@ -7,13 +7,17 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && bun run docs:build && bun run llms",
+    "docs:dev": "bun run --cwd docs dev",
+    "docs:build": "bun run --cwd docs build",
+    "docs:preview": "bun run --cwd docs preview",
     "lint": "eslint .",
     "lint:guard": "eslint . --quiet",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check": "eslint . --quiet && tsc --noEmit -p tsconfig.json",
     "build:image": "bun scripts/generate-og-image.ts",
-    "preview": "VITE_BASE_PATH=/s3haim vite build && VITE_BASE_PATH=/s3haim vite preview"
+    "llms": "bun scripts/generate-llms.ts",
+    "preview": "VITE_BASE_PATH=/s3haim bun run build && VITE_BASE_PATH=/s3haim vite preview"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",

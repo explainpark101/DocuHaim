@@ -1,0 +1,55 @@
+---
+description: Document new custom Markdown syntax under docs/custom-markdown/
+alwaysApply: true
+---
+
+# Custom Markdown documentation
+
+When adding or changing **app-specific Markdown syntax** (beyond stock md-editor-rt / markdown-it / CommonMark), document it in the **same change**. Do not ship parser/renderer-only work without docs.
+
+## What counts
+
+- New markdown-it / marked / TipTap rules that introduce user-facing markup
+- New wiki/shortcode tokens (e.g. `![[…]]`, `[[file:…]]`, `<pgbr/>`)
+- HTML comment file formats that authors or exporters rely on (`<!-- note-cover -->`, `<!-- chat-msg -->`, …)
+- Behavior changes to an existing custom syntax (options, caption rules, render output)
+
+## What does not need a new doc
+
+- Stock CommonMark / GFM / md-editor-rt builtins (KaTeX, Mermaid, task lists, …)
+- Pure renderer tweaks with no markup (e.g. external link `target=_blank`)
+- Sidecars that are not inline Markdown (e.g. `.sync.pb`)
+
+## Where to write
+
+| Step | Path |
+|------|------|
+| Feature doc | `docs/custom-markdown/<feature-kebab>.md` |
+| Index row | `docs/custom-markdown/index.md` table |
+| VitePress sidebar | `docs/.vitepress/config.ts` (`themeConfig.sidebar`) |
+| Global plugin (if any) | `src/config/mdEditorConfig.js` + XSS whitelist as needed |
+
+One concern per file. Reuse an existing file when extending that feature; add a new file for a new token/family.
+
+## Doc checklist (each feature file)
+
+1. **Syntax** — exact patterns and examples
+2. **Spec (interop)** — enough for another Markdown engine to reimplement:
+   - Grammar / regex
+   - Parse algorithm + failure behavior
+   - Value normalization (size, color, escapes)
+   - Canonical HTML or structured output
+   - Post-process rules (caption fold, unwrap, …)
+   - Non-goals
+3. **Options / attrs** — keys, units, escaping
+4. **Implementation** — primary source paths (parser, plugin, UI)
+5. Prefer **English** in Spec/code comments if Korean Unicode might corrupt; overview may be KO or EN
+6. Update shared conventions in `docs/custom-markdown/index.md` when adding cross-cutting rules (size, hex, placeholder `src`, …)
+
+```text
+❌ BAD — new `[[foo:]]` token in chat parser, no docs/
+❌ BAD — markdown-it plugin only; Spec missing so other parsers cannot port
+❌ BAD — examples only, no canonical HTML / normalize rules
+✅ GOOD — docs/custom-markdown/foo.md (Syntax + Spec) + index.md + VitePress sidebar + plugin/parser
+✅ GOOD — extend wiki-image.md Spec when adding a new ![[…]] option
+```
