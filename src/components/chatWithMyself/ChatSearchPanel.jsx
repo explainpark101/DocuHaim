@@ -18,6 +18,7 @@ import { ContextMenu, Form, Switch } from 'radix-ui';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
+import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatReactionGlyph from '@/components/chatWithMyself/ChatReactionGlyph';
@@ -44,6 +45,8 @@ import {
   fuzzyMatchText,
   splitSearchTokens,
   reactionsToSearchText,
+  findGroup,
+  resolveGroupId,
 } from '@/utils/chatWithMyself';
 
 const searchFilterSwitchRootClass =
@@ -343,6 +346,7 @@ export default function ChatSearchPanel({
   onNoReactionsOnlyChange,
   filtersOpen = false,
   onFiltersOpenChange,
+  onDismissGroupFilter,
 }) {
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const listRef = useRef(null);
@@ -375,6 +379,28 @@ export default function ChatSearchPanel({
     Boolean(toDt) ||
     Boolean(noReactionsOnly);
   const canSearch = Boolean(query.trim()) || filtersActive;
+  const groupFilterActive = Boolean(groupFilter && groupFilter !== '__all__');
+  const groupFilterMeta = useMemo(() => {
+    if (!groupFilterActive) return null;
+    const id = resolveGroupId(groups, groupFilter);
+    if (id === SELF_GROUP) {
+      return { id: SELF_GROUP, name: SELF_GROUP, iconPath: null };
+    }
+    const found = findGroup(groups, groupFilter);
+    return {
+      id,
+      name: found?.name || resolveGroupLabel(groups, groupFilter),
+      iconPath: found?.iconPath || null,
+    };
+  }, [groupFilterActive, groupFilter, groups]);
+
+  const dismissGroupFilter = () => {
+    if (onDismissGroupFilter) {
+      onDismissGroupFilter();
+      return;
+    }
+    onGroupFilterChange?.('__all__');
+  };
 
   const handleRefreshResults = () => {
     if (!canSearch || loading) return;
@@ -494,6 +520,35 @@ export default function ChatSearchPanel({
           className="space-y-2 px-3 pb-2"
           onSubmit={(e) => e.preventDefault()}
         >
+          {groupFilterMeta ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span
+                className="inline-flex max-w-full items-center gap-1 rounded-full border border-blue-200 bg-blue-50 py-0.5 pl-1 pr-1 text-[11px] font-medium text-blue-700 dark:border-blue-700/60 dark:bg-blue-900/30 dark:text-blue-200"
+                title={groupFilterMeta.name}
+              >
+                <ChatGroupAvatar
+                  name={groupFilterMeta.name}
+                  colorKey={groupFilterMeta.id}
+                  size="sm"
+                  iconPath={groupFilterMeta.iconPath}
+                  getPresignedUrl={getPresignedUrl}
+                />
+                <span className="min-w-0 truncate pr-0.5">
+                  {groupFilterMeta.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={dismissGroupFilter}
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-blue-600 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-800/50"
+                  aria-label="그룹 필터 해제"
+                  title="그룹 필터 해제"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-1.5 @[280px]:flex-row @[280px]:items-center">
             <Form.Field name="query" className="relative min-w-0 w-full @[280px]:flex-1">
               <Search

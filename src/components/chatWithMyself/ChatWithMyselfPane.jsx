@@ -1894,7 +1894,24 @@ export default function ChatWithMyselfPane({
     'chat-rail',
   );
 
+  const handleSearchGroupFilterChange = useCallback((next) => {
+    const value = next || '__all__';
+    setSearchGroupFilter(value);
+    // Keep sidebar view lock aligned with the search group filter.
+    if (value === '__all__') {
+      setViewGroupFilter(null);
+    } else if (viewGroupFilter) {
+      setViewGroupFilter(value);
+    }
+  }, [viewGroupFilter]);
+
+  const handleDismissSearchGroupFilter = useCallback(() => {
+    setSearchGroupFilter('__all__');
+    setViewGroupFilter(null);
+  }, []);
+
   const searchHasMore = searchCursor < (searchDayKeysRef.current.length || 0);
+  const effectiveSearchGroupFilter = viewGroupFilter || searchGroupFilter;
 
   const toolbarBtnClass = (active) =>
     `rounded p-1.5 ${
@@ -1939,8 +1956,9 @@ export default function ChatWithMyselfPane({
     focusTick: searchFocusTick,
     query: searchQuery,
     onQueryChange: setSearchQuery,
-    groupFilter: searchGroupFilter,
-    onGroupFilterChange: setSearchGroupFilter,
+    groupFilter: effectiveSearchGroupFilter,
+    onGroupFilterChange: handleSearchGroupFilterChange,
+    onDismissGroupFilter: handleDismissSearchGroupFilter,
     dateFilter: searchDateFilter,
     onDateFilterChange: setSearchDateFilter,
     fromDt: searchFromDt,
