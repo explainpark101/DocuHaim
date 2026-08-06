@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
-import { ContextMenu, Form } from 'radix-ui';
+import { ContextMenu, Form, Switch } from 'radix-ui';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
@@ -45,6 +45,12 @@ import {
   splitSearchTokens,
   reactionsToSearchText,
 } from '@/utils/chatWithMyself';
+
+const searchFilterSwitchRootClass =
+  'relative h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent bg-gray-300 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 data-[state=checked]:bg-blue-600 dark:bg-odp-borderStrong dark:data-[state=checked]:bg-blue-500';
+
+const searchFilterSwitchThumbClass =
+  'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
 
 function useIsCoarsePointer() {
   const [coarse, setCoarse] = useState(() => {
@@ -333,6 +339,8 @@ export default function ChatSearchPanel({
   onFromDtChange,
   toDt = '',
   onToDtChange,
+  noReactionsOnly = false,
+  onNoReactionsOnlyChange,
   filtersOpen = false,
   onFiltersOpenChange,
 }) {
@@ -364,7 +372,8 @@ export default function ChatSearchPanel({
     (groupFilter && groupFilter !== '__all__') ||
     Boolean(dateFilter) ||
     Boolean(fromDt) ||
-    Boolean(toDt);
+    Boolean(toDt) ||
+    Boolean(noReactionsOnly);
   const canSearch = Boolean(query.trim()) || filtersActive;
 
   const handleRefreshResults = () => {
@@ -376,6 +385,7 @@ export default function ChatSearchPanel({
       dateFilter,
       fromDt,
       toDt,
+      noReactionsOnly: Boolean(noReactionsOnly),
     });
   };
 
@@ -427,10 +437,11 @@ export default function ChatSearchPanel({
         dateFilter,
         fromDt,
         toDt,
+        noReactionsOnly: Boolean(noReactionsOnly),
       });
     }, 250);
     return () => clearTimeout(t);
-  }, [query, groupFilter, dateFilter, fromDt, toDt, onSearch]);
+  }, [query, groupFilter, dateFilter, fromDt, toDt, noReactionsOnly, onSearch]);
 
   useEffect(() => {
     if (!open) {
@@ -608,6 +619,27 @@ export default function ChatSearchPanel({
                       isDateUnavailable={isDateUnavailable}
                     />
                   </div>
+
+                  <label
+                    htmlFor="chat-search-no-reactions-only"
+                    className="flex cursor-pointer items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-2 dark:border-odp-borderSoft dark:bg-odp-bg/40"
+                    title="반응이 없는 메시지만 표시"
+                  >
+                    <span className="min-w-0 text-[11px] text-gray-500 dark:text-gray-400">
+                      반응 없는 메시지만
+                    </span>
+                    <Switch.Root
+                      id="chat-search-no-reactions-only"
+                      className={searchFilterSwitchRootClass}
+                      checked={Boolean(noReactionsOnly)}
+                      onCheckedChange={(next) =>
+                        onNoReactionsOnlyChange?.(Boolean(next))
+                      }
+                      aria-label="반응 없는 메시지만"
+                    >
+                      <Switch.Thumb className={searchFilterSwitchThumbClass} />
+                    </Switch.Root>
+                  </label>
                 </div>
               </Motion.div>
             ) : null}

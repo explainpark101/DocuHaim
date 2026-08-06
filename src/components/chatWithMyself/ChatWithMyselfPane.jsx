@@ -125,6 +125,12 @@ async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
       return { ok: false, ogSearchText: '' };
     }
   }
+  if (filters.noReactionsOnly) {
+    const reactions = Array.isArray(msg.reactions) ? msg.reactions : [];
+    if (reactions.length > 0) {
+      return { ok: false, ogSearchText: '' };
+    }
+  }
   if (filters.query) {
     const body = msg.body || '';
     const group = msg.group || '';
@@ -316,6 +322,7 @@ export default function ChatWithMyselfPane({
   const [searchDateFilter, setSearchDateFilter] = useState('');
   const [searchFromDt, setSearchFromDt] = useState('');
   const [searchToDt, setSearchToDt] = useState('');
+  const [searchNoReactionsOnly, setSearchNoReactionsOnly] = useState(false);
   const [searchFiltersUiOpen, setSearchFiltersUiOpen] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
@@ -1760,7 +1767,8 @@ export default function ChatWithMyselfPane({
         (filters?.groupFilter && filters.groupFilter !== '__all__') ||
         filters?.dateFilter ||
         filters?.fromDt ||
-        filters?.toDt;
+        filters?.toDt ||
+        filters?.noReactionsOnly;
       if (!active) {
         setSearchResults([]);
         setSearchCursor(0);
@@ -1930,6 +1938,8 @@ export default function ChatWithMyselfPane({
     onFromDtChange: setSearchFromDt,
     toDt: searchToDt,
     onToDtChange: setSearchToDt,
+    noReactionsOnly: searchNoReactionsOnly,
+    onNoReactionsOnlyChange: setSearchNoReactionsOnly,
     filtersOpen: searchFiltersUiOpen,
     onFiltersOpenChange: setSearchFiltersUiOpen,
   };
