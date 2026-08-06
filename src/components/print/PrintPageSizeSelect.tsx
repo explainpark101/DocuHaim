@@ -23,6 +23,7 @@ export default function PrintPageSizeSelect({ value, onValueChange }: Props) {
       >
         <Select.Trigger
           aria-label="인쇄 용지 크기"
+          data-print-toolbar="paper"
           className="inline-flex h-8 min-w-36 items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
         >
           <Select.Value />

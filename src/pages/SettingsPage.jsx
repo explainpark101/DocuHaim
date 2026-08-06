@@ -38,7 +38,11 @@ import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModel
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import { getLocalAppBuildId } from '@/utils/pwaUpdate';
 import { RadioGroup } from 'radix-ui';
-import { advancedSearchEngine } from '@/utils/advancedSearch';
+import {
+  advancedSearchEngine,
+  loadAdvancedSearchUiAnimationEnabled,
+  saveAdvancedSearchUiAnimationEnabled,
+} from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
 
@@ -107,6 +111,9 @@ export default function SettingsPage({
   );
   const [advancedSearchStatus, setAdvancedSearchStatus] = useState(() =>
     advancedSearchEngine.getStatus(),
+  );
+  const [advancedSearchUiAnimation, setAdvancedSearchUiAnimation] = useState(() =>
+    loadAdvancedSearchUiAnimationEnabled(),
   );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
@@ -1028,6 +1035,35 @@ export default function SettingsPage({
             색인합니다. 전체 볼트 색인은 아래 버튼으로 백그라운드에서 만듭니다.
           </p>
           <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !advancedSearchUiAnimation;
+                setAdvancedSearchUiAnimation(next);
+                saveAdvancedSearchUiAnimationEnabled(next);
+              }}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                advancedSearchUiAnimation
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={advancedSearchUiAnimation}
+              aria-label="열기/닫기 애니메이션"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  advancedSearchUiAnimation ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              열기/닫기 애니메이션 (기본 켜짐)
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                Spotlight 패널이 부드럽게 나타나고 사라집니다. 끄면 즉시 전환됩니다.
+              </span>
+            </span>
+          </label>
+          <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
               type="button"
               onClick={() => {

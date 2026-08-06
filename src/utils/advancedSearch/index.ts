@@ -12,6 +12,8 @@ export {
   saveAdvancedSearchIndexEnabled,
   loadAdvancedSearchIncludeOtherFiles,
   saveAdvancedSearchIncludeOtherFiles,
+  loadAdvancedSearchUiAnimationEnabled,
+  saveAdvancedSearchUiAnimationEnabled,
 } from './settings';
 export {
   advancedSearchEngine,
@@ -32,6 +34,30 @@ export {
 } from './commands';
 export type { AppCommand, AppCommandId, AppCommandContext } from './commands';
 export {
+  registerEditorActions,
+  runEditorAction,
+  hasEditorActions,
+  subscribeEditorActions,
+  EDITOR_ACTION_COMMANDS,
+} from './editorActions';
+export type { EditorActionId } from './editorActions';
+export {
+  registerPrintActions,
+  registerPrintTocProvider,
+  runPrintAction,
+  hasPrintActions,
+  subscribePrintActions,
+  focusPrintToolbar,
+  scrollPrintHeading,
+  PRINT_ACTION_COMMANDS,
+  PRINT_PAPER_SIZE_COMMANDS,
+} from './printActions';
+export type { PrintActionId, PrintTocEntry } from './printActions';
+export {
   requestOpenAdvancedSearch,
   subscribeOpenAdvancedSearch,
+} from './openRequest';
+export type {
+  AdvancedSearchOpenDetail,
+  AdvancedSearchOpenMode,
 } from './openRequest';

@@ -134,6 +134,7 @@ export default function PrintImageMaxSizeControls({
           ref={widthRef}
           type="text"
           inputMode="numeric"
+          data-print-toolbar="image-max"
           value={widthInput}
           onChange={(event) => {
             const next = event.target.value;

@@ -6,9 +6,34 @@ import {
   advancedSearchEngine,
   subscribeOpenAdvancedSearch,
   type AdvancedSearchHit,
+  type AdvancedSearchOpenMode,
 } from '@/utils/advancedSearch';
+import {
+  hasEditorActions,
+  runEditorAction,
+  subscribeEditorActions,
+} from '@/utils/advancedSearch/editorActions';
+import {
+  focusPrintToolbar,
+  hasPrintActions,
+  matchPrintTocEntries,
+  runPrintAction,
+  scrollPrintHeading,
+  subscribePrintActions,
+  type PrintToolbarFocusTarget,
+} from '@/utils/advancedSearch/printActions';
+import { requestOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 
+const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
+  'print-focus-back': 'back',
+  'print-focus-font': 'font',
+  'print-focus-toc': 'toc',
+  'print-focus-save': 'save',
+  'print-focus-export': 'export',
+  'print-focus-paper': 'paper',
+  'print-focus-image-max': 'image-max',
+};
 type TreeNode = {
   type?: string;
   path?: string;
@@ -34,6 +59,8 @@ export type AdvancedSearchHostProps = {
   /** Live editor markdown (preferred over currentFile.content for export). */
   editorContent?: string;
   theme?: 'light' | 'dark' | string;
+  /** Prefer print-oriented empty hints when on the export page. */
+  preferPrintActions?: boolean;
 };
 
 /**
@@ -45,10 +72,18 @@ export default function AdvancedSearchHost({
   currentFile = null,
   editorContent = '',
   theme = 'light',
+  preferPrintActions = false,
 }: AdvancedSearchHostProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState<AdvancedSearchOpenMode>('default');
   const [status, setStatus] = useState(() => advancedSearchEngine.getStatus());
+  const [editorActionsAvailable, setEditorActionsAvailable] = useState(() =>
+    hasEditorActions(),
+  );
+  const [printActionsAvailable, setPrintActionsAvailable] = useState(() =>
+    hasPrintActions(),
+  );
 
   useAdvancedSearchActivityStatus();
 
@@ -59,10 +94,27 @@ export default function AdvancedSearchHost({
   }, []);
 
   useEffect(() => {
-    return subscribeOpenAdvancedSearch(() => {
-      setOpen(true);
+    return subscribeEditorActions(() => {
+      setEditorActionsAvailable(hasEditorActions());
     });
   }, []);
+
+  useEffect(() => {
+    return subscribePrintActions(() => {
+      setPrintActionsAvailable(hasPrintActions());
+    });
+  }, []);
+
+  const openSearch = useCallback((mode: AdvancedSearchOpenMode = 'default') => {
+    setPickerMode(mode);
+    setOpen(true);
+  }, []);
+
+  useEffect(() => {
+    return subscribeOpenAdvancedSearch((detail) => {
+      openSearch(detail?.mode === 'print-paper' ? 'print-paper' : 'default');
+    });
+  }, [openSearch]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -70,26 +122,68 @@ export default function AdvancedSearchHost({
       if (e.key.toLowerCase() !== 'k') return;
       e.preventDefault();
       e.stopPropagation();
-      setOpen(true);
+      openSearch('default');
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [openSearch]);
+
+  const handleOpenChange = useCallback((next: boolean) => {
+    setOpen(next);
+    if (!next) setPickerMode('default');
   }, []);
 
   const handleSearch = useCallback(
     async (query: string) => {
-      return advancedSearchEngine.search(query, getTrees(), 50, {
+      if (pickerMode === 'print-paper') {
+        return advancedSearchEngine.search(query, [], 50, {
+          printPaperPickerMode: true,
+        });
+      }
+
+      const hits = await advancedSearchEngine.search(query, getTrees(), 50, {
         currentFile,
+        editorActionsAvailable,
+        printActionsAvailable,
       });
+
+      if (!printActionsAvailable) return hits;
+
+      const tocHits: AdvancedSearchHit[] = matchPrintTocEntries(query, 40).map(
+        (e, index) => ({
+          docId: `print-toc:${e.id}`,
+          kind: 'command',
+          path: e.id,
+          title: e.text,
+          preview: `H${e.level} · 목차로 스크롤`,
+          commandId: 'print-scroll-heading',
+          reasons: ['command'],
+          score: 190 - index,
+        }),
+      );
+
+      const seen = new Set<string>();
+      const merged: AdvancedSearchHit[] = [];
+      for (const hit of [...tocHits, ...hits]) {
+        if (seen.has(hit.docId)) continue;
+        seen.add(hit.docId);
+        merged.push(hit);
+        if (merged.length >= 50) break;
+      }
+      return merged;
     },
-    [getTrees, currentFile],
+    [
+      getTrees,
+      currentFile,
+      editorActionsAvailable,
+      printActionsAvailable,
+      pickerMode,
+    ],
   );
 
   const openExportPdf = useCallback(
     (opts: { useCurrentFile: boolean }) => {
-      const value = opts.useCurrentFile
-        ? String(editorContent ?? currentFile?.content ?? '')
-        : String(editorContent ?? currentFile?.content ?? '');
+      const value = String(editorContent ?? currentFile?.content ?? '');
       const file = opts.useCurrentFile || currentFile?.id ? currentFile : null;
       setPendingPrintReturnState({
         currentFile: file,
@@ -109,11 +203,49 @@ export default function AdvancedSearchHost({
   const handleSelect = useCallback(
     (hit: AdvancedSearchHit) => {
       if (hit.kind === 'command') {
-        if (hit.commandId === 'export-current') {
+        const commandId = hit.commandId;
+
+        if (commandId === 'print-scroll-heading' && hit.path) {
+          const headingId = hit.path;
+          window.setTimeout(() => {
+            scrollPrintHeading(headingId);
+          }, 0);
+          return;
+        }
+
+        if (commandId === 'print-change-paper') {
+          window.setTimeout(() => {
+            requestOpenAdvancedSearch({ mode: 'print-paper' });
+          }, 0);
+          return;
+        }
+
+        if (commandId && PRINT_FOCUS_TARGETS[commandId]) {
+          const target = PRINT_FOCUS_TARGETS[commandId];
+          window.setTimeout(() => {
+            focusPrintToolbar(target);
+          }, 0);
+          return;
+        }
+
+        if (commandId?.startsWith('print-')) {
+          window.setTimeout(() => {
+            runPrintAction(commandId);
+          }, 0);
+          return;
+        }
+
+        if (commandId?.startsWith('editor-')) {
+          window.setTimeout(() => {
+            runEditorAction(commandId);
+          }, 0);
+          return;
+        }
+        if (commandId === 'export-current') {
           openExportPdf({ useCurrentFile: true });
           return;
         }
-        if (hit.commandId === 'export-pdf') {
+        if (commandId === 'export-pdf') {
           openExportPdf({ useCurrentFile: Boolean(currentFile?.id) });
           return;
         }
@@ -136,12 +268,16 @@ export default function AdvancedSearchHost({
   return (
     <AdvancedSearchModal
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       onSearch={handleSearch}
       onSelectHit={handleSelect}
       indexEnabled={status.enabled}
       hasIndex={status.hasIndex}
       building={status.building}
+      editorActionsAvailable={editorActionsAvailable}
+      printActionsAvailable={printActionsAvailable}
+      preferPrintActions={preferPrintActions}
+      printPaperPickerMode={pickerMode === 'print-paper'}
     />
   );
 }

@@ -1,10 +1,19 @@
 /** Request opening Advanced Search from anywhere (e.g. Sidebar icon). */
 
-type Listener = (detail?: { source?: string }) => void;
+export type AdvancedSearchOpenMode = 'default' | 'print-paper';
+
+export type AdvancedSearchOpenDetail = {
+  source?: string;
+  mode?: AdvancedSearchOpenMode;
+};
+
+type Listener = (detail?: AdvancedSearchOpenDetail) => void;
 
 const listeners = new Set<Listener>();
 
-export function requestOpenAdvancedSearch(detail?: { source?: string }): void {
+export function requestOpenAdvancedSearch(
+  detail?: AdvancedSearchOpenDetail,
+): void {
   for (const listener of listeners) {
     try {
       listener(detail);

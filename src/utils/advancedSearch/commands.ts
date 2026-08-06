@@ -2,6 +2,16 @@
  * Built-in app destinations for Advanced Search (command palette shortcuts).
  */
 
+import {
+  EDITOR_ACTION_COMMANDS,
+  type EditorActionId,
+} from './editorActions';
+import {
+  PRINT_ACTION_COMMANDS,
+  PRINT_PAPER_SIZE_COMMANDS,
+  type PrintActionId,
+} from './printActions';
+
 export type AppCommandId =
   | 'home'
   | 'settings'
@@ -27,7 +37,9 @@ export type AppCommandId =
   | 'chat-search'
   | 'chat-pinned'
   | 'export-pdf'
-  | 'export-current';
+  | 'export-current'
+  | EditorActionId
+  | PrintActionId;
 
 export type AppCommand = {
   id: AppCommandId;
@@ -35,7 +47,7 @@ export type AppCommand = {
   title: string;
   /** Short description under the title. */
   description: string;
-  /** Route to navigate to (may include hash). */
+  /** Route to navigate to (may include hash). Empty for editor/print actions. */
   path: string;
   /** KO/EN keywords for matching (lowercased at match time). */
   keywords: string[];
@@ -49,6 +61,12 @@ export type AppCommandContext = {
     viewer?: string | null;
     type?: string | null;
   } | null;
+  /** True when MarkdownEditor has registered toolbar actions. */
+  editorActionsAvailable?: boolean;
+  /** True when ExportPDFPage has registered print actions. */
+  printActionsAvailable?: boolean;
+  /** Nested picker: only paper size commands. */
+  printPaperPickerMode?: boolean;
 };
 
 export const APP_COMMANDS: readonly AppCommand[] = [
@@ -287,9 +305,41 @@ function isOpenMarkdownFile(
   return /\.(md|markdown)$/i.test(name);
 }
 
-/** Static + contextual commands (e.g. export open document). */
+/** Static + contextual commands (e.g. export open document, editor/print toolbar). */
 export function getAppCommands(context?: AppCommandContext): AppCommand[] {
+  if (context?.printPaperPickerMode) {
+    return PRINT_PAPER_SIZE_COMMANDS.map((cmd) => ({
+      id: cmd.id,
+      title: cmd.title,
+      description: cmd.description,
+      path: '',
+      keywords: [...cmd.keywords],
+    }));
+  }
+
   const list: AppCommand[] = [...APP_COMMANDS];
+  if (context?.editorActionsAvailable) {
+    for (const cmd of EDITOR_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: cmd.keywords,
+      });
+    }
+  }
+  if (context?.printActionsAvailable) {
+    for (const cmd of PRINT_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: [...cmd.keywords],
+      });
+    }
+  }
   if (isOpenMarkdownFile(context?.currentFile)) {
     const name =
       String(context.currentFile.name || '').trim() ||

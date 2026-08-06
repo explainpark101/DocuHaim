@@ -200,6 +200,8 @@ export default function ChatComposer({
   fillParent = false,
   /** Storage-backend scope so drafts never cross S3 / Local / WebDAV. */
   draftScope = '',
+  /** Focus the message input once when the chat composer becomes ready. */
+  autoFocusOnMount = true,
 }) {
   const [value, setValue] = useState('');
   const [markdownEnabled, setMarkdownEnabled] = useState(false);
@@ -226,6 +228,7 @@ export default function ChatComposer({
   const markdownUserOffRef = useRef(false);
   const imageQueueRef = useRef(imageQueue);
   const prevEditTargetRef = useRef(editTarget);
+  const didAutofocusOnMountRef = useRef(false);
   const removedExistingPathsRef = useRef([]);
   const lineNumbersCompartmentRef = useRef(null);
   const lineNumbersViewsRef = useRef(new WeakSet());
@@ -592,44 +595,57 @@ export default function ChatComposer({
     syncEditorHeight,
   ]);
 
-  // Focus the editor when entering (or switching) reply mode.
-  useEffect(() => {
-    if (!replyTo?.id || editTarget) return undefined;
-    const root = wrapRef.current;
-    if (!root) return undefined;
-
-    let cancelled = false;
-    const focusComposer = () => {
-      if (cancelled) return;
-      if (useLightweightEditor) {
-        textareaRef.current?.focus?.();
+  const focusComposerInput = useCallback(() => {
+    if (useLightweightEditor) {
+      textareaRef.current?.focus?.();
+    } else {
+      const root = wrapRef.current;
+      if (!root) return;
+      const cmEl = root.querySelector('.cm-editor');
+      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+      if (view) {
+        view.focus();
       } else {
-        const cmEl = root.querySelector('.cm-editor');
-        const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
-        if (view) {
-          view.focus();
-        } else {
-          const content = root.querySelector('.cm-content');
-          content?.focus?.();
-        }
+        root.querySelector('.cm-content')?.focus?.();
       }
-      // Undo mobile browser scroll-into-view that pushes chat chrome off-screen.
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
+    }
+    // Undo mobile browser scroll-into-view that pushes chat chrome off-screen.
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [useLightweightEditor]);
 
-    // Delay so mobile message-actions dialog can finish closing first.
-    const raf = window.requestAnimationFrame(focusComposer);
-    const t1 = window.setTimeout(focusComposer, 50);
-    const t2 = window.setTimeout(focusComposer, 200);
+  const scheduleFocusComposer = useCallback(() => {
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      focusComposerInput();
+    };
+    // Retries cover lazy MdEditor mount and mobile dialog close timing.
+    const raf = window.requestAnimationFrame(run);
+    const t1 = window.setTimeout(run, 50);
+    const t2 = window.setTimeout(run, 200);
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(raf);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [replyTo?.id, editTarget, useLightweightEditor]);
+  }, [focusComposerInput]);
+
+  // Focus the message input when chat opens (composer draft ready).
+  useEffect(() => {
+    if (!autoFocusOnMount || !draftReady || editTarget) return undefined;
+    if (didAutofocusOnMountRef.current) return undefined;
+    didAutofocusOnMountRef.current = true;
+    return scheduleFocusComposer();
+  }, [autoFocusOnMount, draftReady, editTarget, scheduleFocusComposer]);
+
+  // Focus the editor when entering (or switching) reply mode.
+  useEffect(() => {
+    if (!replyTo?.id || editTarget) return undefined;
+    return scheduleFocusComposer();
+  }, [replyTo?.id, editTarget, scheduleFocusComposer]);
 
   // Install lineNumbers once; visibility is toggled via CSS class.
   useEffect(() => {

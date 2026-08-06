@@ -936,6 +936,23 @@ export default function ChatWithMyselfPane({
     return undefined;
   }, [location.hash, location.pathname, isMobileLayout]);
 
+  // Prefer composer focus on open; skip when deep-link opens another rail/modal.
+  const autoFocusComposer = useMemo(() => {
+    const raw = String(location.hash || '').replace(/^#/, '').toLowerCase();
+    if (!raw || raw.startsWith('msg-')) return true;
+    return ![
+      'settings',
+      'chat-settings',
+      'groups',
+      'group',
+      'dates',
+      'date',
+      'search',
+      'pinned',
+      'pins',
+    ].includes(raw);
+  }, [location.hash]);
+
   const confirmPendingMessages = useCallback((msgs, dateStr) => {
     if (!msgs?.length || !dateStr) return;
     const byId = new Map(msgs.map((m) => [m.id, m]));
@@ -2233,6 +2250,7 @@ export default function ChatWithMyselfPane({
                     bare
                     fillParent={!editTarget}
                     draftScope={storageScope}
+                    autoFocusOnMount={autoFocusComposer}
                     groups={groups}
                     selectedGroup={selectedGroup}
                     onSelectedGroupChange={setSelectedGroup}

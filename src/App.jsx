@@ -213,6 +213,11 @@ export default function App() {
     return (
       <div className="export-pdf-layout h-dvh min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white">
         <ExportPDFPage />
+        <AdvancedSearchHost
+          getTrees={() => []}
+          onOpenFile={() => undefined}
+          preferPrintActions
+        />
       </div>
     );
   }

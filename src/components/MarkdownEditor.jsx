@@ -17,6 +17,12 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import {
+  EDITOR_ACTION_COMMANDS,
+  registerEditorActions,
+} from '@/utils/advancedSearch/editorActions';
+import { subscribeOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
+import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { EditorView, drawSelection, lineNumbers, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import { useBase64ImageFold } from '@/hooks/useBase64ImageFold';
@@ -33,6 +39,8 @@ import {
   cursorLineDown,
   cursorLineUp,
   insertNewline,
+  redo,
+  undo,
 } from '@codemirror/commands';
 import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
@@ -417,6 +425,12 @@ export default function MarkdownEditor({
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
+  const valueRef = useRef(value);
+  const currentFileRef = useRef(currentFile);
+  const themeRef = useRef(theme);
+  valueRef.current = value;
+  currentFileRef.current = currentFile;
+  themeRef.current = theme;
   const { onChange: onChangeWithUndoHistory } = usePerFileEditorUndoHistory({
     currentFile,
     value,
@@ -436,6 +450,123 @@ export default function MarkdownEditor({
   const activeTransformRef = useRef(null);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
+
+  /** Selection before Advanced Search steals focus (so bold/etc still apply to the prior range). */
+  const asSelectionSnapshotRef = useRef(null);
+
+  useEffect(() => {
+    if (previewOnly) return undefined;
+
+    const snapshotSelection = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view) return;
+      asSelectionSnapshotRef.current = view.state.selection;
+    };
+
+    const onKeyDown = (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (e.key.toLowerCase() !== 'k') return;
+      snapshotSelection();
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    const unsubOpen = subscribeOpenAdvancedSearch(snapshotSelection);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      unsubOpen();
+    };
+  }, [previewOnly]);
+
+  // Expose toolbar actions to Advanced Search (Cmd/Ctrl+K) while this editor is mounted.
+  useEffect(() => {
+    if (previewOnly) return undefined;
+
+    const getApi = () => editorRef.current?.value ?? editorRef.current;
+
+    const restoreSelectionIfNeeded = () => {
+      const api = getApi();
+      const view = api?.getEditorView?.();
+      const snap = asSelectionSnapshotRef.current;
+      if (!view || !snap) return;
+      view.dispatch({ selection: snap, scrollIntoView: true });
+    };
+
+    const runDirective = (direct) => {
+      const api = getApi();
+      if (!api) return;
+      restoreSelectionIfNeeded();
+      api.focus?.();
+      if (typeof api.execCommand === 'function') {
+        api.execCommand(direct);
+      }
+    };
+
+    const insertPgbr = () => {
+      const api = getApi();
+      if (!api) return;
+      const insertion = '\n\n<pgbr/>\n\n';
+      if (typeof api.insert === 'function') {
+        api.insert(() => ({
+          targetValue: insertion,
+          select: false,
+          deviationStart: 0,
+          deviationEnd: 0,
+        }));
+        api.focus?.();
+        return;
+      }
+      const view = api.getEditorView?.();
+      if (!view) return;
+      view.dispatch(view.state.replaceSelection(insertion));
+      view.focus?.();
+    };
+
+    const openExport = () => {
+      const content = valueRef.current ?? '';
+      const file = currentFileRef.current;
+      setPendingPrintReturnState({ currentFile: file, editorContent: content });
+      navigate('/export-pdf', {
+        state: {
+          value: content,
+          theme: themeRef.current === 'dark' ? 'dark' : 'light',
+          currentFile: file,
+        },
+      });
+    };
+
+    /** @type {Record<string, () => void>} */
+    const handlers = {};
+    for (const cmd of EDITOR_ACTION_COMMANDS) {
+      if (cmd.directive) {
+        handlers[cmd.id] = () => runDirective(cmd.directive);
+      }
+    }
+    handlers['editor-revoke'] = () => {
+      restoreSelectionIfNeeded();
+      const view = getApi()?.getEditorView?.();
+      if (!view) return;
+      view.focus();
+      undo(view);
+    };
+    handlers['editor-next'] = () => {
+      restoreSelectionIfNeeded();
+      const view = getApi()?.getEditorView?.();
+      if (!view) return;
+      view.focus();
+      redo(view);
+    };
+    handlers['editor-llm-assist'] = () => setLlmAssistOpen(true);
+    handlers['editor-export-pdf'] = openExport;
+    handlers['editor-pgbr'] = () => {
+      restoreSelectionIfNeeded();
+      insertPgbr();
+    };
+    handlers['editor-heading-remap'] = () => setHeadingRemapOpen(true);
+    handlers['editor-checklist-progress'] = () => setChecklistProgressOpen(true);
+
+    return registerEditorActions(handlers);
+  }, [previewOnly, navigate]);
   const {
     width: catalogWidth,
     isResizing: catalogResizing,

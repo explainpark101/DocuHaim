@@ -12,12 +12,18 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
 import {
+  PRINT_PAGE_SIZES,
   buildPrintLayoutCssVars,
   buildPrintPageAtRule,
   getPrintPageInnerSizePx,
   loadPrintPageLayout,
   savePrintPageLayout,
 } from '@/utils/printPageLayout';
+import {
+  paperActionId,
+  registerPrintActions,
+  registerPrintTocProvider,
+} from '@/utils/advancedSearch/printActions';
 import { withFontFallback } from '@/utils/fontFallback';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
@@ -1013,6 +1019,35 @@ export default function ExportPDFPage() {
     });
   }, []);
 
+  // Advanced Search: print toolbar actions + live TOC headings.
+  useEffect(() => {
+    /** @type {Record<string, () => void>} */
+    const handlers = {
+      'print-save': () => {
+        void handleSave();
+      },
+      'print-font-settings': () => setFontModalOpen(true),
+      'print-export': () => handleExport(),
+      'print-toggle-toc': () => setTocVisible((v) => !v),
+    };
+    for (const size of PRINT_PAGE_SIZES) {
+      handlers[paperActionId(size.id)] = () => {
+        updatePrintLayout({ pageSizeId: size.id });
+      };
+    }
+    return registerPrintActions(handlers);
+  }, [handleSave, handleExport, updatePrintLayout]);
+
+  useEffect(() => {
+    return registerPrintTocProvider(() =>
+      tocItems.map((item) => ({
+        id: item.id,
+        text: item.text,
+        level: item.level,
+      })),
+    );
+  }, [tocItems]);
+
   const fontStyleVars = {
     ...buildPrintLayoutCssVars(printLayout),
     '--print-font-body': withFontFallback(fonts.body),
@@ -1037,6 +1072,7 @@ export default function ExportPDFPage() {
           <button
             type="button"
             onClick={handleBack}
+            data-print-toolbar="back"
             className="flex items-center gap-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg px-3 py-2 rounded transition"
             aria-label="뒤로 가기"
           >
@@ -1050,6 +1086,7 @@ export default function ExportPDFPage() {
             <button
               type="button"
               onClick={() => setFontModalOpen(true)}
+              data-print-toolbar="font"
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
               aria-label="폰트 설정"
             >
@@ -1059,6 +1096,7 @@ export default function ExportPDFPage() {
             <button
               type="button"
               onClick={() => setTocVisible((v) => !v)}
+              data-print-toolbar="toc"
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
               aria-label={tocVisible ? '목차 숨기기' : '목차 보이기'}
               aria-pressed={tocVisible}
@@ -1070,6 +1108,7 @@ export default function ExportPDFPage() {
             <button
               type="button"
               onClick={handleSave}
+              data-print-toolbar="save"
               disabled={!currentFile?.id || isSaving || !isDirty}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded transition disabled:opacity-50 disabled:cursor-not-allowed text-white bg-blue-600 hover:bg-blue-700"
               aria-label="저장"
@@ -1081,6 +1120,7 @@ export default function ExportPDFPage() {
             <button
               type="button"
               className="md-editor-btn"
+              data-print-toolbar="export"
               onClick={handleExport}
             >
               내보내기
