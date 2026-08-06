@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
@@ -35,7 +35,6 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import EditorPane from '@/components/EditorPane';
-import ChatWithMyselfPane from '@/components/chatWithMyself/ChatWithMyselfPane';
 import ShareTargetGate, {
   useChatStorageCtx,
 } from '@/components/chatWithMyself/ShareTargetGate';
@@ -78,9 +77,19 @@ import { MoveFileModal } from '@/components/modals/MoveFileModal';
 import { MoveFolderModal } from '@/components/modals/MoveFolderModal';
 import { CreateItemModal } from '@/components/modals/CreateItemModal';
 import { DownloadMethodModal } from '@/components/modals/DownloadMethodModal';
-import SettingsPage from '@/pages/SettingsPage';
-import ExportPDFPage from '@/pages/ExportPDFPage';
-import LlmAssistPopoutPage from '@/pages/LlmAssistPopoutPage';
+
+const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const ExportPDFPage = lazy(() => import('@/pages/ExportPDFPage'));
+const LlmAssistPopoutPage = lazy(() => import('@/pages/LlmAssistPopoutPage'));
+
+function RouteSuspenseFallback() {
+  return (
+    <div className="flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted">
+      로딩 중…
+    </div>
+  );
+}
 import { useRecording } from '@/hooks/useRecording';
 import { getSyncKeyForRecording, runEncodeAndWritePipeline } from '@/utils/recordingPipeline';
 import {
@@ -245,11 +254,19 @@ export default function App() {
   if (location.pathname === '/llm-assist-popout') {
     return (
       <div className="llm-assist-popout-layout min-h-screen max-w-screen bg-white dark:bg-odp-bgSofter">
-        <LlmAssistPopoutPage />
+        <Suspense fallback={<RouteSuspenseFallback />}>
+          <LlmAssistPopoutPage />
+        </Suspense>
       </div>
     );
   }
   return <MainApp />;
+}
+
+function getExt(fileName) {
+  if (!fileName || typeof fileName !== 'string') return '';
+  const lastDot = fileName.lastIndexOf('.');
+  return lastDot > 0 ? fileName.slice(lastDot) : '';
 }
 
 function MainApp() {
@@ -623,17 +640,11 @@ function MainApp() {
     setEditedFileName(currentFile?.name ?? '');
   }, [currentFile?.id, currentFile?.name]);
 
-  const getExt = (fileName) => {
-    if (!fileName || typeof fileName !== 'string') return '';
-    const lastDot = fileName.lastIndexOf('.');
-    return lastDot > 0 ? fileName.slice(lastDot) : '';
-  };
-
-  const hasSuffixChange = () => {
+  const hasSuffixChange = useCallback(() => {
     if (!currentFile?.name) return false;
     const trimmed = (editedFileName ?? '').trim();
     return trimmed !== currentFile.name && getExt(trimmed) !== getExt(currentFile.name);
-  };
+  }, [currentFile?.name, editedFileName]);
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 768px)');
@@ -2092,12 +2103,15 @@ function MainApp() {
   }, [scriptsLoaded, isUnlocked, storageMode, s3Creds.bucket, loadS3Files, getS3Client, addIndicator, removeIndicator]);
 
   // Recording list + selected recording URL/sync load
+  const currentFileId = currentFile?.id;
+  const currentFileType = currentFile?.type;
+  const currentFileViewer = currentFile?.viewer;
   useEffect(() => {
     const pathStorageTypes = ['s3', 'local', 'webdav'];
     if (
-      !currentFile ||
-      !pathStorageTypes.includes(currentFile.type) ||
-      currentFile.viewer !== 'markdown'
+      currentFileId == null ||
+      !pathStorageTypes.includes(currentFileType) ||
+      currentFileViewer !== 'markdown'
     ) {
       setRecordingsList([]);
       setSelectedRecordingKey(null);
@@ -2105,25 +2119,25 @@ function MainApp() {
       setRecordingSyncData([]);
       return;
     }
-    const noteKey = currentFile.id;
+    const noteKey = currentFileId;
     const tree =
-      currentFile.type === 's3'
+      currentFileType === 's3'
         ? s3Tree
-        : currentFile.type === 'webdav'
+        : currentFileType === 'webdav'
           ? webdavTree
           : localTree;
     const list = getRecordingKeysFromTree(tree, noteKey);
     setRecordingsList(list);
     setSelectedRecordingKey(list.length > 0 ? list[0].key : null);
-  }, [currentFile?.id, currentFile?.type, currentFile?.viewer, s3Tree, localTree, webdavTree]);
+  }, [currentFileId, currentFileType, currentFileViewer, s3Tree, localTree, webdavTree]);
 
   useEffect(() => {
-    if (!selectedRecordingKey || !currentFile) {
+    if (!selectedRecordingKey || !currentFileType) {
       setRecordingAudioUrl('');
       setRecordingSyncData([]);
       return;
     }
-    const storageType = currentFile.type;
+    const storageType = currentFileType;
     if (!['s3', 'local', 'webdav'].includes(storageType)) {
       setRecordingAudioUrl('');
       setRecordingSyncData([]);
@@ -2168,7 +2182,7 @@ function MainApp() {
       setRecordingAudioUrl('');
       setRecordingSyncData([]);
     };
-  }, [selectedRecordingKey, currentFile?.type, getBackendForType]);
+  }, [selectedRecordingKey, currentFileType, getBackendForType]);
 
   // Mobile: poll S3 every 30s and refresh if S3 has newer LastModified
   useEffect(() => {
@@ -4514,7 +4528,7 @@ function MainApp() {
     );
   };
 
-  const saveFile = async (fileOverride = null, options = {}) => {
+  const saveFile = useCallback(async (fileOverride = null, options = {}) => {
     const {
       skipSuffixCheck = false,
       skipCoverChangeCheck = false,
@@ -4676,7 +4690,18 @@ function MainApp() {
       removeIndicator(indicatorId);
       setIsSaving(false);
     }
-  };
+  }, [
+    currentFile,
+    hasSuffixChange,
+    getS3Client,
+    s3Creds.bucket,
+    loadS3Files,
+    downloadSessionWorkspace,
+    webdavConfig,
+    refreshWebdavTree,
+    addIndicator,
+    removeIndicator,
+  ]);
 
   useEffect(() => {
     saveFileRef.current = saveFile;
@@ -6302,7 +6327,7 @@ function MainApp() {
 
   useEffect(() => {
     if (currentFile?.id) prevEditorContentRef.current = editorContent;
-  }, [currentFile?.id]);
+  }, [currentFile?.id, editorContent]);
 
   const handleEditorChange = (value) => {
     editorContentRef.current = value;
@@ -6455,13 +6480,15 @@ function MainApp() {
     return (
       <div className="export-pdf-layout h-dvh min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white">
         <UserWebfontStyles />
-        <ExportPDFPage
-          documentValue={documentValue}
-          documentFile={documentFile}
-          openCoverEdit={Boolean(navState?.openCoverEdit)}
-          isDocumentLoading={waitingForRouteDoc}
-          hasNavigationSession={Boolean(navState) || Boolean(routeExportPath)}
-        />
+        <Suspense fallback={<RouteSuspenseFallback />}>
+          <ExportPDFPage
+            documentValue={documentValue}
+            documentFile={documentFile}
+            openCoverEdit={Boolean(navState?.openCoverEdit)}
+            isDocumentLoading={waitingForRouteDoc}
+            hasNavigationSession={Boolean(navState) || Boolean(routeExportPath)}
+          />
+        </Suspense>
         <AdvancedSearchHost
           getTrees={() =>
             storageMode === STORAGE_MODE_LOCAL
@@ -6744,113 +6771,117 @@ function MainApp() {
             <Route
               path="/chat"
               element={
-                <ChatWithMyselfPane
-                  storageMode={storageMode}
-                  getS3Client={getS3Client}
-                  s3Bucket={s3Creds.bucket}
-                  localRootHandle={localRootHandle}
-                  webdavConfig={webdavConfig}
-                  theme={theme}
-                  isMobileLayout={isMobile}
-                  sidebarOpen={sidebarOpen}
-                  onOpenSidebar={() => setSidebarOpen(true)}
-                  s3Tree={s3Tree}
-                  localTree={localTree}
-                  webdavTree={webdavTree}
-                  shareGroupSend={shareGroupSend}
-                  onShareGroupSendConsumed={handleShareGroupSendConsumed}
-                  onOpenNote={handleOpenNoteFromChat}
-                  selectPathAfterCreateFolder={addToNoteSelectPath}
-                  onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}
-                  onRequestCreateFolderForNote={(parentPath, parentDirHandle) => {
-                    setCreateModalContext({
-                      storageType:
-                        storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'
-                          ? storageMode
-                          : 's3',
-                      parentPath,
-                      parentDirHandle,
-                      type: 'folder',
-                      fromAddToNoteModal: true,
-                    });
-                    setCreateModalOpen(true);
-                  }}
-                  onRequestMoveFolder={handleRequestMoveFolder}
-                  onCreateNoteFromMessage={handleCreateNoteFromChatMessage}
-                  getPresignedUrlForPath={getChatImageUrlForPath}
-                  onDropOnFolder={handleDropOnFolder}
-                  dropTarget={dropTarget}
-                  onLoadLocalFolderChildren={loadLocalFolderChildren}
-                  localFolderLoadingPath={localFolderLoadingPath}
-                />
+                <Suspense fallback={<RouteSuspenseFallback />}>
+                  <ChatWithMyselfPane
+                    storageMode={storageMode}
+                    getS3Client={getS3Client}
+                    s3Bucket={s3Creds.bucket}
+                    localRootHandle={localRootHandle}
+                    webdavConfig={webdavConfig}
+                    theme={theme}
+                    isMobileLayout={isMobile}
+                    sidebarOpen={sidebarOpen}
+                    onOpenSidebar={() => setSidebarOpen(true)}
+                    s3Tree={s3Tree}
+                    localTree={localTree}
+                    webdavTree={webdavTree}
+                    shareGroupSend={shareGroupSend}
+                    onShareGroupSendConsumed={handleShareGroupSendConsumed}
+                    onOpenNote={handleOpenNoteFromChat}
+                    selectPathAfterCreateFolder={addToNoteSelectPath}
+                    onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}
+                    onRequestCreateFolderForNote={(parentPath, parentDirHandle) => {
+                      setCreateModalContext({
+                        storageType:
+                          storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'
+                            ? storageMode
+                            : 's3',
+                        parentPath,
+                        parentDirHandle,
+                        type: 'folder',
+                        fromAddToNoteModal: true,
+                      });
+                      setCreateModalOpen(true);
+                    }}
+                    onRequestMoveFolder={handleRequestMoveFolder}
+                    onCreateNoteFromMessage={handleCreateNoteFromChatMessage}
+                    getPresignedUrlForPath={getChatImageUrlForPath}
+                    onDropOnFolder={handleDropOnFolder}
+                    dropTarget={dropTarget}
+                    onLoadLocalFolderChildren={loadLocalFolderChildren}
+                    localFolderLoadingPath={localFolderLoadingPath}
+                  />
+                </Suspense>
               }
             />
             <Route
               path="/settings"
               element={
-                <SettingsPage
-                  s3Creds={s3Creds}
-                  masterPassword={masterPassword}
-                  onSaveS3Creds={handleSaveS3Creds}
-                  storageMode={storageMode}
-                  onStorageModeChange={setStorageMode}
-                  webdavConfig={webdavConfig}
-                  onSaveWebdavConfig={async (next) => {
-                    setWebdavConfig(next);
-                    await saveWebdavConfig(next, masterPassword || undefined);
-                    if (storageMode === STORAGE_MODE_WEBDAV) {
-                      await refreshWebdavTree();
+                <Suspense fallback={<RouteSuspenseFallback />}>
+                  <SettingsPage
+                    s3Creds={s3Creds}
+                    masterPassword={masterPassword}
+                    onSaveS3Creds={handleSaveS3Creds}
+                    storageMode={storageMode}
+                    onStorageModeChange={setStorageMode}
+                    webdavConfig={webdavConfig}
+                    onSaveWebdavConfig={async (next) => {
+                      setWebdavConfig(next);
+                      await saveWebdavConfig(next, masterPassword || undefined);
+                      if (storageMode === STORAGE_MODE_WEBDAV) {
+                        await refreshWebdavTree();
+                      }
+                      showAlert({
+                        title: '연결 정보',
+                        message: '연결 정보 업데이트가 완료되었습니다.',
+                      });
+                    }}
+                    onExportCreds={handleExportCreds}
+                    onImportClick={() => fileInputRef.current?.click()}
+                    showHiddenFolders={showHiddenFolders}
+                    onToggleHiddenFolders={() =>
+                      setSettingsToggle('settings-show-hidden', !showHiddenFolders)
                     }
-                    showAlert({
-                      title: '연결 정보',
-                      message: '연결 정보 업데이트가 완료되었습니다.',
-                    });
-                  }}
-                  onExportCreds={handleExportCreds}
-                  onImportClick={() => fileInputRef.current?.click()}
-                  showHiddenFolders={showHiddenFolders}
-                  onToggleHiddenFolders={() =>
-                    setSettingsToggle('settings-show-hidden', !showHiddenFolders)
-                  }
-                  showTrashFolder={showTrashFolder}
-                  onToggleTrashFolder={() =>
-                    setSettingsToggle('settings-show-trash', !showTrashFolder)
-                  }
-                  hideRecordingCompanions={hideRecordingCompanions}
-                  treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
-                  treeHoverExpandSettings={treeHoverExpandSettings}
-                  onTreeHoverExpandSettingsChange={setTreeHoverExpandSettings}
-                  onToggleHideRecordingCompanions={() =>
-                    setSettingsToggle('settings-hide-recording', !hideRecordingCompanions)
-                  }
-                  onToggleTreeStickyFolderPath={() =>
-                    setSettingsToggle('settings-tree-sticky', !treeStickyFolderPathEnabled)
-                  }
-                  onRequestClose={handleSettingsClose}
-                  webauthnSupported={webauthnPRFSupported}
-                  webauthnEnabled={isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword}
-                  webauthnStorageOnly={isStoredWithWebAuthn()}
-                  onEnableWebAuthn={enableWebAuthnUnlock}
-                  onDisableWebAuthn={disableWebAuthnUnlock}
-                  snippetConfig={snippetConfig}
-                  onChangeSnippetConfig={handleChangeSnippetConfig}
-                  onSaveSnippetConfig={handleSaveSnippetConfig}
-                  isSavingSnippets={isSavingSnippets}
-                  snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal || snippetLoadedFromWebdav}
-                  editorType={editorType}
-                  onEditorTypeChange={handleEditorTypeChange}
-                  isMobileLayout={isMobile}
-                  sidebarOpen={sidebarOpen}
-                  sidebarCollapsed={sidebarCollapsed}
-                  onOpenSidebar={() => setSidebarOpen(true)}
-                  getGeminiApiKey={getGeminiApiKey}
-                  onCheckAppUpdate={handleCheckAppUpdate}
-                  isCheckingAppUpdate={isCheckingAppUpdate}
-                  latestAppBuildId={appBuildRemoteId}
-                  onScanStorageUsage={scanActiveStorageUsageTree}
-                  canScanStorageUsage={canScanStorageUsage}
-                  onOpenStorageUsageFile={handleOpenStorageUsageFile}
-                />
+                    showTrashFolder={showTrashFolder}
+                    onToggleTrashFolder={() =>
+                      setSettingsToggle('settings-show-trash', !showTrashFolder)
+                    }
+                    hideRecordingCompanions={hideRecordingCompanions}
+                    treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
+                    treeHoverExpandSettings={treeHoverExpandSettings}
+                    onTreeHoverExpandSettingsChange={setTreeHoverExpandSettings}
+                    onToggleHideRecordingCompanions={() =>
+                      setSettingsToggle('settings-hide-recording', !hideRecordingCompanions)
+                    }
+                    onToggleTreeStickyFolderPath={() =>
+                      setSettingsToggle('settings-tree-sticky', !treeStickyFolderPathEnabled)
+                    }
+                    onRequestClose={handleSettingsClose}
+                    webauthnSupported={webauthnPRFSupported}
+                    webauthnEnabled={isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword}
+                    webauthnStorageOnly={isStoredWithWebAuthn()}
+                    onEnableWebAuthn={enableWebAuthnUnlock}
+                    onDisableWebAuthn={disableWebAuthnUnlock}
+                    snippetConfig={snippetConfig}
+                    onChangeSnippetConfig={handleChangeSnippetConfig}
+                    onSaveSnippetConfig={handleSaveSnippetConfig}
+                    isSavingSnippets={isSavingSnippets}
+                    snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal || snippetLoadedFromWebdav}
+                    editorType={editorType}
+                    onEditorTypeChange={handleEditorTypeChange}
+                    isMobileLayout={isMobile}
+                    sidebarOpen={sidebarOpen}
+                    sidebarCollapsed={sidebarCollapsed}
+                    onOpenSidebar={() => setSidebarOpen(true)}
+                    getGeminiApiKey={getGeminiApiKey}
+                    onCheckAppUpdate={handleCheckAppUpdate}
+                    isCheckingAppUpdate={isCheckingAppUpdate}
+                    latestAppBuildId={appBuildRemoteId}
+                    onScanStorageUsage={scanActiveStorageUsageTree}
+                    canScanStorageUsage={canScanStorageUsage}
+                    onOpenStorageUsageFile={handleOpenStorageUsageFile}
+                  />
+                </Suspense>
               }
             />
             <Route
@@ -7064,7 +7095,7 @@ function MainApp() {
                 className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSofter text-gray-700 dark:text-odp-fgStrong text-[10px] md:text-[11px] shrink-0"
                 title={`녹음 업로드 큐 - 대기 ${recordingQueueStats.pending}, 업로드중 ${recordingQueueStats.uploading}, 실패 ${recordingQueueStats.failed}`}
               >
-                <span className="truncate max-w-[160px] md:max-w-[220px]">
+                <span className="truncate max-w-40 md:max-w-55">
                   녹음 업로드:{" "}
                   {recordingQueueStats.uploading > 0 || recordingPipelineStatus === '업로드 중'
                     ? "업로드 중"

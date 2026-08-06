@@ -1,10 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Connect, type Plugin, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import fs from 'node:fs';
-import path from 'path';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const isElectron = process.env.VITE_ELECTRON === 'true';
 const basePath = process.env.VITE_BASE_PATH || '/';
 const normalizedBase = basePath.replace(/\/?$/, '/');
@@ -16,12 +18,12 @@ const appBuildId =
 // Expose to the client as import.meta.env.VITE_APP_BUILD_ID
 process.env.VITE_APP_BUILD_ID = appBuildId;
 
-function isBuildIdRequest(urlPath) {
+function isBuildIdRequest(urlPath: string | undefined): boolean {
   const pathname = String(urlPath || '').split('?')[0];
   return pathname === '/build-id.json' || pathname === `${normalizedBase}build-id.json`;
 }
 
-function emitBuildIdPlugin() {
+function emitBuildIdPlugin(): Plugin {
   const payload = JSON.stringify({ id: appBuildId });
   return {
     name: 'emit-build-id',
@@ -47,10 +49,10 @@ function emitBuildIdPlugin() {
 }
 
 /** `/docs` (no slash) → `/docs/` so SPA history fallback does not serve the app shell. */
-function docsTrailingSlashPlugin() {
+function docsTrailingSlashPlugin(): Plugin {
   const bareDocsPath = `${normalizedBase.replace(/\/$/, '')}/docs`.replace(/\/{2,}/g, '/');
 
-  const redirectBareDocs = (req, res, next) => {
+  const redirectBareDocs: Connect.NextHandleFunction = (req, res, next) => {
     const url = new URL(req.url || '/', 'http://vite.local');
     if (url.pathname !== bareDocsPath) {
       next();
@@ -72,7 +74,7 @@ function docsTrailingSlashPlugin() {
     closeBundle() {
       // Netlify / Cloudflare Pages: send bare /docs to /docs/ (static files still win).
       const redirects = `${bareDocsPath}  ${bareDocsPath}/  301\n`;
-      const outDir = path.resolve(__dirname, 'dist');
+      const outDir = path.resolve(rootDir, 'dist');
       try {
         fs.mkdirSync(outDir, { recursive: true });
         fs.writeFileSync(path.join(outDir, '_redirects'), redirects);
@@ -83,7 +85,7 @@ function docsTrailingSlashPlugin() {
   };
 }
 
-const plugins = [
+const plugins: PluginOption[] = [
   react({
     // Keep node_modules out; also skip VitePress caches (Babel would otherwise
     // transform huge prebundled deps under .vitepress/cache/deps).
@@ -170,20 +172,20 @@ if (!isElectron) {
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
       },
       injectManifest: {
         // Do not precache HTML (navigateFallback stays unset).
@@ -196,8 +198,86 @@ if (!isElectron) {
         enabled: true,
         type: 'module',
       },
-    })
+    }),
   );
+}
+
+/**
+ * Split heavy vendor graphs out of the main entry chunk.
+ * Paths are matched against Rollup's resolved module id (normalized to `/`).
+ */
+function manualChunks(id: string): string | undefined {
+  const normalizedId = id.replace(/\\/g, '/');
+  if (!normalizedId.includes('/node_modules/')) return;
+
+  if (
+    normalizedId.includes('/node_modules/md-editor-rt/') ||
+    normalizedId.includes('/node_modules/@vavt/')
+  ) {
+    return 'vendor-md-editor';
+  }
+  if (
+    normalizedId.includes('/node_modules/@aws-sdk/') ||
+    normalizedId.includes('/node_modules/@smithy/')
+  ) {
+    return 'vendor-aws';
+  }
+  if (
+    normalizedId.includes('/node_modules/monaco-editor/') ||
+    normalizedId.includes('/node_modules/@monaco-editor/')
+  ) {
+    return 'vendor-monaco';
+  }
+  if (
+    normalizedId.includes('/node_modules/novel/') ||
+    normalizedId.includes('/node_modules/@tiptap/') ||
+    normalizedId.includes('/node_modules/prosemirror-')
+  ) {
+    return 'vendor-novel';
+  }
+  if (
+    normalizedId.includes('/node_modules/emoji-mart/') ||
+    normalizedId.includes('/node_modules/@emoji-mart/')
+  ) {
+    return 'vendor-emoji';
+  }
+  if (normalizedId.includes('/node_modules/@zip.js/')) {
+    return 'vendor-zip';
+  }
+  if (normalizedId.includes('/node_modules/garu-ko/')) {
+    return 'vendor-garu-ko';
+  }
+  if (
+    normalizedId.includes('/node_modules/motion/') ||
+    normalizedId.includes('/node_modules/framer-motion/')
+  ) {
+    return 'vendor-motion';
+  }
+  if (normalizedId.includes('/node_modules/lucide-react/')) {
+    return 'vendor-lucide';
+  }
+  if (
+    normalizedId.includes('/node_modules/react-aria-components/') ||
+    normalizedId.includes('/node_modules/@react-aria/') ||
+    normalizedId.includes('/node_modules/@react-stately/') ||
+    normalizedId.includes('/node_modules/@internationalized/')
+  ) {
+    return 'vendor-react-aria';
+  }
+  if (
+    normalizedId.includes('/node_modules/radix-ui/') ||
+    normalizedId.includes('/node_modules/@radix-ui/')
+  ) {
+    return 'vendor-radix';
+  }
+  if (
+    normalizedId.includes('/node_modules/react-dom/') ||
+    normalizedId.includes('/node_modules/react-router/') ||
+    normalizedId.includes('/node_modules/scheduler/') ||
+    /\/node_modules\/react\//.test(normalizedId)
+  ) {
+    return 'vendor-react';
+  }
 }
 
 export default defineConfig({
@@ -207,6 +287,15 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['garu-ko'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks,
+      },
+    },
+    // Heavy editors (md-editor, novel, monaco) still exceed 500 kB alone.
+    chunkSizeWarningLimit: 1200,
+  },
   server: {
     watch: {
       ignored: ['**/.vitepress/**'],
@@ -214,10 +303,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    }
+      '@': path.resolve(rootDir, './src'),
+    },
   },
   worker: {
     format: 'es',
   },
-})
+});

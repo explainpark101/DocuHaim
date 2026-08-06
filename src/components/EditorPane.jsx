@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
 import {
   IconCloud,
   IconChevronDown,
@@ -15,17 +15,26 @@ import {
 } from '@/components/icons';
 import AudioLevelIndicator from '@/components/AudioLevelIndicator';
 import RecordingDropdownButton from '@/components/RecordingDropdownButton';
-import MarkdownEditor from '@/components/MarkdownEditor';
-import NovelMarkdownEditor from '@/components/NovelMarkdownEditor';
 import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
-import MonacoTextEditor from '@/components/MonacoTextEditor';
-import HtmlSvgPreviewEditor from '@/components/HtmlSvgPreviewEditor';
 import Button from '@/components/Button';
 import { ArrowLeftRight, ListTree, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
+
+const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
+const NovelMarkdownEditor = lazy(() => import('@/components/NovelMarkdownEditor'));
+const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
+const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
+
+function EditorPaneSuspenseFallback() {
+  return (
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted">
+      에디터 로딩 중…
+    </div>
+  );
+}
 
 export default function EditorPane({
   currentFile,
@@ -605,46 +614,50 @@ export default function EditorPane({
                   audioRef={recordingAudioRef}
                   theme={theme}
                 />
-              ) : effectiveEditorType === EDITOR_TYPE_NOVEL ? (
-                <NovelMarkdownEditor
-                  key={currentFile?.id ?? 'novel-md'}
-                  documentKey={currentFile?.id ?? ''}
-                  value={editorContent}
-                  onChange={onChangeEditor}
-                  onSave={onSave}
-                  theme={theme}
-                  currentFile={currentFile}
-                  previewOnly={previewOnly}
-                  tocVisible={novelTocVisible}
-                  onTocRequestClose={() => setNovelTocVisible(false)}
-                  mobileTocOverlayTopPx={isMobileLayout ? mobileTocOverlayTopPx : null}
-                  onRegisterFlushBeforeSave={(fn) => {
-                    novelFlushBeforeSaveRef.current = fn;
-                  }}
-                  onUploadImage={onUploadImage}
-                  isUploadingEditorImage={isUploadingEditorImage}
-                  uploadImagePercent={uploadImagePercent}
-                  onCancelUploadImage={onCancelUploadImage}
-                  onResolveWikiImageUrl={onResolveWikiImageUrl}
-                />
               ) : (
-                <MarkdownEditor
-                  value={editorContent}
-                  onChange={onChangeEditor}
-                  onSave={onSave}
-                  theme={theme}
-                  currentFile={currentFile}
-                  previewOnly={previewOnly}
-                  isMobileLayout={isMobileLayout}
-                  onUploadImage={onUploadImage}
-                  isUploadingEditorImage={isUploadingEditorImage}
-                  uploadImagePercent={uploadImagePercent}
-                  onCancelUploadImage={onCancelUploadImage}
-                  onResolveWikiImageUrl={onResolveWikiImageUrl}
-                  onOpenViewPath={onOpenViewPath}
-                  snippetConfig={snippetConfig}
-                  getGeminiApiKey={getGeminiApiKey}
-                />
+                <Suspense fallback={<EditorPaneSuspenseFallback />}>
+                  {effectiveEditorType === EDITOR_TYPE_NOVEL ? (
+                    <NovelMarkdownEditor
+                      key={currentFile?.id ?? 'novel-md'}
+                      documentKey={currentFile?.id ?? ''}
+                      value={editorContent}
+                      onChange={onChangeEditor}
+                      onSave={onSave}
+                      theme={theme}
+                      currentFile={currentFile}
+                      previewOnly={previewOnly}
+                      tocVisible={novelTocVisible}
+                      onTocRequestClose={() => setNovelTocVisible(false)}
+                      mobileTocOverlayTopPx={isMobileLayout ? mobileTocOverlayTopPx : null}
+                      onRegisterFlushBeforeSave={(fn) => {
+                        novelFlushBeforeSaveRef.current = fn;
+                      }}
+                      onUploadImage={onUploadImage}
+                      isUploadingEditorImage={isUploadingEditorImage}
+                      uploadImagePercent={uploadImagePercent}
+                      onCancelUploadImage={onCancelUploadImage}
+                      onResolveWikiImageUrl={onResolveWikiImageUrl}
+                    />
+                  ) : (
+                    <MarkdownEditor
+                      value={editorContent}
+                      onChange={onChangeEditor}
+                      onSave={onSave}
+                      theme={theme}
+                      currentFile={currentFile}
+                      previewOnly={previewOnly}
+                      isMobileLayout={isMobileLayout}
+                      onUploadImage={onUploadImage}
+                      isUploadingEditorImage={isUploadingEditorImage}
+                      uploadImagePercent={uploadImagePercent}
+                      onCancelUploadImage={onCancelUploadImage}
+                      onResolveWikiImageUrl={onResolveWikiImageUrl}
+                      onOpenViewPath={onOpenViewPath}
+                      snippetConfig={snippetConfig}
+                      getGeminiApiKey={getGeminiApiKey}
+                    />
+                  )}
+                </Suspense>
               )}
             </div>
           </>
@@ -668,26 +681,30 @@ export default function EditorPane({
           </div>
         ) : viewer === 'json' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
-            <MonacoTextEditor
-              value={editorContent}
-              language="json"
-              theme={theme}
-              readOnly={false}
-              onChange={onChangeEditor}
-              onSave={onSave}
-            />
+            <Suspense fallback={<EditorPaneSuspenseFallback />}>
+              <MonacoTextEditor
+                value={editorContent}
+                language="json"
+                theme={theme}
+                readOnly={false}
+                onChange={onChangeEditor}
+                onSave={onSave}
+              />
+            </Suspense>
           </div>
         ) : viewer === 'html' || viewer === 'svg' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-            <HtmlSvgPreviewEditor
-              key={currentFile?.id ?? 'html-svg'}
-              value={editorContent}
-              mode={viewer === 'svg' ? 'svg' : 'html'}
-              theme={theme}
-              readOnly={previewOnly}
-              onChange={onChangeEditor}
-              onSave={onSave}
-            />
+            <Suspense fallback={<EditorPaneSuspenseFallback />}>
+              <HtmlSvgPreviewEditor
+                key={currentFile?.id ?? 'html-svg'}
+                value={editorContent}
+                mode={viewer === 'svg' ? 'svg' : 'html'}
+                theme={theme}
+                readOnly={previewOnly}
+                onChange={onChangeEditor}
+                onSave={onSave}
+              />
+            </Suspense>
           </div>
         ) : viewer === 'audio' && currentFile.objectUrl ? (
           <div className="flex-1 flex items-center justify-center overflow-auto p-4">
@@ -707,14 +724,16 @@ export default function EditorPane({
           </div>
         ) : viewer === 'raw' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
-            <MonacoTextEditor
-              value={editorContent}
-              language="plaintext"
-              theme={theme}
-              readOnly={false}
-              onChange={onChangeEditor}
-              onSave={onSave}
-            />
+            <Suspense fallback={<EditorPaneSuspenseFallback />}>
+              <MonacoTextEditor
+                value={editorContent}
+                language="plaintext"
+                theme={theme}
+                readOnly={false}
+                onChange={onChangeEditor}
+                onSave={onSave}
+              />
+            </Suspense>
           </div>
         ) : viewer === 'unsupported' ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">

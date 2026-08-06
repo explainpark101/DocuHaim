@@ -13,8 +13,8 @@
     "docs:preview": "bun run --cwd docs preview",
     "lint": "eslint .",
     "lint:guard": "eslint . --quiet",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "check": "eslint . --quiet && tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "check": "eslint . --quiet && bun run typecheck",
     "build:image": "bun scripts/generate-og-image.ts",
     "llms": "bun scripts/generate-llms.ts",
     "preview": "VITE_BASE_PATH=/s3haim bun run build && VITE_BASE_PATH=/s3haim vite preview"
@@ -75,6 +75,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

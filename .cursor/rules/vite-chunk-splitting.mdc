@@ -1,0 +1,45 @@
+---
+description: Keep Vite production chunks small via React.lazy, dynamic import, and manualChunks
+alwaysApply: true
+---
+
+# Vite chunk size — dynamic import first
+
+Do not grow the main entry graph with heavy, route- or mode-specific code. Prefer **code-splitting** so cold load stays lean and Vite’s large-chunk warning stays rare.
+
+## When to split (required)
+
+| Kind | Pattern |
+|------|---------|
+| App routes / pages | `React.lazy(() => import('…'))` + `<Suspense>` in `App.jsx` (chat, settings, export-pdf, popouts) |
+| Alternate editors | Lazy in `EditorPane.jsx` — Novel, Monaco, HtmlSvg; default Md editor may stay lazy too |
+| Optional heavy libs | `await import(…)` at call site (zip, S3 upload helpers, garu-ko, one-off tools) — not top-level in `App` / `main` |
+| New fat npm deps | Add a `manualChunks` group in `vite.config.ts` (`vendor-*`) when the package is large or shared |
+
+`manualChunks` alone does **not** cut initial download if something is still eagerly imported. Lazy/`import()` creates the real deferral; `manualChunks` improves cache boundaries and parallel fetch.
+
+## Checklist for new UI or deps
+
+1. Is this needed on **every** cold start? If no → lazy or dynamic `import()`.
+2. Wire `Suspense` with a small fallback (see `RouteSuspenseFallback` / `EditorPaneSuspenseFallback`).
+3. Keep **default exports** on lazy targets (`export default function …`).
+4. New heavy vendor → extend `manualChunks` in `vite.config.ts` (normalize ids with `/`, match `/node_modules/<pkg>/`).
+5. Do not “fix” size only by raising `chunkSizeWarningLimit` without splitting.
+6. Prefer **English** in new code comments if Korean Unicode might corrupt.
+
+## Do not eagerly import
+
+- Entire page modules into `App.jsx` / `main.jsx`
+- Monaco / Novel / optional preview stacks from the always-on shell
+- Large utilities only used behind a button or rare path
+
+Core shell (`main` → providers → `App` tree, auth, sidebar chrome) may stay eager. Global `mdEditorConfig` is intentional for MdPreview plugins — do not re-eager Novel/Monaco because of that.
+
+```text
+❌ BAD — import SettingsPage / ChatWithMyselfPane / MonacoTextEditor at top of App or EditorPane
+❌ BAD — add a multi‑MB dep with only a static import and bump chunkSizeWarningLimit
+❌ BAD — manualChunks for a package that is never dynamically imported and expect smaller first paint
+✅ GOOD — const X = lazy(() => import('@/pages/X')); <Suspense><X …/></Suspense>
+✅ GOOD — await import('@/utils/heavyThing') inside the handler that needs it
+✅ GOOD — new fat package → lazy boundary + vendor-* entry in manualChunks
+```
