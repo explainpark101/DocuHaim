@@ -21,13 +21,14 @@ export default defineConfig([
     },
   },
   {
-    files: ['vite.config.ts', 'scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs'],
     languageOptions: {
       globals: globals.node,
     },
   },
   {
-    // JS/JSX only until typescript-eslint is added; .ts/.tsx are gated by `tsc`
+    // JS/JSX only until typescript-eslint is added; .ts/.tsx (incl. vite.config.ts)
+    // are gated by `tsc` / tsconfig.node.json — do not lint them with espree.
     files: ['**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
