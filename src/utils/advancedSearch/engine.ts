@@ -107,9 +107,8 @@ type TreeNode = {
 
 /** Emit UI updates at most this often during rebuild (React thrash freeze). */
 const EMIT_MIN_MS = 250;
-/** Log a progress line every N successful items (failures always logged). */
-const LOG_EVERY = 20;
-const MAX_BUILD_LOGS = 300;
+/** Cap in-memory scrollback; UI virtualizes so DOM stays small. */
+const MAX_BUILD_LOGS = 2000;
 /** Persist partial rebuild state to IndexedDB every N processed sources. */
 const CHECKPOINT_EVERY = 25;
 
@@ -702,9 +701,7 @@ class AdvancedSearchEngine {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         await worker.processFile(path, text);
         fileOk += 1;
-        if (fileOk === 1 || fileOk % LOG_EVERY === 0) {
-          this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
-        }
+        this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
       } catch (err) {
         if (err instanceof RebuildCancelledError) throw err;
         fileFail += 1;
@@ -748,12 +745,10 @@ class AdvancedSearchEngine {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         const changed = await worker.processChatDay(path, text);
         chatOk += 1;
-        if (chatOk === 1 || chatOk % LOG_EVERY === 0) {
-          this.appendLog(
-            'ok',
-            `[채팅] ${chatOk}/${chatDayPaths.length} ${path} (+${changed})`,
-          );
-        }
+        this.appendLog(
+          'ok',
+          `[채팅] ${chatOk}/${chatDayPaths.length} ${path} (+${changed})`,
+        );
       } catch (err) {
         if (err instanceof RebuildCancelledError) throw err;
         chatFail += 1;
@@ -863,9 +858,7 @@ class AdvancedSearchEngine {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         await upsertFileDocument(next, path, text, bulk);
         fileOk += 1;
-        if (fileOk === 1 || fileOk % LOG_EVERY === 0) {
-          this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
-        }
+        this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
       } catch (err) {
         if (err instanceof RebuildCancelledError) throw err;
         fileFail += 1;
@@ -916,12 +909,10 @@ class AdvancedSearchEngine {
           yieldFn: yieldToMain,
         });
         chatOk += 1;
-        if (chatOk === 1 || chatOk % LOG_EVERY === 0) {
-          this.appendLog(
-            'ok',
-            `[채팅] ${chatOk}/${chatDayPaths.length} ${path} (+${changed})`,
-          );
-        }
+        this.appendLog(
+          'ok',
+          `[채팅] ${chatOk}/${chatDayPaths.length} ${path} (+${changed})`,
+        );
       } catch (err) {
         if (err instanceof RebuildCancelledError) throw err;
         chatFail += 1;
