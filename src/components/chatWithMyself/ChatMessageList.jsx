@@ -489,6 +489,8 @@ const MessageBubble = memo(function MessageBubble({
   allowOgEmbed = true,
   /** will-change + brightness press filter (perf toggle). */
   enableBubblePressFx = true,
+  /** Reserve empty reaction-row height (typically the last list message). */
+  reserveReactionSpace = false,
 }) {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
@@ -892,6 +894,7 @@ const MessageBubble = memo(function MessageBubble({
             coarse={coarse}
             disabled={isDeleting || syncing}
             expanded={rowActive}
+            reserveSpace={reserveReactionSpace}
             pickerOpen={reactionPickerOpen}
             onPickerOpenChange={setReactionPickerOpen}
             onToggle={(reaction) => onToggleReaction?.(msg, reaction)}
@@ -1081,6 +1084,13 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       if (row.type === 'msg') map.set(row.msg.id, index);
     });
     return map;
+  }, [rows]);
+
+  const lastMessageRowIndex = useMemo(() => {
+    for (let i = rows.length - 1; i >= 0; i -= 1) {
+      if (rows[i]?.type === 'msg') return i;
+    }
+    return -1;
   }, [rows]);
 
   const dateStrToIndex = useMemo(() => {
@@ -1382,6 +1392,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             getPresignedUrl={getPresignedUrl}
             noteExists={noteExists}
             enableBubblePressFx={enableBubblePressFx}
+            reserveReactionSpace={index === lastMessageRowIndex}
             groupIconPath={
               groupIconByName instanceof Map
                 ? groupIconByName.get(row.msg.group) || null
@@ -1424,6 +1435,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       enableBubblePressFx,
       groupIconByName,
       groupLabelByKey,
+      lastMessageRowIndex,
     ],
   );
 

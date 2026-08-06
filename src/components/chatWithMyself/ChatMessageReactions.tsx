@@ -17,6 +17,11 @@ type ChatMessageReactionsProps = {
   onPickerOpenChange?: (open: boolean) => void;
   /** Keep empty hover-row expanded (context menu / selection / editing). */
   expanded?: boolean;
+  /**
+   * Keep empty add-row height reserved (last list message) so hover does not
+   * grow the row and force a scroll to reach the emoji button.
+   */
+  reserveSpace?: boolean;
 };
 
 const chipClass =
@@ -39,6 +44,7 @@ export default function ChatMessageReactions({
   pickerOpen: pickerOpenProp,
   onPickerOpenChange,
   expanded = false,
+  reserveSpace = false,
 }: ChatMessageReactionsProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const controlled = typeof pickerOpenProp === 'boolean';
@@ -56,6 +62,7 @@ export default function ChatMessageReactions({
 
   // Empty add-row: collapse height until hover/open so clustered messages
   // do not keep a blank reaction gap (animate open/close to avoid jumps).
+  // Last message may reserve height so hover does not require scrolling.
   const emptyHoverOnly = list.length === 0 && !coarse;
 
   const addButton = (
@@ -122,6 +129,19 @@ export default function ChatMessageReactions({
         onClick={(e) => e.stopPropagation()}
       >
         {chips}
+      </div>
+    );
+  }
+
+  // Last row: keep chip-row height, only fade the control in on hover.
+  if (reserveSpace) {
+    return (
+      <div
+        className={`opacity-0 pointer-events-none transition-opacity duration-300 ease-out group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto data-[open=true]:opacity-100 data-[open=true]:pointer-events-auto ${className}`.trim()}
+        data-open={rowOpen ? 'true' : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={rowInnerClass}>{chips}</div>
       </div>
     );
   }
