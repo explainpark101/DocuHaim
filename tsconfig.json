@@ -25,5 +25,13 @@
     "noUnusedParameters": true
   },
   "include": ["src"],
-  "exclude": ["dist", "release", "node_modules", "src/sw.ts"]
+  "exclude": [
+    "dist",
+    "release",
+    "node_modules",
+    "src/sw.ts",
+    ".vitepress",
+    "docs/.vitepress",
+    "**/.vitepress/**"
+  ]
 }

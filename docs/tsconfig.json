@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "noCheck": true,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ESNext",
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": [".vitepress/**/*"],
+  "exclude": [".vitepress/cache", "node_modules"]
+}
