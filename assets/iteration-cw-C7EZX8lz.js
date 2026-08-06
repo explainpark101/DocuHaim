@@ -1,1 +1,0 @@
-import{z as t}from"./index-Cv73qN2J.js";const e=[["path",{d:"M4 10a8 8 0 1 1 8 8H4",key:"svv66n"}],["path",{d:"m8 22-4-4 4-4",key:"6g7gki"}]],a=t("iteration-cw",e);export{e as __iconNode,a as default};
