@@ -170,6 +170,29 @@ function normalizeOutgoingAttachments(items) {
 }
 
 /**
+ * Walk day keys newest→oldest until at least one message exists.
+ * Empty "today" (prepended even when no file) must not hide older history:
+ * ChatMessageList only loads older days via scroll, which never fires on an empty list.
+ *
+ * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
+ * @param {string[]} dayKeysNewestFirst
+ * @returns {Promise<{ messages: import('@/utils/chatWithMyself/format.js').ChatMessage[], loadedDayIndex: number }>}
+ */
+async function readMessagesUntilNonEmpty(ctx, dayKeysNewestFirst) {
+  const keys = Array.isArray(dayKeysNewestFirst) ? dayKeysNewestFirst : [];
+  let loadedDayIndex = 0;
+  let messages = [];
+  while (loadedDayIndex < keys.length && messages.length === 0) {
+    const dateStr = keys[loadedDayIndex];
+    loadedDayIndex += 1;
+    if (!dateStr) continue;
+    const dayMsgs = await readDayMessages(ctx, dateStr);
+    messages = prependUniqueMessages(dayMsgs || [], messages);
+  }
+  return { messages: dedupeMessagesById(messages), loadedDayIndex };
+}
+
+/**
  * Main chat pane for /chat — keeps MainApp sidebar; this is the right content area.
  */
 export default function ChatWithMyselfPane({
@@ -527,13 +550,15 @@ export default function ChatWithMyselfPane({
       const ordered = keys.includes(today) ? keys : [today, ...keys];
       const unique = [...new Set(ordered)];
       setDayKeys(unique);
-      const first = unique[0];
-      const msgs = first ? await readDayMessages(ctx, first) : [];
+      const { messages: msgs, loadedDayIndex: end } = await readMessagesUntilNonEmpty(
+        ctx,
+        unique,
+      );
       localTombstonesRef.current.clear();
       setMessages(msgs);
       setWindowNewestIndex(0);
-      setLoadedDayIndex(first ? 1 : 0);
-      setActiveJumpDate(first || null);
+      setLoadedDayIndex(end);
+      setActiveJumpDate(unique[0] || null);
     } catch (e) {
       setError(e?.message || '채팅 로드 실패');
     } finally {
@@ -589,23 +614,36 @@ export default function ChatWithMyselfPane({
         loadDates.map((d) => readDayMessages(ctx, d)),
       );
       // dayKeys order is newest→oldest; messages are chronological (oldest first).
-      const msgs = [];
+      let msgs = [];
       for (let i = parts.length - 1; i >= 0; i -= 1) {
         msgs.push(...(parts[i] || []));
       }
-      setMessages(dedupeMessagesById(msgs));
+      msgs = dedupeMessagesById(msgs);
 
+      let windowNewest = 0;
+      let windowEnd = 0;
+      let jumpDate = null;
       if (loadDates.length) {
         const firstIdx = unique.indexOf(loadDates[0]);
         const lastIdx = unique.indexOf(loadDates[loadDates.length - 1]);
-        setWindowNewestIndex(firstIdx >= 0 ? firstIdx : 0);
-        setLoadedDayIndex(lastIdx >= 0 ? lastIdx + 1 : unique[0] ? 1 : 0);
-        setActiveJumpDate(loadDates[0] || unique[0] || null);
-      } else {
-        setWindowNewestIndex(0);
-        setLoadedDayIndex(0);
-        setActiveJumpDate(null);
+        windowNewest = firstIdx >= 0 ? firstIdx : 0;
+        windowEnd = lastIdx >= 0 ? lastIdx + 1 : unique[0] ? 1 : 0;
+        jumpDate = loadDates[0] || unique[0] || null;
       }
+
+      // Same empty-today trap as loadInitial: expand older days until history appears.
+      if (!msgs.length && unique.length) {
+        const filled = await readMessagesUntilNonEmpty(ctx, unique);
+        msgs = filled.messages;
+        windowNewest = 0;
+        windowEnd = filled.loadedDayIndex;
+        jumpDate = unique[0] || null;
+      }
+
+      setMessages(msgs);
+      setWindowNewestIndex(windowNewest);
+      setLoadedDayIndex(windowEnd);
+      setActiveJumpDate(jumpDate);
     } catch (e) {
       setError(e?.message || '새로고침 실패');
     } finally {
