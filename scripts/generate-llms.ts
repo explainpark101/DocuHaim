@@ -20,6 +20,7 @@ function walk(dir: string): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name.startsWith(".")) continue;
     if (entry.name === ".vitepress") continue;
+    if (entry.name === "node_modules") continue;
 
     const full = path.join(dir, entry.name);
 
