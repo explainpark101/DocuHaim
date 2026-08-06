@@ -233,17 +233,35 @@ export function createCoverShapeElement(
   });
 }
 
-export function coverElementLabel(el: CoverElement): string {
-  if (el.name?.trim()) return el.name.trim();
+function truncateCoverLabel(text: string, max = 24): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/** Full fallback label (no ellipsis) — path leaf, text body, or shape type. */
+export function coverElementFallbackLabelFull(el: CoverElement): string {
   if (el.type === 'text') {
     const t = el.text.trim().replace(/\s+/g, ' ');
-    return t ? (t.length > 24 ? `${t.slice(0, 24)}…` : t) : '텍스트';
+    return t || '텍스트';
   }
   if (isCoverShapeElement(el)) {
     const t = (el.text ?? '').trim().replace(/\s+/g, ' ');
-    if (t) return t.length > 24 ? `${t.slice(0, 24)}…` : t;
-    return SHAPE_TYPE_LABEL[el.type];
+    return t || SHAPE_TYPE_LABEL[el.type];
   }
   const leaf = el.path.split('/').pop() || el.path;
-  return leaf.length > 24 ? `${leaf.slice(0, 24)}…` : leaf || '이미지';
+  return leaf || '이미지';
+}
+
+export function coverElementFallbackLabel(el: CoverElement): string {
+  return truncateCoverLabel(coverElementFallbackLabelFull(el));
+}
+
+/** Value to seed the layer rename input (full string, never ellipsis-truncated). */
+export function coverElementEditName(el: CoverElement): string {
+  if (el.name?.trim()) return el.name.trim();
+  return coverElementFallbackLabelFull(el);
+}
+
+export function coverElementLabel(el: CoverElement): string {
+  if (el.name?.trim()) return el.name.trim();
+  return coverElementFallbackLabel(el);
 }

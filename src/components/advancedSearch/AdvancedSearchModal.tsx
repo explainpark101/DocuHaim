@@ -316,11 +316,11 @@ export default function AdvancedSearchModal({
 
   const navHint = vimEnabled
     ? browseDirectoryMode
-      ? '↑↓ / ⌥JK 이동 · Enter 열기/들어가기/만들기 · Esc 닫기'
-      : '↑↓ / ⌥JK 이동 · Enter 열기 · Esc 닫기'
+      ? '↑↓ / ⌥JK 이동 · Enter 실행/들어가기/만들기 · Esc 닫기'
+      : '↑↓ / ⌥JK 이동 · Enter 실행 · Esc 닫기'
     : browseDirectoryMode
-      ? '↑↓ 이동 · Enter 열기/들어가기/만들기 · Esc 닫기'
-      : '↑↓ 이동 · Enter 열기 · Esc 닫기';
+      ? '↑↓ 이동 · Enter 실행/들어가기/만들기 · Esc 닫기'
+      : '↑↓ 이동 · Enter 실행 · Esc 닫기';
 
   const selectActive = () => {
     const hit = hits[activeIndex];
@@ -340,9 +340,16 @@ export default function AdvancedSearchModal({
   const activeOptionId =
     hits.length > 0 ? `${optionIdPrefix}-${activeIndex}` : undefined;
 
+  const isEnterKey = (e: KeyboardEvent) =>
+    e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter';
+
+  /** Enter runs the highlighted hit and closes (unless onSelectHit returns false). */
   const handleContentKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (isEnterKey(e)) {
+      // Let IME commit composition; the next Enter selects.
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
+      e.stopPropagation();
       selectActive();
       return;
     }
@@ -371,6 +378,7 @@ export default function AdvancedSearchModal({
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleContentKeyDown}
           placeholder={
             browseDirectoryMode
               ? browsePath
@@ -523,6 +531,7 @@ export default function AdvancedSearchModal({
               >
                 <Motion.div
                   className={PANEL_CLASS}
+                  data-advanced-search=""
                   initial={{ opacity: 0, scale: 0.96, x: '-50%', y: -10 }}
                   animate={{ opacity: 1, scale: 1, x: '-50%', y: 0 }}
                   exit={{ opacity: 0, scale: 0.98, x: '-50%', y: -6 }}
@@ -539,6 +548,7 @@ export default function AdvancedSearchModal({
           <Dialog.Overlay className={OVERLAY_CLASS} />
           <Dialog.Content
             className={`${PANEL_CLASS} -translate-x-1/2`}
+            data-advanced-search=""
             aria-describedby={undefined}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onKeyDown={handleContentKeyDown}

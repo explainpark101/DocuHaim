@@ -1372,10 +1372,17 @@ export default function ExportPDFPage({
       setFreeTransformConfirmOpen(true);
     };
     const onKeyDown = (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        setFreeTransformConfirmOpen(true);
+      if (event.key !== 'Enter') return;
+      // Do not steal Enter from Advanced Search / other dialogs.
+      const t = event.target;
+      if (
+        t instanceof Element &&
+        t.closest('[data-advanced-search], [role="dialog"], [role="combobox"], input, textarea')
+      ) {
+        return;
       }
+      event.preventDefault();
+      setFreeTransformConfirmOpen(true);
     };
     document.addEventListener('pointerdown', onHandleDown, true);
     document.addEventListener('pointerdown', onOutsidePointerDown, true);

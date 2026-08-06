@@ -1,8 +1,10 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from 'react';
@@ -36,15 +38,20 @@ import {
   FolderOpen,
   FolderPlus,
   Group,
+  Image as ImageIcon,
   Lock,
   LockOpen,
+  Pencil,
+  Square,
   Trash2,
+  Type,
   Ungroup,
 } from 'lucide-react';
 import {
   bringLayersToFront,
   bringSelectionToFront,
   collectDescendantElementIds,
+  coverElementEditName,
   coverElementLabel,
   createEmptyGroup,
   deleteLayers,
@@ -53,6 +60,7 @@ import {
   flattenLayerTree,
   getGroup,
   groupSelectedElements,
+  isCoverShapeElement,
   isGroupId,
   isLayerDirectlyLocked,
   moveLayerRelative,
@@ -66,7 +74,7 @@ import {
   toggleLayerLocked,
   ungroupElements,
 } from '@/utils/noteCover';
-import type { NoteCover } from '@/utils/noteCover/types';
+import type { CoverElement, NoteCover } from '@/utils/noteCover/types';
 
 const ROOT_DROP_ID = '__cover-layer-root__';
 
@@ -118,6 +126,119 @@ function resolvePlacement(
   return ratio < 0.5 ? 'before' : 'after';
 }
 
+function layerTypeIcon(el: CoverElement) {
+  if (el.type === 'text') {
+    return <Type size={12} className="shrink-0 opacity-70" aria-hidden />;
+  }
+  if (isCoverShapeElement(el)) {
+    return <Square size={12} className="shrink-0 opacity-70" aria-hidden />;
+  }
+  return <ImageIcon size={12} className="shrink-0 opacity-70" aria-hidden />;
+}
+
+function LayerNameEditor({
+  displayValue,
+  editValue,
+  placeholder,
+  isEditing,
+  className,
+  onStartEdit,
+  onCommit,
+  onCancel,
+}: {
+  /** Label shown when not editing. */
+  displayValue: string;
+  /** Stored custom name (may be empty). Seeded into the input when editing starts. */
+  editValue: string;
+  placeholder?: string;
+  isEditing: boolean;
+  className?: string;
+  onStartEdit: () => void;
+  onCommit: (next: string) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(editValue);
+  const draftRef = useRef(editValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const settledRef = useRef(false);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    settledRef.current = false;
+    draftRef.current = editValue;
+    setDraft(editValue);
+    const id = window.requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      el.select();
+    });
+    return () => window.cancelAnimationFrame(id);
+    // Only re-seed when entering rename mode, not when parent cover churns mid-edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- editValue captured on enter
+  }, [isEditing]);
+
+  if (!isEditing) {
+    return (
+      <span
+        className={className}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onStartEdit();
+        }}
+      >
+        {displayValue}
+      </span>
+    );
+  }
+
+  const finishCommit = () => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    onCommit(draftRef.current);
+  };
+
+  const finishCancel = () => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    onCancel();
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      finishCommit();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      finishCancel();
+    }
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      className="min-w-0 flex-1 rounded border border-blue-400 bg-white px-1 py-0 text-[11px] text-gray-900 outline-none placeholder:text-gray-400 dark:border-blue-500 dark:bg-odp-bg dark:text-odp-fgStrong dark:placeholder:text-gray-500"
+      value={draft}
+      placeholder={placeholder}
+      aria-label="레이어 이름"
+      onChange={(e) => {
+        draftRef.current = e.target.value;
+        setDraft(e.target.value);
+      }}
+      onBlur={finishCommit}
+      onKeyDown={onKeyDown}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
 function LayerContextMenu({
   children,
   cover,
@@ -127,6 +248,7 @@ function LayerContextMenu({
   onChange,
   onSelectIds,
   onRequestDeleteLayers,
+  onStartRename,
 }: {
   children: ReactNode;
   cover: NoteCover;
@@ -136,6 +258,7 @@ function LayerContextMenu({
   onChange: (next: NoteCover) => void;
   onSelectIds: (ids: string[]) => void;
   onRequestDeleteLayers?: (layerIds: string[]) => void;
+  onStartRename: (id: string) => void;
 }) {
   const tree = ensureLayerTree(cover);
   const memberIds =
@@ -171,6 +294,16 @@ function LayerContextMenu({
           className={menuContentClass}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
+          <ContextMenu.Item
+            className={menuItemClass}
+            onSelect={() => {
+              // Defer until the menu releases focus so the inline input can autofocus.
+              window.setTimeout(() => onStartRename(targetId), 0);
+            }}
+          >
+            <Pencil size={14} />
+            이름 변경
+          </ContextMenu.Item>
           <ContextMenu.Item
             className={menuItemClass}
             onSelect={() => onChange(toggleLayerLocked(cover, targetId))}
@@ -283,6 +416,9 @@ type SortableRowProps = {
   selectedSet: Set<string>;
   collapsed: boolean;
   dropHint: Placement | null;
+  isRenaming: boolean;
+  onStartRename: (id: string) => void;
+  onFinishRename: () => void;
   onToggleCollapse: () => void;
   onSelectElement: (id: string, e: MouseEvent) => void;
   onSelectGroup: (groupId: string, e: MouseEvent) => void;
@@ -300,6 +436,9 @@ function SortableLayerRow({
   selectedSet,
   collapsed,
   dropHint,
+  isRenaming,
+  onStartRename,
+  onFinishRename,
   onToggleCollapse,
   onSelectElement,
   onSelectGroup,
@@ -314,7 +453,7 @@ function SortableLayerRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, data: { kind } });
+  } = useSortable({ id, data: { kind }, disabled: isRenaming });
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -324,6 +463,8 @@ function SortableLayerRow({
   };
 
   const tree = ensureLayerTree(cover);
+  const coverRef = useRef(cover);
+  coverRef.current = cover;
   const group = kind === 'group' ? getGroup(tree, id) : null;
   const element =
     kind === 'element' ? tree.elements.find((el) => el.id === id) : null;
@@ -351,6 +492,38 @@ function SortableLayerRow({
         ? layerRowActive
         : ''
   } ${directlyLocked ? 'ring-1 ring-inset ring-yellow-400/80' : ''}`;
+
+  const dragProps = isRenaming ? {} : { ...attributes, ...listeners };
+
+  const commitRename = (next: string) => {
+    const current = coverRef.current;
+    if (kind === 'group') {
+      const groupNow = getGroup(current, id);
+      const trimmed = next.trim() || '그룹';
+      if (groupNow && groupNow.name === trimmed) {
+        onFinishRename();
+        return;
+      }
+      onChange(renameGroup(current, id, next));
+    } else {
+      const el = current.elements.find((item) => item.id === id);
+      if (el) {
+        const trimmed = next.trim();
+        const stored = el.name?.trim() ?? '';
+        // Open+blur with the displayed fallback must not write a redundant name.
+        if (trimmed === stored) {
+          onFinishRename();
+          return;
+        }
+        if (!stored && trimmed === coverElementEditName(el)) {
+          onFinishRename();
+          return;
+        }
+      }
+      onChange(renameElement(current, id, next));
+    }
+    onFinishRename();
+  };
 
   const lockToggle = (
     <span
@@ -386,8 +559,7 @@ function SortableLayerRow({
         ref={setNodeRef}
         style={style}
         className={rowClass}
-        {...attributes}
-        {...listeners}
+        {...dragProps}
       >
         {indicator}
         <button
@@ -402,55 +574,58 @@ function SortableLayerRow({
         >
           {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
         </button>
-        <button
-          type="button"
+        <div
           className="flex min-w-0 flex-1 items-center gap-1"
-          onClick={(e) => onSelectGroup(id, e)}
+          onClick={(e) => {
+            if (isRenaming) return;
+            onSelectGroup(id, e);
+          }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <FolderOpen size={12} className="shrink-0 opacity-70" />
-          <span
+          <LayerNameEditor
+            displayValue={group.name}
+            editValue={group.name}
+            isEditing={isRenaming}
             className="truncate font-medium"
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              const next = window.prompt('그룹 이름', group.name);
-              if (next == null) return;
-              onChange(renameGroup(cover, id, next));
-            }}
-          >
-            {group.name}
-          </span>
-          <span className="shrink-0 text-[9px] text-gray-400">
-            {memberIds.length}
-          </span>
-        </button>
+            onStartEdit={() => onStartRename(id)}
+            onCommit={commitRename}
+            onCancel={onFinishRename}
+          />
+          {!isRenaming ? (
+            <span className="shrink-0 text-[9px] text-gray-400">
+              {memberIds.length}
+            </span>
+          ) : null}
+        </div>
         {lockToggle}
       </div>
     ) : element ? (
-      <button
+      <div
         ref={setNodeRef}
-        type="button"
         style={style}
         className={rowClass}
         aria-selected={elementActive}
-        onClick={(e) => onSelectElement(id, e)}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          const next = window.prompt('레이어 이름', coverElementLabel(element));
-          if (next == null) return;
-          onChange(renameElement(cover, id, next));
+        onClick={(e) => {
+          if (isRenaming) return;
+          onSelectElement(id, e);
         }}
-        {...attributes}
-        {...listeners}
+        {...dragProps}
         role="option"
       >
         {indicator}
-        <span className="w-3 shrink-0 text-center text-[10px] opacity-60">
-          {element.type === 'text' ? 'T' : element.type === 'image' ? 'I' : 'S'}
-        </span>
-        <span className="min-w-0 flex-1 truncate">{coverElementLabel(element)}</span>
+        {layerTypeIcon(element)}
+        <LayerNameEditor
+          displayValue={coverElementLabel(element)}
+          editValue={coverElementEditName(element)}
+          isEditing={isRenaming}
+          className="min-w-0 flex-1 truncate"
+          onStartEdit={() => onStartRename(id)}
+          onCommit={commitRename}
+          onCancel={onFinishRename}
+        />
         {lockToggle}
-        {selectedIds.length === 1 && selectedIds[0] === id ? (
+        {!isRenaming && selectedIds.length === 1 && selectedIds[0] === id ? (
           <span className="flex shrink-0 gap-0.5">
             <span
               role="button"
@@ -478,7 +653,7 @@ function SortableLayerRow({
             </span>
           </span>
         ) : null}
-      </button>
+      </div>
     ) : null;
 
   if (!body) return null;
@@ -492,8 +667,12 @@ function SortableLayerRow({
       onChange={onChange}
       onSelectIds={onSelectIds}
       onRequestDeleteLayers={onRequestDeleteLayers}
+      onStartRename={onStartRename}
     >
-      <Motion.div layout transition={{ duration: 0.18, ease: 'easeOut' }}>
+      <Motion.div
+        layout={!isRenaming}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+      >
         {body}
       </Motion.div>
     </LayerContextMenu>
@@ -538,11 +717,19 @@ export default function CoverLayerPanel({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [placement, setPlacement] = useState<Placement>('before');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const pointerYRef = useRef<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
+
+  useEffect(() => {
+    if (!renamingId) return;
+    if (!flat.some((item) => item.id === renamingId)) {
+      setRenamingId(null);
+    }
+  }, [flat, renamingId]);
 
   const elementIdsForLayerItem = (itemId: string, altKey: boolean): string[] => {
     if (isGroupId(tree, itemId)) {
@@ -733,6 +920,9 @@ export default function CoverLayerPanel({
                     ? placement
                     : null
                 }
+                isRenaming={renamingId === item.id}
+                onStartRename={setRenamingId}
+                onFinishRename={() => setRenamingId(null)}
                 onToggleCollapse={() =>
                   onCollapsedGroupsChange({
                     ...collapsedGroups,

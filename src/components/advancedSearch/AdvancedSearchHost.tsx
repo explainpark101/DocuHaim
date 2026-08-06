@@ -387,7 +387,7 @@ export default function AdvancedSearchHost({
 
         if (isSettingsToggleId(commandId)) {
           toggleSettingsToggle(commandId);
-          return false;
+          return;
         }
 
         if (commandId === 'print-scroll-heading' && hit.path) {
