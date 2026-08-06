@@ -125,22 +125,17 @@ function mediaZoomOf(media: MediaSize): number {
     : media.height / media.naturalHeight;
 }
 
-function areaDistance(a: Area, b: Area): number {
-  return (
-    Math.abs(a.x - b.x)
-    + Math.abs(a.y - b.y)
-    + Math.abs(a.width - b.width)
-    + Math.abs(a.height - b.height)
-  );
-}
+type SnapGuide = { left: number; right: number; top: number; bottom: number };
 
-function buildSnapTargets(meta: CropPadMeta, opaqueArea: Area | null): Area[] {
-  const targets: Area[] = [
+type SnapMode = 'translate' | 'resize';
+
+function buildSnapGuides(meta: CropPadMeta, opaqueArea: Area | null): SnapGuide[] {
+  const guides: SnapGuide[] = [
     {
-      x: meta.originX,
-      y: meta.originY,
-      width: meta.cellWidth,
-      height: meta.cellHeight,
+      left: meta.originX,
+      right: meta.originX + meta.cellWidth,
+      top: meta.originY,
+      bottom: meta.originY + meta.cellHeight,
     },
   ];
   if (
@@ -152,32 +147,141 @@ function buildSnapTargets(meta: CropPadMeta, opaqueArea: Area | null): Area[] {
       || Math.abs(opaqueArea.height - meta.cellHeight) > 0.5
     )
   ) {
-    targets.push(opaqueArea);
+    guides.push({
+      left: opaqueArea.x,
+      right: opaqueArea.x + opaqueArea.width,
+      top: opaqueArea.y,
+      bottom: opaqueArea.y + opaqueArea.height,
+    });
   }
-  return targets;
+  return guides;
 }
 
-function nearestSnapTarget(
-  meta: CropPadMeta,
-  current: Area,
-  opaqueArea: Area | null,
-): Area | null {
-  const targets = buildSnapTargets(meta, opaqueArea);
-  let best: Area | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  for (const target of targets) {
-    const dist = areaDistance(current, target);
-    if (dist < bestDist) {
-      best = target;
+function snapThreshold(current: Area): number {
+  return Math.max(16, Math.min(current.width, current.height) * SNAP_RATIO);
+}
+
+function nearestEdge(value: number, edges: number[], threshold: number): number | null {
+  let best: number | null = null;
+  let bestDist = threshold;
+  for (const edge of edges) {
+    const dist = Math.abs(value - edge);
+    if (dist <= bestDist) {
+      best = edge;
       bestDist = dist;
     }
   }
-  const threshold = Math.max(
-    16,
-    (current.width + current.height) * SNAP_RATIO,
-  );
-  if (!best || bestDist > threshold) return null;
   return best;
+}
+
+function areasEqual(a: Area, b: Area, eps = 0.5): boolean {
+  return (
+    Math.abs(a.x - b.x) < eps
+    && Math.abs(a.y - b.y) < eps
+    && Math.abs(a.width - b.width) < eps
+    && Math.abs(a.height - b.height) < eps
+  );
+}
+
+/**
+ * Snap crop rect edges to original / opaque image bounds.
+ * - translate: keep size, shift so nearest edges align (image pan)
+ * - resize: snap each edge independently (crop size drag)
+ */
+function snapCropAreaToGuides(
+  current: Area,
+  meta: CropPadMeta,
+  opaqueArea: Area | null,
+  mode: SnapMode,
+): Area | null {
+  const guides = buildSnapGuides(meta, opaqueArea);
+  if (guides.length === 0) return null;
+  const threshold = snapThreshold(current);
+  const xEdges = guides.flatMap((g) => [g.left, g.right]);
+  const yEdges = guides.flatMap((g) => [g.top, g.bottom]);
+
+  const left = current.x;
+  const right = current.x + current.width;
+  const top = current.y;
+  const bottom = current.y + current.height;
+
+  if (mode === 'translate') {
+    let bestDx = 0;
+    let bestDxAbs = threshold + 1;
+    let bestDy = 0;
+    let bestDyAbs = threshold + 1;
+    for (const edge of xEdges) {
+      for (const dx of [edge - left, edge - right]) {
+        const abs = Math.abs(dx);
+        if (abs < bestDxAbs) {
+          bestDxAbs = abs;
+          bestDx = dx;
+        }
+      }
+    }
+    for (const edge of yEdges) {
+      for (const dy of [edge - top, edge - bottom]) {
+        const abs = Math.abs(dy);
+        if (abs < bestDyAbs) {
+          bestDyAbs = abs;
+          bestDy = dy;
+        }
+      }
+    }
+    if (bestDxAbs > threshold && bestDyAbs > threshold) return null;
+    const next: Area = {
+      x: current.x + (bestDxAbs <= threshold ? bestDx : 0),
+      y: current.y + (bestDyAbs <= threshold ? bestDy : 0),
+      width: current.width,
+      height: current.height,
+    };
+    return areasEqual(current, next) ? null : next;
+  }
+
+  const snapLeft = nearestEdge(left, xEdges, threshold);
+  const snapRight = nearestEdge(right, xEdges, threshold);
+  const snapTop = nearestEdge(top, yEdges, threshold);
+  const snapBottom = nearestEdge(bottom, yEdges, threshold);
+
+  let nextLeft = snapLeft ?? left;
+  let nextRight = snapRight ?? right;
+  let nextTop = snapTop ?? top;
+  let nextBottom = snapBottom ?? bottom;
+
+  if (nextRight - nextLeft < MIN_CROP_PX) {
+    if (snapLeft != null && snapRight == null) nextRight = nextLeft + current.width;
+    else if (snapRight != null && snapLeft == null) nextLeft = nextRight - current.width;
+    else {
+      const mid = (left + right) / 2;
+      nextLeft = mid - current.width / 2;
+      nextRight = mid + current.width / 2;
+    }
+  }
+  if (nextBottom - nextTop < MIN_CROP_PX) {
+    if (snapTop != null && snapBottom == null) nextBottom = nextTop + current.height;
+    else if (snapBottom != null && snapTop == null) nextTop = nextBottom - current.height;
+    else {
+      const mid = (top + bottom) / 2;
+      nextTop = mid - current.height / 2;
+      nextBottom = mid + current.height / 2;
+    }
+  }
+
+  const next: Area = {
+    x: nextLeft,
+    y: nextTop,
+    width: nextRight - nextLeft,
+    height: nextBottom - nextTop,
+  };
+  if (
+    snapLeft == null
+    && snapRight == null
+    && snapTop == null
+    && snapBottom == null
+  ) {
+    return null;
+  }
+  return areasEqual(current, next) ? null : next;
 }
 
 export default function NoteImageCropPanel({
@@ -195,6 +299,8 @@ export default function NoteImageCropPanel({
   const didInitCropRef = useRef(false);
   const snappingRef = useRef(false);
   const rafRef = useRef(0);
+  /** While true, ignore Cropper onCropChange so size edits do not shift the media. */
+  const freezeCropRef = useRef(false);
   const dragRef = useRef<{
     handle: HandleId;
     offsetX: number;
@@ -217,12 +323,19 @@ export default function NoteImageCropPanel({
   const croppedAreaRef = useRef<Area | null>(null);
 
   const commitSize = useCallback((next: Size) => {
+    freezeCropRef.current = true;
     cropSizeRef.current = next;
     if (rafRef.current) return;
     rafRef.current = window.requestAnimationFrame(() => {
       rafRef.current = 0;
       setCropSize(cropSizeRef.current);
     });
+  }, []);
+
+  const handleCropChange = useCallback((next: { x: number; y: number }) => {
+    // react-easy-crop scales crop by cropSize delta on resize; keep media fixed instead.
+    if (freezeCropRef.current || dragRef.current || snappingRef.current) return;
+    setCrop(next);
   }, []);
 
   useEffect(() => () => {
@@ -244,6 +357,7 @@ export default function NoteImageCropPanel({
     padMetaRef.current = null;
     opaqueAreaRef.current = null;
     didInitCropRef.current = false;
+    freezeCropRef.current = false;
     setPadMeta(null);
     setCompositeSrc(null);
     setOpaqueBounds(null);
@@ -392,12 +506,12 @@ export default function NoteImageCropPanel({
     });
   }, [applyPixelArea]);
 
-  const snapToNearest = useCallback(() => {
+  const snapToNearest = useCallback((mode: SnapMode = 'translate') => {
     if (snappingRef.current) return;
     const current = croppedAreaRef.current;
     const meta = padMetaRef.current;
     if (!current || !meta) return;
-    const target = nearestSnapTarget(meta, current, opaqueAreaRef.current);
+    const target = snapCropAreaToGuides(current, meta, opaqueAreaRef.current, mode);
     if (!target) return;
     applyPixelArea(target);
   }, [applyPixelArea]);
@@ -454,8 +568,13 @@ export default function NoteImageCropPanel({
     const onUp = () => {
       if (!dragRef.current) return;
       dragRef.current = null;
+      const finishResize = () => {
+        freezeCropRef.current = false;
+        snapToNearest('resize');
+      };
+      // Wait for pending size RAF + Cropper recompute before allowing crop updates again.
       window.requestAnimationFrame(() => {
-        snapToNearest();
+        window.requestAnimationFrame(finishResize);
       });
     };
     window.addEventListener('pointermove', onMove, { passive: false });
@@ -495,7 +614,7 @@ export default function NoteImageCropPanel({
       <p className="text-xs text-gray-500 dark:text-odp-muted">
         모서리·변을 드래그해 비율을 자유롭게 조절하세요. Shift를 누르면 비율이 유지됩니다.
         이미지 바깥(투명 여백)까지 잘라 뒤쪽에서부터 자를 수 있습니다.
-        투명 PNG는 불투명 콘텐츠·원본 테두리에 가까이 두면 자동으로 맞춥니다.
+        투명 PNG는 원본·불투명 콘텐츠 가장자리에 가까이 두면 크기 조절·이동 모두 자동으로 맞춥니다.
       </p>
       <div
         ref={stageRef}
@@ -516,12 +635,12 @@ export default function NoteImageCropPanel({
               containerStyle: { backgroundColor: 'transparent' },
               cropAreaStyle: { overflow: 'visible' },
             }}
-            onCropChange={setCrop}
+            onCropChange={handleCropChange}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}
             onCropAreaChange={onCropComplete}
             onCropSizeChange={onCropSizeChange}
-            onInteractionEnd={snapToNearest}
+            onInteractionEnd={() => snapToNearest('translate')}
             onMediaLoaded={(media) => {
               mediaRef.current = media;
               const meta = padMetaRef.current ?? padMeta;
@@ -553,6 +672,7 @@ export default function NoteImageCropPanel({
                     width: metrics.width,
                     height: metrics.height,
                   });
+                  freezeCropRef.current = true;
                   cropSizeRef.current = { width: metrics.width, height: metrics.height };
                   dragRef.current = {
                     handle: handle.id,

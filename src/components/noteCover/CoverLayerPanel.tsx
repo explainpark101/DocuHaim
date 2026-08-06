@@ -60,6 +60,7 @@ import {
   moveLayerZ,
   renameElement,
   renameGroup,
+  selectionToLayerIds,
   sendLayersToBack,
   sendSelectionToBack,
   toggleLayerLocked,
@@ -153,7 +154,12 @@ function LayerContextMenu({
       ? targetId
       : tree.elements.find((el) => el.id === targetId)?.groupId ?? null;
 
-  const canGroup = kind === 'element' && selectionForTarget.length >= 1;
+  const canGroup = (() => {
+    if (kind !== 'element' || selectionForTarget.length < 1) return false;
+    const layerIds = selectionToLayerIds(tree, selectionForTarget);
+    if (layerIds.length === 1 && isGroupId(tree, layerIds[0]!)) return false;
+    return true;
+  })();
   const canUngroup = Boolean(sharedGroup);
   const directlyLocked = isLayerDirectlyLocked(cover, targetId);
 
@@ -542,7 +548,7 @@ export default function CoverLayerPanel({
     if (isGroupId(tree, itemId)) {
       return collectDescendantElementIds(cover, itemId);
     }
-    return altKey ? [itemId] : expandIdsToGroups(cover, [itemId]);
+    return altKey ? [itemId] : expandIdsToGroups(cover, [itemId], 'immediate');
   };
 
   const selectRangeBetween = (fromLayerId: string, toLayerId: string, altKey: boolean) => {

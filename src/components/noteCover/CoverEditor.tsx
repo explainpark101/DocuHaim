@@ -24,11 +24,13 @@ import {
   elementsIntersectingRect,
   expandIdsToGroups,
   filterUnlockedElementIds,
+  getElementsByIds,
   getGroup,
   getSelectionBounds,
   groupSelectedElements,
   isCoverShapeElement,
   isElementEffectivelyLocked,
+  isGroupId,
   isLayerDirectlyLocked,
   layerIdsIncludeLocked,
   moveElementsByDelta,
@@ -37,7 +39,10 @@ import {
   nudgeCoverFontSizes,
   registerNewElement,
   resizeCoverImageBox,
+  resolveCoverDrillSelection,
+  resolveCoverPointerSelection,
   restoreCoverImageNaturalAspect,
+  selectionToLayerIds,
   setLayerLocked,
   sharedGroupIdForSelection,
   snapBoundsToObjects,
@@ -838,9 +843,12 @@ export default function CoverEditor({
     const modKey = event.metaKey || event.ctrlKey;
     const altKey = event.altKey;
     const additive = modKey && !altKey;
-    const targetIds = expandIdsToGroups(coverRef.current, [id]);
+    const targetIds = additive
+      ? expandIdsToGroups(coverRef.current, [id], 'root')
+      : resolveCoverPointerSelection(coverRef.current, id, selectedIdsRef.current);
     const selected = selectedIdsRef.current;
-    const targetFullySelected = targetIds.every((tid) => selected.includes(tid));
+    const targetFullySelected =
+      targetIds.length > 0 && targetIds.every((tid) => selected.includes(tid));
     const selectionIsExactTarget =
       targetFullySelected
       && selected.length === targetIds.length
@@ -866,8 +874,8 @@ export default function CoverEditor({
       ids = targetIds;
       onSelectIds(ids);
     } else {
-      ids = expandIdsToGroups(coverRef.current, selected);
-      if (ids.length !== selectedIdsRef.current.length) onSelectIds(ids);
+      // Already selected (root or drilled subgroup) — keep for move / further drill.
+      ids = selected;
     }
 
     const movableIds = filterUnlockedElementIds(coverRef.current, ids);
@@ -1535,6 +1543,23 @@ export default function CoverEditor({
   const selectedSet = new Set(selectedIds);
   const singleSelected = selectedIds.length === 1 ? findEl(selectedIds[0]!) : null;
 
+  const groupSelectionChrome = useMemo(() => {
+    const layerIds = selectionToLayerIds(cover, selectedIds);
+    const outlines: { id: string; bounds: { x: number; y: number; w: number; h: number } }[] =
+      [];
+    const memberIds = new Set<string>();
+    for (const id of layerIds) {
+      if (!isGroupId(cover, id)) continue;
+      const descendants = collectDescendantElementIds(cover, id);
+      if (!descendants.length) continue;
+      const bounds = getSelectionBounds(getElementsByIds(cover, descendants));
+      if (!bounds) continue;
+      outlines.push({ id, bounds });
+      for (const mid of descendants) memberIds.add(mid);
+    }
+    return { outlines, memberIds };
+  }, [cover, selectedIds]);
+
   const marqueeHitSet = useMemo(() => {
     if (!marqueeRect || (marqueeRect.w < 0.05 && marqueeRect.h < 0.05)) {
       return new Set<string>();
@@ -1544,10 +1569,14 @@ export default function CoverEditor({
 
   const elementChromeClass = (el: CoverElement, isSelected: boolean, isMarqueeHit: boolean) => {
     const locked = isElementEffectivelyLocked(cover, el);
+    const inSelectedGroup = groupSelectionChrome.memberIds.has(el.id);
     const parts = ['absolute', 'box-border'];
     if (locked && isSelected) {
       // Locked + selected: yellow border
       parts.push('ring-2', 'ring-yellow-400', 'ring-offset-0');
+    } else if (isSelected && inSelectedGroup) {
+      // Group member: light blue; group envelope uses selection blue.
+      parts.push('ring-2', 'ring-blue-300', 'ring-offset-0');
     } else if (isSelected) {
       parts.push('ring-2', 'ring-blue-500', 'ring-offset-0');
     } else if (isMarqueeHit) {
@@ -1608,6 +1637,19 @@ export default function CoverEditor({
             aria-hidden
           />
         ) : null}
+        {groupSelectionChrome.outlines.map(({ id, bounds }) => (
+          <div
+            key={`group-sel-${id}`}
+            className="pointer-events-none absolute z-40 border-2 border-blue-500"
+            style={{
+              left: `${bounds.x}%`,
+              top: `${bounds.y}%`,
+              width: `${bounds.w}%`,
+              height: `${bounds.h}%`,
+            }}
+            aria-hidden
+          />
+        ))}
         {placeMode && placePreviewEnabled && placeGhost ? (
           <div
             className="pointer-events-none absolute z-45 overflow-hidden rounded-sm border border-dashed border-blue-500 bg-blue-500/15"
@@ -1779,9 +1821,17 @@ export default function CoverEditor({
                     beginMove(el.id, event);
                   }}
                   onDoubleClick={(event) => {
+                    event.preventDefault();
                     event.stopPropagation();
-                    if (canEditText) {
-                      onSelectIds([el.id]);
+                    if (placeMode) return;
+                    const drilled = resolveCoverDrillSelection(
+                      coverRef.current,
+                      el.id,
+                      selectedIdsRef.current,
+                    );
+                    if (!drilled.ids.length) return;
+                    onSelectIds(drilled.ids);
+                    if (drilled.enterEdit && canEditText) {
                       setEditingTextId(el.id);
                     }
                   }}

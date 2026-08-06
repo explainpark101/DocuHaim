@@ -73,8 +73,10 @@ import {
   layerIdsIncludeLocked,
   groupSelectedElements,
   isCoverShapeElement,
+  isGroupId,
   restackElementsByGap,
   gapPxToFramePct,
+  selectionToLayerIds,
   sendSelectionToBack,
   ungroupElements,
   withCoverLayout,
@@ -536,7 +538,13 @@ export default function CoverSidebar({
     return first;
   }, [cover.elements, selectedIds]);
 
-  const canGroup = selectedIds.length >= 1;
+  const canGroup = useMemo(() => {
+    if (selectedIds.length < 1) return false;
+    const layerIds = selectionToLayerIds(cover, selectedIds);
+    // Sole fully-selected group: grouping would only wrap it — disable.
+    if (layerIds.length === 1 && isGroupId(cover, layerIds[0]!)) return false;
+    return true;
+  }, [cover, selectedIds]);
   const canUngroup = Boolean(sharedGroupId);
 
   const alignCapability = useMemo(

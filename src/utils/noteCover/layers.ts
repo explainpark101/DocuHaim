@@ -134,12 +134,48 @@ export function sharedGroupIdForSelection(
 }
 
 /**
- * Expand selection so any grouped element pulls in all members of its group
- * (including nested group descendants).
+ * Ancestor groups of an element from rootmost to immediate parent.
+ * Empty when the element is ungrouped.
+ */
+export function getElementGroupChain(
+  cover: NoteCover,
+  elementId: string,
+): string[] {
+  const tree = ensureLayerTree(cover);
+  const el = tree.elements.find((e) => e.id === elementId);
+  if (!el?.groupId) return [];
+  const upward: string[] = [];
+  let gid: string | undefined = el.groupId;
+  const seen = new Set<string>();
+  while (gid && !seen.has(gid)) {
+    seen.add(gid);
+    upward.push(gid);
+    gid = getGroup(tree, gid)?.parentGroupId;
+  }
+  return upward.reverse();
+}
+
+/** True when selectedIds is exactly the full descendant set of groupId. */
+export function selectionMatchesGroupMembers(
+  cover: NoteCover,
+  selectedIds: ReadonlyArray<string>,
+  groupId: string,
+): boolean {
+  const members = collectDescendantElementIds(cover, groupId);
+  if (!members.length || members.length !== selectedIds.length) return false;
+  const set = new Set(selectedIds);
+  return members.every((id) => set.has(id));
+}
+
+/**
+ * Expand selection so any grouped element pulls in members of its group.
+ * - `root` (default): outermost ancestor group (canvas click / marquee)
+ * - `immediate`: element's own groupId only (layer panel)
  */
 export function expandIdsToGroups(
   cover: NoteCover,
   ids: ReadonlyArray<string>,
+  scope: 'root' | 'immediate' = 'root',
 ): string[] {
   if (!ids.length) return [];
   const tree = ensureLayerTree(cover);
@@ -147,15 +183,94 @@ export function expandIdsToGroups(
   for (const id of ids) {
     const el = tree.elements.find((e) => e.id === id);
     if (!el) continue;
-    if (el.groupId) {
-      for (const mid of collectDescendantElementIds(tree, el.groupId)) {
-        out.add(mid);
-      }
-    } else {
+    if (!el.groupId) {
       out.add(id);
+      continue;
+    }
+    const groupId =
+      scope === 'immediate'
+        ? el.groupId
+        : (getElementGroupChain(tree, id)[0] ?? el.groupId);
+    for (const mid of collectDescendantElementIds(tree, groupId)) {
+      out.add(mid);
     }
   }
   return [...out];
+}
+
+/**
+ * Pointer-down selection for a canvas element.
+ * Keeps the current group (or sole element) when it already sits on this
+ * element's ancestor chain so nested drill-down is preserved; otherwise
+ * selects the rootmost containing group.
+ */
+export function resolveCoverPointerSelection(
+  cover: NoteCover,
+  elementId: string,
+  selectedIds: ReadonlyArray<string>,
+): string[] {
+  const tree = ensureLayerTree(cover);
+  if (!tree.elements.some((e) => e.id === elementId)) return [];
+  const chain = getElementGroupChain(tree, elementId);
+  if (!chain.length) return [elementId];
+
+  let matched = -1;
+  for (let i = 0; i < chain.length; i += 1) {
+    if (selectionMatchesGroupMembers(tree, selectedIds, chain[i]!)) matched = i;
+  }
+  if (matched >= 0) {
+    return collectDescendantElementIds(tree, chain[matched]!);
+  }
+  if (selectedIds.length === 1 && selectedIds[0] === elementId) {
+    return [elementId];
+  }
+  return collectDescendantElementIds(tree, chain[0]!);
+}
+
+/**
+ * Double-click drill: one step deeper toward elementId.
+ * When the sole element is already selected, `enterEdit` asks the caller to
+ * open text editing (if applicable).
+ */
+export function resolveCoverDrillSelection(
+  cover: NoteCover,
+  elementId: string,
+  selectedIds: ReadonlyArray<string>,
+): { ids: string[]; enterEdit: boolean } {
+  const tree = ensureLayerTree(cover);
+  if (!tree.elements.some((e) => e.id === elementId)) {
+    return { ids: [], enterEdit: false };
+  }
+
+  if (selectedIds.length === 1 && selectedIds[0] === elementId) {
+    return { ids: [elementId], enterEdit: true };
+  }
+
+  const chain = getElementGroupChain(tree, elementId);
+  if (!chain.length) {
+    return { ids: [elementId], enterEdit: true };
+  }
+
+  let matched = -1;
+  for (let i = 0; i < chain.length; i += 1) {
+    if (selectionMatchesGroupMembers(tree, selectedIds, chain[i]!)) matched = i;
+  }
+
+  if (matched < 0) {
+    return {
+      ids: collectDescendantElementIds(tree, chain[0]!),
+      enterEdit: false,
+    };
+  }
+
+  if (matched < chain.length - 1) {
+    return {
+      ids: collectDescendantElementIds(tree, chain[matched + 1]!),
+      enterEdit: false,
+    };
+  }
+
+  return { ids: [elementId], enterEdit: false };
 }
 
 /**
@@ -247,11 +362,16 @@ export function groupSelectedElements(
   if (unique.length < 1) return null;
 
   let next = ensureLayerTree(cover);
+  const layerIds = selectionToLayerIds(next, unique);
+  // Already a single group — do not wrap it in another parent group.
+  if (layerIds.length === 1 && isGroupId(next, layerIds[0]!)) {
+    return null;
+  }
+
   const created = createEmptyGroup(next, name?.trim() || undefined);
   next = created.cover;
   const groupId = created.groupId;
 
-  const layerIds = selectionToLayerIds(next, unique);
   for (const id of [...layerIds].reverse()) {
     next = moveLayerRelative(next, id, groupId, 'inside');
   }
