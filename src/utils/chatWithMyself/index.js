@@ -177,6 +177,7 @@ export {
   loadComposerDraftImageQueue,
   composerDraftHasContent,
 } from './composerDraft.js';
+export { looksLikeMarkdown } from './markdownDetect.js';
 export {
   CHAT_PREF_PREFIX,
   CHAT_PREF_KEYS,

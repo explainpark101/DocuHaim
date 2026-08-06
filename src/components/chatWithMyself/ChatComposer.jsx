@@ -39,6 +39,7 @@ import {
   getComposerHelperTextVisible,
   writeComposerHelperTextPref,
   isChatMessageMarkdown,
+  looksLikeMarkdown,
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 
@@ -221,6 +222,8 @@ export default function ChatComposer({
   const inlineGroupInputRef = useRef(null);
   const valueRef = useRef(value);
   const markdownEnabledRef = useRef(markdownEnabled);
+  /** When user turns Markdown off while markup remains, skip auto-enable until markup clears. */
+  const markdownUserOffRef = useRef(false);
   const imageQueueRef = useRef(imageQueue);
   const prevEditTargetRef = useRef(editTarget);
   const removedExistingPathsRef = useRef([]);
@@ -266,6 +269,22 @@ export default function ChatComposer({
     markdownEnabledRef.current = markdownEnabled;
   }, [markdownEnabled]);
 
+  const setMarkdownFromUser = useCallback((next) => {
+    const enabled = Boolean(next);
+    markdownUserOffRef.current = !enabled;
+    setMarkdownEnabled(enabled);
+  }, []);
+
+  const applyComposerValue = useCallback((next) => {
+    const text = String(next ?? '');
+    setValue(text);
+    if (looksLikeMarkdown(text)) {
+      if (!markdownUserOffRef.current) setMarkdownEnabled(true);
+    } else {
+      markdownUserOffRef.current = false;
+    }
+  }, []);
+
   useEffect(() => {
     imageQueueRef.current = imageQueue;
   }, [imageQueue]);
@@ -295,7 +314,12 @@ export default function ChatComposer({
         if (meta?.body) {
           setValue(meta.body);
         }
-        setMarkdownEnabled(Boolean(meta?.markdown));
+        setMarkdownEnabled(
+          Boolean(meta?.markdown) || looksLikeMarkdown(meta?.body),
+        );
+        if (Boolean(meta?.markdown) || looksLikeMarkdown(meta?.body)) {
+          markdownUserOffRef.current = false;
+        }
         if (meta?.imageIds?.length) {
           const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
           if (!cancelled && imgs.length) {
@@ -317,15 +341,25 @@ export default function ChatComposer({
   useEffect(() => {
     if (!seedBody?.id || seedBody.body == null || !draftReady || editTarget) return;
     const nextBody = String(seedBody.body);
-    setValue(nextBody);
+    applyComposerValue(nextBody);
     const meta = readComposerDraftMeta(draftScope) || {};
     writeComposerDraftMeta(draftScope, {
       ...meta,
       body: nextBody,
       group: selectedGroup || SELF_GROUP,
+      markdown: Boolean(meta.markdown) || looksLikeMarkdown(nextBody),
     });
     onSeedConsumed?.();
-  }, [seedBody?.id, seedBody?.body, draftReady, editTarget, selectedGroup, onSeedConsumed, draftScope]);
+  }, [
+    seedBody?.id,
+    seedBody?.body,
+    draftReady,
+    editTarget,
+    selectedGroup,
+    onSeedConsumed,
+    draftScope,
+    applyComposerValue,
+  ]);
 
   const getPresignedUrlRef = useRef(getPresignedUrl);
   getPresignedUrlRef.current = getPresignedUrl;
@@ -347,6 +381,7 @@ export default function ChatComposer({
       previewUrl: null,
     }));
     setValue(text);
+    markdownUserOffRef.current = false;
     setMarkdownEnabled(isChatMessageMarkdown(editTarget));
     setImageQueue((prev) => {
       prev.forEach((item) => {
@@ -415,7 +450,10 @@ export default function ChatComposer({
       const meta = readComposerDraftMeta(draftScope);
       if (cancelled) return;
       setValue(meta?.body || '');
-      setMarkdownEnabled(Boolean(meta?.markdown));
+      setMarkdownEnabled(
+        Boolean(meta?.markdown) || looksLikeMarkdown(meta?.body),
+      );
+      markdownUserOffRef.current = false;
       setImageQueue((prevQueue) => {
         prevQueue.forEach((item) => {
           if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
@@ -739,6 +777,7 @@ export default function ChatComposer({
       );
       setValue('');
       setMarkdownEnabled(false);
+      markdownUserOffRef.current = false;
       clearImageQueue();
       onClearEdit?.();
       return;
@@ -748,6 +787,7 @@ export default function ChatComposer({
     });
     setValue('');
     setMarkdownEnabled(false);
+    markdownUserOffRef.current = false;
     clearImageQueue();
     onClearReply?.();
     await clearComposerDraft(draftScope);
@@ -767,8 +807,24 @@ export default function ChatComposer({
     const el = wrapRef.current;
     if (!el) return undefined;
     const onKeyDown = (e) => {
-      if (e.key !== 'Enter' || e.isComposing) return;
+      if (e.isComposing) return;
       if (!el.contains(e.target)) return;
+
+      // Ctrl+M toggles Markdown (Ctrl on Mac too — not Cmd).
+      if (
+        (e.key === 'm' || e.key === 'M') &&
+        e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMarkdownFromUser(!markdownEnabledRef.current);
+        return;
+      }
+
+      if (e.key !== 'Enter') return;
 
       // Opt/Alt+Enter: no-op (do not send, do not insert newline).
       if (e.altKey) {
@@ -811,7 +867,7 @@ export default function ChatComposer({
     };
     el.addEventListener('keydown', onKeyDown, true);
     return () => el.removeEventListener('keydown', onKeyDown, true);
-  }, [doSend, isMobile, editTarget, applePlatform]);
+  }, [doSend, isMobile, editTarget, applePlatform, setMarkdownFromUser]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -875,9 +931,9 @@ export default function ChatComposer({
     <ChatNavSwitch
       id="chat-composer-markdown"
       label="Markdown"
-      title="마크다운 문법으로 렌더링"
+      title="마크다운 문법으로 렌더링 (Ctrl+M)"
       checked={markdownEnabled}
-      onCheckedChange={setMarkdownEnabled}
+      onCheckedChange={setMarkdownFromUser}
     />
   );
 
@@ -915,6 +971,8 @@ export default function ChatComposer({
               onClick={() => {
                 removedExistingPathsRef.current = [];
                 setValue('');
+                setMarkdownEnabled(false);
+                markdownUserOffRef.current = false;
                 clearImageQueue();
                 onClearEdit?.();
               }}
@@ -1242,7 +1300,7 @@ export default function ChatComposer({
                   ref={textareaRef}
                   data-chat-composer-textarea=""
                   value={value}
-                  onChange={(e) => setValue(e.target.value)}
+                  onChange={(e) => applyComposerValue(e.target.value)}
                   placeholder="메시지 입력…"
                   className="box-border h-full min-h-0 w-full resize-none border-0 bg-transparent px-2.5 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-odp-fgStrong dark:placeholder:text-gray-500"
                   style={
@@ -1262,7 +1320,7 @@ export default function ChatComposer({
                 >
                   <ChatComposerMdEditor
                     value={value}
-                    onChange={setValue}
+                    onChange={applyComposerValue}
                     theme={resolvedTheme}
                     showToolbar={showToolbar}
                     onUploadImg={async (files, callback) => {
@@ -1293,8 +1351,8 @@ export default function ChatComposer({
           <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
             <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
               {editTarget
-                ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈`
-                : `${sendModLabel} / Enter 전송 · Shift+Enter 줄바꿈 · 첨부는 전송 시 업로드`}
+                ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈 · Ctrl+M 마크다운`
+                : `${sendModLabel} / Enter 전송 · Shift+Enter 줄바꿈 · Ctrl+M 마크다운 · 첨부는 전송 시 업로드`}
             </p>
             <button
               type="button"
