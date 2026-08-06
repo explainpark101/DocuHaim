@@ -613,6 +613,23 @@ export default function Sidebar({
     visit(localTree);
   }, [localTree, expandedPaths.local, onLoadLocalFolderChildren]);
 
+  useEffect(() => {
+    if (!onLoadWebdavFolderChildren || !webdavTree?.length) return;
+    const expanded = expandedPaths.webdav;
+    if (!expanded?.size) return;
+
+    const visit = (nodes) => {
+      for (const node of nodes) {
+        if (node?.type !== 'folder') continue;
+        if (expanded.has(node.path) && node.childrenLoaded !== true) {
+          void onLoadWebdavFolderChildren(node);
+        }
+        if (node.children?.length) visit(node.children);
+      }
+    };
+    visit(webdavTree);
+  }, [webdavTree, expandedPaths.webdav, onLoadWebdavFolderChildren]);
+
   const expandPathsForNewItem = useCallback((storageType, paths) => {
     if (!paths?.length) return;
     setExpandedPaths((prev) => {

@@ -223,6 +223,19 @@ import {
 } from '@/utils/pwaUpdate';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+/** Ancestor folder paths (with trailing `/`) to expand so a file under `parentPath` is visible. */
+function getParentPathsToExpand(parentPath) {
+  if (!parentPath || parentPath === '') return [];
+  const parts = parentPath.replace(/\/$/, '').split('/').filter(Boolean);
+  const result = [];
+  let acc = '';
+  for (const p of parts) {
+    acc += p + '/';
+    result.push(acc);
+  }
+  return result;
+}
+
 export default function App() {
   const location = useLocation();
   if (location.pathname === '/llm-assist-popout') {
@@ -2861,6 +2874,12 @@ function MainApp() {
     async (path) => {
       if (!path) return;
       const type = storageMode;
+      const slash = path.lastIndexOf('/');
+      const parentPath = slash >= 0 ? path.slice(0, slash + 1) : '';
+      const parentPaths = getParentPathsToExpand(parentPath);
+      if (parentPaths.length) {
+        expandPathsRef.current?.(type, parentPaths);
+      }
       let node = null;
       if (type === STORAGE_MODE_LOCAL) {
         node =
@@ -4840,18 +4859,6 @@ function MainApp() {
   };
 
   // 6. Create & Delete
-  const getParentPathsToExpand = (parentPath) => {
-    if (!parentPath || parentPath === '') return [];
-    const parts = parentPath.replace(/\/$/, '').split('/').filter(Boolean);
-    const result = [];
-    let acc = '';
-    for (const p of parts) {
-      acc += p + '/';
-      result.push(acc);
-    }
-    return result;
-  };
-
   const createItem = async (storageType, parentPath, parentDirHandle, type, nameInput) => {
     const name = (nameInput || '').trim();
     if (!name) return;
