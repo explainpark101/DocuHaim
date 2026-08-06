@@ -1336,6 +1336,35 @@ export default function CoverEditor({
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.metaKey || event.ctrlKey;
+
+      // Cmd/Ctrl+Shift+< / > : font size −1 / +1 px.
+      // Handle before editable-target bail-out so sidebar inputs / text edit
+      // focus do not swallow the shortcut (event.code is IME-safe).
+      if (mod && event.shiftKey && !event.altKey) {
+        const { code, key } = event;
+        const decrease =
+          code === 'Comma'
+          || key === '<'
+          || key === ',';
+        const increase =
+          code === 'Period'
+          || key === '>'
+          || key === '.';
+        if (decrease || increase) {
+          if (!selectedIdsRef.current.length) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const next = nudgeCoverFontSizes(
+            coverRef.current,
+            selectedIdsRef.current,
+            decrease ? -1 : 1,
+          );
+          if (next !== coverRef.current) onChange(next);
+          return;
+        }
+      }
+
       if (isEditablePasteTarget(event.target)) return;
 
       if (isArrowKey(event.key)) {
@@ -1427,34 +1456,8 @@ export default function CoverEditor({
         }
       }
 
-      const mod = event.metaKey || event.ctrlKey;
       if (!mod || event.altKey) return;
       const key = event.key.toLowerCase();
-
-      // Cmd/Ctrl+Shift+< / > : font size −1 / +1 px on selected text/shapes.
-      if (event.shiftKey) {
-        const decrease =
-          key === '<'
-          || key === ','
-          || event.code === 'Comma';
-        const increase =
-          key === '>'
-          || key === '.'
-          || event.code === 'Period';
-        if (decrease || increase) {
-          if (editingTextId) return;
-          if (!selectedIdsRef.current.length) return;
-          event.preventDefault();
-          event.stopPropagation();
-          const next = nudgeCoverFontSizes(
-            coverRef.current,
-            selectedIdsRef.current,
-            decrease ? -1 : 1,
-          );
-          if (next !== coverRef.current) onChange(next);
-          return;
-        }
-      }
 
       if (key === 'z' && event.shiftKey) {
         event.preventDefault();

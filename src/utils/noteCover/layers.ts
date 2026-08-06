@@ -475,6 +475,14 @@ export function layerIdsIncludeLocked(
 const COVER_FONT_SIZE_MIN = 6;
 const COVER_FONT_SIZE_MAX = 400;
 
+function clampCoverFontSize(value: number): number {
+  if (!Number.isFinite(value)) return COVER_FONT_SIZE_MIN;
+  return Math.min(
+    COVER_FONT_SIZE_MAX,
+    Math.max(COVER_FONT_SIZE_MIN, Math.round(value)),
+  );
+}
+
 /** Nudge fontSize on selected text / shape elements by `delta` px (clamped). */
 export function nudgeCoverFontSizes(
   cover: NoteCover,
@@ -487,20 +495,18 @@ export function nudgeCoverFontSizes(
   const elements = cover.elements.map((el) => {
     if (!idSet.has(el.id)) return el;
     if (el.type === 'text') {
-      const next = Math.min(
-        COVER_FONT_SIZE_MAX,
-        Math.max(COVER_FONT_SIZE_MIN, Math.round(el.fontSize + delta)),
+      const current = Number(el.fontSize);
+      const next = clampCoverFontSize(
+        (Number.isFinite(current) ? current : 36) + delta,
       );
       if (next === el.fontSize) return el;
       changed = true;
       return { ...el, fontSize: next };
     }
     if (el.type === 'rect' || el.type === 'ellipse' || el.type === 'roundRect') {
-      const current = el.fontSize ?? 24;
-      const next = Math.min(
-        COVER_FONT_SIZE_MAX,
-        Math.max(COVER_FONT_SIZE_MIN, Math.round(current + delta)),
-      );
+      const parsed = Number(el.fontSize);
+      const current = Number.isFinite(parsed) ? parsed : 24;
+      const next = clampCoverFontSize(current + delta);
       if (next === current && el.fontSize === next) return el;
       changed = true;
       return { ...el, fontSize: next };
