@@ -11,6 +11,15 @@ import {
   PRINT_PAPER_SIZE_COMMANDS,
   type PrintActionId,
 } from './printActions';
+import {
+  CHAT_ACTION_COMMANDS,
+  type ChatActionId,
+} from './chatActions';
+import {
+  SETTINGS_TOGGLE_DEFS,
+  type SettingsToggleId,
+} from './settingsToggles';
+import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
 
 export type AppCommandId =
   | 'home'
@@ -33,13 +42,22 @@ export type AppCommandId =
   | 'chat'
   | 'chat-settings'
   | 'chat-groups'
+  | 'chat-select-group'
+  | 'chat-select-group-item'
+  | 'chat-clear-group'
   | 'chat-dates'
   | 'chat-search'
   | 'chat-pinned'
   | 'export-pdf'
   | 'export-current'
+  | 'editor-autocomplete-toggle'
+  | 'browse-directory'
+  | 'browse-new-file'
+  | 'browse-new-folder'
   | EditorActionId
-  | PrintActionId;
+  | PrintActionId
+  | ChatActionId
+  | SettingsToggleId;
 
 export type AppCommand = {
   id: AppCommandId;
@@ -65,8 +83,17 @@ export type AppCommandContext = {
   editorActionsAvailable?: boolean;
   /** True when ExportPDFPage has registered print actions. */
   printActionsAvailable?: boolean;
+  /** True when chat composer has registered actions (on /chat). */
+  chatActionsAvailable?: boolean;
   /** Nested picker: only paper size commands. */
   printPaperPickerMode?: boolean;
+  /** Current editor autocomplete suggestion preference (localStorage). */
+  editorAutocompleteEnabled?: boolean;
+  /**
+   * When true, getAppCommands also includes editor/print toolbar actions.
+   * Prefer matchAppCommands which attaches page actions only for non-empty queries.
+   */
+  includePageActions?: boolean;
 };
 
 export const APP_COMMANDS: readonly AppCommand[] = [
@@ -251,6 +278,37 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     keywords: ['그룹', 'group', '그룹 사이드바', 'chat groups'],
   },
   {
+    id: 'chat-select-group',
+    title: '나와의 채팅 · 그룹 선택',
+    description: '보낼 그룹·보기 필터를 Advanced Search에서 고릅니다',
+    path: '',
+    keywords: [
+      '그룹 선택',
+      'select group',
+      'chat group',
+      '그룹 고르기',
+      '채팅 그룹',
+      '나',
+      'view group',
+    ],
+  },
+  {
+    id: 'chat-clear-group',
+    title: '나와의 채팅 · 그룹 선택 해제',
+    description: '그룹 보기 필터를 끄고 전체 메시지를 표시합니다',
+    path: '/chat#group-clear',
+    keywords: [
+      '그룹 선택 해제',
+      '그룹 해제',
+      'clear group',
+      'deselect group',
+      '전체 보기',
+      '필터 해제',
+      '그룹 필터',
+      'ungroup',
+    ],
+  },
+  {
     id: 'chat-dates',
     title: '나와의 채팅 · 날짜 사이드바',
     description: '날짜 점프 패널 열기',
@@ -286,6 +344,23 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '인쇄 미리보기',
     ],
   },
+  {
+    id: 'browse-directory',
+    title: '디렉토리 탐색',
+    description: 'Browse Directory · 폴더를 탐색하고 파일을 엽니다',
+    path: '',
+    keywords: [
+      'browse',
+      'directory',
+      'folder',
+      'browse directory',
+      '디렉토리',
+      '탐색',
+      '폴더',
+      '디렉토리 탐색',
+      '파일 탐색',
+    ],
+  },
 ] as const;
 
 function normalize(s: string): string {
@@ -318,28 +393,45 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
   }
 
   const list: AppCommand[] = [...APP_COMMANDS];
-  if (context?.editorActionsAvailable) {
-    for (const cmd of EDITOR_ACTION_COMMANDS) {
-      list.push({
-        id: cmd.id,
-        title: cmd.title,
-        description: cmd.description,
-        path: '',
-        keywords: cmd.keywords,
-      });
-    }
-  }
-  if (context?.printActionsAvailable) {
-    for (const cmd of PRINT_ACTION_COMMANDS) {
-      list.push({
-        id: cmd.id,
-        title: cmd.title,
-        description: cmd.description,
-        path: '',
-        keywords: [...cmd.keywords],
-      });
-    }
-  }
+
+  // Exactly one of enable/disable, matching current localStorage preference.
+  const autocompleteOn = context?.editorAutocompleteEnabled !== false;
+  list.push(
+    autocompleteOn
+      ? {
+          id: 'editor-autocomplete-toggle',
+          title: '자동완성 추천 끄기',
+          description: '에디터 자동완성 추천을 이 기기에서 끕니다',
+          path: '',
+          keywords: [
+            'autocomplete',
+            'completion',
+            'suggestion',
+            '자동완성',
+            '추천',
+            '끄기',
+            'off',
+            'disable',
+          ],
+        }
+      : {
+          id: 'editor-autocomplete-toggle',
+          title: '자동완성 추천 켜기',
+          description: '에디터 자동완성 추천을 이 기기에서 켭니다',
+          path: '',
+          keywords: [
+            'autocomplete',
+            'completion',
+            'suggestion',
+            '자동완성',
+            '추천',
+            '켜기',
+            'on',
+            'enable',
+          ],
+        },
+  );
+
   if (isOpenMarkdownFile(context?.currentFile)) {
     const name =
       String(context.currentFile.name || '').trim() ||
@@ -366,25 +458,215 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
       ],
     });
   }
+
+  // Page-specific toolbar actions: only attached when a query is present (see matchAppCommands).
+  // Callers that need the full list can pass includePageActions.
+  if (context?.includePageActions) {
+    if (context?.editorActionsAvailable) {
+      for (const cmd of EDITOR_ACTION_COMMANDS) {
+        list.push({
+          id: cmd.id,
+          title: cmd.title,
+          description: cmd.description,
+          path: '',
+          keywords: cmd.keywords,
+        });
+      }
+    }
+    if (context?.printActionsAvailable) {
+      for (const cmd of PRINT_ACTION_COMMANDS) {
+        list.push({
+          id: cmd.id,
+          title: cmd.title,
+          description: cmd.description,
+          path: '',
+          keywords: [...cmd.keywords],
+        });
+      }
+    }
+    if (context?.chatActionsAvailable) {
+      for (const cmd of CHAT_ACTION_COMMANDS) {
+        list.push({
+          id: cmd.id,
+          title: cmd.title,
+          description: cmd.description,
+          path: '',
+          keywords: [...cmd.keywords],
+        });
+      }
+    }
+  }
+
   return list;
 }
 
+function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
+  const list: AppCommand[] = [];
+  if (context?.editorActionsAvailable) {
+    for (const cmd of EDITOR_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: cmd.keywords,
+      });
+    }
+  }
+  if (context?.printActionsAvailable) {
+    for (const cmd of PRINT_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: [...cmd.keywords],
+      });
+    }
+  }
+  if (context?.chatActionsAvailable) {
+    for (const cmd of CHAT_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: [...cmd.keywords],
+      });
+    }
+  }
+  return list;
+}
+
+/** Settings toggle switches: one enable OR disable command per option. */
+function getSettingsToggleCommands(): AppCommand[] {
+  return SETTINGS_TOGGLE_DEFS.map((def) => {
+    const on = def.load();
+    return {
+      id: def.id,
+      title: on ? def.disableTitle : def.enableTitle,
+      description: def.description,
+      path: '',
+      keywords: [
+        ...def.keywords,
+        '설정',
+        'settings',
+        'toggle',
+        '토글',
+        on ? '끄기' : '켜기',
+        on ? 'off' : 'on',
+        on ? 'disable' : 'enable',
+      ],
+    };
+  });
+}
+
 /**
- * Match built-in commands by title/keyword substring.
- * Empty query returns all commands (palette suggestions).
+ * Relevance of a command to query. 0 = no useful match.
+ * Uses chat-style fuzzy / partial matching (subsequence + substring).
+ */
+export function scoreCommandRelevance(cmd: AppCommand, query: string): number {
+  const q = normalize(query);
+  if (!q) return 0;
+
+  const title = normalize(cmd.title);
+  const description = normalize(cmd.description);
+  const path = normalize(cmd.path);
+  const keywords = (cmd.keywords || []).map(normalize).filter(Boolean);
+
+  const titleScore = scoreFuzzyRelevance(title, q);
+  const keywordScore = Math.max(
+    0,
+    ...keywords.map((k) => {
+      const s = scoreFuzzyRelevance(k, q);
+      // Keyword hits slightly below an equal title hit.
+      return s > 0 ? Math.max(1, s - 40) : 0;
+    }),
+  );
+  const descScore = (() => {
+    const s = scoreFuzzyRelevance(description, q);
+    return s > 0 ? Math.min(s, 420) : 0;
+  })();
+  const pathScore = path
+    ? (() => {
+        const s = scoreFuzzyRelevance(path, q);
+        return s > 0 ? Math.min(s, 360) : 0;
+      })()
+    : 0;
+
+  // Also allow query tokens to hit across title + keywords + description.
+  const cross = scoreFuzzyFields([title, description, ...keywords], q);
+
+  return Math.max(titleScore, keywordScore, descScore, pathScore, cross);
+}
+
+export type RankedAppCommand = {
+  command: AppCommand;
+  score: number;
+};
+
+/**
+ * Match built-in commands by relevance.
+ * - Empty query: core app shortcuts only (no editor/print toolbar dump).
+ * - Non-empty: core + page actions, filtered and sorted by relevance score.
  */
 export function matchAppCommands(
   query: string,
   context?: AppCommandContext,
 ): AppCommand[] {
-  const commands = getAppCommands(context);
-  const q = normalize(query);
-  if (!q) return commands;
+  return matchAppCommandsRanked(query, context).map((r) => r.command);
+}
 
-  return commands.filter((cmd) => {
-    const haystacks = [cmd.title, cmd.description, cmd.path, ...cmd.keywords].map(
-      normalize,
-    );
-    return haystacks.some((h) => h.includes(q) || q.includes(h));
-  });
+/** Same as matchAppCommands but keeps relevance scores for hit ranking. */
+export function matchAppCommandsRanked(
+  query: string,
+  context?: AppCommandContext,
+): RankedAppCommand[] {
+  if (context?.printPaperPickerMode) {
+    const paper = getAppCommands({ printPaperPickerMode: true });
+    const q = normalize(query);
+    if (!q) {
+      return paper.map((command, index) => ({
+        command,
+        score: 1000 - index,
+      }));
+    }
+    return paper
+      .map((command) => ({
+        command,
+        score: scoreCommandRelevance(command, q),
+      }))
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score || a.command.title.localeCompare(b.command.title, 'ko'));
+  }
+
+  const q = normalize(query);
+  const core = getAppCommands(context);
+
+  if (!q) {
+    // Palette: core destinations only — page toolbar actions require a query.
+    return core.map((command, index) => ({
+      command,
+      score: 1000 - index,
+    }));
+  }
+
+  const page = getPageActionCommands(context);
+  const settingsToggles = getSettingsToggleCommands();
+  const seen = new Set<string>();
+  const ranked: RankedAppCommand[] = [];
+
+  for (const command of [...core, ...page, ...settingsToggles]) {
+    if (seen.has(command.id)) continue;
+    seen.add(command.id);
+    const score = scoreCommandRelevance(command, q);
+    if (score <= 0) continue;
+    ranked.push({ command, score });
+  }
+
+  ranked.sort(
+    (a, b) =>
+      b.score - a.score || a.command.title.localeCompare(b.command.title, 'ko'),
+  );
+  return ranked;
 }

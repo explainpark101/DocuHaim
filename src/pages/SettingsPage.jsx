@@ -18,12 +18,14 @@ import {
 } from '@/utils/editorTypeSettings';
 import {
   loadAltVimNavigationEnabled,
-  saveAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
   getComposerHelperTextVisible,
-  writeComposerHelperTextPref,
 } from '@/utils/chatWithMyself';
+import {
+  setSettingsToggle,
+  subscribeSettingsToggles,
+} from '@/utils/advancedSearch/settingsToggles';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
@@ -41,7 +43,6 @@ import { RadioGroup } from 'radix-ui';
 import {
   advancedSearchEngine,
   loadAdvancedSearchUiAnimationEnabled,
-  saveAdvancedSearchUiAnimationEnabled,
 } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
@@ -129,6 +130,17 @@ export default function SettingsPage({
   useEffect(() => {
     syncGeminiModel();
   }, [syncGeminiModel]);
+
+  useEffect(() => {
+    return subscribeSettingsToggles((id, enabled) => {
+      if (id === 'settings-alt-vim') setAltVimNavigationEnabled(enabled);
+      else if (id === 'settings-composer-helper') setComposerHelperTextVisible(enabled);
+      else if (id === 'settings-as-animation') setAdvancedSearchUiAnimation(enabled);
+      else if (id === 'settings-as-index' || id === 'settings-as-include-other') {
+        setAdvancedSearchStatus(advancedSearchEngine.getStatus());
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const hash = String(location.hash || '').replace(/^#/, '');
@@ -741,9 +753,7 @@ export default function SettingsPage({
               <button
                 type="button"
                 onClick={() => {
-                  const next = !altVimNavigationEnabled;
-                  setAltVimNavigationEnabled(next);
-                  saveAltVimNavigationEnabled(next);
+                  setSettingsToggle('settings-alt-vim', !altVimNavigationEnabled);
                 }}
                 className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
                   altVimNavigationEnabled
@@ -991,9 +1001,7 @@ export default function SettingsPage({
             <button
               type="button"
               onClick={() => {
-                const next = !composerHelperTextVisible;
-                setComposerHelperTextVisible(next);
-                writeComposerHelperTextPref(next);
+                setSettingsToggle('settings-composer-helper', !composerHelperTextVisible);
               }}
               className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
                 composerHelperTextVisible
@@ -1038,9 +1046,7 @@ export default function SettingsPage({
             <button
               type="button"
               onClick={() => {
-                const next = !advancedSearchUiAnimation;
-                setAdvancedSearchUiAnimation(next);
-                saveAdvancedSearchUiAnimationEnabled(next);
+                setSettingsToggle('settings-as-animation', !advancedSearchUiAnimation);
               }}
               className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
                 advancedSearchUiAnimation
@@ -1067,7 +1073,10 @@ export default function SettingsPage({
             <button
               type="button"
               onClick={() => {
-                advancedSearchEngine.setEnabled(!advancedSearchStatus.enabled);
+                setSettingsToggle(
+                  'settings-as-index',
+                  !advancedSearchStatus.enabled,
+                );
               }}
               className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
                 advancedSearchStatus.enabled
@@ -1095,7 +1104,8 @@ export default function SettingsPage({
             <button
               type="button"
               onClick={() => {
-                advancedSearchEngine.setIncludeOtherFiles(
+                setSettingsToggle(
+                  'settings-as-include-other',
                   !advancedSearchStatus.includeOtherFiles,
                 );
               }}

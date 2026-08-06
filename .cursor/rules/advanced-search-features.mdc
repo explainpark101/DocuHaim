@@ -1,0 +1,36 @@
+---
+description: Wire new editor/page features into Advanced Search (Cmd/Ctrl+K)
+alwaysApply: true
+---
+
+# Advanced Search feature wiring
+
+When adding **editor toolbar actions**, **page-specific actions** (print, etc.), or **Settings toggle switches**, also expose them in Advanced Search in the same change. Do not ship UI-only controls without an AS entry.
+
+## Where to register
+
+| Kind | Module | Pattern |
+|------|--------|---------|
+| Markdown editor toolbar (bold, AI, …) | `src/utils/advancedSearch/editorActions.ts` | Add `EditorActionId` + `EDITOR_ACTION_COMMANDS`; register handler in `MarkdownEditor.jsx` via `registerEditorActions` |
+| Print / export-pdf page | `src/utils/advancedSearch/printActions.ts` | Add `PrintActionId` + `PRINT_ACTION_COMMANDS` (or paper cmds); register in `ExportPDFPage.jsx` via `registerPrintActions` / TOC provider |
+| Chat page (composer focus, …) | `src/utils/advancedSearch/chatActions.ts` | Add `ChatActionId` + `CHAT_ACTION_COMMANDS`; register in `ChatComposer.jsx` via `registerChatActions` |
+| Settings toggle (켜기/끄기) | `src/utils/advancedSearch/settingsToggles.ts` | Add `SettingsToggleId` + def in `SETTINGS_TOGGLE_DEFS` (`load`/`save`, situational enable/disable titles); sync UI via `subscribeSettingsToggles` / `setSettingsToggle` |
+| Nested picker / browse mode | `openRequest.ts` mode + `AdvancedSearchHost.tsx` | Like `print-paper` / `browse-directory` / `chat-groups`: keep modal open when drilling in; browse mode includes `browse-new-file` / `browse-new-folder` → `onRequestCreateItem` |
+| Chat group selection | `chatGroups.ts` + Host `getChatGroups` | Command `chat-select-group` → nested list; select navigates `/chat#group-{id}` |
+
+Commands are ranked in `commands.ts` (`matchAppCommandsRanked` / `scoreCommandRelevance`). Page toolbar + settings toggles appear on **non-empty queries** (relevance-filtered). Empty palette stays core app shortcuts only unless you intentionally add a core `APP_COMMANDS` entry.
+
+## Checklist for every new control
+
+1. **Id + labels + keywords** (KO/EN) in the right module above.
+2. **Handler** registered while the page/editor is mounted (or `load`/`save` for toggles).
+3. **Host** (`AdvancedSearchHost.tsx`): handle select if not covered by `editor-*` / `print-*` / `isSettingsToggleId` prefixes.
+4. **Situational copy** for toggles: show only **켜기** or **끄기** from current state (never both).
+5. Prefer **English** in new code comments if Korean Unicode might corrupt.
+
+```text
+❌ BAD — Settings Switch only in SettingsPage, no AS command
+❌ BAD — Toolbar button with no EDITOR_ACTION_COMMANDS entry
+✅ GOOD — Toggle in settingsToggles.ts + Settings UI calls setSettingsToggle
+✅ GOOD — New MdEditor toolbar action registered in editorActions + MarkdownEditor
+```

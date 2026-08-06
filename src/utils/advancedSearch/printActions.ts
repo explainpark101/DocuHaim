@@ -6,6 +6,7 @@ import {
   PRINT_PAGE_SIZES,
   type PrintPageSizeId,
 } from '@/utils/printPageLayout';
+import { scoreFuzzyRelevance } from './fuzzyMatch';
 
 export type PrintToolbarFocusTarget =
   | 'back'
@@ -127,10 +128,6 @@ export function scrollPrintHeading(headingId: string): void {
   el.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
-function normalize(s: string): string {
-  return s.trim().toLowerCase();
-}
-
 export type PrintActionCommandDef = {
   id: PrintActionId;
   title: string;
@@ -250,12 +247,18 @@ export function matchPrintTocEntries(
 ): PrintTocEntry[] {
   const entries = tocProvider?.() ?? [];
   if (entries.length === 0) return [];
-  const q = normalize(query);
-  const matched = q
-    ? entries.filter((e) => {
-        const hay = normalize(`${e.text} h${e.level} ${e.id}`);
-        return hay.includes(q) || q.includes(normalize(e.text));
-      })
-    : entries;
-  return matched.slice(0, limit);
+  const q = String(query || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  if (!q) return entries.slice(0, limit);
+  return entries
+    .map((e) => ({
+      entry: e,
+      score: scoreFuzzyRelevance(`${e.text} h${e.level} ${e.id}`, q),
+    }))
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((row) => row.entry)
+    .slice(0, limit);
 }

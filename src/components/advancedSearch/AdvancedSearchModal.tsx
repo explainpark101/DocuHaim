@@ -4,7 +4,10 @@ import { Dialog } from 'radix-ui';
 import { VList, type VListHandle } from 'virtua';
 import {
   Bold,
+  FilePlus,
   FileText,
+  Folder,
+  FolderPlus,
   Home,
   ListTree,
   MessageSquare,
@@ -12,18 +15,21 @@ import {
   Search,
   Settings,
   Sparkles,
+  TextCursorInput,
   X,
 } from 'lucide-react';
+import ChatGroupAvatar from '@/components/chatWithMyself/ui/ChatGroupAvatar';
 import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
 import type { AppCommandId } from '@/utils/advancedSearch/commands';
 import { loadAdvancedSearchUiAnimationEnabled } from '@/utils/advancedSearch/settings';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 
 export type AdvancedSearchModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSearch: (query: string) => Promise<AdvancedSearchHit[]>;
-  onSelectHit: (hit: AdvancedSearchHit) => void;
+  onSelectHit: (hit: AdvancedSearchHit) => boolean | void;
   indexEnabled?: boolean;
   hasIndex?: boolean;
   building?: boolean;
@@ -31,10 +37,22 @@ export type AdvancedSearchModalProps = {
   editorActionsAvailable?: boolean;
   /** Show print-page shortcuts in empty-state hints. */
   printActionsAvailable?: boolean;
+  /** Show chat composer shortcuts in empty-state hints. */
+  chatActionsAvailable?: boolean;
   /** Prefer print-oriented empty hint copy. */
   preferPrintActions?: boolean;
   /** Nested paper-size picker mode. */
   printPaperPickerMode?: boolean;
+  /** Directory browse mode (folder navigation). */
+  browseDirectoryMode?: boolean;
+  /** Current browse folder path ('' = root). */
+  browsePath?: string;
+  /** Nested chat group picker mode. */
+  chatGroupsPickerMode?: boolean;
+  /** Resolve chat group icon paths (storage-aware). */
+  getPresignedUrl?:
+    | ((path: string) => Promise<string | null | undefined>)
+    | undefined;
 };
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
@@ -47,7 +65,28 @@ const PANEL_CLASS =
   'fixed left-1/2 top-[min(18vh,8rem)] z-221 flex w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft';
 
 function reasonLabel(hit: AdvancedSearchHit): string {
+  if (hit.kind === 'folder') return '폴더';
   if (hit.kind === 'command') {
+    if (hit.commandId === 'browse-directory') return '탐색';
+    if (hit.commandId === 'browse-new-file' || hit.commandId === 'browse-new-folder') {
+      return '만들기';
+    }
+    if (hit.commandId === 'chat-select-group' || hit.commandId === 'chat-select-group-item') {
+      return '채팅 그룹';
+    }
+    if (hit.commandId === 'chat-clear-group') return '채팅 그룹';
+    if (hit.commandId === 'chat-focus-composer') return '채팅';
+    if (hit.commandId?.startsWith('chat')) return '채팅';
+    if (
+      hit.commandId?.startsWith('settings-alt-') ||
+      hit.commandId?.startsWith('settings-show-') ||
+      hit.commandId?.startsWith('settings-hide-') ||
+      hit.commandId?.startsWith('settings-tree-') ||
+      hit.commandId?.startsWith('settings-composer-') ||
+      hit.commandId?.startsWith('settings-as-')
+    ) {
+      return '설정 토글';
+    }
     if (hit.commandId === 'print-scroll-heading') return '목차';
     if (hit.commandId?.startsWith('print-paper-')) return '용지';
     if (hit.commandId?.startsWith('print-')) return '인쇄';
@@ -59,6 +98,36 @@ function reasonLabel(hit: AdvancedSearchHit): string {
   if (reasons.includes('path')) return '경로';
   if (reasons.includes('content')) return '내용';
   return '';
+}
+
+function HitLeading({
+  hit,
+  getPresignedUrl,
+}: {
+  hit: AdvancedSearchHit;
+  getPresignedUrl?:
+    | ((path: string) => Promise<string | null | undefined>)
+    | undefined;
+}) {
+  if (hit.commandId === 'chat-select-group-item') {
+    const name = hit.title || hit.group || SELF_GROUP;
+    return (
+      <ChatGroupAvatar
+        name={name}
+        colorKey={hit.group || name}
+        size="md"
+        iconPath={hit.iconPath || null}
+        getPresignedUrl={getPresignedUrl || null}
+        className="mt-0.5"
+      />
+    );
+  }
+  return (
+    <HitIcon
+      kind={hit.kind}
+      {...(hit.commandId ? { commandId: hit.commandId } : {})}
+    />
+  );
 }
 
 function HitIcon({
@@ -73,16 +142,23 @@ function HitIcon({
     if (commandId?.startsWith('settings')) return <Settings size={16} className={className} />;
     if (commandId?.startsWith('chat')) return <MessageSquare size={16} className={className} />;
     if (commandId === 'home') return <Home size={16} className={className} />;
+    if (commandId === 'browse-directory') return <Folder size={16} className={className} />;
+    if (commandId === 'browse-new-file') return <FilePlus size={16} className={className} />;
+    if (commandId === 'browse-new-folder') return <FolderPlus size={16} className={className} />;
     if (commandId === 'export-pdf' || commandId === 'export-current' || commandId === 'editor-export-pdf') {
       return <Printer size={16} className={className} />;
     }
     if (commandId === 'print-scroll-heading') return <ListTree size={16} className={className} />;
     if (commandId?.startsWith('print-')) return <Printer size={16} className={className} />;
     if (commandId === 'editor-llm-assist') return <Sparkles size={16} className={className} />;
+    if (commandId === 'editor-autocomplete-toggle') {
+      return <TextCursorInput size={16} className={className} />;
+    }
     if (commandId === 'editor-bold') return <Bold size={16} className={className} />;
     if (commandId?.startsWith('editor-')) return <Bold size={16} className={className} />;
     return <Search size={16} className={className} />;
   }
+  if (kind === 'folder') return <Folder size={16} className={className} />;
   if (kind === 'chat') return <MessageSquare size={16} className={className} />;
   return <FileText size={16} className={className} />;
 }
@@ -110,8 +186,13 @@ export default function AdvancedSearchModal({
   building = false,
   editorActionsAvailable = false,
   printActionsAvailable = false,
+  chatActionsAvailable = false,
   preferPrintActions = false,
   printPaperPickerMode = false,
+  browseDirectoryMode = false,
+  browsePath = '',
+  chatGroupsPickerMode = false,
+  getPresignedUrl = undefined,
 }: AdvancedSearchModalProps) {
   const inputId = useId();
   const listId = useId();
@@ -141,6 +222,26 @@ export default function AdvancedSearchModal({
     return () => window.clearTimeout(t);
   }, [open]);
 
+  // Reset query when navigating folders inside browse mode (keep dialog open).
+  useEffect(() => {
+    if (!open || !browseDirectoryMode) return;
+    setQuery('');
+    setActiveIndex(0);
+  }, [browsePath, browseDirectoryMode, open]);
+
+  // Clear parent command query when entering chat group picker.
+  useEffect(() => {
+    if (!open || !chatGroupsPickerMode) return;
+    setQuery('');
+    setActiveIndex(0);
+  }, [chatGroupsPickerMode, open]);
+
+  // Always highlight the first result as soon as the query changes.
+  useEffect(() => {
+    if (!open) return;
+    setActiveIndex(0);
+  }, [query, open]);
+
   useEffect(() => {
     if (!open) return undefined;
     const seq = ++reqSeq.current;
@@ -164,16 +265,27 @@ export default function AdvancedSearchModal({
   useEffect(() => {
     if (!open || hits.length === 0) return;
     const idx = Math.min(Math.max(activeIndex, 0), hits.length - 1);
-    listRef.current?.scrollToIndex(idx, { align: 'nearest' });
-  }, [activeIndex, hits.length, open]);
+    listRef.current?.scrollToIndex(idx, {
+      align: idx === 0 ? 'start' : 'nearest',
+    });
+  }, [activeIndex, hits, open]);
 
   const emptyHint = useMemo(() => {
     if (searching && hits.length === 0) return '검색 중…';
     if (hits.length === 0 && query.trim()) return '결과 없음';
     if (hits.length === 0 && !query.trim()) {
+      if (browseDirectoryMode) {
+        return browsePath
+          ? '새 파일·폴더를 만들거나 항목을 선택하세요'
+          : '새 파일·폴더를 만들거나 폴더/파일을 선택하세요';
+      }
+      if (chatGroupsPickerMode) return '채팅 그룹을 검색하거나 선택하세요';
       if (printPaperPickerMode) return '용지 크기를 검색하거나 선택하세요';
       if (preferPrintActions || printActionsAvailable) {
         return '목차·용지·저장·폰트·내보내기를 검색하세요';
+      }
+      if (chatActionsAvailable) {
+        return '입력창 포커스·그룹·채팅 바로가기를 검색하세요';
       }
       if (editorActionsAvailable) {
         return '설정·채팅·에디터 서식(굵게, AI…)을 검색하세요';
@@ -187,8 +299,12 @@ export default function AdvancedSearchModal({
     hits.length,
     editorActionsAvailable,
     printActionsAvailable,
+    chatActionsAvailable,
     preferPrintActions,
     printPaperPickerMode,
+    browseDirectoryMode,
+    browsePath,
+    chatGroupsPickerMode,
   ]);
 
   const listFooterHint = useMemo(() => {
@@ -199,14 +315,18 @@ export default function AdvancedSearchModal({
   }, [indexEnabled, hasIndex, building]);
 
   const navHint = vimEnabled
-    ? '↑↓ / ⌥JK 이동 · Enter 열기 · Esc 닫기'
-    : '↑↓ 이동 · Enter 열기 · Esc 닫기';
+    ? browseDirectoryMode
+      ? '↑↓ / ⌥JK 이동 · Enter 열기/들어가기/만들기 · Esc 닫기'
+      : '↑↓ / ⌥JK 이동 · Enter 열기 · Esc 닫기'
+    : browseDirectoryMode
+      ? '↑↓ 이동 · Enter 열기/들어가기/만들기 · Esc 닫기'
+      : '↑↓ 이동 · Enter 열기 · Esc 닫기';
 
   const selectActive = () => {
     const hit = hits[activeIndex];
     if (!hit) return;
-    onSelectHit(hit);
-    onOpenChange(false);
+    const keepOpen = onSelectHit(hit) === false;
+    if (!keepOpen) onOpenChange(false);
   };
 
   const moveActive = (delta: number) => {
@@ -251,7 +371,15 @@ export default function AdvancedSearchModal({
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="설정, 채팅, 파일명, 경로…"
+          placeholder={
+            browseDirectoryMode
+              ? browsePath
+                ? `${browsePath} 에서 검색…`
+                : '디렉토리 탐색 · 폴더/파일 이름…'
+              : chatGroupsPickerMode
+                ? '채팅 그룹 이름…'
+                : '설정, 채팅, 파일명, 경로…'
+          }
           className="min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400 dark:text-odp-fgStrong dark:placeholder:text-odp-muted"
           autoComplete="off"
           spellCheck={false}
@@ -281,6 +409,14 @@ export default function AdvancedSearchModal({
         </Dialog.Close>
       </div>
 
+      {browseDirectoryMode ? (
+        <div className="border-b border-gray-100 px-3 py-1.5 text-[11px] text-gray-500 dark:border-odp-borderSoft dark:text-odp-muted">
+          <span className="font-medium text-gray-700 dark:text-odp-fg">디렉토리 탐색</span>
+          <span className="mx-1.5">·</span>
+          <span className="font-mono">{browsePath || '/'}</span>
+        </div>
+      ) : null}
+
       <div
         id={listId}
         role="listbox"
@@ -305,7 +441,9 @@ export default function AdvancedSearchModal({
                   ? 'app'
                   : hit.kind === 'chat'
                     ? 'chat'
-                    : 'file';
+                    : hit.kind === 'folder'
+                      ? 'folder'
+                      : 'file';
               return (
                 <button
                   id={`${optionIdPrefix}-${i}`}
@@ -321,13 +459,13 @@ export default function AdvancedSearchModal({
                   }`}
                   onMouseEnter={() => setActiveIndex(i)}
                   onClick={() => {
-                    onSelectHit(hit);
-                    onOpenChange(false);
+                    const keepOpen = onSelectHit(hit) === false;
+                    if (!keepOpen) onOpenChange(false);
                   }}
                 >
-                  <HitIcon
-                    kind={hit.kind}
-                    {...(hit.commandId ? { commandId: hit.commandId } : {})}
+                  <HitLeading
+                    hit={hit}
+                    {...(getPresignedUrl ? { getPresignedUrl } : {})}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
@@ -343,7 +481,9 @@ export default function AdvancedSearchModal({
                         ? hit.preview || hit.path
                         : hit.kind === 'chat'
                           ? `${hit.dateStr || ''} ${hit.preview || ''}`.trim()
-                          : hit.path}
+                          : hit.kind === 'folder'
+                            ? hit.preview || hit.path || '폴더'
+                            : hit.path}
                     </span>
                   </span>
                 </button>

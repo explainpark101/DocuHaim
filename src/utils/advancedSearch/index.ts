@@ -30,9 +30,11 @@ export { collectSearchableFileEntries, isIndexableFilePath } from './collectSour
 export {
   APP_COMMANDS,
   matchAppCommands,
+  matchAppCommandsRanked,
   getAppCommands,
+  scoreCommandRelevance,
 } from './commands';
-export type { AppCommand, AppCommandId, AppCommandContext } from './commands';
+export type { AppCommand, AppCommandId, AppCommandContext, RankedAppCommand } from './commands';
 export {
   registerEditorActions,
   runEditorAction,
@@ -53,6 +55,48 @@ export {
   PRINT_PAPER_SIZE_COMMANDS,
 } from './printActions';
 export type { PrintActionId, PrintTocEntry } from './printActions';
+export {
+  registerChatActions,
+  runChatAction,
+  hasChatActions,
+  subscribeChatActions,
+  CHAT_ACTION_COMMANDS,
+} from './chatActions';
+export type { ChatActionId } from './chatActions';
+export {
+  listBrowseDirectoryHits,
+  findBrowseFolderNode,
+  getBrowseChildren,
+  normalizeDirPath,
+} from './browseDirectory';
+export type { BrowseTreeNode } from './browseDirectory';
+export {
+  listChatGroupHits,
+  chatGroupHashPath,
+  chatClearGroupHashPath,
+  parseChatGroupHash,
+  isChatClearGroupHash,
+  CHAT_SELECT_GROUP_COMMAND_ID,
+  CHAT_SELECT_GROUP_ITEM_COMMAND_ID,
+  CHAT_CLEAR_GROUP_COMMAND_ID,
+} from './chatGroups';
+export type { ChatGroupEntry } from './chatGroups';
+export {
+  SETTINGS_TOGGLE_DEFS,
+  isSettingsToggleId,
+  loadSettingsToggle,
+  setSettingsToggle,
+  toggleSettingsToggle,
+  subscribeSettingsToggles,
+  getSettingsToggleStates,
+} from './settingsToggles';
+export type { SettingsToggleId, SettingsToggleDef } from './settingsToggles';
+export {
+  fuzzyMatchText,
+  fuzzyMatchTokensInHaystacks,
+  scoreFuzzyRelevance,
+  scoreFuzzyFields,
+} from './fuzzyMatch';
 export {
   requestOpenAdvancedSearch,
   subscribeOpenAdvancedSearch,

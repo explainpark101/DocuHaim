@@ -16,6 +16,7 @@ import HeadingRemapModal from '@/components/modals/HeadingRemapModal';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
+import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   EDITOR_ACTION_COMMANDS,
@@ -25,12 +26,15 @@ import { subscribeOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest'
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { EditorView, drawSelection, lineNumbers, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { useBase64ImageFold } from '@/hooks/useBase64ImageFold';
+import { useEditorAutocomplete } from '@/hooks/useEditorAutocomplete';
 import {
   applyBase64ImageFoldEnabled,
   base64ImageFoldExtension,
 } from '@/utils/base64ImageFoldExtension';
 import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
+import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import {
   addCursorAbove,
   addCursorBelow,
@@ -379,6 +383,16 @@ config({
         type: 'base64ImageFold',
         extension: base64ImageFoldExtension(loadBase64ImageFoldEnabled()),
       },
+      {
+        // md-editor-rt re-injects built-in completions; close them when preference is off.
+        type: 'autocompleteGate',
+        extension: EditorView.updateListener.of((update) => {
+          if (loadEditorAutocompleteEnabled()) return;
+          if (completionStatus(update.state) === 'active') {
+            closeCompletion(update.view);
+          }
+        }),
+      },
     );
 
     return nextExtensions;
@@ -450,6 +464,7 @@ export default function MarkdownEditor({
   const activeTransformRef = useRef(null);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
+  const [autocompleteEnabled, setAutocompleteEnabled] = useEditorAutocomplete();
 
   /** Selection before Advanced Search steals focus (so bold/etc still apply to the prior range). */
   const asSelectionSnapshotRef = useRef(null);
@@ -1332,14 +1347,20 @@ export default function MarkdownEditor({
       onChange={setFoldBase64Images}
       theme={theme}
     />,
-  ], [value, theme, currentFile, wrapTitles, setWrapTitles, foldBase64Images, setFoldBase64Images]);
+    <EditorAutocompleteToolbar
+      key="editor-autocomplete"
+      checked={autocompleteEnabled}
+      onChange={setAutocompleteEnabled}
+      theme={theme}
+    />,
+  ], [value, theme, currentFile, wrapTitles, setWrapTitles, foldBase64Images, setFoldBase64Images, autocompleteEnabled, setAutocompleteEnabled]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
     'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, 4, '-',
     'revoke', 'next', 0, '=',
-    6, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
+    6, 7, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
     ...(catalogEl ? [5] : []),
   ], [catalogEl]);
 

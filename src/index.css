@@ -405,3 +405,8 @@ button {
       drop-shadow(0 0 6px rgba(59, 130, 246, 0.35));
   }
 }
+
+/* Hide CodeMirror autocomplete tooltips when preference is off (per-device localStorage). */
+html.s3haim-editor-autocomplete-off .cm-tooltip.cm-tooltip-autocomplete {
+  display: none !important;
+}

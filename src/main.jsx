@@ -9,6 +9,9 @@ import { ActivityIndicatorProvider } from '@/contexts/ActivityIndicatorContext'
 import { AlertModalProvider } from '@/contexts/AlertModalContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
+import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
+
+initEditorAutocompleteDomFlag()
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
 const isElectron = import.meta.env.VITE_ELECTRON === 'true'

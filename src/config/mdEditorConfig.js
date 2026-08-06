@@ -4,11 +4,14 @@
  * wiki image·미리보기 링크(외부만 target=_blank) 플러그인이 적용되도록 한다.
  */
 import { config, XSSPlugin } from 'md-editor-rt';
+import { EditorView } from '@codemirror/view';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
+import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 
@@ -53,7 +56,21 @@ config({
     ];
   },
   // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).
+  // Gate built-in autocomplete when the per-device preference is off.
   codeMirrorExtensions(extensions) {
-    return (extensions || []).filter((item) => item?.type !== 'linkShortener');
+    const next = (extensions || []).filter((item) => item?.type !== 'linkShortener');
+    if (next.some((item) => item?.type === 'autocompleteGate')) return next;
+    return [
+      ...next,
+      {
+        type: 'autocompleteGate',
+        extension: EditorView.updateListener.of((update) => {
+          if (loadEditorAutocompleteEnabled()) return;
+          if (completionStatus(update.state) === 'active') {
+            closeCompletion(update.view);
+          }
+        }),
+      },
+    ];
   },
 });

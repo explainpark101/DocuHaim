@@ -893,12 +893,50 @@ export default function ChatWithMyselfPane({
     return () => window.removeEventListener('hashchange', scrollToHash);
   }, [storageReady, ctx, jumpToDate, location.hash, location.pathname]);
 
-  // Advanced Search shortcuts: /chat#settings|groups|dates|search|pinned
+  // Advanced Search shortcuts: /chat#settings|groups|dates|search|pinned|group-{id}
   useEffect(() => {
     if (location.pathname !== '/chat' && !location.pathname.endsWith('/chat')) {
       return undefined;
     }
-    const raw = String(location.hash || '').replace(/^#/, '').toLowerCase();
+    const hashRaw = String(location.hash || '').replace(/^#/, '');
+    if (/^group-clear$/i.test(hashRaw) || /^clear-group$/i.test(hashRaw)) {
+      setViewGroupFilter(null);
+      if (isMobileLayout) {
+        setGroupOpen(true);
+        setDateOpen(false);
+        setSearchOpen(false);
+        setPinnedOpen(false);
+      } else {
+        setGroupOpen(true);
+      }
+      return undefined;
+    }
+
+    const groupMatch = hashRaw.match(/^group[-=](.+)$/i);
+    if (groupMatch?.[1]) {
+      let groupKey = groupMatch[1];
+      try {
+        groupKey = decodeURIComponent(groupKey);
+      } catch {
+        // keep raw
+      }
+      const id = resolveGroupId(groups, groupKey);
+      setViewGroupFilter(id);
+      if (!editTarget) {
+        setSelectedGroup(id);
+      }
+      if (isMobileLayout) {
+        setGroupOpen(true);
+        setDateOpen(false);
+        setSearchOpen(false);
+        setPinnedOpen(false);
+      } else {
+        setGroupOpen(true);
+      }
+      return undefined;
+    }
+
+    const raw = hashRaw.toLowerCase();
     if (!raw || raw.startsWith('msg-')) return undefined;
 
     const openRail = (kind) => {
@@ -934,11 +972,15 @@ export default function ChatWithMyselfPane({
       return undefined;
     }
     return undefined;
-  }, [location.hash, location.pathname, isMobileLayout]);
+  }, [location.hash, location.pathname, isMobileLayout, groups, editTarget]);
 
   // Prefer composer focus on open; skip when deep-link opens another rail/modal.
   const autoFocusComposer = useMemo(() => {
-    const raw = String(location.hash || '').replace(/^#/, '').toLowerCase();
+    const hashRaw = String(location.hash || '').replace(/^#/, '');
+    if (/^group[-=]/i.test(hashRaw) || /^group-clear$/i.test(hashRaw) || /^clear-group$/i.test(hashRaw)) {
+      return true;
+    }
+    const raw = hashRaw.toLowerCase();
     if (!raw || raw.startsWith('msg-')) return true;
     return ![
       'settings',

@@ -56,6 +56,8 @@ import {
   postChatLocalSyncEvent,
   localDateString,
   resolveReplyThreadMessages,
+  readMeta,
+  sortGroupsKo,
 } from '@/utils/chatWithMyself';
 import { AuthModal } from '@/components/modals/AuthModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
@@ -133,17 +135,16 @@ import {
   saveLocalRootHandle,
   tryRestoreLocalRootHandle,
 } from '@/utils/localFolderStore';
-import { loadHideRecordingCompanions, saveHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
-import {
-  loadTreeStickyFolderPathEnabled,
-  saveTreeStickyFolderPathEnabled,
-} from '@/utils/treeStickySettings';
+import { loadHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
+import { loadTreeStickyFolderPathEnabled } from '@/utils/treeStickySettings';
 import {
   loadShowHiddenFolders,
   loadShowTrashFolder,
-  saveShowHiddenFolders,
-  saveShowTrashFolder,
 } from '@/utils/treeVisibilitySettings';
+import {
+  setSettingsToggle,
+  subscribeSettingsToggles,
+} from '@/utils/advancedSearch/settingsToggles';
 import {
   loadTreeHoverExpandSettings,
   saveTreeHoverExpandSettings,
@@ -738,24 +739,17 @@ function MainApp() {
   }, [sidebarCollapsed]);
 
   useEffect(() => {
-    saveHideRecordingCompanions(hideRecordingCompanions);
-  }, [hideRecordingCompanions]);
-
-  useEffect(() => {
-    saveShowTrashFolder(showTrashFolder);
-  }, [showTrashFolder]);
-
-  useEffect(() => {
-    saveShowHiddenFolders(showHiddenFolders);
-  }, [showHiddenFolders]);
-
-  useEffect(() => {
-    saveTreeStickyFolderPathEnabled(treeStickyFolderPathEnabled);
-  }, [treeStickyFolderPathEnabled]);
-
-  useEffect(() => {
     saveTreeHoverExpandSettings(treeHoverExpandSettings);
   }, [treeHoverExpandSettings]);
+
+  useEffect(() => {
+    return subscribeSettingsToggles((id, enabled) => {
+      if (id === 'settings-show-trash') setShowTrashFolder(enabled);
+      else if (id === 'settings-show-hidden') setShowHiddenFolders(enabled);
+      else if (id === 'settings-hide-recording') setHideRecordingCompanions(enabled);
+      else if (id === 'settings-tree-sticky') setTreeStickyFolderPathEnabled(enabled);
+    });
+  }, []);
 
   useEffect(() => {
     applyDocumentTheme(theme);
@@ -1442,6 +1436,17 @@ function MainApp() {
     localRootHandle,
     webdavConfig,
   });
+
+  const getAdvancedSearchChatGroups = useCallback(async () => {
+    if (!chatStorageReady || !chatStorageCtx) return [];
+    try {
+      const meta = await readMeta(chatStorageCtx);
+      return sortGroupsKo(meta.groups || []);
+    } catch (err) {
+      console.warn('[advancedSearch] read chat groups failed', err);
+      return [];
+    }
+  }, [chatStorageReady, chatStorageCtx]);
 
   const handleShareBlockingChange = useCallback((blocking) => {
     setShareBlockingAuth(Boolean(blocking));
@@ -2872,6 +2877,32 @@ function MainApp() {
       selectFile,
       navigate,
     ],
+  );
+
+  const ensureAdvancedSearchBrowseFolder = useCallback(
+    async (folderPath) => {
+      if (!folderPath) return;
+      if (storageMode === STORAGE_MODE_LOCAL) {
+        const node =
+          findNodeByPath(localTree, folderPath) ||
+          findNodeByPath(localTree, folderPath.replace(/\/$/, '')) ||
+          findNodeByPath(localTree, `${folderPath.replace(/\/$/, '')}/`);
+        if (node?.type === 'folder') {
+          await loadLocalFolderChildren(node);
+        }
+        return;
+      }
+      if (storageMode === STORAGE_MODE_WEBDAV) {
+        const node =
+          findNodeByPath(webdavTree, folderPath) ||
+          findNodeByPath(webdavTree, folderPath.replace(/\/$/, '')) ||
+          findNodeByPath(webdavTree, `${folderPath.replace(/\/$/, '')}/`);
+        if (node?.type === 'folder') {
+          await loadWebdavFolderChildren(node);
+        }
+      }
+    },
+    [storageMode, localTree, webdavTree, loadLocalFolderChildren, loadWebdavFolderChildren],
   );
 
   const handleOpenInNewWindow = useCallback(
@@ -4810,6 +4841,28 @@ function MainApp() {
     setCreateModalOpen(true);
   };
 
+  const requestAdvancedSearchCreateItem = useCallback(
+    (type, parentPath) => {
+      const path = String(parentPath || '').replace(/^\/+/, '').replace(/\\/g, '/');
+      const normalized =
+        path && !path.endsWith('/') ? `${path}/` : path;
+      let parentDirHandle = null;
+      if (storageMode === STORAGE_MODE_LOCAL) {
+        if (!normalized) {
+          parentDirHandle = localRootHandle;
+        } else {
+          const node =
+            findNodeByPath(localTree, normalized) ||
+            findNodeByPath(localTree, normalized.replace(/\/$/, '')) ||
+            findNodeByPath(localTree, `${normalized.replace(/\/$/, '')}/`);
+          parentDirHandle = node?.handle || null;
+        }
+      }
+      requestCreateItem(storageMode, normalized, parentDirHandle, type);
+    },
+    [storageMode, localRootHandle, localTree],
+  );
+
   const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
     setUploadTarget({ storageType, parentPath, parentDirHandle });
     uploadFileInputRef.current.value = '';
@@ -6324,6 +6377,10 @@ function MainApp() {
         <AdvancedSearchHost
           getTrees={getAdvancedSearchTrees}
           onOpenFile={openAdvancedSearchFile}
+          ensureBrowseFolderLoaded={ensureAdvancedSearchBrowseFolder}
+          onRequestCreateItem={requestAdvancedSearchCreateItem}
+          getChatGroups={getAdvancedSearchChatGroups}
+          getPresignedUrl={getChatImageUrlForPath}
           currentFile={currentFile}
           editorContent={editorContent}
           theme={theme}
@@ -6544,21 +6601,21 @@ function MainApp() {
                   onImportClick={() => fileInputRef.current?.click()}
                   showHiddenFolders={showHiddenFolders}
                   onToggleHiddenFolders={() =>
-                    setShowHiddenFolders((prev) => !prev)
+                    setSettingsToggle('settings-show-hidden', !showHiddenFolders)
                   }
                   showTrashFolder={showTrashFolder}
                   onToggleTrashFolder={() =>
-                    setShowTrashFolder((prev) => !prev)
+                    setSettingsToggle('settings-show-trash', !showTrashFolder)
                   }
                   hideRecordingCompanions={hideRecordingCompanions}
                   treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
                   treeHoverExpandSettings={treeHoverExpandSettings}
                   onTreeHoverExpandSettingsChange={setTreeHoverExpandSettings}
                   onToggleHideRecordingCompanions={() =>
-                    setHideRecordingCompanions((prev) => !prev)
+                    setSettingsToggle('settings-hide-recording', !hideRecordingCompanions)
                   }
                   onToggleTreeStickyFolderPath={() =>
-                    setTreeStickyFolderPathEnabled((prev) => !prev)
+                    setSettingsToggle('settings-tree-sticky', !treeStickyFolderPathEnabled)
                   }
                   onRequestClose={handleSettingsClose}
                   webauthnSupported={webauthnPRFSupported}

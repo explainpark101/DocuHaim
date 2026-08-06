@@ -507,6 +507,9 @@ const MessageBubble = memo(function MessageBubble({
   onOpenMobileSheet,
   onSelectCopy,
   onReloadOg,
+  onBubbleActivate,
+  /** Session-only expand for a persisted-collapsed message (not saved). */
+  peeked = false,
   ogReloadKey = 0,
   shiftHeldRef,
   coarse,
@@ -539,6 +542,7 @@ const MessageBubble = memo(function MessageBubble({
   const axisRef = useRef(null);
   const rowRef = useRef(null);
   const longPressOpenedRef = useRef(false);
+  const swipedThisGestureRef = useRef(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const contextMenuClamp = useViewportClampNudge(contextMenuOpen);
   const [pressing, setPressing] = useState(false);
@@ -557,7 +561,9 @@ const MessageBubble = memo(function MessageBubble({
     msg?.pendingSync === 'send' || msg?.pendingSync === 'edit';
   const dimmed = syncing || isDeleting;
   const pinned = Boolean(msg?.pinnedAt);
-  const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
+  const persistedCollapsed =
+    msg?.collapsed === '1' || msg?.collapsed === true;
+  const collapsed = persistedCollapsed && !peeked;
 
   const openReactionPicker = () => {
     if (isDeleting) return;
@@ -638,6 +644,7 @@ const MessageBubble = memo(function MessageBubble({
     isDeleting
       ? 'pointer-events-none select-none bg-red-500/20 dark:bg-red-500/25'
       : 'hover:bg-black/10 dark:hover:bg-white/10',
+    !isDeleting && persistedCollapsed ? 'cursor-pointer' : '',
     !isDeleting && rowActive
       ? 'bg-sky-500/25 hover:bg-sky-500/30 dark:bg-sky-400/25 dark:hover:bg-sky-400/30'
       : '',
@@ -663,6 +670,9 @@ const MessageBubble = memo(function MessageBubble({
       ref={rowRef}
       className={rowClassName}
       aria-disabled={isDeleting ? 'true' : undefined}
+      aria-expanded={
+        persistedCollapsed ? (peeked ? 'true' : 'false') : undefined
+      }
       data-row-selected={!isDeleting && rowActive ? 'true' : undefined}
       onPointerDown={(e) => {
         if (isDeleting) return;
@@ -674,6 +684,7 @@ const MessageBubble = memo(function MessageBubble({
         swipeStartRef.current = { x: e.clientX, y: e.clientY };
         axisRef.current = null;
         longPressOpenedRef.current = false;
+        swipedThisGestureRef.current = false;
         if (!coarse) return;
         clearLongPress();
         longPressThresholdTimer.current = setTimeout(() => {
@@ -693,6 +704,7 @@ const MessageBubble = memo(function MessageBubble({
           if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
           axisRef.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
           if (axisRef.current === 'h') {
+            swipedThisGestureRef.current = true;
             clearLongPress();
             endPressVisual();
             try {
@@ -722,6 +734,29 @@ const MessageBubble = memo(function MessageBubble({
         clearLongPress();
         endPressVisual();
         endSwipe(e.pointerId);
+      }}
+      onClick={(e) => {
+        if (isDeleting) return;
+        if (e.target.closest('button, a, input, textarea')) return;
+        if (longPressOpenedRef.current) {
+          longPressOpenedRef.current = false;
+          return;
+        }
+        if (swipedThisGestureRef.current) {
+          swipedThisGestureRef.current = false;
+          return;
+        }
+        const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+        if (
+          sel &&
+          !sel.isCollapsed &&
+          rowRef.current &&
+          (rowRef.current.contains(sel.anchorNode) ||
+            rowRef.current.contains(sel.focusNode))
+        ) {
+          return;
+        }
+        onBubbleActivate?.(msg);
       }}
       onContextMenu={(e) => {
         if (isDeleting || coarse) {
@@ -1041,6 +1076,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     /** @type {Record<string, number>} */ ({}),
   );
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
+  /** Session-only: temporarily show a collapsed message without persisting. */
+  const [peekedCollapsedId, setPeekedCollapsedId] = useState(
+    /** @type {string|null} */ (null),
+  );
   const [overlayDate, setOverlayDate] = useState(
     /** @type {{ label: string, dateStr: string } | null} */ (null),
   );
@@ -1062,6 +1101,25 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       setSelectCopyMessage(null);
     }
   }, [messages, selectCopyMessage]);
+
+  useEffect(() => {
+    if (!peekedCollapsedId) return;
+    const current = messages.find((m) => m.id === peekedCollapsedId);
+    const stillCollapsed =
+      current &&
+      current.pendingSync !== 'delete' &&
+      (current.collapsed === '1' || current.collapsed === true);
+    if (!stillCollapsed) setPeekedCollapsedId(null);
+  }, [messages, peekedCollapsedId]);
+
+  const handleBubbleActivate = useCallback((msg) => {
+    if (!msg?.id) return;
+    const isCollapsed = msg.collapsed === '1' || msg.collapsed === true;
+    setPeekedCollapsedId((prev) => {
+      if (isCollapsed) return prev === msg.id ? null : msg.id;
+      return null;
+    });
+  }, []);
 
   const handleSelectCopy = useCallback((msg) => {
     if (!msg) return;
@@ -1450,6 +1508,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             onOpenMobileSheet={setSheetMessage}
             onSelectCopy={handleSelectCopy}
             onReloadOg={handleReloadOg}
+            onBubbleActivate={handleBubbleActivate}
+            peeked={peekedCollapsedId === row.msg.id}
             ogReloadKey={ogReloadById[row.msg.id] || 0}
             shiftHeldRef={shiftHeldRef}
             coarse={coarse}
@@ -1500,6 +1560,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       coarse,
       sheetMessage?.id,
       reactionPickerMsgId,
+      peekedCollapsedId,
+      handleBubbleActivate,
       getPresignedUrl,
       noteExists,
       enableBubblePressFx,

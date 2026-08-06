@@ -2,22 +2,25 @@ import { tokenizeForIndexAsync } from './tokenize';
 import type { DocMeta, InMemoryIndex } from './types';
 import { collectSearchableFileEntries } from './collectSources';
 import {
-  matchAppCommands,
+  matchAppCommandsRanked,
   type AppCommandContext,
   type AppCommandId,
 } from './commands';
+import { fuzzyMatchText, scoreFuzzyRelevance } from './fuzzyMatch';
 
 export type MatchReason = 'command' | 'name' | 'path' | 'content';
 
 export type AdvancedSearchHit = {
   docId: string;
-  kind: 'file' | 'chat' | 'command';
+  kind: 'file' | 'chat' | 'command' | 'folder';
   path: string;
   title: string;
   preview?: string;
   dateStr?: string;
   messageId?: string;
   group?: string;
+  /** Chat group icon storage path (for picker avatars). */
+  iconPath?: string;
   /** Built-in command id when kind === 'command'. */
   commandId?: AppCommandId;
   reasons: MatchReason[];
@@ -72,7 +75,7 @@ function commandHits(
   query: string,
   context?: AppCommandContext,
 ): AdvancedSearchHit[] {
-  return matchAppCommands(query, context).map((cmd) => ({
+  return matchAppCommandsRanked(query, context).map(({ command: cmd, score }) => ({
     docId: `command:${cmd.id}`,
     kind: 'command' as const,
     path: cmd.path,
@@ -80,7 +83,8 @@ function commandHits(
     preview: cmd.description,
     commandId: cmd.id,
     reasons: ['command'] as MatchReason[],
-    score: scoreHit(['command']),
+    // Relevance-first: keep command category boost small so ranking is mostly score.
+    score: score + 50,
   }));
 }
 
@@ -142,16 +146,16 @@ export async function runAdvancedSearch(options: {
     hits.set(partial.docId, next);
   };
 
-  // Filename / path from live trees
+  // Filename / path from live trees (chat-style fuzzy / partial match)
   for (const tree of options.trees) {
     const files = collectSearchableFileEntries(tree);
     for (const file of files) {
       const nameLower = file.name.toLowerCase();
       const pathLower = file.path.toLowerCase();
-      const nameHit = nameLower.includes(qLower);
-      const pathHit = pathLower.includes(qLower);
-      if (!nameHit && !pathHit) continue;
-      if (nameHit) {
+      const nameScore = scoreFuzzyRelevance(nameLower, qLower);
+      const pathScore = scoreFuzzyRelevance(pathLower, qLower);
+      if (nameScore <= 0 && pathScore <= 0) continue;
+      if (nameScore > 0) {
         upsert({
           docId: `file:${file.path}`,
           kind: 'file',
@@ -159,8 +163,10 @@ export async function runAdvancedSearch(options: {
           title: file.name,
           reason: 'name',
         });
+        const hit = hits.get(`file:${file.path}`);
+        if (hit) hit.score += nameScore;
       }
-      if (pathHit) {
+      if (pathScore > 0) {
         upsert({
           docId: `file:${file.path}`,
           kind: 'file',
@@ -168,6 +174,12 @@ export async function runAdvancedSearch(options: {
           title: file.name,
           reason: 'path',
         });
+        const hit = hits.get(`file:${file.path}`);
+        // Path fuzzy is weaker than name; avoid double-counting full nameScore.
+        if (hit && nameScore <= 0) hit.score += Math.round(pathScore * 0.45);
+        else if (hit && pathScore > nameScore) {
+          hit.score += Math.round((pathScore - nameScore) * 0.3);
+        }
       }
     }
   }
@@ -179,10 +191,10 @@ export async function runAdvancedSearch(options: {
       const title = meta.title || pathBasenameSafe(meta.path);
       const nameLower = title.toLowerCase();
       const pathLower = String(meta.path || '').toLowerCase();
-      const nameHit = nameLower.includes(qLower);
-      const pathHit = pathLower.includes(qLower);
-      if (!nameHit && !pathHit) continue;
-      if (nameHit) {
+      const nameScore = scoreFuzzyRelevance(nameLower, qLower);
+      const pathScore = scoreFuzzyRelevance(pathLower, qLower);
+      if (nameScore <= 0 && pathScore <= 0) continue;
+      if (nameScore > 0) {
         upsert({
           docId,
           kind: 'file',
@@ -191,8 +203,10 @@ export async function runAdvancedSearch(options: {
           ...(meta.preview ? { preview: meta.preview } : {}),
           reason: 'name',
         });
+        const hit = hits.get(docId);
+        if (hit) hit.score += nameScore;
       }
-      if (pathHit) {
+      if (pathScore > 0) {
         upsert({
           docId,
           kind: 'file',
@@ -201,6 +215,8 @@ export async function runAdvancedSearch(options: {
           ...(meta.preview ? { preview: meta.preview } : {}),
           reason: 'path',
         });
+        const hit = hits.get(docId);
+        if (hit && nameScore <= 0) hit.score += Math.round(pathScore * 0.45);
       }
     }
   }
@@ -260,10 +276,11 @@ export async function runAdvancedSearch(options: {
           if (seenIds.has(docId)) continue;
           const meta = options.index.docs.get(docId);
           if (!meta || meta.kind !== 'file') continue;
-          if (!String(meta.path || '').toLowerCase().includes(qLower) &&
-              !pathParts.every((p) =>
-                String(meta.path || '').toLowerCase().includes(p),
-              )) {
+          const pathLower = String(meta.path || '').toLowerCase();
+          if (
+            !fuzzyMatchText(pathLower, qLower) &&
+            !pathParts.every((p) => fuzzyMatchText(pathLower, p))
+          ) {
             continue;
           }
           seenIds.add(docId);
@@ -275,6 +292,52 @@ export async function runAdvancedSearch(options: {
             ...(meta.preview ? { preview: meta.preview } : {}),
             reason: 'path',
           });
+        }
+      }
+    }
+
+    // Fuzzy / partial match on indexed chat + file meta when token postings miss.
+    for (const [docId, meta] of options.index.docs) {
+      if (hits.has(docId)) continue;
+      const title = meta.title || pathBasenameSafe(meta.path);
+      const haystacks = [
+        title,
+        meta.path,
+        meta.preview,
+        meta.group,
+        meta.messageId,
+      ];
+      const matched = haystacks.some((h) => fuzzyMatchText(String(h || ''), qLower));
+      if (!matched) continue;
+      if (meta.kind === 'file') {
+        upsert({
+          docId,
+          kind: 'file',
+          path: meta.path,
+          title,
+          ...(meta.preview ? { preview: meta.preview } : {}),
+          reason: 'name',
+        });
+        const hit = hits.get(docId);
+        if (hit) hit.score += scoreFuzzyRelevance(title, qLower);
+      } else {
+        upsert({
+          docId,
+          kind: 'chat',
+          path: meta.path,
+          title: meta.group || meta.title || 'chat',
+          ...(meta.preview ? { preview: meta.preview } : {}),
+          ...(meta.dateStr ? { dateStr: meta.dateStr } : {}),
+          ...(meta.messageId ? { messageId: meta.messageId } : {}),
+          ...(meta.group ? { group: meta.group } : {}),
+          reason: 'content',
+        });
+        const hit = hits.get(docId);
+        if (hit) {
+          hit.score += scoreFuzzyRelevance(
+            `${meta.preview || ''} ${meta.group || ''} ${title}`,
+            qLower,
+          );
         }
       }
     }

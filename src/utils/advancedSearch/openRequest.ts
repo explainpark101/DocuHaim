@@ -1,6 +1,10 @@
 /** Request opening Advanced Search from anywhere (e.g. Sidebar icon). */
 
-export type AdvancedSearchOpenMode = 'default' | 'print-paper';
+export type AdvancedSearchOpenMode =
+  | 'default'
+  | 'print-paper'
+  | 'browse-directory'
+  | 'chat-groups';
 
 export type AdvancedSearchOpenDetail = {
   source?: string;

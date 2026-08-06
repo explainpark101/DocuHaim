@@ -42,6 +42,7 @@ import {
   looksLikeMarkdown,
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import { registerChatActions } from '@/utils/advancedSearch/chatActions';
 
 const ChatComposerMdEditor = lazy(
   () => import('@/components/chatWithMyself/ChatComposerMdEditor'),
@@ -632,6 +633,15 @@ export default function ChatComposer({
       window.clearTimeout(t2);
     };
   }, [focusComposerInput]);
+
+  // Advanced Search: "입력창에 포커스" while this composer is mounted.
+  useEffect(() => {
+    return registerChatActions({
+      'chat-focus-composer': () => {
+        scheduleFocusComposer();
+      },
+    });
+  }, [scheduleFocusComposer]);
 
   // Focus the message input when chat opens (composer draft ready).
   useEffect(() => {

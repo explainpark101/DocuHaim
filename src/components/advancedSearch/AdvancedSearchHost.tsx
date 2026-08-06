@@ -4,9 +4,13 @@ import AdvancedSearchModal from '@/components/advancedSearch/AdvancedSearchModal
 import { useAdvancedSearchActivityStatus } from '@/components/advancedSearch/useAdvancedSearchActivityStatus.js';
 import {
   advancedSearchEngine,
+  listBrowseDirectoryHits,
+  listChatGroupHits,
+  normalizeDirPath,
   subscribeOpenAdvancedSearch,
   type AdvancedSearchHit,
   type AdvancedSearchOpenMode,
+  type ChatGroupEntry,
 } from '@/utils/advancedSearch';
 import {
   hasEditorActions,
@@ -22,7 +26,23 @@ import {
   subscribePrintActions,
   type PrintToolbarFocusTarget,
 } from '@/utils/advancedSearch/printActions';
+import {
+  hasChatActions,
+  runChatAction,
+  subscribeChatActions,
+} from '@/utils/advancedSearch/chatActions';
+import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 import { requestOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
+import {
+  loadEditorAutocompleteEnabled,
+  subscribeEditorAutocomplete,
+  toggleEditorAutocompleteEnabled,
+} from '@/utils/editorAutocompleteSettings';
+import {
+  isSettingsToggleId,
+  subscribeSettingsToggles,
+  toggleSettingsToggle,
+} from '@/utils/advancedSearch/settingsToggles';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 
 const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
@@ -34,6 +54,7 @@ const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
   'print-focus-paper': 'paper',
   'print-focus-image-max': 'image-max',
 };
+
 type TreeNode = {
   type?: string;
   path?: string;
@@ -54,6 +75,22 @@ export type AdvancedSearchHostProps = {
   getTrees: () => Array<TreeNode[] | null | undefined>;
   /** Open a vault file by path (storage-aware). */
   onOpenFile: (path: string) => void | Promise<void>;
+  /**
+   * Ensure folder children are loaded (local/WebDAV lazy trees) before listing.
+   * Called when entering a folder in browse-directory mode.
+   */
+  ensureBrowseFolderLoaded?: (folderPath: string) => void | Promise<void>;
+  /** Open create file/folder modal for the current browse folder. */
+  onRequestCreateItem?: (
+    type: 'file' | 'folder',
+    parentPath: string,
+  ) => void;
+  /** Load chat groups for nested "채팅 그룹 선택" mode (SELF_GROUP added by lister). */
+  getChatGroups?: () => ChatGroupEntry[] | Promise<ChatGroupEntry[]>;
+  /** Resolve chat group / wiki image paths for avatars in results. */
+  getPresignedUrl?:
+    | ((path: string) => Promise<string | null | undefined>)
+    | undefined;
   /** Currently open editor file (for contextual commands like export). */
   currentFile?: OpenFileSnapshot;
   /** Live editor markdown (preferred over currentFile.content for export). */
@@ -69,6 +106,10 @@ export type AdvancedSearchHostProps = {
 export default function AdvancedSearchHost({
   getTrees,
   onOpenFile,
+  ensureBrowseFolderLoaded,
+  onRequestCreateItem,
+  getChatGroups,
+  getPresignedUrl,
   currentFile = null,
   editorContent = '',
   theme = 'light',
@@ -77,6 +118,7 @@ export default function AdvancedSearchHost({
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState<AdvancedSearchOpenMode>('default');
+  const [browsePath, setBrowsePath] = useState('');
   const [status, setStatus] = useState(() => advancedSearchEngine.getStatus());
   const [editorActionsAvailable, setEditorActionsAvailable] = useState(() =>
     hasEditorActions(),
@@ -84,6 +126,14 @@ export default function AdvancedSearchHost({
   const [printActionsAvailable, setPrintActionsAvailable] = useState(() =>
     hasPrintActions(),
   );
+  const [chatActionsAvailable, setChatActionsAvailable] = useState(() =>
+    hasChatActions(),
+  );
+  const [editorAutocompleteEnabled, setEditorAutocompleteEnabled] = useState(() =>
+    loadEditorAutocompleteEnabled(),
+  );
+
+  const [settingsToggleEpoch, setSettingsToggleEpoch] = useState(0);
 
   useAdvancedSearchActivityStatus();
 
@@ -105,14 +155,36 @@ export default function AdvancedSearchHost({
     });
   }, []);
 
+  useEffect(() => {
+    return subscribeChatActions(() => {
+      setChatActionsAvailable(hasChatActions());
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeEditorAutocomplete((enabled) => {
+      setEditorAutocompleteEnabled(enabled);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeSettingsToggles(() => {
+      setSettingsToggleEpoch((n) => n + 1);
+    });
+  }, []);
+
   const openSearch = useCallback((mode: AdvancedSearchOpenMode = 'default') => {
     setPickerMode(mode);
+    if (mode !== 'browse-directory') setBrowsePath('');
     setOpen(true);
   }, []);
 
   useEffect(() => {
     return subscribeOpenAdvancedSearch((detail) => {
-      openSearch(detail?.mode === 'print-paper' ? 'print-paper' : 'default');
+      if (detail?.mode === 'print-paper') openSearch('print-paper');
+      else if (detail?.mode === 'browse-directory') openSearch('browse-directory');
+      else if (detail?.mode === 'chat-groups') openSearch('chat-groups');
+      else openSearch('default');
     });
   }, [openSearch]);
 
@@ -130,8 +202,31 @@ export default function AdvancedSearchHost({
 
   const handleOpenChange = useCallback((next: boolean) => {
     setOpen(next);
-    if (!next) setPickerMode('default');
+    if (!next) {
+      setPickerMode('default');
+      setBrowsePath('');
+    }
   }, []);
+
+  const enterBrowseFolder = useCallback(
+    async (folderPath: string) => {
+      const next = normalizeDirPath(folderPath);
+      if (ensureBrowseFolderLoaded && next) {
+        try {
+          await ensureBrowseFolderLoaded(next);
+          // Let parent tree setState commit so getTrees() sees children.
+          await new Promise<void>((resolve) => {
+            window.setTimeout(() => resolve(), 0);
+          });
+        } catch (err) {
+          console.warn('[advancedSearch] browse folder load failed', next, err);
+        }
+      }
+      setBrowsePath(next);
+      setPickerMode('browse-directory');
+    },
+    [ensureBrowseFolderLoaded],
+  );
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -141,30 +236,57 @@ export default function AdvancedSearchHost({
         });
       }
 
+      if (pickerMode === 'browse-directory') {
+        return listBrowseDirectoryHits(getTrees(), browsePath, query, 200);
+      }
+
+      if (pickerMode === 'chat-groups') {
+        let groups: ChatGroupEntry[] = [];
+        if (getChatGroups) {
+          try {
+            groups = (await getChatGroups()) || [];
+          } catch (err) {
+            console.warn('[advancedSearch] getChatGroups failed', err);
+          }
+        }
+        return listChatGroupHits(groups, query, 80);
+      }
+
       const hits = await advancedSearchEngine.search(query, getTrees(), 50, {
         currentFile,
         editorActionsAvailable,
         printActionsAvailable,
+        chatActionsAvailable,
+        editorAutocompleteEnabled,
       });
 
       if (!printActionsAvailable) return hits;
 
-      const tocHits: AdvancedSearchHit[] = matchPrintTocEntries(query, 40).map(
-        (e, index) => ({
-          docId: `print-toc:${e.id}`,
-          kind: 'command',
-          path: e.id,
-          title: e.text,
-          preview: `H${e.level} · 목차로 스크롤`,
-          commandId: 'print-scroll-heading',
-          reasons: ['command'],
-          score: 190 - index,
-        }),
-      );
+      const q = query.trim().toLowerCase();
+      const tocHits: AdvancedSearchHit[] = matchPrintTocEntries(query, 40)
+        .map((e, index) => {
+          const title = e.text;
+          const score = q
+            ? scoreFuzzyRelevance(title, q) || 400 - index
+            : 150 - index;
+          return {
+            docId: `print-toc:${e.id}`,
+            kind: 'command' as const,
+            path: e.id,
+            title,
+            preview: `H${e.level} · 목차로 스크롤`,
+            commandId: 'print-scroll-heading' as const,
+            reasons: ['command' as const],
+            score,
+          };
+        })
+        .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'));
 
       const seen = new Set<string>();
       const merged: AdvancedSearchHit[] = [];
-      for (const hit of [...tocHits, ...hits]) {
+      for (const hit of [...tocHits, ...hits].sort(
+        (a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'),
+      )) {
         if (seen.has(hit.docId)) continue;
         seen.add(hit.docId);
         merged.push(hit);
@@ -177,7 +299,12 @@ export default function AdvancedSearchHost({
       currentFile,
       editorActionsAvailable,
       printActionsAvailable,
+      chatActionsAvailable,
+      editorAutocompleteEnabled,
       pickerMode,
+      browsePath,
+      getChatGroups,
+      settingsToggleEpoch,
     ],
   );
 
@@ -201,9 +328,63 @@ export default function AdvancedSearchHost({
   );
 
   const handleSelect = useCallback(
-    (hit: AdvancedSearchHit) => {
+    (hit: AdvancedSearchHit): boolean | void => {
+      if (pickerMode === 'browse-directory') {
+        if (
+          hit.kind === 'command' &&
+          (hit.commandId === 'browse-new-file' || hit.commandId === 'browse-new-folder')
+        ) {
+          const type = hit.commandId === 'browse-new-folder' ? 'folder' : 'file';
+          const parentPath = hit.path || browsePath || '';
+          window.setTimeout(() => {
+            onRequestCreateItem?.(type, parentPath);
+          }, 0);
+          return;
+        }
+        if (hit.kind === 'folder') {
+          void enterBrowseFolder(hit.path || '');
+          return false;
+        }
+        if (hit.kind === 'file' && hit.path) {
+          void onOpenFile(hit.path);
+          return;
+        }
+        return false;
+      }
+
       if (hit.kind === 'command') {
         const commandId = hit.commandId;
+
+        if (commandId === 'browse-directory') {
+          setPickerMode('browse-directory');
+          setBrowsePath('');
+          return false;
+        }
+
+        if (commandId === 'chat-select-group') {
+          setPickerMode('chat-groups');
+          return false;
+        }
+
+        if (commandId === 'chat-select-group-item') {
+          if (hit.path) navigate(hit.path);
+          return;
+        }
+
+        if (commandId === 'chat-clear-group') {
+          navigate(hit.path || '/chat#group-clear');
+          return;
+        }
+
+        if (commandId === 'editor-autocomplete-toggle') {
+          toggleEditorAutocompleteEnabled();
+          return;
+        }
+
+        if (isSettingsToggleId(commandId)) {
+          toggleSettingsToggle(commandId);
+          return false;
+        }
 
         if (commandId === 'print-scroll-heading' && hit.path) {
           const headingId = hit.path;
@@ -241,6 +422,14 @@ export default function AdvancedSearchHost({
           }, 0);
           return;
         }
+
+        if (commandId?.startsWith('chat-focus-') || commandId === 'chat-focus-composer') {
+          window.setTimeout(() => {
+            runChatAction(commandId);
+          }, 0);
+          return;
+        }
+
         if (commandId === 'export-current') {
           openExportPdf({ useCurrentFile: true });
           return;
@@ -262,7 +451,16 @@ export default function AdvancedSearchHost({
         void onOpenFile(hit.path);
       }
     },
-    [navigate, onOpenFile, openExportPdf, currentFile],
+    [
+      navigate,
+      onOpenFile,
+      onRequestCreateItem,
+      openExportPdf,
+      currentFile,
+      pickerMode,
+      browsePath,
+      enterBrowseFolder,
+    ],
   );
 
   return (
@@ -276,8 +474,13 @@ export default function AdvancedSearchHost({
       building={status.building}
       editorActionsAvailable={editorActionsAvailable}
       printActionsAvailable={printActionsAvailable}
+      chatActionsAvailable={chatActionsAvailable}
       preferPrintActions={preferPrintActions}
       printPaperPickerMode={pickerMode === 'print-paper'}
+      browseDirectoryMode={pickerMode === 'browse-directory'}
+      browsePath={browsePath}
+      chatGroupsPickerMode={pickerMode === 'chat-groups'}
+      {...(getPresignedUrl ? { getPresignedUrl } : {})}
     />
   );
 }
