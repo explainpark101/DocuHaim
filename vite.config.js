@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import fs from 'node:fs';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -45,6 +46,43 @@ function emitBuildIdPlugin() {
   };
 }
 
+/** `/docs` (no slash) → `/docs/` so SPA history fallback does not serve the app shell. */
+function docsTrailingSlashPlugin() {
+  const bareDocsPath = `${normalizedBase.replace(/\/$/, '')}/docs`.replace(/\/{2,}/g, '/');
+
+  const redirectBareDocs = (req, res, next) => {
+    const url = new URL(req.url || '/', 'http://vite.local');
+    if (url.pathname !== bareDocsPath) {
+      next();
+      return;
+    }
+    res.statusCode = 301;
+    res.setHeader('Location', `${bareDocsPath}/${url.search}`);
+    res.end();
+  };
+
+  return {
+    name: 'docs-trailing-slash',
+    configureServer(server) {
+      server.middlewares.use(redirectBareDocs);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(redirectBareDocs);
+    },
+    closeBundle() {
+      // Netlify / Cloudflare Pages: send bare /docs to /docs/ (static files still win).
+      const redirects = `${bareDocsPath}  ${bareDocsPath}/  301\n`;
+      const outDir = path.resolve(__dirname, 'dist');
+      try {
+        fs.mkdirSync(outDir, { recursive: true });
+        fs.writeFileSync(path.join(outDir, '_redirects'), redirects);
+      } catch (error) {
+        console.warn('docs host hints write failed:', error);
+      }
+    },
+  };
+}
+
 const plugins = [
   react({
     // Keep node_modules out; also skip VitePress caches (Babel would otherwise
@@ -53,6 +91,7 @@ const plugins = [
   }),
   tailwindcss(),
   emitBuildIdPlugin(),
+  docsTrailingSlashPlugin(),
 ];
 
 if (!isElectron) {

@@ -1,9 +1,10 @@
 import {
   codeFolding,
   foldEffect,
-  foldGutter,
   foldService,
+  foldable,
   foldedRanges,
+  syntaxTree,
   unfoldEffect,
 } from '@codemirror/language';
 import {
@@ -13,13 +14,22 @@ import {
   type Extension,
   type Text,
 } from '@codemirror/state';
-import { EditorView, ViewPlugin, lineNumbers, type ViewUpdate } from '@codemirror/view';
+import {
+  EditorView,
+  GutterMarker,
+  ViewPlugin,
+  gutter,
+  lineNumbers,
+  type ViewUpdate,
+} from '@codemirror/view';
 import { animate } from 'motion';
 import { findNoteCoverCommentRange } from '@/utils/noteCover/parse';
 import {
   getNoteCoverFoldCollapsed,
   saveNoteCoverFoldCollapsed,
 } from '@/utils/noteCover/noteCoverFoldStateDb';
+
+type FoldKind = 'cover' | 'heading';
 
 function findNoteCoverDocRange(doc: Text): { from: number; to: number } | null {
   const prefixLen = Math.min(doc.length, 2_000_000);
@@ -48,6 +58,59 @@ function isCoverRangeFolded(
   return folded;
 }
 
+function isSameFoldRange(
+  a: { from: number; to: number },
+  b: { from: number; to: number },
+): boolean {
+  return a.from === b.from && a.to === b.to;
+}
+
+function isMarkdownHeadingLine(state: EditorState, lineFrom: number): boolean {
+  const line = state.doc.lineAt(lineFrom);
+  let found = false;
+  syntaxTree(state).iterate({
+    from: line.from,
+    to: Math.min(line.to, line.from + 1),
+    enter(node) {
+      const name = node.type.name;
+      if (name.startsWith('ATXHeading') || name.startsWith('SetextHeading')) {
+        found = true;
+        return false;
+      }
+      return undefined;
+    },
+  });
+  return found;
+}
+
+/**
+ * Only the leading note-cover block and markdown heading sections are foldable in the gutter.
+ * Code fences / lists / other language folds are ignored.
+ */
+function getAllowedFoldAtLine(
+  state: EditorState,
+  lineFrom: number,
+): { from: number; to: number; kind: FoldKind } | null {
+  const coverDoc = findNoteCoverDocRange(state.doc);
+  if (coverDoc) {
+    const firstLine = state.doc.lineAt(coverDoc.from);
+    if (lineFrom === firstLine.from) {
+      const coverFold = getNoteCoverFoldRange(state);
+      if (coverFold) return { ...coverFold, kind: 'cover' };
+    }
+    // Inside the cover JSON comment — never treat as heading folds.
+    if (lineFrom >= coverDoc.from && lineFrom < coverDoc.to) {
+      return null;
+    }
+  }
+
+  if (!isMarkdownHeadingLine(state, lineFrom)) return null;
+  const line = state.doc.lineAt(lineFrom);
+  const range = foldable(state, line.from, line.to);
+  if (!range || range.from >= range.to) return null;
+  return { ...range, kind: 'heading' };
+}
+
 export const noteCoverFoldDocKeyFacet = Facet.define<string | null, string | null>({
   combine: (values) => values[values.length - 1] ?? null,
 });
@@ -69,12 +132,17 @@ export function setNoteCoverFoldDocKey(
   });
 }
 
-function createChevronMarker(open: boolean): HTMLElement {
+function createChevronMarker(open: boolean, kind: FoldKind): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'cm-note-cover-fold-chevron cursor-pointer';
-  button.setAttribute('aria-label', open ? '표지 접기' : '표지 펼치기');
-  button.title = open ? '표지 접기' : '표지 펼치기';
+  button.className = `cm-note-cover-fold-chevron cursor-pointer cm-fold-chevron--${kind}`;
+  const label =
+    kind === 'cover'
+      ? (open ? '표지 접기' : '표지 펼치기')
+      : (open ? '헤딩 접기' : '헤딩 펼치기');
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.dataset.foldKind = kind;
   button.innerHTML =
     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   const svg = button.querySelector('svg');
@@ -83,6 +151,23 @@ function createChevronMarker(open: boolean): HTMLElement {
     svg.style.transformOrigin = '50% 50%';
   }
   return button;
+}
+
+class AllowedFoldMarker extends GutterMarker {
+  constructor(
+    readonly open: boolean,
+    readonly kind: FoldKind,
+  ) {
+    super();
+  }
+
+  eq(other: AllowedFoldMarker): boolean {
+    return this.open === other.open && this.kind === other.kind;
+  }
+
+  toDOM(): HTMLElement {
+    return createChevronMarker(this.open, this.kind);
+  }
 }
 
 let foldAnimToken = 0;
@@ -148,11 +233,8 @@ async function animateExpand(view: EditorView, fold: { from: number; to: number 
   } catch {
     /* ignore */
   }
-  if (token === foldAnimToken) {
-    overlay.remove();
-  } else {
-    overlay.remove();
-  }
+  overlay.remove();
+  void token;
 }
 
 function animateChevron(marker: Element | null, open: boolean): void {
@@ -165,14 +247,27 @@ function animateChevron(marker: Element | null, open: boolean): void {
   );
 }
 
+function toggleHeadingFold(
+  view: EditorView,
+  fold: { from: number; to: number },
+): boolean {
+  const folded = isCoverRangeFolded(view.state, fold);
+  view.dispatch({
+    effects: folded ? unfoldEffect.of(fold) : foldEffect.of(fold),
+  });
+  return true;
+}
+
 export function toggleNoteCoverFold(view: EditorView): boolean {
   const fold = getNoteCoverFoldRange(view.state);
   if (!fold) return false;
   const folded = isCoverRangeFolded(view.state, fold);
   const collapsing = !folded;
 
-  const gutter = view.dom.querySelector('.cm-note-cover-fold-chevron');
-  animateChevron(gutter, !collapsing);
+  const gutterEl = view.dom.querySelector(
+    '.cm-note-cover-fold-chevron[data-fold-kind="cover"]',
+  );
+  animateChevron(gutterEl, !collapsing);
 
   void (async () => {
     if (collapsing) {
@@ -212,7 +307,7 @@ function createNoteCoverFoldPersistPlugin(): Extension {
       private loadGen = 0;
 
       constructor(private readonly view: EditorView) {
-        this.syncKeyAndMaybeRestore(true);
+        this.syncKeyAndMaybeRestore();
       }
 
       update(update: ViewUpdate): void {
@@ -223,11 +318,11 @@ function createNoteCoverFoldPersistPlugin(): Extension {
         const coverAppeared = hasCover && !this.hadCover;
         this.hadCover = hasCover;
         if (keyChanged || coverAppeared) {
-          this.syncKeyAndMaybeRestore(false);
+          this.syncKeyAndMaybeRestore();
         }
       }
 
-      private syncKeyAndMaybeRestore(_initial: boolean): void {
+      private syncKeyAndMaybeRestore(): void {
         const key = this.view.state.facet(noteCoverFoldDocKeyFacet);
         this.lastKey = key;
         const cover = findNoteCoverDocRange(this.view.state.doc);
@@ -244,14 +339,32 @@ function createNoteCoverFoldPersistPlugin(): Extension {
   );
 }
 
+function foldEffectsInUpdate(update: ViewUpdate): boolean {
+  return update.transactions.some((tr) =>
+    tr.effects.some((e) => e.is(foldEffect) || e.is(unfoldEffect)),
+  );
+}
+
 /**
- * Code folding + fold gutter chevron (left of line numbers) for note-cover JSON.
+ * Fold gutter limited to leading note-cover + markdown heading sections only.
  */
 export function createNoteCoverFoldExtension(): Extension {
   return [
     noteCoverFoldDocKeyExtension(null),
     codeFolding({
-      placeholderText: '…표지…',
+      preparePlaceholder(state, range) {
+        const cover = getNoteCoverFoldRange(state);
+        if (cover && isSameFoldRange(cover, range)) return 'cover';
+        return 'heading';
+      },
+      placeholderDOM(_view, onclick, prepared) {
+        const span = document.createElement('span');
+        span.className = 'cm-foldPlaceholder';
+        span.textContent = prepared === 'cover' ? '…표지…' : '…';
+        span.setAttribute('aria-hidden', 'true');
+        span.onclick = onclick;
+        return span;
+      },
     }),
     foldService.of((state, lineStart) => {
       const cover = findNoteCoverDocRange(state.doc);
@@ -260,22 +373,32 @@ export function createNoteCoverFoldExtension(): Extension {
       if (lineStart !== firstLine.from) return null;
       return getNoteCoverFoldRange(state);
     }),
-    // foldGutter must be registered before lineNumbers so the chevron sits to the left.
-    foldGutter({
-      markerDOM: (open) => createChevronMarker(open),
-      foldingChanged: (update) =>
-        update.docChanged
-        || update.transactions.some((tr) =>
-          tr.effects.some((e) => e.is(foldEffect) || e.is(unfoldEffect)),
-        ),
+    // Custom gutter before lineNumbers — only cover + heading chevrons.
+    gutter({
+      class: 'cm-note-cover-fold-gutter',
+      lineMarker(view, line) {
+        const allowed = getAllowedFoldAtLine(view.state, line.from);
+        if (!allowed) return null;
+        const open = !isCoverRangeFolded(view.state, allowed);
+        return new AllowedFoldMarker(open, allowed.kind);
+      },
+      lineMarkerChange: (update) =>
+        update.docChanged || update.viewportChanged || foldEffectsInUpdate(update),
+      initialSpacer: () => new AllowedFoldMarker(true, 'heading'),
       domEventHandlers: {
         mousedown(view, line, event) {
           if (!(event instanceof MouseEvent) || event.button !== 0) return false;
-          const cover = findNoteCoverDocRange(view.state.doc);
-          if (!cover) return false;
-          const firstLine = view.state.doc.lineAt(cover.from);
-          if (line.from !== firstLine.from) return false;
-          if (!toggleNoteCoverFold(view)) return false;
+          const allowed = getAllowedFoldAtLine(view.state, line.from);
+          if (!allowed) return false;
+          if (allowed.kind === 'cover') {
+            if (!toggleNoteCoverFold(view)) return false;
+          } else {
+            const lineMarker = (event.target instanceof Element)
+              ? event.target.closest('.cm-note-cover-fold-chevron')
+              : null;
+            animateChevron(lineMarker, isCoverRangeFolded(view.state, allowed));
+            toggleHeadingFold(view, allowed);
+          }
           event.preventDefault();
           event.stopPropagation();
           return true;
@@ -287,9 +410,14 @@ export function createNoteCoverFoldExtension(): Extension {
         mousedown(view, line, event) {
           if (!(event instanceof MouseEvent) || event.button !== 0) return false;
           const cover = findNoteCoverDocRange(view.state.doc);
-          if (!cover) return false;
-          if (line.from < cover.from || line.from >= cover.to) return false;
-          if (!toggleNoteCoverFold(view)) return false;
+          if (cover && line.from >= cover.from && line.from < cover.to) {
+            if (!toggleNoteCoverFold(view)) return false;
+            event.preventDefault();
+            return true;
+          }
+          const allowed = getAllowedFoldAtLine(view.state, line.from);
+          if (!allowed || allowed.kind !== 'heading') return false;
+          toggleHeadingFold(view, allowed);
           event.preventDefault();
           return true;
         },
@@ -297,10 +425,10 @@ export function createNoteCoverFoldExtension(): Extension {
     }),
     createNoteCoverFoldPersistPlugin(),
     EditorView.theme({
-      '.cm-foldGutter': {
+      '.cm-note-cover-fold-gutter': {
         width: '1.1rem',
       },
-      '.cm-foldGutter .cm-gutterElement': {
+      '.cm-note-cover-fold-gutter .cm-gutterElement': {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
