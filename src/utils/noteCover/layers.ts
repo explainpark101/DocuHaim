@@ -1,4 +1,9 @@
-import type { CoverElement, CoverGroup, NoteCover } from '@/utils/noteCover/types';
+import type {
+  CoverElement,
+  CoverGroup,
+  CoverTextAlign,
+  NoteCover,
+} from '@/utils/noteCover/types';
 import {
   bringLayersToFront,
   collectDescendantElementIds,
@@ -630,6 +635,35 @@ export function nudgeCoverFontSizes(
       if (next === current && el.fontSize === next) return el;
       changed = true;
       return { ...el, fontSize: next };
+    }
+    return el;
+  });
+  return changed ? { ...cover, elements } : cover;
+}
+
+/** Set textAlign on selected text / shape elements. */
+export function setCoverTextAlign(
+  cover: NoteCover,
+  ids: ReadonlyArray<string>,
+  textAlign: CoverTextAlign,
+): NoteCover {
+  if (!ids.length) return cover;
+  if (textAlign !== 'left' && textAlign !== 'center' && textAlign !== 'right') {
+    return cover;
+  }
+  const idSet = new Set(ids);
+  let changed = false;
+  const elements = cover.elements.map((el) => {
+    if (!idSet.has(el.id)) return el;
+    if (el.type === 'text') {
+      if (el.textAlign === textAlign) return el;
+      changed = true;
+      return { ...el, textAlign };
+    }
+    if (el.type === 'rect' || el.type === 'ellipse' || el.type === 'roundRect') {
+      if (el.textAlign === textAlign) return el;
+      changed = true;
+      return { ...el, textAlign };
     }
     return el;
   });

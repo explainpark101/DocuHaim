@@ -70,6 +70,7 @@ import {
   formatNoteCoverIssues,
   nudgeCoverFontSizes,
   parseNoteCover,
+  setCoverTextAlign,
   stripNoteCoverComment,
   upsertNoteCoverComment,
 } from '@/utils/noteCover';
@@ -1575,6 +1576,21 @@ export default function ExportPDFPage({
       'print-cover-font-size-down': () => {
         if (!coverEditMode || !activeCover || !coverSelectedIds.length) return;
         const next = nudgeCoverFontSizes(activeCover, coverSelectedIds, -1);
+        if (next !== activeCover) onCoverChange(next);
+      },
+      'print-cover-text-align-left': () => {
+        if (!coverEditMode || !activeCover || !coverSelectedIds.length) return;
+        const next = setCoverTextAlign(activeCover, coverSelectedIds, 'left');
+        if (next !== activeCover) onCoverChange(next);
+      },
+      'print-cover-text-align-center': () => {
+        if (!coverEditMode || !activeCover || !coverSelectedIds.length) return;
+        const next = setCoverTextAlign(activeCover, coverSelectedIds, 'center');
+        if (next !== activeCover) onCoverChange(next);
+      },
+      'print-cover-text-align-right': () => {
+        if (!coverEditMode || !activeCover || !coverSelectedIds.length) return;
+        const next = setCoverTextAlign(activeCover, coverSelectedIds, 'right');
         if (next !== activeCover) onCoverChange(next);
       },
     };

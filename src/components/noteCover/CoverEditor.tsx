@@ -43,6 +43,7 @@ import {
   resolveCoverPointerSelection,
   restoreCoverImageNaturalAspect,
   selectionToLayerIds,
+  setCoverTextAlign,
   setLayerLocked,
   sharedGroupIdForSelection,
   snapBoundsToObjects,
@@ -1381,6 +1382,30 @@ export default function CoverEditor({
             coverRef.current,
             selectedIdsRef.current,
             decrease ? -1 : 1,
+          );
+          if (next !== coverRef.current) onChange(next);
+          return;
+        }
+      }
+
+      // Alt+L / Alt+M|E / Alt+R : text align left / center / right.
+      // event.code is layout-safe (Alt often remaps event.key).
+      if (event.altKey && !mod && !event.shiftKey && !event.repeat) {
+        const alignByCode: Record<string, 'left' | 'center' | 'right'> = {
+          KeyL: 'left',
+          KeyM: 'center',
+          KeyE: 'center',
+          KeyR: 'right',
+        };
+        const textAlign = alignByCode[event.code];
+        if (textAlign) {
+          if (!selectedIdsRef.current.length) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const next = setCoverTextAlign(
+            coverRef.current,
+            selectedIdsRef.current,
+            textAlign,
           );
           if (next !== coverRef.current) onChange(next);
           return;

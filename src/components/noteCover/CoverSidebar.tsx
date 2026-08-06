@@ -321,9 +321,9 @@ function AlignButtons({
   onChange: (v: CoverAlign) => void;
 }) {
   const items: { id: CoverAlign; icon: typeof AlignLeft; label: string }[] = [
-    { id: 'left', icon: AlignLeft, label: '왼쪽 정렬' },
-    { id: 'center', icon: AlignCenter, label: '가운데 정렬' },
-    { id: 'right', icon: AlignRight, label: '오른쪽 정렬' },
+    { id: 'left', icon: AlignLeft, label: '왼쪽 정렬 (Alt+L)' },
+    { id: 'center', icon: AlignCenter, label: '가운데 정렬 (Alt+M / Alt+E)' },
+    { id: 'right', icon: AlignRight, label: '오른쪽 정렬 (Alt+R)' },
   ];
   return (
     <div className="flex gap-1">
@@ -357,7 +357,7 @@ function ShapeTextPlacementButtons({
   return (
     <div className="grid grid-cols-3 gap-1">
       <TipButton
-        tip="왼쪽"
+        tip="왼쪽 (Alt+L)"
         className={`${iconBtnClass} ${textAlign === 'left' ? btnActiveClass : ''}`}
         pressed={textAlign === 'left'}
         onClick={() => onTextAlignChange('left')}
@@ -365,7 +365,7 @@ function ShapeTextPlacementButtons({
         <AlignStartVertical size={15} />
       </TipButton>
       <TipButton
-        tip="가로 가운데"
+        tip="가로 가운데 (Alt+M / Alt+E)"
         className={`${iconBtnClass} ${textAlign === 'center' ? btnActiveClass : ''}`}
         pressed={textAlign === 'center'}
         onClick={() => onTextAlignChange('center')}
@@ -373,7 +373,7 @@ function ShapeTextPlacementButtons({
         <AlignCenterVertical size={15} />
       </TipButton>
       <TipButton
-        tip="오른쪽"
+        tip="오른쪽 (Alt+R)"
         className={`${iconBtnClass} ${textAlign === 'right' ? btnActiveClass : ''}`}
         pressed={textAlign === 'right'}
         onClick={() => onTextAlignChange('right')}
@@ -1168,6 +1168,7 @@ export default function CoverSidebar({
                   빈 곳 드래그로 영역 선택. Mod+G 그룹 / Mod+Shift+G 해제.
                   Opt·Cmd 드래그 복제 · Shift 드래그 축 고정.
                   화살표 키로 이동 (기본 10px · Alt 미세 · Shift/Mod 크게).
+                  텍스트 정렬 Alt+L / Alt+M·E / Alt+R.
                 </p>
               </div>
             </CollapsibleSection>

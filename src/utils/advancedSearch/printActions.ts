@@ -40,6 +40,9 @@ export type PrintActionId =
   | 'print-cover-place-ellipse'
   | 'print-cover-font-size-up'
   | 'print-cover-font-size-down'
+  | 'print-cover-text-align-left'
+  | 'print-cover-text-align-center'
+  | 'print-cover-text-align-right'
   | 'print-focus-back'
   | 'print-focus-font'
   | 'print-focus-toc'
@@ -281,6 +284,24 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     title: '표지: 글자 크기 -1px',
     description: '선택 개체 글자 크기 줄이기 (⌘/Ctrl+Shift+<)',
     keywords: ['cover', '표지', 'font', 'size', '글자', '크기', '작게', 'decrease'],
+  },
+  {
+    id: 'print-cover-text-align-left',
+    title: '표지: 텍스트 왼쪽 정렬 (Alt+L)',
+    description: '선택 텍스트·도형 가로 왼쪽 정렬',
+    keywords: ['cover', '표지', 'align', 'left', '정렬', '왼쪽', 'alt+l'],
+  },
+  {
+    id: 'print-cover-text-align-center',
+    title: '표지: 텍스트 가운데 정렬 (Alt+M / Alt+E)',
+    description: '선택 텍스트·도형 가로 가운데 정렬',
+    keywords: ['cover', '표지', 'align', 'center', '정렬', '가운데', '중앙', 'alt+m', 'alt+e'],
+  },
+  {
+    id: 'print-cover-text-align-right',
+    title: '표지: 텍스트 오른쪽 정렬 (Alt+R)',
+    description: '선택 텍스트·도형 가로 오른쪽 정렬',
+    keywords: ['cover', '표지', 'align', 'right', '정렬', '오른쪽', 'alt+r'],
   },
   {
     id: 'print-focus-back',
