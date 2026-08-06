@@ -32,6 +32,7 @@
     "src/sw.ts",
     ".vitepress",
     "docs/.vitepress",
-    "**/.vitepress/**"
+    "**/.vitepress/**",
+    ".vitepress/**/*"
   ]
 }

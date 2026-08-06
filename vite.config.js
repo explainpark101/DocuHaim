@@ -46,7 +46,11 @@ function emitBuildIdPlugin() {
 }
 
 const plugins = [
-  react(),
+  react({
+    // Keep node_modules out; also skip VitePress caches (Babel would otherwise
+    // transform huge prebundled deps under .vitepress/cache/deps).
+    exclude: [/\/node_modules\//, /\/\.vitepress\//],
+  }),
   tailwindcss(),
   emitBuildIdPlugin(),
 ];
@@ -163,6 +167,11 @@ export default defineConfig({
   assetsInclude: ['**/*.wasm', '**/*.gmdl'],
   optimizeDeps: {
     exclude: ['garu-ko'],
+  },
+  server: {
+    watch: {
+      ignored: ['**/.vitepress/**'],
+    },
   },
   resolve: {
     alias: {

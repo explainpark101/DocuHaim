@@ -5,7 +5,15 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'release', 'dev-dist']),
+  globalIgnores([
+    'dist',
+    'release',
+    'dev-dist',
+    // VitePress caches (deps prebundles); not app source
+    '.vitepress/**',
+    'docs/.vitepress/**',
+    'docs/node_modules/**',
+  ]),
   {
     files: ['electron/**/*.js'],
     languageOptions: {
