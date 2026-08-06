@@ -7,6 +7,7 @@ import {
   Pencil,
   Pin,
   Reply,
+  Share2,
   Trash2,
   X,
   ChevronsDownUp,
@@ -22,8 +23,10 @@ import {
   chatDialogOverlayClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
 import {
+  canOfferWebShare,
   formatChatMessageMarkdownCopy,
   formatChatMessagePlainText,
+  shareChatMessage,
 } from '@/utils/chatWithMyself';
 
 /** Ignore outside dismiss from the same finger that long-pressed to open. */
@@ -67,6 +70,7 @@ export default function ChatMessageContextMenu({
   onTogglePin,
   onToggleCollapse,
   onOpenReactionPicker,
+  getPresignedUrl,
   shiftHeldRef,
 }) {
   const dismissGuardUntilRef = useRef(0);
@@ -102,6 +106,7 @@ export default function ChatMessageContextMenu({
   const pinned = Boolean(message?.pinnedAt);
   const collapsed =
     message?.collapsed === '1' || message?.collapsed === true;
+  const shareAvailable = canOfferWebShare();
 
   const guardOutside = (event) => {
     if (Date.now() < dismissGuardUntilRef.current) {
@@ -257,6 +262,21 @@ export default function ChatMessageContextMenu({
                 <FileText size={16} className="shrink-0 text-gray-500" />
                 MD 복사
               </button>
+              {shareAvailable ? (
+                <button
+                  type="button"
+                  className={menuBtnClass}
+                  onClick={() => {
+                    void (async () => {
+                      await shareChatMessage(message, { getPresignedUrl });
+                      onOpenChange?.(false);
+                    })();
+                  }}
+                >
+                  <Share2 size={16} className="shrink-0 text-gray-500" />
+                  공유
+                </button>
+              ) : null}
               <button
                 type="button"
                 className={menuBtnClass}

@@ -24,6 +24,7 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   SmilePlus,
+  Share2,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import { VList } from 'virtua';
@@ -52,6 +53,8 @@ import {
   formatChatMessagePlainText,
   formatChatMessageMarkdownCopy,
   resolveGroupLabel,
+  canOfferWebShare,
+  shareChatMessage,
 } from '@/utils/chatWithMyself';
 import {
   CHAT_MESSAGE_SCROLL_MARGIN,
@@ -153,10 +156,12 @@ function MessageActionItems({
   onToggleCollapse,
   onOpenReactionPicker,
   shiftHeldRef,
+  getPresignedUrl,
   _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
   const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
+  const shareAvailable = canOfferWebShare();
   return (
     <>
       <_Item
@@ -225,6 +230,17 @@ function MessageActionItems({
         <FileText size={16} className="shrink-0 text-gray-500" />
         MD 복사
       </_Item>
+      {shareAvailable ? (
+        <_Item
+          className={chatMenuItemClass}
+          onSelect={() => {
+            void shareChatMessage(msg, { getPresignedUrl });
+          }}
+        >
+          <Share2 size={16} className="shrink-0 text-gray-500" />
+          공유
+        </_Item>
+      ) : null}
       <_Item
         className={chatMenuItemClass}
         onSelect={() => onAddToNote?.(msg)}
@@ -304,6 +320,7 @@ function MessageMoreButton({
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
+  getPresignedUrl,
 }) {
   if (coarse) {
     return (
@@ -355,6 +372,7 @@ function MessageMoreButton({
             onToggleCollapse={onToggleCollapse}
             onOpenReactionPicker={onOpenReactionPicker}
             shiftHeldRef={shiftHeldRef}
+            getPresignedUrl={getPresignedUrl}
             _Item={DropdownMenu.Item}
           />
         </DropdownMenu.Content>
@@ -377,6 +395,7 @@ function MessageSideActions({
   shiftHeldRef,
   coarse,
   time,
+  getPresignedUrl,
 }) {
   const syncing =
     msg?.pendingSync === 'send' || msg?.pendingSync === 'edit';
@@ -406,6 +425,7 @@ function MessageSideActions({
         onOpenMobileSheet={onOpenMobileSheet}
         shiftHeldRef={shiftHeldRef}
         coarse={coarse}
+        getPresignedUrl={getPresignedUrl}
       />
     </>
   );
@@ -732,6 +752,7 @@ const MessageBubble = memo(function MessageBubble({
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
                 time={time}
+                getPresignedUrl={getPresignedUrl}
               />
             ) : self && isDeleting ? (
               deletingStatus
@@ -860,6 +881,7 @@ const MessageBubble = memo(function MessageBubble({
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
                 time={time}
+                getPresignedUrl={getPresignedUrl}
               />
             ) : !self && isDeleting ? (
               deletingStatus
@@ -916,6 +938,7 @@ const MessageBubble = memo(function MessageBubble({
             onToggleCollapse={onToggleCollapse}
             onOpenReactionPicker={openReactionPicker}
             shiftHeldRef={shiftHeldRef}
+            getPresignedUrl={getPresignedUrl}
             _Item={ContextMenu.Item}
           />
         </ContextMenu.Content>
@@ -1454,6 +1477,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
           setSheetMessage(null);
           setReactionPickerMsgId(m?.id || null);
         }}
+        getPresignedUrl={getPresignedUrl}
         shiftHeldRef={shiftHeldRef}
       />
     </>
