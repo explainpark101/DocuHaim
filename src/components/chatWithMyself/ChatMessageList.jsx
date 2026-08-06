@@ -1426,6 +1426,45 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     ],
   );
 
+  // Short lists (e.g. one message today) never scroll, so onReachTop never fires.
+  // Keep loading older days until content overflows the viewport or history ends.
+  useEffect(() => {
+    if (!hasMore || loadingOlder || !onReachTop) return undefined;
+
+    let cancelled = false;
+    let raf = 0;
+    let attempts = 0;
+
+    const tryFill = () => {
+      if (cancelled) return;
+      const list = listRef.current;
+      if (!list) {
+        if (attempts++ < 30) raf = requestAnimationFrame(tryFill);
+        return;
+      }
+      const scrollSize = Number(list.scrollSize) || 0;
+      const viewportSize = Number(list.viewportSize) || 0;
+      if (viewportSize <= 0) {
+        if (attempts++ < 30) raf = requestAnimationFrame(tryFill);
+        return;
+      }
+      if (scrollSize > viewportSize + LOAD_EDGE_PX) return;
+      if (loadingOlderLockRef.current) return;
+
+      loadingOlderLockRef.current = true;
+      // Stay pinned to newest while older days prepend above.
+      Promise.resolve(onReachTop()).finally(() => {
+        loadingOlderLockRef.current = false;
+      });
+    };
+
+    raf = requestAnimationFrame(tryFill);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [hasMore, loadingOlder, onReachTop, messages.length, rows.length]);
+
   const renderRow = useCallback(
     (row, index) => {
       if (row.type === 'loading-older' || row.type === 'loading-newer') {

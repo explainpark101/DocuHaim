@@ -171,8 +171,9 @@ function normalizeOutgoingAttachments(items) {
 
 /**
  * Walk day keys newest→oldest until at least one message exists.
- * Empty "today" (prepended even when no file) must not hide older history:
- * ChatMessageList only loads older days via scroll, which never fires on an empty list.
+ * Empty "today" (prepended even when no file) must not hide older history.
+ * Short non-empty lists are filled further by ChatMessageList when content
+ * does not overflow the viewport (scroll never reaches the top edge).
  *
  * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
  * @param {string[]} dayKeysNewestFirst
