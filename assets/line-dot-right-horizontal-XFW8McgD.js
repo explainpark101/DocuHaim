@@ -1,1 +1,0 @@
-import{z as o}from"./index-D5xo9HIv.js";const t=[["path",{d:"M 3 12 L 15 12",key:"ymhu98"}],["circle",{cx:"18",cy:"12",r:"3",key:"1kchzo"}]],e=o("line-dot-right-horizontal",t);export{t as __iconNode,e as default};

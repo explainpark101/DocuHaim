@@ -1,0 +1,1 @@
+import{z as e}from"./index-Cv73qN2J.js";const t=[["path",{d:"M4 20h16",key:"14thso"}],["path",{d:"m6 16 6-12 6 12",key:"1b4byz"}],["path",{d:"M8 12h8",key:"1wcyev"}]],o=e("baseline",t);export{t as __iconNode,o as default};
