@@ -89,7 +89,7 @@ function ColorField({
       <span className="flex items-center gap-1">
         <Popover.Root open={open} onOpenChange={setOpen} modal>
           <Tooltip.Provider delayDuration={300}>
-            <Tooltip.Root open={open || !displayCode ? false : undefined}>
+            <Tooltip.Root {...(open || !displayCode ? { open: false } : {})}>
               <Tooltip.Trigger asChild>
                 <Popover.Trigger asChild>
                   <button
