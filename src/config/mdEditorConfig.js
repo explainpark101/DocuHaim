@@ -16,6 +16,7 @@ import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSetting
 import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
+import '@/styles/md-editor-rt/preview-heading-fold.css';
 
 const PGBR_XSS_EXTENDED_WHITELIST = {
   pgbr: [],

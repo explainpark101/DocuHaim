@@ -67,6 +67,12 @@ import {
   hydrateNoteCoverPreviewsInRoot,
   teardownNoteCoverPreviewsInRoot,
 } from '@/utils/noteCover/hydrateNoteCoverPreview';
+import { enhancePreviewHeadingFolds } from '@/utils/previewHeadingFold';
+import {
+  getHeadingFoldCollapsedIds,
+  getHeadingFoldKeyFromFile,
+  saveHeadingFoldCollapsedIds,
+} from '@/utils/headingFoldStateDb';
 import {
   formatNoteCoverIssues,
   parseNoteCover,
@@ -802,6 +808,44 @@ export default function MarkdownEditor({
     const timers = [50, 200, 500, 1000].map((delay) => setTimeout(apply, delay));
     return () => timers.forEach((t) => clearTimeout(t));
   }, [currentFile?.id, currentFile?.type, previewOnly]);
+
+  // Preview heading fold chevrons (persist collapsed ids per document).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !value) return undefined;
+
+    const docKey = getHeadingFoldKeyFromFile(currentFile);
+    const collapsedRef = { current: /** @type {string[]} */ ([]) };
+    let cancelled = false;
+    /** @type {(() => void) | null} */
+    let cleanupEnhance = null;
+
+    const run = async () => {
+      if (docKey) {
+        const saved = await getHeadingFoldCollapsedIds(docKey);
+        if (cancelled) return;
+        if (saved) collapsedRef.current = saved;
+      }
+      const preview = container.querySelector('.md-editor-preview');
+      if (!preview || cancelled) return;
+      cleanupEnhance?.();
+      cleanupEnhance = enhancePreviewHeadingFolds(preview, {
+        collapsedIds: collapsedRef.current,
+        onCollapsedChange: (ids) => {
+          collapsedRef.current = ids;
+          if (docKey) void saveHeadingFoldCollapsedIds(docKey, ids);
+        },
+      });
+    };
+
+    const delays = [100, 320, 650, 1200];
+    const timers = delays.map((delay) => setTimeout(() => { void run(); }, delay));
+    return () => {
+      cancelled = true;
+      timers.forEach((t) => clearTimeout(t));
+      cleanupEnhance?.();
+    };
+  }, [value, currentFile?.id, currentFile?.type]);
 
   useEffect(() => {
     if (!previewOnly) return;
