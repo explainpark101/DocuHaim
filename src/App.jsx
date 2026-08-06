@@ -2339,7 +2339,7 @@ function MainApp() {
   };
 
   // 5. File Read & Save
-  const selectFileRaw = async (type, node, options = {}) => {
+  const selectFileRaw = useCallback(async (type, node, options = {}) => {
     if (node.type === 'folder') return;
     const skipNavigate = options.skipNavigate === true;
     const goToViewPath = () => {
@@ -2757,7 +2757,15 @@ function MainApp() {
       if (!workspace) return;
       applySessionFileToEditor(node.path, workspace, { skipNavigate });
     }
-  };
+  }, [
+    navigate,
+    webdavReady,
+    webdavConfig,
+    getS3Client,
+    s3Creds.bucket,
+    flushSessionEditorToWorkspace,
+    applySessionFileToEditor,
+  ]);
 
   const toSelectKey = (storageType, path) => `${storageType}:${path}`;
 
