@@ -5,6 +5,9 @@ export const CHAT_MESSAGE_SCROLL_MARGIN = 8;
  * Scroll a chat message row to the top of its overflow scroller.
  * Uses scrollTop math instead of scrollIntoView so layout above the target
  * (e.g. sticky date headers) does not skew the final position.
+ *
+ * Prefer VList scrollToIndex when the list is virtualized; this remains for
+ * cases where the DOM node is mounted.
  */
 export function scrollChatMessageToStart(
   messageId: string,
@@ -22,3 +25,13 @@ export function scrollChatMessageToStart(
   scroller.scrollTop = Math.max(0, targetTop);
   return true;
 }
+
+export type ChatListScrollAlign = 'start' | 'center' | 'end' | 'nearest';
+
+export type ChatMessageListHandle = {
+  scrollToMessageId: (
+    messageId: string,
+    opts?: { align?: ChatListScrollAlign },
+  ) => boolean;
+  scrollToDateStr: (dateStr: string) => boolean;
+};

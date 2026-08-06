@@ -1,6 +1,9 @@
 import {
+  forwardRef,
   memo,
+  useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -22,7 +25,8 @@ import {
   ChevronsUpDown,
   SmilePlus,
 } from 'lucide-react';
-import { AnimatePresence, motion as Motion } from 'motion/react';
+import { motion as Motion } from 'motion/react';
+import { VList } from 'virtua';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
@@ -48,7 +52,14 @@ import {
   formatChatMessageMarkdownCopy,
   resolveGroupLabel,
 } from '@/utils/chatWithMyself';
-import { scrollChatMessageToStart } from '@/utils/chatWithMyself/scrollToMessage';
+import {
+  CHAT_MESSAGE_SCROLL_MARGIN,
+} from '@/utils/chatWithMyself/scrollToMessage';
+
+/** Near-bottom threshold for stick-to-bottom (px). */
+const STICK_BOTTOM_PX = 80;
+/** Near-edge threshold to trigger older/newer day load (px). */
+const LOAD_EDGE_PX = 120;
 
 /** Shrink feedback starts at this hold duration. */
 const LONG_PRESS_THRESHOLD_MS = 250;
@@ -100,44 +111,6 @@ function useIsCoarsePointer() {
     };
   }, []);
   return coarse;
-}
-
-function useEnteringMessageIds(messages) {
-  const knownRef = useRef(null);
-  const enterRef = useRef(new Set());
-  const ids = messages.map((m) => m.id);
-
-  if (knownRef.current === null) {
-    knownRef.current = new Set(ids);
-    enterRef.current = new Set();
-  } else if (knownRef.current.size === 0 && ids.length > 0) {
-    // First real batch after empty mount — seed without enter animation.
-    knownRef.current = new Set(ids);
-    enterRef.current = new Set();
-  } else {
-    const known = knownRef.current;
-    const unknown = ids.filter((id) => !known.has(id));
-    if (unknown.length > 0) {
-      const suffix = [];
-      for (let i = ids.length - 1; i >= 0; i -= 1) {
-        if (known.has(ids[i])) break;
-        suffix.push(ids[i]);
-      }
-      const suffixSet = new Set(suffix);
-      const onlySuffix = unknown.every((id) => suffixSet.has(id));
-      enterRef.current = onlySuffix ? new Set(suffix) : new Set();
-      for (const id of unknown) known.add(id);
-    } else {
-      enterRef.current = new Set();
-    }
-  }
-
-  return enterRef.current;
-}
-
-function scrollScrollerToBottom(el) {
-  if (!el) return;
-  el.scrollTop = el.scrollHeight;
 }
 
 function useShiftHeldRef() {
@@ -943,53 +916,59 @@ const MessageBubble = memo(function MessageBubble({
     </ContextMenu.Root>
   );
 });
-
-export default function ChatMessageList({
-  messages,
-  ogStorage,
-  timeZone,
-  highlightId,
-  editingMessageId = null,
-  onReachTop,
-  onReachBottom,
-  loadingOlder = false,
-  loadingNewer = false,
-  hasMore = false,
-  hasMoreNewer = false,
-  onReply,
-  onDelete,
-  onEdit,
-  onAddToNote,
-  onViewEditHistory,
-  onTogglePin,
-  onToggleCollapse,
-  onToggleReaction,
-  onOpenNote,
-  onOpenReplyTarget,
-  emptyHint,
-  getPresignedUrl,
-  /** @type {Map<string, string>|Record<string, string>|null} */
-  groupIconByName = null,
-  /** @type {Map<string, string>|Record<string, string>|null} */
-  groupLabelByKey = null,
-  /** @type {((path: string) => boolean) | null | undefined} */
-  noteExists,
-  /** Motion layout / popLayout / exit blur on list items. */
-  enableMessageLayoutAnim = true,
-  /** Bubble will-change + brightness press filter. */
-  enableBubblePressFx = true,
-}) {
-  const scrollerRef = useRef(null);
-  const topSentinelRef = useRef(null);
-  const bottomSentinelRef = useRef(null);
+const ChatMessageList = forwardRef(function ChatMessageList(
+  {
+    messages,
+    ogStorage,
+    timeZone,
+    highlightId,
+    editingMessageId = null,
+    onReachTop,
+    onReachBottom,
+    loadingOlder = false,
+    loadingNewer = false,
+    hasMore = false,
+    hasMoreNewer = false,
+    onReply,
+    onDelete,
+    onEdit,
+    onAddToNote,
+    onViewEditHistory,
+    onTogglePin,
+    onToggleCollapse,
+    onToggleReaction,
+    onOpenNote,
+    onOpenReplyTarget,
+    emptyHint,
+    getPresignedUrl,
+    /** @type {Map<string, string>|Record<string, string>|null} */
+    groupIconByName = null,
+    /** @type {Map<string, string>|Record<string, string>|null} */
+    groupLabelByKey = null,
+    /** @type {((path: string) => boolean) | null | undefined} */
+    noteExists,
+    /** Kept for settings API; virtualized path never uses layout/popLayout. */
+    enableMessageLayoutAnim: _enableMessageLayoutAnim = true,
+    /** Bubble will-change + brightness press filter. */
+    enableBubblePressFx = true,
+  },
+  ref,
+) {
+  const listRef = useRef(null);
   const stickBottomRef = useRef(true);
+  const prevFirstIdRef = useRef(/** @type {string|null} */ (null));
   const prevLenRef = useRef(0);
   const initialBottomPinRef = useRef(true);
+  const loadingOlderLockRef = useRef(false);
+  const loadingNewerLockRef = useRef(false);
+  const listHostRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [sheetMessage, setSheetMessage] = useState(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
+  const [overlayDate, setOverlayDate] = useState(
+    /** @type {{ label: string, dateStr: string } | null} */ (null),
+  );
   const coarse = useIsCoarsePointer();
   const shiftHeldRef = useShiftHeldRef();
-  const enterIds = useEnteringMessageIds(messages);
 
   useEffect(() => {
     if (!sheetMessage?.id) return;
@@ -1049,334 +1028,407 @@ export default function ChatMessageList({
     return out;
   }, [messages, timeZone, groupLabelByKey]);
 
-  // Sticky date needs a tall parent (divider + that day's messages). A wrapper
-  // that only wraps the divider is the same height as the sticky node → no stick.
-  const dayGroups = useMemo(() => {
-    const groups = [];
-    let current = null;
-    for (const item of items) {
-      if (item.type === 'date') {
-        current = { key: item.key, date: item, messages: [] };
-        groups.push(current);
-        continue;
-      }
-      if (!current) {
-        current = {
-          key: `orphan-${item.key}`,
-          date: null,
-          messages: [],
-        };
-        groups.push(current);
-      }
-      current.messages.push(item);
+  const rows = useMemo(() => {
+    const out = [];
+    if (loadingOlder) {
+      out.push({ type: 'loading-older', key: 'loading-older' });
+    } else if (!hasMore && messages.length > 0) {
+      out.push({ type: 'end-older', key: 'end-older' });
     }
-    return groups;
-  }, [items]);
+    for (const item of items) out.push(item);
+    if (messages.length === 0) {
+      out.push({ type: 'empty', key: 'empty' });
+    }
+    if (loadingNewer) {
+      out.push({ type: 'loading-newer', key: 'loading-newer' });
+    }
+    return out;
+  }, [items, loadingOlder, loadingNewer, hasMore, messages.length]);
+
+  const messageIdToIndex = useMemo(() => {
+    const map = new Map();
+    rows.forEach((row, index) => {
+      if (row.type === 'msg') map.set(row.msg.id, index);
+    });
+    return map;
+  }, [rows]);
+
+  const dateStrToIndex = useMemo(() => {
+    const map = new Map();
+    rows.forEach((row, index) => {
+      if (row.type === 'date' && row.dateStr) map.set(row.dateStr, index);
+    });
+    return map;
+  }, [rows]);
+
+  const scrollToMessageId = useCallback(
+    (messageId, opts = {}) => {
+      if (!messageId || !listRef.current) return false;
+      const index = messageIdToIndex.get(messageId);
+      if (index == null) return false;
+      listRef.current.scrollToIndex(index, {
+        align: opts.align || 'start',
+        offset: opts.align === 'start' ? -CHAT_MESSAGE_SCROLL_MARGIN : 0,
+      });
+      return true;
+    },
+    [messageIdToIndex],
+  );
+
+  const scrollToDateStr = useCallback(
+    (dateStr) => {
+      if (!dateStr || !listRef.current) return false;
+      const index = dateStrToIndex.get(dateStr);
+      if (index == null) return false;
+      listRef.current.scrollToIndex(index, { align: 'start' });
+      return true;
+    },
+    [dateStrToIndex],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToMessageId,
+      scrollToDateStr,
+    }),
+    [scrollToMessageId, scrollToDateStr],
+  );
+
+  // Detect prepend vs append for virtua `shift` (compare against prior render refs).
+  const firstId = messages[0]?.id || null;
+  const nextLen = messages.length;
+  const shift =
+    nextLen > prevLenRef.current &&
+    prevLenRef.current > 0 &&
+    Boolean(firstId) &&
+    Boolean(prevFirstIdRef.current) &&
+    firstId !== prevFirstIdRef.current;
+  const grewAtEnd =
+    nextLen > prevLenRef.current && !shift && prevLenRef.current > 0;
 
   useLayoutEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-
-    const prevLen = prevLenRef.current;
-    const nextLen = messages.length;
-    const grewAtEnd = nextLen > prevLen;
-    const prepended =
-      nextLen > prevLen && prevLen > 0 && !stickBottomRef.current;
+    const prepended = shift;
+    prevFirstIdRef.current = firstId;
     prevLenRef.current = nextLen;
 
-    // Skip auto-stick when highlighting a jumped-to message or editing
-    // (OG/iframe height changes must not yank the composer).
     if (highlightId || editingMessageId) {
       initialBottomPinRef.current = false;
       return;
     }
 
+    const list = listRef.current;
+    if (!list) return;
+
     const pinInitial = initialBottomPinRef.current && nextLen > 0;
     if (pinInitial) {
       stickBottomRef.current = true;
-      scrollScrollerToBottom(el);
+      list.scrollToIndex(Math.max(0, rows.length - 1), { align: 'end' });
       requestAnimationFrame(() => {
-        scrollScrollerToBottom(el);
-        requestAnimationFrame(() => scrollScrollerToBottom(el));
+        listRef.current?.scrollToIndex(Math.max(0, rows.length - 1), {
+          align: 'end',
+        });
       });
       initialBottomPinRef.current = false;
       return;
     }
 
     if (stickBottomRef.current && grewAtEnd && !prepended) {
-      scrollScrollerToBottom(el);
+      list.scrollToIndex(Math.max(0, rows.length - 1), { align: 'end' });
     }
-  }, [messages, highlightId, editingMessageId]);
+  }, [
+    messages,
+    highlightId,
+    editingMessageId,
+    rows.length,
+    shift,
+    firstId,
+    nextLen,
+    grewAtEnd,
+  ]);
 
-  // Keep pinned to bottom while content height changes (images / OG) if sticky.
+  // Keep stick-to-bottom when content height changes (images / OG).
   useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el || highlightId || editingMessageId) return undefined;
-    const content = el.firstElementChild;
-    if (!content) return undefined;
-
-    const ro =
-      typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(() => {
-            if (!stickBottomRef.current) return;
-            scrollScrollerToBottom(el);
-          })
-        : null;
-    ro?.observe(content);
-    return () => ro?.disconnect();
-  }, [highlightId, editingMessageId, messages.length]);
+    if (highlightId || editingMessageId) return undefined;
+    const host = listHostRef.current;
+    if (!host || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => {
+      if (!stickBottomRef.current || !listRef.current) return;
+      listRef.current.scrollToIndex(Math.max(0, rows.length - 1), {
+        align: 'end',
+      });
+    });
+    const viewport = host.firstElementChild;
+    const content = viewport?.firstElementChild;
+    if (content) ro.observe(content);
+    else ro.observe(host);
+    return () => ro.disconnect();
+  }, [highlightId, editingMessageId, rows.length]);
 
   useEffect(() => {
     if (!highlightId) return undefined;
-    const scroller = scrollerRef.current;
-    if (!scroller) return undefined;
-
     let cancelled = false;
     const align = () => {
       if (cancelled) return;
-      scrollChatMessageToStart(highlightId, scroller);
+      scrollToMessageId(highlightId, { align: 'start' });
     };
-
     align();
     requestAnimationFrame(align);
     const t1 = window.setTimeout(align, 50);
     const t2 = window.setTimeout(align, 320);
-
-    const ro =
-      typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(() => align())
-        : null;
-    ro?.observe(scroller);
-
     return () => {
       cancelled = true;
-      clearTimeout(t1);
-      clearTimeout(t2);
-      ro?.disconnect();
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
     };
-  }, [highlightId, messages]);
+  }, [highlightId, scrollToMessageId, messages]);
 
-  useEffect(() => {
-    const root = scrollerRef.current;
-    const sentinel = topSentinelRef.current;
-    if (!root || !sentinel || !onReachTop) return undefined;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting) && hasMore && !loadingOlder) {
-          stickBottomRef.current = false;
-          const prevHeight = root.scrollHeight;
-          const prevTop = root.scrollTop;
-          Promise.resolve(onReachTop()).then(() => {
-            requestAnimationFrame(() => {
-              const delta = root.scrollHeight - prevHeight;
-              root.scrollTop = prevTop + delta;
-            });
-          });
+  const updateOverlayFromOffset = useCallback(
+    (offset) => {
+      const list = listRef.current;
+      if (!list || rows.length === 0) {
+        setOverlayDate(null);
+        return;
+      }
+      const index = list.findItemIndex(offset + 4);
+      let dateRow = null;
+      for (let i = Math.min(index, rows.length - 1); i >= 0; i -= 1) {
+        const row = rows[i];
+        if (row?.type === 'date') {
+          dateRow = row;
+          break;
         }
-      },
-      { root, rootMargin: '80px 0px 0px 0px', threshold: 0 },
-    );
-    io.observe(sentinel);
-    return () => io.disconnect();
-  }, [onReachTop, hasMore, loadingOlder]);
-
-  useEffect(() => {
-    const root = scrollerRef.current;
-    const sentinel = bottomSentinelRef.current;
-    if (!root || !sentinel || !onReachBottom) return undefined;
-    const io = new IntersectionObserver(
-      (entries) => {
+      }
+      setOverlayDate((prev) => {
+        if (!dateRow) return null;
         if (
-          entries.some((e) => e.isIntersecting) &&
-          hasMoreNewer &&
-          !loadingNewer
+          prev &&
+          prev.dateStr === dateRow.dateStr &&
+          prev.label === dateRow.label
         ) {
-          Promise.resolve(onReachBottom());
+          return prev;
         }
-      },
-      { root, rootMargin: '0px 0px 80px 0px', threshold: 0 },
-    );
-    io.observe(sentinel);
-    return () => io.disconnect();
-  }, [onReachBottom, hasMoreNewer, loadingNewer]);
+        return { label: dateRow.label, dateStr: dateRow.dateStr };
+      });
+    },
+    [rows],
+  );
+
+  const handleScroll = useCallback(
+    (offset) => {
+      const list = listRef.current;
+      if (!list) return;
+
+      const distBottom = list.scrollSize - offset - list.viewportSize;
+      stickBottomRef.current = distBottom < STICK_BOTTOM_PX;
+      updateOverlayFromOffset(offset);
+
+      if (
+        offset < LOAD_EDGE_PX &&
+        hasMore &&
+        !loadingOlder &&
+        !loadingOlderLockRef.current &&
+        onReachTop
+      ) {
+        loadingOlderLockRef.current = true;
+        stickBottomRef.current = false;
+        Promise.resolve(onReachTop()).finally(() => {
+          loadingOlderLockRef.current = false;
+        });
+      }
+
+      if (
+        distBottom < LOAD_EDGE_PX &&
+        hasMoreNewer &&
+        !loadingNewer &&
+        !loadingNewerLockRef.current &&
+        onReachBottom
+      ) {
+        loadingNewerLockRef.current = true;
+        Promise.resolve(onReachBottom()).finally(() => {
+          loadingNewerLockRef.current = false;
+        });
+      }
+    },
+    [
+      hasMore,
+      hasMoreNewer,
+      loadingOlder,
+      loadingNewer,
+      onReachTop,
+      onReachBottom,
+      updateOverlayFromOffset,
+    ],
+  );
+
+  const renderRow = useCallback(
+    (row, index) => {
+      if (row.type === 'loading-older' || row.type === 'loading-newer') {
+        return (
+          <div
+            key={row.key}
+            className="mx-auto flex w-full max-w-full justify-center px-3 py-2 md:max-w-[min(100%,50vw)]"
+            aria-label={
+              row.type === 'loading-older'
+                ? '이전 대화 불러오는 중'
+                : '이후 대화 불러오는 중'
+            }
+            role="status"
+          >
+            <Loader2 size={16} className="animate-spin text-gray-400" />
+          </div>
+        );
+      }
+      if (row.type === 'end-older') {
+        return (
+          <div
+            key={row.key}
+            className="mx-auto w-full max-w-full px-3 py-1 text-center text-[10px] text-gray-400 md:max-w-[min(100%,50vw)]"
+          >
+            더 이상 없음
+          </div>
+        );
+      }
+      if (row.type === 'empty') {
+        return (
+          <div
+            key={row.key}
+            className="mx-auto w-full max-w-full px-3 py-16 text-center text-sm text-gray-400 md:max-w-[min(100%,50vw)]"
+          >
+            {emptyHint || '아직 채팅이 없습니다'}
+          </div>
+        );
+      }
+      if (row.type === 'date') {
+        return (
+          <ChatDateDivider
+            key={row.key}
+            sticky={false}
+            id={row.dateStr ? `chat-date-${row.dateStr}` : undefined}
+            label={row.label}
+          />
+        );
+      }
+
+      const prev = index > 0 ? rows[index - 1] : null;
+      const gapClass = row.clustered
+        ? 'mt-0.5'
+        : prev?.type === 'msg'
+          ? 'mt-3'
+          : '';
+
+      return (
+        <div
+          key={row.key}
+          className={`mx-auto w-full max-w-full min-w-0 px-3 md:max-w-[min(100%,50vw)] ${gapClass}`}
+        >
+          <MessageBubble
+            msg={row.msg}
+            showName={row.showName}
+            clustered={row.clustered}
+            highlight={highlightId === row.msg.id}
+            ogStorage={ogStorage}
+            allowOgEmbed={!editingMessageId}
+            timeZone={timeZone}
+            onReply={onReply}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            onAddToNote={onAddToNote}
+            onViewEditHistory={onViewEditHistory}
+            onTogglePin={onTogglePin}
+            onToggleCollapse={onToggleCollapse}
+            onToggleReaction={onToggleReaction}
+            onOpenNote={onOpenNote}
+            onOpenReply={onOpenReplyTarget}
+            onOpenMobileSheet={setSheetMessage}
+            shiftHeldRef={shiftHeldRef}
+            coarse={coarse}
+            rowSelected={sheetMessage?.id === row.msg.id}
+            isEditing={editingMessageId === row.msg.id}
+            externalReactionPickerOpen={reactionPickerMsgId === row.msg.id}
+            onReactionPickerOpenChange={(open) => {
+              setReactionPickerMsgId(open ? row.msg.id : null);
+            }}
+            getPresignedUrl={getPresignedUrl}
+            noteExists={noteExists}
+            enableBubblePressFx={enableBubblePressFx}
+            groupIconPath={
+              groupIconByName instanceof Map
+                ? groupIconByName.get(row.msg.group) || null
+                : groupIconByName?.[row.msg.group] || null
+            }
+            groupLabel={row.groupLabel}
+            replyGroupLabel={
+              groupLabelByKey instanceof Map
+                ? groupLabelByKey.get(row.msg.replyGroup) ||
+                  row.msg.replyGroup
+                : groupLabelByKey?.[row.msg.replyGroup] || row.msg.replyGroup
+            }
+          />
+        </div>
+      );
+    },
+    [
+      rows,
+      emptyHint,
+      highlightId,
+      ogStorage,
+      editingMessageId,
+      timeZone,
+      onReply,
+      onDelete,
+      onEdit,
+      onAddToNote,
+      onViewEditHistory,
+      onTogglePin,
+      onToggleCollapse,
+      onToggleReaction,
+      onOpenNote,
+      onOpenReplyTarget,
+      shiftHeldRef,
+      coarse,
+      sheetMessage?.id,
+      reactionPickerMsgId,
+      getPresignedUrl,
+      noteExists,
+      enableBubblePressFx,
+      groupIconByName,
+      groupLabelByKey,
+    ],
+  );
+
+  const highlightIndex = highlightId
+    ? messageIdToIndex.get(highlightId)
+    : undefined;
+  const keepMounted =
+    highlightIndex != null ? [highlightIndex] : undefined;
 
   return (
     <>
       <div
-        ref={scrollerRef}
-        className="min-h-0 max-h-full flex-1 overflow-y-auto overflow-x-clip overscroll-contain"
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-          stickBottomRef.current = dist < 80;
-        }}
+        ref={listHostRef}
+        className="relative min-h-0 max-h-full flex-1 overflow-hidden"
       >
-        {/* Messages stay in a narrower column; date dividers span the full chat scroller. */}
-        <div className="relative flex w-full min-w-0 flex-col gap-3 py-3">
-          <div
-            ref={topSentinelRef}
-            className="mx-auto h-1 w-full max-w-full px-3 md:max-w-[min(100%,50vw)]"
-            aria-hidden
-          />
-          {loadingOlder ? (
-            <div
-              className="mx-auto flex w-full max-w-full justify-center px-3 py-2 md:max-w-[min(100%,50vw)]"
-              aria-label="이전 대화 불러오는 중"
-              role="status"
-            >
-              <Loader2 size={16} className="animate-spin text-gray-400" />
-            </div>
-          ) : null}
-          {!hasMore && messages.length > 0 ? (
-            <div className="mx-auto w-full max-w-full px-3 py-1 text-center text-[10px] text-gray-400 md:max-w-[min(100%,50vw)]">
-              더 이상 없음
-            </div>
-          ) : null}
-          {dayGroups.map((group) => (
-            <div
-              key={group.key}
-              className="relative flex w-full min-w-0 flex-col gap-3"
-            >
-              {group.date ? (
-                <ChatDateDivider
-                  id={
-                    group.date.dateStr
-                      ? `chat-date-${group.date.dateStr}`
-                      : undefined
-                  }
-                  label={group.date.label}
-                />
-              ) : null}
-              <div className="mx-auto flex w-full max-w-full min-w-0 flex-col px-3 md:max-w-[min(100%,50vw)]">
-                {(() => {
-                  const rows = group.messages.map((item, msgIndex) => {
-                    const gapClass = item.clustered
-                      ? 'mt-0.5'
-                      : msgIndex === 0
-                        ? ''
-                        : 'mt-3';
-                    const bubble = (
-                      <MessageBubble
-                        msg={item.msg}
-                        showName={item.showName}
-                        clustered={item.clustered}
-                        highlight={highlightId === item.msg.id}
-                        ogStorage={ogStorage}
-                        allowOgEmbed={!editingMessageId}
-                        timeZone={timeZone}
-                        onReply={onReply}
-                        onDelete={onDelete}
-                        onEdit={onEdit}
-                        onAddToNote={onAddToNote}
-                        onViewEditHistory={onViewEditHistory}
-                        onTogglePin={onTogglePin}
-                        onToggleCollapse={onToggleCollapse}
-                        onToggleReaction={onToggleReaction}
-                        onOpenNote={onOpenNote}
-                        onOpenReply={onOpenReplyTarget}
-                        onOpenMobileSheet={setSheetMessage}
-                        shiftHeldRef={shiftHeldRef}
-                        coarse={coarse}
-                        rowSelected={sheetMessage?.id === item.msg.id}
-                        isEditing={editingMessageId === item.msg.id}
-                        externalReactionPickerOpen={
-                          reactionPickerMsgId === item.msg.id
-                        }
-                        onReactionPickerOpenChange={(open) => {
-                          setReactionPickerMsgId(open ? item.msg.id : null);
-                        }}
-                        getPresignedUrl={getPresignedUrl}
-                        noteExists={noteExists}
-                        enableBubblePressFx={enableBubblePressFx}
-                        groupIconPath={
-                          groupIconByName instanceof Map
-                            ? groupIconByName.get(item.msg.group) || null
-                            : groupIconByName?.[item.msg.group] || null
-                        }
-                        groupLabel={item.groupLabel}
-                        replyGroupLabel={
-                          groupLabelByKey instanceof Map
-                            ? groupLabelByKey.get(item.msg.replyGroup) ||
-                              item.msg.replyGroup
-                            : groupLabelByKey?.[item.msg.replyGroup] ||
-                              item.msg.replyGroup
-                        }
-                      />
-                    );
-                    if (!enableMessageLayoutAnim) {
-                      return (
-                        <div
-                          key={item.key}
-                          className={`min-w-0 max-w-full ${gapClass}`}
-                        >
-                          {bubble}
-                        </div>
-                      );
-                    }
-                    return (
-                      <Motion.div
-                        key={item.key}
-                        layout={!editingMessageId}
-                        className={`min-w-0 max-w-full ${gapClass}`}
-                        initial={
-                          highlightId
-                            ? false
-                            : enterIds.has(item.msg.id)
-                              ? { opacity: 0, y: 14, scale: 0.98 }
-                              : false
-                        }
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{
-                          opacity: 0,
-                          scale: 0.94,
-                          y: -10,
-                          filter: 'blur(2px)',
-                          transition: {
-                            duration: 0.22,
-                            ease: [0.4, 0, 1, 1],
-                          },
-                        }}
-                        transition={{
-                          type: 'spring',
-                          stiffness: 420,
-                          damping: 30,
-                          mass: 0.8,
-                        }}
-                      >
-                        {bubble}
-                      </Motion.div>
-                    );
-                  });
-                  if (!enableMessageLayoutAnim) return rows;
-                  return (
-                    <AnimatePresence initial={false} mode="popLayout">
-                      {rows}
-                    </AnimatePresence>
-                  );
-                })()}
-              </div>
-            </div>
-          ))}
-          {messages.length === 0 ? (
-            <div className="mx-auto w-full max-w-full px-3 py-16 text-center text-sm text-gray-400 md:max-w-[min(100%,50vw)]">
-              {emptyHint || '아직 채팅이 없습니다'}
-            </div>
-          ) : null}
-          {loadingNewer ? (
-            <div
-              className="mx-auto flex w-full max-w-full justify-center px-3 py-2 md:max-w-[min(100%,50vw)]"
-              aria-label="이후 대화 불러오는 중"
-              role="status"
-            >
-              <Loader2 size={16} className="animate-spin text-gray-400" />
-            </div>
-          ) : null}
-          <div
-            ref={bottomSentinelRef}
-            className="mx-auto h-1 w-full max-w-full px-3 md:max-w-[min(100%,50vw)]"
-            aria-hidden
-          />
-        </div>
+        {overlayDate ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-30">
+            <ChatDateDivider
+              sticky={false}
+              label={overlayDate.label}
+              className="pointer-events-none shadow-sm"
+            />
+          </div>
+        ) : null}
+        <VList
+          ref={listRef}
+          className="h-full max-h-full overscroll-contain"
+          data={rows}
+          shift={shift}
+          keepMounted={keepMounted}
+          onScroll={handleScroll}
+          style={{ overflowX: 'clip' }}
+        >
+          {renderRow}
+        </VList>
       </div>
       <ChatMessageContextMenu
         open={Boolean(sheetMessage)}
@@ -1399,4 +1451,6 @@ export default function ChatMessageList({
       />
     </>
   );
-}
+});
+
+export default ChatMessageList;

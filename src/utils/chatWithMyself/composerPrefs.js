@@ -16,6 +16,11 @@ export const CHAT_PREF_KEYS = {
    * Safari defaults on; other browsers default off.
    */
   perfReduceBubblePressFx: `${CHAT_PREF_PREFIX}perf_reduce_bubble_press_fx`,
+  /**
+   * Performance: when true, use textarea instead of MdEditor/CodeMirror.
+   * Safari defaults on; other browsers default off.
+   */
+  composerLightweight: `${CHAT_PREF_PREFIX}composer_lightweight`,
   railGroupOpen: `${CHAT_PREF_PREFIX}rail_group_open`,
   railDateOpen: `${CHAT_PREF_PREFIX}rail_date_open`,
   railSearchOpen: `${CHAT_PREF_PREFIX}rail_search_open`,
@@ -168,6 +173,25 @@ export function writePerfReduceBubblePressFxPref(enabled) {
  */
 export function getPerfReduceBubblePressFxEnabled() {
   const stored = readPerfReduceBubblePressFxPref();
+  if (stored != null) return stored;
+  return defaultChatPerfReduceEnabled();
+}
+
+/** Stored lightweight-composer preference, or null if unset. */
+export function readComposerLightweightPref() {
+  return readBoolPref(CHAT_PREF_KEYS.composerLightweight);
+}
+
+export function writeComposerLightweightPref(enabled) {
+  writeBoolPref(CHAT_PREF_KEYS.composerLightweight, Boolean(enabled));
+}
+
+/**
+ * Effective: textarea composer instead of CodeMirror (Safari default on).
+ * When true, performance improves by skipping md-editor-rt.
+ */
+export function getComposerLightweightEnabled() {
+  const stored = readComposerLightweightPref();
   if (stored != null) return stored;
   return defaultChatPerfReduceEnabled();
 }

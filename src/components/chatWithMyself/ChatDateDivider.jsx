@@ -1,6 +1,7 @@
 /**
  * Date separator: horizontal rule with a centered date bubble on top.
- * Sticky within the message scroller (must not sit under a transformed / overflow-x ancestor).
+ * Inline (non-sticky) for virtualized lists; sticky only when not under a
+ * transformed / overflow-x ancestor.
  */
 export default function ChatDateDivider({
   id,
@@ -12,14 +13,19 @@ export default function ChatDateDivider({
   bubbleClassName = 'bg-[#a8bfd4] text-gray-700 dark:bg-[#152033] dark:text-gray-300',
   /** Sticky offset from the top of the scrollport (e.g. under a sticky search bar). */
   stickyTop = 0,
+  /** When false, render as a normal in-flow divider (virtualized lists). */
+  sticky = true,
 }) {
   const top =
     typeof stickyTop === 'number' ? `${stickyTop}px` : stickyTop || '0px';
+  const positionClass = sticky
+    ? 'sticky top-0 z-20'
+    : 'relative z-10';
   return (
     <div
       id={id}
-      style={{ top }}
-      className={`sticky top-0 z-20 w-full flex items-center px-3 py-2 ${surfaceClassName} ${className}`}
+      style={sticky ? { top } : undefined}
+      className={`${positionClass} w-full flex items-center px-3 py-2 ${surfaceClassName} ${className}`}
     >
       <div className="relative flex w-full items-center justify-center">
         <hr

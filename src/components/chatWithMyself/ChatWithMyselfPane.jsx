@@ -83,6 +83,8 @@ import {
   writePerfReduceLayoutAnimPref,
   getPerfReduceBubblePressFxEnabled,
   writePerfReduceBubblePressFxPref,
+  getComposerLightweightEnabled,
+  writeComposerLightweightPref,
   getChatRailOpen,
   writeChatRailOpenPref,
   flushPendingMessages,
@@ -298,6 +300,9 @@ export default function ChatWithMyselfPane({
   const [perfReduceBubblePressFx, setPerfReduceBubblePressFx] = useState(
     getPerfReduceBubblePressFxEnabled,
   );
+  const [composerLightweight, setComposerLightweight] = useState(
+    getComposerLightweightEnabled,
+  );
   const [composerSettingsOpen, setComposerSettingsOpen] = useState(false);
   const [activeJumpDate, setActiveJumpDate] = useState(null);
   const [searchFilters, setSearchFilters] = useState(null);
@@ -334,6 +339,8 @@ export default function ChatWithMyselfPane({
   const localTombstonesRef = useRef(new Set());
   const loadingOlderRef = useRef(false);
   const loadingNewerRef = useRef(false);
+  /** @type {React.MutableRefObject<import('@/utils/chatWithMyself/scrollToMessage').ChatMessageListHandle | null>} */
+  const messageListRef = useRef(null);
 
   const noteLocalDayWrite = useCallback((dateStr) => {
     if (dateStr) syncApiRef.current?.invalidateDay(dateStr);
@@ -427,6 +434,12 @@ export default function ChatWithMyselfPane({
     setPerfReduceBubblePressFx(value);
     writePerfReduceBubblePressFxPref(value);
   }, [perfReduceBubblePressFx]);
+
+  const toggleComposerLightweight = useCallback((next) => {
+    const value = typeof next === 'boolean' ? next : !composerLightweight;
+    setComposerLightweight(value);
+    writeComposerLightweightPref(value);
+  }, [composerLightweight]);
 
   const hasMore = loadedDayIndex < dayKeys.length;
   const hasMoreNewer = windowNewestIndex > 0;
@@ -780,10 +793,7 @@ export default function ChatWithMyselfPane({
       return;
     }
     requestAnimationFrame(() => {
-      document.getElementById(`chat-date-${dateStr}`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
+      messageListRef.current?.scrollToDateStr(dateStr);
     });
   }, []);
 
@@ -824,10 +834,7 @@ export default function ChatWithMyselfPane({
           );
         } else {
           requestAnimationFrame(() => {
-            document.getElementById(`chat-date-${dateStr}`)?.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start',
-            });
+            messageListRef.current?.scrollToDateStr(dateStr);
           });
         }
       } catch (e) {
@@ -1258,11 +1265,9 @@ export default function ChatWithMyselfPane({
         return;
       }
       setHighlightId(replyToId);
-      // re-trigger scroll even if same id
       requestAnimationFrame(() => {
-        document.getElementById(`chat-msg-${replyToId}`)?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
+        messageListRef.current?.scrollToMessageId(replyToId, {
+          align: 'center',
         });
       });
       window.setTimeout(() => setHighlightId((id) => (id === replyToId ? null : id)), 2200);
@@ -2056,6 +2061,7 @@ export default function ChatWithMyselfPane({
         <div className="flex min-h-0 max-h-full flex-1 overflow-hidden" data-chat-rails-root>
           <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-[#b9cfe0] dark:bg-[#0b1220]">
             <ChatMessageList
+              ref={messageListRef}
               messages={visibleMessages}
               ogStorage={ogStorage}
               timeZone={timeZone}
@@ -2127,8 +2133,9 @@ export default function ChatWithMyselfPane({
                     ogStorage={ogStorage}
                     timeZone={timeZone}
                     getPresignedUrl={getPresignedUrlForPath}
-                    showToolbar={composerToolbarOpen}
-                    showLineNumbers={composerLineNumbers}
+                    showToolbar={composerToolbarOpen && !composerLightweight}
+                    showLineNumbers={composerLineNumbers && !composerLightweight}
+                    lightweight={composerLightweight}
                     seedBody={composerSeed}
                     onSeedConsumed={() => setComposerSeed(null)}
                   />
@@ -2339,6 +2346,8 @@ export default function ChatWithMyselfPane({
         onPerfReduceLayoutAnimChange={togglePerfReduceLayoutAnim}
         perfReduceBubblePressFx={perfReduceBubblePressFx}
         onPerfReduceBubblePressFxChange={togglePerfReduceBubblePressFx}
+        composerLightweight={composerLightweight}
+        onComposerLightweightChange={toggleComposerLightweight}
       />
       <ChatEditHistoryModal
         open={Boolean(historyMessage)}

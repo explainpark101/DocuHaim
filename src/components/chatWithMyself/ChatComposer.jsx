@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { MdEditor, config } from 'md-editor-rt';
-import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Check, Paperclip, Pencil, Send, X, FileText } from 'lucide-react';
 import { Compartment, StateEffect } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
-import '@/styles/md-editor-rt/style.css';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
@@ -34,13 +40,9 @@ import {
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 
-config({
-  editorConfig: {
-    languageUserDefined: {
-      'ko-KR': KO_KR,
-    },
-  },
-});
+const ChatComposerMdEditor = lazy(
+  () => import('@/components/chatWithMyself/ChatComposerMdEditor'),
+);
 
 const COMPOSER_MIN_H = 40;
 const COMPOSER_MAX_H = 200;
@@ -49,10 +51,6 @@ const COMPOSER_MAX_H = 200;
 const EDITOR_HEIGHT_CSS_TRANSITION =
   'height 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
 
-/**
- * Cap editor body height against the visual viewport (keyboard-aware).
- * While editing, allow growth up to ~70% of the message column (minus chrome).
- */
 function imageBackgroundsFromQueue(queue) {
   const out = {};
   for (const item of queue || []) {
@@ -83,25 +81,6 @@ function getComposerContentMaxH({ editing = false } = {}) {
   const capped = Math.floor(vvH * 0.28);
   return Math.max(COMPOSER_MIN_H, Math.min(COMPOSER_MAX_H, capped));
 }
-
-const CHAT_COMPOSER_TOOLBARS = [
-  'bold',
-  'underline',
-  'italic',
-  '-',
-  'strikeThrough',
-  'quote',
-  'unorderedList',
-  'orderedList',
-  'task',
-  '-',
-  'codeRow',
-  'code',
-  'link',
-  '-',
-  'revoke',
-  'next',
-];
 
 function usePrefersColorScheme() {
   const [prefersDark, setPrefersDark] = useState(
@@ -149,6 +128,19 @@ function isApplePlatform() {
 
 function measureComposerHeight(root, contentMaxH = COMPOSER_MAX_H) {
   if (!root) return COMPOSER_MIN_H;
+  const textarea = root.querySelector(
+    'textarea[data-chat-composer-textarea]',
+  );
+  if (textarea) {
+    const prev = textarea.style.height;
+    textarea.style.height = 'auto';
+    const contentH = Math.min(
+      contentMaxH,
+      Math.max(COMPOSER_MIN_H, Math.ceil(textarea.scrollHeight)),
+    );
+    textarea.style.height = prev || '100%';
+    return contentH;
+  }
   const toolbar =
     root.querySelector('.md-editor-toolbar-wrapper') ||
     root.querySelector('.md-editor-toolbar');
@@ -196,6 +188,8 @@ export default function ChatComposer({
   bare = false,
   showToolbar = true,
   showLineNumbers = false,
+  /** Prefer native textarea over MdEditor/CodeMirror (perf). */
+  lightweight = false,
   /** Share-target (or similar) seed: replace compose body once consumed. */
   seedBody = null,
   onSeedConsumed,
@@ -217,6 +211,7 @@ export default function ChatComposer({
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
   const openChatImage = useChatImageLightbox();
   const wrapRef = useRef(null);
+  const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const inlineGroupInputRef = useRef(null);
   const valueRef = useRef(value);
@@ -541,6 +536,7 @@ export default function ChatComposer({
     imageQueue.length,
     showLineNumbers,
     showToolbar,
+    lightweight,
     contentMaxH,
     editTarget,
     selectedGroup,
@@ -557,13 +553,17 @@ export default function ChatComposer({
     let cancelled = false;
     const focusComposer = () => {
       if (cancelled) return;
-      const cmEl = root.querySelector('.cm-editor');
-      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
-      if (view) {
-        view.focus();
+      if (lightweight) {
+        textareaRef.current?.focus?.();
       } else {
-        const content = root.querySelector('.cm-content');
-        content?.focus?.();
+        const cmEl = root.querySelector('.cm-editor');
+        const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+        if (view) {
+          view.focus();
+        } else {
+          const content = root.querySelector('.cm-content');
+          content?.focus?.();
+        }
       }
       // Undo mobile browser scroll-into-view that pushes chat chrome off-screen.
       window.scrollTo(0, 0);
@@ -581,11 +581,11 @@ export default function ChatComposer({
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [replyTo?.id, editTarget]);
+  }, [replyTo?.id, editTarget, lightweight]);
 
   // Install lineNumbers once; visibility is toggled via CSS class.
   useEffect(() => {
-    if (!draftReady) return undefined;
+    if (lightweight || !draftReady) return undefined;
     const root = wrapRef.current;
     if (!root) return undefined;
     let cancelled = false;
@@ -623,7 +623,7 @@ export default function ChatComposer({
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [draftReady, syncEditorHeight]);
+  }, [draftReady, syncEditorHeight, lightweight]);
 
   useEffect(() => {
     const root = wrapRef.current;
@@ -1181,10 +1181,14 @@ export default function ChatComposer({
             <div
               ref={wrapRef}
               className={`chat-composer-editor min-w-0 flex-1 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft ${
-                showLineNumbers ? 'chat-composer-editor--line-numbers' : ''
-              } ${showToolbar ? '' : 'chat-composer-editor--no-toolbar'} ${
-                fillParent ? 'h-full min-h-0' : 'shrink-0'
-              }`}
+                !lightweight && showLineNumbers
+                  ? 'chat-composer-editor--line-numbers'
+                  : ''
+              } ${
+                lightweight || !showToolbar
+                  ? 'chat-composer-editor--no-toolbar'
+                  : ''
+              } ${fillParent ? 'h-full min-h-0' : 'shrink-0'}`}
               style={
                 fillParent
                   ? undefined
@@ -1199,22 +1203,41 @@ export default function ChatComposer({
                     }
               }
             >
-              <MdEditor
-                editorId="chat-with-myself-composer"
-                modelValue={value}
-                onChange={setValue}
-                theme={resolvedTheme}
-                language="ko-KR"
-                preview={false}
-                toolbars={showToolbar ? CHAT_COMPOSER_TOOLBARS : []}
-                footers={[]}
-                placeholder="메시지 입력…"
-                style={{ height: '100%' }}
-                onUploadImg={async (files, callback) => {
-                  await enqueueFiles(files);
-                  callback([]);
-                }}
-              />
+              {lightweight ? (
+                <textarea
+                  ref={textareaRef}
+                  data-chat-composer-textarea=""
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder="메시지 입력…"
+                  className="box-border h-full min-h-0 w-full resize-none border-0 bg-transparent px-2.5 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-odp-fgStrong dark:placeholder:text-gray-500"
+                  style={
+                    fillParent
+                      ? { height: '100%' }
+                      : { height: '100%', minHeight: COMPOSER_MIN_H }
+                  }
+                  aria-label="메시지 입력"
+                />
+              ) : (
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center px-2.5 text-sm text-gray-400">
+                      에디터 불러오는 중…
+                    </div>
+                  }
+                >
+                  <ChatComposerMdEditor
+                    value={value}
+                    onChange={setValue}
+                    theme={resolvedTheme}
+                    showToolbar={showToolbar}
+                    onUploadImg={async (files, callback) => {
+                      await enqueueFiles(files);
+                      callback([]);
+                    }}
+                  />
+                </Suspense>
+              )}
             </div>
             <button
               type="button"

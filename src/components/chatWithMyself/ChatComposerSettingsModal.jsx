@@ -55,6 +55,8 @@ export default function ChatComposerSettingsModal({
   onPerfReduceLayoutAnimChange,
   perfReduceBubblePressFx = false,
   onPerfReduceBubblePressFxChange,
+  composerLightweight = false,
+  onComposerLightweightChange,
 }) {
   return (
     <Dialog.Root open={Boolean(open)} onOpenChange={(next) => onOpenChange?.(next)}>
@@ -77,14 +79,22 @@ export default function ChatComposerSettingsModal({
             <SettingsSwitchRow
               id="chat-composer-settings-toolbar"
               label="툴바"
-              description="마크다운 서식 도구 표시"
+              description={
+                composerLightweight
+                  ? '경량 입력창에서는 사용할 수 없습니다'
+                  : '마크다운 서식 도구 표시'
+              }
               checked={showToolbar}
               onCheckedChange={onShowToolbarChange}
             />
             <SettingsSwitchRow
               id="chat-composer-settings-line-numbers"
               label="줄번호"
-              description="입력창 왼쪽 줄 번호 표시"
+              description={
+                composerLightweight
+                  ? '경량 입력창에서는 사용할 수 없습니다'
+                  : '입력창 왼쪽 줄 번호 표시'
+              }
               checked={showLineNumbers}
               onCheckedChange={onShowLineNumbersChange}
             />
@@ -114,6 +124,13 @@ export default function ChatComposerSettingsModal({
               description="will-change·brightness 누름 효과 끔 (Safari 기본 켬)"
               checked={perfReduceBubblePressFx}
               onCheckedChange={onPerfReduceBubblePressFxChange}
+            />
+            <SettingsSwitchRow
+              id="chat-settings-composer-lightweight"
+              label="경량 입력창"
+              description="CodeMirror 대신 textarea (Safari 기본 켬)"
+              checked={composerLightweight}
+              onCheckedChange={onComposerLightweightChange}
             />
           </div>
 

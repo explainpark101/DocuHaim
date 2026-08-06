@@ -57,6 +57,7 @@
     "tailwindcss-react-aria-components": "^2.2.0",
     "turndown": "^7.2.4",
     "use-fs": "^1.0.0",
+    "virtua": "^0.50.0",
     "webdav": "^5.10.0"
   },
   "devDependencies": {
