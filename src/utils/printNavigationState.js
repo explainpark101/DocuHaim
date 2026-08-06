@@ -15,6 +15,10 @@ function toSerializableFile(file) {
   };
 }
 
+/**
+ * Stash Export PDF markdown so the editor can show it immediately on return.
+ * Writes both in-memory (SPA) and sessionStorage (reload / hard navigation).
+ */
 export function setPendingPrintReturnState({ currentFile, editorContent }) {
   inMemoryPrintReturnState = {
     currentFile: currentFile ?? null,
@@ -29,10 +33,24 @@ export function setPendingPrintReturnState({ currentFile, editorContent }) {
     };
     window.sessionStorage.setItem(PRINT_RETURN_STATE_KEY, JSON.stringify(payload));
   } catch {
-    // ignore sessionStorage write failures
+    // ignore sessionStorage write failures (quota / private mode)
   }
 }
 
+/** Read without clearing — useful to check before navigate. */
+export function peekPendingPrintReturnState() {
+  if (inMemoryPrintReturnState) return inMemoryPrintReturnState;
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(PRINT_RETURN_STATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/** Take pending handoff once (memory first, then sessionStorage). */
 export function consumePendingPrintReturnState() {
   const inMemory = inMemoryPrintReturnState;
   inMemoryPrintReturnState = null;

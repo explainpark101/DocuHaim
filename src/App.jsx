@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
@@ -3011,6 +3011,43 @@ function MainApp() {
     editorContentRef.current = nextContent;
     setEditorContent(nextContent);
   }, [isUnlocked]);
+
+  // SPA return from Export PDF: apply sessionStorage/memory handoff before paint.
+  const wasOnExportPdfRef = useRef(isExportPdfAppPathname(location.pathname));
+  useLayoutEffect(() => {
+    const onExportPdf = isExportPdfAppPathname(location.pathname);
+    const leftExportPdf = wasOnExportPdfRef.current && !onExportPdf;
+    wasOnExportPdfRef.current = onExportPdf;
+    if (!leftExportPdf || !isUnlocked) return;
+
+    const pending = consumePendingPrintReturnState();
+    if (!pending) return;
+
+    const nextContent = typeof pending.editorContent === 'string' ? pending.editorContent : '';
+    prevEditorContentRef.current = nextContent;
+    editorContentRef.current = nextContent;
+    setEditorContent(nextContent);
+
+    const pendingFile = pending.currentFile;
+    if (!pendingFile || typeof pendingFile !== 'object') return;
+
+    setCurrentFile((prev) => {
+      if (prev && pendingFile.id && prev.id === pendingFile.id) {
+        return {
+          ...prev,
+          name: pendingFile.name ?? prev.name,
+          viewer: pendingFile.viewer ?? prev.viewer,
+          size: pendingFile.size ?? prev.size,
+          lastModified: pendingFile.lastModified ?? prev.lastModified,
+          content:
+            typeof pendingFile.content === 'string' ? pendingFile.content : prev.content,
+        };
+      }
+      // Avoid replacing a live local FileSystemHandle with a serializable stub.
+      if (prev?.type === 'local' && pendingFile.type === 'local') return prev;
+      return pendingFile;
+    });
+  }, [location.pathname, isUnlocked]);
 
   // Persist last opened file or chat for restore on next load
   useEffect(() => {

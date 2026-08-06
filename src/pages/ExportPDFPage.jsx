@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
@@ -556,6 +556,12 @@ export default function ExportPDFPage({
   const coverIssuesAlertSigRef = useRef('');
   const [savedValue, setSavedValue] = useState(() => initialValue);
   const [currentFile, setCurrentFile] = useState(() => initialFile);
+  const previewValueRef = useRef(initialValue);
+  const currentFileRef = useRef(initialFile);
+  const handoffWrittenRef = useRef(false);
+  previewValueRef.current = previewValue;
+  currentFileRef.current = currentFile;
+
   const [isSaving, setIsSaving] = useState(false);
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
   const [printLayout, setPrintLayout] = useState(() => loadPrintPageLayout());
@@ -1000,14 +1006,26 @@ export default function ExportPDFPage({
     }
   }, []);
 
-  const handleBack = useCallback(() => {
-    const path = currentFile?.id || routeExportPath;
-    if (path) {
-      navigate(`/view/${path}`);
-      return;
-    }
-    navigate(-1);
-  }, [currentFile?.id, navigate, routeExportPath]);
+  const writeEditorHandoff = useCallback((editorContent, file = currentFileRef.current) => {
+    handoffWrittenRef.current = true;
+    setPendingPrintReturnState({
+      currentFile: file,
+      editorContent: typeof editorContent === 'string' ? editorContent : '',
+    });
+  }, []);
+
+  // Browser back / unmount: ensure latest Export PDF markdown is in sessionStorage
+  // before App's layout effect consumes it (useLayoutEffect cleanup runs first).
+  useLayoutEffect(() => {
+    handoffWrittenRef.current = false;
+    return () => {
+      if (handoffWrittenRef.current) return;
+      setPendingPrintReturnState({
+        currentFile: currentFileRef.current,
+        editorContent: previewValueRef.current ?? '',
+      });
+    };
+  }, []);
 
   const handleExport = useCallback(() => {
     const target = document.querySelector(`#${EDITOR_ID}`);
@@ -1025,6 +1043,20 @@ export default function ExportPDFPage({
     reset: resetLeave,
   } = useUnsavedNavigationGuard({ isDirty: isPrintDirty });
 
+  const handleBack = useCallback(() => {
+    // If dirty, the nav guard will run; save/discard handlers write the handoff.
+    // Writing here would stash unsaved preview and skip the unmount fallback after cancel.
+    if (!isDirtyRef.current) {
+      writeEditorHandoff(previewValueRef.current, currentFileRef.current);
+    }
+    const path = currentFileRef.current?.id || routeExportPath;
+    if (path) {
+      navigate(`/view/${path}`);
+      return;
+    }
+    navigate(-1);
+  }, [navigate, routeExportPath, writeEditorHandoff]);
+
   const handleSave = useCallback(async () => {
     if (!currentFile?.id || isSaving) return false;
     setIsSaving(true);
@@ -1034,10 +1066,8 @@ export default function ExportPDFPage({
         ...currentFile,
         content: previewValue,
       };
-      setPendingPrintReturnState({
-        currentFile: nextFile,
-        editorContent: previewValue,
-      });
+      writeEditorHandoff(previewValue, nextFile);
+      setCurrentFile(nextFile);
       const result = await savePrintMarkdownToStorage(currentFile, previewValue);
       setSavedValue(previewValue);
       if (result.mode === 'pending-only') {
@@ -1050,7 +1080,7 @@ export default function ExportPDFPage({
     } finally {
       setIsSaving(false);
     }
-  }, [currentFile, isSaving, previewValue, printLayout]);
+  }, [currentFile, isSaving, previewValue, printLayout, writeEditorHandoff]);
 
   const handleNavGuardSaveAndLeave = useCallback(async () => {
     const ok = await handleSave();
@@ -1059,12 +1089,9 @@ export default function ExportPDFPage({
   }, [handleSave, proceedLeave]);
 
   const handleNavGuardDiscardAndLeave = useCallback(() => {
-    setPendingPrintReturnState({
-      currentFile,
-      editorContent: savedValue,
-    });
+    writeEditorHandoff(savedValue, currentFile);
     proceedLeave();
-  }, [currentFile, proceedLeave, savedValue]);
+  }, [currentFile, proceedLeave, savedValue, writeEditorHandoff]);
 
   useEffect(() => {
     const onKeyDown = (event) => {

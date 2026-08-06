@@ -15,6 +15,7 @@ const histories = (imageCropUndoHistoryDb as any).histories as {
   get: (key: string) => Promise<ImageCropUndoHistoryRecord | undefined>;
   put: (row: ImageCropUndoHistoryRecord) => Promise<string>;
   delete: (key: string) => Promise<void>;
+  clear: () => Promise<void>;
 };
 
 export const MAX_IMAGE_CROP_UNDO_ENTRIES = 60;

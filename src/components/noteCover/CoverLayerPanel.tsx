@@ -98,7 +98,7 @@ export type CoverLayerPanelProps = {
   collapsedGroups: Record<string, boolean>;
   onCollapsedGroupsChange: (next: Record<string, boolean>) => void;
   /** When set, context-menu delete goes through this (e.g. locked double-confirm). */
-  onRequestDeleteLayers?: (layerIds: string[]) => void;
+  onRequestDeleteLayers?: ((layerIds: string[]) => void) | undefined;
 };
 
 const collisionDetection: CollisionDetection = (args) => {
@@ -257,7 +257,7 @@ function LayerContextMenu({
   selectedIds: string[];
   onChange: (next: NoteCover) => void;
   onSelectIds: (ids: string[]) => void;
-  onRequestDeleteLayers?: (layerIds: string[]) => void;
+  onRequestDeleteLayers?: ((layerIds: string[]) => void) | undefined;
   onStartRename: (id: string) => void;
 }) {
   const tree = ensureLayerTree(cover);
@@ -424,7 +424,7 @@ type SortableRowProps = {
   onSelectGroup: (groupId: string, e: MouseEvent) => void;
   onChange: (next: NoteCover) => void;
   onSelectIds: (ids: string[]) => void;
-  onRequestDeleteLayers?: (layerIds: string[]) => void;
+  onRequestDeleteLayers?: ((layerIds: string[]) => void) | undefined;
 };
 
 function SortableLayerRow({
