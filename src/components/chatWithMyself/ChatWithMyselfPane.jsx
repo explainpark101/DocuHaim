@@ -478,9 +478,18 @@ export default function ChatWithMyselfPane({
   );
   const deleting = deletingCount > 0;
 
-  const handleToggleViewGroup = useCallback((group) => {
-    setViewGroupFilter((prev) => (prev === group ? null : group));
-  }, []);
+  const handleToggleViewGroup = useCallback(
+    (group) => {
+      const next = viewGroupFilter === group ? null : group;
+      setViewGroupFilter(next);
+      // Keep composer send-group in sync with sidebar selection, but never
+      // override the message group while an edit is in progress.
+      if (next != null && !editTarget) {
+        setSelectedGroup(next);
+      }
+    },
+    [viewGroupFilter, editTarget],
+  );
 
   useChatActivityStatus({
     storageReady,
