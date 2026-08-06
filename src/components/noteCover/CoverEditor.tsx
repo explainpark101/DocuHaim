@@ -337,6 +337,8 @@ export default function CoverEditor({
     path: string;
     imageSrc: string;
   } | null>(null);
+  const cropOpenRef = useRef(false);
+  cropOpenRef.current = Boolean(cropTarget);
   /** 0 = closed; 1 = first confirm; 2 = second confirm (locked only). */
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<0 | 1 | 2>(0);
   const [deleteConfirmDouble, setDeleteConfirmDouble] = useState(false);
@@ -1505,6 +1507,11 @@ export default function CoverEditor({
 
       if (!mod || event.altKey) return;
       const key = event.key.toLowerCase();
+
+      // Crop modal owns Ctrl/Cmd+Z/Y while open (handled in capture phase there).
+      if (cropOpenRef.current && (key === 'z' || key === 'y')) {
+        return;
+      }
 
       if (key === 'z' && event.shiftKey) {
         event.preventDefault();

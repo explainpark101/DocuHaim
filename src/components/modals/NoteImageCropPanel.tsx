@@ -7,6 +7,7 @@ import Cropper, {
 } from 'react-easy-crop';
 import { ArrowLeft, Crop, Loader2, Scan } from 'lucide-react';
 import { Switch } from 'radix-ui';
+import { useImageCropUndoHistory } from '@/hooks/useImageCropUndoHistory';
 import { getCroppedImg } from '@/utils/chatWithMyself/cropImage';
 import {
   composeImageColorGrid,
@@ -15,6 +16,7 @@ import {
   type CropPadMeta,
   type OpaqueContentBounds,
 } from '@/utils/chatWithMyself/cropPadImage';
+import type { ImageCropUndoSnapshot } from '@/utils/imageCrop/imageCropUndoHistoryDb';
 
 const MIN_CROP_PX = 48;
 /** Pad relative to source size on each side (L/R/T/B). */
@@ -321,6 +323,76 @@ export default function NoteImageCropPanel({
   const [opaqueBounds, setOpaqueBounds] = useState<OpaqueContentBounds | null>(null);
   const [opaqueArea, setOpaqueArea] = useState<Area | null>(null);
   const croppedAreaRef = useRef<Area | null>(null);
+  const cropRef = useRef(crop);
+  const zoomRef = useRef(zoom);
+  const lockRatioRef = useRef(lockRatio);
+  const keepTransparencyRef = useRef(keepTransparency);
+  const pendingRestoreRef = useRef<ImageCropUndoSnapshot | null>(null);
+  cropRef.current = crop;
+  zoomRef.current = zoom;
+  lockRatioRef.current = lockRatio;
+  keepTransparencyRef.current = keepTransparency;
+
+  const getSnapshot = useCallback((): ImageCropUndoSnapshot => ({
+    crop: { ...cropRef.current },
+    zoom: zoomRef.current,
+    cropSize: cropSizeRef.current
+      ? { ...cropSizeRef.current }
+      : null,
+    lockRatio: lockRatioRef.current,
+    keepTransparency: keepTransparencyRef.current,
+    croppedArea: croppedAreaRef.current
+      ? { ...croppedAreaRef.current }
+      : null,
+  }), []);
+
+  const applySnapshotVisual = useCallback((snap: ImageCropUndoSnapshot) => {
+    snappingRef.current = true;
+    freezeCropRef.current = false;
+    setLockRatio(snap.lockRatio);
+    lockRatioRef.current = snap.lockRatio;
+    keepTransparencyRef.current = snap.keepTransparency;
+    if (snap.cropSize) {
+      cropSizeRef.current = snap.cropSize;
+      setCropSize(snap.cropSize);
+    } else {
+      cropSizeRef.current = null;
+      setCropSize(null);
+    }
+    cropRef.current = snap.crop;
+    zoomRef.current = snap.zoom;
+    setCrop(snap.crop);
+    setZoom(snap.zoom);
+    if (snap.croppedArea) {
+      croppedAreaRef.current = snap.croppedArea;
+    }
+    window.requestAnimationFrame(() => {
+      snappingRef.current = false;
+    });
+  }, []);
+
+  const applySnapshot = useCallback((snap: ImageCropUndoSnapshot) => {
+    if (snap.keepTransparency !== keepTransparencyRef.current) {
+      pendingRestoreRef.current = snap;
+      setKeepTransparency(snap.keepTransparency);
+      setLockRatio(snap.lockRatio);
+      return;
+    }
+    applySnapshotVisual(snap);
+  }, [applySnapshotVisual]);
+
+  const {
+    ensureBaseline,
+    recordSoon,
+    recordNow,
+    undo,
+    redo,
+  } = useImageCropUndoHistory({
+    enabled: true,
+    imageSrc,
+    getSnapshot,
+    applySnapshot,
+  });
 
   const commitSize = useCallback((next: Size) => {
     freezeCropRef.current = true;
@@ -335,8 +407,10 @@ export default function NoteImageCropPanel({
   const handleCropChange = useCallback((next: { x: number; y: number }) => {
     // react-easy-crop scales crop by cropSize delta on resize; keep media fixed instead.
     if (freezeCropRef.current || dragRef.current || snappingRef.current) return;
+    cropRef.current = next;
     setCrop(next);
-  }, []);
+    recordSoon();
+  }, [recordSoon]);
 
   useEffect(() => () => {
     if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
@@ -358,6 +432,7 @@ export default function NoteImageCropPanel({
     opaqueAreaRef.current = null;
     didInitCropRef.current = false;
     freezeCropRef.current = false;
+    pendingRestoreRef.current = null;
     setPadMeta(null);
     setCompositeSrc(null);
     setOpaqueBounds(null);
@@ -489,22 +564,40 @@ export default function NoteImageCropPanel({
     setCropSize(displaySize);
     const next = getInitialCropFromCroppedAreaPixels(area, media, 0, displaySize, 1, 4);
     snappingRef.current = true;
+    cropRef.current = next.crop;
+    zoomRef.current = Math.min(4, Math.max(1, next.zoom));
     setCrop(next.crop);
-    setZoom(Math.min(4, Math.max(1, next.zoom)));
+    setZoom(zoomRef.current);
+    croppedAreaRef.current = area;
     window.requestAnimationFrame(() => {
       snappingRef.current = false;
     });
   }, []);
 
-  const applyOriginalCrop = useCallback((media: MediaSize, meta: CropPadMeta) => {
+  const finishInitOrRestore = useCallback((media: MediaSize, meta: CropPadMeta) => {
     mediaRef.current = media;
+    const pending = pendingRestoreRef.current;
+    if (pending) {
+      pendingRestoreRef.current = null;
+      didInitCropRef.current = true;
+      applySnapshotVisual(pending);
+      return;
+    }
     applyPixelArea({
       x: meta.originX,
       y: meta.originY,
       width: meta.cellWidth,
       height: meta.cellHeight,
     });
-  }, [applyPixelArea]);
+    window.requestAnimationFrame(() => {
+      ensureBaseline();
+      recordNow();
+    });
+  }, [applyPixelArea, applySnapshotVisual, ensureBaseline, recordNow]);
+
+  const applyOriginalCrop = useCallback((media: MediaSize, meta: CropPadMeta) => {
+    finishInitOrRestore(media, meta);
+  }, [finishInitOrRestore]);
 
   const snapToNearest = useCallback((mode: SnapMode = 'translate') => {
     if (snappingRef.current) return;
@@ -520,7 +613,10 @@ export default function NoteImageCropPanel({
     const area = opaqueAreaRef.current;
     if (!area) return;
     applyPixelArea(area);
-  }, [applyPixelArea]);
+    window.requestAnimationFrame(() => {
+      recordNow();
+    });
+  }, [applyPixelArea, recordNow]);
 
   useEffect(() => {
     const media = mediaRef.current;
@@ -571,6 +667,9 @@ export default function NoteImageCropPanel({
       const finishResize = () => {
         freezeCropRef.current = false;
         snapToNearest('resize');
+        window.requestAnimationFrame(() => {
+          recordNow();
+        });
       };
       // Wait for pending size RAF + Cropper recompute before allowing crop updates again.
       window.requestAnimationFrame(() => {
@@ -585,7 +684,27 @@ export default function NoteImageCropPanel({
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
     };
-  }, [commitSize, cropAreaMetrics, snapToNearest]);
+  }, [commitSize, cropAreaMetrics, recordNow, snapToNearest]);
+
+  // Capture-phase: swallow undo/redo so backdrop (cover/editor) never receives them.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.metaKey || event.ctrlKey;
+      if (!mod || event.altKey) return;
+      const key = event.key.toLowerCase();
+      const isUndo = key === 'z' && !event.shiftKey;
+      const isRedo = key === 'y' || (key === 'z' && event.shiftKey);
+      if (!isUndo && !isRedo) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (busy) return;
+      if (isRedo) redo();
+      else undo();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [busy, redo, undo]);
 
   const handleConfirm = async () => {
     const area = croppedAreaRef.current;
@@ -636,11 +755,20 @@ export default function NoteImageCropPanel({
               cropAreaStyle: { overflow: 'visible' },
             }}
             onCropChange={handleCropChange}
-            onZoomChange={setZoom}
+            onZoomChange={(next) => {
+              zoomRef.current = next;
+              setZoom(next);
+              recordSoon();
+            }}
             onCropComplete={onCropComplete}
             onCropAreaChange={onCropComplete}
             onCropSizeChange={onCropSizeChange}
-            onInteractionEnd={() => snapToNearest('translate')}
+            onInteractionEnd={() => {
+              snapToNearest('translate');
+              window.requestAnimationFrame(() => {
+                recordNow();
+              });
+            }}
             onMediaLoaded={(media) => {
               mediaRef.current = media;
               const meta = padMetaRef.current ?? padMeta;
@@ -706,7 +834,14 @@ export default function NoteImageCropPanel({
           max={4}
           step={0.01}
           value={zoom}
-          onChange={(event) => setZoom(Number(event.target.value))}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            zoomRef.current = next;
+            setZoom(next);
+            recordSoon();
+          }}
+          onPointerUp={() => recordNow()}
+          onKeyUp={() => recordNow()}
           className="w-full accent-blue-600"
         />
       </label>
@@ -722,7 +857,14 @@ export default function NoteImageCropPanel({
         <Switch.Root
           className={switchRootClass}
           checked={lockRatio}
-          onCheckedChange={(next) => setLockRatio(Boolean(next))}
+          onCheckedChange={(next) => {
+            const value = Boolean(next);
+            lockRatioRef.current = value;
+            setLockRatio(value);
+            window.requestAnimationFrame(() => {
+              recordNow();
+            });
+          }}
           aria-label="비율 잠금"
         >
           <Switch.Thumb className={switchThumbClass} />
@@ -740,7 +882,10 @@ export default function NoteImageCropPanel({
         <Switch.Root
           className={switchRootClass}
           checked={keepTransparency}
-          onCheckedChange={(next) => setKeepTransparency(Boolean(next))}
+          onCheckedChange={(next) => {
+            setKeepTransparency(Boolean(next));
+            // Checkpoint is recorded after composite rebuild + crop re-init.
+          }}
           aria-label="PNG 투명 배경 유지"
         >
           <Switch.Thumb className={switchThumbClass} />
