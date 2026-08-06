@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const ANIMATION_DURATION_MS = 200;
 
@@ -56,9 +57,9 @@ export default function Modal({ isOpen, onClose, onConfirm, children, contentCla
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose, onConfirm]);
 
-  if (!mounted) return null;
+  if (!mounted || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
       className={`fixed inset-0 z-100000 flex items-center justify-center p-4 transition-opacity duration-200 ease-out ${
         visible ? 'opacity-100 bg-black/40' : 'opacity-0 bg-black/0'
@@ -72,6 +73,7 @@ export default function Modal({ isOpen, onClose, onConfirm, children, contentCla
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

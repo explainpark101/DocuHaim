@@ -1,17 +1,43 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import Cropper, { type Area } from 'react-easy-crop';
-import { ArrowLeft, Crop, Loader2 } from 'lucide-react';
+import Cropper, {
+  getInitialCropFromCroppedAreaPixels,
+  type Area,
+  type MediaSize,
+} from 'react-easy-crop';
+import { ArrowLeft, Crop, Loader2, Scan } from 'lucide-react';
 import { Switch } from 'radix-ui';
 import { getCroppedImg } from '@/utils/chatWithMyself/cropImage';
+import {
+  composeImageColorGrid,
+  getOpaqueContentBounds,
+  opaqueBoundsToGridArea,
+  type CropPadMeta,
+  type OpaqueContentBounds,
+} from '@/utils/chatWithMyself/cropPadImage';
 
 const MIN_CROP_PX = 48;
+/** Pad relative to source size on each side (L/R/T/B). */
+const CROP_PAD_RATIO = 1.5;
+const SNAP_RATIO = 0.08;
 
 const switchRootClass =
   'relative h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent bg-gray-300 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 data-[state=checked]:bg-blue-600 dark:bg-odp-borderStrong dark:data-[state=checked]:bg-blue-500';
 
 const switchThumbClass =
   'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
+
+const CHECKERBOARD_STYLE: CSSProperties = {
+  backgroundColor: '#ffffff',
+  backgroundImage: [
+    'linear-gradient(45deg, #d4d4d4 25%, transparent 25%)',
+    'linear-gradient(-45deg, #d4d4d4 25%, transparent 25%)',
+    'linear-gradient(45deg, transparent 75%, #d4d4d4 75%)',
+    'linear-gradient(-45deg, transparent 75%, #d4d4d4 75%)',
+  ].join(','),
+  backgroundSize: '16px 16px',
+  backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+};
 
 type Size = { width: number; height: number };
 
@@ -93,6 +119,67 @@ function sizeFromHandlePoint(
   return { width, height };
 }
 
+function mediaZoomOf(media: MediaSize): number {
+  return media.width > media.height
+    ? media.width / media.naturalWidth
+    : media.height / media.naturalHeight;
+}
+
+function areaDistance(a: Area, b: Area): number {
+  return (
+    Math.abs(a.x - b.x)
+    + Math.abs(a.y - b.y)
+    + Math.abs(a.width - b.width)
+    + Math.abs(a.height - b.height)
+  );
+}
+
+function buildSnapTargets(meta: CropPadMeta, opaqueArea: Area | null): Area[] {
+  const targets: Area[] = [
+    {
+      x: meta.originX,
+      y: meta.originY,
+      width: meta.cellWidth,
+      height: meta.cellHeight,
+    },
+  ];
+  if (
+    opaqueArea
+    && (
+      Math.abs(opaqueArea.x - meta.originX) > 0.5
+      || Math.abs(opaqueArea.y - meta.originY) > 0.5
+      || Math.abs(opaqueArea.width - meta.cellWidth) > 0.5
+      || Math.abs(opaqueArea.height - meta.cellHeight) > 0.5
+    )
+  ) {
+    targets.push(opaqueArea);
+  }
+  return targets;
+}
+
+function nearestSnapTarget(
+  meta: CropPadMeta,
+  current: Area,
+  opaqueArea: Area | null,
+): Area | null {
+  const targets = buildSnapTargets(meta, opaqueArea);
+  let best: Area | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const target of targets) {
+    const dist = areaDistance(current, target);
+    if (dist < bestDist) {
+      best = target;
+      bestDist = dist;
+    }
+  }
+  const threshold = Math.max(
+    16,
+    (current.width + current.height) * SNAP_RATIO,
+  );
+  if (!best || bestDist > threshold) return null;
+  return best;
+}
+
 export default function NoteImageCropPanel({
   imageSrc,
   fileName,
@@ -101,6 +188,12 @@ export default function NoteImageCropPanel({
 }: Props) {
   const stageRef = useRef<HTMLDivElement>(null);
   const cropSizeRef = useRef<Size | null>(null);
+  const mediaRef = useRef<MediaSize | null>(null);
+  const padMetaRef = useRef<CropPadMeta | null>(null);
+  const opaqueAreaRef = useRef<Area | null>(null);
+  const compositeSrcRef = useRef<string | null>(null);
+  const didInitCropRef = useRef(false);
+  const snappingRef = useRef(false);
   const rafRef = useRef(0);
   const dragRef = useRef<{
     handle: HandleId;
@@ -117,6 +210,10 @@ export default function NoteImageCropPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [cropAreaEl, setCropAreaEl] = useState<HTMLElement | null>(null);
+  const [compositeSrc, setCompositeSrc] = useState<string | null>(null);
+  const [padMeta, setPadMeta] = useState<CropPadMeta | null>(null);
+  const [opaqueBounds, setOpaqueBounds] = useState<OpaqueContentBounds | null>(null);
+  const [opaqueArea, setOpaqueArea] = useState<Area | null>(null);
   const croppedAreaRef = useRef<Area | null>(null);
 
   const commitSize = useCallback((next: Size) => {
@@ -143,7 +240,83 @@ export default function NoteImageCropPanel({
     setError('');
     croppedAreaRef.current = null;
     setCropAreaEl(null);
+    mediaRef.current = null;
+    padMetaRef.current = null;
+    opaqueAreaRef.current = null;
+    didInitCropRef.current = false;
+    setPadMeta(null);
+    setCompositeSrc(null);
+    setOpaqueBounds(null);
+    setOpaqueArea(null);
   }, [imageSrc]);
+
+  useEffect(() => {
+    if (!imageSrc) return undefined;
+    let cancelled = false;
+    void getOpaqueContentBounds(imageSrc)
+      .then((bounds) => {
+        if (cancelled) return;
+        setOpaqueBounds(bounds);
+      })
+      .catch(() => {
+        if (!cancelled) setOpaqueBounds(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageSrc]);
+
+  useEffect(() => {
+    if (!imageSrc) return undefined;
+    let cancelled = false;
+    const backgroundColor = keepTransparency ? null : '#ffffff';
+    void composeImageColorGrid(imageSrc, backgroundColor, {
+      padRatio: CROP_PAD_RATIO,
+      matteCenter: Boolean(backgroundColor) && !keepTransparency,
+    })
+      .then((next) => {
+        if (cancelled) {
+          URL.revokeObjectURL(next.src);
+          return;
+        }
+        if (compositeSrcRef.current) URL.revokeObjectURL(compositeSrcRef.current);
+        compositeSrcRef.current = next.src;
+        padMetaRef.current = next.meta;
+        didInitCropRef.current = false;
+        setCompositeSrc(next.src);
+        setPadMeta(next.meta);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCompositeSrc(imageSrc);
+          setPadMeta(null);
+          padMetaRef.current = null;
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageSrc, keepTransparency]);
+
+  useEffect(() => {
+    if (!padMeta || !opaqueBounds?.hasTransparentMargin) {
+      opaqueAreaRef.current = null;
+      setOpaqueArea(null);
+      return;
+    }
+    const area = opaqueBoundsToGridArea(padMeta, opaqueBounds);
+    opaqueAreaRef.current = area;
+    setOpaqueArea(area);
+  }, [padMeta, opaqueBounds]);
+
+  useEffect(() => {
+    return () => {
+      if (compositeSrcRef.current) {
+        URL.revokeObjectURL(compositeSrcRef.current);
+        compositeSrcRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -156,7 +329,7 @@ export default function NoteImageCropPanel({
     const observer = new MutationObserver(bind);
     observer.observe(stage, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [imageSrc]);
+  }, [compositeSrc]);
 
   const cropAreaMetrics = useCallback(() => {
     const stage = stageRef.current;
@@ -183,12 +356,72 @@ export default function NoteImageCropPanel({
     };
   }, [cropAreaEl]);
 
+  const applyPixelArea = useCallback((area: Area) => {
+    const media = mediaRef.current;
+    if (!media) return;
+    const mz = mediaZoomOf(media);
+    const stage = stageRef.current?.getBoundingClientRect();
+    const maxWidth = Math.max(MIN_CROP_PX, (stage?.width ?? media.width) - 16);
+    const maxHeight = Math.max(MIN_CROP_PX, (stage?.height ?? media.height) - 16);
+    const displaySize = clampCropSize(
+      {
+        width: area.width * mz,
+        height: area.height * mz,
+      },
+      maxWidth,
+      maxHeight,
+    );
+    cropSizeRef.current = displaySize;
+    setCropSize(displaySize);
+    const next = getInitialCropFromCroppedAreaPixels(area, media, 0, displaySize, 1, 4);
+    snappingRef.current = true;
+    setCrop(next.crop);
+    setZoom(Math.min(4, Math.max(1, next.zoom)));
+    window.requestAnimationFrame(() => {
+      snappingRef.current = false;
+    });
+  }, []);
+
+  const applyOriginalCrop = useCallback((media: MediaSize, meta: CropPadMeta) => {
+    mediaRef.current = media;
+    applyPixelArea({
+      x: meta.originX,
+      y: meta.originY,
+      width: meta.cellWidth,
+      height: meta.cellHeight,
+    });
+  }, [applyPixelArea]);
+
+  const snapToNearest = useCallback(() => {
+    if (snappingRef.current) return;
+    const current = croppedAreaRef.current;
+    const meta = padMetaRef.current;
+    if (!current || !meta) return;
+    const target = nearestSnapTarget(meta, current, opaqueAreaRef.current);
+    if (!target) return;
+    applyPixelArea(target);
+  }, [applyPixelArea]);
+
+  const snapToOpaqueContent = useCallback(() => {
+    const area = opaqueAreaRef.current;
+    if (!area) return;
+    applyPixelArea(area);
+  }, [applyPixelArea]);
+
+  useEffect(() => {
+    const media = mediaRef.current;
+    if (!padMeta || !media || didInitCropRef.current) return;
+    didInitCropRef.current = true;
+    applyOriginalCrop(media, padMeta);
+  }, [padMeta, applyOriginalCrop, compositeSrc]);
+
   const onCropComplete = useCallback((_area: Area, pixels: Area) => {
     croppedAreaRef.current = pixels;
   }, []);
 
   const onCropSizeChange = useCallback((size: Size) => {
     if (dragRef.current) return;
+    if (didInitCropRef.current === false && padMetaRef.current) return;
     const prev = cropSizeRef.current;
     if (
       prev
@@ -219,7 +452,11 @@ export default function NoteImageCropPanel({
       commitSize(clampCropSize(next, metrics.maxWidth, metrics.maxHeight));
     };
     const onUp = () => {
+      if (!dragRef.current) return;
       dragRef.current = null;
+      window.requestAnimationFrame(() => {
+        snapToNearest();
+      });
     };
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
@@ -229,16 +466,17 @@ export default function NoteImageCropPanel({
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
     };
-  }, [commitSize, cropAreaMetrics]);
+  }, [commitSize, cropAreaMetrics, snapToNearest]);
 
   const handleConfirm = async () => {
     const area = croppedAreaRef.current;
-    if (!area || busy) return;
+    const src = compositeSrc || imageSrc;
+    if (!area || busy || !src) return;
     setBusy(true);
     setError('');
     try {
       const baseName = (fileName || 'image').replace(/\.[^.]+$/, '') || 'image';
-      const file = await getCroppedImg(imageSrc, area, {
+      const file = await getCroppedImg(src, area, {
         keepTransparency,
         fileName: keepTransparency ? `${baseName}-crop.png` : `${baseName}-crop.jpg`,
       });
@@ -249,19 +487,24 @@ export default function NoteImageCropPanel({
     }
   };
 
+  const cropImageSrc = compositeSrc;
+
   return (
     <div className="flex flex-col gap-3 p-6">
       <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">이미지 자르기</h2>
       <p className="text-xs text-gray-500 dark:text-odp-muted">
         모서리·변을 드래그해 비율을 자유롭게 조절하세요. Shift를 누르면 비율이 유지됩니다.
+        이미지 바깥(투명 여백)까지 잘라 뒤쪽에서부터 자를 수 있습니다.
+        투명 PNG는 불투명 콘텐츠·원본 테두리에 가까이 두면 자동으로 맞춥니다.
       </p>
       <div
         ref={stageRef}
-        className="relative h-[min(56vh,360px)] w-full overflow-hidden rounded-lg bg-neutral-900"
+        className="relative h-[min(56vh,360px)] w-full overflow-hidden rounded-lg"
+        style={keepTransparency ? CHECKERBOARD_STYLE : { backgroundColor: '#ffffff' }}
       >
-        {imageSrc ? (
+        {cropImageSrc ? (
           <Cropper
-            image={imageSrc}
+            image={cropImageSrc}
             crop={crop}
             zoom={zoom}
             minZoom={1}
@@ -269,16 +512,28 @@ export default function NoteImageCropPanel({
             {...(cropSize ? { cropSize, aspect: cropSize.width / Math.max(1, cropSize.height) } : {})}
             zoomWithScroll
             showGrid
-            style={{ cropAreaStyle: { overflow: 'visible' } }}
+            style={{
+              containerStyle: { backgroundColor: 'transparent' },
+              cropAreaStyle: { overflow: 'visible' },
+            }}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}
             onCropAreaChange={onCropComplete}
             onCropSizeChange={onCropSizeChange}
+            onInteractionEnd={snapToNearest}
+            onMediaLoaded={(media) => {
+              mediaRef.current = media;
+              const meta = padMetaRef.current ?? padMeta;
+              if (didInitCropRef.current || !meta) return;
+              didInitCropRef.current = true;
+              applyOriginalCrop(media, meta);
+            }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-neutral-300">
-            이미지를 불러올 수 없습니다.
+          <div className="flex h-full items-center justify-center text-sm text-neutral-500 dark:text-neutral-300">
+            <Loader2 size={18} className="mr-2 animate-spin" />
+            준비 중…
           </div>
         )}
         {cropAreaEl
@@ -312,6 +567,17 @@ export default function NoteImageCropPanel({
           )
           : null}
       </div>
+      {opaqueArea && opaqueBounds?.hasTransparentMargin ? (
+        <button
+          type="button"
+          onClick={snapToOpaqueContent}
+          disabled={busy || !cropImageSrc}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-odp-borderSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
+        >
+          <Scan size={14} />
+          투명 제외 · 콘텐츠에 맞추기
+        </button>
+      ) : null}
       <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-odp-muted">
         <span className="shrink-0">확대</span>
         <input
@@ -348,7 +614,7 @@ export default function NoteImageCropPanel({
             PNG 투명 배경 유지
           </span>
           <span className="mt-0.5 block text-[10px] text-gray-500 dark:text-odp-muted">
-            끄면 흰 배경 JPEG로 저장합니다.
+            끄면 흰 배경 JPEG로 저장합니다. 켜면 투명 여백을 체크무늬로 표시합니다.
           </span>
         </span>
         <Switch.Root
@@ -374,7 +640,7 @@ export default function NoteImageCropPanel({
         <button
           type="button"
           onClick={() => void handleConfirm()}
-          disabled={busy || !imageSrc}
+          disabled={busy || !cropImageSrc}
           className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Crop size={16} />}

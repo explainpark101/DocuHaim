@@ -9,7 +9,9 @@ import { Dialog, Switch } from 'radix-ui';
 import { getCroppedImg } from '@/utils/chatWithMyself/cropImage';
 import {
   composeImageColorGrid,
+  getOpaqueContentBounds,
   isSvgImageSource,
+  opaqueBoundsToGridArea,
   suggestPadBackground,
   type CropPadMeta,
 } from '@/utils/chatWithMyself/cropPadImage';
@@ -109,9 +111,13 @@ function areaDistance(a: Area, b: Area): number {
   );
 }
 
-function buildSnapTargets(meta: CropPadMeta, current: Area): Area[] {
-  const ox = meta.cellWidth;
-  const oy = meta.cellHeight;
+function buildSnapTargets(
+  meta: CropPadMeta,
+  current: Area,
+  opaqueArea: Area | null,
+): Area[] {
+  const ox = meta.originX;
+  const oy = meta.originY;
   const ow = meta.cellWidth;
   const oh = meta.cellHeight;
   const ocx = ox + ow / 2;
@@ -125,6 +131,24 @@ function buildSnapTargets(meta: CropPadMeta, current: Area): Area[] {
     { x: ocx - cover / 2, y: ocy - cover / 2, width: cover, height: cover },
     { x: ocx - inset / 2, y: ocy - inset / 2, width: inset, height: inset },
   ];
+  if (opaqueArea) {
+    const contentSide = Math.max(opaqueArea.width, opaqueArea.height);
+    const ccx = opaqueArea.x + opaqueArea.width / 2;
+    const ccy = opaqueArea.y + opaqueArea.height / 2;
+    targets.push({
+      x: ccx - contentSide / 2,
+      y: ccy - contentSide / 2,
+      width: contentSide,
+      height: contentSide,
+    });
+    const fitSide = Math.min(opaqueArea.width, opaqueArea.height);
+    targets.push({
+      x: ccx - fitSide / 2,
+      y: ccy - fitSide / 2,
+      width: fitSide,
+      height: fitSide,
+    });
+  }
   for (const x of xs) {
     for (const y of ys) {
       targets.push({ x, y, width: side, height: side });
@@ -133,8 +157,12 @@ function buildSnapTargets(meta: CropPadMeta, current: Area): Area[] {
   return targets;
 }
 
-function nearestSnapTarget(meta: CropPadMeta, current: Area): Area | null {
-  const targets = buildSnapTargets(meta, current);
+function nearestSnapTarget(
+  meta: CropPadMeta,
+  current: Area,
+  opaqueArea: Area | null,
+): Area | null {
+  const targets = buildSnapTargets(meta, current, opaqueArea);
   let best: Area | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   for (const target of targets) {
@@ -174,11 +202,15 @@ export default function ChatGroupIconCropModal({
   const [autoBackgroundColor, setAutoBackgroundColor] = useState<string>('#ffffff');
   const [compositeSrc, setCompositeSrc] = useState<string | null>(null);
   const [padMeta, setPadMeta] = useState<CropPadMeta | null>(null);
+  const [opaqueBounds, setOpaqueBounds] = useState<
+    Awaited<ReturnType<typeof getOpaqueContentBounds>>
+  >(null);
   const [zoomMods, setZoomMods] = useState<ModifierZoom>(() => zoomFromModifiers(null));
   const mediaRef = useRef<MediaSize | null>(null);
   const cropSizeRef = useRef<Size | null>(null);
   const compositeSrcRef = useRef<string | null>(null);
   const croppedAreaRef = useRef<Area | null>(null);
+  const opaqueAreaRef = useRef<Area | null>(null);
   const snappingRef = useRef(false);
   const didInitSnapRef = useRef(false);
 
@@ -219,10 +251,36 @@ export default function ChatGroupIconCropModal({
     const current = croppedAreaRef.current;
     const meta = padMeta;
     if (!current || !meta) return;
-    const target = nearestSnapTarget(meta, current);
+    const target = nearestSnapTarget(meta, current, opaqueAreaRef.current);
     if (!target) return;
     applyAreaToCropper(target);
   }, [applyAreaToCropper, padMeta]);
+
+  useEffect(() => {
+    if (!open || !imageSrc) return undefined;
+    let cancelled = false;
+    setOpaqueBounds(null);
+    opaqueAreaRef.current = null;
+    void getOpaqueContentBounds(imageSrc)
+      .then((bounds) => {
+        if (cancelled) return;
+        setOpaqueBounds(bounds?.hasTransparentMargin ? bounds : null);
+      })
+      .catch(() => {
+        if (!cancelled) setOpaqueBounds(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, imageSrc]);
+
+  useEffect(() => {
+    if (!padMeta || !opaqueBounds) {
+      opaqueAreaRef.current = null;
+      return;
+    }
+    opaqueAreaRef.current = opaqueBoundsToGridArea(padMeta, opaqueBounds);
+  }, [padMeta, opaqueBounds]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -391,8 +449,8 @@ export default function ChatGroupIconCropModal({
                   didInitSnapRef.current = true;
                   const cover = Math.max(padMeta.cellWidth, padMeta.cellHeight);
                   applyAreaToCropper({
-                    x: padMeta.cellWidth + (padMeta.cellWidth - cover) / 2,
-                    y: padMeta.cellHeight + (padMeta.cellHeight - cover) / 2,
+                    x: padMeta.originX + (padMeta.cellWidth - cover) / 2,
+                    y: padMeta.originY + (padMeta.cellHeight - cover) / 2,
                     width: cover,
                     height: cover,
                   });

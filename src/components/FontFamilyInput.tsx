@@ -1,17 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { withFontFallback } from '@/utils/fontFallback';
 
+type FontFamilyInputProps = {
+  value?: string;
+  onChange: (value: string) => void;
+  options?: string[];
+  placeholder?: string;
+  id?: string;
+  className?: string;
+  inputClassName?: string;
+};
+
 /**
- * font-family 전용 입력 컴포넌트.
- * input + datalist처럼 동작하되, 제안 목록을 div로 구현.
- * 사용자가 목록에서 선택하거나 직접 폰트 이름을 입력할 수 있다.
- *
- * @param {string} value - 현재 font-family 값
- * @param {(v: string) => void} onChange
- * @param {string[]} options - 제안 폰트 목록
- * @param {string} [placeholder]
- * @param {string} [id]
- * @param {string} [className]
+ * font-family combobox: type freely or pick from suggestions.
  */
 export default function FontFamilyInput({
   value = '',
@@ -20,10 +21,11 @@ export default function FontFamilyInput({
   placeholder = '폰트 입력 또는 선택',
   id,
   className = '',
-}) {
+  inputClassName = '',
+}: FontFamilyInputProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
-  const wrapperRef = useRef(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setInputValue(value);
@@ -33,25 +35,25 @@ export default function FontFamilyInput({
     inputValue.trim() === ''
       ? options
       : options.filter((opt) =>
-          opt.toLowerCase().includes(inputValue.trim().toLowerCase())
+          opt.toLowerCase().includes(inputValue.trim().toLowerCase()),
         );
 
   const handleBlur = () => {
-    setTimeout(() => setOpen(false), 150);
+    window.setTimeout(() => setOpen(false), 150);
   };
 
   const handleFocus = () => {
     setOpen(true);
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setInputValue(v);
     onChange(v);
     setOpen(true);
   };
 
-  const handleSelect = (font) => {
+  const handleSelect = (font: string) => {
     setInputValue(font);
     onChange(font);
     setOpen(false);
@@ -60,8 +62,8 @@ export default function FontFamilyInput({
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    const handleClickOutside = (e) => {
-      if (!el.contains(e.target)) setOpen(false);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!el.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -83,13 +85,13 @@ export default function FontFamilyInput({
         aria-autocomplete="list"
         aria-controls={id ? `${id}-listbox` : undefined}
         aria-activedescendant={open && filtered[0] ? `${id}-opt-0` : undefined}
-        className="w-full rounded border border-gray-300 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className={`w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg ${inputClassName}`}
         style={{ fontFamily: withFontFallback(inputValue) }}
       />
       <div
         id={id ? `${id}-listbox` : undefined}
         role="listbox"
-        className={`absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded border border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shadow-lg ${
+        className={`absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-auto rounded border border-gray-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-bgSoft ${
           open ? 'block' : 'hidden'
         }`}
       >
@@ -104,7 +106,7 @@ export default function FontFamilyInput({
               type="button"
               role="option"
               id={id ? `${id}-opt-${i}` : undefined}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-odp-focusBg focus:bg-gray-100 dark:focus:bg-odp-focusBg focus:outline-none"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none dark:hover:bg-odp-focusBg dark:focus:bg-odp-focusBg"
               style={{ fontFamily: withFontFallback(font) }}
               onMouseDown={(e) => {
                 e.preventDefault();

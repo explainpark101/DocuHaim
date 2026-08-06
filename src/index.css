@@ -179,7 +179,17 @@
   print-color-adjust: exact;
 }
 
+/* PDF paper must stay light even when html has .dark (md-editor preview.css). */
+.export-pdf-paper,
+.export-pdf-paper .md-editor,
+.export-pdf-paper .md-editor-preview {
+  color-scheme: light;
+}
+
 @media print {
+  html {
+    color-scheme: light !important;
+  }
   html, body {
     background-color: white !important;
   }

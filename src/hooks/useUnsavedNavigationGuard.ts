@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useBlocker, type BlockerFunction } from 'react-router';
 
 type UseUnsavedNavigationGuardOptions = {
@@ -8,30 +8,26 @@ type UseUnsavedNavigationGuardOptions = {
 /**
  * Block in-app navigations (including mouse back/forward) when `isDirty()`,
  * and show the browser `beforeunload` prompt on tab close / reload.
+ *
+ * Call `proceed` / `reset` from your confirm UI when `isBlocked` is true.
+ * Prefer those callbacks over caching `blocker.proceed` in a ref — React Router
+ * replaces `proceed`/`reset` each time the blocker object updates.
  */
 export function useUnsavedNavigationGuard({ isDirty }: UseUnsavedNavigationGuardOptions) {
-  const proceedRef = useRef<(() => void) | null>(null);
-  const resetRef = useRef<(() => void) | null>(null);
-
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) => {
-      if (currentLocation.pathname === nextLocation.pathname) return false;
+      if (
+        currentLocation.pathname === nextLocation.pathname &&
+        currentLocation.search === nextLocation.search
+      ) {
+        return false;
+      }
       return isDirty();
     },
     [isDirty],
   );
 
   const blocker = useBlocker(shouldBlock);
-
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      proceedRef.current = blocker.proceed;
-      resetRef.current = blocker.reset;
-      return;
-    }
-    proceedRef.current = null;
-    resetRef.current = null;
-  }, [blocker]);
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -44,12 +40,18 @@ export function useUnsavedNavigationGuard({ isDirty }: UseUnsavedNavigationGuard
   }, [isDirty]);
 
   const proceed = useCallback(() => {
-    proceedRef.current?.();
-  }, []);
+    if (blocker.state !== 'blocked') return;
+    const proceedFn = blocker.proceed;
+    // POP proceed can race history.go; defer one tick (RR / browsers).
+    window.setTimeout(() => {
+      proceedFn();
+    }, 0);
+  }, [blocker]);
 
   const reset = useCallback(() => {
-    resetRef.current?.();
-  }, []);
+    if (blocker.state !== 'blocked') return;
+    blocker.reset();
+  }, [blocker]);
 
   return {
     isBlocked: blocker.state === 'blocked',

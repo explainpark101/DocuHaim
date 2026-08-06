@@ -10,14 +10,16 @@ import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
+import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
+import '@/styles/md-editor-rt/note-cover-placeholder.css';
 
 const PGBR_XSS_EXTENDED_WHITELIST = {
   pgbr: [],
-  div: ['class', 'data-md-pgbr'],
+  div: ['class', 'data-md-pgbr', 'data-note-cover-placeholder', 'role', 'tabindex'],
   span: ['class', 'data-md-pgbr', 'aria-hidden'],
   h6: ['id', 'class', 'data-heading-level'],
   a: ['href', 'class', 'target', 'rel', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
@@ -53,6 +55,7 @@ config({
       { type: 'preview_link_target_blank', plugin: previewLinkTargetBlankPlugin, options: {} },
       { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} },
       { type: 'chat_saved_note', plugin: chatSavedNotePlugin, options: {} },
+      { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
     ];
   },
   // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).

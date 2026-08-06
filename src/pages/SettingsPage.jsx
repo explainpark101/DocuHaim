@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { IconDownload, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
 import SnippetSettings from '@/components/settings/SnippetSettings';
+import WebfontSettings from '@/components/settings/WebfontSettings';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
@@ -46,6 +47,7 @@ import {
 } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 
 export default function SettingsPage({
   s3Creds,
@@ -121,6 +123,7 @@ export default function SettingsPage({
   const [checkpointInfo, setCheckpointInfo] = useState(
     /** @type {import('@/utils/advancedSearch/engine').RebuildCheckpointInfo | null} */ (null),
   );
+  const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
   const [geminiModel, setGeminiModel, syncGeminiModel] = useGeminiModelState();
   const [s3ConnOpen, setS3ConnOpen] = useState(true);
   const [webdavConnOpen, setWebdavConnOpen] = useState(false);
@@ -704,36 +707,23 @@ export default function SettingsPage({
                 </span>
               </span>
             </label>
-            <label className="flex items-start gap-2 cursor-pointer">
+            <label className="flex items-start gap-2 cursor-not-allowed opacity-60">
               <input
                 type="radio"
                 name="editorType"
                 value={EDITOR_TYPE_NOVEL}
-                checked={editorType === EDITOR_TYPE_NOVEL}
-                onChange={() => {
-                  setEditorType(EDITOR_TYPE_NOVEL);
-                  saveEditorType(EDITOR_TYPE_NOVEL);
-                  onEditorTypeChange?.(EDITOR_TYPE_NOVEL);
-                }}
+                checked={false}
+                disabled
                 className="mt-0.5 shrink-0"
               />
               <span>
                 <span className="font-semibold">novel</span>
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  Notion 스타일 리치 텍스트 편집기입니다. HTML을 거쳐 마크다운으로 변환하므로 문법·공백이 바뀔 수 있고, 위키 이미지 미리보기·스니펫·일부 단축키는 기대와 다르게 동작할 수 있습니다.
+                  준비중입니다.
                 </span>
               </span>
             </label>
           </div>
-          {editorType === EDITOR_TYPE_NOVEL && (
-            <p className="mt-3 text-[11px] text-amber-800 dark:text-amber-200/90 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded px-2 py-1.5">
-              novel 선택 시:{' '}
-              <span className="font-semibold">
-                일부 동작이 의도와 다르게 보이거나 저장 결과가 달라질 수 있습니다.
-              </span>{' '}
-              중요한 노트는 md-editor-rt 사용을 권장합니다.
-            </p>
-          )}
         </div>
 
         {/* Navigation */}
@@ -1188,6 +1178,10 @@ export default function SettingsPage({
                     setCheckpointChoiceOpen(true);
                     return;
                   }
+                  if (advancedSearchStatus.hasIndex) {
+                    setRebuildConfirmOpen(true);
+                    return;
+                  }
                   setAdvancedSearchBusy(true);
                   void advancedSearchEngine
                     .rebuild({ resume: false })
@@ -1263,6 +1257,21 @@ export default function SettingsPage({
                 .finally(() => setAdvancedSearchBusy(false));
             }}
           />
+          <ConfirmModal
+            isOpen={rebuildConfirmOpen}
+            title="역색인 다시 생성"
+            message="기존 역색인을 지우고 전체 볼트를 다시 색인할까요? 백그라운드에서 진행됩니다."
+            confirmLabel="다시 생성"
+            cancelLabel="취소"
+            onConfirm={() => {
+              setRebuildConfirmOpen(false);
+              setAdvancedSearchBusy(true);
+              void advancedSearchEngine
+                .rebuild({ resume: false })
+                .finally(() => setAdvancedSearchBusy(false));
+            }}
+            onCancel={() => setRebuildConfirmOpen(false)}
+          />
           <AdvancedSearchBuildLog
             className="mt-3"
             logs={advancedSearchStatus.buildLogs || []}
@@ -1327,6 +1336,8 @@ export default function SettingsPage({
             isLoaded={snippetConfigLoaded}
           />
         </div>
+
+        <WebfontSettings />
 
         {/* App update */}
         <div

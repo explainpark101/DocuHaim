@@ -24,7 +24,7 @@ import {
 } from '@/utils/advancedSearch/editorActions';
 import { subscribeOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { EditorView, drawSelection, lineNumbers, keymap } from '@codemirror/view';
+import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { useBase64ImageFold } from '@/hooks/useBase64ImageFold';
@@ -55,6 +55,13 @@ import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMark
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
+import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
+import { createNoteCoverFoldExtension } from '@/utils/noteCover/noteCoverFoldExtension';
+import {
+  formatNoteCoverIssues,
+  parseNoteCover,
+} from '@/utils/noteCover';
+import { useAlertModal } from '@/contexts/AlertModalContext';
 import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
 import { resolvePreviewHref } from '@/utils/appHref';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
@@ -222,7 +229,10 @@ config({
   },
   codeMirrorExtensions(extensions, { keyBindings }) {
     const nextExtensions = [...extensions].filter(
-      (item) => item.type !== 'keymap' && item.type !== 'linkShortener',
+      (item) =>
+        item.type !== 'keymap'
+        && item.type !== 'linkShortener'
+        && item.type !== 'lineNumbers',
     );
 
     const baseKeyBindings = (keyBindings || []).filter((binding) => {
@@ -355,7 +365,7 @@ config({
       },
       {
         type: 'lineNumbers',
-        extension: lineNumbers(),
+        extension: createNoteCoverFoldExtension(),
       },
       {
         type: 'allowMultipleSelections',
@@ -415,6 +425,12 @@ config({
     if (!next.some((p) => p.type === 'chat_saved_note')) {
       next = [...next, { type: 'chat_saved_note', plugin: chatSavedNotePlugin, options: {} }];
     }
+    if (!next.some((p) => p.type === 'note_cover_placeholder')) {
+      next = [
+        ...next,
+        { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
+      ];
+    }
     return next;
   },
 });
@@ -436,15 +452,46 @@ export default function MarkdownEditor({
   onOpenViewPath,
 }) {
   const navigate = useNavigate();
+  const { showAlert } = useAlertModal();
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
   const valueRef = useRef(value);
   const currentFileRef = useRef(currentFile);
   const themeRef = useRef(theme);
+  const coverIssuesAlertSigRef = useRef('');
   valueRef.current = value;
   currentFileRef.current = currentFile;
   themeRef.current = theme;
+
+  useEffect(() => {
+    const { issues } = parseNoteCover(value ?? '');
+    if (!issues.length) {
+      coverIssuesAlertSigRef.current = '';
+      return;
+    }
+    const sig = formatNoteCoverIssues(issues);
+    if (sig === coverIssuesAlertSigRef.current) return;
+    coverIssuesAlertSigRef.current = sig;
+    showAlert({
+      title: '표지 데이터 오류',
+      message: `표지(note-cover) 데이터에 문제가 있습니다.\n\n${sig}`,
+    });
+  }, [value, showAlert]);
+
+  const navigateToExportPdf = useCallback((options = {}) => {
+    const content = valueRef.current ?? '';
+    const file = currentFileRef.current;
+    setPendingPrintReturnState({ currentFile: file, editorContent: content });
+    navigate('/export-pdf', {
+      state: {
+        value: content,
+        theme: themeRef.current === 'dark' ? 'dark' : 'light',
+        currentFile: file,
+        ...(options.openCoverEdit ? { openCoverEdit: true } : {}),
+      },
+    });
+  }, [navigate]);
   const { onChange: onChangeWithUndoHistory } = usePerFileEditorUndoHistory({
     currentFile,
     value,
@@ -459,6 +506,7 @@ export default function MarkdownEditor({
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
+  const [coverExportConfirmOpen, setCoverExportConfirmOpen] = useState(false);
   const [catalogEl, setCatalogEl] = useState(null);
   const [catalogHandleBox, setCatalogHandleBox] = useState(null);
   const activeTransformRef = useRef(null);
@@ -537,17 +585,8 @@ export default function MarkdownEditor({
       view.focus?.();
     };
 
-    const openExport = () => {
-      const content = valueRef.current ?? '';
-      const file = currentFileRef.current;
-      setPendingPrintReturnState({ currentFile: file, editorContent: content });
-      navigate('/export-pdf', {
-        state: {
-          value: content,
-          theme: themeRef.current === 'dark' ? 'dark' : 'light',
-          currentFile: file,
-        },
-      });
+    const openExport = (options = {}) => {
+      navigateToExportPdf(options);
     };
 
     /** @type {Record<string, () => void>} */
@@ -581,7 +620,7 @@ export default function MarkdownEditor({
     handlers['editor-checklist-progress'] = () => setChecklistProgressOpen(true);
 
     return registerEditorActions(handlers);
-  }, [previewOnly, navigate]);
+  }, [previewOnly, navigateToExportPdf]);
   const {
     width: catalogWidth,
     isResizing: catalogResizing,
@@ -1028,6 +1067,14 @@ export default function MarkdownEditor({
     const root = containerRef.current;
     if (!root) return undefined;
     const onClick = (event) => {
+      const coverPlaceholder = event.target?.closest?.('[data-note-cover-placeholder]');
+      if (coverPlaceholder && root.contains(coverPlaceholder)) {
+        event.preventDefault();
+        event.stopPropagation();
+        setCoverExportConfirmOpen(true);
+        return;
+      }
+
       const card = event.target?.closest?.('[data-chat-saved-note]');
       if (card && root.contains(card)) {
         event.preventDefault();
@@ -1062,8 +1109,22 @@ export default function MarkdownEditor({
       const hash = resolved.hash || '';
       navigate(`${resolved.pathname || '/'}${search}${hash}`);
     };
+
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const coverPlaceholder = event.target?.closest?.('[data-note-cover-placeholder]');
+      if (!coverPlaceholder || !root.contains(coverPlaceholder)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setCoverExportConfirmOpen(true);
+    };
+
     root.addEventListener('click', onClick);
-    return () => root.removeEventListener('click', onClick);
+    root.addEventListener('keydown', onKeyDown);
+    return () => {
+      root.removeEventListener('click', onClick);
+      root.removeEventListener('keydown', onKeyDown);
+    };
   }, [navigate, currentFile?.id, currentFile?.type, onOpenViewPath]);
 
   const handleApplyWikiImageSize = useCallback(
@@ -1487,6 +1548,18 @@ export default function MarkdownEditor({
           <span className="block">- 다른 곳 클릭(이 토스트 포함): 변형 완료 확인</span>
         </button>
       )}
+      <ConfirmModal
+        isOpen={coverExportConfirmOpen}
+        title="표지 편집으로 이동"
+        message="PDF 내보내기 페이지에서 표지를 확인하고 편집할 수 있습니다. 이동할까요?"
+        confirmLabel="이동"
+        cancelLabel="취소"
+        onConfirm={() => {
+          setCoverExportConfirmOpen(false);
+          navigateToExportPdf({ openCoverEdit: true });
+        }}
+        onCancel={() => setCoverExportConfirmOpen(false)}
+      />
       <ConfirmModal
         isOpen={freeTransformConfirmOpen}
         title="자유변형 저장"

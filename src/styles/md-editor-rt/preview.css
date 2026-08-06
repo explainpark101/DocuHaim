@@ -889,8 +889,10 @@
   --md-theme-table-tr-bg-color: inherit;
   --md-theme-table-td-border-color: var(--md-theme-border-color);
 }
+/* Dark table vars only when the editor itself is dark — not merely under html.dark.
+   Otherwise PDF export (theme=light) inherits dark stripes from the app shell. */
 .md-editor-dark .md-editor-preview,
-.dark .md-editor .md-editor-preview {
+.md-editor.md-editor-dark .md-editor-preview {
   --md-theme-table-stripe-color: var(--color-gray-700);
   --md-theme-table-tr-bg-color: inherit;
   --md-theme-table-td-border-color: var(--md-theme-border-color);

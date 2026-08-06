@@ -18,6 +18,7 @@ import StorageExtensionFilesModal from '@/components/settings/StorageExtensionFi
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import type { RebuildCheckpointInfo } from '@/utils/advancedSearch/engine';
 
 type Props = {
@@ -367,6 +368,7 @@ export default function StorageUsageAnalysis({
   const [checkpointInfo, setCheckpointInfo] = useState<RebuildCheckpointInfo | null>(
     null,
   );
+  const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
 
   useEffect(() => {
     return advancedSearchEngine.subscribe(() => {
@@ -438,6 +440,10 @@ export default function StorageUsageAnalysis({
       if (info) {
         setCheckpointInfo(info);
         setCheckpointChoiceOpen(true);
+        return;
+      }
+      if (indexStatus.hasIndex) {
+        setRebuildConfirmOpen(true);
         return;
       }
       startRebuild(false);
@@ -576,6 +582,19 @@ export default function StorageUsageAnalysis({
           setCheckpointInfo(null);
           startRebuild(false);
         }}
+      />
+
+      <ConfirmModal
+        isOpen={rebuildConfirmOpen}
+        title="역색인 다시 생성"
+        message="기존 역색인을 지우고 전체 볼트를 다시 색인할까요? 백그라운드에서 진행됩니다."
+        confirmLabel="다시 생성"
+        cancelLabel="취소"
+        onConfirm={() => {
+          setRebuildConfirmOpen(false);
+          startRebuild(false);
+        }}
+        onCancel={() => setRebuildConfirmOpen(false)}
       />
 
       {error && (

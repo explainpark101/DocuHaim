@@ -1,42 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Modal from '@/components/modals/Modal';
 import FontFamilyInput from '@/components/FontFamilyInput';
+import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import { savePrintFontsToStorage, DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
-
-const FONT_OPTIONS = [
-  'Georgia',
-  'Times New Roman',
-  'Palatino Linotype',
-  'Garamond',
-  'Noto Sans KR',
-  'Noto Serif KR',
-  'Nanum Gothic',
-  'Nanum Myeongjo',
-  'Malgun Gothic',
-  'Apple SD Gothic Neo',
-  'system-ui',
-  'sans-serif',
-  'serif',
-  'monospace',
-  'Consolas',
-  'Monaco',
-  'Menlo',
-  'Courier New',
-  'Source Code Pro',
-  'Fira Code',
-];
+import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 
 export { DEFAULT_PRINT_FONTS };
 
 export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsChange }) {
   const [localFonts, setLocalFonts] = useState(() => fonts || { ...DEFAULT_PRINT_FONTS });
   const [saving, setSaving] = useState(false);
+  const [fontOptionsTick, setFontOptionsTick] = useState(0);
 
   useEffect(() => {
     if (isOpen && fonts) {
       setLocalFonts(fonts);
     }
   }, [isOpen, fonts]);
+
+  useEffect(() => {
+    const onWebfonts = () => setFontOptionsTick((n) => n + 1);
+    window.addEventListener(WEBFONTS_CHANGED_EVENT, onWebfonts);
+    return () => window.removeEventListener(WEBFONTS_CHANGED_EVENT, onWebfonts);
+  }, []);
+
+  const fontOptions = useMemo(
+    () => buildFontFamilyOptions(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick refreshes webfont families
+    [fontOptionsTick],
+  );
 
   const update = (key, value) => {
     const next = { ...localFonts, [key]: value };
@@ -69,6 +61,7 @@ export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsC
         </h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted">
           PDF로 내보낼 때 적용될 폰트를 설정합니다. 비워두면 기본 폰트가 사용됩니다.
+          웹폰트는 설정 → 웹폰트(CSS)에서 추가할 수 있습니다.
         </p>
 
         <div className="grid gap-4">
@@ -80,7 +73,7 @@ export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsC
               id="print-font-body"
               value={localFonts.body}
               onChange={(v) => update('body', v)}
-              options={FONT_OPTIONS}
+              options={fontOptions}
               placeholder="예: Noto Sans KR, serif"
             />
           </label>
@@ -92,7 +85,7 @@ export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsC
               id="print-font-heading"
               value={localFonts.heading}
               onChange={(v) => update('heading', v)}
-              options={FONT_OPTIONS}
+              options={fontOptions}
               placeholder="예: Noto Serif KR, Georgia"
             />
           </label>
@@ -104,7 +97,7 @@ export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsC
               id="print-font-bold"
               value={localFonts.bold}
               onChange={(v) => update('bold', v)}
-              options={FONT_OPTIONS}
+              options={fontOptions}
               placeholder="예: Noto Sans KR, sans-serif"
             />
           </label>
@@ -116,7 +109,7 @@ export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsC
               id="print-font-code"
               value={localFonts.code}
               onChange={(v) => update('code', v)}
-              options={FONT_OPTIONS}
+              options={fontOptions}
               placeholder="예: Consolas, monospace"
             />
           </label>

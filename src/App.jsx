@@ -67,6 +67,10 @@ import { ImportPasswordModal } from '@/components/modals/ImportPasswordModal';
 import { DeleteConfirmModal, normalizeDeleteTargets } from '@/components/modals/DeleteConfirmModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import EmptyTrashConfirmModal from '@/components/modals/EmptyTrashConfirmModal';
+import {
+  noteCoverCommentChanged,
+  revertNoteCoverComment,
+} from '@/utils/noteCover';
 import { executeEmptyTrash } from '@/utils/emptyTrashExecute';
 import Modal from '@/components/modals/Modal';
 import { useVisualViewportLock } from '@/hooks/useVisualViewportLock';
@@ -92,6 +96,12 @@ import { uploadLocalEditorImage, getLocalWikiImageObjectUrl } from '@/utils/loca
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { setPrintSettingsStore } from '@/utils/printSettingsStore';
+import {
+  loadWebfontsFromStorage,
+  notifyWebfontsChanged,
+  setWebfontSettingsStore,
+} from '@/utils/webfontSettingsStore';
+import UserWebfontStyles from '@/components/UserWebfontStyles';
 import {
   setLlmPromptTemplatesStore,
   syncLlmPromptTemplatesToRemote,
@@ -339,6 +349,8 @@ function MainApp() {
   const [suffixConfirmAction, setSuffixConfirmAction] = useState('renameOnly'); // 'renameOnly' | 'renameAndSave'
   const [showCloseFileConfirmModal, setShowCloseFileConfirmModal] = useState(false);
   const [showOverwriteCredsConfirmModal, setShowOverwriteCredsConfirmModal] = useState(false);
+  const [showCoverChangeConfirmModal, setShowCoverChangeConfirmModal] = useState(false);
+  const pendingCoverSaveRef = useRef(null);
   const [pendingWebAuthnSave, setPendingWebAuthnSave] = useState(null);
   const [pendingPasswordSave, setPendingPasswordSave] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -1599,7 +1611,11 @@ function MainApp() {
 
   useEffect(() => {
     setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+    setWebfontSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+    void loadWebfontsFromStorage().then((settings) => {
+      notifyWebfontsChanged(settings);
+    });
   }, [getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig]);
 
   // Push existing IndexedDB AI templates to remote as soon as storage is ready
@@ -4373,7 +4389,11 @@ function MainApp() {
   };
 
   const saveFile = async (fileOverride = null, options = {}) => {
-    const { skipSuffixCheck = false, lastInputAt: inputModifiedAt } = options;
+    const {
+      skipSuffixCheck = false,
+      skipCoverChangeCheck = false,
+      lastInputAt: inputModifiedAt,
+    } = options;
     const fileToSave = fileOverride ?? currentFile;
     if (!fileToSave) return;
     if (!skipSuffixCheck && !fileOverride && hasSuffixChange()) {
@@ -4384,6 +4404,20 @@ function MainApp() {
     const viewer = fileToSave.viewer || 'markdown';
     const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
     if (!editableViewers.includes(viewer)) return;
+
+    if (
+      !skipCoverChangeCheck
+      && viewer === 'markdown'
+      && noteCoverCommentChanged(
+        String(fileToSave.content ?? ''),
+        String(editorContentRef.current ?? ''),
+      )
+    ) {
+      pendingCoverSaveRef.current = { fileOverride, options };
+      setShowCoverChangeConfirmModal(true);
+      return;
+    }
+
     setIsSaving(true);
     const indicatorId = addIndicator({
       id: 'note-save',
@@ -6302,6 +6336,7 @@ function MainApp() {
           : undefined
       }
     >
+      <UserWebfontStyles />
       {/* Hidden file input for import */}
       <input type="file" ref={fileInputRef} onChange={handleImportCreds} accept=".json" className="hidden" />
 
@@ -7042,6 +7077,46 @@ function MainApp() {
         masterPassword={masterPassword}
         onCancel={() => setShowSetPasswordModal(false)}
         onSubmit={(password) => requestSaveEncryptedSettings(s3Creds, password, { stayOnSettings: true })}
+      />
+
+      <ConfirmModal
+        isOpen={showCoverChangeConfirmModal}
+        title="표지 수정 감지"
+        message={
+          '표지(note-cover) 부분이 변경되었습니다.\n의도치 않은 수정이라면 표지 부분만 되돌린 뒤 다시 저장할 수 있습니다.'
+        }
+        confirmLabel="그대로 저장"
+        cancelLabel="취소"
+        discardLabel="표지 부분 편집 되돌리기"
+        onConfirm={() => {
+          const pending = pendingCoverSaveRef.current;
+          pendingCoverSaveRef.current = null;
+          setShowCoverChangeConfirmModal(false);
+          void saveFile(pending?.fileOverride ?? null, {
+            ...(pending?.options ?? {}),
+            skipCoverChangeCheck: true,
+          });
+        }}
+        onCancel={() => {
+          pendingCoverSaveRef.current = null;
+          setShowCoverChangeConfirmModal(false);
+        }}
+        onDiscard={() => {
+          const file = currentFileRef.current;
+          if (!file) {
+            pendingCoverSaveRef.current = null;
+            setShowCoverChangeConfirmModal(false);
+            return;
+          }
+          const next = revertNoteCoverComment(
+            String(editorContentRef.current ?? ''),
+            String(file.content ?? ''),
+          );
+          editorContentRef.current = next;
+          setEditorContent(next);
+          pendingCoverSaveRef.current = null;
+          setShowCoverChangeConfirmModal(false);
+        }}
       />
 
       <ConfirmModal

@@ -2,12 +2,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
-import { ArrowLeft, ListTree, Save, Settings } from 'lucide-react';
+import { ArrowLeft, LayoutTemplate, ListTree, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintPageBreakOverlay from '@/components/print/PrintPageBreakOverlay';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
+import CoverEditor from '@/components/noteCover/CoverEditor';
+import CoverSlide from '@/components/noteCover/CoverSlide';
+import CoverSidebar, {
+  COVER_LAYERS_SIDEBAR_DEFAULT_WIDTH,
+  COVER_LAYERS_SIDEBAR_WIDTH_KEY,
+  COVER_SIDEBAR_DEFAULT_WIDTH,
+  COVER_SIDEBAR_WIDTH_KEY,
+  loadCoverLayersDetached,
+  saveCoverLayersDetached,
+} from '@/components/noteCover/CoverSidebar';
+import { useCoverUndoHistory } from '@/hooks/useCoverUndoHistory';
+import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver } from '@/utils/printSettingsStore';
@@ -36,8 +48,26 @@ import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { savePrintMarkdownToStorage } from '@/utils/printMarkdownSave';
 import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
 import { getVisualLineAtPoint, insertPgbrBeforeVisualLine } from '@/utils/printVisualLinePgbr';
+import {
+  createDefaultNoteCover,
+  formatNoteCoverIssues,
+  parseNoteCover,
+  stripNoteCoverComment,
+  upsertNoteCoverComment,
+} from '@/utils/noteCover';
+import {
+  loadCoverCenterSnapEnabled,
+  loadCoverObjectSnapEnabled,
+  loadCoverPlacePreviewEnabled,
+  loadCoverTextContainerOutlineEnabled,
+  saveCoverCenterSnapEnabled,
+  saveCoverObjectSnapEnabled,
+  saveCoverPlacePreviewEnabled,
+  saveCoverTextContainerOutlineEnabled,
+} from '@/utils/noteCover/snapSettings';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { useAlertModal } from '@/contexts/AlertModalContext';
 import {
   getMarkdownImageOccurrenceInContainer,
   getResizableImageAttrsFromElement,
@@ -207,6 +237,60 @@ const printFontStyles = `
     background: #ffffff;
     color: #111827;
     font-family: var(--print-font-body, inherit);
+    color-scheme: light;
+    /* Force light table chrome even when html/app is .dark (preview.css). */
+    --md-theme-table-stripe-color: #f9fafb;
+    --md-theme-table-tr-bg-color: #ffffff;
+    --md-theme-table-td-border-color: #e5e7eb;
+    --md-theme-table-td-border-color-horizontal: #cbd5e1;
+    --md-theme-table-border-color: #e5e7eb;
+    --md-theme-table-thead-bg-color: #f3f4f6;
+    --md-theme-table-th-color: #f3f4f6;
+    --md-theme-table-tht-color: #1e3a8a;
+    --md-theme-table-tr-nc-color: #f8fafc;
+    --md-theme-table-trh-color: #f3f4f6;
+    --md-theme-table-color: #111827;
+    --md-theme-border-color: #e5e7eb;
+    --md-theme-bg-color: #ffffff;
+  }
+  #export-pdf-preview .md-editor,
+  #export-pdf-preview .md-editor-preview [class$="-theme"] {
+    color-scheme: light;
+    --md-theme-table-stripe-color: #f9fafb;
+    --md-theme-table-tr-bg-color: #ffffff;
+    --md-theme-table-td-border-color: #e5e7eb;
+    --md-theme-table-td-border-color-horizontal: #cbd5e1;
+    --md-theme-table-border-color: #e5e7eb;
+    --md-theme-table-thead-bg-color: #f3f4f6;
+    --md-theme-table-th-color: #f3f4f6;
+    --md-theme-table-tht-color: #1e3a8a;
+    --md-theme-table-tr-nc-color: #f8fafc;
+    --md-theme-table-trh-color: #f3f4f6;
+    --md-theme-table-color: #111827;
+  }
+  #export-pdf-preview .md-editor-preview table,
+  #export-pdf-preview .md-editor-preview table tr,
+  #export-pdf-preview .md-editor-preview table tr th,
+  #export-pdf-preview .md-editor-preview table tr td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #export-pdf-preview .md-editor-preview table tr {
+    background-color: #ffffff !important;
+  }
+  #export-pdf-preview .md-editor-preview table tr:nth-child(2n) {
+    background-color: #f9fafb !important;
+  }
+  #export-pdf-preview .md-editor-preview table thead,
+  #export-pdf-preview .md-editor-preview table thead tr,
+  #export-pdf-preview .md-editor-preview table tr th {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+  }
+  #export-pdf-preview .md-editor-preview table tr th,
+  #export-pdf-preview .md-editor-preview table tr td {
+    border-color: #e5e7eb !important;
+    color: #111827;
   }
   #export-pdf-preview .md-editor-preview h1,
   #export-pdf-preview .md-editor-preview h2,
@@ -313,6 +397,21 @@ const printFontStyles = `
   .export-pdf-paper-metric {
     height: var(--print-page-inner-height);
   }
+  .export-pdf-cover {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    break-after: page;
+    page-break-after: always;
+    /* Prefer cover hit-testing if paper box ever overlaps the cover sibling. */
+    position: relative;
+    z-index: 2;
+  }
+  .export-pdf-cover-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
   .export-pdf-paper #export-pdf-preview,
   .export-pdf-paper #export-pdf-preview .md-editor,
   .export-pdf-paper #export-pdf-preview .md-editor-content,
@@ -333,6 +432,20 @@ const printFontStyles = `
       display: block !important;
       overflow: visible !important;
       background: #ffffff !important;
+    }
+    .export-pdf-cover-stack {
+      gap: 0 !important;
+      align-items: stretch !important;
+    }
+    .export-pdf-cover {
+      width: auto !important;
+      max-width: none !important;
+      height: auto !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      break-after: page !important;
+      page-break-after: always !important;
     }
     .export-pdf-paper {
       width: auto !important;
@@ -358,8 +471,10 @@ const printFontStyles = `
 export default function ExportPDFPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { value = '', currentFile = null } = location.state ?? {};
+  const { showAlert } = useAlertModal();
+  const { value = '', currentFile = null, openCoverEdit = false } = location.state ?? {};
   const [previewValue, setPreviewValue] = useState(() => value);
+  const coverIssuesAlertSigRef = useRef('');
   const [savedValue, setSavedValue] = useState(() => value);
   const [isSaving, setIsSaving] = useState(false);
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
@@ -378,6 +493,16 @@ export default function ExportPDFPage() {
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
+  const [coverEditMode, setCoverEditMode] = useState(() => Boolean(openCoverEdit));
+  const [coverSelectedIds, setCoverSelectedIds] = useState([]);
+  const [coverPlaceMode, setCoverPlaceMode] = useState(null);
+  const [coverCenterSnap, setCoverCenterSnap] = useState(() => loadCoverCenterSnapEnabled());
+  const [coverObjectSnap, setCoverObjectSnap] = useState(() => loadCoverObjectSnapEnabled());
+  const [coverTextContainerOutline, setCoverTextContainerOutline] = useState(() =>
+    loadCoverTextContainerOutlineEnabled(),
+  );
+  const [coverPlacePreview, setCoverPlacePreview] = useState(() => loadCoverPlacePreviewEnabled());
+  const [coverLayersDetached, setCoverLayersDetached] = useState(() => loadCoverLayersDetached());
   const activeTransformRef = useRef(null);
   const headerRef = useRef(null);
   const previewContainerRef = useRef(null);
@@ -410,11 +535,126 @@ export default function ExportPDFPage() {
     edge: 'right',
     onCollapseBelowMin: () => setTocVisible(false),
   });
+  const {
+    width: coverSidebarWidth,
+    isResizing: coverSidebarResizing,
+    handleProps: coverSidebarResizeHandleProps,
+  } = useResizablePanelWidth({
+    storageKey: COVER_SIDEBAR_WIDTH_KEY,
+    defaultWidth: COVER_SIDEBAR_DEFAULT_WIDTH,
+    minWidth: 220,
+    maxWidth: 480,
+    edge: 'left',
+  });
+  const {
+    width: coverLayersSidebarWidth,
+    isResizing: coverLayersSidebarResizing,
+    handleProps: coverLayersSidebarResizeHandleProps,
+  } = useResizablePanelWidth({
+    storageKey: COVER_LAYERS_SIDEBAR_WIDTH_KEY,
+    defaultWidth: COVER_LAYERS_SIDEBAR_DEFAULT_WIDTH,
+    minWidth: 200,
+    maxWidth: 420,
+    edge: 'left',
+  });
+  const coverChromeWidth =
+    coverSidebarWidth + (coverLayersDetached ? coverLayersSidebarWidth : 0);
   const getPresignedUrl = useMemo(() => getPresignedUrlResolver(currentFile?.type), [currentFile?.type]);
+
+  const bodyMarkdown = useMemo(() => stripNoteCoverComment(previewValue), [previewValue]);
+  const parsedCoverResult = useMemo(() => parseNoteCover(previewValue), [previewValue]);
+  const parsedCover = parsedCoverResult.cover;
+  const activeCover = parsedCover;
+
+  useEffect(() => {
+    const { issues } = parsedCoverResult;
+    if (!issues.length) {
+      coverIssuesAlertSigRef.current = '';
+      return;
+    }
+    const sig = formatNoteCoverIssues(issues);
+    if (sig === coverIssuesAlertSigRef.current) return;
+    coverIssuesAlertSigRef.current = sig;
+    showAlert({
+      title: '표지 데이터 오류',
+      message: `표지(note-cover) 데이터에 문제가 있습니다.\n\n${sig}`,
+    });
+  }, [parsedCoverResult, showAlert]);
+
+  const handleCoverChange = useCallback((nextCover) => {
+    setPreviewValue((prev) => {
+      const next = upsertNoteCoverComment(prev, nextCover);
+      setPendingPrintReturnState({
+        currentFile,
+        editorContent: next,
+      });
+      return next;
+    });
+  }, [currentFile]);
+
+  const {
+    onCoverChange,
+    undo: undoCover,
+    redo: redoCover,
+    canUndo: canUndoCover,
+    canRedo: canRedoCover,
+  } = useCoverUndoHistory({
+    currentFile,
+    enabled: Boolean(coverEditMode && activeCover),
+    cover: activeCover,
+    applyCover: handleCoverChange,
+  });
+
+  const toggleCoverEditMode = useCallback(() => {
+    setCoverEditMode((prev) => {
+      const next = !prev;
+      if (!next) {
+        setCoverSelectedIds([]);
+        setCoverPlaceMode(null);
+      }
+      return next;
+    });
+    setPreviewValue((md) => {
+      if (coverEditMode) return md;
+      if (parseNoteCover(md).cover) return md;
+      const created = createDefaultNoteCover();
+      const next = upsertNoteCoverComment(md, created);
+      setPendingPrintReturnState({
+        currentFile,
+        editorContent: next,
+      });
+      return next;
+    });
+  }, [coverEditMode, currentFile]);
+
+  const handleCoverCenterSnapChange = useCallback((enabled) => {
+    setCoverCenterSnap(enabled);
+    saveCoverCenterSnapEnabled(enabled);
+  }, []);
+
+  const handleCoverObjectSnapChange = useCallback((enabled) => {
+    setCoverObjectSnap(enabled);
+    saveCoverObjectSnapEnabled(enabled);
+  }, []);
+
+  const handleCoverTextContainerOutlineChange = useCallback((enabled) => {
+    setCoverTextContainerOutline(enabled);
+    saveCoverTextContainerOutlineEnabled(enabled);
+  }, []);
+
+  const handleCoverPlacePreviewChange = useCallback((enabled) => {
+    setCoverPlacePreview(enabled);
+    saveCoverPlacePreviewEnabled(enabled);
+  }, []);
+
+  const handleCoverLayersDetachedChange = useCallback((detached) => {
+    setCoverLayersDetached(detached);
+    saveCoverLayersDetached(detached);
+  }, []);
 
   useWikiImageHydration(
     previewContainerRef,
-    previewValue,
+    bodyMarkdown,
     getPresignedUrl ?? undefined,
     currentFile?.id,
   );
@@ -482,7 +722,7 @@ export default function ExportPDFPage() {
       timers.forEach((t) => clearTimeout(t));
       observer.disconnect();
     };
-  }, [previewValue]);
+  }, [bodyMarkdown]);
 
   useEffect(() => {
     if (!tocItems.length) {
@@ -539,7 +779,7 @@ export default function ExportPDFPage() {
       window.removeEventListener('resize', scheduleUpdate);
       resizeObserver?.disconnect();
     };
-  }, [tocItems, previewValue]);
+  }, [tocItems, bodyMarkdown]);
 
   useEffect(() => {
     if (!tocVisible || !visibleHeadingIds.length) return;
@@ -586,9 +826,17 @@ export default function ExportPDFPage() {
   }, []);
 
   const isDirty = previewValue !== savedValue;
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
+  const isPrintDirty = useCallback(() => isDirtyRef.current, []);
+  const {
+    isBlocked: isLeaveBlocked,
+    proceed: proceedLeave,
+    reset: resetLeave,
+  } = useUnsavedNavigationGuard({ isDirty: isPrintDirty });
 
   const handleSave = useCallback(async () => {
-    if (!currentFile?.id || isSaving) return;
+    if (!currentFile?.id || isSaving) return false;
     setIsSaving(true);
     try {
       savePrintPageLayout(printLayout);
@@ -605,12 +853,28 @@ export default function ExportPDFPage() {
       if (result.mode === 'pending-only') {
         alert('세션 노트는 뒤로 가면 편집기에 반영됩니다.');
       }
+      return true;
     } catch (error) {
       alert(`저장 실패: ${error?.message || error}`);
+      return false;
     } finally {
       setIsSaving(false);
     }
   }, [currentFile, isSaving, previewValue, printLayout]);
+
+  const handleNavGuardSaveAndLeave = useCallback(async () => {
+    const ok = await handleSave();
+    if (!ok) return;
+    proceedLeave();
+  }, [handleSave, proceedLeave]);
+
+  const handleNavGuardDiscardAndLeave = useCallback(() => {
+    setPendingPrintReturnState({
+      currentFile,
+      editorContent: savedValue,
+    });
+    proceedLeave();
+  }, [currentFile, proceedLeave, savedValue]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -632,11 +896,47 @@ export default function ExportPDFPage() {
   useEffect(() => {
     const root = previewContainerRef.current;
     if (!root) return;
+
+    const COVER_SEL = '.export-pdf-cover, [data-note-cover="1"]';
+
+    const isCoverContextMenu = (event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest(COVER_SEL)) return true;
+      if (typeof event.composedPath === 'function') {
+        for (const node of event.composedPath()) {
+          if (node instanceof Element && node.matches?.(COVER_SEL)) return true;
+        }
+      }
+      const top = document.elementFromPoint(event.clientX, event.clientY);
+      if (top?.closest?.(COVER_SEL)) return true;
+      // Geometry fallback: paper can paint above a cover sibling when boxes overlap.
+      for (const cover of root.querySelectorAll(COVER_SEL)) {
+        const rect = cover.getBoundingClientRect();
+        if (
+          event.clientX >= rect.left
+          && event.clientX <= rect.right
+          && event.clientY >= rect.top
+          && event.clientY <= rect.bottom
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     const onContextMenu = (event) => {
+      // Cover has its own menus (e.g. image aspect); never treat it as paper pgbr insert.
+      if (isCoverContextMenu(event)) return;
+      // macOS Ctrl+click fires contextmenu — do not treat it as pgbr insert.
+      if (event.ctrlKey) return;
+
+      const contentRoot = paperContentRef.current;
+      if (!contentRoot) return;
+
       const pgbr = event.target?.closest?.('.md-pgbr[data-md-pgbr="1"], .md-pgbr');
-      if (pgbr && root.contains(pgbr)) {
+      if (pgbr && contentRoot.contains(pgbr)) {
         event.preventDefault();
-        const pgbrs = [...root.querySelectorAll('.md-pgbr[data-md-pgbr="1"], .md-pgbr')];
+        const pgbrs = [...contentRoot.querySelectorAll('.md-pgbr[data-md-pgbr="1"], .md-pgbr')];
         const occurrence = pgbrs.findIndex((el) => el === pgbr);
         if (occurrence < 0) return;
         setPgbrDeleteModalState({ occurrence });
@@ -644,14 +944,14 @@ export default function ExportPDFPage() {
       }
 
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
-      if (img && root.contains(img)) {
+      if (img && contentRoot.contains(img)) {
         const attrs = getResizableImageAttrsFromElement(img);
         if (!attrs.kind || !attrs.key) return;
         event.preventDefault();
         const occurrence =
           attrs.kind === 'wiki'
-            ? getWikiImageOccurrenceInContainer(root, img, attrs.key)
-            : getMarkdownImageOccurrenceInContainer(root, img, attrs.key);
+            ? getWikiImageOccurrenceInContainer(contentRoot, img, attrs.key)
+            : getMarkdownImageOccurrenceInContainer(contentRoot, img, attrs.key);
         setWikiImageModalState({
           kind: attrs.kind,
           key: attrs.key,
@@ -664,9 +964,9 @@ export default function ExportPDFPage() {
       }
 
       const heading = event.target?.closest?.('h1, h2, h3, h4, h5, h6');
-      if (heading && root.contains(heading)) {
+      if (heading && contentRoot.contains(heading)) {
         event.preventDefault();
-        const headings = [...root.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+        const headings = [...contentRoot.querySelectorAll('h1, h2, h3, h4, h5, h6')];
         const index = headings.findIndex((h) => h === heading);
         if (!Number.isInteger(index) || index < 0) return;
         setHeadingPgbrModalState({
@@ -677,17 +977,17 @@ export default function ExportPDFPage() {
       }
 
       const hr = event.target?.closest?.('hr');
-      if (hr && root.contains(hr)) {
+      if (hr && contentRoot.contains(hr)) {
         event.preventDefault();
-        const hrs = [...root.querySelectorAll('hr')];
+        const hrs = [...contentRoot.querySelectorAll('hr')];
         const index = hrs.findIndex((el) => el === hr);
         if (!Number.isInteger(index) || index < 0) return;
         setHrPgbrModalState({ hrIndex: index });
         return;
       }
 
-      const contentRoot = paperContentRef.current;
-      if (!contentRoot) return;
+      // Only insert-by-line when the click actually landed in the paper body.
+      if (!(event.target instanceof Node) || !contentRoot.contains(event.target)) return;
       const visualLine = getVisualLineAtPoint(contentRoot, event.clientX, event.clientY);
       if (!visualLine?.lineText) return;
       event.preventDefault();
@@ -1057,7 +1357,21 @@ export default function ExportPDFPage() {
   };
 
   if (location.state == null) {
-    return null;
+    return (
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800">
+        <p className="text-sm text-gray-600 dark:text-odp-fg">
+          인쇄 미리보기 세션이 없습니다. 편집기에서 다시 열어 주세요.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg"
+        >
+          <ArrowLeft size={18} />
+          뒤로 가기
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -1128,6 +1442,22 @@ export default function ExportPDFPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button
+            type="button"
+            onClick={toggleCoverEditMode}
+            data-print-toolbar="cover"
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded transition ${
+              coverEditMode
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
+                : 'text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg'
+            }`}
+            aria-label={parsedCover ? '표지 편집' : '표지 추가'}
+            aria-pressed={coverEditMode}
+            title={parsedCover ? '표지 편집' : '표지 추가'}
+          >
+            <LayoutTemplate size={16} />
+            {parsedCover ? '표지 편집' : '표지 추가'}
+          </button>
           <PrintPageSizeSelect
             value={printLayout.pageSizeId}
             onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
@@ -1147,50 +1477,82 @@ export default function ExportPDFPage() {
 
       <div
         className="relative flex min-h-0 flex-1 flex-col"
-        style={{ '--export-toc-width': `${tocWidth}px` }}
+        style={{
+          '--export-toc-width': `${tocWidth}px`,
+          '--export-cover-sidebar-width': `${coverChromeWidth}px`,
+        }}
       >
         <div
           ref={previewContainerRef}
           className={`export-pdf-preview-scroll px-4 py-6 min-h-0 flex-1 overflow-auto bg-neutral-200 dark:bg-neutral-800 text-gray-900 print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
             tocVisible ? 'md:pr-(--export-toc-width)' : ''
-          }`}
+          } ${coverEditMode ? 'md:pl-(--export-cover-sidebar-width)' : ''}`}
         >
-          <div
-            className="export-pdf-paper relative mx-auto bg-white text-gray-900 shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
-            style={{
-              width: 'var(--print-page-width)',
-              minHeight: 'var(--print-page-height)',
-              padding: 'var(--print-page-margin)',
-            }}
-          >
+          <div className="export-pdf-cover-stack mx-auto w-full print:mx-0">
+            {activeCover?.enabled || coverEditMode ? (
+              coverEditMode && activeCover ? (
+                <CoverEditor
+                  cover={activeCover}
+                  selectedIds={coverSelectedIds}
+                  onSelectIds={setCoverSelectedIds}
+                  onChange={onCoverChange}
+                  getPresignedUrl={getPresignedUrl}
+                  currentFile={currentFile}
+                  centerSnapEnabled={coverCenterSnap}
+                  objectSnapEnabled={coverObjectSnap}
+                  textContainerOutlineEnabled={coverTextContainerOutline}
+                  placePreviewEnabled={coverPlacePreview}
+                  placeMode={coverPlaceMode}
+                  onPlaceModeChange={setCoverPlaceMode}
+                  onUndo={undoCover}
+                  onRedo={redoCover}
+                  className="mx-auto print:mx-0"
+                />
+              ) : activeCover?.enabled ? (
+                <CoverSlide
+                  cover={activeCover}
+                  getPresignedUrl={getPresignedUrl}
+                  className="mx-auto shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
+                />
+              ) : null
+            ) : null}
             <div
-              ref={metricRef}
-              className="export-pdf-paper-metric pointer-events-none absolute top-0 left-0 -z-10 w-px opacity-0 print:hidden"
-              aria-hidden
-            />
-            <div ref={paperContentRef} className="export-pdf-paper-content relative">
+              className="export-pdf-paper relative mx-auto bg-white text-gray-900 shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
+              style={{
+                width: 'var(--print-page-width)',
+                minHeight: 'var(--print-page-height)',
+                padding: 'var(--print-page-margin)',
+              }}
+            >
               <div
-                ref={imageMaxProbeRef}
-                className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0 print:hidden"
-                style={{
-                  width: 'var(--print-img-max-width)',
-                  height: 'var(--print-img-max-height)',
-                }}
+                ref={metricRef}
+                className="export-pdf-paper-metric pointer-events-none absolute top-0 left-0 -z-10 w-px opacity-0 print:hidden"
                 aria-hidden
               />
-              <PrintPageBreakOverlay
-                pageStarts={pageStarts}
-                contentHeight={contentHeight}
-              />
-              <MdPreview
-                id={EDITOR_ID}
-                theme="light"
-                language="ko-KR"
-                value={previewValue}
-                mdHeadingId={headingId}
-                codeFoldable={false}
-                showCodeRowNumber={false}
-              />
+              <div ref={paperContentRef} className="export-pdf-paper-content relative">
+                <div
+                  ref={imageMaxProbeRef}
+                  className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0 print:hidden"
+                  style={{
+                    width: 'var(--print-img-max-width)',
+                    height: 'var(--print-img-max-height)',
+                  }}
+                  aria-hidden
+                />
+                <PrintPageBreakOverlay
+                  pageStarts={pageStarts}
+                  contentHeight={contentHeight}
+                />
+                <MdPreview
+                  id={EDITOR_ID}
+                  theme="light"
+                  language="ko-KR"
+                  value={bodyMarkdown}
+                  mdHeadingId={headingId}
+                  codeFoldable={false}
+                  showCodeRowNumber={false}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1200,6 +1562,38 @@ export default function ExportPDFPage() {
           paperRef={paperContentRef}
           scrollRef={previewContainerRef}
         />
+        {coverEditMode && activeCover ? (
+          <CoverSidebar
+            cover={activeCover}
+            selectedIds={coverSelectedIds}
+            onSelectIds={setCoverSelectedIds}
+            onChange={onCoverChange}
+            currentFile={currentFile}
+            topPx={tocTopPx}
+            width={coverSidebarWidth}
+            isResizing={coverSidebarResizing}
+            resizeHandleProps={coverSidebarResizeHandleProps}
+            layersDetached={coverLayersDetached}
+            onLayersDetachedChange={handleCoverLayersDetachedChange}
+            layersWidth={coverLayersSidebarWidth}
+            layersIsResizing={coverLayersSidebarResizing}
+            layersResizeHandleProps={coverLayersSidebarResizeHandleProps}
+            centerSnapEnabled={coverCenterSnap}
+            onCenterSnapEnabledChange={handleCoverCenterSnapChange}
+            objectSnapEnabled={coverObjectSnap}
+            onObjectSnapEnabledChange={handleCoverObjectSnapChange}
+            textContainerOutlineEnabled={coverTextContainerOutline}
+            onTextContainerOutlineEnabledChange={handleCoverTextContainerOutlineChange}
+            placePreviewEnabled={coverPlacePreview}
+            onPlacePreviewEnabledChange={handleCoverPlacePreviewChange}
+            placeMode={coverPlaceMode}
+            onPlaceModeChange={setCoverPlaceMode}
+            canUndo={canUndoCover}
+            canRedo={canRedoCover}
+            onUndo={undoCover}
+            onRedo={redoCover}
+          />
+        ) : null}
         {tocVisible && (
           <aside
             className="hidden md:flex fixed right-0 bottom-0 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
@@ -1349,6 +1743,20 @@ export default function ExportPDFPage() {
           <span className="block">- 다른 곳 클릭(이 토스트 포함): 변형 완료 확인</span>
         </button>
       )}
+      <ConfirmModal
+        isOpen={isLeaveBlocked}
+        title="저장하지 않은 변경사항"
+        message="저장하지 않은 변경사항이 있습니다. 이동하면 변경사항이 사라집니다."
+        confirmLabel="저장 후 이동"
+        cancelLabel="취소"
+        discardLabel="저장 안 하고 이동"
+        onConfirm={() => {
+          void handleNavGuardSaveAndLeave();
+        }}
+        onCancel={resetLeave}
+        onDiscard={handleNavGuardDiscardAndLeave}
+        confirmDisabled={!currentFile?.id || isSaving}
+      />
       <ConfirmModal
         isOpen={freeTransformConfirmOpen}
         title="자유변형 저장"

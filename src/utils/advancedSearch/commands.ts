@@ -38,6 +38,7 @@ export type AppCommandId =
   | 'settings-advanced-search'
   | 'settings-wiki-image'
   | 'settings-snippets'
+  | 'settings-webfonts'
   | 'settings-app-update'
   | 'chat'
   | 'chat-settings'
@@ -181,9 +182,9 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-editor',
     title: '설정 · 마크다운 에디터',
-    description: 'md-editor-rt / Novel 에디터 선택',
+    description: '마크다운 에디터 종류 (Novel 준비중)',
     path: '/settings#settings-editor',
-    keywords: ['에디터', 'editor', 'novel', 'markdown', '마크다운'],
+    keywords: ['에디터', 'editor', 'novel', 'markdown', '마크다운', 'tiptap'],
   },
   {
     id: 'settings-navigation',
@@ -233,6 +234,21 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '에디터 스니펫 등록·수정',
     path: '/settings#settings-snippets',
     keywords: ['스니펫', 'snippet', '단축키', 'snippet shortcut'],
+  },
+  {
+    id: 'settings-webfonts',
+    title: '설정 · 웹폰트 (CSS)',
+    description: '@font-face CSS 등록·동기화',
+    path: '/settings#settings-webfonts',
+    keywords: [
+      '웹폰트',
+      'webfont',
+      'font-face',
+      'font-family',
+      'css',
+      '폰트',
+      '표지 폰트',
+    ],
   },
   {
     id: 'settings-app-update',
@@ -339,6 +355,7 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       'pdf',
       '인쇄',
       'print',
+      '프린트',
       '내보내기',
       'export pdf',
       '인쇄 미리보기',
@@ -450,6 +467,7 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
         'pdf',
         '인쇄',
         'print',
+        '프린트',
         '현재 문서',
         'open',
         'this file',
