@@ -101,6 +101,11 @@ import {
   notifyWebfontsChanged,
   setWebfontSettingsStore,
 } from '@/utils/webfontSettingsStore';
+import {
+  loadCoverSettingsFromStorage,
+  notifyCoverSettingsChanged,
+  setCoverSettingsStore,
+} from '@/utils/coverSettingsStore';
 import UserWebfontStyles from '@/components/UserWebfontStyles';
 import {
   setLlmPromptTemplatesStore,
@@ -170,7 +175,7 @@ import {
 import { rebaseMergeTexts, buildTimestampedCopyName } from '@/utils/textRebaseMerge';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
-import { parseViewPathFromAppPathname, isChatAppPathname, isSettingsAppPathname } from '@/utils/appHref';
+import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
@@ -220,18 +225,6 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
   const location = useLocation();
-  if (location.pathname === '/export-pdf') {
-    return (
-      <div className="export-pdf-layout h-dvh min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white">
-        <ExportPDFPage />
-        <AdvancedSearchHost
-          getTrees={() => []}
-          onOpenFile={() => undefined}
-          preferPrintActions
-        />
-      </div>
-    );
-  }
   if (location.pathname === '/llm-assist-popout') {
     return (
       <div className="llm-assist-popout-layout min-h-screen max-w-screen bg-white dark:bg-odp-bgSofter">
@@ -1612,9 +1605,13 @@ function MainApp() {
   useEffect(() => {
     setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setWebfontSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+    setCoverSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     void loadWebfontsFromStorage().then((settings) => {
       notifyWebfontsChanged(settings);
+    });
+    void loadCoverSettingsFromStorage().then((settings) => {
+      notifyCoverSettingsChanged(settings);
     });
   }, [getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig]);
 
@@ -3029,7 +3026,7 @@ function MainApp() {
     saveLastOpenedFile({ type: currentFile.type, path: currentFile.id });
   }, [isUnlocked, currentFile, location.pathname, saveLastOpenedFile]);
 
-  // Open file from ?open=, /view/* route, or last-file cache once storage is ready.
+  // Open file from ?open=, /view/* or /export-pdf/* route, or last-file cache once storage is ready.
   useEffect(() => {
     if (!isUnlocked || hasProcessedOpenFromUrlRef.current) return;
 
@@ -3039,7 +3036,9 @@ function MainApp() {
       typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search).get('open')
         : null;
+    const routeExportPath = parseExportPdfPathFromAppPathname(location.pathname);
     const routeViewPath = parseViewPathFromAppPathname(location.pathname);
+    const routeNotePath = routeExportPath || routeViewPath;
 
     let type = null;
     let path = null;
@@ -3057,15 +3056,20 @@ function MainApp() {
       }
       type = openType;
       path = openPath;
-    } else if (routeViewPath) {
+    } else if (routeNotePath) {
       type =
         storageMode === STORAGE_MODE_LOCAL
           ? 'local'
           : storageMode === STORAGE_MODE_WEBDAV
             ? 'webdav'
             : 's3';
-      path = routeViewPath;
+      path = routeNotePath;
     } else if (onChat) {
+      hasRestoredLastFileRef.current = true;
+      hasProcessedOpenFromUrlRef.current = true;
+      return;
+    } else if (isExportPdfAppPathname(location.pathname)) {
+      // Bare /export-pdf without a note path — do not restore last file into the editor.
       hasRestoredLastFileRef.current = true;
       hasProcessedOpenFromUrlRef.current = true;
       return;
@@ -3126,16 +3130,23 @@ function MainApp() {
         const params = new URLSearchParams(location.search);
         params.delete('open');
         const nextSearch = params.toString();
+        const nextPathname = routeExportPath
+          ? exportPdfPathnameForStoragePath(path)
+          : `/view/${path}`;
         navigate(
           {
-            pathname: `/view/${path}`,
+            pathname: nextPathname,
             search: nextSearch ? `?${nextSearch}` : '',
           },
           { replace: true },
         );
       }
       if (node?.type === 'file') {
-        selectFile(type, node);
+        if (routeExportPath || isExportPdfAppPathname(location.pathname)) {
+          await selectFileRawRef.current?.(type, node, { skipNavigate: true });
+        } else {
+          selectFile(type, node);
+        }
       }
     })();
 
@@ -3165,15 +3176,17 @@ function MainApp() {
     if (!isUnlocked || !hasProcessedOpenFromUrlRef.current) return;
     if (isChatAppPathname(location.pathname) || isSettingsAppPathname(location.pathname)) return;
 
-    const routeViewPath = parseViewPathFromAppPathname(location.pathname);
-    if (!routeViewPath) {
+    const routeNotePath = parseOpenNotePathFromAppPathname(location.pathname);
+    if (!routeNotePath) {
+      // Bare /export-pdf keeps whatever was opened via navigation state.
+      if (isExportPdfAppPathname(location.pathname)) return;
       prevHistoryViewPathRef.current = null;
       if (currentFileRef.current) clearOpenFileState();
       return;
     }
 
-    if (currentFileRef.current?.id === routeViewPath) {
-      prevHistoryViewPathRef.current = routeViewPath;
+    if (currentFileRef.current?.id === routeNotePath) {
+      prevHistoryViewPathRef.current = routeNotePath;
       return;
     }
 
@@ -3192,21 +3205,21 @@ function MainApp() {
       return;
     }
 
-    const routeChanged = prevHistoryViewPathRef.current !== routeViewPath;
-    prevHistoryViewPathRef.current = routeViewPath;
+    const routeChanged = prevHistoryViewPathRef.current !== routeNotePath;
+    prevHistoryViewPathRef.current = routeNotePath;
 
     let cancelled = false;
     (async () => {
       let node = null;
       if (type === 'local') {
         node =
-          findFileNodeByPath(localTree, routeViewPath) ||
-          findNodeByPath(localTree, routeViewPath) ||
-          (await resolveLocalFileNode(localRootHandle, routeViewPath));
+          findFileNodeByPath(localTree, routeNotePath) ||
+          findNodeByPath(localTree, routeNotePath) ||
+          (await resolveLocalFileNode(localRootHandle, routeNotePath));
       } else if (type === 'webdav') {
-        node = findFileNodeByPath(webdavTree, routeViewPath) || findNodeByPath(webdavTree, routeViewPath);
+        node = findFileNodeByPath(webdavTree, routeNotePath) || findNodeByPath(webdavTree, routeNotePath);
       } else {
-        node = findFileNodeByPath(s3Tree, routeViewPath) || findNodeByPath(s3Tree, routeViewPath);
+        node = findFileNodeByPath(s3Tree, routeNotePath) || findNodeByPath(s3Tree, routeNotePath);
       }
       if (cancelled) return;
       if (node?.type === 'file') {
@@ -4719,10 +4732,14 @@ function MainApp() {
     setCurrentFile(updated);
     const nextPath = updated.id;
     if (typeof nextPath !== 'string' || !nextPath) return updated;
-    if (parseViewPathFromAppPathname(location.pathname) === nextPath) return updated;
+    if (parseOpenNotePathFromAppPathname(location.pathname) === nextPath) return updated;
     suppressUnsavedNavGuardRef.current = true;
     try {
-      navigate(`/view/${nextPath}`, { replace: true });
+      const onExport = isExportPdfAppPathname(location.pathname);
+      navigate(
+        onExport ? exportPdfPathnameForStoragePath(nextPath) : `/view/${nextPath}`,
+        { replace: true },
+      );
     } finally {
       suppressUnsavedNavGuardRef.current = false;
     }
@@ -6315,6 +6332,62 @@ function MainApp() {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-500 dark:bg-odp-bgSofter dark:text-odp-fg">
         로딩 중...
+      </div>
+    );
+  }
+
+  if (isExportPdfAppPathname(location.pathname)) {
+    const routeExportPath = parseExportPdfPathFromAppPathname(location.pathname);
+    const navState = location.state && typeof location.state === 'object' ? location.state : null;
+    const documentFile = navState?.currentFile ?? currentFile;
+    const documentValue =
+      typeof navState?.value === 'string'
+        ? navState.value
+        : typeof editorContent === 'string'
+          ? editorContent
+          : '';
+    const waitingForRouteDoc =
+      Boolean(routeExportPath)
+      && !navState?.value
+      && documentFile?.id !== routeExportPath;
+
+    return (
+      <div className="export-pdf-layout h-dvh min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white">
+        <UserWebfontStyles />
+        <ExportPDFPage
+          documentValue={documentValue}
+          documentFile={documentFile}
+          openCoverEdit={Boolean(navState?.openCoverEdit)}
+          isDocumentLoading={waitingForRouteDoc}
+          hasNavigationSession={Boolean(navState) || Boolean(routeExportPath)}
+        />
+        <AdvancedSearchHost
+          getTrees={() =>
+            storageMode === STORAGE_MODE_LOCAL
+              ? [localTree]
+              : storageMode === STORAGE_MODE_WEBDAV
+                ? [webdavTree]
+                : [s3Tree]
+          }
+          onOpenFile={openAdvancedSearchFile}
+          preferPrintActions
+        />
+        <AuthModal
+          isOpen={showAuthModal && !shareBlockingAuth}
+          onUnlock={handleUnlock}
+          fileInputRef={fileInputRef}
+          onCloseWithoutUnlock={() => {
+            proceedWithoutStoredCreds();
+            navigate('/settings');
+          }}
+          canUnlockWithWebAuthn={
+            webauthnAvailable &&
+            !!getStoredWebAuthn() &&
+            (isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword)
+          }
+          onUnlockWithWebAuthn={handleUnlockWithWebAuthn}
+          isPasswordMode={!isStoredWithWebAuthn()}
+        />
       </div>
     );
   }

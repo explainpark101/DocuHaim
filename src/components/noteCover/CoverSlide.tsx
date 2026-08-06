@@ -1,6 +1,16 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { getCoverFrameRect } from '@/utils/noteCover/layout';
-import type { CoverElement, NoteCover } from '@/utils/noteCover/types';
+import {
+  coverShapeShellStyle,
+  coverShapeTextBoxStyle,
+  coverShapeTextContentStyle,
+} from '@/utils/noteCover/shapeStyle';
+import {
+  isCoverShapeElement,
+  type CoverElement,
+  type CoverShapeElement,
+  type NoteCover,
+} from '@/utils/noteCover/types';
 import { useCoverImageUrl } from '@/hooks/useCoverImageUrl';
 
 type GetPresignedUrl = ((path: string) => Promise<string | null>) | null | undefined;
@@ -71,6 +81,20 @@ function elementStyle(el: CoverElement): CSSProperties {
   };
 }
 
+/** Read-only shape body (fill/border + optional in-shape text). */
+export function CoverShapeBody({ el }: { el: CoverShapeElement }) {
+  const text = el.text ?? '';
+  return (
+    <div className="h-full w-full" style={coverShapeShellStyle(el)} data-cover-shape={el.type}>
+      {text ? (
+        <div style={coverShapeTextBoxStyle(el)}>
+          <div style={coverShapeTextContentStyle(el)}>{text}</div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Read-only cover page renderer (preview + print).
  * Element coordinates are frame-local (% of content frame).
@@ -135,6 +159,13 @@ export default function CoverSlide({
                     }}
                   >
                     {el.text}
+                  </div>
+                );
+              }
+              if (isCoverShapeElement(el)) {
+                return (
+                  <div key={el.id} data-cover-el={el.id} style={elementStyle(el)}>
+                    <CoverShapeBody el={el} />
                   </div>
                 );
               }

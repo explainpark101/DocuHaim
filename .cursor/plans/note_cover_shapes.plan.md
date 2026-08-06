@@ -4,16 +4,16 @@ overview: Extend note cover with shape elements (rect/ellipse/roundRect), in-sha
 todos:
   - id: shape-schema
     content: Add shape element types to noteCover schema (v bump + normalize compat); fill, border, text-in-shape fields
-    status: pending
+    status: completed
   - id: shape-render
     content: CoverSlide + CoverEditor render branches for shapes; drag/resize reuse; in-shape text edit
-    status: pending
+    status: completed
   - id: shape-sidebar
     content: CoverSidebar actions (add shape) + selection props (fill, border color/width, text, padding)
-    status: pending
+    status: completed
   - id: shape-print
     content: Verify print CSS color-adjust for fill/border; smoke test comment round-trip
-    status: pending
+    status: completed
 isProject: false
 ---
 

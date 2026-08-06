@@ -1,14 +1,19 @@
 import {
   NOTE_COVER_VERSION,
   createDefaultNoteCover,
+  isCoverShapeType,
   type CoverAlign,
   type CoverBackground,
+  type CoverBorderStyle,
   type CoverElement,
   type CoverGroup,
   type CoverImageElement,
   type CoverLayout,
+  type CoverShapeElement,
+  type CoverShapeType,
   type CoverTextAlign,
   type CoverTextElement,
+  type CoverTextVAlign,
   type NoteCover,
 } from '@/utils/noteCover/types';
 import { ensureLayerTree } from '@/utils/noteCover/layerTree';
@@ -37,6 +42,10 @@ function isAlign(v: unknown): v is CoverAlign {
 
 function isTextAlign(v: unknown): v is CoverTextAlign {
   return v === 'left' || v === 'center' || v === 'right';
+}
+
+function isTextVAlign(v: unknown): v is CoverTextVAlign {
+  return v === 'top' || v === 'middle' || v === 'bottom';
 }
 
 function normalizeLayout(raw: unknown): CoverLayout {
@@ -74,6 +83,7 @@ function applyElementMeta<T extends CoverElement>(
   const next = { ...el };
   if (typeof o.name === 'string' && o.name.trim()) next.name = o.name.trim();
   if (typeof o.groupId === 'string' && o.groupId.trim()) next.groupId = o.groupId.trim();
+  if (o.locked === true) next.locked = true;
   return next;
 }
 
@@ -131,6 +141,49 @@ function normalizeImageElement(o: Record<string, unknown>, id: string): CoverIma
   );
 }
 
+function isBorderStyle(v: unknown): v is CoverBorderStyle {
+  return v === 'solid' || v === 'dashed' || v === 'dotted';
+}
+
+function normalizeShapeElement(
+  o: Record<string, unknown>,
+  id: string,
+  type: CoverShapeType,
+): CoverShapeElement {
+  const text = typeof o.text === 'string' ? o.text : undefined;
+  const fontFamily =
+    typeof o.fontFamily === 'string' && o.fontFamily.trim()
+      ? o.fontFamily.trim()
+      : undefined;
+  const el: CoverShapeElement = {
+    id,
+    type,
+    x: clampPct(o.x, 10),
+    y: clampPct(o.y, 20),
+    w: clampPct(o.w, 80, 1, 100),
+    h: clampPct(o.h, 30, 1, 100),
+    fill: typeof o.fill === 'string' && o.fill.trim() ? o.fill.trim() : '#e0f2fe',
+    borderColor:
+      typeof o.borderColor === 'string' && o.borderColor.trim()
+        ? o.borderColor.trim()
+        : '#0284c7',
+    borderWidth: clampPct(o.borderWidth, 2, 0, 40),
+    borderStyle: isBorderStyle(o.borderStyle) ? o.borderStyle : 'solid',
+  };
+  if (type === 'roundRect') {
+    el.cornerRadiusPct = clampPct(o.cornerRadiusPct, 4, 0, 50);
+  }
+  if (text != null) el.text = text;
+  if (isTextAlign(o.textAlign)) el.textAlign = o.textAlign;
+  if (isTextVAlign(o.textVAlign)) el.textVAlign = o.textVAlign;
+  if (o.fontSize != null) el.fontSize = clampPct(o.fontSize, 24, 6, 400);
+  if (typeof o.color === 'string' && o.color.trim()) el.color = o.color.trim();
+  if (o.fontWeight != null) el.fontWeight = normalizeFontWeight(o.fontWeight);
+  if (fontFamily) el.fontFamily = fontFamily;
+  if (o.paddingPct != null) el.paddingPct = clampPct(o.paddingPct, 2, 0, 40);
+  return applyElementMeta(el, o);
+}
+
 function normalizeElement(raw: unknown, index: number): {
   element: CoverElement | null;
   issue: NoteCoverIssue | null;
@@ -164,6 +217,9 @@ function normalizeElement(raw: unknown, index: number): {
         detail: '이미지 경로(path)가 없거나 올바르지 않습니다.',
       },
     };
+  }
+  if (isCoverShapeType(o.type)) {
+    return { element: normalizeShapeElement(o, id, o.type), issue: null };
   }
   const typeLabel =
     o.type === undefined || o.type === null ? '(없음)' : String(o.type);
@@ -201,6 +257,7 @@ function normalizeGroups(raw: unknown, elements: CoverElement[]): CoverGroup[] {
         : [];
       const group: CoverGroup = { id, name, childIds };
       if (parentGroupId && parentGroupId !== id) group.parentGroupId = parentGroupId;
+      if (o.locked === true) group.locked = true;
       out.push(group);
       used.add(id);
     }

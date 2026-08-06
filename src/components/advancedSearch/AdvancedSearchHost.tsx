@@ -44,6 +44,7 @@ import {
   toggleSettingsToggle,
 } from '@/utils/advancedSearch/settingsToggles';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 
 const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
   'print-focus-back': 'back',
@@ -316,7 +317,7 @@ export default function AdvancedSearchHost({
         currentFile: file,
         editorContent: value,
       });
-      navigate('/export-pdf', {
+      navigate(exportPdfPathnameForStoragePath(file?.id), {
         state: {
           value,
           theme: theme === 'dark' ? 'dark' : 'light',

@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { MdEditor, config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
 import '@/styles/md-editor-rt/style.css';
 
 config({
@@ -39,19 +41,24 @@ export default function ChatComposerMdEditor({
   showToolbar = true,
   onUploadImg,
 }) {
+  const containerRef = useRef(null);
+
   return (
-    <MdEditor
-      editorId="chat-with-myself-composer"
-      modelValue={value}
-      onChange={onChange}
-      theme={theme}
-      language="ko-KR"
-      preview={false}
-      toolbars={showToolbar ? CHAT_COMPOSER_TOOLBARS : []}
-      footers={[]}
-      placeholder="메시지 입력…"
-      style={{ height: '100%' }}
-      onUploadImg={onUploadImg}
-    />
+    <div ref={containerRef} className="relative h-full w-full">
+      <MdEditor
+        editorId="chat-with-myself-composer"
+        modelValue={value}
+        onChange={onChange}
+        theme={theme}
+        language="ko-KR"
+        preview={false}
+        toolbars={showToolbar ? CHAT_COMPOSER_TOOLBARS : []}
+        footers={[]}
+        placeholder="메시지 입력…"
+        style={{ height: '100%' }}
+        onUploadImg={onUploadImg}
+      />
+      {showToolbar ? <MdEditorToolbarTooltips containerRef={containerRef} /> : null}
+    </div>
   );
 }

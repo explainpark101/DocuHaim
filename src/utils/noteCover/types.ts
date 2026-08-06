@@ -1,7 +1,11 @@
-export const NOTE_COVER_VERSION = 1 as const;
+export const NOTE_COVER_VERSION = 2 as const;
 
 export type CoverAlign = 'left' | 'center' | 'right';
 export type CoverTextAlign = 'left' | 'center' | 'right';
+/** Vertical placement of in-shape text within the shape box. */
+export type CoverTextVAlign = 'top' | 'middle' | 'bottom';
+export type CoverShapeType = 'rect' | 'ellipse' | 'roundRect';
+export type CoverBorderStyle = 'solid' | 'dashed' | 'dotted';
 
 export type CoverLayout = {
   align: CoverAlign;
@@ -25,6 +29,8 @@ export type CoverGroup = {
    * Empty groups have [].
    */
   childIds: string[];
+  /** When true, group and descendants cannot be moved/resized/edited on canvas. */
+  locked?: boolean;
 };
 
 export type CoverElementBase = {
@@ -33,6 +39,8 @@ export type CoverElementBase = {
   name?: string;
   /** Optional group membership (Photoshop-like folder). */
   groupId?: string;
+  /** When true, element cannot be moved/resized/edited on canvas. */
+  locked?: boolean;
   /** Position/size relative to content frame (0–100 %). */
   x: number;
   y: number;
@@ -63,7 +71,36 @@ export type CoverImageElement = CoverElementBase & {
   naturalAspect?: number;
 };
 
-export type CoverElement = CoverTextElement | CoverImageElement;
+export type CoverShapeElement = CoverElementBase & {
+  type: CoverShapeType;
+  fill: string;
+  borderColor: string;
+  /** CSS px */
+  borderWidth: number;
+  borderStyle: CoverBorderStyle;
+  /** roundRect only; % of the element box. */
+  cornerRadiusPct?: number;
+  /** Optional in-shape text. */
+  text?: string;
+  textAlign?: CoverTextAlign;
+  textVAlign?: CoverTextVAlign;
+  fontSize?: number;
+  color?: string;
+  fontWeight?: number | 'normal' | 'bold';
+  fontFamily?: string;
+  /** Padding as % of the shape box. */
+  paddingPct?: number;
+};
+
+export type CoverElement = CoverTextElement | CoverImageElement | CoverShapeElement;
+
+export function isCoverShapeType(type: unknown): type is CoverShapeType {
+  return type === 'rect' || type === 'ellipse' || type === 'roundRect';
+}
+
+export function isCoverShapeElement(el: CoverElement): el is CoverShapeElement {
+  return isCoverShapeType(el.type);
+}
 
 export type NoteCover = {
   v: typeof NOTE_COVER_VERSION;
@@ -157,11 +194,55 @@ export function createCoverImageElement(
   });
 }
 
+const SHAPE_TYPE_LABEL: Record<CoverShapeType, string> = {
+  rect: '사각형',
+  ellipse: '타원',
+  roundRect: '둥근 사각형',
+};
+
+export function createCoverShapeElement(
+  type: CoverShapeType,
+  partial?: Partial<Omit<CoverShapeElement, 'type' | 'id'>> & { id?: string },
+): CoverShapeElement {
+  const base: CoverShapeElement = {
+    id: partial?.id ?? crypto.randomUUID(),
+    type,
+    x: partial?.x ?? 10,
+    y: partial?.y ?? 20,
+    w: partial?.w ?? 80,
+    h: partial?.h ?? 30,
+    fill: partial?.fill ?? '#e0f2fe',
+    borderColor: partial?.borderColor ?? '#0284c7',
+    borderWidth: partial?.borderWidth ?? 2,
+    borderStyle: partial?.borderStyle ?? 'solid',
+    ...(type === 'roundRect'
+      ? { cornerRadiusPct: partial?.cornerRadiusPct ?? 4 }
+      : {}),
+    ...(partial?.text != null ? { text: partial.text } : {}),
+    ...(partial?.textAlign != null ? { textAlign: partial.textAlign } : {}),
+    ...(partial?.textVAlign != null ? { textVAlign: partial.textVAlign } : {}),
+    ...(partial?.fontSize != null ? { fontSize: partial.fontSize } : {}),
+    ...(partial?.color != null ? { color: partial.color } : {}),
+    ...(partial?.fontWeight != null ? { fontWeight: partial.fontWeight } : {}),
+    ...(partial?.fontFamily ? { fontFamily: partial.fontFamily } : {}),
+    ...(partial?.paddingPct != null ? { paddingPct: partial.paddingPct } : {}),
+  };
+  return withOptionalMeta(base, {
+    ...(partial?.name != null ? { name: partial.name } : {}),
+    ...(partial?.groupId != null ? { groupId: partial.groupId } : {}),
+  });
+}
+
 export function coverElementLabel(el: CoverElement): string {
   if (el.name?.trim()) return el.name.trim();
   if (el.type === 'text') {
     const t = el.text.trim().replace(/\s+/g, ' ');
     return t ? (t.length > 24 ? `${t.slice(0, 24)}…` : t) : '텍스트';
+  }
+  if (isCoverShapeElement(el)) {
+    const t = (el.text ?? '').trim().replace(/\s+/g, ' ');
+    if (t) return t.length > 24 ? `${t.slice(0, 24)}…` : t;
+    return SHAPE_TYPE_LABEL[el.type];
   }
   const leaf = el.path.split('/').pop() || el.path;
   return leaf.length > 24 ? `${leaf.slice(0, 24)}…` : leaf || '이미지';

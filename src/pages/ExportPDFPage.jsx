@@ -44,6 +44,7 @@ import { usePrintPageStarts } from '@/hooks/usePrintPageStarts';
 import { usePrintPgbrSpacers } from '@/hooks/usePrintPgbrSpacers';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
+import { parseExportPdfPathFromAppPathname } from '@/utils/appHref';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { savePrintMarkdownToStorage } from '@/utils/printMarkdownSave';
 import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
@@ -57,14 +58,19 @@ import {
 } from '@/utils/noteCover';
 import {
   loadCoverCenterSnapEnabled,
+  loadCoverCenterSnapTolerance,
   loadCoverObjectSnapEnabled,
+  loadCoverObjectSnapTolerance,
   loadCoverPlacePreviewEnabled,
   loadCoverTextContainerOutlineEnabled,
-  saveCoverCenterSnapEnabled,
-  saveCoverObjectSnapEnabled,
-  saveCoverPlacePreviewEnabled,
-  saveCoverTextContainerOutlineEnabled,
+  saveCoverCenterSnapTolerance,
+  saveCoverObjectSnapTolerance,
 } from '@/utils/noteCover/snapSettings';
+import {
+  COVER_SETTINGS_CHANGED_EVENT,
+  getCachedCoverSettings,
+} from '@/utils/coverSettingsStore';
+import { setSettingsToggle } from '@/utils/advancedSearch/settingsToggles';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { useAlertModal } from '@/contexts/AlertModalContext';
@@ -406,6 +412,11 @@ const printFontStyles = `
     position: relative;
     z-index: 2;
   }
+  .export-pdf-cover [data-cover-el],
+  .export-pdf-cover [data-cover-shape] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   .export-pdf-cover-stack {
     display: flex;
     flex-direction: column;
@@ -468,14 +479,31 @@ const printFontStyles = `
   }
 `;
 
-export default function ExportPDFPage() {
+export default function ExportPDFPage({
+  documentValue = '',
+  documentFile = null,
+  openCoverEdit: openCoverEditProp = false,
+  isDocumentLoading = false,
+  hasNavigationSession = false,
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
-  const { value = '', currentFile = null, openCoverEdit = false } = location.state ?? {};
-  const [previewValue, setPreviewValue] = useState(() => value);
+  const locationState = location.state && typeof location.state === 'object' ? location.state : null;
+  const routeExportPath = parseExportPdfPathFromAppPathname(location.pathname);
+  const initialValue =
+    typeof locationState?.value === 'string'
+      ? locationState.value
+      : typeof documentValue === 'string'
+        ? documentValue
+        : '';
+  const initialFile = locationState?.currentFile ?? documentFile ?? null;
+  const openCoverEdit = Boolean(locationState?.openCoverEdit ?? openCoverEditProp);
+
+  const [previewValue, setPreviewValue] = useState(() => initialValue);
   const coverIssuesAlertSigRef = useRef('');
-  const [savedValue, setSavedValue] = useState(() => value);
+  const [savedValue, setSavedValue] = useState(() => initialValue);
+  const [currentFile, setCurrentFile] = useState(() => initialFile);
   const [isSaving, setIsSaving] = useState(false);
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
   const [printLayout, setPrintLayout] = useState(() => loadPrintPageLayout());
@@ -497,7 +525,13 @@ export default function ExportPDFPage() {
   const [coverSelectedIds, setCoverSelectedIds] = useState([]);
   const [coverPlaceMode, setCoverPlaceMode] = useState(null);
   const [coverCenterSnap, setCoverCenterSnap] = useState(() => loadCoverCenterSnapEnabled());
+  const [coverCenterSnapTolerance, setCoverCenterSnapTolerance] = useState(() =>
+    loadCoverCenterSnapTolerance(),
+  );
   const [coverObjectSnap, setCoverObjectSnap] = useState(() => loadCoverObjectSnapEnabled());
+  const [coverObjectSnapTolerance, setCoverObjectSnapTolerance] = useState(() =>
+    loadCoverObjectSnapTolerance(),
+  );
   const [coverTextContainerOutline, setCoverTextContainerOutline] = useState(() =>
     loadCoverTextContainerOutlineEnabled(),
   );
@@ -560,6 +594,21 @@ export default function ExportPDFPage() {
   const coverChromeWidth =
     coverSidebarWidth + (coverLayersDetached ? coverLayersSidebarWidth : 0);
   const getPresignedUrl = useMemo(() => getPresignedUrlResolver(currentFile?.type), [currentFile?.type]);
+  const hydratedFileIdRef = useRef(
+    locationState?.value != null ? (initialFile?.id ?? null) : null,
+  );
+
+  // After refresh, MainApp loads the note from `/export-pdf/*` into props.
+  useEffect(() => {
+    if (locationState?.value != null) return;
+    if (!documentFile?.id) return;
+    if (hydratedFileIdRef.current === documentFile.id) return;
+    hydratedFileIdRef.current = documentFile.id;
+    setCurrentFile(documentFile);
+    const nextValue = typeof documentValue === 'string' ? documentValue : '';
+    setPreviewValue(nextValue);
+    setSavedValue(nextValue);
+  }, [documentFile, documentValue, locationState]);
 
   const bodyMarkdown = useMemo(() => stripNoteCoverComment(previewValue), [previewValue]);
   const parsedCoverResult = useMemo(() => parseNoteCover(previewValue), [previewValue]);
@@ -629,22 +678,32 @@ export default function ExportPDFPage() {
 
   const handleCoverCenterSnapChange = useCallback((enabled) => {
     setCoverCenterSnap(enabled);
-    saveCoverCenterSnapEnabled(enabled);
+    setSettingsToggle('settings-cover-center-snap', enabled);
+  }, []);
+
+  const handleCoverCenterSnapToleranceChange = useCallback((value) => {
+    setCoverCenterSnapTolerance(value);
+    saveCoverCenterSnapTolerance(value);
   }, []);
 
   const handleCoverObjectSnapChange = useCallback((enabled) => {
     setCoverObjectSnap(enabled);
-    saveCoverObjectSnapEnabled(enabled);
+    setSettingsToggle('settings-cover-object-snap', enabled);
+  }, []);
+
+  const handleCoverObjectSnapToleranceChange = useCallback((value) => {
+    setCoverObjectSnapTolerance(value);
+    saveCoverObjectSnapTolerance(value);
   }, []);
 
   const handleCoverTextContainerOutlineChange = useCallback((enabled) => {
     setCoverTextContainerOutline(enabled);
-    saveCoverTextContainerOutlineEnabled(enabled);
+    setSettingsToggle('settings-cover-text-outline', enabled);
   }, []);
 
   const handleCoverPlacePreviewChange = useCallback((enabled) => {
     setCoverPlacePreview(enabled);
-    saveCoverPlacePreviewEnabled(enabled);
+    setSettingsToggle('settings-cover-place-preview', enabled);
   }, []);
 
   const handleCoverLayersDetachedChange = useCallback((detached) => {
@@ -668,15 +727,24 @@ export default function ExportPDFPage() {
   }, []);
 
   useEffect(() => {
+    const syncCoverPrefs = () => {
+      const s = getCachedCoverSettings();
+      setCoverCenterSnap(s.centerSnapEnabled);
+      setCoverCenterSnapTolerance(s.centerSnapTolerancePx);
+      setCoverObjectSnap(s.objectSnapEnabled);
+      setCoverObjectSnapTolerance(s.objectSnapTolerancePx);
+      setCoverTextContainerOutline(s.textContainerOutlineEnabled);
+      setCoverPlacePreview(s.placePreviewEnabled);
+    };
+    window.addEventListener(COVER_SETTINGS_CHANGED_EVENT, syncCoverPrefs);
+    return () => window.removeEventListener(COVER_SETTINGS_CHANGED_EVENT, syncCoverPrefs);
+  }, []);
+
+  useEffect(() => {
     if (location.state == null) {
       navigate('/', { replace: true });
     }
   }, [location.state, navigate]);
-
-  useEffect(() => {
-    setPreviewValue(value);
-    setSavedValue(value);
-  }, [value]);
 
   useEffect(() => {
     const updateTocTop = () => {
@@ -816,8 +884,13 @@ export default function ExportPDFPage() {
   }, []);
 
   const handleBack = useCallback(() => {
+    const path = currentFile?.id || routeExportPath;
+    if (path) {
+      navigate(`/view/${path}`);
+      return;
+    }
     navigate(-1);
-  }, [navigate]);
+  }, [currentFile?.id, navigate, routeExportPath]);
 
   const handleExport = useCallback(() => {
     const target = document.querySelector(`#${EDITOR_ID}`);
@@ -1356,7 +1429,15 @@ export default function ExportPDFPage() {
     '--print-font-code': withFontFallback(fonts.code, 'mono'),
   };
 
-  if (location.state == null) {
+  if (isDocumentLoading) {
+    return (
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800">
+        <p className="text-sm text-gray-600 dark:text-odp-fg">문서를 불러오는 중…</p>
+      </div>
+    );
+  }
+
+  if (!hasNavigationSession && locationState == null && !routeExportPath && !previewValue) {
     return (
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800">
         <p className="text-sm text-gray-600 dark:text-odp-fg">
@@ -1364,7 +1445,7 @@ export default function ExportPDFPage() {
         </p>
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           className="inline-flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg"
         >
           <ArrowLeft size={18} />
@@ -1499,7 +1580,9 @@ export default function ExportPDFPage() {
                   getPresignedUrl={getPresignedUrl}
                   currentFile={currentFile}
                   centerSnapEnabled={coverCenterSnap}
+                  centerSnapTolerance={coverCenterSnapTolerance}
                   objectSnapEnabled={coverObjectSnap}
+                  objectSnapTolerance={coverObjectSnapTolerance}
                   textContainerOutlineEnabled={coverTextContainerOutline}
                   placePreviewEnabled={coverPlacePreview}
                   placeMode={coverPlaceMode}
@@ -1580,8 +1663,12 @@ export default function ExportPDFPage() {
             layersResizeHandleProps={coverLayersSidebarResizeHandleProps}
             centerSnapEnabled={coverCenterSnap}
             onCenterSnapEnabledChange={handleCoverCenterSnapChange}
+            centerSnapTolerance={coverCenterSnapTolerance}
+            onCenterSnapToleranceChange={handleCoverCenterSnapToleranceChange}
             objectSnapEnabled={coverObjectSnap}
             onObjectSnapEnabledChange={handleCoverObjectSnapChange}
+            objectSnapTolerance={coverObjectSnapTolerance}
+            onObjectSnapToleranceChange={handleCoverObjectSnapToleranceChange}
             textContainerOutlineEnabled={coverTextContainerOutline}
             onTextContainerOutlineEnabledChange={handleCoverTextContainerOutlineChange}
             placePreviewEnabled={coverPlacePreview}

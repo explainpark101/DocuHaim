@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ContextMenu } from 'radix-ui';
-import { Crop, Ratio, RotateCcw } from 'lucide-react';
+import { Crop, Lock, LockOpen, Ratio, RotateCcw } from 'lucide-react';
 import CoverSlide from '@/components/noteCover/CoverSlide';
 import Modal from '@/components/modals/Modal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -10,28 +10,48 @@ import { useCoverImageUrl } from '@/hooks/useCoverImageUrl';
 import {
   collectDescendantElementIds,
   collectObjectSnapTargets,
+  COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
+  COVER_OBJECT_SNAP_TOLERANCE_DEFAULT,
   createCoverImageElement,
+  createCoverShapeElement,
   createCoverTextElement,
   coverImageBoxSizeForAspect,
+  coverShapeShellStyle,
+  coverShapeTextBoxStyle,
+  coverShapeTextContentStyle,
   deleteElements,
   duplicateElements,
   elementsIntersectingRect,
   expandIdsToGroups,
+  filterUnlockedElementIds,
+  getGroup,
   getSelectionBounds,
   groupSelectedElements,
+  isCoverShapeElement,
+  isElementEffectivelyLocked,
+  isLayerDirectlyLocked,
   moveElementsByDelta,
   nextPastePlacement,
   normalizePctRect,
   registerNewElement,
   resizeCoverImageBox,
   restoreCoverImageNaturalAspect,
+  setLayerLocked,
   sharedGroupIdForSelection,
   snapBoundsToObjects,
   ungroupElements,
   withCoverImageNaturalMetrics,
   type CoverPlaceMode,
 } from '@/utils/noteCover';
-import type { CoverElement, CoverImageElement, CoverTextElement, NoteCover } from '@/utils/noteCover/types';
+import type {
+  CoverElement,
+  CoverImageElement,
+  CoverShapeElement,
+  CoverShapeType,
+  CoverTextElement,
+  NoteCover,
+} from '@/utils/noteCover/types';
+import { CoverShapeBody } from '@/components/noteCover/CoverSlide';
 import { extractImageFilesFromClipboard } from '@/utils/llmAssistImages';
 import {
   convertSvgToPngFile,
@@ -77,8 +97,12 @@ type CoverEditorProps = {
   getPresignedUrl?: GetPresignedUrl;
   currentFile?: PrintFile | null;
   centerSnapEnabled?: boolean;
+  /** Pixel distance for page-center snap. */
+  centerSnapTolerance?: number;
   /** Snap to other objects' edges and center lines while dragging. */
   objectSnapEnabled?: boolean;
+  /** Pixel distance for object edge/center snap. */
+  objectSnapTolerance?: number;
   /** Faint red solid outline on every text element box. */
   textContainerOutlineEnabled?: boolean;
   /** Semi-transparent ghost while placing text/image. */
@@ -228,6 +252,38 @@ function EditorText({ el }: { el: CoverTextElement }) {
   );
 }
 
+function EditorShape({
+  el,
+  isEditing,
+  onTextChange,
+  onBlur,
+}: {
+  el: CoverShapeElement;
+  isEditing: boolean;
+  onTextChange: (text: string) => void;
+  onBlur: () => void;
+}) {
+  if (!isEditing) return <CoverShapeBody el={el} />;
+  return (
+    <div className="h-full w-full" style={coverShapeShellStyle(el)} data-cover-shape={el.type}>
+      <div style={coverShapeTextBoxStyle(el)}>
+        <textarea
+          className="min-h-[1.25em] w-full"
+          style={coverShapeTextContentStyle(el)}
+          value={el.text ?? ''}
+          rows={Math.max(1, (el.text ?? '').split(/\r?\n/).length)}
+          autoFocus
+          onChange={(e) => onTextChange(e.target.value)}
+          onBlur={onBlur}
+          onPointerDown={(e) => e.stopPropagation()}
+        />
+      </div>
+    </div>
+  );
+}
+
+const DEFAULT_SHAPE_BOX = { w: 40, h: 25 };
+
 export default function CoverEditor({
   cover,
   selectedIds,
@@ -236,7 +292,9 @@ export default function CoverEditor({
   getPresignedUrl,
   currentFile = null,
   centerSnapEnabled = true,
+  centerSnapTolerance = COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
   objectSnapEnabled = false,
+  objectSnapTolerance = COVER_OBJECT_SNAP_TOLERANCE_DEFAULT,
   textContainerOutlineEnabled = false,
   placePreviewEnabled = true,
   placeMode = null,
@@ -278,12 +336,16 @@ export default function CoverEditor({
   const coverRef = useRef(cover);
   const selectedIdsRef = useRef(selectedIds);
   const centerSnapEnabledRef = useRef(centerSnapEnabled);
+  const centerSnapToleranceRef = useRef(centerSnapTolerance);
   const objectSnapEnabledRef = useRef(objectSnapEnabled);
+  const objectSnapToleranceRef = useRef(objectSnapTolerance);
   const pastingRef = useRef(false);
   coverRef.current = cover;
   selectedIdsRef.current = selectedIds;
   centerSnapEnabledRef.current = centerSnapEnabled;
+  centerSnapToleranceRef.current = centerSnapTolerance;
   objectSnapEnabledRef.current = objectSnapEnabled;
+  objectSnapToleranceRef.current = objectSnapTolerance;
 
   const findEl = useCallback((id: string) => {
     return coverRef.current.elements.find((el) => el.id === id) ?? null;
@@ -355,6 +417,10 @@ export default function CoverEditor({
             const snapped = snapBoundsToObjects(bounds, peers, {
               objectSnapEnabled: objectOn,
               frameCenterSnapEnabled: centerOn,
+              objectThresholdPx: objectSnapToleranceRef.current,
+              frameCenterThresholdPx: centerSnapToleranceRef.current,
+              frameWidthPx: drag.frameW,
+              frameHeightPx: drag.frameH,
             });
             const adjustX = snapped.x - bounds.x;
             const adjustY = snapped.y - bounds.y;
@@ -558,6 +624,26 @@ export default function CoverEditor({
     [currentFile, onChange, onSelectIds, placeImageAspect, placeImageBoxSize],
   );
 
+  const placeShapeAt = useCallback(
+    (shapeType: CoverShapeType, xPct: number, yPct: number) => {
+      const box = boxAtTopLeft(xPct, yPct, DEFAULT_SHAPE_BOX.w, DEFAULT_SHAPE_BOX.h);
+      const el = createCoverShapeElement(shapeType, {
+        ...box,
+        text: '',
+        textAlign: 'center',
+        textVAlign: 'middle',
+        fontSize: 24,
+        color: '#0c4a6e',
+        fontWeight: 'bold',
+        paddingPct: 2,
+      });
+      onChange(registerNewElement(coverRef.current, el));
+      onSelectIds([el.id]);
+      onPlaceModeChange?.(null);
+    },
+    [onChange, onPlaceModeChange, onSelectIds],
+  );
+
   useEffect(() => {
     if (placeMode?.kind !== 'image' || !placeMode.files[0]) {
       setPlaceImageAspect(null);
@@ -615,6 +701,12 @@ export default function CoverEditor({
       if (placeMode.kind === 'text') {
         const size = placeTextBoxSize(frame.width, frame.height);
         setPlaceGhost(boxAtTopLeft(xPct, yPct, size.w, size.h));
+        return;
+      }
+      if (placeMode.kind === 'shape') {
+        setPlaceGhost(
+          boxAtTopLeft(xPct, yPct, DEFAULT_SHAPE_BOX.w, DEFAULT_SHAPE_BOX.h),
+        );
         return;
       }
       const size = placeImageBoxSize(frame.width, frame.height, placeImageAspect);
@@ -684,6 +776,10 @@ export default function CoverEditor({
         placeTextAt(xPct, yPct);
         return;
       }
+      if (placeMode.kind === 'shape') {
+        placeShapeAt(placeMode.shapeType, xPct, yPct);
+        return;
+      }
       const [file, ...rest] = placeMode.files;
       if (!file) {
         onPlaceModeChange?.(null);
@@ -745,11 +841,14 @@ export default function CoverEditor({
       if (ids.length !== selectedIdsRef.current.length) onSelectIds(ids);
     }
 
+    const movableIds = filterUnlockedElementIds(coverRef.current, ids);
+    if (!movableIds.length) return;
+
     const pendingDuplicate = altKey || (modKey && targetFullySelected);
 
     dragRef.current = {
       kind: 'move',
-      ids,
+      ids: movableIds,
       startX: event.clientX,
       startY: event.clientY,
       origElements: coverRef.current.elements.map((e) => ({ ...e })),
@@ -766,6 +865,7 @@ export default function CoverEditor({
     const frame = frameRef.current;
     const el = findEl(id);
     if (!frame || !el) return;
+    if (isElementEffectivelyLocked(coverRef.current, el)) return;
     const rect = frame.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return;
     event.preventDefault();
@@ -1159,7 +1259,7 @@ export default function CoverEditor({
       });
 
     const applyArrowNudge = (event: KeyboardEvent) => {
-      const ids = selectedIdsRef.current;
+      const ids = filterUnlockedElementIds(coverRef.current, selectedIdsRef.current);
       if (!ids.length) return;
       if (editingTextId) return;
       const frame = frameRef.current?.getBoundingClientRect();
@@ -1308,8 +1408,12 @@ export default function CoverEditor({
   }, [cover.elements, marqueeRect]);
 
   const elementChromeClass = (el: CoverElement, isSelected: boolean, isMarqueeHit: boolean) => {
+    const locked = isElementEffectivelyLocked(cover, el);
     const parts = ['absolute', 'box-border'];
-    if (isSelected) {
+    if (locked && isSelected) {
+      // Locked + selected: yellow border
+      parts.push('ring-2', 'ring-yellow-400', 'ring-offset-0');
+    } else if (isSelected) {
       parts.push('ring-2', 'ring-blue-500', 'ring-offset-0');
     } else if (isMarqueeHit) {
       parts.push('outline', 'outline-2', 'outline-dashed', 'outline-blue-500', '-outline-offset-1');
@@ -1387,6 +1491,18 @@ export default function CoverEditor({
               >
                 제목
               </div>
+            ) : placeMode.kind === 'shape' ? (
+              <div
+                className="h-full w-full border border-blue-500/50 bg-sky-200/40"
+                style={{
+                  borderRadius:
+                    placeMode.shapeType === 'ellipse'
+                      ? '50%'
+                      : placeMode.shapeType === 'roundRect'
+                        ? '8%'
+                        : 0,
+                }}
+              />
             ) : placeImagePreviewUrl ? (
               <img
                 src={placeImagePreviewUrl}
@@ -1402,8 +1518,11 @@ export default function CoverEditor({
         {cover.elements.map((el, index) => {
           const isSelected = selectedSet.has(el.id);
           const isMarqueeHit = marqueeHitSet.has(el.id);
-          const isEditing = el.type === 'text' && el.id === editingTextId;
-          const showHandles = isSelected && selectedIds.length === 1 && !isEditing;
+          const isLocked = isElementEffectivelyLocked(cover, el);
+          const canEditText = !isLocked && (el.type === 'text' || isCoverShapeElement(el));
+          const isEditing = canEditText && el.id === editingTextId;
+          const showHandles =
+            isSelected && selectedIds.length === 1 && !isEditing && !isLocked;
           const chromeClass = elementChromeClass(el, isSelected, isMarqueeHit);
 
           const body = (
@@ -1434,6 +1553,20 @@ export default function CoverEditor({
                 />
               ) : el.type === 'text' ? (
                 <EditorText el={el} />
+              ) : isCoverShapeElement(el) ? (
+                <EditorShape
+                  el={el}
+                  isEditing={isEditing}
+                  onTextChange={(text) => {
+                    onChange(
+                      updateElement(coverRef.current, el.id, {
+                        ...el,
+                        text,
+                      }),
+                    );
+                  }}
+                  onBlur={() => setEditingTextId(null)}
+                />
               ) : (
                 <EditorImage
                   el={el}
@@ -1459,49 +1592,37 @@ export default function CoverEditor({
             </>
           );
 
-          if (el.type !== 'image') {
-            return (
-              <div
-                key={el.id}
-                data-cover-el={el.id}
-                className={chromeClass}
-                style={{
-                  left: `${el.x}%`,
-                  top: `${el.y}%`,
-                  width: `${el.w}%`,
-                  height: `${el.h}%`,
-                  zIndex: isSelected || isMarqueeHit ? 20 + index : 10 + index,
-                  cursor: isEditing ? 'text' : 'move',
-                }}
-                onPointerDown={(event) => {
-                  if (placeMode) {
-                    beginPlaceOrMarquee(event);
-                    return;
-                  }
-                  if (isEditing) {
-                    event.stopPropagation();
-                    return;
-                  }
-                  beginMove(el.id, event);
-                }}
-                onDoubleClick={(event) => {
-                  event.stopPropagation();
-                  if (el.type === 'text') {
-                    onSelectIds([el.id]);
-                    setEditingTextId(el.id);
-                  }
-                }}
-              >
-                {body}
-              </div>
-            );
-          }
+          const directlyLocked = isLayerDirectlyLocked(cover, el.id);
+          const toggleLock = () => {
+            const c = coverRef.current;
+            if (directlyLocked) {
+              onChange(setLayerLocked(c, el.id, false));
+              return;
+            }
+            if (isLocked) {
+              // Locked via ancestor group — unlock nearest locked group.
+              let gid = el.groupId;
+              const seen = new Set<string>();
+              while (gid && !seen.has(gid)) {
+                seen.add(gid);
+                const group = getGroup(c, gid);
+                if (!group) break;
+                if (group.locked === true) {
+                  onChange(setLayerLocked(c, gid, false));
+                  return;
+                }
+                gid = group.parentGroupId;
+              }
+            }
+            onChange(setLayerLocked(c, el.id, true));
+          };
 
           return (
             <ContextMenu.Root key={el.id}>
               <ContextMenu.Trigger asChild>
                 <div
                   data-cover-el={el.id}
+                  data-cover-locked={isLocked ? '1' : undefined}
                   className={chromeClass}
                   style={{
                     left: `${el.x}%`,
@@ -1509,14 +1630,25 @@ export default function CoverEditor({
                     width: `${el.w}%`,
                     height: `${el.h}%`,
                     zIndex: isSelected || isMarqueeHit ? 20 + index : 10 + index,
-                    cursor: 'move',
+                    cursor: isEditing ? 'text' : isLocked ? 'default' : 'move',
                   }}
                   onPointerDown={(event) => {
                     if (placeMode) {
                       beginPlaceOrMarquee(event);
                       return;
                     }
+                    if (isEditing) {
+                      event.stopPropagation();
+                      return;
+                    }
                     beginMove(el.id, event);
+                  }}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    if (canEditText) {
+                      onSelectIds([el.id]);
+                      setEditingTextId(el.id);
+                    }
                   }}
                 >
                   {body}
@@ -1527,30 +1659,45 @@ export default function CoverEditor({
                   className={chatMenuContentClass}
                   onCloseAutoFocus={(e) => e.preventDefault()}
                 >
-                  <ContextMenu.Item
-                    className={chatMenuItemClass}
-                    onSelect={() => {
-                      void openImageCrop(el);
-                    }}
-                  >
-                    <Crop size={16} className="shrink-0" />
-                    자르기
+                  <ContextMenu.Item className={chatMenuItemClass} onSelect={toggleLock}>
+                    {isLocked ? (
+                      <LockOpen size={16} className="shrink-0" />
+                    ) : (
+                      <Lock size={16} className="shrink-0" />
+                    )}
+                    {isLocked ? '잠금 해제' : '잠금'}
                   </ContextMenu.Item>
-                  <ContextMenu.Item
-                    className={chatMenuItemClass}
-                    disabled={!el.naturalAspect}
-                    onSelect={() => restoreImageAspect(el.id)}
-                  >
-                    <RotateCcw size={16} className="shrink-0" />
-                    원본 비율로 되돌리기
-                  </ContextMenu.Item>
-                  <ContextMenu.Item
-                    className={chatMenuItemClass}
-                    onSelect={() => toggleImageLockAspect(el.id)}
-                  >
-                    <Ratio size={16} className="shrink-0" />
-                    {el.lockAspect ? '무조건 비율 유지 해제' : '무조건 비율 유지'}
-                  </ContextMenu.Item>
+                  {el.type === 'image' ? (
+                    <>
+                      <ContextMenu.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderStrong" />
+                      <ContextMenu.Item
+                        className={chatMenuItemClass}
+                        disabled={isLocked}
+                        onSelect={() => {
+                          void openImageCrop(el);
+                        }}
+                      >
+                        <Crop size={16} className="shrink-0" />
+                        자르기
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className={chatMenuItemClass}
+                        disabled={isLocked || !el.naturalAspect}
+                        onSelect={() => restoreImageAspect(el.id)}
+                      >
+                        <RotateCcw size={16} className="shrink-0" />
+                        원본 비율로 되돌리기
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className={chatMenuItemClass}
+                        disabled={isLocked}
+                        onSelect={() => toggleImageLockAspect(el.id)}
+                      >
+                        <Ratio size={16} className="shrink-0" />
+                        {el.lockAspect ? '무조건 비율 유지 해제' : '무조건 비율 유지'}
+                      </ContextMenu.Item>
+                    </>
+                  ) : null}
                 </ContextMenu.Content>
               </ContextMenu.Portal>
             </ContextMenu.Root>

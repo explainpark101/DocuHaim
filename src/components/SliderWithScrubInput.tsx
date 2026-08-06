@@ -8,8 +8,7 @@ import {
 } from 'react';
 import {
   clampNumber,
-  getChromeDevToolsNumberStep,
-  getPercentScrubStep,
+  getScrubStepForEvent,
   roundScrubValue,
 } from '@/utils/scrubNumberStep';
 
@@ -20,11 +19,11 @@ type SliderWithScrubInputProps = {
   onChange: (next: number) => void;
   min: number;
   max: number;
-  /** Native range step (slider granularity). */
+  /** Native range step (slider granularity) and base scrub nudge for `css`. */
   step?: number;
   /**
    * `percent` → wheel/arrow always ±1.
-   * `css` → Chrome DevTools steps (1 / Alt 0.1 / Shift 10 / Ctrl·Cmd 100).
+   * `css` → DevTools multipliers × `step` (e.g. step 0.1 → ±0.1 / Alt ±0.01 / Shift ±1).
    */
   unit: SliderScrubUnit;
   /** Optional suffix shown after the input (e.g. `%`, `px`). */
@@ -34,14 +33,6 @@ type SliderWithScrubInputProps = {
   className?: string;
   disabled?: boolean;
 };
-
-function scrubStepForEvent(
-  unit: SliderScrubUnit,
-  mods: { altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
-): number {
-  if (unit === 'percent') return getPercentScrubStep();
-  return getChromeDevToolsNumberStep(mods);
-}
 
 /**
  * Range slider with a compact numeric input on the right.
@@ -81,7 +72,7 @@ export default function SliderWithScrubInput({
       setDraft(String(valueRef.current));
       return;
     }
-    const next = clampNumber(n, min, max);
+    const next = clampNumber(roundScrubValue(n, step), min, max);
     setDraft(String(next));
     if (next !== valueRef.current) onChangeRef.current(next);
   };
@@ -90,7 +81,7 @@ export default function SliderWithScrubInput({
     direction: 1 | -1,
     mods: { altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) => {
-    const scrubStep = scrubStepForEvent(unit, mods);
+    const scrubStep = getScrubStepForEvent(unit, mods, step);
     const next = clampNumber(
       roundScrubValue(valueRef.current + direction * scrubStep, scrubStep),
       min,
@@ -109,7 +100,7 @@ export default function SliderWithScrubInput({
       event.preventDefault();
       event.stopPropagation();
       const direction: 1 | -1 = event.deltaY < 0 ? 1 : -1;
-      const scrubStep = scrubStepForEvent(unit, event);
+      const scrubStep = getScrubStepForEvent(unit, event, step);
       const next = clampNumber(
         roundScrubValue(valueRef.current + direction * scrubStep, scrubStep),
         min,
@@ -120,7 +111,7 @@ export default function SliderWithScrubInput({
     };
     el.addEventListener('wheel', onWheelNative, { passive: false });
     return () => el.removeEventListener('wheel', onWheelNative);
-  }, [disabled, unit, min, max]);
+  }, [disabled, unit, step, min, max]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (disabled) return;
@@ -131,7 +122,7 @@ export default function SliderWithScrubInput({
   };
 
   const onRangeChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const next = clampNumber(Number(event.target.value), min, max);
+    const next = clampNumber(roundScrubValue(Number(event.target.value), step), min, max);
     setDraft(String(next));
     onChange(next);
   };

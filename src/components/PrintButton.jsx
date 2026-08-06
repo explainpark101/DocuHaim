@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Printer } from 'lucide-react';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 
 export default function PrintButton({
   value = '',
@@ -15,7 +16,9 @@ export default function PrintButton({
   const open = useCallback(() => {
     if (disabled) return;
     setPendingPrintReturnState({ currentFile, editorContent: value });
-    navigate('/export-pdf', { state: { value, theme, currentFile } });
+    navigate(exportPdfPathnameForStoragePath(currentFile?.id), {
+      state: { value, theme, currentFile },
+    });
   }, [navigate, value, theme, disabled, currentFile]);
 
   return (

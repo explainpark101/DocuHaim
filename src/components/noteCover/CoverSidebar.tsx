@@ -37,13 +37,20 @@ import {
   Undo2,
   Ungroup,
   AlignStartHorizontal,
+  Circle,
   PanelLeftOpen,
   PanelLeftClose,
+  Square,
+  Squircle,
 } from 'lucide-react';
 import ChatImageBackgroundPicker from '@/components/chatWithMyself/ChatImageBackgroundPicker';
 import FontFamilyInput from '@/components/FontFamilyInput';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import SliderWithScrubInput from '@/components/SliderWithScrubInput';
+import {
+  COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
+  COVER_OBJECT_SNAP_TOLERANCE_DEFAULT,
+} from '@/utils/noteCover/snapSettings';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
 import CoverLayerPanel from '@/components/noteCover/CoverLayerPanel';
 import {
@@ -60,7 +67,9 @@ import {
   coverElementLabel,
   createEmptyGroup,
   deleteElements,
+  filterUnlockedElementIds,
   groupSelectedElements,
+  isCoverShapeElement,
   restackElementsByGap,
   gapPxToFramePct,
   sendSelectionToBack,
@@ -71,8 +80,11 @@ import {
 } from '@/utils/noteCover';
 import type {
   CoverAlign,
+  CoverBorderStyle,
   CoverElement,
+  CoverShapeType,
   CoverTextAlign,
+  CoverTextVAlign,
   CoverTextElement,
   NoteCover,
 } from '@/utils/noteCover/types';
@@ -119,8 +131,14 @@ type CoverSidebarProps = {
   layersResizeHandleProps?: Record<string, any>;
   centerSnapEnabled?: boolean;
   onCenterSnapEnabledChange?: (enabled: boolean) => void;
+  /** Pixel distance for page-center snap. */
+  centerSnapTolerance?: number;
+  onCenterSnapToleranceChange?: (value: number) => void;
   objectSnapEnabled?: boolean;
   onObjectSnapEnabledChange?: (enabled: boolean) => void;
+  /** Pixel distance for object edge/center snap. */
+  objectSnapTolerance?: number;
+  onObjectSnapToleranceChange?: (value: number) => void;
   textContainerOutlineEnabled?: boolean;
   onTextContainerOutlineEnabledChange?: (enabled: boolean) => void;
   placePreviewEnabled?: boolean;
@@ -319,6 +337,72 @@ function AlignButtons({
   );
 }
 
+/** Same icons as object-align (no distribute): H + V placement for in-shape text. */
+function ShapeTextPlacementButtons({
+  textAlign,
+  textVAlign,
+  onTextAlignChange,
+  onTextVAlignChange,
+}: {
+  textAlign: CoverTextAlign;
+  textVAlign: CoverTextVAlign;
+  onTextAlignChange: (v: CoverTextAlign) => void;
+  onTextVAlignChange: (v: CoverTextVAlign) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-1">
+      <TipButton
+        tip="왼쪽"
+        className={`${iconBtnClass} ${textAlign === 'left' ? btnActiveClass : ''}`}
+        pressed={textAlign === 'left'}
+        onClick={() => onTextAlignChange('left')}
+      >
+        <AlignStartVertical size={15} />
+      </TipButton>
+      <TipButton
+        tip="가로 가운데"
+        className={`${iconBtnClass} ${textAlign === 'center' ? btnActiveClass : ''}`}
+        pressed={textAlign === 'center'}
+        onClick={() => onTextAlignChange('center')}
+      >
+        <AlignCenterVertical size={15} />
+      </TipButton>
+      <TipButton
+        tip="오른쪽"
+        className={`${iconBtnClass} ${textAlign === 'right' ? btnActiveClass : ''}`}
+        pressed={textAlign === 'right'}
+        onClick={() => onTextAlignChange('right')}
+      >
+        <AlignEndVertical size={15} />
+      </TipButton>
+      <TipButton
+        tip="위쪽"
+        className={`${iconBtnClass} ${textVAlign === 'top' ? btnActiveClass : ''}`}
+        pressed={textVAlign === 'top'}
+        onClick={() => onTextVAlignChange('top')}
+      >
+        <AlignStartHorizontal size={15} />
+      </TipButton>
+      <TipButton
+        tip="세로 가운데"
+        className={`${iconBtnClass} ${textVAlign === 'middle' ? btnActiveClass : ''}`}
+        pressed={textVAlign === 'middle'}
+        onClick={() => onTextVAlignChange('middle')}
+      >
+        <AlignCenterHorizontal size={15} />
+      </TipButton>
+      <TipButton
+        tip="아래쪽"
+        className={`${iconBtnClass} ${textVAlign === 'bottom' ? btnActiveClass : ''}`}
+        pressed={textVAlign === 'bottom'}
+        onClick={() => onTextVAlignChange('bottom')}
+      >
+        <AlignEndHorizontal size={15} />
+      </TipButton>
+    </div>
+  );
+}
+
 export function loadCoverLayersDetached(): boolean {
   if (typeof window === 'undefined') return false;
   try {
@@ -354,8 +438,12 @@ export default function CoverSidebar({
   layersResizeHandleProps = {},
   centerSnapEnabled = true,
   onCenterSnapEnabledChange,
+  centerSnapTolerance = COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
+  onCenterSnapToleranceChange,
   objectSnapEnabled = false,
   onObjectSnapEnabledChange,
+  objectSnapTolerance = COVER_OBJECT_SNAP_TOLERANCE_DEFAULT,
+  onObjectSnapToleranceChange,
   textContainerOutlineEnabled = false,
   onTextContainerOutlineEnabledChange,
   placePreviewEnabled = true,
@@ -437,6 +525,14 @@ export default function CoverSidebar({
     onPlaceModeChange?.(placeMode?.kind === 'text' ? null : { kind: 'text' });
   };
 
+  const togglePlaceShape = (shapeType: CoverShapeType) => {
+    if (placeMode?.kind === 'shape' && placeMode.shapeType === shapeType) {
+      onPlaceModeChange?.(null);
+      return;
+    }
+    onPlaceModeChange?.({ kind: 'shape', shapeType });
+  };
+
   const armPlaceImage = (file: File | null | undefined) => {
     if (!file) return;
     onPlaceModeChange?.({ kind: 'image', files: [file] });
@@ -507,6 +603,8 @@ export default function CoverSidebar({
 
   const applyObjectAlign = (mode: CoverObjectAlign) => {
     if (!canObjectAlign) return;
+    const alignIds = filterUnlockedElementIds(cover, selectedIds);
+    if (!alignIds.length) return;
     const frame = document.querySelector<HTMLElement>('[data-cover-frame="1"]');
     const rect = frame?.getBoundingClientRect();
     const axisPx =
@@ -517,7 +615,7 @@ export default function CoverSidebar({
     if (soleAlignGroupId) {
       if (groupAlignConsentId === soleAlignGroupId) {
         onChange(
-          alignCoverElements(cover, selectedIds, mode, gapFramePct, {
+          alignCoverElements(cover, alignIds, mode, gapFramePct, {
             insideGroupId: soleAlignGroupId,
           }),
         );
@@ -526,7 +624,7 @@ export default function CoverSidebar({
       setPendingAlignMode(mode);
       return;
     }
-    onChange(alignCoverElements(cover, selectedIds, mode, gapFramePct));
+    onChange(alignCoverElements(cover, alignIds, mode, gapFramePct));
   };
 
   const confirmGroupInternalAlign = () => {
@@ -535,6 +633,11 @@ export default function CoverSidebar({
       return;
     }
     const mode = pendingAlignMode;
+    const alignIds = filterUnlockedElementIds(cover, selectedIds);
+    if (!alignIds.length) {
+      setPendingAlignMode(null);
+      return;
+    }
     const frame = document.querySelector<HTMLElement>('[data-cover-frame="1"]');
     const rect = frame?.getBoundingClientRect();
     const axisPx =
@@ -545,7 +648,7 @@ export default function CoverSidebar({
     setGroupAlignConsentId(soleAlignGroupId);
     setPendingAlignMode(null);
     onChange(
-      alignCoverElements(cover, selectedIds, mode, gapFramePct, {
+      alignCoverElements(cover, alignIds, mode, gapFramePct, {
         insideGroupId: soleAlignGroupId,
       }),
     );
@@ -563,38 +666,64 @@ export default function CoverSidebar({
   );
 
   const layerAddButtons = (
-    <div className="grid grid-cols-2 gap-1.5">
-      <TipButton
-        tip={placeMode?.kind === 'text' ? '클릭 삽입 취소 (Esc)' : '텍스트 상자 추가 — 캔버스를 클릭해 배치'}
-        className={`${btnClass} ${placeMode?.kind === 'text' ? `${btnActiveClass} shadow-inner` : ''}`}
-        pressed={placeMode?.kind === 'text'}
-        onClick={togglePlaceText}
-      >
-        <Type size={14} />
-        텍스트
-      </TipButton>
-      <TipButton
-        tip={
-          placeMode?.kind === 'image'
-            ? '클릭 삽입 취소 (Esc)'
-            : '이미지 추가 — 파일 선택 후 캔버스를 클릭해 배치'
-        }
-        className={`${btnClass} ${placeMode?.kind === 'image' ? `${btnActiveClass} shadow-inner` : ''}`}
-        pressed={placeMode?.kind === 'image'}
-        onClick={() => {
-          if (placeMode?.kind === 'image') {
-            onPlaceModeChange?.(null);
-            return;
+    <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
+        <TipButton
+          tip={placeMode?.kind === 'text' ? '클릭 삽입 취소 (Esc)' : '텍스트 상자 추가 — 캔버스를 클릭해 배치'}
+          className={`${btnClass} ${placeMode?.kind === 'text' ? `${btnActiveClass} shadow-inner` : ''}`}
+          pressed={placeMode?.kind === 'text'}
+          onClick={togglePlaceText}
+        >
+          <Type size={14} />
+          텍스트
+        </TipButton>
+        <TipButton
+          tip={
+            placeMode?.kind === 'image'
+              ? '클릭 삽입 취소 (Esc)'
+              : '이미지 추가 — 파일 선택 후 캔버스를 클릭해 배치'
           }
-          if (fileInputRef.current) {
-            fileInputRef.current.dataset.coverImageMode = 'place';
-            fileInputRef.current.click();
-          }
-        }}
-      >
-        <ImagePlus size={14} />
-        이미지
-      </TipButton>
+          className={`${btnClass} ${placeMode?.kind === 'image' ? `${btnActiveClass} shadow-inner` : ''}`}
+          pressed={placeMode?.kind === 'image'}
+          onClick={() => {
+            if (placeMode?.kind === 'image') {
+              onPlaceModeChange?.(null);
+              return;
+            }
+            if (fileInputRef.current) {
+              fileInputRef.current.dataset.coverImageMode = 'place';
+              fileInputRef.current.click();
+            }
+          }}
+        >
+          <ImagePlus size={14} />
+          이미지
+        </TipButton>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {(
+          [
+            { type: 'rect' as const, tip: '사각형', Icon: Square },
+            { type: 'ellipse' as const, tip: '타원', Icon: Circle },
+            { type: 'roundRect' as const, tip: '둥근 사각형', Icon: Squircle },
+          ] as const
+        ).map(({ type, tip, Icon }) => {
+          const active =
+            placeMode?.kind === 'shape' && placeMode.shapeType === type;
+          return (
+            <TipButton
+              key={type}
+              tip={active ? '클릭 삽입 취소 (Esc)' : `${tip} 추가 — 캔버스를 클릭해 배치`}
+              className={`${btnClass} ${active ? `${btnActiveClass} shadow-inner` : ''}`}
+              pressed={active}
+              onClick={() => togglePlaceShape(type)}
+            >
+              <Icon size={14} />
+              <span className="truncate">{tip}</span>
+            </TipButton>
+          );
+        })}
+      </div>
     </div>
   );
 
@@ -843,47 +972,79 @@ export default function CoverSidebar({
                     </Tooltip.Portal>
                   </Tooltip.Root>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className={labelClass}>가운데 스냅</span>
-                  <Tooltip.Root>
-                    <Tooltip.Trigger asChild>
-                      <Switch.Root
-                        className={switchRootClass(centerSnapEnabled)}
-                        checked={centerSnapEnabled}
-                        onCheckedChange={(checked) => onCenterSnapEnabledChange?.(checked)}
-                        aria-label="가로·세로 가운데 스냅"
-                      >
-                        <Switch.Thumb className={switchThumbClass} />
-                      </Switch.Root>
-                    </Tooltip.Trigger>
-                    <Tooltip.Portal>
-                      <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
-                        가로·세로 가운데 스냅
-                        <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-                      </Tooltip.Content>
-                    </Tooltip.Portal>
-                  </Tooltip.Root>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={labelClass}>가운데 스냅</span>
+                    <Tooltip.Root>
+                      <Tooltip.Trigger asChild>
+                        <Switch.Root
+                          className={switchRootClass(centerSnapEnabled)}
+                          checked={centerSnapEnabled}
+                          onCheckedChange={(checked) => onCenterSnapEnabledChange?.(checked)}
+                          aria-label="가로·세로 가운데 스냅"
+                        >
+                          <Switch.Thumb className={switchThumbClass} />
+                        </Switch.Root>
+                      </Tooltip.Trigger>
+                      <Tooltip.Portal>
+                        <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
+                          가로·세로 가운데 스냅
+                          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                        </Tooltip.Content>
+                      </Tooltip.Portal>
+                    </Tooltip.Root>
+                  </div>
+                  <label className="block space-y-1">
+                    <span className="text-[10px] text-gray-400">허용 오차</span>
+                    <SliderWithScrubInput
+                      unit="css"
+                      suffix="px"
+                      min={0.1}
+                      max={100}
+                      step={0.1}
+                      value={centerSnapTolerance}
+                      disabled={!onCenterSnapToleranceChange}
+                      aria-label="가운데 스냅 허용 오차"
+                      onChange={(v) => onCenterSnapToleranceChange?.(v)}
+                    />
+                  </label>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className={labelClass}>개체 스냅</span>
-                  <Tooltip.Root>
-                    <Tooltip.Trigger asChild>
-                      <Switch.Root
-                        className={switchRootClass(objectSnapEnabled)}
-                        checked={objectSnapEnabled}
-                        onCheckedChange={(checked) => onObjectSnapEnabledChange?.(checked)}
-                        aria-label="개체 테두리·가운데선 스냅"
-                      >
-                        <Switch.Thumb className={switchThumbClass} />
-                      </Switch.Root>
-                    </Tooltip.Trigger>
-                    <Tooltip.Portal>
-                      <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
-                        다른 개체의 테두리·가운데선에 맞춤 (그룹은 통째로)
-                        <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-                      </Tooltip.Content>
-                    </Tooltip.Portal>
-                  </Tooltip.Root>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={labelClass}>개체 스냅</span>
+                    <Tooltip.Root>
+                      <Tooltip.Trigger asChild>
+                        <Switch.Root
+                          className={switchRootClass(objectSnapEnabled)}
+                          checked={objectSnapEnabled}
+                          onCheckedChange={(checked) => onObjectSnapEnabledChange?.(checked)}
+                          aria-label="개체 테두리·가운데선 스냅"
+                        >
+                          <Switch.Thumb className={switchThumbClass} />
+                        </Switch.Root>
+                      </Tooltip.Trigger>
+                      <Tooltip.Portal>
+                        <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
+                          다른 개체의 테두리·가운데선에 맞춤 (그룹은 통째로)
+                          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                        </Tooltip.Content>
+                      </Tooltip.Portal>
+                    </Tooltip.Root>
+                  </div>
+                  <label className="block space-y-1">
+                    <span className="text-[10px] text-gray-400">허용 오차</span>
+                    <SliderWithScrubInput
+                      unit="css"
+                      suffix="px"
+                      min={0.1}
+                      max={100}
+                      step={0.1}
+                      value={objectSnapTolerance}
+                      disabled={!onObjectSnapToleranceChange}
+                      aria-label="개체 스냅 허용 오차"
+                      onChange={(v) => onObjectSnapToleranceChange?.(v)}
+                    />
+                  </label>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className={labelClass}>텍스트 상자 표시</span>
@@ -923,7 +1084,7 @@ export default function CoverSidebar({
                     </Tooltip.Trigger>
                     <Tooltip.Portal>
                       <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
-                        텍스트·이미지 클릭 삽입 시 커서 위치에 반투명 미리보기 표시
+                        텍스트·이미지·도형 클릭 삽입 시 커서 위치에 반투명 미리보기 표시
                         <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
                       </Tooltip.Content>
                     </Tooltip.Portal>
@@ -1218,6 +1379,240 @@ export default function CoverSidebar({
               </CollapsibleSection>
             ) : null}
 
+            {selected && isCoverShapeElement(selected) ? (
+              <CollapsibleSection
+                title="선택 · 도형"
+                icon={Square}
+                open={sectionOpen.selection}
+                onToggle={() => toggleSection('selection')}
+              >
+                <ChatImageBackgroundPicker
+                  value={selected.fill}
+                  onChange={(fill) =>
+                    onChange(
+                      patchElement(cover, selected.id, {
+                        fill: fill || 'transparent',
+                      }),
+                    )
+                  }
+                  allowNone
+                  label="채우기"
+                  compact
+                />
+                <ChatImageBackgroundPicker
+                  value={selected.borderColor}
+                  onChange={(borderColor) =>
+                    onChange(
+                      patchElement(cover, selected.id, {
+                        borderColor: borderColor || 'transparent',
+                      }),
+                    )
+                  }
+                  allowNone
+                  label="테두리 색"
+                  compact
+                />
+                <label className="block space-y-1">
+                  <span className="text-[10px] text-gray-400">테두리 두께</span>
+                  <SliderWithScrubInput
+                    unit="css"
+                    suffix="px"
+                    min={0}
+                    max={40}
+                    step={1}
+                    value={selected.borderWidth}
+                    aria-label="테두리 두께"
+                    onChange={(borderWidth) =>
+                      onChange(patchElement(cover, selected.id, { borderWidth }))
+                    }
+                  />
+                </label>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-gray-400">테두리 스타일</span>
+                  <Select.Root
+                    value={selected.borderStyle}
+                    onValueChange={(value) => {
+                      if (value !== 'solid' && value !== 'dashed' && value !== 'dotted') {
+                        return;
+                      }
+                      onChange(
+                        patchElement(cover, selected.id, {
+                          borderStyle: value as CoverBorderStyle,
+                        }),
+                      );
+                    }}
+                  >
+                    <Select.Trigger
+                      aria-label="테두리 스타일"
+                      className="inline-flex h-8 w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-bg dark:text-odp-fg"
+                    >
+                      <Select.Value />
+                      <Select.Icon className="text-gray-500">
+                        <ChevronDown size={14} />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Content
+                        className="z-[10050] max-h-72 min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                        position="popper"
+                        sideOffset={4}
+                      >
+                        <Select.Viewport className="p-1">
+                          {(
+                            [
+                              { value: 'solid', label: '실선' },
+                              { value: 'dashed', label: '파선' },
+                              { value: 'dotted', label: '점선' },
+                            ] as const
+                          ).map((opt) => (
+                            <Select.Item
+                              key={opt.value}
+                              value={opt.value}
+                              className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-7 pr-3 text-xs text-gray-800 outline-none data-highlighted:bg-gray-100 dark:text-odp-fg dark:data-highlighted:bg-odp-focusBg"
+                            >
+                              <Select.ItemIndicator className="absolute left-1.5 inline-flex items-center">
+                                <Check size={12} />
+                              </Select.ItemIndicator>
+                              <Select.ItemText>{opt.label}</Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </Select.Viewport>
+                      </Select.Content>
+                    </Select.Portal>
+                  </Select.Root>
+                </div>
+                {selected.type === 'roundRect' ? (
+                  <label className="block space-y-1">
+                    <span className="text-[10px] text-gray-400">모서리 둥글기</span>
+                    <SliderWithScrubInput
+                      unit="percent"
+                      suffix="%"
+                      min={0}
+                      max={50}
+                      step={1}
+                      value={selected.cornerRadiusPct ?? 4}
+                      aria-label="모서리 둥글기"
+                      onChange={(cornerRadiusPct) =>
+                        onChange(patchElement(cover, selected.id, { cornerRadiusPct }))
+                      }
+                    />
+                  </label>
+                ) : null}
+                <label className="block space-y-1">
+                  <span className="text-[10px] text-gray-400">도형 안 텍스트</span>
+                  <textarea
+                    className="min-h-16 w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-bg dark:text-odp-fg"
+                    value={selected.text ?? ''}
+                    placeholder="선택 사항"
+                    onChange={(e) =>
+                      onChange(patchElement(cover, selected.id, { text: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-[10px] text-gray-400">안쪽 여백</span>
+                  <SliderWithScrubInput
+                    unit="percent"
+                    suffix="%"
+                    min={0}
+                    max={40}
+                    step={1}
+                    value={selected.paddingPct ?? 0}
+                    aria-label="도형 안쪽 여백"
+                    onChange={(paddingPct) =>
+                      onChange(patchElement(cover, selected.id, { paddingPct }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-[10px] text-gray-400">글자 크기</span>
+                  <SliderWithScrubInput
+                    unit="css"
+                    suffix="px"
+                    min={6}
+                    max={400}
+                    step={1}
+                    value={selected.fontSize ?? 24}
+                    aria-label="도형 글자 크기"
+                    onChange={(fontSize) =>
+                      onChange(patchElement(cover, selected.id, { fontSize }))
+                    }
+                  />
+                </label>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-gray-400">굵기 (font-weight)</span>
+                  <Select.Root
+                    value={coverFontWeightToSelectValue(selected.fontWeight ?? 'normal')}
+                    onValueChange={(value) =>
+                      onChange(
+                        patchElement(cover, selected.id, {
+                          fontWeight: selectValueToCoverFontWeight(value),
+                        }),
+                      )
+                    }
+                  >
+                    <Select.Trigger
+                      aria-label="도형 글자 굵기"
+                      className="inline-flex h-8 w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-bg dark:text-odp-fg"
+                    >
+                      <Select.Value />
+                      <Select.Icon className="text-gray-500">
+                        <ChevronDown size={14} />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Content
+                        className="z-[10050] max-h-72 min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                        position="popper"
+                        sideOffset={4}
+                      >
+                        <Select.Viewport className="p-1">
+                          {COVER_FONT_WEIGHT_OPTIONS.map((opt) => (
+                            <Select.Item
+                              key={opt.value}
+                              value={opt.value}
+                              className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-7 pr-3 text-xs text-gray-800 outline-none data-highlighted:bg-gray-100 dark:text-odp-fg dark:data-highlighted:bg-odp-focusBg"
+                            >
+                              <Select.ItemIndicator className="absolute left-1.5 inline-flex items-center">
+                                <Check size={12} />
+                              </Select.ItemIndicator>
+                              <Select.ItemText>{opt.label}</Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </Select.Viewport>
+                      </Select.Content>
+                    </Select.Portal>
+                  </Select.Root>
+                </div>
+                <div>
+                  <div className="mb-1 text-[10px] text-gray-400">텍스트 위치</div>
+                  <ShapeTextPlacementButtons
+                    textAlign={selected.textAlign ?? 'center'}
+                    textVAlign={selected.textVAlign ?? 'middle'}
+                    onTextAlignChange={(textAlign) =>
+                      onChange(patchElement(cover, selected.id, { textAlign }))
+                    }
+                    onTextVAlignChange={(textVAlign) =>
+                      onChange(patchElement(cover, selected.id, { textVAlign }))
+                    }
+                  />
+                </div>
+                <ChatImageBackgroundPicker
+                  value={selected.color ?? '#0c4a6e'}
+                  onChange={(color) =>
+                    onChange(
+                      patchElement(cover, selected.id, {
+                        color: color || '#0c4a6e',
+                      }),
+                    )
+                  }
+                  allowNone={false}
+                  label="글자색"
+                  compact
+                />
+              </CollapsibleSection>
+            ) : null}
+
             {selectedIds.length > 1 ? (
               <CollapsibleSection
                 title={`선택 · ${selectedIds.length}개`}
@@ -1252,6 +1647,8 @@ export default function CoverSidebar({
                           </Checkbox.Root>
                           {el.type === 'text' ? (
                             <Type size={12} className="shrink-0 text-gray-400" aria-hidden />
+                          ) : isCoverShapeElement(el) ? (
+                            <Square size={12} className="shrink-0 text-gray-400" aria-hidden />
                           ) : (
                             <ImagePlus size={12} className="shrink-0 text-gray-400" aria-hidden />
                           )}

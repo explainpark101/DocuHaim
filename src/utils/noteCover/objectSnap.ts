@@ -99,6 +99,9 @@ function bestAxisSnap(
 /**
  * Snap a moving selection box to peer object edges/centers (and optional frame midlines).
  * Peer groups are treated as a single bounding box.
+ *
+ * Prefer `*ThresholdPx` + `frameWidthPx` / `frameHeightPx` so snap distance is
+ * screen-isotropic; frame-% thresholds remain as a fallback.
  */
 export function snapBoundsToObjects(
   bounds: CoverSnapBounds,
@@ -106,13 +109,30 @@ export function snapBoundsToObjects(
   options: {
     objectSnapEnabled?: boolean;
     frameCenterSnapEnabled?: boolean;
+    /** Pixel snap distance for peer edges/centers. */
+    objectThresholdPx?: number;
+    /** Pixel snap distance for page midlines. */
+    frameCenterThresholdPx?: number;
+    frameWidthPx?: number;
+    frameHeightPx?: number;
+    /** @deprecated Prefer *ThresholdPx + frame size. */
     thresholdPct?: number;
+    /** @deprecated Prefer objectThresholdPx. */
+    objectThresholdPct?: number;
+    /** @deprecated Prefer frameCenterThresholdPx. */
+    frameCenterThresholdPct?: number;
   } = {},
 ): CoverObjectSnapResult {
   const {
     objectSnapEnabled = false,
     frameCenterSnapEnabled = false,
+    objectThresholdPx,
+    frameCenterThresholdPx,
+    frameWidthPx = 0,
+    frameHeightPx = 0,
     thresholdPct = COVER_CENTER_SNAP_THRESHOLD_PCT,
+    objectThresholdPct = thresholdPct,
+    frameCenterThresholdPct = thresholdPct,
   } = options;
 
   if (!objectSnapEnabled && !frameCenterSnapEnabled) {
@@ -124,6 +144,28 @@ export function snapBoundsToObjects(
     };
   }
 
+  const pxToPctX = (px: number) =>
+    frameWidthPx > 0 ? (px / frameWidthPx) * 100 : objectThresholdPct;
+  const pxToPctY = (px: number) =>
+    frameHeightPx > 0 ? (px / frameHeightPx) * 100 : objectThresholdPct;
+
+  const objectThreshX =
+    objectThresholdPx != null && frameWidthPx > 0
+      ? pxToPctX(objectThresholdPx)
+      : objectThresholdPct;
+  const objectThreshY =
+    objectThresholdPx != null && frameHeightPx > 0
+      ? pxToPctY(objectThresholdPx)
+      : objectThresholdPct;
+  const frameThreshX =
+    frameCenterThresholdPx != null && frameWidthPx > 0
+      ? pxToPctX(frameCenterThresholdPx)
+      : frameCenterThresholdPct;
+  const frameThreshY =
+    frameCenterThresholdPx != null && frameHeightPx > 0
+      ? pxToPctY(frameCenterThresholdPx)
+      : frameCenterThresholdPct;
+
   const moveLeft = bounds.x;
   const moveRight = bounds.x + bounds.w;
   const moveCx = bounds.x + bounds.w / 2;
@@ -131,46 +173,44 @@ export function snapBoundsToObjects(
   const moveBottom = bounds.y + bounds.h;
   const moveCy = bounds.y + bounds.h / 2;
 
-  const targetXs: number[] = [];
-  const targetYs: number[] = [];
-
-  if (frameCenterSnapEnabled) {
-    targetXs.push(50);
-    targetYs.push(50);
-  }
-
+  const peerXs: number[] = [];
+  const peerYs: number[] = [];
   if (objectSnapEnabled) {
     for (const peer of peers) {
-      targetXs.push(peer.x, peer.x + peer.w / 2, peer.x + peer.w);
-      targetYs.push(peer.y, peer.y + peer.h / 2, peer.y + peer.h);
+      peerXs.push(peer.x, peer.x + peer.w / 2, peer.x + peer.w);
+      peerYs.push(peer.y, peer.y + peer.h / 2, peer.y + peer.h);
     }
   }
 
-  // Frame-center mode alone: only snap selection center to midlines (legacy feel).
+  // Frame-center mode alone: only snap selection center to midlines.
   // With object snap: allow edge↔edge, edge↔center, center↔center.
-  const movingXs = objectSnapEnabled
-    ? [moveLeft, moveCx, moveRight]
-    : [moveCx];
-  const movingYs = objectSnapEnabled
-    ? [moveTop, moveCy, moveBottom]
-    : [moveCy];
+  const objectMovingXs = [moveLeft, moveCx, moveRight];
+  const objectMovingYs = [moveTop, moveCy, moveBottom];
 
-  // When only frame center is on, still only center→50.
-  const xTargets = objectSnapEnabled
-    ? targetXs
-    : frameCenterSnapEnabled
-      ? [50]
-      : [];
-  const yTargets = objectSnapEnabled
-    ? targetYs
-    : frameCenterSnapEnabled
-      ? [50]
-      : [];
+  const objectX = objectSnapEnabled
+    ? bestAxisSnap(objectMovingXs, peerXs, objectThreshX)
+    : null;
+  const objectY = objectSnapEnabled
+    ? bestAxisSnap(objectMovingYs, peerYs, objectThreshY)
+    : null;
+  const frameX = frameCenterSnapEnabled
+    ? bestAxisSnap([moveCx], [50], frameThreshX)
+    : null;
+  const frameY = frameCenterSnapEnabled
+    ? bestAxisSnap([moveCy], [50], frameThreshY)
+    : null;
 
-  // If both on: object targets include peer lines; also include 50 for center.
-  // moving lines include edges+center when object snap on.
-  const xSnap = bestAxisSnap(movingXs, xTargets, thresholdPct);
-  const ySnap = bestAxisSnap(movingYs, yTargets, thresholdPct);
+  const pick = (
+    a: AxisCandidate | null,
+    b: AxisCandidate | null,
+  ): AxisCandidate | null => {
+    if (!a) return b;
+    if (!b) return a;
+    return Math.abs(a.delta) <= Math.abs(b.delta) ? a : b;
+  };
+
+  const xSnap = pick(objectX, frameX);
+  const ySnap = pick(objectY, frameY);
 
   let x = bounds.x + (xSnap?.delta ?? 0);
   let y = bounds.y + (ySnap?.delta ?? 0);

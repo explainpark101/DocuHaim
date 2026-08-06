@@ -1,12 +1,16 @@
 export type {
   CoverAlign,
   CoverBackground,
+  CoverBorderStyle,
   CoverElement,
   CoverGroup,
   CoverImageElement,
   CoverLayout,
+  CoverShapeElement,
+  CoverShapeType,
   CoverTextAlign,
   CoverTextElement,
+  CoverTextVAlign,
   NoteCover,
 } from '@/utils/noteCover/types';
 export {
@@ -15,8 +19,11 @@ export {
   DEFAULT_COVER_LAYOUT,
   coverElementLabel,
   createCoverImageElement,
+  createCoverShapeElement,
   createCoverTextElement,
   createDefaultNoteCover,
+  isCoverShapeElement,
+  isCoverShapeType,
 } from '@/utils/noteCover/types';
 export {
   escapeCoverJsonForComment,
@@ -57,14 +64,20 @@ export {
   COVER_OBJECT_SNAP_STORAGE_KEY,
   COVER_PLACE_PREVIEW_KEY,
   COVER_TEXT_CONTAINER_OUTLINE_KEY,
+  COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
+  COVER_OBJECT_SNAP_TOLERANCE_DEFAULT,
   loadCoverCenterSnapEnabled,
   loadCoverObjectSnapEnabled,
   loadCoverPlacePreviewEnabled,
   loadCoverTextContainerOutlineEnabled,
+  loadCoverCenterSnapTolerance,
+  loadCoverObjectSnapTolerance,
   saveCoverCenterSnapEnabled,
   saveCoverObjectSnapEnabled,
   saveCoverPlacePreviewEnabled,
   saveCoverTextContainerOutlineEnabled,
+  saveCoverCenterSnapTolerance,
+  saveCoverObjectSnapTolerance,
 } from '@/utils/noteCover/snapSettings';
 export {
   collectObjectSnapTargets,
@@ -94,6 +107,12 @@ export {
   sharedGroupIdForSelection,
   duplicateElements,
   ungroupElements,
+  isElementEffectivelyLocked,
+  isGroupEffectivelyLocked,
+  isLayerDirectlyLocked,
+  setLayerLocked,
+  toggleLayerLocked,
+  filterUnlockedElementIds,
 } from '@/utils/noteCover/layers';
 export type { CoverLayerRow } from '@/utils/noteCover/layers';
 export {
@@ -132,3 +151,9 @@ export {
   withCoverImageNaturalMetrics,
 } from '@/utils/noteCover/imageAspect';
 export type { CoverResizeHandle } from '@/utils/noteCover/imageAspect';
+export {
+  coverShapeShellStyle,
+  coverShapeTextBoxStyle,
+  coverShapeTextContentStyle,
+  coverShapeTextStyle,
+} from '@/utils/noteCover/shapeStyle';

@@ -43,6 +43,35 @@ export function parseViewPathFromAppPathname(pathname: string): string | null {
   return null;
 }
 
+/** Storage path from `/export-pdf/<path>` (same encoding as `/view/<path>`). */
+export function parseExportPdfPathFromAppPathname(pathname: string): string | null {
+  const normalized = stripAppBase(pathname);
+  const idx = normalized.indexOf('/export-pdf/');
+  if (idx >= 0) {
+    const rest = normalized.slice(idx + '/export-pdf/'.length);
+    return rest ? decodePath(rest) : null;
+  }
+  return null;
+}
+
+export function isExportPdfAppPathname(pathname: string): boolean {
+  const normalized = stripAppBase(pathname);
+  return normalized === '/export-pdf' || normalized.startsWith('/export-pdf/');
+}
+
+/** App pathname for print preview of a storage note (`/export-pdf/...`). */
+export function exportPdfPathnameForStoragePath(storagePath: string | null | undefined): string {
+  const p = String(storagePath || '').replace(/^\/+/, '');
+  return p ? `/export-pdf/${p}` : '/export-pdf';
+}
+
+/** Open-note path from either `/view/...` or `/export-pdf/...`. */
+export function parseOpenNotePathFromAppPathname(pathname: string): string | null {
+  return (
+    parseExportPdfPathFromAppPathname(pathname) ?? parseViewPathFromAppPathname(pathname)
+  );
+}
+
 export function isChatAppPathname(pathname: string): boolean {
   const normalized = stripAppBase(pathname);
   return normalized === '/chat' || normalized.endsWith('/chat');

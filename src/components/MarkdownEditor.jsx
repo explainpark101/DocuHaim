@@ -17,6 +17,7 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
+import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   EDITOR_ACTION_COMMANDS,
@@ -24,6 +25,7 @@ import {
 } from '@/utils/advancedSearch/editorActions';
 import { subscribeOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
@@ -483,7 +485,7 @@ export default function MarkdownEditor({
     const content = valueRef.current ?? '';
     const file = currentFileRef.current;
     setPendingPrintReturnState({ currentFile: file, editorContent: content });
-    navigate('/export-pdf', {
+    navigate(exportPdfPathnameForStoragePath(file?.id), {
       state: {
         value: content,
         theme: themeRef.current === 'dark' ? 'dark' : 'light',
@@ -1490,6 +1492,7 @@ export default function MarkdownEditor({
         defToolbars={defToolbars}
         onUploadImg={onUploadImg}
       />
+      <MdEditorToolbarTooltips containerRef={containerRef} />
       <WikiImageSizeModal
         key={
           wikiImageModalState

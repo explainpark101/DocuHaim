@@ -7,6 +7,7 @@ import {
   ensureLayerTree,
   flattenLayerTree,
   getGroup,
+  isGroupId,
   moveLayerInParent,
   moveLayerRelative,
   registerNewElement,
@@ -366,6 +367,90 @@ export function renameElement(
       return next;
     }),
   };
+}
+
+/** Own `locked` flag on an element or group (ignores ancestors). */
+export function isLayerDirectlyLocked(cover: NoteCover, id: string): boolean {
+  const group = getGroup(cover, id);
+  if (group) return group.locked === true;
+  const el = cover.elements.find((item) => item.id === id);
+  return el?.locked === true;
+}
+
+/** True if element is locked or sits under a locked ancestor group. */
+export function isElementEffectivelyLocked(
+  cover: NoteCover,
+  el: CoverElement | string,
+): boolean {
+  const element =
+    typeof el === 'string' ? cover.elements.find((item) => item.id === el) : el;
+  if (!element) return false;
+  if (element.locked === true) return true;
+  let gid = element.groupId;
+  const seen = new Set<string>();
+  while (gid && !seen.has(gid)) {
+    seen.add(gid);
+    const group = getGroup(cover, gid);
+    if (!group) break;
+    if (group.locked === true) return true;
+    gid = group.parentGroupId;
+  }
+  return false;
+}
+
+/** True if group is locked or an ancestor group is locked. */
+export function isGroupEffectivelyLocked(cover: NoteCover, groupId: string): boolean {
+  let gid: string | undefined = groupId;
+  const seen = new Set<string>();
+  while (gid && !seen.has(gid)) {
+    seen.add(gid);
+    const group = getGroup(cover, gid);
+    if (!group) break;
+    if (group.locked === true) return true;
+    gid = group.parentGroupId;
+  }
+  return false;
+}
+
+export function setLayerLocked(
+  cover: NoteCover,
+  id: string,
+  locked: boolean,
+): NoteCover {
+  if (isGroupId(cover, id)) {
+    return {
+      ...cover,
+      groups: (cover.groups ?? []).map((g) => {
+        if (g.id !== id) return g;
+        const next = { ...g };
+        if (locked) next.locked = true;
+        else delete next.locked;
+        return next;
+      }),
+    };
+  }
+  return {
+    ...cover,
+    elements: cover.elements.map((el) => {
+      if (el.id !== id) return el;
+      const next = { ...el };
+      if (locked) next.locked = true;
+      else delete next.locked;
+      return next;
+    }),
+  };
+}
+
+export function toggleLayerLocked(cover: NoteCover, id: string): NoteCover {
+  return setLayerLocked(cover, id, !isLayerDirectlyLocked(cover, id));
+}
+
+/** Drop locked (effective) element ids from a move/nudge selection. */
+export function filterUnlockedElementIds(
+  cover: NoteCover,
+  ids: ReadonlyArray<string>,
+): string[] {
+  return ids.filter((id) => !isElementEffectivelyLocked(cover, id));
 }
 
 export { createEmptyGroup, registerNewElement };

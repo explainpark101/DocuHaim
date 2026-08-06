@@ -6,7 +6,7 @@
 
 ```html
 <!-- note-cover
-{"v":1,"enabled":true,"layout":{…},"bg":{…},"rootLayerIds":[…],"groups":[…],"elements":[…]}
+{"v":2,"enabled":true,"layout":{…},"bg":{…},"rootLayerIds":[…],"groups":[…],"elements":[…]}
 -->
 ```
 
@@ -45,16 +45,16 @@ Canonical serialize:
 
 `upsert`: replace/remove leading comment; if cover is null, return body only; else `comment + "\n" + body` (strip BOM from body).
 
-### 3. JSON schema (`NoteCover`, `v = 1`)
+### 3. JSON schema (`NoteCover`, `v = 2`)
 
 ```ts
 type NoteCover = {
-  v: 1;
+  v: 2;
   enabled: boolean;           // default true; only false when explicitly false
   layout: {
     align: 'left' | 'center' | 'right';  // default 'center'
-    containerWidthPct: number;           // clamp 10–100, default 80
-    gapPct: number;                      // clamp 0–40, default 2
+    containerWidthPct: number;           // always normalized to 100
+    gapPx: number;                       // clamp 0–400; legacy gapPct ≈ A4@96dpi
   };
   bg: {
     color: string;      // non-empty trim or default '#ffffff'
@@ -70,7 +70,11 @@ type CoverGroup = {
   name: string;
   parentGroupId?: string;
   childIds: string[];      // front-first children
+  locked?: boolean;        // only store when true; locks descendants on canvas
 };
+
+type CoverShapeType = 'rect' | 'ellipse' | 'roundRect';
+type CoverBorderStyle = 'solid' | 'dashed' | 'dotted';
 
 type CoverElement =
   | {
@@ -78,6 +82,7 @@ type CoverElement =
       type: 'text';
       name?: string;
       groupId?: string;
+      locked?: boolean;      // only store when true
       x: number; y: number; w: number; h: number;  // % of content frame; clamp
       text: string;
       fontSize: number;       // clamp 6–400
@@ -91,18 +96,49 @@ type CoverElement =
       type: 'image';
       name?: string;
       groupId?: string;
+      locked?: boolean;
       x: number; y: number; w: number; h: number;
       path: string;           // required non-empty
       lockAspect?: boolean;   // only store when true
       naturalAspect?: number; // > 0 if known
+    }
+  | {
+      id: string;
+      type: CoverShapeType;
+      name?: string;
+      groupId?: string;
+      locked?: boolean;
+      x: number; y: number; w: number; h: number;
+      fill: string;                 // default '#e0f2fe'
+      borderColor: string;          // default '#0284c7'
+      borderWidth: number;          // CSS px; clamp 0–40
+      borderStyle: CoverBorderStyle;
+      cornerRadiusPct?: number;     // roundRect only; clamp 0–50
+      text?: string;                // optional in-shape text
+      textAlign?: 'left' | 'center' | 'right';
+      textVAlign?: 'top' | 'middle' | 'bottom';  // default middle when placing
+      fontSize?: number;            // clamp 6–400
+      color?: string;
+      fontWeight?: number | 'normal' | 'bold';
+      fontFamily?: string;
+      paddingPct?: number;          // % of shape box; clamp 0–40
     };
 ```
 
 **Normalize on read** (`normalizeNoteCover`):
 
+- Always write/emit `v: 2` after normalize (v1 payloads accepted).
 - Unknown / invalid elements dropped; missing `id` → `cover-el-{index}`.
-- Position defaults (if missing): text ≈ `(10,20,80,12)`, image ≈ `(20,40,50,35)`; `x,y` clamp 0–100; `w,h` clamp 1–100.
+- Position defaults (if missing): text ≈ `(10,20,80,12)`, image ≈ `(20,40,50,35)`, shape ≈ `(10,20,80,30)`; `x,y` clamp 0–100; `w,h` clamp 1–100.
 - Orphan `groupId`s get synthetic groups; then `ensureLayerTree` repairs `rootLayerIds` / `childIds` consistency (host must keep a valid layer tree; see `layerTree.ts`).
+- `locked: true` on an element or group blocks canvas move/resize/in-place edit (group lock applies to descendants). Editor shows a yellow ring on locked elements only while selected; omit `locked` when false.
+
+**Shape render notes**
+
+- `rect`: square corners; `ellipse`: `border-radius: 50%`; `roundRect`: `border-radius: {cornerRadiusPct}%`.
+- Fill/border must survive print (`print-color-adjust: exact` on `.export-pdf-cover` and `[data-cover-shape]`).
+- In-shape text is optional CSS text inside the padded box (not Markdown).
+- Text placement: `textAlign` (horizontal) + `textVAlign` (vertical via flex `justify-content`).
 
 ### 4. Host responsibilities
 
@@ -119,6 +155,7 @@ Image `path` / `bg.imagePath` are storage keys; URL resolution is host-specific 
 - Cover mid-document (leading only)
 - Unversioned free-form HTML cover blocks
 - Emitting `<h7>`-style invalid HTML for cover text (cover is not Markdown)
+- Freehand / path shapes, connectors, animations, multi-slide
 
 ## 구현
 
@@ -126,6 +163,7 @@ Image `path` / `bg.imagePath` are storage keys; URL resolution is host-specific 
 |------|------|
 | 파서·직렬화 | `src/utils/noteCover/parse.ts` |
 | 타입 | `src/utils/noteCover/types.ts` |
+| 도형 스타일 | `src/utils/noteCover/shapeStyle.ts` |
 | 레이어 트리 | `src/utils/noteCover/layerTree.ts` |
 | 에디터 UI | `src/components/noteCover/*` |
 | Export | `src/pages/ExportPDFPage.jsx` |

@@ -39,6 +39,7 @@ export type AppCommandId =
   | 'settings-wiki-image'
   | 'settings-snippets'
   | 'settings-webfonts'
+  | 'settings-cover'
   | 'settings-app-update'
   | 'chat'
   | 'chat-settings'
@@ -248,6 +249,22 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       'css',
       '폰트',
       '표지 폰트',
+    ],
+  },
+  {
+    id: 'settings-cover',
+    title: '설정 · 표지 편집',
+    description: '표지 스냅·미리보기 옵션',
+    path: '/settings#settings-cover',
+    keywords: [
+      '표지',
+      'cover',
+      '스냅',
+      'snap',
+      'tolerance',
+      '허용 오차',
+      '개체 스냅',
+      '가운데 스냅',
     ],
   },
   {

@@ -57,6 +57,7 @@ import {
 } from '@/utils/wikiImageSyntax';
 import { useNavigate } from 'react-router';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import '@/styles/novel-editor.css';
 
@@ -267,7 +268,9 @@ export default function NovelMarkdownEditor({
         md = '';
       }
       setPendingPrintReturnState({ currentFile, editorContent: md });
-      navigate('/export-pdf', { state: { value: md, theme, currentFile } });
+      navigate(exportPdfPathnameForStoragePath(currentFile?.id), {
+        state: { value: md, theme, currentFile },
+      });
     },
     [navigate, theme, currentFile],
   );

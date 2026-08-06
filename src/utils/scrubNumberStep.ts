@@ -1,6 +1,6 @@
 /**
- * Chrome DevTools CSS number scrub steps:
- * none → 1, Alt → 0.1, Shift → 10, Ctrl/Cmd → 100
+ * Chrome DevTools CSS number scrub multipliers (relative to the control's `step`):
+ * none → 1×, Alt → 0.1×, Shift → 10×, Ctrl/Cmd → 100×
  * @see https://developer.chrome.com/docs/devtools/shortcuts
  */
 export function getChromeDevToolsNumberStep(mods: {
@@ -13,6 +13,21 @@ export function getChromeDevToolsNumberStep(mods: {
   if (mods.shiftKey) return 10;
   if (mods.ctrlKey || mods.metaKey) return 100;
   return 1;
+}
+
+/**
+ * Effective scrub delta for wheel / arrow keys.
+ * `css` multiplies DevTools modifiers by `step` so step={0.1} nudges by 0.1 (not 1).
+ * `percent` stays ±1 regardless of step.
+ */
+export function getScrubStepForEvent(
+  unit: 'percent' | 'css',
+  mods: { altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+  step: number,
+): number {
+  if (unit === 'percent') return getPercentScrubStep();
+  const base = Number.isFinite(step) && step > 0 ? step : 1;
+  return base * getChromeDevToolsNumberStep(mods);
 }
 
 /** Percent scrub: always ±1 per notch (no modifier scaling). */

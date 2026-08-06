@@ -36,6 +36,8 @@ import {
   FolderOpen,
   FolderPlus,
   Group,
+  Lock,
+  LockOpen,
   Trash2,
   Ungroup,
 } from 'lucide-react';
@@ -52,6 +54,7 @@ import {
   getGroup,
   groupSelectedElements,
   isGroupId,
+  isLayerDirectlyLocked,
   moveLayerRelative,
   moveLayerToRoot,
   moveLayerZ,
@@ -59,6 +62,7 @@ import {
   renameGroup,
   sendLayersToBack,
   sendSelectionToBack,
+  toggleLayerLocked,
   ungroupElements,
 } from '@/utils/noteCover';
 import type { NoteCover } from '@/utils/noteCover/types';
@@ -147,6 +151,7 @@ function LayerContextMenu({
 
   const canGroup = kind === 'element' && selectionForTarget.length >= 1;
   const canUngroup = Boolean(sharedGroup);
+  const directlyLocked = isLayerDirectlyLocked(cover, targetId);
 
   return (
     <ContextMenu.Root>
@@ -156,6 +161,14 @@ function LayerContextMenu({
           className={menuContentClass}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
+          <ContextMenu.Item
+            className={menuItemClass}
+            onSelect={() => onChange(toggleLayerLocked(cover, targetId))}
+          >
+            {directlyLocked ? <LockOpen size={14} /> : <Lock size={14} />}
+            {directlyLocked ? '잠금 해제' : '잠금'}
+          </ContextMenu.Item>
+          <ContextMenu.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderStrong" />
           <ContextMenu.Item
             className={menuItemClass}
             disabled={!canGroup}
@@ -307,6 +320,7 @@ function SortableLayerRow({
     !groupSelected &&
     memberIds.some((mid) => selectedSet.has(mid));
   const elementActive = kind === 'element' && selectedSet.has(id);
+  const directlyLocked = isLayerDirectlyLocked(cover, id);
 
   const rowClass = `${layerRowBase} relative ${
     kind === 'group'
@@ -318,7 +332,26 @@ function SortableLayerRow({
       : elementActive
         ? layerRowActive
         : ''
-  }`;
+  } ${directlyLocked ? 'ring-1 ring-inset ring-yellow-400/80' : ''}`;
+
+  const lockToggle = (
+    <span
+      role="button"
+      tabIndex={-1}
+      className={`shrink-0 rounded p-0.5 hover:bg-gray-200 dark:hover:bg-odp-borderStrong ${
+        directlyLocked ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-400'
+      }`}
+      title={directlyLocked ? '잠금 해제' : '잠금'}
+      aria-label={directlyLocked ? '잠금 해제' : '잠금'}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(toggleLayerLocked(cover, id));
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {directlyLocked ? <Lock size={12} /> : <LockOpen size={12} />}
+    </span>
+  );
 
   const indicator =
     dropHint === 'before' ? (
@@ -373,6 +406,7 @@ function SortableLayerRow({
             {memberIds.length}
           </span>
         </button>
+        {lockToggle}
       </div>
     ) : element ? (
       <button
@@ -394,11 +428,12 @@ function SortableLayerRow({
       >
         {indicator}
         <span className="w-3 shrink-0 text-center text-[10px] opacity-60">
-          {element.type === 'text' ? 'T' : 'I'}
+          {element.type === 'text' ? 'T' : element.type === 'image' ? 'I' : 'S'}
         </span>
-        <span className="truncate">{coverElementLabel(element)}</span>
+        <span className="min-w-0 flex-1 truncate">{coverElementLabel(element)}</span>
+        {lockToggle}
         {selectedIds.length === 1 && selectedIds[0] === id ? (
-          <span className="ml-auto flex shrink-0 gap-0.5">
+          <span className="flex shrink-0 gap-0.5">
             <span
               role="button"
               tabIndex={-1}

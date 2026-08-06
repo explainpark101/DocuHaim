@@ -25,6 +25,16 @@ import {
   saveTreeStickyFolderPathEnabled,
 } from '@/utils/treeStickySettings';
 import {
+  loadCoverCenterSnapEnabled,
+  loadCoverObjectSnapEnabled,
+  loadCoverPlacePreviewEnabled,
+  loadCoverTextContainerOutlineEnabled,
+  saveCoverCenterSnapEnabled,
+  saveCoverObjectSnapEnabled,
+  saveCoverPlacePreviewEnabled,
+  saveCoverTextContainerOutlineEnabled,
+} from '@/utils/noteCover/snapSettings';
+import {
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
 } from './settings';
@@ -39,7 +49,11 @@ export type SettingsToggleId =
   | 'settings-composer-helper'
   | 'settings-as-animation'
   | 'settings-as-index'
-  | 'settings-as-include-other';
+  | 'settings-as-include-other'
+  | 'settings-cover-center-snap'
+  | 'settings-cover-object-snap'
+  | 'settings-cover-text-outline'
+  | 'settings-cover-place-preview';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -152,6 +166,42 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     save: (v) => {
       advancedSearchEngine.setIncludeOtherFiles(v);
     },
+  },
+  {
+    id: 'settings-cover-center-snap',
+    enableTitle: '표지 가운데 스냅 켜기',
+    disableTitle: '표지 가운데 스냅 끄기',
+    description: '표지 편집 드래그 시 페이지 중앙선 스냅',
+    keywords: ['cover', '표지', 'snap', '스냅', 'center', '가운데', '중앙'],
+    load: loadCoverCenterSnapEnabled,
+    save: saveCoverCenterSnapEnabled,
+  },
+  {
+    id: 'settings-cover-object-snap',
+    enableTitle: '표지 개체 스냅 켜기',
+    disableTitle: '표지 개체 스냅 끄기',
+    description: '표지 편집 드래그 시 다른 개체 테두리·가운데선 스냅',
+    keywords: ['cover', '표지', 'snap', '스냅', 'object', '개체', '정렬'],
+    load: loadCoverObjectSnapEnabled,
+    save: saveCoverObjectSnapEnabled,
+  },
+  {
+    id: 'settings-cover-text-outline',
+    enableTitle: '표지 텍스트 상자 표시 켜기',
+    disableTitle: '표지 텍스트 상자 표시 끄기',
+    description: '표지 편집에서 모든 텍스트 상자 테두리 표시',
+    keywords: ['cover', '표지', 'text', '텍스트', 'outline', '상자', '테두리'],
+    load: loadCoverTextContainerOutlineEnabled,
+    save: saveCoverTextContainerOutlineEnabled,
+  },
+  {
+    id: 'settings-cover-place-preview',
+    enableTitle: '표지 삽입 미리보기 켜기',
+    disableTitle: '표지 삽입 미리보기 끄기',
+    description: '표지 삽입 모드 반투명 고스트 미리보기',
+    keywords: ['cover', '표지', 'place', 'preview', '미리보기', '삽입', '고스트'],
+    load: loadCoverPlacePreviewEnabled,
+    save: saveCoverPlacePreviewEnabled,
   },
 ] as const;
 
