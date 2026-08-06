@@ -1,6 +1,8 @@
 import {
   collectDescendantElementIds,
   ensureLayerTree,
+  findLayerParent,
+  getChildIds,
   isGroupId,
 } from '@/utils/noteCover/layerTree';
 import { getSelectionBounds } from '@/utils/noteCover/layers';
@@ -55,8 +57,11 @@ function unitMemberIds(cover: NoteCover, layerId: string): string[] {
 }
 
 /**
- * Root-level snap targets: each root layer is one unit (group = bbox, not children).
- * Units that intersect the moving element set are excluded.
+ * Snap targets for a moving selection.
+ * - Root layers: each is one unit (group = bbox). Units that contain any moving
+ *   element are skipped (same as before).
+ * - Inside groups: when only part of a group moves, sibling child units under
+ *   that parent (and partial ancestors) are also snap targets.
  */
 export function collectObjectSnapTargets(
   cover: NoteCover,
@@ -65,13 +70,49 @@ export function collectObjectSnapTargets(
   const tree = ensureLayerTree(cover);
   const moving = new Set(movingElementIds);
   const out: CoverSnapBounds[] = [];
+  const seen = new Set<string>();
+
+  const maybeAddUnit = (layerId: string) => {
+    if (seen.has(layerId)) return;
+    const members = unitMemberIds(tree, layerId);
+    if (!members.length) return;
+    if (members.some((m) => moving.has(m))) return;
+    const bounds = unitBoundsFromLayerId(tree, layerId);
+    if (!bounds) return;
+    seen.add(layerId);
+    out.push(bounds);
+  };
+
   for (const id of tree.rootLayerIds ?? []) {
-    const members = unitMemberIds(tree, id);
-    if (!members.length) continue;
-    if (members.some((m) => moving.has(m))) continue;
-    const bounds = unitBoundsFromLayerId(tree, id);
-    if (bounds) out.push(bounds);
+    maybeAddUnit(id);
   }
+
+  // Partial in-group moves: snap to siblings under each ancestor group that is
+  // not wholly included in the moving set.
+  const ancestorGroups = new Set<string>();
+  for (const id of movingElementIds) {
+    const el = tree.elements.find((e) => e.id === id);
+    let parent = el?.groupId ?? null;
+    while (parent) {
+      ancestorGroups.add(parent);
+      const nextParent = findLayerParent(tree, parent);
+      parent = nextParent == null ? null : nextParent;
+    }
+  }
+
+  for (const groupId of ancestorGroups) {
+    const descendants = collectDescendantElementIds(tree, groupId);
+    if (
+      descendants.length > 0
+      && descendants.every((mid) => moving.has(mid))
+    ) {
+      continue;
+    }
+    for (const childId of getChildIds(tree, groupId)) {
+      maybeAddUnit(childId);
+    }
+  }
+
   return out;
 }
 

@@ -56,7 +56,6 @@ import {
   createEmptyGroup,
   deleteLayers,
   ensureLayerTree,
-  expandIdsToGroups,
   flattenLayerTree,
   getGroup,
   groupSelectedElements,
@@ -222,7 +221,7 @@ function LayerNameEditor({
   return (
     <input
       ref={inputRef}
-      className="min-w-0 flex-1 rounded border border-blue-400 bg-white px-1 py-0 text-[11px] text-gray-900 outline-none placeholder:text-gray-400 dark:border-blue-500 dark:bg-odp-bg dark:text-odp-fgStrong dark:placeholder:text-gray-500"
+      className="min-w-0 flex-1 rounded border border-blue-400 bg-white px-1 py-0 text-[11px] text-gray-900 outline-none select-text placeholder:text-gray-400 dark:border-blue-500 dark:bg-odp-bg dark:text-odp-fgStrong dark:placeholder:text-gray-500"
       value={draft}
       placeholder={placeholder}
       aria-label="레이어 이름"
@@ -529,6 +528,7 @@ function SortableLayerRow({
     <span
       role="button"
       tabIndex={-1}
+      data-no-dnd
       className={`shrink-0 rounded p-0.5 hover:bg-gray-200 dark:hover:bg-odp-borderStrong ${
         directlyLocked ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-400'
       }`}
@@ -553,12 +553,22 @@ function SortableLayerRow({
       <div className="pointer-events-none absolute inset-0 z-10 rounded ring-2 ring-inset ring-blue-400/70" />
     ) : null;
 
+  const onRowClick = (e: MouseEvent) => {
+    if (isRenaming) return;
+    if (e.target instanceof Element && e.target.closest('[data-no-dnd]')) return;
+    if (kind === 'group') onSelectGroup(id, e);
+    else onSelectElement(id, e);
+  };
+
   const body =
     kind === 'group' && group ? (
       <div
         ref={setNodeRef}
         style={style}
-        className={rowClass}
+        className={`${rowClass} cursor-grab active:cursor-grabbing`}
+        aria-selected={groupSelected}
+        role="option"
+        onClick={onRowClick}
         {...dragProps}
       >
         {indicator}
@@ -569,47 +579,34 @@ function SortableLayerRow({
             e.stopPropagation();
             onToggleCollapse();
           }}
-          onPointerDown={(e) => e.stopPropagation()}
           aria-label={collapsed ? '그룹 펼치기' : '그룹 접기'}
         >
           {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
         </button>
-        <div
-          className="flex min-w-0 flex-1 items-center gap-1"
-          onClick={(e) => {
-            if (isRenaming) return;
-            onSelectGroup(id, e);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <FolderOpen size={12} className="shrink-0 opacity-70" />
-          <LayerNameEditor
-            displayValue={group.name}
-            editValue={group.name}
-            isEditing={isRenaming}
-            className="truncate font-medium"
-            onStartEdit={() => onStartRename(id)}
-            onCommit={commitRename}
-            onCancel={onFinishRename}
-          />
-          {!isRenaming ? (
-            <span className="shrink-0 text-[9px] text-gray-400">
-              {memberIds.length}
-            </span>
-          ) : null}
-        </div>
+        <FolderOpen size={12} className="shrink-0 opacity-70" />
+        <LayerNameEditor
+          displayValue={group.name}
+          editValue={group.name}
+          isEditing={isRenaming}
+          className="min-w-0 flex-1 truncate font-medium"
+          onStartEdit={() => onStartRename(id)}
+          onCommit={commitRename}
+          onCancel={onFinishRename}
+        />
+        {!isRenaming ? (
+          <span className="shrink-0 text-[9px] text-gray-400">
+            {memberIds.length}
+          </span>
+        ) : null}
         {lockToggle}
       </div>
     ) : element ? (
       <div
         ref={setNodeRef}
         style={style}
-        className={rowClass}
+        className={`${rowClass} cursor-grab active:cursor-grabbing`}
         aria-selected={elementActive}
-        onClick={(e) => {
-          if (isRenaming) return;
-          onSelectElement(id, e);
-        }}
+        onClick={onRowClick}
         {...dragProps}
         role="option"
       >
@@ -635,7 +632,6 @@ function SortableLayerRow({
                 e.stopPropagation();
                 onChange(moveLayerZ(cover, id, 1));
               }}
-              onPointerDown={(e) => e.stopPropagation()}
             >
               ↑
             </span>
@@ -647,7 +643,6 @@ function SortableLayerRow({
                 e.stopPropagation();
                 onChange(moveLayerZ(cover, id, -1));
               }}
-              onPointerDown={(e) => e.stopPropagation()}
             >
               ↓
             </span>
@@ -670,7 +665,8 @@ function SortableLayerRow({
       onStartRename={onStartRename}
     >
       <Motion.div
-        layout={!isRenaming}
+        // Position-only: avoid size "slime" when the sidebar width changes.
+        layout={isRenaming ? false : 'position'}
         transition={{ duration: 0.18, ease: 'easeOut' }}
       >
         {body}
@@ -719,6 +715,8 @@ export default function CoverLayerPanel({
   const [placement, setPlacement] = useState<Placement>('before');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const pointerYRef = useRef<number | null>(null);
+  /** Layer id actually moved (group when selection covers a full group). */
+  const dragLayerIdRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -731,18 +729,19 @@ export default function CoverLayerPanel({
     }
   }, [flat, renamingId]);
 
-  const elementIdsForLayerItem = (itemId: string, altKey: boolean): string[] => {
+  /** Layer list selects elements as-is; group rows still select all descendants. */
+  const elementIdsForLayerItem = (itemId: string): string[] => {
     if (isGroupId(tree, itemId)) {
       return collectDescendantElementIds(cover, itemId);
     }
-    return altKey ? [itemId] : expandIdsToGroups(cover, [itemId], 'immediate');
+    return [itemId];
   };
 
-  const selectRangeBetween = (fromLayerId: string, toLayerId: string, altKey: boolean) => {
+  const selectRangeBetween = (fromLayerId: string, toLayerId: string) => {
     const a = flat.findIndex((f) => f.id === fromLayerId);
     const b = flat.findIndex((f) => f.id === toLayerId);
     if (a < 0 || b < 0) {
-      onSelectIds(elementIdsForLayerItem(toLayerId, altKey));
+      onSelectIds(elementIdsForLayerItem(toLayerId));
       return;
     }
     const lo = Math.min(a, b);
@@ -751,7 +750,7 @@ export default function CoverLayerPanel({
     for (let i = lo; i <= hi; i += 1) {
       const item = flat[i];
       if (!item) continue;
-      ids.push(...elementIdsForLayerItem(item.id, altKey));
+      ids.push(...elementIdsForLayerItem(item.id));
     }
     onSelectIds([...new Set(ids)]);
   };
@@ -759,10 +758,10 @@ export default function CoverLayerPanel({
   const selectElement = (id: string, event: MouseEvent) => {
     event.preventDefault();
     if (event.shiftKey && selectionAnchorIdRef.current) {
-      selectRangeBetween(selectionAnchorIdRef.current, id, event.altKey);
+      selectRangeBetween(selectionAnchorIdRef.current, id);
       return;
     }
-    const targetIds = elementIdsForLayerItem(id, event.altKey);
+    const targetIds = elementIdsForLayerItem(id);
     if (event.metaKey || event.ctrlKey) {
       const allSelected = targetIds.every((tid) => selectedSet.has(tid));
       if (allSelected) {
@@ -780,7 +779,7 @@ export default function CoverLayerPanel({
   const selectGroup = (groupId: string, event: MouseEvent) => {
     event.preventDefault();
     if (event.shiftKey && selectionAnchorIdRef.current) {
-      selectRangeBetween(selectionAnchorIdRef.current, groupId, event.altKey);
+      selectRangeBetween(selectionAnchorIdRef.current, groupId);
       return;
     }
     const memberIds = collectDescendantElementIds(cover, groupId);
@@ -795,6 +794,22 @@ export default function CoverLayerPanel({
     }
     selectionAnchorIdRef.current = groupId;
     onSelectIds(memberIds);
+  };
+
+  /**
+   * When a full group is selected, dragging any member (or the group row)
+   * reorders that group as one unit. Otherwise reorder the clicked layer.
+   */
+  const resolveDragLayerId = (activeLayerId: string): string => {
+    if (isGroupId(tree, activeLayerId)) return activeLayerId;
+    const layerIds = selectionToLayerIds(cover, selectedIds);
+    for (const lid of layerIds) {
+      if (!isGroupId(tree, lid)) continue;
+      if (collectDescendantElementIds(tree, lid).includes(activeLayerId)) {
+        return lid;
+      }
+    }
+    return activeLayerId;
   };
 
   const updateDropHint = (event: DragMoveEvent | DragEndEvent) => {
@@ -818,7 +833,10 @@ export default function CoverLayerPanel({
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(String(event.active.id));
+    const rawId = String(event.active.id);
+    const resolved = resolveDragLayerId(rawId);
+    dragLayerIdRef.current = resolved;
+    setActiveId(resolved);
   };
 
   const handleDragMove = (event: DragMoveEvent) => {
@@ -830,9 +848,10 @@ export default function CoverLayerPanel({
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const active = String(event.active.id);
+    const active = dragLayerIdRef.current ?? String(event.active.id);
     const over = event.over ? String(event.over.id) : null;
     let nextPlacement = placement;
+    dragLayerIdRef.current = null;
     setActiveId(null);
     setOverId(null);
     pointerYRef.current = null;
@@ -864,6 +883,7 @@ export default function CoverLayerPanel({
   };
 
   const handleDragCancel = () => {
+    dragLayerIdRef.current = null;
     setActiveId(null);
     setOverId(null);
     pointerYRef.current = null;
@@ -891,7 +911,7 @@ export default function CoverLayerPanel({
       onDragCancel={handleDragCancel}
     >
       <div
-        className="max-h-72 space-y-0.5 overflow-y-auto rounded-md border border-gray-200 bg-white p-1 dark:border-odp-borderStrong dark:bg-odp-bg"
+        className="max-h-72 space-y-0.5 overflow-y-auto rounded-md border border-gray-200 bg-white p-1 select-none dark:border-odp-borderStrong dark:bg-odp-bg"
         role="listbox"
         aria-label="표지 레이어"
         aria-multiselectable

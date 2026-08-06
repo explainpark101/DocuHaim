@@ -11,6 +11,7 @@ import {
   deleteLayers,
   ensureLayerTree,
   flattenLayerTree,
+  getChildIds,
   getGroup,
   isGroupId,
   moveLayerInParent,
@@ -175,7 +176,7 @@ export function selectionMatchesGroupMembers(
 /**
  * Expand selection so any grouped element pulls in members of its group.
  * - `root` (default): outermost ancestor group (canvas click / marquee)
- * - `immediate`: element's own groupId only (layer panel)
+ * - `immediate`: element's own groupId only
  */
 export function expandIdsToGroups(
   cover: NoteCover,
@@ -208,6 +209,14 @@ export function expandIdsToGroups(
  * Keeps the current group (or sole element) when it already sits on this
  * element's ancestor chain so nested drill-down is preserved; otherwise
  * selects the rootmost containing group.
+ *
+ * When drilled into a group (selection is a proper subset), clicking a sibling
+ * inside that group selects that sibling unit without re-drilling / jumping
+ * back to the root group.
+ *
+ * When the target is already selected as a partial (layer-list / drilled)
+ * selection — not a full ancestor group — keep that selection so drag moves
+ * those objects instead of expanding to the root group.
  */
 export function resolveCoverPointerSelection(
   cover: NoteCover,
@@ -226,9 +235,20 @@ export function resolveCoverPointerSelection(
   if (matched >= 0) {
     return collectDescendantElementIds(tree, chain[matched]!);
   }
-  if (selectedIds.length === 1 && selectedIds[0] === elementId) {
-    return [elementId];
+  // Already selected individually (e.g. from the layer list): keep selection.
+  if (selectedIds.includes(elementId)) {
+    return [...selectedIds];
   }
+
+  // Drilled into a group: click selects sibling units at that depth.
+  const drillParent = findCoverDrillParentGroup(tree, selectedIds);
+  if (drillParent) {
+    const members = collectDescendantElementIds(tree, drillParent);
+    if (members.includes(elementId)) {
+      return coverLayerUnitUnderParent(tree, drillParent, elementId);
+    }
+  }
+
   return collectDescendantElementIds(tree, chain[0]!);
 }
 
@@ -276,6 +296,87 @@ export function resolveCoverDrillSelection(
   }
 
   return { ids: [elementId], enterEdit: false };
+}
+
+/**
+ * Deepest ancestor group that contains the whole selection as a proper subset
+ * (i.e. the group we have drilled into). Null when selection is empty, spans
+ * ungrouped elements, or exactly matches a topmost selected group with no
+ * outer partial container.
+ */
+function findCoverDrillParentGroup(
+  cover: NoteCover,
+  selectedIds: ReadonlyArray<string>,
+): string | null {
+  if (!selectedIds.length) return null;
+  const tree = ensureLayerTree(cover);
+  let common: string[] | null = null;
+  for (const id of selectedIds) {
+    const chain = getElementGroupChain(tree, id);
+    if (!chain.length) return null;
+    if (common == null) {
+      common = [...chain];
+      continue;
+    }
+    const set = new Set(chain);
+    common = common.filter((gid) => set.has(gid));
+  }
+  if (!common?.length) return null;
+
+  const selected = new Set(selectedIds);
+  for (let i = common.length - 1; i >= 0; i -= 1) {
+    const gid = common[i]!;
+    const members = collectDescendantElementIds(tree, gid);
+    if (!members.length) continue;
+    if (!selectedIds.every((id) => members.includes(id))) continue;
+    if (members.every((m) => selected.has(m))) continue;
+    return gid;
+  }
+  return null;
+}
+
+/** Direct child unit of `parentGroupId` that contains `elementId`. */
+function coverLayerUnitUnderParent(
+  cover: NoteCover,
+  parentGroupId: string,
+  elementId: string,
+): string[] {
+  const tree = ensureLayerTree(cover);
+  for (const childId of getChildIds(tree, parentGroupId)) {
+    if (isGroupId(tree, childId)) {
+      const desc = collectDescendantElementIds(tree, childId);
+      if (desc.includes(elementId)) return desc;
+    } else if (childId === elementId) {
+      return [elementId];
+    }
+  }
+  return [elementId];
+}
+
+/**
+ * Cmd/Ctrl multi-select targets.
+ * After drilling into a group, toggles sibling units inside that group.
+ * Otherwise expands to the rootmost group (canvas default).
+ */
+export function resolveCoverAdditiveSelection(
+  cover: NoteCover,
+  elementId: string,
+  selectedIds: ReadonlyArray<string>,
+): string[] {
+  const tree = ensureLayerTree(cover);
+  if (!tree.elements.some((e) => e.id === elementId)) return [];
+
+  const drillParent = findCoverDrillParentGroup(tree, selectedIds);
+  if (!drillParent) {
+    return expandIdsToGroups(tree, [elementId], 'root');
+  }
+
+  const members = collectDescendantElementIds(tree, drillParent);
+  if (!members.includes(elementId)) {
+    return expandIdsToGroups(tree, [elementId], 'root');
+  }
+
+  return coverLayerUnitUnderParent(tree, drillParent, elementId);
 }
 
 /**
@@ -426,6 +527,27 @@ export function sendSelectionToBack(
 ): NoteCover {
   const layerIds = selectionToLayerIds(cover, ids);
   return sendLayersToBack(cover, layerIds.length ? layerIds : ids);
+}
+
+/**
+ * Move selection one step in z-order within each parent.
+ * dir +1 = toward front, -1 = toward back.
+ */
+export function nudgeSelectionZ(
+  cover: NoteCover,
+  ids: ReadonlyArray<string>,
+  dir: -1 | 1,
+): NoteCover {
+  const layerIds = selectionToLayerIds(cover, ids);
+  const units = layerIds.length ? layerIds : [...ids];
+  if (!units.length) return cover;
+  let next = cover;
+  // Preserve relative order: nudge the leading edge of the stack first.
+  const sequence = dir === 1 ? units : [...units].reverse();
+  for (const id of sequence) {
+    next = moveLayerZ(next, id, dir);
+  }
+  return next;
 }
 
 export type CoverLayerRow =

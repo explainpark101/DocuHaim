@@ -84,16 +84,57 @@ export type CoverResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw
 
 export type ResizeCoverImageOptions = {
   /**
-   * Hold Shift: keep the box's current visual aspect (at drag start),
-   * ignoring naturalAspect / lockAspect.
+   * Hold Shift: grow/shrink from the box center (opposite edges move together).
    */
-  lockToCurrentAspect?: boolean;
+  fromCenter?: boolean;
 };
+
+function freeResizeBox(
+  orig: { x: number; y: number; w: number; h: number },
+  handle: CoverResizeHandle,
+  dxPct: number,
+  dyPct: number,
+  min: number,
+  fromCenter: boolean,
+): { x: number; y: number; w: number; h: number } {
+  if (fromCenter) {
+    const cx = orig.x + orig.w / 2;
+    const cy = orig.y + orig.h / 2;
+    let dw = 0;
+    let dh = 0;
+    if (handle.includes('e')) dw += dxPct;
+    if (handle.includes('w')) dw -= dxPct;
+    if (handle.includes('s')) dh += dyPct;
+    if (handle.includes('n')) dh -= dyPct;
+    const maxW = Math.max(min, 2 * Math.min(cx, 100 - cx));
+    const maxH = Math.max(min, 2 * Math.min(cy, 100 - cy));
+    const w = clamp(orig.w + 2 * dw, min, maxW);
+    const h = clamp(orig.h + 2 * dh, min, maxH);
+    return { x: cx - w / 2, y: cy - h / 2, w, h };
+  }
+
+  let { x, y, w, h } = orig;
+  if (handle.includes('e')) w = clamp(orig.w + dxPct, min, 100 - orig.x);
+  if (handle.includes('s')) h = clamp(orig.h + dyPct, min, 100 - orig.y);
+  if (handle.includes('w')) {
+    const nextW = clamp(orig.w - dxPct, min, orig.x + orig.w);
+    const delta = orig.w - nextW;
+    x = clamp(orig.x + delta, 0, 100 - nextW);
+    w = nextW;
+  }
+  if (handle.includes('n')) {
+    const nextH = clamp(orig.h - dyPct, min, orig.y + orig.h);
+    const delta = orig.h - nextH;
+    y = clamp(orig.y + delta, 0, 100 - nextH);
+    h = nextH;
+  }
+  return { x, y, w, h };
+}
 
 /**
  * Resize image box.
  * - lockAspect: keep naturalAspect (or current visual if natural unknown)
- * - lockToCurrentAspect (Shift): keep current box visual aspect
+ * - fromCenter (Shift): keep the box center fixed while resizing
  */
 export function resizeCoverImageBox(
   orig: CoverImageElement,
@@ -105,42 +146,84 @@ export function resizeCoverImageBox(
   options?: ResizeCoverImageOptions,
 ): CoverImageElement {
   const min = 4;
-  const lockToCurrent = Boolean(options?.lockToCurrentAspect);
-  const shouldLockAspect =
-    lockToCurrent || Boolean(orig.lockAspect);
+  const fromCenter = Boolean(options?.fromCenter);
+  const shouldLockAspect = Boolean(orig.lockAspect);
 
   if (!shouldLockAspect || frameWidthPx < 1 || frameHeightPx < 1) {
-    let { x, y, w, h } = orig;
-    if (handle.includes('e')) w = clamp(orig.w + dxPct, min, 100 - orig.x);
-    if (handle.includes('s')) h = clamp(orig.h + dyPct, min, 100 - orig.y);
-    if (handle.includes('w')) {
-      const nextW = clamp(orig.w - dxPct, min, orig.x + orig.w);
-      const delta = orig.w - nextW;
-      x = clamp(orig.x + delta, 0, 100 - nextW);
-      w = nextW;
-    }
-    if (handle.includes('n')) {
-      const nextH = clamp(orig.h - dyPct, min, orig.y + orig.h);
-      const delta = orig.h - nextH;
-      y = clamp(orig.y + delta, 0, 100 - nextH);
-      h = nextH;
-    }
-    return { ...orig, x, y, w, h };
+    const box = freeResizeBox(orig, handle, dxPct, dyPct, min, fromCenter);
+    return { ...orig, ...box };
   }
 
   const currentVisualAspect =
     (orig.w / Math.max(orig.h, 0.001)) * (frameWidthPx / frameHeightPx);
 
   const visualAspect =
-    lockToCurrent
-      ? currentVisualAspect
-      : orig.naturalAspect && orig.naturalAspect > 0
-        ? orig.naturalAspect
-        : currentVisualAspect;
+    orig.naturalAspect && orig.naturalAspect > 0
+      ? orig.naturalAspect
+      : currentVisualAspect;
 
   // hPct from wPct: h = w * fw / (fh * V)
   const hFromW = (w: number) => (w * frameWidthPx) / (frameHeightPx * visualAspect);
   const wFromH = (h: number) => (h * frameHeightPx * visualAspect) / frameWidthPx;
+
+  if (fromCenter) {
+    const cx = orig.x + orig.w / 2;
+    const cy = orig.y + orig.h / 2;
+    const maxW = Math.max(min, 2 * Math.min(cx, 100 - cx));
+    const maxH = Math.max(min, 2 * Math.min(cy, 100 - cy));
+
+    let dw = 0;
+    let dh = 0;
+    if (handle.includes('e')) dw += dxPct;
+    if (handle.includes('w')) dw -= dxPct;
+    if (handle.includes('s')) dh += dyPct;
+    if (handle.includes('n')) dh -= dyPct;
+
+    const isCorner = handle.length === 2;
+    let w: number;
+    let h: number;
+
+    if (isCorner) {
+      const useX = Math.abs(dxPct) * frameWidthPx >= Math.abs(dyPct) * frameHeightPx;
+      if (useX) {
+        w = clamp(orig.w + 2 * dw, min, maxW);
+        h = hFromW(w);
+        if (h > maxH) {
+          h = maxH;
+          w = clamp(wFromH(h), min, maxW);
+        }
+      } else {
+        h = clamp(orig.h + 2 * dh, min, maxH);
+        w = wFromH(h);
+        if (w > maxW) {
+          w = maxW;
+          h = clamp(hFromW(w), min, maxH);
+        }
+      }
+    } else if (handle === 'e' || handle === 'w') {
+      w = clamp(orig.w + 2 * dw, min, maxW);
+      h = hFromW(w);
+      if (h > maxH) {
+        h = maxH;
+        w = clamp(wFromH(h), min, maxW);
+      }
+    } else {
+      h = clamp(orig.h + 2 * dh, min, maxH);
+      w = wFromH(h);
+      if (w > maxW) {
+        w = maxW;
+        h = clamp(hFromW(w), min, maxH);
+      }
+    }
+
+    return {
+      ...orig,
+      x: cx - w / 2,
+      y: cy - h / 2,
+      w,
+      h,
+    };
+  }
 
   let { x, y, w, h } = orig;
   const isCorner = handle.length === 2;

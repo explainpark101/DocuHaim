@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ContextMenu } from 'radix-ui';
-import { Crop, Lock, LockOpen, Ratio, RotateCcw } from 'lucide-react';
 import CoverSlide from '@/components/noteCover/CoverSlide';
+import CoverCanvasContextMenuContent from '@/components/noteCover/CoverCanvasContextMenu';
 import Modal from '@/components/modals/Modal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import NoteImageCropPanel from '@/components/modals/NoteImageCropPanel';
@@ -25,13 +25,11 @@ import {
   expandIdsToGroups,
   filterUnlockedElementIds,
   getElementsByIds,
-  getGroup,
   getSelectionBounds,
   groupSelectedElements,
   isCoverShapeElement,
   isElementEffectivelyLocked,
   isGroupId,
-  isLayerDirectlyLocked,
   layerIdsIncludeLocked,
   moveElementsByDelta,
   nextPastePlacement,
@@ -39,12 +37,12 @@ import {
   nudgeCoverFontSizes,
   registerNewElement,
   resizeCoverImageBox,
+  resolveCoverAdditiveSelection,
   resolveCoverDrillSelection,
   resolveCoverPointerSelection,
   restoreCoverImageNaturalAspect,
   selectionToLayerIds,
   setCoverTextAlign,
-  setLayerLocked,
   sharedGroupIdForSelection,
   snapBoundsToObjects,
   snapResizeBoundsToObjects,
@@ -72,10 +70,6 @@ import {
 import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { getChromeDevToolsNumberStep } from '@/utils/scrubNumberStep';
-import {
-  chatMenuContentClass,
-  chatMenuItemClass,
-} from '@/components/chatWithMyself/ui/chatUiStyles';
 
 type GetPresignedUrl = ((path: string) => Promise<string | null>) | null | undefined;
 
@@ -180,7 +174,25 @@ function applyResize(
   handle: HandleId,
   dxPct: number,
   dyPct: number,
+  options?: { fromCenter?: boolean },
 ): CoverElement {
+  if (options?.fromCenter) {
+    const cx = orig.x + orig.w / 2;
+    const cy = orig.y + orig.h / 2;
+    let dw = 0;
+    let dh = 0;
+    if (handle.includes('e')) dw += dxPct;
+    if (handle.includes('w')) dw -= dxPct;
+    if (handle.includes('s')) dh += dyPct;
+    if (handle.includes('n')) dh -= dyPct;
+    // Keep center fixed: edge movement expands/shrinks both sides.
+    const maxW = Math.max(MIN_SIZE, 2 * Math.min(cx, 100 - cx));
+    const maxH = Math.max(MIN_SIZE, 2 * Math.min(cy, 100 - cy));
+    const w = clamp(orig.w + 2 * dw, MIN_SIZE, maxW);
+    const h = clamp(orig.h + 2 * dh, MIN_SIZE, maxH);
+    return { ...orig, x: cx - w / 2, y: cy - h / 2, w, h };
+  }
+
   let { x, y, w, h } = orig;
   if (handle.includes('e')) w = clamp(orig.w + dxPct, MIN_SIZE, 100 - orig.x);
   if (handle.includes('s')) h = clamp(orig.h + dyPct, MIN_SIZE, 100 - orig.y);
@@ -483,6 +495,7 @@ export default function CoverEditor({
 
       setSnapGuides({ v: [], h: [] });
       const orig = drag.orig;
+      const fromCenter = event.shiftKey;
       let nextEl: CoverElement =
         orig.type === 'image'
           ? resizeCoverImageBox(
@@ -492,9 +505,9 @@ export default function CoverEditor({
               dyPct,
               drag.frameW,
               drag.frameH,
-              { lockToCurrentAspect: event.shiftKey },
+              { fromCenter },
             )
-          : applyResize(orig, drag.handle, dxPct, dyPct);
+          : applyResize(orig, drag.handle, dxPct, dyPct, { fromCenter });
 
       const centerOn = centerSnapEnabledRef.current;
       const objectOn = objectSnapEnabledRef.current;
@@ -858,13 +871,18 @@ export default function CoverEditor({
     event.stopPropagation();
 
     // Alt or Cmd/Ctrl+drag on an already-selected target: duplicate after drag starts.
-    // Cmd/Ctrl click: additive multi-select (toggle), except sole selected target stays selected.
-    // Shift: axis-lock while moving (not used for multi-select).
+    // Cmd/Ctrl or Shift+click: additive multi-select (toggle).
+    // Shift+drag (while moving): axis-lock — handled in onPointerMove.
     const modKey = event.metaKey || event.ctrlKey;
     const altKey = event.altKey;
-    const additive = modKey && !altKey;
+    const shiftKey = event.shiftKey;
+    const additive = (modKey || shiftKey) && !altKey;
     const targetIds = additive
-      ? expandIdsToGroups(coverRef.current, [id], 'root')
+      ? resolveCoverAdditiveSelection(
+          coverRef.current,
+          id,
+          selectedIdsRef.current,
+        )
       : resolveCoverPointerSelection(coverRef.current, id, selectedIdsRef.current);
     const selected = selectedIdsRef.current;
     const targetFullySelected =
@@ -878,7 +896,7 @@ export default function CoverEditor({
     if (additive) {
       if (targetFullySelected) {
         if (selectionIsExactTarget) {
-          // Sole selected: keep selection so Cmd-drag can copy.
+          // Sole selected: keep selection so Cmd-drag can copy / Shift-drag can move.
           ids = targetIds;
         } else {
           const remove = new Set(targetIds);
@@ -1001,6 +1019,20 @@ export default function CoverEditor({
       );
     },
     [onChange],
+  );
+
+  const requestDeleteSelection = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+      selectedIdsRef.current = ids;
+      onSelectIds(ids);
+      const locked = layerIdsIncludeLocked(coverRef.current, ids);
+      clearDeleteConfirmSecondTimer();
+      deleteConfirmAwaitingSecondRef.current = false;
+      setDeleteConfirmDouble(locked);
+      setDeleteConfirmStep(1);
+    },
+    [onSelectIds],
   );
 
   const openImageCrop = useCallback(
@@ -1811,31 +1843,6 @@ export default function CoverEditor({
             </>
           );
 
-          const directlyLocked = isLayerDirectlyLocked(cover, el.id);
-          const toggleLock = () => {
-            const c = coverRef.current;
-            if (directlyLocked) {
-              onChange(setLayerLocked(c, el.id, false));
-              return;
-            }
-            if (isLocked) {
-              // Locked via ancestor group — unlock nearest locked group.
-              let gid = el.groupId;
-              const seen = new Set<string>();
-              while (gid && !seen.has(gid)) {
-                seen.add(gid);
-                const group = getGroup(c, gid);
-                if (!group) break;
-                if (group.locked === true) {
-                  onChange(setLayerLocked(c, gid, false));
-                  return;
-                }
-                gid = group.parentGroupId;
-              }
-            }
-            onChange(setLayerLocked(c, el.id, true));
-          };
-
           return (
             <ContextMenu.Root key={el.id}>
               <ContextMenu.Trigger asChild>
@@ -1850,6 +1857,12 @@ export default function CoverEditor({
                     height: `${el.h}%`,
                     zIndex: isSelected || isMarqueeHit ? 20 + index : 10 + index,
                     cursor: isEditing ? 'text' : isLocked ? 'default' : 'move',
+                  }}
+                  onContextMenu={() => {
+                    if (!selectedIdsRef.current.includes(el.id)) {
+                      selectedIdsRef.current = [el.id];
+                      onSelectIds([el.id]);
+                    }
                   }}
                   onPointerDown={(event) => {
                     if (placeMode) {
@@ -1882,50 +1895,19 @@ export default function CoverEditor({
                 </div>
               </ContextMenu.Trigger>
               <ContextMenu.Portal>
-                <ContextMenu.Content
-                  className={chatMenuContentClass}
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                >
-                  <ContextMenu.Item className={chatMenuItemClass} onSelect={toggleLock}>
-                    {isLocked ? (
-                      <LockOpen size={16} className="shrink-0" />
-                    ) : (
-                      <Lock size={16} className="shrink-0" />
-                    )}
-                    {isLocked ? '잠금 해제' : '잠금'}
-                  </ContextMenu.Item>
-                  {el.type === 'image' ? (
-                    <>
-                      <ContextMenu.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderStrong" />
-                      <ContextMenu.Item
-                        className={chatMenuItemClass}
-                        disabled={isLocked}
-                        onSelect={() => {
-                          void openImageCrop(el);
-                        }}
-                      >
-                        <Crop size={16} className="shrink-0" />
-                        자르기
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className={chatMenuItemClass}
-                        disabled={isLocked || !el.naturalAspect}
-                        onSelect={() => restoreImageAspect(el.id)}
-                      >
-                        <RotateCcw size={16} className="shrink-0" />
-                        원본 비율로 되돌리기
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className={chatMenuItemClass}
-                        disabled={isLocked}
-                        onSelect={() => toggleImageLockAspect(el.id)}
-                      >
-                        <Ratio size={16} className="shrink-0" />
-                        {el.lockAspect ? '무조건 비율 유지 해제' : '무조건 비율 유지'}
-                      </ContextMenu.Item>
-                    </>
-                  ) : null}
-                </ContextMenu.Content>
+                <CoverCanvasContextMenuContent
+                  cover={cover}
+                  targetId={el.id}
+                  selectedIds={selectedIds}
+                  onChange={onChange}
+                  onSelectIds={onSelectIds}
+                  onRequestDelete={requestDeleteSelection}
+                  onImageCrop={(imageEl) => {
+                    void openImageCrop(imageEl);
+                  }}
+                  onRestoreImageAspect={restoreImageAspect}
+                  onToggleImageLockAspect={toggleImageLockAspect}
+                />
               </ContextMenu.Portal>
             </ContextMenu.Root>
           );

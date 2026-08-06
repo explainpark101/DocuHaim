@@ -235,8 +235,11 @@ function CoverShortcutsList() {
       >
         복제하며 이동
       </CoverShortcutItem>
+      <CoverShortcutItem keys={<KbdChord keys={['Shift', '클릭']} />}>
+        다중 선택 (Mod+클릭과 동일)
+      </CoverShortcutItem>
       <CoverShortcutItem keys={<KbdChord keys={['Shift', '드래그']} />}>
-        축 고정 이동
+        축 고정 이동 · 크기 조절 시 중심 기준
       </CoverShortcutItem>
       <CoverShortcutItem
         keys={
@@ -1215,7 +1218,7 @@ export default function CoverSidebar({
                       </Tooltip.Trigger>
                       <Tooltip.Portal>
                         <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
-                          다른 개체의 테두리·가운데선에 맞춤 (그룹은 통째로)
+                          다른 개체의 테두리·가운데선에 맞춤 (그룹은 통째로, 그룹 안에서는 sibling과도)
                           <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
                         </Tooltip.Content>
                       </Tooltip.Portal>
