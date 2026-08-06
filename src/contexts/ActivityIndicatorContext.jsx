@@ -10,8 +10,11 @@
  */
 import { createContext, useContext, useReducer, useCallback } from 'react';
 
-/** @type {'file-upload'|'recording'|'note-processing'|'photo-upload'|'download'|'chat-send'|'chat-load'|'chat-search'|'chat-sync'|'chat-note'} */
-export const ActivityTypes = {
+/**
+ * @typedef {'file-upload'|'recording'|'note-processing'|'photo-upload'|'download'|'chat-send'|'chat-load'|'chat-search'|'chat-sync'|'chat-note'|'advanced-search-index'} ActivityType
+ */
+
+export const ActivityTypes = /** @type {const} */ ({
   FILE_UPLOAD: 'file-upload',
   RECORDING: 'recording',
   NOTE_PROCESSING: 'note-processing',
@@ -22,7 +25,8 @@ export const ActivityTypes = {
   CHAT_SEARCH: 'chat-search',
   CHAT_SYNC: 'chat-sync',
   CHAT_NOTE: 'chat-note',
-};
+  ADVANCED_SEARCH_INDEX: 'advanced-search-index',
+});
 
 /** @type {'pending'|'processing'|'done'|'error'} */
 const Status = {

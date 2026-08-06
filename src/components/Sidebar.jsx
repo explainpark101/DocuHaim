@@ -40,7 +40,8 @@ import {
   IconUpload,
   IconRefresh,
 } from '@/components/icons';
-import { ArrowRightToLine, ChevronsLeft, Download, Loader2, MessageCircle, Search, X } from 'lucide-react';
+import { ArrowRightToLine, ChevronsLeft, Download, Loader2, MessageCircle, X } from 'lucide-react';
+import AdvancedSearchSidebarTrigger from '@/components/advancedSearch/AdvancedSearchSidebarTrigger';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 import SessionTreeList from '@/components/SessionTreeList';
 
@@ -959,7 +960,7 @@ export default function Sidebar({
           )}
         </div>
         <div className="flex items-center gap-2 w-full border-y border-gray-400 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm text-gray-700 dark:text-odp-fgStrong">
-          <Search size={16} className="shrink-0 text-gray-700 dark:text-odp-fgStrong" aria-hidden />
+          <AdvancedSearchSidebarTrigger />
           <input
             type="text"
             value={searchInput}

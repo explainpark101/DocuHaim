@@ -104,6 +104,7 @@ import {
   saveWebdavConfig,
   decryptWebdavConfig,
   STORAGE_MODE_LOCAL,
+  STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
 import {
@@ -113,6 +114,11 @@ import {
 } from '@/utils/storage';
 import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
 import { patchWebdavTreeChildren } from '@/utils/webdavTree.js';
+import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
+import {
+  advancedSearchEngine,
+  notifyAdvancedSearchChange,
+} from '@/utils/advancedSearch';
 import { webdavPropfindDeep } from '@/utils/webdavClient';
 import {
   readLocalDirectoryLevel,
@@ -1357,6 +1363,61 @@ function MainApp() {
       }),
     [getS3Client, s3Creds, localRootHandle, webdavConfig],
   );
+
+  const advancedSearchTreesRef = useRef({
+    storageMode,
+    s3Tree,
+    localTree,
+    webdavTree,
+    sessionWorkspace,
+  });
+  advancedSearchTreesRef.current = {
+    storageMode,
+    s3Tree,
+    localTree,
+    webdavTree,
+    sessionWorkspace,
+  };
+
+  useEffect(() => {
+    const backend = getBackendForType(storageMode);
+    advancedSearchEngine.configure({
+      backend,
+      getTree: () => {
+        const cur = advancedSearchTreesRef.current;
+        if (cur.storageMode === STORAGE_MODE_LOCAL) return cur.localTree || [];
+        if (cur.storageMode === STORAGE_MODE_WEBDAV) return cur.webdavTree || [];
+        return cur.s3Tree || [];
+      },
+    });
+  }, [storageMode, getBackendForType, localRootHandle, s3Creds.bucket, webdavConfig]);
+
+  useEffect(() => {
+    if (!isUnlocked) return undefined;
+    const backend = getBackendForType(storageMode);
+    if (!backend?.isReady?.()) return undefined;
+    let cancelled = false;
+    void (async () => {
+      // Load existing index if any — never auto-rebuild when missing.
+      await advancedSearchEngine.ensureLoaded();
+      if (cancelled) return;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isUnlocked, storageMode, getBackendForType, localRootHandle, s3Creds.bucket, webdavConfig]);
+
+  const getAdvancedSearchTrees = useCallback(() => {
+    const cur = advancedSearchTreesRef.current;
+    const trees = [];
+    if (cur.storageMode === STORAGE_MODE_LOCAL) trees.push(cur.localTree);
+    else if (cur.storageMode === STORAGE_MODE_WEBDAV) trees.push(cur.webdavTree);
+    else trees.push(cur.s3Tree);
+    if (cur.sessionWorkspace) {
+      trees.push(buildSessionTree(cur.sessionWorkspace));
+    }
+    return trees;
+  }, []);
 
   const webdavReady = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
 
@@ -2762,6 +2823,41 @@ function MainApp() {
       handleTreeNodeSelect(type, node, {});
     },
     [handleTreeNodeSelect]
+  );
+
+  const openAdvancedSearchFile = useCallback(
+    async (path) => {
+      if (!path) return;
+      const type = storageMode;
+      let node = null;
+      if (type === STORAGE_MODE_LOCAL) {
+        node =
+          findFileNodeByPath(localTree, path) ||
+          findNodeByPath(localTree, path) ||
+          (localRootHandle
+            ? await resolveLocalFileNode(localRootHandle, path)
+            : null);
+      } else if (type === STORAGE_MODE_WEBDAV) {
+        node =
+          findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
+      } else if (type === STORAGE_MODE_S3) {
+        node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
+      }
+      if (node?.type === 'file') {
+        selectFile(type, node);
+      } else {
+        navigate(`/view/${path}`);
+      }
+    },
+    [
+      storageMode,
+      localTree,
+      webdavTree,
+      s3Tree,
+      localRootHandle,
+      selectFile,
+      navigate,
+    ],
   );
 
   const handleOpenInNewWindow = useCallback(
@@ -4280,6 +4376,11 @@ function MainApp() {
           currentFileRef.current = next;
           return next;
         });
+        notifyAdvancedSearchChange({
+          type: 'file',
+          path: fileToSave.id,
+          content: textToSave,
+        });
       } else if (fileToSave.type === 'local') {
         const writable = await fileToSave.handle.createWritable();
         await writable.write(textToSave);
@@ -4297,6 +4398,11 @@ function MainApp() {
           currentFileRef.current = next;
           return next;
         });
+        notifyAdvancedSearchChange({
+          type: 'file',
+          path: fileToSave.id,
+          content: textToSave,
+        });
         setIsSaving(false);
         return;
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
@@ -4313,6 +4419,11 @@ function MainApp() {
           const next = { ...prev, content: textToSave, size: savedByteLength };
           currentFileRef.current = next;
           return next;
+        });
+        notifyAdvancedSearchChange({
+          type: 'file',
+          path: fileToSave.id,
+          content: textToSave,
         });
       }
     } catch (e) {
@@ -6194,6 +6305,13 @@ function MainApp() {
         onBlockingChange={handleShareBlockingChange}
         onComposeClaimed={handleShareComposeClaimed}
       />
+
+      {isUnlocked ? (
+        <AdvancedSearchHost
+          getTrees={getAdvancedSearchTrees}
+          onOpenFile={openAdvancedSearchFile}
+        />
+      ) : null}
 
       {/* Auth Modal (Lock Screen) */}
       <AuthModal

@@ -160,9 +160,16 @@ if (!isElectron) {
 export default defineConfig({
   base: basePath,
   plugins,
+  assetsInclude: ['**/*.wasm', '**/*.gmdl'],
+  optimizeDeps: {
+    exclude: ['garu-ko'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     }
-  }
+  },
+  worker: {
+    format: 'es',
+  },
 })

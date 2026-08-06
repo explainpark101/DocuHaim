@@ -40,6 +40,8 @@
     "dexie": "^4.3.0",
     "embla-carousel-react": "^8.6.0",
     "emoji-mart": "^5.6.0",
+    "fflate": "^0.8.3",
+    "garu-ko": "^0.9.14",
     "lucide-react": "^0.576.0",
     "marked": "^17.0.3",
     "md-editor-rt": "^6.3.1",

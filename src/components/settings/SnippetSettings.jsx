@@ -158,7 +158,10 @@ export default function SnippetSettings({
         <p className="text-xs text-gray-600 dark:text-odp-muted">
           단축키를 누르면 해당 코드 조각(body)이 에디터에 삽입됩니다. 단축키는 설정에서만 등록·수정할 수 있습니다.
           <span className="block mt-1">
-            <strong>mod</strong> = Windows에서는 Ctrl, Mac에서는 Cmd로 자동 인식됩니다. 예: mod+k, mod+shift+s
+            <strong>mod</strong> = Windows에서는 Ctrl, Mac에서는 Cmd로 자동 인식됩니다. 예: mod+shift+k, mod+shift+s
+            <span className="block mt-1 text-amber-700 dark:text-amber-400">
+              <code className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">mod+k</code>는 Advanced Search(전역 검색)에 예약되어 있습니다.
+            </span>
           </span>
           설정은
           <code className="px-1 mx-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">.settings/snippets.json</code>

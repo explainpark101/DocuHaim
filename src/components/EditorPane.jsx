@@ -321,6 +321,12 @@ export default function EditorPane({
               value={editedFileName ?? ''}
               onChange={(e) => setEditedFileName?.(e.target.value)}
               onBlur={handleFileNameBlur}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 's') {
+                  e.preventDefault();
+                  handleToolbarSave();
+                }
+              }}
               placeholder="파일명"
             />
           </div>

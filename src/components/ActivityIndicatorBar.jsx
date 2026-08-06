@@ -67,6 +67,10 @@ const typeConfig = {
     icon: IconFilePlus,
     label: '노트로 추가',
   },
+  [ActivityTypes.ADVANCED_SEARCH_INDEX]: {
+    icon: IconSearch,
+    label: '검색 색인',
+  },
 };
 
 function chipClassName({ isError, isDone }) {

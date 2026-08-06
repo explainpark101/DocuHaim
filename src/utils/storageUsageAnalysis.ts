@@ -2,6 +2,8 @@
  * Analyze a storage file tree for capacity usage (TreeSize-style).
  */
 
+import { ADVANCED_SEARCH_FOLDER } from '@/utils/advancedSearch/paths';
+
 export type StorageTreeNode = {
   name: string;
   type: 'file' | 'folder' | string;
@@ -20,6 +22,10 @@ export type StorageUsageSummary = {
   folderCount: number;
   zeroByteCount: number;
   unknownSizeCount: number;
+  /** Bytes under `.advanced-search/` (inverted index). */
+  indexSize: number;
+  /** File count under `.advanced-search/`. */
+  indexFileCount: number;
 };
 
 export type StorageUsageFileEntry = {
@@ -74,6 +80,15 @@ function extensionOf(name: string): string {
   return lower.slice(lastDot + 1);
 }
 
+function isAdvancedSearchPath(path: string): boolean {
+  const p = String(path || '').replace(/^\/+/, '');
+  return (
+    p === ADVANCED_SEARCH_FOLDER ||
+    p === `${ADVANCED_SEARCH_FOLDER}/` ||
+    p.startsWith(`${ADVANCED_SEARCH_FOLDER}/`)
+  );
+}
+
 function nodeSize(node: StorageTreeNode): number {
   if (node.type === 'file') {
     return typeof node.size === 'number' && Number.isFinite(node.size) ? node.size : 0;
@@ -107,6 +122,8 @@ export function analyzeStorageTree(nodes: StorageTreeNode[] | null | undefined):
   let zeroByteCount = 0;
   let unknownSizeCount = 0;
   let totalSize = 0;
+  let indexSize = 0;
+  let indexFileCount = 0;
   type ExtAgg = { count: number; size: number; files: StorageUsageFileEntry[] };
   const extMap = new Map<string, ExtAgg>();
 
@@ -125,8 +142,13 @@ export function analyzeStorageTree(nodes: StorageTreeNode[] | null | undefined):
       else if (size === 0) zeroByteCount += 1;
       totalSize += size;
 
-      const ext = extensionOf(node.name);
       const path = node.path || node.name;
+      if (isAdvancedSearchPath(path)) {
+        indexSize += size;
+        indexFileCount += 1;
+      }
+
+      const ext = extensionOf(node.name);
       const prev = extMap.get(ext) ?? { count: 0, size: 0, files: [] };
       prev.count += 1;
       prev.size += size;
@@ -190,6 +212,8 @@ export function analyzeStorageTree(nodes: StorageTreeNode[] | null | undefined):
       folderCount,
       zeroByteCount,
       unknownSizeCount,
+      indexSize,
+      indexFileCount,
     },
     byExtension,
     folders,

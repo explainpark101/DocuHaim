@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { IconDownload, IconMenu, IconRefresh, IconSettings, IconUpload } from '@/components/icons';
 import SnippetSettings from '@/components/settings/SnippetSettings';
-import { X } from 'lucide-react';
+import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
   loadWikiImageCacheMode,
@@ -37,6 +37,8 @@ import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModel
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import { getLocalAppBuildId } from '@/utils/pwaUpdate';
 import { RadioGroup } from 'radix-ui';
+import { advancedSearchEngine } from '@/utils/advancedSearch';
+import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 
 export default function SettingsPage({
   s3Creds,
@@ -101,11 +103,24 @@ export default function SettingsPage({
   const [composerHelperTextVisible, setComposerHelperTextVisible] = useState(() =>
     getComposerHelperTextVisible(),
   );
+  const [advancedSearchStatus, setAdvancedSearchStatus] = useState(() =>
+    advancedSearchEngine.getStatus(),
+  );
+  const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [geminiModel, setGeminiModel, syncGeminiModel] = useGeminiModelState();
+  const [s3ConnOpen, setS3ConnOpen] = useState(true);
+  const [webdavConnOpen, setWebdavConnOpen] = useState(false);
+  const [geminiConnOpen, setGeminiConnOpen] = useState(true);
 
   useEffect(() => {
     syncGeminiModel();
   }, [syncGeminiModel]);
+
+  useEffect(() => {
+    return advancedSearchEngine.subscribe(() => {
+      setAdvancedSearchStatus(advancedSearchEngine.getStatus());
+    });
+  }, []);
 
   useEffect(() => {
     setFormCreds(s3Creds);
@@ -227,87 +242,107 @@ export default function SettingsPage({
             e.preventDefault();
             onSaveS3Creds(buildCredsForSave());
           }}
-          className="space-y-4"
+          className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 border-b pb-2 mb-3">S3 연결 정보</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Access Key ID
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={formCreds.accessKeyId}
-                  onChange={(e) => setFormCreds((p) => ({ ...p, accessKeyId: e.target.value }))}
-                />
+          <button
+            type="button"
+            onClick={() => setS3ConnOpen((v) => !v)}
+            className="flex w-full items-center gap-2 text-left"
+            aria-expanded={s3ConnOpen}
+          >
+            {s3ConnOpen ? (
+              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            ) : (
+              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            )}
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+              S3 연결 정보
+            </h3>
+          </button>
+          {s3ConnOpen ? (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Access Key ID
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={formCreds.accessKeyId}
+                    onChange={(e) => setFormCreds((p) => ({ ...p, accessKeyId: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Secret Access Key
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={formCreds.secretAccessKey}
+                    onChange={(e) =>
+                      setFormCreds((p) => ({ ...p, secretAccessKey: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Region
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={formCreds.region}
+                    onChange={(e) => setFormCreds((p) => ({ ...p, region: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Bucket Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={formCreds.bucket}
+                    onChange={(e) => setFormCreds((p) => ({ ...p, bucket: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Endpoint URL (선택)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://..."
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={formCreds.endpoint || ''}
+                    onChange={(e) => setFormCreds((p) => ({ ...p, endpoint: e.target.value }))}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Secret Access Key
-                </label>
-                <input
-                  type="password"
-                  required
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={formCreds.secretAccessKey}
-                  onChange={(e) => setFormCreds((p) => ({ ...p, secretAccessKey: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Region</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={formCreds.region}
-                  onChange={(e) => setFormCreds((p) => ({ ...p, region: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Bucket Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={formCreds.bucket}
-                  onChange={(e) => setFormCreds((p) => ({ ...p, bucket: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Endpoint URL (선택)
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://..."
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={formCreds.endpoint || ''}
-                  onChange={(e) => setFormCreds((p) => ({ ...p, endpoint: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => onRequestClose?.(buildCredsForSave())}
-              className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-            >
-              저장
-            </button>
-          </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => onRequestClose?.(buildCredsForSave())}
+                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition dark:text-odp-muted dark:hover:bg-odp-focusBg"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  저장
+                </button>
+              </div>
+            </>
+          ) : null}
         </form>
 
         {/* Import / Export Section */}
@@ -334,83 +369,114 @@ export default function SettingsPage({
             e.preventDefault();
             onSaveWebdavConfig?.(webdavForm);
           }}
-          className="space-y-4"
+          className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 border-b pb-2 mb-3">WebDAV 연결 정보</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Endpoint URL</label>
-                <input
-                  type="text"
-                  placeholder="https://webdav.example.com"
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={webdavForm.endpoint}
-                  onChange={(e) => setWebdavForm((p) => ({ ...p, endpoint: e.target.value }))}
-                />
+          <button
+            type="button"
+            onClick={() => setWebdavConnOpen((v) => !v)}
+            className="flex w-full items-center gap-2 text-left"
+            aria-expanded={webdavConnOpen}
+          >
+            {webdavConnOpen ? (
+              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            ) : (
+              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            )}
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+              WebDAV 연결 정보
+            </h3>
+            {!webdavConnOpen ? (
+              <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
+                접힘
+              </span>
+            ) : null}
+          </button>
+          {webdavConnOpen ? (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Endpoint URL
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://webdav.example.com"
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={webdavForm.endpoint}
+                    onChange={(e) => setWebdavForm((p) => ({ ...p, endpoint: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={webdavForm.username}
+                    onChange={(e) => setWebdavForm((p) => ({ ...p, username: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={webdavForm.password}
+                    onChange={(e) => setWebdavForm((p) => ({ ...p, password: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                    Base Path (선택)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="/remote.php/dav/files/username/"
+                    className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                    value={webdavForm.basePath}
+                    onChange={(e) => setWebdavForm((p) => ({ ...p, basePath: e.target.value }))}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Username</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={webdavForm.username}
-                  onChange={(e) => setWebdavForm((p) => ({ ...p, username: e.target.value }))}
-                />
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition dark:border-odp-borderStrong dark:hover:bg-odp-focusBg"
+                  onClick={async () => {
+                    try {
+                      const { createWebdavBackend } = await import(
+                        '@/utils/storage/webdavBackend.js'
+                      );
+                      const backend = createWebdavBackend(webdavForm);
+                      if (!backend.isReady()) {
+                        alert('Endpoint와 Username을 입력하세요.');
+                        return;
+                      }
+                      await backend.testConnection();
+                      alert('WebDAV 연결에 성공했습니다.');
+                    } catch (e) {
+                      alert(
+                        'WebDAV 연결 실패: ' +
+                          (e?.message || e) +
+                          '\n\n브라우저에서 사용하려면 서버 CORS가 허용되어야 합니다.',
+                      );
+                    }
+                  }}
+                >
+                  연결 테스트
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  WebDAV 저장
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Password</label>
-                <input
-                  type="password"
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={webdavForm.password}
-                  onChange={(e) => setWebdavForm((p) => ({ ...p, password: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Base Path (선택)</label>
-                <input
-                  type="text"
-                  placeholder="/remote.php/dav/files/username/"
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={webdavForm.basePath}
-                  onChange={(e) => setWebdavForm((p) => ({ ...p, basePath: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition dark:border-odp-borderStrong dark:hover:bg-odp-focusBg"
-              onClick={async () => {
-                try {
-                  const { createWebdavBackend } = await import('@/utils/storage/webdavBackend.js');
-                  const backend = createWebdavBackend(webdavForm);
-                  if (!backend.isReady()) {
-                    alert('Endpoint와 Username을 입력하세요.');
-                    return;
-                  }
-                  await backend.testConnection();
-                  alert('WebDAV 연결에 성공했습니다.');
-                } catch (e) {
-                  alert(
-                    'WebDAV 연결 실패: ' +
-                      (e?.message || e) +
-                      '\n\n브라우저에서 사용하려면 서버 CORS가 허용되어야 합니다.',
-                  );
-                }
-              }}
-            >
-              연결 테스트
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-            >
-              WebDAV 저장
-            </button>
-          </div>
+            </>
+          ) : null}
         </form>
 
         <form
@@ -423,49 +489,68 @@ export default function SettingsPage({
             }
             onSaveS3Creds(buildCredsForSave());
           }}
-          className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong space-y-3"
+          className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">Google AI Studio (Gemini)</h3>
-            <p className="text-xs text-gray-600 dark:text-odp-muted">
-              Gemini API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시 표시되지 않습니다.
-            </p>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
-              API Key
-            </label>
-            <input
-              type="password"
-              autoComplete="off"
-              className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-              value={googleAiKeyInput}
-              onChange={(e) => setGoogleAiKeyInput(e.target.value)}
-              placeholder={hasStoredGoogleAiKey ? '저장됨 — 변경 시 새 키 입력' : 'AI Studio API 키 입력'}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
-              기본 모델
-            </label>
-            <GeminiModelSelect
-              getGeminiApiKey={getGeminiApiKey}
-              value={geminiModel}
-              onChange={setGeminiModel}
-              autoLoad={hasStoredGoogleAiKey || Boolean(googleAiKeyInput.trim())}
-            />
-            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
-              마지막으로 사용한 모델이 저장되며, 다음에 AI 도우미를 열 때 자동으로 선택됩니다.
-            </p>
-          </div>
-          <div className="flex justify-end pt-1">
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-            >
-              API 키 저장
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setGeminiConnOpen((v) => !v)}
+            className="flex w-full items-center gap-2 text-left"
+            aria-expanded={geminiConnOpen}
+          >
+            {geminiConnOpen ? (
+              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            ) : (
+              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            )}
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+              Google AI Studio (Gemini)
+            </h3>
+          </button>
+          {geminiConnOpen ? (
+            <>
+              <p className="text-xs text-gray-600 dark:text-odp-muted">
+                Gemini API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시
+                표시되지 않습니다.
+              </p>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                  value={googleAiKeyInput}
+                  onChange={(e) => setGoogleAiKeyInput(e.target.value)}
+                  placeholder={
+                    hasStoredGoogleAiKey ? '저장됨 — 변경 시 새 키 입력' : 'AI Studio API 키 입력'
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                  기본 모델
+                </label>
+                <GeminiModelSelect
+                  getGeminiApiKey={getGeminiApiKey}
+                  value={geminiModel}
+                  onChange={setGeminiModel}
+                  autoLoad={hasStoredGoogleAiKey || Boolean(googleAiKeyInput.trim())}
+                />
+                <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
+                  마지막으로 사용한 모델이 저장되며, 다음에 AI 도우미를 열 때 자동으로 선택됩니다.
+                </p>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  API 키 저장
+                </button>
+              </div>
+            </>
+          ) : null}
         </form>
 
         {/* WebAuthn: 지문/보안 키로 잠금 해제 또는 연결 정보 저장 */}
@@ -862,6 +947,166 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
+        </div>
+
+        {/* Advanced Search */}
+        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">
+            Advanced Search
+          </h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+            <kbd className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">⌘K</kbd>
+            {' / '}
+            <kbd className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Ctrl+K</kbd>
+            로 Spotlight 검색을 엽니다. 역색인이 켜져 있으면 문서·채팅 저장 시 해당 항목만 증분
+            색인합니다. 전체 볼트 색인은 아래 버튼으로 백그라운드에서 만듭니다.
+          </p>
+          <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+            <button
+              type="button"
+              onClick={() => {
+                advancedSearchEngine.setEnabled(!advancedSearchStatus.enabled);
+              }}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                advancedSearchStatus.enabled
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={advancedSearchStatus.enabled}
+              aria-label="역색인 사용"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  advancedSearchStatus.enabled ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              역색인 사용 (기본 켜짐)
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                끄면 파일명·경로만 검색합니다. 켜져 있으면 저장 시 항상 증분 색인합니다.
+              </span>
+            </span>
+          </label>
+          <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+            <button
+              type="button"
+              onClick={() => {
+                advancedSearchEngine.setIncludeOtherFiles(
+                  !advancedSearchStatus.includeOtherFiles,
+                );
+              }}
+              disabled={!advancedSearchStatus.enabled}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 disabled:opacity-50 ${
+                advancedSearchStatus.includeOtherFiles
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={advancedSearchStatus.includeOtherFiles}
+              aria-label="기타 파일 색인 포함"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  advancedSearchStatus.includeOtherFiles
+                    ? 'translate-x-4'
+                    : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              기타 파일 색인 포함
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                기본은 Markdown만입니다. 켜면 txt · json · html · svg · csv 등도 본문 색인에
+                넣습니다. 변경 후 「다시 색인」이 필요합니다.
+              </span>
+            </span>
+          </label>
+          <div
+            className={`mt-3 rounded-md border px-3 py-2 text-xs ${
+              advancedSearchStatus.building
+                ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
+                : advancedSearchStatus.hasIndex
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200'
+                  : 'border-gray-200 bg-white text-gray-600 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-muted'
+            }`}
+          >
+            {advancedSearchStatus.building ? (
+              <>
+                백그라운드 색인 중
+                {typeof advancedSearchStatus.buildProgress === 'number'
+                  ? ` · ${Math.round(advancedSearchStatus.buildProgress * 100)}%`
+                  : '…'}
+              </>
+            ) : advancedSearchStatus.hasIndex ? (
+              <>
+                색인 있음 · 파일 {advancedSearchStatus.fileCount} · 채팅{' '}
+                {advancedSearchStatus.chatCount}
+                {advancedSearchStatus.builtAt &&
+                advancedSearchStatus.builtAt !== new Date(0).toISOString()
+                  ? ` · 갱신 ${new Date(advancedSearchStatus.builtAt).toLocaleString()}`
+                  : ''}
+              </>
+            ) : (
+              <>
+                전체 색인 없음 — 저장한 문서·채팅은 증분 색인됩니다. 아래 「색인」으로 볼트
+                전체를 백그라운드에서 만들 수 있습니다.
+              </>
+            )}
+            {advancedSearchStatus.lastError
+              ? ` · 오류: ${advancedSearchStatus.lastError}`
+              : ''}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={
+                advancedSearchBusy ||
+                !advancedSearchStatus.enabled ||
+                advancedSearchStatus.building
+              }
+              onClick={() => {
+                setAdvancedSearchBusy(true);
+                // Fire background build; UI follows engine.subscribe status.
+                void advancedSearchEngine
+                  .rebuild()
+                  .finally(() => setAdvancedSearchBusy(false));
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60"
+            >
+              <IconRefresh size={14} />
+              {advancedSearchStatus.hasIndex ? '다시 색인' : '색인'}
+            </button>
+            <button
+              type="button"
+              disabled={
+                advancedSearchBusy ||
+                advancedSearchStatus.building ||
+                !advancedSearchStatus.hasIndex
+              }
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    '역색인 캐시(.advanced-search/)를 삭제할까요? 삭제 후에는 「색인」으로 다시 생성해야 합니다.',
+                  )
+                ) {
+                  return;
+                }
+                setAdvancedSearchBusy(true);
+                void advancedSearchEngine
+                  .clearCache()
+                  .finally(() => setAdvancedSearchBusy(false));
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:bg-odp-bgSoft dark:text-red-300 dark:hover:bg-red-950/30"
+            >
+              역색인 캐시 삭제
+            </button>
+          </div>
+          <AdvancedSearchBuildLog
+            className="mt-3"
+            logs={advancedSearchStatus.buildLogs || []}
+            building={advancedSearchStatus.building}
+            progress={advancedSearchStatus.buildProgress}
+          />
         </div>
 
         {/* Wiki 이미지 캐싱 방식 */}

@@ -29,6 +29,7 @@ import {
   pathAffectedByDelete,
 } from './noteRefs.js';
 import { getStorageScopeId } from '@/utils/storageScope';
+import { notifyAdvancedSearchChange } from '@/utils/advancedSearch/notify';
 
 const MAX_WRITE_RETRIES = 5;
 
@@ -117,6 +118,11 @@ async function mutateDayFile(ctx, dateStr, mutator) {
         );
       }
       await cacheDay(scopeOf(ctx), key, content);
+      notifyAdvancedSearchChange({
+        type: 'chatDay',
+        dateStr,
+        content,
+      });
       return next;
     } catch (e) {
       if (!(e instanceof ChatPreconditionFailedError)) throw e;

@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search } from 'lucide-react';
 import {
   analyzeStorageTree,
   formatStorageBytes,
@@ -15,6 +15,8 @@ import {
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
 import StorageExtensionFilesModal from '@/components/settings/StorageExtensionFilesModal';
+import { advancedSearchEngine } from '@/utils/advancedSearch';
+import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 
 type Props = {
   storageMode?: string;
@@ -357,6 +359,14 @@ export default function StorageUsageAnalysis({
     extension: false,
     folder: false,
   });
+  const [indexBusy, setIndexBusy] = useState(false);
+  const [indexStatus, setIndexStatus] = useState(() => advancedSearchEngine.getStatus());
+
+  useEffect(() => {
+    return advancedSearchEngine.subscribe(() => {
+      setIndexStatus(advancedSearchEngine.getStatus());
+    });
+  }, []);
 
   useEffect(() => {
     setAnalysis(null);
@@ -403,10 +413,30 @@ export default function StorageUsageAnalysis({
     }
   };
 
+  const handleBuildIndex = () => {
+    if (indexBusy || indexStatus.building || !indexStatus.enabled) return;
+    setIndexBusy(true);
+    void advancedSearchEngine.rebuild().finally(() => setIndexBusy(false));
+  };
+
   const summary = analysis?.summary;
+  const indexPercent =
+    summary && summary.totalSize > 0
+      ? (summary.indexSize / summary.totalSize) * 100
+      : 0;
   const summaryRows = summary
     ? [
         { label: '총 용량', value: formatStorageBytes(summary.totalSize) },
+        {
+          label: '색인 데이터 (.advanced-search)',
+          value: `${formatStorageBytes(summary.indexSize)} · ${summary.indexFileCount.toLocaleString()}개 파일${
+            summary.totalSize > 0 ? ` · ${indexPercent.toFixed(1)}%` : ''
+          }`,
+        },
+        {
+          label: '색인 제외 용량',
+          value: formatStorageBytes(Math.max(0, summary.totalSize - summary.indexSize)),
+        },
         { label: '파일 수', value: summary.fileCount.toLocaleString() },
         { label: '폴더 수', value: summary.folderCount.toLocaleString() },
         { label: '0 byte 파일', value: summary.zeroByteCount.toLocaleString() },
@@ -433,15 +463,46 @@ export default function StorageUsageAnalysis({
             . 전체 트리를 스캔해 용량 사용량을 집계합니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleAnalyze}
-          disabled={!canScan || loading || typeof onScanTree !== 'function'}
-          className="inline-flex items-center gap-1.5 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg dark:hover:bg-odp-focusBg"
-        >
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          {loading ? '분석 중…' : analysis ? '다시 분석' : '분석 시작'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleBuildIndex}
+            disabled={
+              !canScan ||
+              indexBusy ||
+              indexStatus.building ||
+              !indexStatus.enabled
+            }
+            className="inline-flex items-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60"
+            title={
+              !indexStatus.enabled
+                ? '설정에서 역색인을 켠 뒤 사용할 수 있습니다'
+                : 'Advanced Search 역색인을 백그라운드로 생성합니다'
+            }
+          >
+            {indexBusy || indexStatus.building ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Search size={14} />
+            )}
+            {indexBusy || indexStatus.building
+              ? typeof indexStatus.buildProgress === 'number'
+                ? `색인 중 ${Math.round(indexStatus.buildProgress * 100)}%`
+                : '색인 중…'
+              : indexStatus.hasIndex
+                ? '역색인 다시 생성'
+                : '역색인 생성'}
+          </button>
+          <button
+            type="button"
+            onClick={handleAnalyze}
+            disabled={!canScan || loading || typeof onScanTree !== 'function'}
+            className="inline-flex items-center gap-1.5 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg dark:hover:bg-odp-focusBg"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {loading ? '분석 중…' : analysis ? '다시 분석' : '분석 시작'}
+          </button>
+        </div>
       </div>
 
       {!canScan && (
@@ -449,6 +510,12 @@ export default function StorageUsageAnalysis({
           선택한 저장소가 아직 연결되지 않았습니다. 연결 후 다시 시도하세요.
         </p>
       )}
+
+      <AdvancedSearchBuildLog
+        logs={indexStatus.buildLogs || []}
+        building={indexStatus.building}
+        progress={indexStatus.buildProgress}
+      />
 
       {error && (
         <p className="whitespace-pre-wrap text-xs text-red-600 dark:text-red-400">{error}</p>
