@@ -1406,10 +1406,10 @@ function MainApp() {
     let cancelled = false;
     void (async () => {
       // Load existing index if any — never auto-rebuild when missing.
+      // Checkpoint presence is refreshed so Settings can offer resume vs fresh.
       await advancedSearchEngine.ensureLoaded();
       if (cancelled) return;
-      // Resume interrupted full builds from IndexedDB checkpoint.
-      await advancedSearchEngine.maybeResumeRebuild();
+      await advancedSearchEngine.refreshCheckpointStatus();
     })();
     return () => {
       cancelled = true;
@@ -6319,6 +6319,9 @@ function MainApp() {
         <AdvancedSearchHost
           getTrees={getAdvancedSearchTrees}
           onOpenFile={openAdvancedSearchFile}
+          currentFile={currentFile}
+          editorContent={editorContent}
+          theme={theme}
         />
       ) : null}
 

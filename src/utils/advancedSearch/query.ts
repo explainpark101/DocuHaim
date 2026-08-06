@@ -1,7 +1,11 @@
 import { tokenizeForIndexAsync } from './tokenize';
 import type { DocMeta, InMemoryIndex } from './types';
 import { collectSearchableFileEntries } from './collectSources';
-import { matchAppCommands, type AppCommandId } from './commands';
+import {
+  matchAppCommands,
+  type AppCommandContext,
+  type AppCommandId,
+} from './commands';
 
 export type MatchReason = 'command' | 'name' | 'path' | 'content';
 
@@ -64,8 +68,11 @@ function scoreHit(reasons: MatchReason[]): number {
   return s;
 }
 
-function commandHits(query: string): AdvancedSearchHit[] {
-  return matchAppCommands(query).map((cmd) => ({
+function commandHits(
+  query: string,
+  context?: AppCommandContext,
+): AdvancedSearchHit[] {
+  return matchAppCommands(query, context).map((cmd) => ({
     docId: `command:${cmd.id}`,
     kind: 'command' as const,
     path: cmd.path,
@@ -87,10 +94,11 @@ export async function runAdvancedSearch(options: {
   index: InMemoryIndex | null;
   indexEnabled: boolean;
   limit?: number;
+  commandContext?: AppCommandContext;
 }): Promise<AdvancedSearchHit[]> {
   const q = String(options.query || '').trim();
   const limit = options.limit ?? 50;
-  const commands = commandHits(q);
+  const commands = commandHits(q, options.commandContext);
 
   // Empty query: show app shortcuts only
   if (!q) {
@@ -134,22 +142,66 @@ export async function runAdvancedSearch(options: {
     hits.set(partial.docId, next);
   };
 
-  // Filename / path (always)
+  // Filename / path from live trees
   for (const tree of options.trees) {
     const files = collectSearchableFileEntries(tree);
     for (const file of files) {
       const nameLower = file.name.toLowerCase();
       const pathLower = file.path.toLowerCase();
       const nameHit = nameLower.includes(qLower);
-      const pathHit = !nameHit && pathLower.includes(qLower);
+      const pathHit = pathLower.includes(qLower);
       if (!nameHit && !pathHit) continue;
-      upsert({
-        docId: `file:${file.path}`,
-        kind: 'file',
-        path: file.path,
-        title: file.name,
-        reason: nameHit ? 'name' : 'path',
-      });
+      if (nameHit) {
+        upsert({
+          docId: `file:${file.path}`,
+          kind: 'file',
+          path: file.path,
+          title: file.name,
+          reason: 'name',
+        });
+      }
+      if (pathHit) {
+        upsert({
+          docId: `file:${file.path}`,
+          kind: 'file',
+          path: file.path,
+          title: file.name,
+          reason: 'path',
+        });
+      }
+    }
+  }
+
+  // Path / title from indexed docs (folder segments, even when tree is incomplete)
+  if (options.indexEnabled && options.index) {
+    for (const [docId, meta] of options.index.docs) {
+      if (meta.kind !== 'file') continue;
+      const title = meta.title || pathBasenameSafe(meta.path);
+      const nameLower = title.toLowerCase();
+      const pathLower = String(meta.path || '').toLowerCase();
+      const nameHit = nameLower.includes(qLower);
+      const pathHit = pathLower.includes(qLower);
+      if (!nameHit && !pathHit) continue;
+      if (nameHit) {
+        upsert({
+          docId,
+          kind: 'file',
+          path: meta.path,
+          title,
+          ...(meta.preview ? { preview: meta.preview } : {}),
+          reason: 'name',
+        });
+      }
+      if (pathHit) {
+        upsert({
+          docId,
+          kind: 'file',
+          path: meta.path,
+          title,
+          ...(meta.preview ? { preview: meta.preview } : {}),
+          reason: 'path',
+        });
+      }
     }
   }
 
@@ -189,6 +241,39 @@ export async function runAdvancedSearch(options: {
             ...(meta.messageId ? { messageId: meta.messageId } : {}),
             ...(meta.group ? { group: meta.group } : {}),
             reason: 'content',
+          });
+        }
+      }
+    }
+
+    // Path-like query: OR postings for slash-separated segments (folder navigation).
+    if (qLower.includes('/') || qLower.includes('\\')) {
+      const pathParts = qLower
+        .split(/[/\\]+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length >= 2);
+      const seenIds = new Set<string>();
+      for (const part of pathParts) {
+        const set = options.index.postings.get(part);
+        if (!set) continue;
+        for (const docId of set) {
+          if (seenIds.has(docId)) continue;
+          const meta = options.index.docs.get(docId);
+          if (!meta || meta.kind !== 'file') continue;
+          if (!String(meta.path || '').toLowerCase().includes(qLower) &&
+              !pathParts.every((p) =>
+                String(meta.path || '').toLowerCase().includes(p),
+              )) {
+            continue;
+          }
+          seenIds.add(docId);
+          upsert({
+            docId,
+            kind: 'file',
+            path: meta.path,
+            title: meta.title || pathBasenameSafe(meta.path),
+            ...(meta.preview ? { preview: meta.preview } : {}),
+            reason: 'path',
           });
         }
       }

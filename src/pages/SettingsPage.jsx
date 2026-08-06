@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { IconDownload, IconMenu, IconRefresh, IconSettings, IconUpload } from '@/components/icons';
+import { useLocation } from 'react-router';
+import { IconDownload, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
@@ -39,6 +40,7 @@ import { getLocalAppBuildId } from '@/utils/pwaUpdate';
 import { RadioGroup } from 'radix-ui';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
+import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
 
 export default function SettingsPage({
   s3Creds,
@@ -107,14 +109,38 @@ export default function SettingsPage({
     advancedSearchEngine.getStatus(),
   );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
+  const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
+  const [checkpointInfo, setCheckpointInfo] = useState(
+    /** @type {import('@/utils/advancedSearch/engine').RebuildCheckpointInfo | null} */ (null),
+  );
   const [geminiModel, setGeminiModel, syncGeminiModel] = useGeminiModelState();
   const [s3ConnOpen, setS3ConnOpen] = useState(true);
   const [webdavConnOpen, setWebdavConnOpen] = useState(false);
   const [geminiConnOpen, setGeminiConnOpen] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     syncGeminiModel();
   }, [syncGeminiModel]);
+
+  useEffect(() => {
+    const hash = String(location.hash || '').replace(/^#/, '');
+    if (!hash.startsWith('settings-')) return undefined;
+    if (hash === 'settings-s3') setS3ConnOpen(true);
+    if (hash === 'settings-webdav') setWebdavConnOpen(true);
+    if (hash === 'settings-gemini') setGeminiConnOpen(true);
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      try {
+        el.focus?.({ preventScroll: true });
+      } catch {
+        // ignore
+      }
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [location.hash, location.pathname]);
 
   useEffect(() => {
     return advancedSearchEngine.subscribe(() => {
@@ -188,7 +214,11 @@ export default function SettingsPage({
       </div>
 
       <div className="p-6 overflow-y-auto space-y-6 flex-1">
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-storage"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">기본 저장소 선택 (3중 택1)</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
             앱에서 기본으로 동작할 저장소를 선택합니다. 선택은 저장되어 다음 접속 시 자동 복원됩니다.
@@ -228,21 +258,25 @@ export default function SettingsPage({
         </div>
 
         {canScanStorageUsage && (
-          <StorageUsageAnalysis
-            storageMode={storageMode}
-            onScanTree={onScanStorageUsage}
-            canScan={canScanStorageUsage}
-            onOpenFile={onOpenStorageUsageFile}
-          />
+          <div id="settings-storage-usage" tabIndex={-1} className="scroll-mt-4">
+            <StorageUsageAnalysis
+              storageMode={storageMode}
+              onScanTree={onScanStorageUsage}
+              canScan={canScanStorageUsage}
+              onOpenFile={onOpenStorageUsageFile}
+            />
+          </div>
         )}
 
         {/* S3 Form */}
         <form
+          id="settings-s3"
+          tabIndex={-1}
           onSubmit={(e) => {
             e.preventDefault();
             onSaveS3Creds(buildCredsForSave());
           }}
-          className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+          className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
           <button
             type="button"
@@ -346,7 +380,11 @@ export default function SettingsPage({
         </form>
 
         {/* Import / Export Section */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-backup"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">데이터 백업/복원</h3>
           <div className="flex gap-2">
             <button
@@ -365,11 +403,13 @@ export default function SettingsPage({
         </div>
 
         <form
+          id="settings-webdav"
+          tabIndex={-1}
           onSubmit={(e) => {
             e.preventDefault();
             onSaveWebdavConfig?.(webdavForm);
           }}
-          className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+          className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
           <button
             type="button"
@@ -480,6 +520,8 @@ export default function SettingsPage({
         </form>
 
         <form
+          id="settings-gemini"
+          tabIndex={-1}
           onSubmit={(e) => {
             e.preventDefault();
             const trimmedKey = googleAiKeyInput.trim();
@@ -489,7 +531,7 @@ export default function SettingsPage({
             }
             onSaveS3Creds(buildCredsForSave());
           }}
-          className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+          className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
           <button
             type="button"
@@ -555,7 +597,11 @@ export default function SettingsPage({
 
         {/* WebAuthn: 지문/보안 키로 잠금 해제 또는 연결 정보 저장 */}
         {showWebAuthnSection && (
-          <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+          <div
+          id="settings-webauthn"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">지문 / 보안 키</h3>
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
               {webauthnStorageOnly
@@ -609,7 +655,11 @@ export default function SettingsPage({
         )}
 
         {/* Markdown 에디터 종류 */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-editor"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">마크다운 에디터</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
             .md 파일을 편집할 때 사용할 에디터를 고릅니다.
@@ -668,7 +718,11 @@ export default function SettingsPage({
         </div>
 
         {/* Navigation */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-navigation"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">네비게이션</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
             키보드로 에디터 안의 커서 위치를 조절하거나, 열린 파일 사이를 이동하는 옵션입니다.
@@ -736,7 +790,11 @@ export default function SettingsPage({
         </div>
 
         {/* Display Options */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-display"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
           <label
             className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
@@ -913,7 +971,11 @@ export default function SettingsPage({
         </div>
 
         {/* Chat with myself */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-chat"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">나와의 채팅</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
             채팅 입력창 아래 단축키 안내 문구 표시 여부를 설정합니다.
@@ -950,7 +1012,11 @@ export default function SettingsPage({
         </div>
 
         {/* Advanced Search */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-advanced-search"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">
             Advanced Search
           </h3>
@@ -985,6 +1051,7 @@ export default function SettingsPage({
               역색인 사용 (기본 켜짐)
               <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                 끄면 파일명·경로만 검색합니다. 켜져 있으면 저장 시 항상 증분 색인합니다.
+                폴더 경로(예: notes/회의)로도 찾을 수 있습니다.
               </span>
             </span>
           </label>
@@ -1055,6 +1122,9 @@ export default function SettingsPage({
             {advancedSearchStatus.lastError
               ? ` · 오류: ${advancedSearchStatus.lastError}`
               : ''}
+            {advancedSearchStatus.hasCheckpoint && !advancedSearchStatus.building
+              ? ` · 중지된 체크포인트 ${advancedSearchStatus.checkpointProcessedCount}개`
+              : ''}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -1065,17 +1135,39 @@ export default function SettingsPage({
                 advancedSearchStatus.building
               }
               onClick={() => {
-                setAdvancedSearchBusy(true);
-                // Fire background build; UI follows engine.subscribe status.
-                void advancedSearchEngine
-                  .rebuild()
-                  .finally(() => setAdvancedSearchBusy(false));
+                void (async () => {
+                  const info = await advancedSearchEngine.getRebuildCheckpointInfo();
+                  if (info) {
+                    setCheckpointInfo(info);
+                    setCheckpointChoiceOpen(true);
+                    return;
+                  }
+                  setAdvancedSearchBusy(true);
+                  void advancedSearchEngine
+                    .rebuild({ resume: false })
+                    .finally(() => setAdvancedSearchBusy(false));
+                })();
               }}
               className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60"
             >
               <IconRefresh size={14} />
-              {advancedSearchStatus.hasIndex ? '다시 색인' : '색인'}
+              {advancedSearchStatus.hasCheckpoint
+                ? '색인 재개/다시 시작'
+                : advancedSearchStatus.hasIndex
+                  ? '다시 색인'
+                  : '색인'}
             </button>
+            {advancedSearchStatus.building ? (
+              <button
+                type="button"
+                onClick={() => advancedSearchEngine.cancelRebuild()}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
+                title="색인을 중지합니다. 체크포인트는 유지되어 이어서 재개할 수 있습니다."
+              >
+                <IconSquare size={14} />
+                중지
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={
@@ -1101,6 +1193,30 @@ export default function SettingsPage({
               역색인 캐시 삭제
             </button>
           </div>
+          <RebuildCheckpointChoiceModal
+            isOpen={checkpointChoiceOpen}
+            info={checkpointInfo}
+            onCancel={() => {
+              setCheckpointChoiceOpen(false);
+              setCheckpointInfo(null);
+            }}
+            onResume={() => {
+              setCheckpointChoiceOpen(false);
+              setCheckpointInfo(null);
+              setAdvancedSearchBusy(true);
+              void advancedSearchEngine
+                .rebuild({ resume: true })
+                .finally(() => setAdvancedSearchBusy(false));
+            }}
+            onStartFresh={() => {
+              setCheckpointChoiceOpen(false);
+              setCheckpointInfo(null);
+              setAdvancedSearchBusy(true);
+              void advancedSearchEngine
+                .rebuild({ resume: false })
+                .finally(() => setAdvancedSearchBusy(false));
+            }}
+          />
           <AdvancedSearchBuildLog
             className="mt-3"
             logs={advancedSearchStatus.buildLogs || []}
@@ -1110,7 +1226,11 @@ export default function SettingsPage({
         </div>
 
         {/* Wiki 이미지 캐싱 방식 */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-wiki-image"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">위키 이미지 캐싱 방식</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
             md 문서의 <code className="px-1 mx-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">![[path]]</code>{' '}
@@ -1152,17 +1272,22 @@ export default function SettingsPage({
           </div>
         </div>
 
-        {/* Snippet Settings */}
-        <SnippetSettings
-          value={snippetConfig}
-          onChange={onChangeSnippetConfig}
-          onSave={onSaveSnippetConfig}
-          isSaving={isSavingSnippets}
-          isLoaded={snippetConfigLoaded}
-        />
+        <div id="settings-snippets" tabIndex={-1} className="scroll-mt-4">
+          <SnippetSettings
+            value={snippetConfig}
+            onChange={onChangeSnippetConfig}
+            onSave={onSaveSnippetConfig}
+            isSaving={isSavingSnippets}
+            isLoaded={snippetConfigLoaded}
+          />
+        </div>
 
         {/* App update */}
-        <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
+        <div
+          id="settings-app-update"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">앱 업데이트</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
             배포 빌드 해시와 서비스 워커(PWA) 캐시를 확인해 최신 버전이 있는지 확인하고, 바로 적용할 수 있습니다.

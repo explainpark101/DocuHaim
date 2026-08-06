@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Square } from 'lucide-react';
 import {
   analyzeStorageTree,
   formatStorageBytes,
@@ -17,6 +17,8 @@ import {
 import StorageExtensionFilesModal from '@/components/settings/StorageExtensionFilesModal';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
+import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
+import type { RebuildCheckpointInfo } from '@/utils/advancedSearch/engine';
 
 type Props = {
   storageMode?: string;
@@ -361,11 +363,19 @@ export default function StorageUsageAnalysis({
   });
   const [indexBusy, setIndexBusy] = useState(false);
   const [indexStatus, setIndexStatus] = useState(() => advancedSearchEngine.getStatus());
+  const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
+  const [checkpointInfo, setCheckpointInfo] = useState<RebuildCheckpointInfo | null>(
+    null,
+  );
 
   useEffect(() => {
     return advancedSearchEngine.subscribe(() => {
       setIndexStatus(advancedSearchEngine.getStatus());
     });
+  }, []);
+
+  useEffect(() => {
+    void advancedSearchEngine.refreshCheckpointStatus();
   }, []);
 
   useEffect(() => {
@@ -413,10 +423,29 @@ export default function StorageUsageAnalysis({
     }
   };
 
-  const handleBuildIndex = () => {
+  const startRebuild = (resume: boolean) => {
     if (indexBusy || indexStatus.building || !indexStatus.enabled) return;
     setIndexBusy(true);
-    void advancedSearchEngine.rebuild().finally(() => setIndexBusy(false));
+    void advancedSearchEngine
+      .rebuild({ resume })
+      .finally(() => setIndexBusy(false));
+  };
+
+  const handleBuildIndex = () => {
+    if (indexBusy || indexStatus.building || !indexStatus.enabled) return;
+    void (async () => {
+      const info = await advancedSearchEngine.getRebuildCheckpointInfo();
+      if (info) {
+        setCheckpointInfo(info);
+        setCheckpointChoiceOpen(true);
+        return;
+      }
+      startRebuild(false);
+    })();
+  };
+
+  const handleCancelIndex = () => {
+    advancedSearchEngine.cancelRebuild();
   };
 
   const summary = analysis?.summary;
@@ -489,10 +518,23 @@ export default function StorageUsageAnalysis({
               ? typeof indexStatus.buildProgress === 'number'
                 ? `색인 중 ${Math.round(indexStatus.buildProgress * 100)}%`
                 : '색인 중…'
-              : indexStatus.hasIndex
-                ? '역색인 다시 생성'
-                : '역색인 생성'}
+              : indexStatus.hasCheckpoint
+                ? '색인 재개/다시 시작'
+                : indexStatus.hasIndex
+                  ? '역색인 다시 생성'
+                  : '역색인 생성'}
           </button>
+          {indexStatus.building ? (
+            <button
+              type="button"
+              onClick={handleCancelIndex}
+              className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
+              title="색인을 중지합니다. 체크포인트는 유지되어 이어서 재개할 수 있습니다."
+            >
+              <Square size={14} />
+              중지
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={handleAnalyze}
@@ -515,6 +557,25 @@ export default function StorageUsageAnalysis({
         logs={indexStatus.buildLogs || []}
         building={indexStatus.building}
         progress={indexStatus.buildProgress}
+      />
+
+      <RebuildCheckpointChoiceModal
+        isOpen={checkpointChoiceOpen}
+        info={checkpointInfo}
+        onCancel={() => {
+          setCheckpointChoiceOpen(false);
+          setCheckpointInfo(null);
+        }}
+        onResume={() => {
+          setCheckpointChoiceOpen(false);
+          setCheckpointInfo(null);
+          startRebuild(true);
+        }}
+        onStartFresh={() => {
+          setCheckpointChoiceOpen(false);
+          setCheckpointInfo(null);
+          startRebuild(false);
+        }}
       />
 
       {error && (

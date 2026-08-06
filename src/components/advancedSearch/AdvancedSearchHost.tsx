@@ -7,6 +7,7 @@ import {
   subscribeOpenAdvancedSearch,
   type AdvancedSearchHit,
 } from '@/utils/advancedSearch';
+import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 
 type TreeNode = {
   type?: string;
@@ -15,11 +16,24 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
+type OpenFileSnapshot = {
+  id?: string | null;
+  name?: string | null;
+  viewer?: string | null;
+  type?: string | null;
+  content?: string | null;
+} | null;
+
 export type AdvancedSearchHostProps = {
   /** Trees used for filename/path matching and rebuild source listing. */
   getTrees: () => Array<TreeNode[] | null | undefined>;
   /** Open a vault file by path (storage-aware). */
   onOpenFile: (path: string) => void | Promise<void>;
+  /** Currently open editor file (for contextual commands like export). */
+  currentFile?: OpenFileSnapshot;
+  /** Live editor markdown (preferred over currentFile.content for export). */
+  editorContent?: string;
+  theme?: 'light' | 'dark' | string;
 };
 
 /**
@@ -28,6 +42,9 @@ export type AdvancedSearchHostProps = {
 export default function AdvancedSearchHost({
   getTrees,
   onOpenFile,
+  currentFile = null,
+  editorContent = '',
+  theme = 'light',
 }: AdvancedSearchHostProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -61,15 +78,48 @@ export default function AdvancedSearchHost({
 
   const handleSearch = useCallback(
     async (query: string) => {
-      return advancedSearchEngine.search(query, getTrees(), 50);
+      return advancedSearchEngine.search(query, getTrees(), 50, {
+        currentFile,
+      });
     },
-    [getTrees],
+    [getTrees, currentFile],
+  );
+
+  const openExportPdf = useCallback(
+    (opts: { useCurrentFile: boolean }) => {
+      const value = opts.useCurrentFile
+        ? String(editorContent ?? currentFile?.content ?? '')
+        : String(editorContent ?? currentFile?.content ?? '');
+      const file = opts.useCurrentFile || currentFile?.id ? currentFile : null;
+      setPendingPrintReturnState({
+        currentFile: file,
+        editorContent: value,
+      });
+      navigate('/export-pdf', {
+        state: {
+          value,
+          theme: theme === 'dark' ? 'dark' : 'light',
+          currentFile: file,
+        },
+      });
+    },
+    [navigate, editorContent, currentFile, theme],
   );
 
   const handleSelect = useCallback(
     (hit: AdvancedSearchHit) => {
-      if (hit.kind === 'command' && hit.path) {
-        navigate(hit.path);
+      if (hit.kind === 'command') {
+        if (hit.commandId === 'export-current') {
+          openExportPdf({ useCurrentFile: true });
+          return;
+        }
+        if (hit.commandId === 'export-pdf') {
+          openExportPdf({ useCurrentFile: Boolean(currentFile?.id) });
+          return;
+        }
+        if (hit.path) {
+          navigate(hit.path);
+        }
         return;
       }
       if (hit.kind === 'chat' && hit.messageId) {
@@ -80,7 +130,7 @@ export default function AdvancedSearchHost({
         void onOpenFile(hit.path);
       }
     },
-    [navigate, onOpenFile],
+    [navigate, onOpenFile, openExportPdf, currentFile],
   );
 
   return (

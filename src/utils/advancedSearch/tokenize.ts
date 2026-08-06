@@ -115,17 +115,25 @@ export function tokenizeForIndex(
   const seen = new Set(base);
   const out = [...base];
   for (const extra of extraTerms) {
-    // Filename may include extension; index both full and stem-ish pieces
-    for (const part of String(extra || '').split(/[_\-.]+/)) {
+    // Path/filename pieces: split on separators so folder segments are searchable.
+    for (const part of String(extra || '').split(/[/\\_\-.]+/)) {
       const t = normalizeTerm(part);
       if (!t || seen.has(t)) continue;
       seen.add(t);
       out.push(t);
     }
-    const whole = normalizeTerm(extra.replace(/\.[a-z0-9]{1,5}$/i, ''));
+    const noExt = String(extra || '').replace(/\.[a-z0-9]{1,5}$/i, '');
+    const whole = normalizeTerm(noExt.replace(/[/\\]+/g, '-'));
     if (whole && !seen.has(whole)) {
       seen.add(whole);
       out.push(whole);
+    }
+    // Keep raw basename stem (without path) as a strong term.
+    const base = noExt.split(/[/\\]/).pop() || '';
+    const baseTerm = normalizeTerm(base);
+    if (baseTerm && !seen.has(baseTerm)) {
+      seen.add(baseTerm);
+      out.push(baseTerm);
     }
   }
   return out;

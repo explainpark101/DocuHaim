@@ -893,6 +893,49 @@ export default function ChatWithMyselfPane({
     return () => window.removeEventListener('hashchange', scrollToHash);
   }, [storageReady, ctx, jumpToDate, location.hash, location.pathname]);
 
+  // Advanced Search shortcuts: /chat#settings|groups|dates|search|pinned
+  useEffect(() => {
+    if (location.pathname !== '/chat' && !location.pathname.endsWith('/chat')) {
+      return undefined;
+    }
+    const raw = String(location.hash || '').replace(/^#/, '').toLowerCase();
+    if (!raw || raw.startsWith('msg-')) return undefined;
+
+    const openRail = (kind) => {
+      if (isMobileLayout) {
+        setGroupOpen(kind === 'group');
+        setDateOpen(kind === 'date');
+        setSearchOpen(kind === 'search');
+        setPinnedOpen(kind === 'pinned');
+      } else if (kind === 'group') setGroupOpen(true);
+      else if (kind === 'date') setDateOpen(true);
+      else if (kind === 'search') setSearchOpen(true);
+      else if (kind === 'pinned') setPinnedOpen(true);
+    };
+
+    if (raw === 'settings' || raw === 'chat-settings') {
+      setComposerSettingsOpen(true);
+      return undefined;
+    }
+    if (raw === 'groups' || raw === 'group') {
+      openRail('group');
+      return undefined;
+    }
+    if (raw === 'dates' || raw === 'date') {
+      openRail('date');
+      return undefined;
+    }
+    if (raw === 'search') {
+      openRail('search');
+      return undefined;
+    }
+    if (raw === 'pinned' || raw === 'pins') {
+      openRail('pinned');
+      return undefined;
+    }
+    return undefined;
+  }, [location.hash, location.pathname, isMobileLayout]);
+
   const confirmPendingMessages = useCallback((msgs, dateStr) => {
     if (!msgs?.length || !dateStr) return;
     const byId = new Map(msgs.map((m) => [m.id, m]));

@@ -68,7 +68,15 @@ export function useAdvancedSearchActivityStatus() {
 
       if (wasBuilding) {
         wasBuildingRef.current = false;
-        if (status.lastError) {
+        if (status.lastBuildCancelled) {
+          shownErrorRef.current = null;
+          updateIndicator(INDICATOR_ID, {
+            label: '검색 색인 중지',
+            detail: '이어서 재개 가능',
+            status: 'done',
+          });
+          scheduleHide(DONE_HIDE_MS);
+        } else if (status.lastError) {
           shownErrorRef.current = status.lastError;
           updateIndicator(INDICATOR_ID, {
             label: '검색 색인 실패',

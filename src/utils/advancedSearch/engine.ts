@@ -70,10 +70,32 @@ export type EngineStatus = {
   chatCount: number;
   builtAt: string | null;
   lastError: string | null;
+  /** True when the last finished build was user-cancelled (checkpoint kept). */
+  lastBuildCancelled: boolean;
+  /** Interrupted rebuild checkpoint available in IndexedDB. */
+  hasCheckpoint: boolean;
+  /** Processed source count stored in the checkpoint (files + chat days). */
+  checkpointProcessedCount: number;
   /** 0–1 while building; null when idle. */
   buildProgress: number | null;
   /** Recent background index log lines (newest last). */
   buildLogs: BuildLogEntry[];
+};
+
+export type RebuildOptions = {
+  /**
+   * When a checkpoint exists:
+   * - true → resume from checkpoint
+   * - false → discard checkpoint and rebuild from scratch
+   * When no checkpoint, ignored.
+   */
+  resume?: boolean;
+};
+
+export type RebuildCheckpointInfo = {
+  processedFileCount: number;
+  processedChatCount: number;
+  updatedAt: number;
 };
 
 type TreeNode = {
@@ -91,6 +113,13 @@ const MAX_BUILD_LOGS = 300;
 /** Persist partial rebuild state to IndexedDB every N processed sources. */
 const CHECKPOINT_EVERY = 25;
 
+class RebuildCancelledError extends Error {
+  constructor() {
+    super('REBUILD_CANCELLED');
+    this.name = 'RebuildCancelledError';
+  }
+}
+
 /** Yield to the event loop so paint/input can run between heavy sync work (fallback path). */
 function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -100,6 +129,10 @@ class AdvancedSearchEngine {
   private index: InMemoryIndex = emptyIndex();
   private loaded = false;
   private building = false;
+  private cancelRequested = false;
+  private lastBuildCancelled = false;
+  private hasCheckpoint = false;
+  private checkpointProcessedCount = 0;
   private dirty = false;
   private enabled = loadAdvancedSearchIndexEnabled();
   private includeOtherFiles = loadAdvancedSearchIncludeOtherFiles();
@@ -185,6 +218,9 @@ class AdvancedSearchEngine {
       chatCount: this.index.manifest.chatCount,
       builtAt: this.index.manifest.builtAt || null,
       lastError: this.lastError,
+      lastBuildCancelled: this.lastBuildCancelled,
+      hasCheckpoint: this.hasCheckpoint,
+      checkpointProcessedCount: this.checkpointProcessedCount,
       buildProgress: this.buildProgress,
       buildLogs: this.buildLogs,
     };
@@ -212,6 +248,7 @@ class AdvancedSearchEngine {
     this.includeOtherFiles = Boolean(value);
     saveAdvancedSearchIncludeOtherFiles(this.includeOtherFiles);
     this.emit();
+    void this.refreshCheckpointStatus();
   }
 
   configure(options: {
@@ -223,6 +260,7 @@ class AdvancedSearchEngine {
     if (options.getTree) this.getTree = options.getTree;
     if (typeof options.storageKey === 'string') {
       this.storageKey = options.storageKey;
+      void this.refreshCheckpointStatus();
     }
   }
 
@@ -276,6 +314,7 @@ class AdvancedSearchEngine {
       clearTimeout(this.persistTimer);
       this.persistTimer = null;
     }
+    this.cancelRequested = true;
     if (this.workerClient) {
       void this.workerClient.cancel();
     }
@@ -283,6 +322,9 @@ class AdvancedSearchEngine {
     this.loaded = true;
     this.dirty = false;
     this.buildProgress = null;
+    this.lastBuildCancelled = false;
+    this.hasCheckpoint = false;
+    this.checkpointProcessedCount = 0;
     if (this.storageKey) {
       try {
         await deleteRebuildCheckpoint(this.storageKey);
@@ -334,23 +376,95 @@ class AdvancedSearchEngine {
   }
 
   /**
-   * Resume an interrupted rebuild if an IndexedDB checkpoint exists.
-   * Safe to call after unlock / configure; no-ops when idle or incompatible.
+   * Refresh whether an IndexedDB rebuild checkpoint exists for the current storage.
+   * Does not start a rebuild — UI asks the user to resume or start over.
    */
-  async maybeResumeRebuild(): Promise<void> {
-    if (!this.enabled || this.building || !this.backend?.isReady?.()) return;
-    if (!this.storageKey) return;
+  async refreshCheckpointStatus(): Promise<void> {
+    if (!this.storageKey) {
+      this.hasCheckpoint = false;
+      this.checkpointProcessedCount = 0;
+      this.emit();
+      return;
+    }
     try {
       const cp = await getRebuildCheckpoint(this.storageKey);
-      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) return;
-      const done =
-        (cp.processedFilePaths?.length || 0) +
-        (cp.processedChatPaths?.length || 0);
-      if (done <= 0) return;
-      await this.rebuild();
+      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) {
+        if (cp) await deleteRebuildCheckpoint(this.storageKey);
+        this.hasCheckpoint = false;
+        this.checkpointProcessedCount = 0;
+      } else {
+        const done =
+          (cp.processedFilePaths?.length || 0) +
+          (cp.processedChatPaths?.length || 0);
+        this.hasCheckpoint = done > 0;
+        this.checkpointProcessedCount = done;
+      }
     } catch (err) {
-      console.warn('[advancedSearch] maybeResumeRebuild failed', err);
+      console.warn('[advancedSearch] refreshCheckpointStatus failed', err);
+      this.hasCheckpoint = false;
+      this.checkpointProcessedCount = 0;
     }
+    this.emit();
+  }
+
+  /** Snapshot of the current rebuild checkpoint, if any. */
+  async getRebuildCheckpointInfo(): Promise<RebuildCheckpointInfo | null> {
+    if (!this.storageKey) return null;
+    try {
+      const cp = await getRebuildCheckpoint(this.storageKey);
+      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) return null;
+      const processedFileCount = cp.processedFilePaths?.length || 0;
+      const processedChatCount = cp.processedChatPaths?.length || 0;
+      if (processedFileCount + processedChatCount <= 0) return null;
+      return {
+        processedFileCount,
+        processedChatCount,
+        updatedAt: cp.updatedAt || 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /** @deprecated Use refreshCheckpointStatus — auto-resume removed in favor of user choice. */
+  async maybeResumeRebuild(): Promise<void> {
+    await this.refreshCheckpointStatus();
+  }
+
+  /** Request stop of the in-progress full rebuild (checkpoint is kept for resume). */
+  cancelRebuild(): void {
+    if (!this.building) return;
+    this.cancelRequested = true;
+    this.appendLog('warn', '색인 중지 요청…');
+    this.emitBuildProgress(true);
+  }
+
+  private assertNotCancelled(): void {
+    if (this.cancelRequested) {
+      throw new RebuildCancelledError();
+    }
+  }
+
+  private async flushCheckpointBeforeCancel(
+    exportSnap: () => Promise<{ postingsGz: Uint8Array; docsGz: Uint8Array }>,
+    processedFilePaths: string[],
+    processedChatPaths: string[],
+  ): Promise<void> {
+    if (!this.cancelRequested) return;
+    try {
+      if (processedFilePaths.length + processedChatPaths.length > 0) {
+        const snap = await exportSnap();
+        await this.writeCheckpoint(
+          processedFilePaths,
+          processedChatPaths,
+          snap.postingsGz,
+          snap.docsGz,
+        );
+      }
+    } catch (err) {
+      console.warn('[advancedSearch] checkpoint flush on cancel failed', err);
+    }
+    throw new RebuildCancelledError();
   }
 
   private async loadCompatibleCheckpoint(): Promise<RebuildCheckpointRecord | null> {
@@ -426,8 +540,10 @@ class AdvancedSearchEngine {
    * Full vault index build.
    * Prefer Web Worker for CPU work; fall back to main-thread path if unavailable.
    * Mid-build progress is checkpointed to IndexedDB so interrupted builds can resume.
+   *
+   * Pass `{ resume: true }` to continue a checkpoint, or `{ resume: false }` to discard it.
    */
-  async rebuild(): Promise<void> {
+  async rebuild(options: RebuildOptions = {}): Promise<void> {
     if (!this.enabled) {
       this.appendLog('warn', '역색인이 꺼져 있어 색인을 시작할 수 없습니다.');
       this.emit();
@@ -444,6 +560,8 @@ class AdvancedSearchEngine {
       return;
     }
     this.building = true;
+    this.cancelRequested = false;
+    this.lastBuildCancelled = false;
     this.buildProgress = 0;
     this.lastError = null;
     this.lastBuildEmitAt = 0;
@@ -475,7 +593,17 @@ class AdvancedSearchEngine {
       );
       this.emit();
 
-      const checkpoint = await this.loadCompatibleCheckpoint();
+      let checkpoint = await this.loadCompatibleCheckpoint();
+      if (checkpoint && options.resume === false) {
+        this.appendLog('info', '체크포인트를 버리고 처음부터 색인합니다.');
+        await this.clearCheckpoint();
+        checkpoint = null;
+        this.hasCheckpoint = false;
+        this.checkpointProcessedCount = 0;
+      } else if (checkpoint && options.resume !== false) {
+        // resume === true or undefined with existing checkpoint → resume
+        this.appendLog('info', '저장된 체크포인트에서 이어서 색인합니다.');
+      }
 
       const worker = await this.ensureWorkerReady();
       if (worker) {
@@ -497,15 +625,31 @@ class AdvancedSearchEngine {
         );
       }
       await this.clearCheckpoint();
+      this.hasCheckpoint = false;
+      this.checkpointProcessedCount = 0;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : String(err);
-      this.appendLog('error', `색인 실패: ${this.lastError}`);
+      if (err instanceof RebuildCancelledError || this.cancelRequested) {
+        this.lastBuildCancelled = true;
+        this.lastError = null;
+        this.appendLog(
+          'warn',
+          '색인 중지됨 — 체크포인트 유지 (다시 색인 시 이어서/처음부터 선택)',
+        );
+      } else {
+        this.lastError = err instanceof Error ? err.message : String(err);
+        this.appendLog('error', `색인 실패: ${this.lastError}`);
+      }
     } finally {
+      if (this.workerClient) {
+        void this.workerClient.cancel();
+      }
+      this.cancelRequested = false;
       this.building = false;
       this.buildProgress = null;
-      if (!this.lastError) {
+      if (!this.lastError && !this.lastBuildCancelled) {
         this.appendLog('ok', '백그라운드 색인 종료');
       }
+      void this.refreshCheckpointStatus();
       this.emit();
     }
   }
@@ -553,6 +697,7 @@ class AdvancedSearchEngine {
     let fileFail = 0;
     let sinceCheckpoint = 0;
     for (const path of remainingFiles) {
+      this.assertNotCancelled();
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         await worker.processFile(path, text);
@@ -561,6 +706,7 @@ class AdvancedSearchEngine {
           this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
         }
       } catch (err) {
+        if (err instanceof RebuildCancelledError) throw err;
         fileFail += 1;
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[파일 실패] ${path} — ${msg}`);
@@ -580,6 +726,13 @@ class AdvancedSearchEngine {
         );
         sinceCheckpoint = 0;
       }
+      if (this.cancelRequested) {
+        await this.flushCheckpointBeforeCancel(
+          () => worker.exportCheckpoint(),
+          [...processedFiles],
+          [...processedChats],
+        );
+      }
     }
     this.appendLog(
       'info',
@@ -590,6 +743,7 @@ class AdvancedSearchEngine {
     let chatOk = processedChats.size;
     let chatFail = 0;
     for (const path of remainingChats) {
+      this.assertNotCancelled();
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         const changed = await worker.processChatDay(path, text);
@@ -601,6 +755,7 @@ class AdvancedSearchEngine {
           );
         }
       } catch (err) {
+        if (err instanceof RebuildCancelledError) throw err;
         chatFail += 1;
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[채팅 실패] ${path} — ${msg}`);
@@ -620,7 +775,15 @@ class AdvancedSearchEngine {
         );
         sinceCheckpoint = 0;
       }
+      if (this.cancelRequested) {
+        await this.flushCheckpointBeforeCancel(
+          () => worker.exportCheckpoint(),
+          [...processedFiles],
+          [...processedChats],
+        );
+      }
     }
+    this.assertNotCancelled();
     this.appendLog(
       'info',
       `채팅 색인 완료 (day 성공 ${chatOk} · 실패 ${chatFail})`,
@@ -695,6 +858,7 @@ class AdvancedSearchEngine {
     let fileFail = 0;
     let sinceCheckpoint = 0;
     for (const path of remainingFiles) {
+      this.assertNotCancelled();
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         await upsertFileDocument(next, path, text, bulk);
@@ -703,6 +867,7 @@ class AdvancedSearchEngine {
           this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
         }
       } catch (err) {
+        if (err instanceof RebuildCancelledError) throw err;
         fileFail += 1;
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[파일 실패] ${path} — ${msg}`);
@@ -718,6 +883,19 @@ class AdvancedSearchEngine {
         ]);
         sinceCheckpoint = 0;
       }
+      if (this.cancelRequested) {
+        await this.flushCheckpointBeforeCancel(
+          async () => {
+            const [postingsGz, docsGz] = await Promise.all([
+              gzipJsonBytes(postingsToObject(next.postings)),
+              gzipJsonBytes(docsToObject(next.docs)),
+            ]);
+            return { postingsGz, docsGz };
+          },
+          [...processedFiles],
+          [...processedChats],
+        );
+      }
       await yieldToMain();
     }
     this.appendLog(
@@ -729,6 +907,7 @@ class AdvancedSearchEngine {
     let chatOk = processedChats.size;
     let chatFail = 0;
     for (const path of remainingChats) {
+      this.assertNotCancelled();
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         const changed = await upsertChatDayDocuments(next, path, text, {
@@ -744,6 +923,7 @@ class AdvancedSearchEngine {
           );
         }
       } catch (err) {
+        if (err instanceof RebuildCancelledError) throw err;
         chatFail += 1;
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[채팅 실패] ${path} — ${msg}`);
@@ -759,8 +939,22 @@ class AdvancedSearchEngine {
         ]);
         sinceCheckpoint = 0;
       }
+      if (this.cancelRequested) {
+        await this.flushCheckpointBeforeCancel(
+          async () => {
+            const [postingsGz, docsGz] = await Promise.all([
+              gzipJsonBytes(postingsToObject(next.postings)),
+              gzipJsonBytes(docsToObject(next.docs)),
+            ]);
+            return { postingsGz, docsGz };
+          },
+          [...processedFiles],
+          [...processedChats],
+        );
+      }
       await yieldToMain();
     }
+    this.assertNotCancelled();
     this.appendLog(
       'info',
       `채팅 색인 완료 (day 성공 ${chatOk} · 실패 ${chatFail})`,
@@ -880,6 +1074,7 @@ class AdvancedSearchEngine {
     query: string,
     trees: Array<TreeNode[] | null | undefined>,
     limit = 50,
+    commandContext?: import('./commands').AppCommandContext,
   ): Promise<AdvancedSearchHit[]> {
     if (this.enabled) await this.ensureLoaded();
     const useIndex = this.enabled && this.hasIndex();
@@ -889,6 +1084,7 @@ class AdvancedSearchEngine {
       index: this.index,
       indexEnabled: useIndex,
       limit,
+      ...(commandContext ? { commandContext } : {}),
     });
   }
 

@@ -66,10 +66,15 @@ export async function upsertFileDocument(
 
   const scrubbed = scrubTextForIndex(content);
   const name = pathBasename(path);
+  const pathParts = String(path || '')
+    .split(/[/\\]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   const terms = tokenizeForIndex(scrubbed.text, [
     ...scrubbed.extraTerms,
     name,
     path,
+    ...pathParts,
   ]);
   addTermsToPostings(index.postings, docId, terms);
 
@@ -178,10 +183,15 @@ export async function computeFileUpsertPatch(
 
   const scrubbed = scrubTextForIndex(content);
   const name = pathBasename(path);
+  const pathParts = String(path || '')
+    .split(/[/\\]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   const terms = tokenizeForIndex(scrubbed.text, [
     ...scrubbed.extraTerms,
     name,
     path,
+    ...pathParts,
   ]);
   const meta: DocMeta = {
     kind: 'file',

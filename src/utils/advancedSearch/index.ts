@@ -20,11 +20,17 @@ export {
   type EngineStatus,
   type BuildLogEntry,
   type BuildLogLevel,
+  type RebuildOptions,
+  type RebuildCheckpointInfo,
 } from './engine';
 export { subscribeAdvancedSearchChanges } from './notify';
 export { collectSearchableFileEntries, isIndexableFilePath } from './collectSources';
-export { APP_COMMANDS, matchAppCommands } from './commands';
-export type { AppCommand, AppCommandId } from './commands';
+export {
+  APP_COMMANDS,
+  matchAppCommands,
+  getAppCommands,
+} from './commands';
+export type { AppCommand, AppCommandId, AppCommandContext } from './commands';
 export {
   requestOpenAdvancedSearch,
   subscribeOpenAdvancedSearch,

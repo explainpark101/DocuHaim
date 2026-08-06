@@ -5,6 +5,7 @@ import {
   FileText,
   Home,
   MessageSquare,
+  Printer,
   Search,
   Settings,
   X,
@@ -41,9 +42,12 @@ function HitIcon({
 }) {
   const className = 'mt-0.5 shrink-0 text-gray-500 dark:text-odp-muted';
   if (kind === 'command') {
-    if (commandId === 'settings') return <Settings size={16} className={className} />;
-    if (commandId === 'chat') return <MessageSquare size={16} className={className} />;
+    if (commandId?.startsWith('settings')) return <Settings size={16} className={className} />;
+    if (commandId?.startsWith('chat')) return <MessageSquare size={16} className={className} />;
     if (commandId === 'home') return <Home size={16} className={className} />;
+    if (commandId === 'export-pdf' || commandId === 'export-current') {
+      return <Printer size={16} className={className} />;
+    }
     return <Search size={16} className={className} />;
   }
   if (kind === 'chat') return <MessageSquare size={16} className={className} />;
@@ -126,15 +130,15 @@ export default function AdvancedSearchModal({
     if (searching && hits.length === 0) return '검색 중…';
     if (hits.length === 0 && query.trim()) return '결과 없음';
     if (hits.length === 0 && !query.trim()) {
-      return '설정·채팅 등 바로가기를 검색하거나 파일명을 입력하세요';
+      return '설정·채팅 등 바로가기를 검색하거나 파일명·경로를 입력하세요';
     }
     return null;
   }, [query, searching, hits.length]);
 
   const listFooterHint = useMemo(() => {
-    if (!indexEnabled) return '역색인 꺼짐 · 파일명·바로가기';
+    if (!indexEnabled) return '역색인 꺼짐 · 파일명·경로·바로가기';
     if (building) return '색인 생성 중…';
-    if (!hasIndex) return '색인 없음 · 파일명·바로가기';
+    if (!hasIndex) return '색인 없음 · 파일명·경로·바로가기';
     return null;
   }, [indexEnabled, hasIndex, building]);
 
@@ -197,7 +201,7 @@ export default function AdvancedSearchModal({
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="설정, 채팅, 파일…"
+              placeholder="설정, 채팅, 파일명, 경로…"
               className="min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400 dark:text-odp-fgStrong dark:placeholder:text-odp-muted"
               autoComplete="off"
               spellCheck={false}
