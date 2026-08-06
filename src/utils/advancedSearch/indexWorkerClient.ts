@@ -120,6 +120,35 @@ export class IndexWorkerClient {
     }
   }
 
+  async startRebuildFromCheckpoint(
+    postingsGz: Uint8Array,
+    docsGz: Uint8Array,
+    filePaths: string[],
+    chatDayPaths: string[],
+  ): Promise<void> {
+    const res = await this.request({
+      type: 'startRebuildFromCheckpoint',
+      postingsGz,
+      docsGz,
+      filePaths,
+      chatDayPaths,
+    });
+    if (res.type !== 'ok') {
+      throw new Error('Index worker startRebuildFromCheckpoint failed');
+    }
+  }
+
+  async exportCheckpoint(): Promise<{
+    postingsGz: Uint8Array;
+    docsGz: Uint8Array;
+  }> {
+    const res = await this.request({ type: 'exportCheckpoint' });
+    if (res.type !== 'exportCheckpointResult') {
+      throw new Error('Unexpected exportCheckpoint response');
+    }
+    return res.result;
+  }
+
   async processFile(path: string, content: string): Promise<boolean> {
     const res = await this.request({ type: 'processFile', path, content });
     if (res.type !== 'processFileResult') {

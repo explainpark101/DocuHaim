@@ -5,13 +5,17 @@ import {
 import {
   applyChatUpsertPatch,
   applyFileUpsertPatch,
+  pruneIndexToPaths,
   upsertChatDayDocuments,
   upsertFileDocument,
 } from './buildIndex';
 import {
   clearIndexInVault,
+  docsToObject,
+  gzipJsonBytes,
   hydrateIndexFromBlobs,
   loadIndexFromVault,
+  postingsToObject,
   saveIndexBlobsToVault,
   saveIndexToVault,
   type AdvancedSearchBackend,
@@ -37,7 +41,13 @@ import { runAdvancedSearch, type AdvancedSearchHit } from './query';
 import { IndexWorkerClient } from './indexWorkerClient';
 import { fileDocId } from './paths';
 import { chatDateFromPath } from './collectSources';
-
+import {
+  deleteRebuildCheckpoint,
+  getRebuildCheckpoint,
+  isCheckpointCompatible,
+  saveRebuildCheckpoint,
+  type RebuildCheckpointRecord,
+} from './rebuildCheckpointDb';
 export type BuildLogLevel = 'info' | 'ok' | 'warn' | 'error';
 
 export type BuildLogEntry = {
@@ -78,6 +88,8 @@ const EMIT_MIN_MS = 250;
 /** Log a progress line every N successful items (failures always logged). */
 const LOG_EVERY = 20;
 const MAX_BUILD_LOGS = 300;
+/** Persist partial rebuild state to IndexedDB every N processed sources. */
+const CHECKPOINT_EVERY = 25;
 
 /** Yield to the event loop so paint/input can run between heavy sync work (fallback path). */
 function yieldToMain(): Promise<void> {
@@ -93,6 +105,8 @@ class AdvancedSearchEngine {
   private includeOtherFiles = loadAdvancedSearchIncludeOtherFiles();
   private backend: AdvancedSearchBackend | null = null;
   private getTree: (() => TreeNode[]) | null = null;
+  /** Scopes IndexedDB rebuild checkpoints to the active storage backend. */
+  private storageKey = '';
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private lastError: string | null = null;
   private buildProgress: number | null = null;
@@ -203,9 +217,13 @@ class AdvancedSearchEngine {
   configure(options: {
     backend: AdvancedSearchBackend | null;
     getTree?: () => TreeNode[];
+    storageKey?: string;
   }): void {
     this.backend = options.backend;
     if (options.getTree) this.getTree = options.getTree;
+    if (typeof options.storageKey === 'string') {
+      this.storageKey = options.storageKey;
+    }
   }
 
   async ensureLoaded(): Promise<void> {
@@ -265,6 +283,13 @@ class AdvancedSearchEngine {
     this.loaded = true;
     this.dirty = false;
     this.buildProgress = null;
+    if (this.storageKey) {
+      try {
+        await deleteRebuildCheckpoint(this.storageKey);
+      } catch {
+        // ignore
+      }
+    }
     if (this.backend?.isReady?.()) {
       try {
         await clearIndexInVault(this.backend);
@@ -309,8 +334,98 @@ class AdvancedSearchEngine {
   }
 
   /**
+   * Resume an interrupted rebuild if an IndexedDB checkpoint exists.
+   * Safe to call after unlock / configure; no-ops when idle or incompatible.
+   */
+  async maybeResumeRebuild(): Promise<void> {
+    if (!this.enabled || this.building || !this.backend?.isReady?.()) return;
+    if (!this.storageKey) return;
+    try {
+      const cp = await getRebuildCheckpoint(this.storageKey);
+      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) return;
+      const done =
+        (cp.processedFilePaths?.length || 0) +
+        (cp.processedChatPaths?.length || 0);
+      if (done <= 0) return;
+      await this.rebuild();
+    } catch (err) {
+      console.warn('[advancedSearch] maybeResumeRebuild failed', err);
+    }
+  }
+
+  private async loadCompatibleCheckpoint(): Promise<RebuildCheckpointRecord | null> {
+    if (!this.storageKey) return null;
+    try {
+      const cp = await getRebuildCheckpoint(this.storageKey);
+      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) {
+        if (cp) await deleteRebuildCheckpoint(this.storageKey);
+        return null;
+      }
+      return cp;
+    } catch (err) {
+      console.warn('[advancedSearch] load checkpoint failed', err);
+      return null;
+    }
+  }
+
+  private async clearCheckpoint(): Promise<void> {
+    if (!this.storageKey) return;
+    try {
+      await deleteRebuildCheckpoint(this.storageKey);
+    } catch {
+      // ignore
+    }
+  }
+
+  private async writeCheckpoint(
+    processedFilePaths: string[],
+    processedChatPaths: string[],
+    postingsGz: Uint8Array,
+    docsGz: Uint8Array,
+  ): Promise<void> {
+    if (!this.storageKey) return;
+    try {
+      await saveRebuildCheckpoint({
+        key: this.storageKey,
+        includeOtherFiles: this.includeOtherFiles,
+        processedFilePaths: [...processedFilePaths],
+        processedChatPaths: [...processedChatPaths],
+        postingsGz,
+        docsGz,
+      });
+      this.appendLog(
+        'info',
+        `체크포인트 저장 (파일 ${processedFilePaths.length} · 채팅 ${processedChatPaths.length})`,
+      );
+      this.emitBuildProgress();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.appendLog('warn', `체크포인트 저장 실패 — ${msg}`);
+      this.emitBuildProgress();
+    }
+  }
+
+  private async checkpointFromIndex(
+    index: InMemoryIndex,
+    processedFilePaths: string[],
+    processedChatPaths: string[],
+  ): Promise<void> {
+    const [postingsGz, docsGz] = await Promise.all([
+      gzipJsonBytes(postingsToObject(index.postings)),
+      gzipJsonBytes(docsToObject(index.docs)),
+    ]);
+    await this.writeCheckpoint(
+      processedFilePaths,
+      processedChatPaths,
+      postingsGz,
+      docsGz,
+    );
+  }
+
+  /**
    * Full vault index build.
    * Prefer Web Worker for CPU work; fall back to main-thread path if unavailable.
+   * Mid-build progress is checkpointed to IndexedDB so interrupted builds can resume.
    */
   async rebuild(): Promise<void> {
     if (!this.enabled) {
@@ -360,14 +475,28 @@ class AdvancedSearchEngine {
       );
       this.emit();
 
+      const checkpoint = await this.loadCompatibleCheckpoint();
+
       const worker = await this.ensureWorkerReady();
       if (worker) {
-        await this.rebuildWithWorker(worker, filePaths, chatDayPaths, total);
+        await this.rebuildWithWorker(
+          worker,
+          filePaths,
+          chatDayPaths,
+          total,
+          checkpoint,
+        );
       } else {
         this.appendLog('warn', 'Web Worker 불가 — 메인 스레드에서 색인합니다.');
         this.emit();
-        await this.rebuildOnMainThread(filePaths, chatDayPaths, total);
+        await this.rebuildOnMainThread(
+          filePaths,
+          chatDayPaths,
+          total,
+          checkpoint,
+        );
       }
+      await this.clearCheckpoint();
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : String(err);
       this.appendLog('error', `색인 실패: ${this.lastError}`);
@@ -386,15 +515,44 @@ class AdvancedSearchEngine {
     filePaths: string[],
     chatDayPaths: string[],
     total: number,
+    checkpoint: RebuildCheckpointRecord | null,
   ): Promise<void> {
-    this.appendLog('info', 'Web Worker에서 색인 중…');
-    this.emit();
-    await worker.startRebuild();
+    const processedFiles = new Set(
+      checkpoint?.processedFilePaths?.filter((p) => filePaths.includes(p)) || [],
+    );
+    const processedChats = new Set(
+      checkpoint?.processedChatPaths?.filter((p) => chatDayPaths.includes(p)) ||
+        [],
+    );
+    const remainingFiles = filePaths.filter((p) => !processedFiles.has(p));
+    const remainingChats = chatDayPaths.filter((p) => !processedChats.has(p));
 
-    let n = 0;
-    let fileOk = 0;
+    if (checkpoint) {
+      this.appendLog(
+        'info',
+        `체크포인트에서 재개 (파일 ${processedFiles.size}/${filePaths.length} · 채팅 ${processedChats.size}/${chatDayPaths.length})`,
+      );
+      this.emit();
+      await worker.startRebuildFromCheckpoint(
+        checkpoint.postingsGz,
+        checkpoint.docsGz,
+        filePaths,
+        chatDayPaths,
+      );
+    } else {
+      this.appendLog('info', 'Web Worker에서 색인 중…');
+      this.emit();
+      await worker.startRebuild();
+    }
+
+    let n = processedFiles.size + processedChats.size;
+    this.buildProgress = n / total;
+    this.emitBuildProgress(true);
+
+    let fileOk = processedFiles.size;
     let fileFail = 0;
-    for (const path of filePaths) {
+    let sinceCheckpoint = 0;
+    for (const path of remainingFiles) {
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         await worker.processFile(path, text);
@@ -407,9 +565,21 @@ class AdvancedSearchEngine {
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[파일 실패] ${path} — ${msg}`);
       }
+      processedFiles.add(path);
       n += 1;
+      sinceCheckpoint += 1;
       this.buildProgress = n / total;
       this.emitBuildProgress();
+      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
+        const snap = await worker.exportCheckpoint();
+        await this.writeCheckpoint(
+          [...processedFiles],
+          [...processedChats],
+          snap.postingsGz,
+          snap.docsGz,
+        );
+        sinceCheckpoint = 0;
+      }
     }
     this.appendLog(
       'info',
@@ -417,9 +587,9 @@ class AdvancedSearchEngine {
     );
     this.emitBuildProgress(true);
 
-    let chatOk = 0;
+    let chatOk = processedChats.size;
     let chatFail = 0;
-    for (const path of chatDayPaths) {
+    for (const path of remainingChats) {
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         const changed = await worker.processChatDay(path, text);
@@ -435,9 +605,21 @@ class AdvancedSearchEngine {
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[채팅 실패] ${path} — ${msg}`);
       }
+      processedChats.add(path);
       n += 1;
+      sinceCheckpoint += 1;
       this.buildProgress = n / total;
       this.emitBuildProgress();
+      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
+        const snap = await worker.exportCheckpoint();
+        await this.writeCheckpoint(
+          [...processedFiles],
+          [...processedChats],
+          snap.postingsGz,
+          snap.docsGz,
+        );
+        sinceCheckpoint = 0;
+      }
     }
     this.appendLog(
       'info',
@@ -468,6 +650,7 @@ class AdvancedSearchEngine {
     filePaths: string[],
     chatDayPaths: string[],
     total: number,
+    checkpoint: RebuildCheckpointRecord | null,
   ): Promise<void> {
     this.appendLog('info', '한국어 토크나이저(garu-ko) 로드 중…');
     this.emit();
@@ -475,12 +658,43 @@ class AdvancedSearchEngine {
     this.appendLog('ok', '토크나이저 준비 완료');
     this.emit();
 
-    const next = emptyIndex();
+    const processedFiles = new Set(
+      checkpoint?.processedFilePaths?.filter((p) => filePaths.includes(p)) || [],
+    );
+    const processedChats = new Set(
+      checkpoint?.processedChatPaths?.filter((p) => chatDayPaths.includes(p)) ||
+        [],
+    );
+    const remainingFiles = filePaths.filter((p) => !processedFiles.has(p));
+    const remainingChats = chatDayPaths.filter((p) => !processedChats.has(p));
+
+    let next: InMemoryIndex;
+    if (checkpoint) {
+      this.appendLog(
+        'info',
+        `체크포인트에서 재개 (파일 ${processedFiles.size}/${filePaths.length} · 채팅 ${processedChats.size}/${chatDayPaths.length})`,
+      );
+      this.emit();
+      next = hydrateIndexFromBlobs(
+        emptyIndex().manifest,
+        checkpoint.postingsGz,
+        checkpoint.docsGz,
+      );
+      next.manifest.initialized = false;
+      pruneIndexToPaths(next, filePaths, chatDayPaths, { skipRecount: true });
+    } else {
+      next = emptyIndex();
+    }
+
     const bulk = { skipRecount: true as const };
-    let n = 0;
-    let fileOk = 0;
+    let n = processedFiles.size + processedChats.size;
+    this.buildProgress = n / total;
+    this.emitBuildProgress(true);
+
+    let fileOk = processedFiles.size;
     let fileFail = 0;
-    for (const path of filePaths) {
+    let sinceCheckpoint = 0;
+    for (const path of remainingFiles) {
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         await upsertFileDocument(next, path, text, bulk);
@@ -493,9 +707,17 @@ class AdvancedSearchEngine {
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[파일 실패] ${path} — ${msg}`);
       }
+      processedFiles.add(path);
       n += 1;
+      sinceCheckpoint += 1;
       this.buildProgress = n / total;
       this.emitBuildProgress();
+      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
+        await this.checkpointFromIndex(next, [...processedFiles], [
+          ...processedChats,
+        ]);
+        sinceCheckpoint = 0;
+      }
       await yieldToMain();
     }
     this.appendLog(
@@ -504,9 +726,9 @@ class AdvancedSearchEngine {
     );
     this.emitBuildProgress(true);
 
-    let chatOk = 0;
+    let chatOk = processedChats.size;
     let chatFail = 0;
-    for (const path of chatDayPaths) {
+    for (const path of remainingChats) {
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
         const changed = await upsertChatDayDocuments(next, path, text, {
@@ -526,9 +748,17 @@ class AdvancedSearchEngine {
         const msg = err instanceof Error ? err.message : String(err);
         this.appendLog('warn', `[채팅 실패] ${path} — ${msg}`);
       }
+      processedChats.add(path);
       n += 1;
+      sinceCheckpoint += 1;
       this.buildProgress = n / total;
       this.emitBuildProgress();
+      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
+        await this.checkpointFromIndex(next, [...processedFiles], [
+          ...processedChats,
+        ]);
+        sinceCheckpoint = 0;
+      }
       await yieldToMain();
     }
     this.appendLog(

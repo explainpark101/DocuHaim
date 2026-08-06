@@ -311,3 +311,33 @@ export function removeDocument(index: InMemoryIndex, docId: string): void {
   index.docs.delete(docId);
   recountManifest(index);
 }
+
+/**
+ * Drop docs whose source path is no longer in the planned rebuild set.
+ * Used when resuming a checkpoint after the vault tree changed.
+ */
+export function pruneIndexToPaths(
+  index: InMemoryIndex,
+  filePaths: string[],
+  chatDayPaths: string[],
+  options: { skipRecount?: boolean } = {},
+): number {
+  const files = new Set(filePaths);
+  const chats = new Set(chatDayPaths);
+  let removed = 0;
+  for (const [docId, meta] of [...index.docs.entries()]) {
+    if (meta.kind === 'file') {
+      if (files.has(meta.path)) continue;
+    } else {
+      const dayPath =
+        meta.path ||
+        (meta.dateStr ? `.chat-with-myself/${meta.dateStr}.md` : '');
+      if (dayPath && chats.has(dayPath)) continue;
+    }
+    removeDocFromPostings(index.postings, docId);
+    index.docs.delete(docId);
+    removed += 1;
+  }
+  if (removed > 0 && !options.skipRecount) recountManifest(index);
+  return removed;
+}

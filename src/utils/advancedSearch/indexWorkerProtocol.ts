@@ -6,8 +6,17 @@ export type WorkerLogLevel = 'info' | 'ok' | 'warn' | 'error';
 export type IndexWorkerRequest =
   | { id: number; type: 'init' }
   | { id: number; type: 'startRebuild' }
+  | {
+      id: number;
+      type: 'startRebuildFromCheckpoint';
+      postingsGz: Uint8Array;
+      docsGz: Uint8Array;
+      filePaths: string[];
+      chatDayPaths: string[];
+    }
   | { id: number; type: 'processFile'; path: string; content: string }
   | { id: number; type: 'processChatDay'; path: string; content: string }
+  | { id: number; type: 'exportCheckpoint' }
   | { id: number; type: 'finalize' }
   | {
       id: number;
@@ -54,11 +63,17 @@ export type FinalizeResult = {
   docsGz: Uint8Array;
 };
 
+export type CheckpointExportResult = {
+  postingsGz: Uint8Array;
+  docsGz: Uint8Array;
+};
+
 /** Worker → Main (correlated responses) */
 export type IndexWorkerResponse =
   | { id: number; type: 'ok'; payload?: unknown }
   | { id: number; type: 'processFileResult'; ok: boolean }
   | { id: number; type: 'processChatDayResult'; changed: number }
+  | { id: number; type: 'exportCheckpointResult'; result: CheckpointExportResult }
   | { id: number; type: 'finalizeResult'; result: FinalizeResult }
   | { id: number; type: 'upsertFileResult'; patch: FileUpsertPatch }
   | { id: number; type: 'upsertChatDayResult'; patch: ChatUpsertPatch }

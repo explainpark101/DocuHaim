@@ -1381,8 +1381,15 @@ function MainApp() {
 
   useEffect(() => {
     const backend = getBackendForType(storageMode);
+    const storageKey =
+      storageMode === STORAGE_MODE_LOCAL
+        ? `local:${localRootHandle?.name || 'default'}`
+        : storageMode === STORAGE_MODE_WEBDAV
+          ? `webdav:${webdavConfig?.endpoint || ''}:${webdavConfig?.basePath || ''}`
+          : `s3:${s3Creds?.bucket || ''}`;
     advancedSearchEngine.configure({
       backend,
+      storageKey,
       getTree: () => {
         const cur = advancedSearchTreesRef.current;
         if (cur.storageMode === STORAGE_MODE_LOCAL) return cur.localTree || [];
@@ -1401,6 +1408,8 @@ function MainApp() {
       // Load existing index if any — never auto-rebuild when missing.
       await advancedSearchEngine.ensureLoaded();
       if (cancelled) return;
+      // Resume interrupted full builds from IndexedDB checkpoint.
+      await advancedSearchEngine.maybeResumeRebuild();
     })();
     return () => {
       cancelled = true;

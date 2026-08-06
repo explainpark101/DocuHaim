@@ -5,15 +5,18 @@ import {
   upsertFileDocument,
   computeFileUpsertPatch,
   computeChatUpsertPatch,
+  pruneIndexToPaths,
 } from './buildIndex';
 import { ensureGaru } from './tokenize';
 import {
   docsToObject,
   gzipJsonBytes,
+  hydrateIndexFromBlobs,
   postingsToObject,
 } from './store';
 import {
   emptyIndex,
+  emptyManifest,
   recountManifest,
   type InMemoryIndex,
 } from './types';
@@ -57,6 +60,21 @@ async function handle(req: IndexWorkerRequest): Promise<void> {
         reply({ id, type: 'ok' });
         return;
       }
+      case 'startRebuildFromCheckpoint': {
+        cancelled = false;
+        const index = hydrateIndexFromBlobs(
+          emptyManifest(),
+          req.postingsGz,
+          req.docsGz,
+        );
+        index.manifest.initialized = false;
+        pruneIndexToPaths(index, req.filePaths, req.chatDayPaths, {
+          skipRecount: true,
+        });
+        rebuildIndex = index;
+        reply({ id, type: 'ok' });
+        return;
+      }
       case 'cancel': {
         cancelled = true;
         rebuildIndex = null;
@@ -86,6 +104,28 @@ async function handle(req: IndexWorkerRequest): Promise<void> {
           { skipRecount: true },
         );
         reply({ id, type: 'processChatDayResult', changed });
+        return;
+      }
+      case 'exportCheckpoint': {
+        if (cancelled || !rebuildIndex) {
+          throw new Error('No rebuild in progress');
+        }
+        const postingsObj = postingsToObject(rebuildIndex.postings);
+        const docsObj = docsToObject(rebuildIndex.docs);
+        const [postingsGz, docsGz] = await Promise.all([
+          gzipJsonBytes(postingsObj),
+          gzipJsonBytes(docsObj),
+        ]);
+        const postingsOut = postingsGz.slice();
+        const docsOut = docsGz.slice();
+        reply(
+          {
+            id,
+            type: 'exportCheckpointResult',
+            result: { postingsGz: postingsOut, docsGz: docsOut },
+          },
+          [postingsOut.buffer as ArrayBuffer, docsOut.buffer as ArrayBuffer],
+        );
         return;
       }
       case 'finalize': {
