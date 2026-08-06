@@ -1373,7 +1373,7 @@ function MainApp() {
   }, []);
 
   const handleShareComposeClaimed = useCallback((seed) => {
-    if (seed?.body) setShareGroupSend(seed);
+    if (seed?.body || seed?.files?.length) setShareGroupSend(seed);
   }, []);
 
   const handleShareGroupSendConsumed = useCallback(() => {

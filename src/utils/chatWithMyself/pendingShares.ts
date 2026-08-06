@@ -3,18 +3,40 @@ import {
   getPendingShares,
   savePendingShare,
 } from './chatDb.js';
-import { appendChatMessage } from './storage.js';
 import { SELF_GROUP } from './paths.js';
 import { sharePayloadFromSearch } from './sharePayload.js';
+import {
+  appendShareChatMessage,
+  normalizeShareFiles,
+  sharePromptHasContent,
+} from './shareSend.js';
 import { postChatLocalSyncEvent, postChatSyncEvent } from './syncChannel.js';
+import {
+  SHARE_TARGET_FLAG,
+  takeShareTargetFiles,
+} from './shareTargetCache.js';
 
 export type PendingShareIntent = 'choose' | 'sendSelf' | 'compose';
+
+export type PendingShareFile = {
+  name: string;
+  type: string;
+  size: number;
+  blob: Blob;
+};
 
 export type PendingShareRow = {
   id?: number;
   body: string;
+  files?: PendingShareFile[];
   intent?: PendingShareIntent;
   createdAt?: number;
+};
+
+export type SharePrompt = {
+  id?: number;
+  body: string;
+  files?: File[];
 };
 
 /** Minimal storage context accepted by appendChatMessage. */
@@ -50,20 +72,49 @@ function enqueueExclusive<T>(
   return run;
 }
 
-export function hasShareSearchParams(input: SearchLike): boolean {
-  let params: URLSearchParams;
-  if (input instanceof URLSearchParams) {
-    params = input;
-  } else if (typeof input === 'string') {
-    params = new URLSearchParams(input.startsWith('?') ? input.slice(1) : input);
-  } else if (input && typeof input === 'object' && typeof input.search === 'string') {
-    params = new URLSearchParams(
+function toSearchParams(input: SearchLike): URLSearchParams {
+  if (input instanceof URLSearchParams) return input;
+  if (typeof input === 'string') {
+    return new URLSearchParams(input.startsWith('?') ? input.slice(1) : input);
+  }
+  if (input && typeof input === 'object' && typeof input.search === 'string') {
+    return new URLSearchParams(
       input.search.startsWith('?') ? input.search.slice(1) : input.search,
     );
-  } else {
-    return false;
   }
-  return params.has('title') || params.has('text') || params.has('url');
+  return new URLSearchParams();
+}
+
+function serializeShareFiles(files: unknown): PendingShareFile[] {
+  return normalizeShareFiles(files).map((file) => ({
+    name: file.name || 'shared-file',
+    type: file.type || 'application/octet-stream',
+    size: file.size || 0,
+    blob: file,
+  }));
+}
+
+function pendingRowHasContent(row: PendingShareRow | null | undefined): boolean {
+  return sharePromptHasContent({
+    body: row?.body || '',
+    files: row?.files ?? [],
+  });
+}
+
+export function hasShareTargetFlag(input: SearchLike): boolean {
+  const params = toSearchParams(input);
+  const value = params.get(SHARE_TARGET_FLAG);
+  return value === '1' || value === 'true';
+}
+
+export function hasShareSearchParams(input: SearchLike): boolean {
+  const params = toSearchParams(input);
+  return (
+    params.has('title') ||
+    params.has('text') ||
+    params.has('url') ||
+    hasShareTargetFlag(params)
+  );
 }
 
 export function shareBodyFromSearch(
@@ -73,13 +124,25 @@ export function shareBodyFromSearch(
   return body || null;
 }
 
-export function readSharePromptFromWindow(): { body: string } | null {
+export function readSharePromptFromWindow(): SharePrompt | null {
   if (typeof window === 'undefined') return null;
   const path = window.location.pathname || '';
   if (!path.endsWith('/chat')) return null;
   if (!hasShareSearchParams(window.location.search)) return null;
-  const body = shareBodyFromSearch(window.location.search);
-  return body ? { body } : null;
+  const body = shareBodyFromSearch(window.location.search) || '';
+  // Files are loaded async from Cache Storage after the SW redirect.
+  return { body, files: [] };
+}
+
+/**
+ * Consume share-target Cache Storage files (once) for the current intake.
+ */
+export async function loadShareTargetFiles(): Promise<File[]> {
+  try {
+    return await takeShareTargetFiles();
+  } catch {
+    return [];
+  }
 }
 
 export function resolvePendingShareIntent(row: PendingShareRow): PendingShareIntent {
@@ -91,13 +154,16 @@ export function resolvePendingShareIntent(row: PendingShareRow): PendingShareInt
 }
 
 export async function enqueuePendingShare(payload: {
-  body: string;
+  body?: string;
+  files?: unknown[];
   intent?: PendingShareIntent;
 }): Promise<number | null> {
   const body = String(payload?.body || '').trim();
-  if (!body) return null;
+  const files = serializeShareFiles(payload?.files);
+  if (!body && !files.length) return null;
   return savePendingShare({
     body,
+    files,
     intent: payload.intent || 'choose',
   });
 }
@@ -114,8 +180,10 @@ export async function removePendingShare(id: number | null | undefined): Promise
 export async function peekChoosePendingShare(): Promise<PendingShareRow | null> {
   const rows = (await getPendingShares()) as PendingShareRow[];
   return (
-    rows.find((row) => resolvePendingShareIntent(row) === 'choose' && row.body) ||
-    null
+    rows.find(
+      (row) =>
+        resolvePendingShareIntent(row) === 'choose' && pendingRowHasContent(row),
+    ) || null
   );
 }
 
@@ -127,7 +195,8 @@ export async function claimComposePendingShares(): Promise<PendingShareRow[]> {
   return enqueueExclusive(composeClaimGate, async () => {
     const rows = (await getPendingShares()) as PendingShareRow[];
     const compose = rows.filter(
-      (row) => resolvePendingShareIntent(row) === 'compose' && row.body,
+      (row) =>
+        resolvePendingShareIntent(row) === 'compose' && pendingRowHasContent(row),
     );
     for (const row of compose) {
       if (row.id != null) {
@@ -154,7 +223,8 @@ export async function flushSendSelfPendingShares(
 
     const rows = (await getPendingShares()) as PendingShareRow[];
     const ready = rows.filter(
-      (row) => resolvePendingShareIntent(row) === 'sendSelf' && row.body,
+      (row) =>
+        resolvePendingShareIntent(row) === 'sendSelf' && pendingRowHasContent(row),
     );
     if (!ready.length) return { flushed: 0, dateStrs: [] };
 
@@ -177,17 +247,20 @@ export async function flushSendSelfPendingShares(
 
     for (const row of claimed) {
       try {
-        // storage.js accepts the runtime ctx shape used across the app.
-        const { dateStr } = await appendChatMessage(ctx as never, {
+        const { dateStr } = await appendShareChatMessage(ctx as never, {
           body: row.body,
+          files: row.files ?? [],
           group: SELF_GROUP,
-          source: 'share',
         });
         flushed += 1;
         if (dateStr) dateStrs.push(dateStr);
       } catch {
         try {
-          await enqueuePendingShare({ body: row.body, intent: 'sendSelf' });
+          await enqueuePendingShare({
+            body: row.body,
+            files: row.files ?? [],
+            intent: 'sendSelf',
+          });
         } catch {
           /* ignore */
         }
@@ -202,3 +275,5 @@ export async function flushSendSelfPendingShares(
     return { flushed, dateStrs };
   });
 }
+
+export { sharePromptHasContent, normalizeShareFiles };

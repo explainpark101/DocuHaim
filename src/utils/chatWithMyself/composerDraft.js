@@ -16,6 +16,7 @@ export const COMPOSER_DRAFT_LS_KEY = 's3haim_chat_composer_draft';
  *   replyTo?: object | null,
  *   imageIds?: string[],
  *   imageBackgrounds?: Record<string, string>,
+ *   markdown?: boolean,
  *   updatedAt?: number,
  * }} ComposerDraftMeta
  */
@@ -62,6 +63,7 @@ export function writeComposerDraftMeta(scope, meta) {
         : {};
     const replyTo = meta?.replyTo || null;
     const group = meta?.group || '';
+    const markdown = Boolean(meta?.markdown);
     const empty = !body.trim() && imageIds.length === 0 && !replyTo;
     const key = composerDraftStorageKey(scope);
     if (empty) {
@@ -79,6 +81,7 @@ export function writeComposerDraftMeta(scope, meta) {
         replyTo,
         imageIds,
         imageBackgrounds,
+        markdown,
         updatedAt: Date.now(),
       }),
     );

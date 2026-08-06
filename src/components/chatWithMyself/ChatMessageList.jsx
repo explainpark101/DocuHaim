@@ -29,7 +29,7 @@ import { motion as Motion } from 'motion/react';
 import { VList } from 'virtua';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
-import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
+import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
 import ChatMessageContextMenu from '@/components/chatWithMyself/ChatMessageContextMenu';
 import ChatMessageReactions from '@/components/chatWithMyself/ChatMessageReactions';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
@@ -45,6 +45,7 @@ import {
   formatMessageDateLabel,
   formatMessageTime,
   isSelfGroup,
+  isChatMessageMarkdown,
   detectTimeZone,
   localDateString,
   SELF_GROUP,
@@ -472,6 +473,7 @@ const MessageBubble = memo(function MessageBubble({
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
   const urls = useMemo(() => extractUrls(msg.body), [msg.body]);
+  const isMarkdown = isChatMessageMarkdown(msg);
   const time = formatMessageTime(msg.at, timeZone || detectTimeZone());
   const longPressThresholdTimer = useRef(null);
   const longPressMenuTimer = useRef(null);
@@ -787,11 +789,16 @@ const MessageBubble = memo(function MessageBubble({
                   접힘
                 </div>
               ) : null}
-              <ChatLinkedText
+              <ChatMessageBody
+                message={msg}
                 text={msg.body}
                 collapsed={collapsed}
                 className={`min-w-0 max-w-full overflow-hidden ${
-                  collapsed ? 'whitespace-nowrap' : 'whitespace-pre-wrap wrap-anywhere'
+                  collapsed
+                    ? 'whitespace-nowrap'
+                    : isMarkdown
+                      ? 'wrap-anywhere'
+                      : 'whitespace-pre-wrap wrap-anywhere'
                 } ${isDeleting ? 'select-none' : 'select-text'}`}
                 getPresignedUrl={getPresignedUrl}
                 noteExists={noteExists}

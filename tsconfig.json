@@ -25,5 +25,5 @@
     "noUnusedParameters": true
   },
   "include": ["src"],
-  "exclude": ["dist", "release", "node_modules"]
+  "exclude": ["dist", "release", "node_modules", "src/sw.ts"]
 }

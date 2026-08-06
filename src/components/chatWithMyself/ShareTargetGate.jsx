@@ -6,12 +6,29 @@ import {
   enqueuePendingShare,
   flushSendSelfPendingShares,
   hasShareSearchParams,
+  loadShareTargetFiles,
+  normalizeShareFiles,
   peekChoosePendingShare,
   readSharePromptFromWindow,
   removePendingShare,
   shareBodyFromSearch,
+  sharePromptHasContent,
 } from '@/utils/chatWithMyself/pendingShares';
-import { appendChatMessage, SELF_GROUP, postChatSyncEvent, postChatLocalSyncEvent } from '@/utils/chatWithMyself';
+import {
+  SELF_GROUP,
+  appendShareChatMessage,
+  postChatLocalSyncEvent,
+  postChatSyncEvent,
+} from '@/utils/chatWithMyself';
+
+function pendingChooseToPrompt(choose) {
+  if (!choose || !sharePromptHasContent(choose)) return null;
+  return {
+    id: choose.id,
+    body: choose.body || '',
+    files: normalizeShareFiles(choose.files),
+  };
+}
 
 /**
  * App-level share-target gate:
@@ -29,16 +46,20 @@ export default function ShareTargetGate({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const initialShareUrl =
+    typeof window !== 'undefined' && hasShareSearchParams(window.location.search);
   const [prompt, setPrompt] = useState(() => readSharePromptFromWindow());
-  const [bootstrapDone, setBootstrapDone] = useState(() =>
-    Boolean(readSharePromptFromWindow()),
+  const [bootstrapDone, setBootstrapDone] = useState(() => Boolean(initialShareUrl));
+  const [shareIntakePending, setShareIntakePending] = useState(() =>
+    Boolean(initialShareUrl),
   );
   const urlClearedRef = useRef(false);
   const actionLockRef = useRef(false);
   const ensureChatOpenRef = useRef(() => {});
   const onComposeClaimedRef = useRef(onComposeClaimed);
 
-  const blocking = Boolean(prompt?.body) || !bootstrapDone;
+  const blocking =
+    sharePromptHasContent(prompt) || !bootstrapDone || shareIntakePending;
 
   useEffect(() => {
     onBlockingChange?.(blocking);
@@ -50,22 +71,39 @@ export default function ShareTargetGate({
 
   // Allow a new chooser action when a fresh prompt arrives.
   useEffect(() => {
-    if (prompt?.body) actionLockRef.current = false;
-  }, [prompt?.body]);
+    if (sharePromptHasContent(prompt)) actionLockRef.current = false;
+  }, [prompt]);
 
-  // Clear share query params once (keeps /chat path).
+  // Clear share query params once (keeps /chat path) and claim Cache Storage files.
   useLayoutEffect(() => {
     if (urlClearedRef.current) return;
     if (!hasShareSearchParams(location.search)) return;
     urlClearedRef.current = true;
-    const body = shareBodyFromSearch(location.search);
-    if (body) {
-      setPrompt((prev) => (prev?.body ? prev : { body }));
-    }
+    const search = location.search;
+    const body = shareBodyFromSearch(search) || '';
     navigate(
       { pathname: location.pathname, search: '', hash: location.hash },
       { replace: true },
     );
+    void (async () => {
+      let files = [];
+      try {
+        files = await loadShareTargetFiles();
+      } catch {
+        files = [];
+      }
+      if (body || files.length) {
+        setPrompt((prev) => ({
+          id: prev?.id,
+          body: body || prev?.body || '',
+          files,
+        }));
+      } else {
+        setPrompt(null);
+      }
+      setShareIntakePending(false);
+      setBootstrapDone(true);
+    })();
   }, [location.hash, location.pathname, location.search, navigate]);
 
   // If no URL share, surface a leftover "choose" pending before auth.
@@ -74,10 +112,11 @@ export default function ShareTargetGate({
     let cancelled = false;
     (async () => {
       try {
-        if (!prompt?.body) {
+        if (!sharePromptHasContent(prompt)) {
           const choose = await peekChoosePendingShare();
-          if (!cancelled && choose?.body) {
-            setPrompt({ id: choose.id, body: choose.body });
+          const next = pendingChooseToPrompt(choose);
+          if (!cancelled && next) {
+            setPrompt(next);
           }
         }
       } finally {
@@ -87,7 +126,7 @@ export default function ShareTargetGate({
     return () => {
       cancelled = true;
     };
-  }, [bootstrapDone, prompt?.body]);
+  }, [bootstrapDone, prompt]);
 
   const clearPromptRecord = useCallback(async (current) => {
     if (current?.id != null) {
@@ -115,15 +154,17 @@ export default function ShareTargetGate({
 
   const handleSendAsSelf = useCallback(async () => {
     const current = prompt;
-    if (!current?.body || actionLockRef.current) return;
+    if (!sharePromptHasContent(current) || actionLockRef.current) return;
     actionLockRef.current = true;
+    const body = String(current.body || '').trim();
+    const files = normalizeShareFiles(current.files);
     let appended = false;
     try {
       if (isUnlocked && storageReady && chatCtx) {
-        const { dateStr } = await appendChatMessage(chatCtx, {
-          body: current.body,
+        const { dateStr } = await appendShareChatMessage(chatCtx, {
+          body,
+          files,
           group: SELF_GROUP,
-          source: 'share',
         });
         appended = true;
         if (dateStr) {
@@ -133,14 +174,14 @@ export default function ShareTargetGate({
         await clearPromptRecord(current);
       } else {
         await clearPromptRecord(current);
-        await enqueuePendingShare({ body: current.body, intent: 'sendSelf' });
+        await enqueuePendingShare({ body, files, intent: 'sendSelf' });
       }
     } catch {
       // Only re-queue when the day-file write did not already succeed.
       if (!appended) {
         try {
           await clearPromptRecord(current);
-          await enqueuePendingShare({ body: current.body, intent: 'sendSelf' });
+          await enqueuePendingShare({ body, files, intent: 'sendSelf' });
         } catch {
           /* ignore */
         }
@@ -161,19 +202,22 @@ export default function ShareTargetGate({
 
   const handleComposeWithGroup = useCallback(async () => {
     const current = prompt;
-    if (!current?.body || actionLockRef.current) return;
+    if (!sharePromptHasContent(current) || actionLockRef.current) return;
     actionLockRef.current = true;
+    const body = String(current.body || '').trim();
+    const files = normalizeShareFiles(current.files);
     try {
       await clearPromptRecord(current);
       const payload = {
         id: `share-group-send-${Date.now()}`,
-        body: current.body,
+        body,
+        files,
       };
       ensureChatOpen();
       if (isUnlocked) {
         onComposeClaimed?.(payload);
       } else {
-        await enqueuePendingShare({ body: current.body, intent: 'compose' });
+        await enqueuePendingShare({ body, files, intent: 'compose' });
       }
     } catch {
       /* ignore */
@@ -216,24 +260,32 @@ export default function ShareTargetGate({
   // After unlock + storage ready, claim compose seeds (navigate to chat if needed).
   // claimComposePendingShares is serialized with the pane backup claim.
   useEffect(() => {
-    if (!isUnlocked || !storageReady || !bootstrapDone || prompt) return undefined;
+    if (!isUnlocked || !storageReady || !bootstrapDone || sharePromptHasContent(prompt)) {
+      return undefined;
+    }
     (async () => {
       const composeRows = await claimComposePendingShares();
       if (!composeRows.length) return;
-      const body = composeRows.map((row) => row.body).filter(Boolean).join('\n\n');
-      if (!body) return;
+      const body = composeRows
+        .map((row) => String(row.body || '').trim())
+        .filter(Boolean)
+        .join('\n\n');
+      const files = composeRows.flatMap((row) => normalizeShareFiles(row.files));
+      if (!body && !files.length) return;
       ensureChatOpenRef.current();
       onComposeClaimedRef.current?.({
         id: `share-group-send-${Date.now()}`,
         body,
+        files,
       });
     })();
   }, [isUnlocked, storageReady, bootstrapDone, prompt]);
 
   return (
     <ChatShareTargetModal
-      isOpen={Boolean(prompt?.body)}
+      isOpen={sharePromptHasContent(prompt)}
       body={prompt?.body || ''}
+      files={normalizeShareFiles(prompt?.files)}
       canSendAsSelf
       onSendAsSelf={() => {
         void handleSendAsSelf();

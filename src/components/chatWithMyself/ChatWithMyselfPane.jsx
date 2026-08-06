@@ -46,6 +46,7 @@ import {
   resolveGroupId,
   appendChatMessages,
   appendChatMessage,
+  appendShareChatMessage,
   createOgStorageAdapters,
   deleteChatMessage,
   deleteChatAttachment,
@@ -716,7 +717,11 @@ export default function ChatWithMyselfPane({
   // Keep App seed until the modal closes/sends — clearing on apply loses the payload
   // when this pane remounts after unlock/auth.
   useEffect(() => {
-    if (!shareGroupSend?.id || shareGroupSend.body == null) return;
+    if (!shareGroupSend?.id) return;
+    const hasBody = shareGroupSend.body != null;
+    const hasFiles =
+      Array.isArray(shareGroupSend.files) && shareGroupSend.files.length > 0;
+    if (!hasBody && !hasFiles) return;
     setEditTarget(null);
     setShareGroupModal((prev) =>
       prev?.id === shareGroupSend.id ? prev : shareGroupSend,
@@ -930,6 +935,7 @@ export default function ChatWithMyselfPane({
               body: finalBody,
               group: item.group,
               source: 'compose',
+              markdown: Boolean(item.markdown),
               replyTo: item.replyTarget?.id || '',
               replySnippet: item.replyTarget
                 ? makeReplySnippet(
@@ -959,7 +965,7 @@ export default function ChatWithMyselfPane({
   }, [ctx, confirmPendingMessages, noteLocalDayWrite]);
 
   const handleSend = useCallback(
-    (body, group, replyTarget = null, imageFiles = []) => {
+    (body, group, replyTarget = null, imageFiles = [], options = {}) => {
       if (!storageReady) {
         setError(storageSendErrorHint);
         return;
@@ -967,6 +973,10 @@ export default function ChatWithMyselfPane({
       const text = String(body || '').trim();
       const files = normalizeOutgoingAttachments(imageFiles);
       if (!text && files.length === 0) return;
+      const markdown =
+        options.markdown === true ||
+        options.markdown === '1' ||
+        options.markdown === 'true';
 
       const tz = detectTimeZone();
       const at = new Date().toISOString();
@@ -985,6 +995,7 @@ export default function ChatWithMyselfPane({
         source: 'compose',
         group: group || SELF_GROUP,
         body: optimisticBody,
+        markdown,
         replyTo: replyTarget?.id || '',
         replySnippet: replyTarget
           ? makeReplySnippet(replyTarget.snippet || replyTarget.body)
@@ -1011,6 +1022,7 @@ export default function ChatWithMyselfPane({
         group,
         replyTarget: replyTarget || null,
         files,
+        markdown,
       });
       void flushSendQueue();
     },
@@ -1050,6 +1062,10 @@ export default function ChatWithMyselfPane({
       const removedPaths = Array.isArray(options.removedPaths)
         ? options.removedPaths.filter(Boolean)
         : [];
+      const markdown =
+        options.markdown === true ||
+        options.markdown === '1' ||
+        options.markdown === 'true';
       if (!text && files.length === 0 && !existingMarkdown) return;
 
       const snapshot = messagesRef.current.find((m) => m.id === target.id) || target;
@@ -1069,6 +1085,7 @@ export default function ChatWithMyselfPane({
                 ...m,
                 body: optimisticBody,
                 group: group || SELF_GROUP,
+                markdown,
                 editedAt,
                 pendingSync: 'edit',
               }
@@ -1102,6 +1119,7 @@ export default function ChatWithMyselfPane({
         const updated = await updateChatMessage(ctx, dateStr, target.id, {
           body: finalBody,
           group,
+          markdown,
         });
         if (!updated) {
           setMessages((prev) =>
@@ -1663,14 +1681,12 @@ export default function ChatWithMyselfPane({
   }, [pinnedOpen, storageReady, runPinnedScan]);
 
   const handleShareGroupSend = useCallback(
-    async (body, group) => {
+    async (body, group, files = []) => {
       if (!storageReady) throw new Error(storageSendErrorHint);
-      const trimmed = String(body || '').trim();
-      if (!trimmed) return;
-      const { dateStr } = await appendChatMessage(ctx, {
-        body: trimmed,
+      const { dateStr } = await appendShareChatMessage(ctx, {
+        body,
+        files,
         group: group || SELF_GROUP,
-        source: 'share',
       });
       if (dateStr) {
         noteLocalDayWrite(dateStr);
@@ -2325,8 +2341,14 @@ export default function ChatWithMyselfPane({
         }}
       />
       <ChatShareGroupSendModal
-        isOpen={Boolean(shareGroupModal?.body)}
+        isOpen={Boolean(
+          shareGroupModal &&
+            (String(shareGroupModal.body || '').trim() ||
+              (Array.isArray(shareGroupModal.files) &&
+                shareGroupModal.files.length > 0)),
+        )}
         body={shareGroupModal?.body || ''}
+        files={shareGroupModal?.files || []}
         groups={groups}
         onAddGroup={handleAddGroup}
         onSend={handleShareGroupSend}

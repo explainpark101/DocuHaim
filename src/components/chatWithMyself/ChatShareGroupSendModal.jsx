@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Send, X } from 'lucide-react';
+import { Check, FileIcon, Send, X } from 'lucide-react';
 import Button from '@/components/Button';
 import Modal from '@/components/modals/Modal';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
-import { ADD_GROUP_VALUE, SELF_GROUP, sortGroupsKo } from '@/utils/chatWithMyself';
+import {
+  ADD_GROUP_VALUE,
+  SELF_GROUP,
+  formatChatAttachmentSize,
+  sortGroupsKo,
+} from '@/utils/chatWithMyself';
 
 const PREVIEW_MAX = 280;
 
@@ -20,6 +25,7 @@ function truncatePreview(body) {
 export default function ChatShareGroupSendModal({
   isOpen,
   body = '',
+  files = [],
   groups = [],
   onAddGroup,
   onSend,
@@ -34,6 +40,11 @@ export default function ChatShareGroupSendModal({
   const busyRef = useRef(false);
   const inlineGroupInputRef = useRef(null);
   const preview = truncatePreview(body);
+  const fileList = useMemo(
+    () => (Array.isArray(files) ? files.filter(Boolean) : []),
+    [files],
+  );
+  const hasContent = Boolean(preview) || fileList.length > 0;
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
 
   const groupOptions = useMemo(
@@ -60,7 +71,7 @@ export default function ChatShareGroupSendModal({
     setSelectedGroup(SELF_GROUP);
     setInlineAddOpen(false);
     setInlineGroupName('');
-  }, [isOpen, body]);
+  }, [isOpen, body, fileList.length]);
 
   useEffect(() => {
     if (!inlineAddOpen) return undefined;
@@ -105,11 +116,11 @@ export default function ChatShareGroupSendModal({
   };
 
   const handleSend = async () => {
-    if (busyRef.current || !body.trim()) return;
+    if (busyRef.current || !hasContent) return;
     busyRef.current = true;
     setBusy(true);
     try {
-      await onSend?.(body, selectedGroup || SELF_GROUP);
+      await onSend?.(body, selectedGroup || SELF_GROUP, fileList);
       onClose?.();
     } catch {
       busyRef.current = false;
@@ -129,9 +140,31 @@ export default function ChatShareGroupSendModal({
           보낼 그룹을 선택한 뒤 전송하세요.
         </p>
         {preview ? (
-          <pre className="mb-4 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg">
+          <pre className="mb-3 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg">
             {preview}
           </pre>
+        ) : null}
+        {fileList.length > 0 ? (
+          <ul className="mb-4 max-h-36 space-y-1.5 overflow-auto rounded-md border border-gray-200 bg-gray-50 p-2 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
+            {fileList.map((file, index) => {
+              const name = file?.name || `파일 ${index + 1}`;
+              const sizeLabel = formatChatAttachmentSize(file?.size || 0);
+              return (
+                <li
+                  key={`${name}-${index}`}
+                  className="flex items-center gap-2 text-xs text-gray-700 dark:text-odp-fg"
+                >
+                  <FileIcon size={14} className="shrink-0 opacity-70" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate">{name}</span>
+                  {sizeLabel ? (
+                    <span className="shrink-0 text-gray-500 dark:text-odp-muted">
+                      {sizeLabel}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         ) : null}
         <div className="mb-4 space-y-1">
           <span className="text-[11px] font-medium text-gray-600 dark:text-odp-muted">
@@ -190,7 +223,7 @@ export default function ChatShareGroupSendModal({
             variant="primary"
             size="md"
             onClick={() => void handleSend()}
-            disabled={busy || !body.trim()}
+            disabled={busy || !hasContent}
             className="w-full"
           >
             <Send size={16} aria-hidden />

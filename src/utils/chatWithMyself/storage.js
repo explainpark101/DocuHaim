@@ -557,6 +557,7 @@ export async function appendChatMessages(ctx, items = []) {
     source: item.source || 'compose',
     group: item.group || SELF_GROUP,
     body: String(item.body ?? ''),
+    markdown: item.markdown === true || item.markdown === '1' || item.markdown === 'true',
     replyTo: item.replyTo || '',
     replySnippet: item.replySnippet || '',
     replyGroup: item.replyGroup || '',
@@ -697,9 +698,22 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
       patch.body !== undefined ? String(patch.body ?? '') : prev.body;
     const nextGroup =
       patch.group !== undefined ? patch.group || SELF_GROUP : prev.group;
+    const nextMarkdown =
+      patch.markdown !== undefined
+        ? patch.markdown === true ||
+          patch.markdown === '1' ||
+          patch.markdown === 'true'
+        : prev.markdown === true ||
+          prev.markdown === '1' ||
+          prev.markdown === 'true';
     const bodyChanged = nextBody !== prev.body;
     const groupChanged = nextGroup !== (prev.group || SELF_GROUP);
-    if (bodyChanged || groupChanged) {
+    const prevMarkdown =
+      prev.markdown === true ||
+      prev.markdown === '1' ||
+      prev.markdown === 'true';
+    const markdownChanged = nextMarkdown !== prevMarkdown;
+    if (bodyChanged || groupChanged || markdownChanged) {
       archived = {
         at: prev.editedAt || prev.at,
         body: prev.body,
@@ -710,6 +724,7 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
       ...prev,
       body: nextBody,
       group: nextGroup,
+      markdown: nextMarkdown,
       editedAt: new Date().toISOString(),
       // Stop embedding history in the day file; keep empty for serializers.
       editHistory: [],

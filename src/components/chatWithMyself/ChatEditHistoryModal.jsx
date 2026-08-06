@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ContextMenu, Dialog } from 'radix-ui';
 import { Loader2, Trash2 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
-import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
+import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   chatDialogOverlayClass,
@@ -13,6 +13,7 @@ import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCa
 import {
   detectTimeZone,
   formatMessageTime,
+  isChatMessageMarkdown,
   resolveGroupLabel,
   SELF_GROUP,
 } from '@/utils/chatWithMyself';
@@ -92,6 +93,7 @@ function HistoryEntryCard({
   onRequestDelete,
   shiftHeldRef,
   coarse,
+  markdown = false,
 }) {
   const {
     contextMenuOpen,
@@ -118,9 +120,12 @@ function HistoryEntryCard({
         <span className="text-gray-400">·</span>
         <span>{resolveGroupLabel(groups, entry.group || SELF_GROUP)}</span>
       </div>
-      <ChatLinkedText
+      <ChatMessageBody
+        markdown={Boolean(markdown)}
         text={entry.body || ''}
-        className="whitespace-pre-wrap wrap-break-word text-sm text-gray-800 dark:text-odp-fgStrong select-text"
+        className={`${
+          markdown ? '' : 'whitespace-pre-wrap '
+        }wrap-break-word text-sm text-gray-800 dark:text-odp-fgStrong select-text`}
         getPresignedUrl={getPresignedUrl}
       />
     </Motion.div>
@@ -348,6 +353,7 @@ export default function ChatEditHistoryModal({
     groups,
     message?.group || SELF_GROUP,
   );
+  const messageMarkdown = isChatMessageMarkdown(message);
 
   const canDelete = Boolean(onDeleteHistoryEntry) && total > 0;
   const canDeleteAll = Boolean(onDeleteAllHistory) && total > 0;
@@ -410,9 +416,12 @@ export default function ChatEditHistoryModal({
                     <span className="text-gray-400">·</span>
                     <span>{currentGroupLabel}</span>
                   </div>
-                  <ChatLinkedText
+                  <ChatMessageBody
+                    message={message}
                     text={message.body || ''}
-                    className="whitespace-pre-wrap wrap-break-word text-sm text-gray-800 dark:text-odp-fgStrong"
+                    className={`${
+                      messageMarkdown ? '' : 'whitespace-pre-wrap '
+                    }wrap-break-word text-sm text-gray-800 dark:text-odp-fgStrong`}
                     getPresignedUrl={getPresignedUrl}
                   />
                 </div>
@@ -448,6 +457,7 @@ export default function ChatEditHistoryModal({
                           onRequestDelete={requestDeleteEntry}
                           shiftHeldRef={shiftHeldRef}
                           coarse={coarse}
+                          markdown={messageMarkdown}
                         />
                       </li>
                     );

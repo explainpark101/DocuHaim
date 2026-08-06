@@ -223,21 +223,36 @@ export function highlightHtmlMatches(html, query) {
 }
 
 /**
- * Render chat markdown for search result cards, with optional query highlights.
+ * Render chat body for search result cards, with optional query highlights.
+ * When `markdown` is false (default), escape as plain text with line breaks.
  * Long bodies are shortened to start + match context before marking.
+ * @param {string} body
+ * @param {string} [query]
+ * @param {string} [ogSearchText]
+ * @param {{ markdown?: boolean }} [options]
  */
-export function renderSearchResultHtml(body, query = '', ogSearchText = '') {
+export function renderSearchResultHtml(
+  body,
+  query = '',
+  ogSearchText = '',
+  options = {},
+) {
   const raw = buildSearchResultDisplayText(body, query, ogSearchText);
+  const asMarkdown = options.markdown === true;
   let html;
-  try {
-    html = marked.parse(raw, { async: false });
-  } catch {
+  if (asMarkdown) {
+    try {
+      html = marked.parse(raw, { async: false });
+    } catch {
+      html = null;
+    }
+  }
+  if (typeof html !== 'string') {
     html = raw
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/\n/g, '<br/>');
   }
-  if (typeof html !== 'string') html = String(html ?? '');
   return highlightHtmlMatches(html, query);
 }

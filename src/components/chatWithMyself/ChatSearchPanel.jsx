@@ -149,8 +149,11 @@ function SearchResultCard({
   // Text only — do not fall back to raw body (avoids wiki tokens as markdown + duplicate media).
   const previewSource = text.trim();
   const html = useMemo(
-    () => renderSearchResultHtml(previewSource, query, result.ogSearchText || ''),
-    [previewSource, result.ogSearchText, query],
+    () =>
+      renderSearchResultHtml(previewSource, query, result.ogSearchText || '', {
+        markdown: result.markdown === true || result.markdown === '1',
+      }),
+    [previewSource, result.ogSearchText, result.markdown, query],
   );
   const attachmentMarkdown = useMemo(
     () => chatAttachmentsToMarkdown(attachments),

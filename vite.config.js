@@ -54,6 +54,9 @@ const plugins = [
 if (!isElectron) {
   plugins.push(
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       injectRegister: 'auto',
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'og-image.png'],
@@ -70,12 +73,54 @@ if (!isElectron) {
         scope: normalizedBase,
         share_target: {
           action: `${normalizedBase}chat`,
-          method: 'GET',
-          enctype: 'application/x-www-form-urlencoded',
+          method: 'POST',
+          enctype: 'multipart/form-data',
           params: {
             title: 'title',
             text: 'text',
             url: 'url',
+            files: [
+              {
+                name: 'media',
+                accept: [
+                  '*/*',
+                  'image/*',
+                  'video/*',
+                  'audio/*',
+                  'text/*',
+                  'application/*',
+                  '.jpg',
+                  '.jpeg',
+                  '.png',
+                  '.gif',
+                  '.webp',
+                  '.svg',
+                  '.bmp',
+                  '.heic',
+                  '.heif',
+                  '.mp4',
+                  '.webm',
+                  '.mov',
+                  '.mkv',
+                  '.mp3',
+                  '.wav',
+                  '.ogg',
+                  '.m4a',
+                  '.pdf',
+                  '.doc',
+                  '.docx',
+                  '.xls',
+                  '.xlsx',
+                  '.ppt',
+                  '.pptx',
+                  '.txt',
+                  '.md',
+                  '.csv',
+                  '.json',
+                  '.zip',
+                ],
+              },
+            ],
           },
         },
         icons: [
@@ -97,23 +142,12 @@ if (!isElectron) {
           }
         ]
       },
-      workbox: {
-        // Do not precache HTML / disable navigateFallback (plugin default is index.html).
+      injectManifest: {
+        // Do not precache HTML (navigateFallback stays unset).
         // Soft refresh on any SPA path must hit the network (GitHub Pages
         // 404.html → latest index) instead of a stale precached shell.
         globPatterns: ['**/*.{js,css,png,svg,ico,woff,woff2}'],
-        navigateFallback: null,
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8MB
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-        runtimeCaching: [
-          {
-            // Always revalidate the build stamp (never serve from SW cache).
-            urlPattern: /build-id\.json$/i,
-            handler: 'NetworkOnly',
-          },
-        ],
       },
       devOptions: {
         enabled: true,

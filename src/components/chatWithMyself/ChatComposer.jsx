@@ -12,6 +12,7 @@ import { Check, Paperclip, Pencil, Send, X, FileText } from 'lucide-react';
 import { Compartment, StateEffect } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
+import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
@@ -37,6 +38,7 @@ import {
   chatAttachmentsToMarkdown,
   getComposerHelperTextVisible,
   writeComposerHelperTextPref,
+  isChatMessageMarkdown,
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 
@@ -199,6 +201,7 @@ export default function ChatComposer({
   draftScope = '',
 }) {
   const [value, setValue] = useState('');
+  const [markdownEnabled, setMarkdownEnabled] = useState(false);
   const [inlineAddOpen, setInlineAddOpen] = useState(false);
   const [inlineGroupName, setInlineGroupName] = useState('');
   const [addingGroup, setAddingGroup] = useState(false);
@@ -209,12 +212,15 @@ export default function ChatComposer({
   const [imageQueue, setImageQueue] = useState([]);
   const [draftReady, setDraftReady] = useState(false);
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
+  /** Markdown messages prefer MdEditor so toolbar formatting matches render. */
+  const useLightweightEditor = lightweight && !markdownEnabled;
   const openChatImage = useChatImageLightbox();
   const wrapRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const inlineGroupInputRef = useRef(null);
   const valueRef = useRef(value);
+  const markdownEnabledRef = useRef(markdownEnabled);
   const imageQueueRef = useRef(imageQueue);
   const prevEditTargetRef = useRef(editTarget);
   const removedExistingPathsRef = useRef([]);
@@ -257,6 +263,10 @@ export default function ChatComposer({
   }, [value]);
 
   useEffect(() => {
+    markdownEnabledRef.current = markdownEnabled;
+  }, [markdownEnabled]);
+
+  useEffect(() => {
     imageQueueRef.current = imageQueue;
   }, [imageQueue]);
 
@@ -285,6 +295,7 @@ export default function ChatComposer({
         if (meta?.body) {
           setValue(meta.body);
         }
+        setMarkdownEnabled(Boolean(meta?.markdown));
         if (meta?.imageIds?.length) {
           const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
           if (!cancelled && imgs.length) {
@@ -336,6 +347,7 @@ export default function ChatComposer({
       previewUrl: null,
     }));
     setValue(text);
+    setMarkdownEnabled(isChatMessageMarkdown(editTarget));
     setImageQueue((prev) => {
       prev.forEach((item) => {
         if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
@@ -403,6 +415,7 @@ export default function ChatComposer({
       const meta = readComposerDraftMeta(draftScope);
       if (cancelled) return;
       setValue(meta?.body || '');
+      setMarkdownEnabled(Boolean(meta?.markdown));
       setImageQueue((prevQueue) => {
         prevQueue.forEach((item) => {
           if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
@@ -451,11 +464,12 @@ export default function ChatComposer({
           : null,
         imageIds,
         imageBackgrounds: imageBackgroundsFromQueue(imageQueue),
+        markdown: markdownEnabled,
       });
       void syncComposerDraftImages(draftScope, imageQueue);
     }, 280);
     return () => window.clearTimeout(t);
-  }, [draftReady, editTarget, value, imageQueue, selectedGroup, replyTo, draftScope]);
+  }, [draftReady, editTarget, value, imageQueue, selectedGroup, replyTo, draftScope, markdownEnabled]);
 
   // Flush draft on hide / unload.
   useEffect(() => {
@@ -477,6 +491,7 @@ export default function ChatComposer({
           : null,
         imageIds: imageQueueRef.current.map((item) => item.id),
         imageBackgrounds: imageBackgroundsFromQueue(imageQueueRef.current),
+        markdown: markdownEnabledRef.current,
       });
       void syncComposerDraftImages(draftScope, imageQueueRef.current);
     };
@@ -536,7 +551,7 @@ export default function ChatComposer({
     imageQueue.length,
     showLineNumbers,
     showToolbar,
-    lightweight,
+    useLightweightEditor,
     contentMaxH,
     editTarget,
     selectedGroup,
@@ -553,7 +568,7 @@ export default function ChatComposer({
     let cancelled = false;
     const focusComposer = () => {
       if (cancelled) return;
-      if (lightweight) {
+      if (useLightweightEditor) {
         textareaRef.current?.focus?.();
       } else {
         const cmEl = root.querySelector('.cm-editor');
@@ -581,11 +596,11 @@ export default function ChatComposer({
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [replyTo?.id, editTarget, lightweight]);
+  }, [replyTo?.id, editTarget, useLightweightEditor]);
 
   // Install lineNumbers once; visibility is toggled via CSS class.
   useEffect(() => {
-    if (lightweight || !draftReady) return undefined;
+    if (useLightweightEditor || !draftReady) return undefined;
     const root = wrapRef.current;
     if (!root) return undefined;
     let cancelled = false;
@@ -623,7 +638,7 @@ export default function ChatComposer({
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [draftReady, syncEditorHeight, lightweight]);
+  }, [draftReady, syncEditorHeight, useLightweightEditor]);
 
   useEffect(() => {
     const root = wrapRef.current;
@@ -692,6 +707,7 @@ export default function ChatComposer({
   const doSend = useCallback(async () => {
     const body = valueRef.current.trim();
     const queued = imageQueueRef.current;
+    const markdown = Boolean(markdownEnabledRef.current);
     if (!body && queued.length === 0) return;
     const newAttachments = queued
       .filter((q) => q.file)
@@ -719,15 +735,19 @@ export default function ChatComposer({
         selectedGroup || SELF_GROUP,
         editTarget,
         newAttachments,
-        { existingMarkdown, removedPaths },
+        { existingMarkdown, removedPaths, markdown },
       );
       setValue('');
+      setMarkdownEnabled(false);
       clearImageQueue();
       onClearEdit?.();
       return;
     }
-    onSend?.(body, selectedGroup || SELF_GROUP, replyTo || null, newAttachments);
+    onSend?.(body, selectedGroup || SELF_GROUP, replyTo || null, newAttachments, {
+      markdown,
+    });
     setValue('');
+    setMarkdownEnabled(false);
     clearImageQueue();
     onClearReply?.();
     await clearComposerDraft(draftScope);
@@ -850,6 +870,16 @@ export default function ChatComposer({
   };
 
   const canSend = Boolean(value.trim()) || imageQueue.length > 0;
+
+  const markdownSwitch = (
+    <ChatNavSwitch
+      id="chat-composer-markdown"
+      label="Markdown"
+      title="마크다운 문법으로 렌더링"
+      checked={markdownEnabled}
+      onCheckedChange={setMarkdownEnabled}
+    />
+  );
 
   return (
     <div
@@ -1109,7 +1139,9 @@ export default function ChatComposer({
                       <Check size={16} />
                     </button>
                   </>
-                ) : null}
+                ) : (
+                  markdownSwitch
+                )}
               </div>
             </>
           ) : (
@@ -1123,7 +1155,7 @@ export default function ChatComposer({
                 showGroupAvatars
                 getPresignedUrl={getPresignedUrl}
                 triggerClassName="max-w-full"
-                className={inlineAddOpen ? 'min-w-0 max-w-[42%]' : 'min-w-0'}
+                className={inlineAddOpen ? 'min-w-0 max-w-[42%]' : 'min-w-0 flex-1'}
               />
               {inlineAddOpen ? (
                 <>
@@ -1158,7 +1190,9 @@ export default function ChatComposer({
                     <Check size={16} />
                   </button>
                 </>
-              ) : null}
+              ) : (
+                markdownSwitch
+              )}
             </div>
           )}
 
@@ -1181,11 +1215,11 @@ export default function ChatComposer({
             <div
               ref={wrapRef}
               className={`chat-composer-editor min-w-0 flex-1 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft ${
-                !lightweight && showLineNumbers
+                !useLightweightEditor && showLineNumbers
                   ? 'chat-composer-editor--line-numbers'
                   : ''
               } ${
-                lightweight || !showToolbar
+                useLightweightEditor || !showToolbar
                   ? 'chat-composer-editor--no-toolbar'
                   : ''
               } ${fillParent ? 'h-full min-h-0' : 'shrink-0'}`}
@@ -1203,7 +1237,7 @@ export default function ChatComposer({
                     }
               }
             >
-              {lightweight ? (
+              {useLightweightEditor ? (
                 <textarea
                   ref={textareaRef}
                   data-chat-composer-textarea=""

@@ -26,6 +26,7 @@ export {
   appendUniqueMessages,
   createMessageId,
   isSelfGroup,
+  isChatMessageMarkdown,
   makeReplySnippet,
   formatChatMessageAsNoteMarkdown,
   formatChatMessagePlainText,
@@ -41,8 +42,10 @@ export {
 export { normalizeSharePayload, sharePayloadFromSearch } from './sharePayload.js';
 export {
   hasShareSearchParams,
+  hasShareTargetFlag,
   shareBodyFromSearch,
   readSharePromptFromWindow,
+  loadShareTargetFiles,
   resolvePendingShareIntent,
   enqueuePendingShare,
   listPendingShares,
@@ -50,7 +53,17 @@ export {
   peekChoosePendingShare,
   claimComposePendingShares,
   flushSendSelfPendingShares,
+  sharePromptHasContent,
+  normalizeShareFiles,
 } from './pendingShares.js';
+export { appendShareChatMessage } from './shareSend.js';
+export {
+  SHARE_TARGET_CACHE,
+  SHARE_TARGET_FLAG,
+  SHARE_TARGET_FILE_PARAM,
+  takeShareTargetFiles,
+  storeShareTargetFiles,
+} from './shareTargetCache.js';
 export {
   normalizeStoragePath,
   deletedNoteScopeFromNode,
