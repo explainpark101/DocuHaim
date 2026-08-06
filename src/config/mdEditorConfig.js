@@ -19,8 +19,17 @@ import '@/styles/md-editor-rt/note-cover-placeholder.css';
 
 const PGBR_XSS_EXTENDED_WHITELIST = {
   pgbr: [],
-  div: ['class', 'data-md-pgbr', 'data-note-cover-placeholder', 'role', 'tabindex'],
-  span: ['class', 'data-md-pgbr', 'aria-hidden'],
+  div: [
+    'class',
+    'data-md-pgbr',
+    'data-note-cover-placeholder',
+    'data-note-cover-mount',
+    'data-note-cover-preview',
+    'data-color-mode',
+    'role',
+    'tabindex',
+  ],
+  span: ['class', 'data-md-pgbr', 'aria-hidden', 'data-note-cover-fallback'],
   h6: ['id', 'class', 'data-heading-level'],
   a: ['href', 'class', 'target', 'rel', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
   img: [

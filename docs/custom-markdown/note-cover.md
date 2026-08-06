@@ -144,11 +144,13 @@ type CoverElement =
 
 | Stage | Behavior |
 |-------|----------|
-| Note MdPreview | Strip cover comment; render body only |
+| Note MdPreview | Replace leading cover comment with a mount host; hydrate `CoverSlide` when `enabled` (cover paper always **light** background; body below follows editor theme) |
 | Export / print | Parse cover; if `enabled`, render cover surface from JSON; body follows |
-| Editor | Mutate JSON via upsert; never rely on in-body shortcodes for cover |
+| Editor | Mutate JSON via upsert; fold cover JSON with gutter chevron (persisted in IndexedDB per document); never rely on in-body shortcodes for cover |
 
 Image `path` / `bg.imagePath` are storage keys; URL resolution is host-specific (same as wiki images).
+
+Editor fold: first cover line shows a chevron left of line numbers (`cursor-pointer`); collapse hides the JSON body with a short motion animation. Fold open/closed state is stored in IndexedDB (`s3haim-note-cover-fold`) keyed by storage type + path and restored when the document is opened.
 
 ### 5. Non-goals
 
@@ -166,4 +168,6 @@ Image `path` / `bg.imagePath` are storage keys; URL resolution is host-specific 
 | 도형 스타일 | `src/utils/noteCover/shapeStyle.ts` |
 | 레이어 트리 | `src/utils/noteCover/layerTree.ts` |
 | 에디터 UI | `src/components/noteCover/*` |
+| Preview mount | `src/utils/noteCoverPlaceholderMarkdownIt.ts`, `hydrateNoteCoverPreview.ts`, `NoteCoverPreviewMount.tsx` |
+| Editor fold | `src/utils/noteCover/noteCoverFoldExtension.ts`, `noteCoverFoldStateDb.ts` |
 | Export | `src/pages/ExportPDFPage.jsx` |

@@ -58,7 +58,15 @@ import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
-import { createNoteCoverFoldExtension } from '@/utils/noteCover/noteCoverFoldExtension';
+import {
+  createNoteCoverFoldExtension,
+  setNoteCoverFoldDocKey,
+} from '@/utils/noteCover/noteCoverFoldExtension';
+import { getNoteCoverFoldKeyFromFile } from '@/utils/noteCover/noteCoverFoldStateDb';
+import {
+  hydrateNoteCoverPreviewsInRoot,
+  teardownNoteCoverPreviewsInRoot,
+} from '@/utils/noteCover/hydrateNoteCoverPreview';
 import {
   formatNoteCoverIssues,
   parseNoteCover,
@@ -755,6 +763,45 @@ export default function MarkdownEditor({
     );
     return () => timers.forEach((t) => clearTimeout(t));
   }, [value, onResolveWikiImageUrl, currentFile?.id]);
+
+  // Mount CoverSlide into preview note-cover hosts (always light-mode paper).
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root || !value) return undefined;
+
+    const runCoverHydration = () => {
+      hydrateNoteCoverPreviewsInRoot(root, value, onResolveWikiImageUrl);
+    };
+
+    const delays = [80, 280, 600, 1100];
+    const timers = delays.map((delay) => setTimeout(runCoverHydration, delay));
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [value, onResolveWikiImageUrl, currentFile?.id]);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    return () => {
+      teardownNoteCoverPreviewsInRoot(root);
+    };
+  }, []);
+
+  // Persist / restore note-cover fold per document (IndexedDB).
+  useEffect(() => {
+    if (previewOnly) return undefined;
+    const key = getNoteCoverFoldKeyFromFile(currentFile);
+    const apply = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view) return false;
+      setNoteCoverFoldDocKey(view, key);
+      return true;
+    };
+    if (apply()) return undefined;
+    const timers = [50, 200, 500, 1000].map((delay) => setTimeout(apply, delay));
+    return () => timers.forEach((t) => clearTimeout(t));
+  }, [currentFile?.id, currentFile?.type, previewOnly]);
 
   useEffect(() => {
     if (!previewOnly) return;
