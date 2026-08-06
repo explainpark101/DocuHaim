@@ -1243,7 +1243,7 @@ export default function CoverSidebar({
                 open={sectionOpen.selection}
                 onToggle={() => toggleSection('selection')}
               >
-                <label className="block space-y-1">
+                <div className="flex flex-col gap-1">
                   <span className="text-[10px] text-gray-400">글자 크기</span>
                   <NumberStepControls
                     min={6}
@@ -1259,7 +1259,7 @@ export default function CoverSidebar({
                       onChange(patchElement(cover, selected.id, { fontSize }))
                     }
                   />
-                </label>
+                </div>
                 <label className="block space-y-1">
                   <span className="text-[10px] text-gray-400">폰트 (font-family)</span>
                   <FontFamilyInput
@@ -1592,7 +1592,7 @@ export default function CoverSidebar({
                     }
                   />
                 </label>
-                <label className="block space-y-1">
+                <div className="flex flex-col gap-1">
                   <span className="text-[10px] text-gray-400">글자 크기</span>
                   <NumberStepControls
                     min={6}
@@ -1608,7 +1608,7 @@ export default function CoverSidebar({
                       onChange(patchElement(cover, selected.id, { fontSize }))
                     }
                   />
-                </label>
+                </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-gray-400">굵기 (font-weight)</span>
                   <Select.Root

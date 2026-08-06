@@ -760,18 +760,6 @@ export default function CoverEditor({
     placeTextBoxSize,
   ]);
 
-  useEffect(() => {
-    if (!placeMode) return undefined;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onPlaceModeChange?.(null);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [placeMode, onPlaceModeChange]);
-
   const beginMarquee = (event: ReactPointerEvent) => {
     if (event.button !== 0) return;
     const frame = frameRef.current;
@@ -1337,6 +1325,32 @@ export default function CoverEditor({
 
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
+
+      if (event.key === 'Escape') {
+        if (deleteConfirmOpenRef.current) return;
+        // Place → edit → selection (one Esc step each).
+        if (placeModeRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          onPlaceModeChange?.(null);
+          return;
+        }
+        if (editingTextId) {
+          event.preventDefault();
+          event.stopPropagation();
+          setEditingTextId(null);
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+          return;
+        }
+        if (isEditablePasteTarget(event.target)) return;
+        if (!selectedIdsRef.current.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onSelectIds([]);
+        return;
+      }
 
       // Cmd/Ctrl+Shift+< / > : font size −1 / +1 px.
       // Handle before editable-target bail-out so sidebar inputs / text edit
