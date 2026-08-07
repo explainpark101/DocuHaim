@@ -2,7 +2,7 @@ import { useDroppable, pointerWithin, closestCenter } from '@dnd-kit/core';
 import { motion as Motion } from 'motion/react';
 import { IconFolder } from '@/components/icons';
 import { toDroppableId } from '@/utils/treeMove';
-import { useTreeRowLongPress } from '@/hooks/useTreeRowLongPress';
+import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
 
 export function treeCollisionDetection(args) {
   const pointerCollisions = pointerWithin(args);
@@ -43,8 +43,8 @@ export function RootDropZone({
 
   const handleClick = (e) => {
     if (e.button !== 0) return;
-    if (longPressOpenedRef.current) {
-      longPressOpenedRef.current = false;
+    if (contextMenuOpenedRef.current) {
+      contextMenuOpenedRef.current = false;
       return;
     }
     e.stopPropagation();
@@ -66,9 +66,9 @@ export function RootDropZone({
     }
   };
 
-  const { longPressOpenedRef, bindLongPress } = useTreeRowLongPress({
+  const { contextMenuOpenedRef, bindTouchGesture } = useTreeNodeTouchGesture({
     enabled: coarse && Boolean(onContextMenu),
-    onLongPress: openFromLongPress,
+    onContextMenu: openFromLongPress,
   });
 
   const handleOsDragOver = (e) => {
@@ -120,7 +120,7 @@ export function RootDropZone({
       onDragOver={canDrop ? handleOsDragOver : undefined}
       onDrop={canDrop ? handleOsDrop : undefined}
       onContextMenu={onContextMenu ? handleContextMenu : undefined}
-      {...(coarse && onContextMenu ? bindLongPress : {})}
+      {...(coarse && onContextMenu ? bindTouchGesture : {})}
       className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer ${
         isDropTarget
           ? 'bg-blue-100 dark:bg-blue-900/40 rounded'

@@ -19,7 +19,7 @@ import { PencilIcon, ArrowRightToLine, AlertCircle } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
-import { useTreeRowLongPress } from '@/hooks/useTreeRowLongPress';
+import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -193,6 +193,23 @@ export default function TreeNode({
   const dragId = toDraggableId(storageType, node.path);
   const dropId = toDroppableId(storageType, node.path);
 
+  const openContextMenuFromLongPress = useCallback(() => {
+    if (!onOpenContextMenu || isUnderDeletingFolder) return;
+    onOpenContextMenu(
+      { preventDefault: () => {}, stopPropagation: () => {} },
+      node,
+    );
+  }, [onOpenContextMenu, isUnderDeletingFolder, node]);
+
+  const {
+    contextMenuOpenedRef,
+    dragBlockedByMenuGesture,
+    bindTouchGesture,
+  } = useTreeNodeTouchGesture({
+    enabled: coarse && Boolean(onOpenContextMenu) && !isUnderDeletingFolder,
+    onContextMenu: openContextMenuFromLongPress,
+  });
+
   const {
     attributes,
     listeners,
@@ -206,7 +223,7 @@ export default function TreeNode({
       nodeType: node.type,
       name: node.name,
     },
-    disabled: !canDrag || isRenaming,
+    disabled: !canDrag || isRenaming || dragBlockedByMenuGesture,
   });
 
   const { setNodeRef: setDropRef } = useDroppable({
@@ -232,23 +249,12 @@ export default function TreeNode({
   const isDragGhost =
     !isCopyDrag && (isDragging || (activeDragItemIds?.has?.(selectKey) ?? false));
 
-  const openContextMenuFromLongPress = useCallback(() => {
-    if (!onOpenContextMenu || isUnderDeletingFolder) return;
-    onOpenContextMenu(
-      { preventDefault: () => {}, stopPropagation: () => {} },
-      node,
-    );
-  }, [onOpenContextMenu, isUnderDeletingFolder, node]);
-
-  const { longPressOpenedRef, bindLongPress } = useTreeRowLongPress({
-    enabled: coarse && Boolean(onOpenContextMenu) && !isUnderDeletingFolder,
-    onLongPress: openContextMenuFromLongPress,
-  });
-
-  const composePointerHandler = (longPressHandler, dndHandler) => (event) => {
-    longPressHandler?.(event);
+  const composePointerHandler = (gestureHandler, dndHandler) => (event) => {
+    gestureHandler?.(event);
     dndHandler?.(event);
   };
+
+  const dragAllowed = canDrag && !isRenaming && !dragBlockedByMenuGesture;
 
   const dragPointerHandlers = listeners
     ? {
@@ -267,20 +273,20 @@ export default function TreeNode({
     coarse && onOpenContextMenu
       ? {
           onPointerDown: composePointerHandler(
-            bindLongPress.onPointerDown,
-            canDrag && !isRenaming ? dragPointerHandlers.onPointerDown : undefined,
+            bindTouchGesture.onPointerDown,
+            dragAllowed ? dragPointerHandlers.onPointerDown : undefined,
           ),
           onPointerMove: composePointerHandler(
-            bindLongPress.onPointerMove,
-            canDrag && !isRenaming ? dragPointerHandlers.onPointerMove : undefined,
+            bindTouchGesture.onPointerMove,
+            dragAllowed ? dragPointerHandlers.onPointerMove : undefined,
           ),
           onPointerUp: composePointerHandler(
-            bindLongPress.onPointerUp,
-            canDrag && !isRenaming ? dragPointerHandlers.onPointerUp : undefined,
+            bindTouchGesture.onPointerUp,
+            dragAllowed ? dragPointerHandlers.onPointerUp : undefined,
           ),
           onPointerCancel: composePointerHandler(
-            bindLongPress.onPointerCancel,
-            canDrag && !isRenaming ? dragPointerHandlers.onPointerCancel : undefined,
+            bindTouchGesture.onPointerCancel,
+            dragAllowed ? dragPointerHandlers.onPointerCancel : undefined,
           ),
         }
       : {};
@@ -455,8 +461,8 @@ export default function TreeNode({
   const handleToggle = (e) => {
     e.stopPropagation();
     if (isUnderDeletingFolder) return;
-    if (longPressOpenedRef.current) {
-      longPressOpenedRef.current = false;
+    if (contextMenuOpenedRef.current) {
+      contextMenuOpenedRef.current = false;
       return;
     }
 
