@@ -207,6 +207,7 @@ export default function Sidebar({
   onDuplicateNode,
   onRequestMoveFile,
   onOpenInNewWindow,
+  onShareToChatWithMyself,
   onOpenChatWithMyself,
   chatWithMyselfActive = false,
   onBrandClick,
@@ -932,6 +933,11 @@ export default function Sidebar({
             }
           }}
           onOpenInNewWindow={onOpenInNewWindow}
+          onShareToChatWithMyself={
+            onShareToChatWithMyself && contextMenuNode.type === 'file'
+              ? onShareToChatWithMyself
+              : undefined
+          }
         />
       )}
       <div className="flex flex-col bg-gray-50 dark:bg-odp-surface shrink-0">

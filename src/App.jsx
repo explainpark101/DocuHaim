@@ -5858,12 +5858,14 @@ function MainApp() {
     ],
   );
 
-  const handleShareNoteToChatWithMyself = useCallback(async () => {
-    if (!currentFile?.id) return;
-    const path = String(currentFile.id);
+  const handleShareNoteToChatWithMyself = useCallback(async (fileOverride = null) => {
+    const file = fileOverride || currentFile;
+    if (!file?.id && !file?.path) return;
+    const path = String(file.id || file.path || '');
+    if (!path) return;
     const name =
-      String(editedFileName || '').trim() ||
-      currentFile.name ||
+      (!fileOverride && String(editedFileName || '').trim()) ||
+      file.name ||
       path.split('/').filter(Boolean).pop() ||
       'note';
     const body = formatNoteShareChatBody({ path, name });
@@ -5901,6 +5903,21 @@ function MainApp() {
     chatStorageCtx,
     navigate,
   ]);
+
+  const handleShareNodeToChatWithMyself = useCallback(
+    async (_storageType, node) => {
+      if (!node || node.type !== 'file') return;
+      const path = String(node.path || node.id || '');
+      if (!path) return;
+      if (isMobile) setSidebarOpen(false);
+      await handleShareNoteToChatWithMyself({
+        id: path,
+        path,
+        name: node.name,
+      });
+    },
+    [handleShareNoteToChatWithMyself, isMobile],
+  );
 
   const handleDropOnFolder = async (targetNode, targetStorageType, action, payload) => {
     if (action === 'dragOver') {
@@ -6737,6 +6754,7 @@ function MainApp() {
               onDuplicateNode={handleDuplicateNode}
               onRequestMoveFile={handleRequestMoveFileFromSidebar}
               onOpenInNewWindow={handleOpenInNewWindow}
+              onShareToChatWithMyself={handleShareNodeToChatWithMyself}
               onOpenChatWithMyself={() => {
                 if (isMobile) setSidebarOpen(false);
                 navigate('/chat');

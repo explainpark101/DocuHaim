@@ -9,6 +9,7 @@ import {
   IconFilePlus,
   IconFolderPlus,
   IconDownload,
+  IconMessage,
   IconTrash,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucide-react';
@@ -37,6 +38,7 @@ function SidebarContextMenuItems({
   onDuplicate,
   onMove,
   onOpenInNewWindow,
+  onShareToChatWithMyself,
   itemClass,
   iconClass,
 }) {
@@ -96,6 +98,19 @@ function SidebarContextMenuItems({
         >
           <IconDownload className={iconClass} />
           {isFolder ? '폴더 다운로드' : '다운로드'}
+        </button>
+      )}
+      {!isFolder && node.type === 'file' && onShareToChatWithMyself && (
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            void onShareToChatWithMyself(storageType, node);
+            onClose();
+          }}
+        >
+          <IconMessage className={iconClass} size={14} />
+          나와의 채팅에 공유하기
         </button>
       )}
       {canEdit && onRename && (
@@ -188,6 +203,7 @@ export default function SidebarContextMenu({
   onDuplicate,
   onMove,
   onOpenInNewWindow,
+  onShareToChatWithMyself,
   deleteCount = 1,
 }) {
   const menuRef = useRef(null);
@@ -217,6 +233,7 @@ export default function SidebarContextMenu({
     onDuplicate,
     onMove,
     onOpenInNewWindow,
+    onShareToChatWithMyself,
     itemClass,
     iconClass,
   };
