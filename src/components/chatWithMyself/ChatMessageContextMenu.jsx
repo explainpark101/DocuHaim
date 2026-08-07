@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Copy,
   FilePlus2,
@@ -9,21 +9,17 @@ import {
   Reply,
   Share2,
   Trash2,
-  X,
   ChevronsDownUp,
   ChevronsUpDown,
   SmilePlus,
   RefreshCw,
   TextSelect,
 } from 'lucide-react';
-import { motion as Motion } from 'motion/react';
-import { Dialog } from 'radix-ui';
+import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
 import {
-  chatMenuDangerItemClass,
-  chatMenuItemClass,
-  chatDialogContentClass,
-  chatDialogOverlayClass,
-} from '@/components/chatWithMyself/ui/chatUiStyles';
+  MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
+  MOBILE_CONTEXT_MENU_ITEM_CLASS,
+} from '@/components/contextMenu/mobileContextMenuStyles';
 import {
   canOfferWebShare,
   extractUrls,
@@ -32,20 +28,8 @@ import {
   shareChatMessage,
 } from '@/utils/chatWithMyself';
 
-/** Ignore outside dismiss from the same finger that long-pressed to open. */
-const DISMISS_GUARD_MS = 450;
-/** Block accidental taps on menu actions right after open. */
-const POINTER_BLOCK_MS = 500;
 /** Briefly block selection after open (long-press residual selection). */
 const SELECT_NONE_MS = 200;
-
-const OVERLAY_TRANSITION = { duration: 0.18 };
-const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
-
-/** Centering translate is driven by motion (avoids CSS transform conflicts). */
-const menuContentClass = chatDialogContentClass
-  .replace('-translate-x-1/2 ', '')
-  .replace('-translate-y-1/2 ', '');
 
 async function copyText(text) {
   const value = String(text ?? '');
@@ -78,31 +62,17 @@ export default function ChatMessageContextMenu({
   getPresignedUrl,
   shiftHeldRef,
 }) {
-  const dismissGuardUntilRef = useRef(0);
   const [selectNone, setSelectNone] = useState(false);
-  const [pointerBlocked, setPointerBlocked] = useState(false);
   const isOpen = Boolean(open && message);
-
-  useEffect(() => {
-    if (isOpen) {
-      dismissGuardUntilRef.current = Date.now() + DISMISS_GUARD_MS;
-    }
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
       setSelectNone(false);
-      setPointerBlocked(false);
       return undefined;
     }
     setSelectNone(true);
-    setPointerBlocked(true);
     const tSelect = window.setTimeout(() => setSelectNone(false), SELECT_NONE_MS);
-    const tPointer = window.setTimeout(() => setPointerBlocked(false), POINTER_BLOCK_MS);
-    return () => {
-      window.clearTimeout(tSelect);
-      window.clearTimeout(tPointer);
-    };
+    return () => window.clearTimeout(tSelect);
   }, [isOpen]);
 
   if (!message && !open) return null;
@@ -114,66 +84,19 @@ export default function ChatMessageContextMenu({
   const shareAvailable = canOfferWebShare();
   const hasLinks = extractUrls(message?.body || '').length > 0;
 
-  const guardOutside = (event) => {
-    if (Date.now() < dismissGuardUntilRef.current) {
-      event.preventDefault();
-    }
-  };
+  const messagePreview =
+    (message?.body || '').replace(/\s+/g, ' ').slice(0, 120) || '(빈 메시지)';
 
-  const selectNoneClass = selectNone ? 'select-none' : '';
-  const pointerBlockClass = pointerBlocked ? 'pointer-events-none' : '';
-
-  const menuBtnClass = `${chatMenuItemClass} ${pointerBlockClass}`.trim();
+  const menuBtnClass = MOBILE_CONTEXT_MENU_ITEM_CLASS;
 
   return (
-    <Dialog.Root
+    <MobileContextMenuModal
       open={isOpen}
-      onOpenChange={(next) => {
-        if (!next && Date.now() < dismissGuardUntilRef.current) return;
-        onOpenChange?.(next);
-      }}
+      onOpenChange={(next) => onOpenChange?.(next)}
+      title={messagePreview}
+      subtitle="채팅 메시지"
+      bodyClassName={selectNone ? 'select-none' : ''}
     >
-      <Dialog.Portal>
-        <Dialog.Overlay asChild>
-          <Motion.div
-            className={`${chatDialogOverlayClass} ${selectNoneClass}`.trim()}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={OVERLAY_TRANSITION}
-          />
-        </Dialog.Overlay>
-        <Dialog.Content
-          asChild
-          aria-describedby={undefined}
-          onPointerDownOutside={guardOutside}
-          onInteractOutside={guardOutside}
-        >
-          <Motion.div
-            className={`${menuContentClass} ${selectNoneClass}`.trim()}
-            initial={{ opacity: 0, scale: 0.95, x: '-50%', y: 'calc(-50% + 8px)' }}
-            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-            transition={PANEL_TRANSITION}
-          >
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-odp-borderSoft">
-              <div className="min-w-0">
-                <Dialog.Title className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
-                  메시지 옵션
-                </Dialog.Title>
-                <p className="truncate text-xs text-gray-500">
-                  {(message?.body || '').replace(/\s+/g, ' ').slice(0, 60) || '(빈 메시지)'}
-                </p>
-              </div>
-              <Dialog.Close asChild>
-                <button
-                  type="button"
-                  className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
-                  aria-label="닫기"
-                >
-                  <X size={18} />
-                </button>
-              </Dialog.Close>
-            </div>
-            <div className="flex flex-col gap-0.5 p-1">
               <button
                 type="button"
                 className={menuBtnClass}
@@ -320,7 +243,7 @@ export default function ChatMessageContextMenu({
               </button>
               <button
                 type="button"
-                className={`${chatMenuDangerItemClass} ${pointerBlockClass}`.trim()}
+                className={MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS}
                 onPointerDown={(e) => {
                   if (shiftHeldRef) shiftHeldRef.current = e.shiftKey;
                 }}
@@ -334,10 +257,6 @@ export default function ChatMessageContextMenu({
                 <Trash2 size={16} className="shrink-0" />
                 삭제
               </button>
-            </div>
-          </Motion.div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    </MobileContextMenuModal>
   );
 }

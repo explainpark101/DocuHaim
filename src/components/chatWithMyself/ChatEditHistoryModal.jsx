@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ContextMenu, Dialog } from 'radix-ui';
+import { Dialog } from 'radix-ui';
 import { Loader2, Trash2 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import {
+  AdaptiveContextMenu,
+  AdaptiveMenuItem,
+} from '@/components/contextMenu/AdaptiveContextMenu';
 import {
   chatDialogOverlayClass,
   chatMenuContentClass,
@@ -136,31 +140,31 @@ function HistoryEntryCard({
   }
 
   return (
-    <ContextMenu.Root open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
-      <ContextMenu.Trigger asChild>{card}</ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content
-          className={chatMenuContentClass}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <ContextMenu.Item
-            className={chatMenuDangerItemClass}
-            disabled={deleting}
-            onPointerDown={(e) => {
-              if (e.shiftKey) shiftHeldRef.current = true;
-            }}
-            onSelect={() => {
-              onRequestDelete?.(entry, {
-                skipConfirm: shiftHeldRef.current,
-              });
-            }}
-          >
-            <Trash2 size={16} className="shrink-0" />
-            이 기록 삭제
-          </ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+    <AdaptiveContextMenu
+      open={contextMenuOpen}
+      onOpenChange={setContextMenuOpen}
+      title={(entry.body || '').replace(/\s+/g, ' ').slice(0, 120) || '(빈 기록)'}
+      subtitle="수정 기록"
+      contentClassName={chatMenuContentClass}
+      trigger={card}
+    >
+      <AdaptiveMenuItem
+        className={chatMenuDangerItemClass}
+        danger
+        disabled={deleting}
+        onPointerDown={(e) => {
+          if (e.shiftKey) shiftHeldRef.current = true;
+        }}
+        onSelect={() => {
+          onRequestDelete?.(entry, {
+            skipConfirm: shiftHeldRef.current,
+          });
+        }}
+      >
+        <Trash2 size={16} className="shrink-0" />
+        이 기록 삭제
+      </AdaptiveMenuItem>
+    </AdaptiveContextMenu>
   );
 }
 
