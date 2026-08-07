@@ -7,7 +7,7 @@ const base = `${appBase}docs/`;
 
 export default defineConfig({
   title: 'S3 Haim Docs',
-  description: 'S3 Haim custom Markdown syntax and interop specs',
+  description: 'S3 Haim docs — custom Markdown, Advanced Search, and interop specs',
   lang: 'ko-KR',
   base,
   outDir: '../dist/docs',
@@ -23,10 +23,29 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Custom Markdown', link: '/custom-markdown/' },
+      { text: 'Advanced Search', link: '/advanced-search' },
       // Relative: VitePress prepends `base` to absolute `/...` links, so `/` becomes `/docs/`.
       { text: '앱으로', link: '../' },
     ],
     sidebar: {
+      '/': [
+        {
+          text: '문서',
+          items: [
+            { text: '홈', link: '/' },
+            { text: 'Advanced Search', link: '/advanced-search' },
+            { text: 'Custom Markdown', link: '/custom-markdown/' },
+          ],
+        },
+      ],
+      '/advanced-search': [
+        {
+          text: 'Advanced Search',
+          items: [
+            { text: '개요', link: '/advanced-search' },
+          ],
+        },
+      ],
       '/custom-markdown/': [
         {
           text: 'Custom Markdown',

@@ -4,10 +4,11 @@ title: S3 Haim Docs
 
 # S3 Haim Docs
 
-앱에서 쓰는 **커스텀 마크다운** 문법과, 다른 파서에서 포팅할 때 쓰는 **interop Spec** 문서입니다.
+앱 기능·문법 명세와, 다른 구현에서 포팅할 때 쓰는 **interop Spec** 문서입니다.
 
 ## 문서
 
+- [Advanced Search](./advanced-search) — fuzzy/필터/하이라이트 검색 패턴과 이식 가이드
 - [Custom Markdown](./custom-markdown/) — `![[…]]`, `<pgbr/>`, 채팅 토큰, note-cover 등
 
 ## URL
