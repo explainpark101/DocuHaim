@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const MIN_MODAL_WIDTH = 360;
-export const MIN_MODAL_HEIGHT = 280;
+/** Absolute floor if baseline has not been measured yet. */
+export const MIN_MODAL_WIDTH = 280;
+export const MIN_MODAL_HEIGHT = 160;
 const VIEW_MARGIN = 8;
 
 /** @typedef {'nw' | 'ne' | 'sw' | 'se'} CornerId */
@@ -13,6 +14,14 @@ const VIEW_MARGIN = 8;
  *   left: number,
  *   top: number,
  * }} ModalBox
+ */
+
+/**
+ * @typedef {{
+ *   minWidth?: number,
+ *   minHeight?: number,
+ *   resizeHeight?: boolean,
+ * }} ModalResizeLimits
  */
 
 export const CORNER_HANDLES = /** @type {const} */ ([
@@ -40,8 +49,7 @@ export const CORNER_HANDLES = /** @type {const} */ ([
 
 /**
  * Resize symmetrically around the modal center.
- * Dragging a corner grows/shrinks both axes equally; size is clamped to min/max
- * so the panel stops tracking the pointer once those limits are hit.
+ * Opening (baseline) size is the minimum; optional height lock for non-filling layouts.
  * @param {CornerId} corner
  * @param {number} startLeft
  * @param {number} startTop
@@ -49,7 +57,7 @@ export const CORNER_HANDLES = /** @type {const} */ ([
  * @param {number} startH
  * @param {number} dx
  * @param {number} dy
- * @param {{ minWidth?: number, minHeight?: number }} [limits]
+ * @param {ModalResizeLimits & { baselineWidth?: number, baselineHeight?: number }} [limits]
  * @returns {ModalBox}
  */
 export function boxFromCornerDrag(
@@ -62,25 +70,37 @@ export function boxFromCornerDrag(
   dy,
   limits = {},
 ) {
-  const minW = limits.minWidth ?? MIN_MODAL_WIDTH;
-  const minH = limits.minHeight ?? MIN_MODAL_HEIGHT;
+  const resizeHeight = Boolean(limits.resizeHeight);
+  const baselineW = limits.baselineWidth ?? startW;
+  const baselineH = limits.baselineHeight ?? startH;
+  const minW = Math.max(
+    limits.minWidth ?? MIN_MODAL_WIDTH,
+    baselineW,
+  );
+  const minH = Math.max(
+    limits.minHeight ?? MIN_MODAL_HEIGHT,
+    baselineH,
+  );
   const maxW = Math.max(minW, window.innerWidth - VIEW_MARGIN * 2);
   const maxH = Math.max(minH, window.innerHeight - VIEW_MARGIN * 2);
 
   const centerX = startLeft + startW / 2;
   const centerY = startTop + startH / 2;
 
-  // One-corner pointer delta → full width/height change (both sides move).
   let widthDelta = 0;
   let heightDelta = 0;
   if (corner.includes('e')) widthDelta = dx * 2;
   else if (corner.includes('w')) widthDelta = -dx * 2;
-  if (corner.includes('s')) heightDelta = dy * 2;
-  else if (corner.includes('n')) heightDelta = -dy * 2;
+  if (resizeHeight) {
+    if (corner.includes('s')) heightDelta = dy * 2;
+    else if (corner.includes('n')) heightDelta = -dy * 2;
+  }
 
-  // Hard clamp: below min / above max the box no longer follows the pointer.
+  // Clamp: cannot shrink below opening size; stops following past min/max.
   const width = Math.min(maxW, Math.max(minW, startW + widthDelta));
-  const height = Math.min(maxH, Math.max(minH, startH + heightDelta));
+  const height = resizeHeight
+    ? Math.min(maxH, Math.max(minH, startH + heightDelta))
+    : startH;
 
   let left = centerX - width / 2;
   let top = centerY - height / 2;
@@ -98,13 +118,15 @@ export function boxFromCornerDrag(
 
 /**
  * Shared corner-resize state for Modal / ConfirmModal panels.
+ * Opening size becomes the resize floor. Height resize is opt-in (`resizeHeight`).
  * @param {boolean} [enabled=true]
- * @param {{ minWidth?: number, minHeight?: number }} [limits]
+ * @param {ModalResizeLimits} [limits]
  */
 export function useModalCornerResize(enabled = true, limits = {}) {
   /** @type {[null | ModalBox, Function]} */
   const [box, setBox] = useState(null);
   const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
+  const baselineRef = useRef(/** @type {null | { width: number, height: number }} */ (null));
   const dragRef = useRef(/** @type {null | {
     corner: CornerId,
     startX: number,
@@ -117,6 +139,26 @@ export function useModalCornerResize(enabled = true, limits = {}) {
   const limitsRef = useRef(limits);
   limitsRef.current = limits;
 
+  const captureBaseline = useCallback(() => {
+    const el = panelRef.current;
+    if (!el || baselineRef.current) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return;
+    baselineRef.current = {
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+    };
+  }, []);
+
+  // Avoid re-capturing while the user is actively resizing.
+  useEffect(() => {
+    if (!enabled || box) return undefined;
+    const id = window.requestAnimationFrame(() => {
+      captureBaseline();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [enabled, captureBaseline, box]);
+
   useEffect(() => {
     if (!enabled) return undefined;
 
@@ -126,6 +168,7 @@ export function useModalCornerResize(enabled = true, limits = {}) {
       event.preventDefault();
       const dx = event.clientX - drag.startX;
       const dy = event.clientY - drag.startY;
+      const baseline = baselineRef.current;
       setBox(
         boxFromCornerDrag(
           drag.corner,
@@ -135,7 +178,11 @@ export function useModalCornerResize(enabled = true, limits = {}) {
           drag.startH,
           dx,
           dy,
-          limitsRef.current,
+          {
+            ...limitsRef.current,
+            baselineWidth: baseline?.width,
+            baselineHeight: baseline?.height,
+          },
         ),
       );
     };
@@ -160,6 +207,7 @@ export function useModalCornerResize(enabled = true, limits = {}) {
     if (!el) return;
     event.preventDefault();
     event.stopPropagation();
+    captureBaseline();
     const rect = el.getBoundingClientRect();
     dragRef.current = {
       corner,
@@ -179,9 +227,12 @@ export function useModalCornerResize(enabled = true, limits = {}) {
     if (typeof event.currentTarget?.setPointerCapture === 'function') {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
-  }, []);
+  }, [captureBaseline]);
 
-  const resetBox = useCallback(() => setBox(null), []);
+  const resetBox = useCallback(() => {
+    setBox(null);
+    baselineRef.current = null;
+  }, []);
 
   /** @returns {import('react').CSSProperties} */
   const positionedStyle = box
@@ -202,6 +253,7 @@ export function useModalCornerResize(enabled = true, limits = {}) {
     panelRef,
     beginResize,
     resetBox,
+    captureBaseline,
     positioned: Boolean(box),
     positionedStyle,
   };
@@ -209,17 +261,28 @@ export function useModalCornerResize(enabled = true, limits = {}) {
 
 /**
  * Triangle corner-cap resize handles.
- * @param {{ onBeginResize: (corner: CornerId, event: import('react').PointerEvent) => void }} props
+ * @param {{
+ *   onBeginResize: (corner: CornerId, event: import('react').PointerEvent) => void,
+ *   resizeHeight?: boolean,
+ * }} props
  */
-export function ModalCornerResizeHandles({ onBeginResize }) {
-  return CORNER_HANDLES.map((handle) => (
-    <button
-      key={handle.id}
-      type="button"
-      aria-label={`resize-${handle.id}`}
-      className={`pointer-events-auto absolute z-30 h-7 w-7 touch-none bg-blue-500/90 shadow-sm transition-colors hover:bg-blue-600 dark:bg-blue-400/90 dark:hover:bg-blue-300 ${handle.className}`}
-      style={{ clipPath: handle.clipPath }}
-      onPointerDown={(event) => onBeginResize(handle.id, event)}
-    />
-  ));
+export function ModalCornerResizeHandles({ onBeginResize, resizeHeight = false }) {
+  return CORNER_HANDLES.map((handle) => {
+    const cursorClass = resizeHeight
+      ? (handle.id === 'nw' || handle.id === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize')
+      : 'cursor-ew-resize';
+    const posClass = handle.className
+      .replace(/cursor-\S+/g, '')
+      .trim();
+    return (
+      <button
+        key={handle.id}
+        type="button"
+        aria-label={`resize-${handle.id}`}
+        className={`pointer-events-auto absolute z-30 h-7 w-7 touch-none bg-blue-500/90 shadow-sm transition-colors hover:bg-blue-600 dark:bg-blue-400/90 dark:hover:bg-blue-300 ${posClass} ${cursorClass}`}
+        style={{ clipPath: handle.clipPath }}
+        onPointerDown={(event) => onBeginResize(handle.id, event)}
+      />
+    );
+  });
 }

@@ -1606,6 +1606,7 @@ export function TableEditModal({
       overlayClassName="p-[2.5dvh]"
       contentClassName="h-[95dvh] max-h-[95dvh] max-w-[95dvw]"
       contentStyle={modalContentStyle}
+      resizeHeight
     >
       <Form.Root
         className="flex h-full min-h-0 flex-col"

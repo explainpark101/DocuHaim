@@ -38,6 +38,7 @@ export default function ImageClipCropModal({
       isOpen={isOpen && Boolean(file)}
       onClose={onClose}
       contentClassName="max-w-2xl w-[min(96vw,42rem)] max-h-[90vh] h-[min(90vh,720px)]"
+      resizeHeight
     >
       {imageSrc ? (
         <NoteImageCropPanel

@@ -56,7 +56,7 @@ export function ConfirmModal({
     resetBox,
     positioned,
     positionedStyle,
-  } = useModalCornerResize(resizable, { minHeight: 200 });
+  } = useModalCornerResize(resizable, { resizeHeight: false });
 
   useModalLayerKeyboard({
     open: isOpen,
@@ -132,7 +132,9 @@ export function ConfirmModal({
                 </Button>
               </div>
             </div>
-            {resizable ? <ModalCornerResizeHandles onBeginResize={beginResize} /> : null}
+            {resizable ? (
+              <ModalCornerResizeHandles onBeginResize={beginResize} resizeHeight={false} />
+            ) : null}
           </Motion.div>
         </Motion.div>
       ) : null}

@@ -19,6 +19,8 @@ const ANIMATION_DURATION_MS = 200;
  *   overlayClassName?: string,
  *   ignoreEnterInFields?: boolean,
  *   resizable?: boolean,
+ *   resizeHeight?: boolean,
+ *   layoutKey?: string | number | boolean,
  * }} props
  */
 export default function Modal({
@@ -31,6 +33,8 @@ export default function Modal({
   overlayClassName = '',
   ignoreEnterInFields = false,
   resizable = true,
+  resizeHeight = false,
+  layoutKey,
 }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -38,9 +42,10 @@ export default function Modal({
     panelRef,
     beginResize,
     resetBox,
+    captureBaseline,
     positioned,
     positionedStyle,
-  } = useModalCornerResize(resizable);
+  } = useModalCornerResize(resizable, { resizeHeight });
 
   useModalLayerKeyboard({
     open: isOpen,
@@ -71,6 +76,25 @@ export default function Modal({
     }
   }, [isOpen, mounted, resetBox]);
 
+  // Capture opening size as resize floor after enter animation.
+  useEffect(() => {
+    if (!isOpen || !visible || !resizable) return undefined;
+    const timer = window.setTimeout(() => {
+      captureBaseline();
+    }, ANIMATION_DURATION_MS + 30);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, visible, resizable, captureBaseline]);
+
+  // Size ↔ crop (etc.): drop fixed box, remeasure floor for the new layout.
+  useEffect(() => {
+    if (!isOpen || layoutKey === undefined) return undefined;
+    resetBox();
+    const timer = window.setTimeout(() => {
+      captureBaseline();
+    }, 40);
+    return () => window.clearTimeout(timer);
+  }, [layoutKey, isOpen, resetBox, captureBaseline]);
+
   if (!mounted || typeof document === 'undefined') return null;
 
   const mergedStyle = {
@@ -99,7 +123,12 @@ export default function Modal({
         style={mergedStyle}
       >
         {children}
-        {resizable ? <ModalCornerResizeHandles onBeginResize={beginResize} /> : null}
+        {resizable ? (
+          <ModalCornerResizeHandles
+            onBeginResize={beginResize}
+            resizeHeight={resizeHeight}
+          />
+        ) : null}
       </div>
     </div>,
     document.body,
