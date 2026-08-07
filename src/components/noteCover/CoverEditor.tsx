@@ -2,11 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { createPortal } from 'react-dom';
 import { ContextMenu } from 'radix-ui';
 import CoverSlide from '@/components/noteCover/CoverSlide';
-import CoverCanvasContextMenuContent from '@/components/noteCover/CoverCanvasContextMenu';
+import CoverCanvasContextMenuContent, {
+  CoverCanvasContextMenuBody,
+} from '@/components/noteCover/CoverCanvasContextMenu';
+import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import { AdaptiveMenuSurfaceProvider } from '@/components/contextMenu/AdaptiveContextMenu';
 import Modal from '@/components/modals/Modal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import NoteImageCropPanel from '@/components/modals/NoteImageCropPanel';
 import { useCoverImageUrl } from '@/hooks/useCoverImageUrl';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import {
   collectDescendantElementIds,
   collectObjectSnapTargets,
@@ -16,6 +21,7 @@ import {
   createCoverShapeElement,
   createCoverTextElement,
   coverImageBoxSizeForAspect,
+  coverElementLabel,
   coverShapeShellStyle,
   coverShapeTextBoxStyle,
   coverShapeTextContentStyle,
@@ -344,6 +350,8 @@ export default function CoverEditor({
     path: string;
     imageSrc: string;
   } | null>(null);
+  const mobileContextMenu = useMobileContextMenuMode();
+  const [canvasMenuTargetId, setCanvasMenuTargetId] = useState<string | null>(null);
   const cropOpenRef = useRef(false);
   cropOpenRef.current = Boolean(cropTarget);
   /** 0 = closed; 1 = first confirm; 2 = second confirm (locked only). */
@@ -1843,9 +1851,7 @@ export default function CoverEditor({
             </>
           );
 
-          return (
-            <ContextMenu.Root key={el.id}>
-              <ContextMenu.Trigger asChild>
+          const elementNode = (
                 <div
                   data-cover-el={el.id}
                   data-cover-locked={isLocked ? '1' : undefined}
@@ -1858,10 +1864,14 @@ export default function CoverEditor({
                     zIndex: isSelected || isMarqueeHit ? 20 + index : 10 + index,
                     cursor: isEditing ? 'text' : isLocked ? 'default' : 'move',
                   }}
-                  onContextMenu={() => {
+                  onContextMenu={(event) => {
                     if (!selectedIdsRef.current.includes(el.id)) {
                       selectedIdsRef.current = [el.id];
                       onSelectIds([el.id]);
+                    }
+                    if (mobileContextMenu) {
+                      event.preventDefault();
+                      setCanvasMenuTargetId(el.id);
                     }
                   }}
                   onPointerDown={(event) => {
@@ -1893,7 +1903,15 @@ export default function CoverEditor({
                 >
                   {body}
                 </div>
-              </ContextMenu.Trigger>
+          );
+
+          if (mobileContextMenu) {
+            return <div key={el.id}>{elementNode}</div>;
+          }
+
+          return (
+            <ContextMenu.Root key={el.id}>
+              <ContextMenu.Trigger asChild>{elementNode}</ContextMenu.Trigger>
               <ContextMenu.Portal>
                 <CoverCanvasContextMenuContent
                   cover={cover}
@@ -1913,6 +1931,42 @@ export default function CoverEditor({
           );
         })}
       </div>
+      {mobileContextMenu && canvasMenuTargetId ? (
+        <MobileContextMenuModal
+          open={Boolean(canvasMenuTargetId)}
+          onOpenChange={(next) => {
+            if (!next) setCanvasMenuTargetId(null);
+          }}
+          title={(() => {
+            const target = cover.elements.find((item) => item.id === canvasMenuTargetId);
+            return target ? coverElementLabel(target) : '커버 요소';
+          })()}
+          subtitle="커버 캔버스"
+          bodyClassName="p-0"
+        >
+          <AdaptiveMenuSurfaceProvider surface="mobile">
+            <div className="p-2">
+              <CoverCanvasContextMenuBody
+                cover={cover}
+                targetId={canvasMenuTargetId}
+                selectedIds={selectedIds}
+                onChange={onChange}
+                onSelectIds={onSelectIds}
+                onRequestDelete={(ids) => {
+                  requestDeleteSelection(ids);
+                  setCanvasMenuTargetId(null);
+                }}
+                onImageCrop={(imageEl) => {
+                  setCanvasMenuTargetId(null);
+                  void openImageCrop(imageEl);
+                }}
+                onRestoreImageAspect={restoreImageAspect}
+                onToggleImageLockAspect={toggleImageLockAspect}
+              />
+            </div>
+          </AdaptiveMenuSurfaceProvider>
+        </MobileContextMenuModal>
+      ) : null}
       {singleSelected ? (
         <span className="sr-only">
           Selected {singleSelected.type} {singleSelected.id}

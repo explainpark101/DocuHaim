@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ContextMenu, Tabs } from 'radix-ui';
+import { Tabs } from 'radix-ui';
+import {
+  AdaptiveContextMenu,
+  AdaptiveMenuItem,
+} from '@/components/contextMenu/AdaptiveContextMenu';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
@@ -152,45 +156,44 @@ function CollectionCardMenuItems({
   onOpenNote,
   onViewEditHistory,
   noteExists,
-  _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
   return (
     <>
-      <_Item
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         onSelect={() => onSelect?.(msg)}
       >
         <ExternalLink size={16} className="shrink-0 text-gray-500" />
         메시지로 이동
-      </_Item>
-      <_Item
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         onSelect={() => onTogglePin?.(msg)}
       >
         <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
         {pinned ? '고정 해제' : '고정'}
-      </_Item>
+      </AdaptiveMenuItem>
       {msg?.notePath &&
       (typeof noteExists !== 'function' || noteExists(msg.notePath)) ? (
-        <_Item
+        <AdaptiveMenuItem
           className={chatMenuItemClass}
           onSelect={() => onOpenNote?.(msg.notePath, msg)}
         >
           <FileText size={16} className="shrink-0 text-gray-500" />
           노트 열기
-        </_Item>
+        </AdaptiveMenuItem>
       ) : null}
       {msg?.editedAt ? (
-        <_Item
+        <AdaptiveMenuItem
           className={chatMenuItemClass}
           onSelect={() => onViewEditHistory?.(msg)}
         >
           <History size={16} className="shrink-0 text-gray-500" />
           수정 기록
-        </_Item>
+        </AdaptiveMenuItem>
       ) : null}
-      <_Item
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessagePlainText(msg));
@@ -198,7 +201,7 @@ function CollectionCardMenuItems({
       >
         <Copy size={16} className="shrink-0 text-gray-500" />
         내용 복사
-      </_Item>
+      </AdaptiveMenuItem>
     </>
   );
 }
@@ -361,26 +364,27 @@ function CollectionCard({
     </Motion.div>
   );
 
+  const menuTitle = preview || '(빈 메시지)';
+  const tabLabel = TABS.find((t) => t.id === tab)?.label ?? '컬렉션';
+
   return (
-    <ContextMenu.Root open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
-      <ContextMenu.Trigger asChild>{cardInner}</ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content
-          className={chatMenuContentClass}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <CollectionCardMenuItems
-            msg={msg}
-            onSelect={onSelect}
-            onTogglePin={onTogglePin}
-            onOpenNote={onOpenNote}
-            onViewEditHistory={onViewEditHistory}
-            noteExists={noteExists}
-            _Item={ContextMenu.Item}
-          />
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+    <AdaptiveContextMenu
+      open={contextMenuOpen}
+      onOpenChange={setContextMenuOpen}
+      title={menuTitle}
+      subtitle={tabLabel}
+      contentClassName={chatMenuContentClass}
+      trigger={cardInner}
+    >
+      <CollectionCardMenuItems
+        msg={msg}
+        onSelect={onSelect}
+        onTogglePin={onTogglePin}
+        onOpenNote={onOpenNote}
+        onViewEditHistory={onViewEditHistory}
+        noteExists={noteExists}
+      />
+    </AdaptiveContextMenu>
   );
 }
 

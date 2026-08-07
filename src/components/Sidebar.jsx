@@ -27,6 +27,7 @@ import {
 } from '@/utils/treeMove';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import { TREE_TOUCH_DRAG_READY_MS } from '@/hooks/useTreeNodeTouchGesture';
 import {
   loadExpandedFolderPaths,
@@ -219,6 +220,7 @@ export default function Sidebar({
   const TREE_STICKY_SECTION_TOP = 33;
   const coarsePointer = useIsCoarsePointer();
   const mobileTree = isMobileLayout || coarsePointer;
+  const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const isSearchPending = searchInput !== searchTerm;
@@ -809,7 +811,7 @@ export default function Sidebar({
         y: mobileTree ? null : event?.clientY ?? null,
         node,
         storageType,
-        modal: mobileTree,
+        modal: mobileContextMenu,
       });
     },
     [activateTreeNode, mobileTree],
@@ -892,7 +894,7 @@ export default function Sidebar({
           y={contextMenu.y}
           node={contextMenuNode}
           storageType={contextMenuStorageType}
-          mobileDialog={contextMenu.modal ?? mobileTree}
+          mobileDialog={contextMenu.modal ?? mobileContextMenu}
           isTrashRoot={contextMenuNode.path === '.trash/'}
           deleteCount={
             (() => {

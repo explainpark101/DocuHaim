@@ -14,7 +14,11 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
-import { ContextMenu, Form, Switch } from 'radix-ui';
+import { Form, Switch } from 'radix-ui';
+import {
+  AdaptiveContextMenu,
+  AdaptiveMenuItem,
+} from '@/components/contextMenu/AdaptiveContextMenu';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
@@ -90,42 +94,41 @@ function SearchResultMenuItems({
   onOpenNote,
   onViewEditHistory,
   noteExists,
-  _Item,
 }) {
   const pinned = Boolean(result?.pinnedAt);
   return (
     <>
-      <_Item className={chatMenuItemClass} onSelect={() => onSelect?.(result)}>
+      <AdaptiveMenuItem className={chatMenuItemClass} onSelect={() => onSelect?.(result)}>
         <ExternalLink size={16} className="shrink-0 text-gray-500" />
         메시지로 이동
-      </_Item>
+      </AdaptiveMenuItem>
       {onTogglePin ? (
-        <_Item className={chatMenuItemClass} onSelect={() => onTogglePin?.(result)}>
+        <AdaptiveMenuItem className={chatMenuItemClass} onSelect={() => onTogglePin?.(result)}>
           <Pin size={16} className={`shrink-0 text-gray-500 ${pinned ? 'fill-current' : ''}`} />
           {pinned ? '고정 해제' : '고정'}
-        </_Item>
+        </AdaptiveMenuItem>
       ) : null}
       {result?.notePath &&
       onOpenNote &&
       (typeof noteExists !== 'function' || noteExists(result.notePath)) ? (
-        <_Item
+        <AdaptiveMenuItem
           className={chatMenuItemClass}
           onSelect={() => onOpenNote?.(result.notePath, result)}
         >
           <FileText size={16} className="shrink-0 text-gray-500" />
           노트 열기
-        </_Item>
+        </AdaptiveMenuItem>
       ) : null}
       {result?.editedAt && onViewEditHistory ? (
-        <_Item
+        <AdaptiveMenuItem
           className={chatMenuItemClass}
           onSelect={() => onViewEditHistory?.(result)}
         >
           <History size={16} className="shrink-0 text-gray-500" />
           수정 기록
-        </_Item>
+        </AdaptiveMenuItem>
       ) : null}
-      <_Item
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         onSelect={() => {
           void copyText(formatChatMessagePlainText(result));
@@ -133,7 +136,7 @@ function SearchResultMenuItems({
       >
         <Copy size={16} className="shrink-0 text-gray-500" />
         내용 복사
-      </_Item>
+      </AdaptiveMenuItem>
     </>
   );
 }
@@ -288,26 +291,27 @@ function SearchResultCard({
     </Motion.div>
   );
 
+  const menuTitle =
+    (result.body || '').replace(/\s+/g, ' ').slice(0, 120) || '(빈 메시지)';
+
   return (
-    <ContextMenu.Root open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
-      <ContextMenu.Trigger asChild>{card}</ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content
-          className={chatMenuContentClass}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <SearchResultMenuItems
-            result={result}
-            onSelect={onSelect}
-            onTogglePin={onTogglePin}
-            onOpenNote={onOpenNote}
-            onViewEditHistory={onViewEditHistory}
-            noteExists={noteExists}
-            _Item={ContextMenu.Item}
-          />
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+    <AdaptiveContextMenu
+      open={contextMenuOpen}
+      onOpenChange={setContextMenuOpen}
+      title={menuTitle}
+      subtitle="검색 결과"
+      contentClassName={chatMenuContentClass}
+      trigger={card}
+    >
+      <SearchResultMenuItems
+        result={result}
+        onSelect={onSelect}
+        onTogglePin={onTogglePin}
+        onOpenNote={onOpenNote}
+        onViewEditHistory={onViewEditHistory}
+        noteExists={noteExists}
+      />
+    </AdaptiveContextMenu>
   );
 }
 

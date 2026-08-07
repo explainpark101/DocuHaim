@@ -8,6 +8,12 @@ import {
 import { Table2, Trash2 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import {
+  MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
+  MOBILE_CONTEXT_MENU_ITEM_CLASS,
+} from '@/components/contextMenu/mobileContextMenuStyles';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import { PRESSABLE_CARD_MENU_MS } from '@/components/chatWithMyself/usePressableCardMenu';
 import {
   deleteHaimTableBlock,
@@ -54,6 +60,7 @@ export function PreviewTableContextMenu({
   onEditTable,
   onEditFailed,
 }: Props) {
+  const mobileContextMenu = useMobileContextMenuMode();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<MenuTarget | null>(null);
   const [pendingDelete, setPendingDelete] = useState<HaimTableBlock | null>(null);
@@ -207,45 +214,91 @@ export function PreviewTableContextMenu({
 
   const anchor = target ?? { x: 0, y: 0 };
 
+  const closeMenu = () => {
+    setOpen(false);
+    setTarget(null);
+  };
+
+  const menuItems = (
+    <>
+      <button
+        type="button"
+        className={mobileContextMenu ? MOBILE_CONTEXT_MENU_ITEM_CLASS : menuItemClass}
+        onClick={() => {
+          handleEdit();
+          closeMenu();
+        }}
+      >
+        <Table2 className={ICON_XS} aria-hidden />
+        표 편집기
+      </button>
+      <button
+        type="button"
+        className={mobileContextMenu ? MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS : menuDangerItemClass}
+        onClick={() => {
+          requestDelete();
+          closeMenu();
+        }}
+      >
+        <Trash2 className={ICON_XS} aria-hidden />
+        표 삭제
+      </button>
+    </>
+  );
+
   return (
     <>
-      <DropdownMenu.Root
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setTarget(null);
-        }}
-        modal
-      >
-        <DropdownMenu.Trigger asChild>
-          <button
-            type="button"
-            aria-hidden
-            tabIndex={-1}
-            className="pointer-events-none fixed h-px w-px opacity-0"
-            style={{ left: anchor.x, top: anchor.y }}
-          />
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            className={menuContentClass}
-            side="bottom"
-            align="start"
-            sideOffset={2}
-            collisionPadding={12}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-          >
-            <DropdownMenu.Item className={menuItemClass} onSelect={handleEdit}>
-              <Table2 className={ICON_XS} aria-hidden />
-              표 편집기
-            </DropdownMenu.Item>
-            <DropdownMenu.Item className={menuDangerItemClass} onSelect={requestDelete}>
-              <Trash2 className={ICON_XS} aria-hidden />
-              표 삭제
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+      {mobileContextMenu ? (
+        <MobileContextMenuModal
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setTarget(null);
+          }}
+          title="미리보기 표"
+          subtitle="마크다운 테이블"
+        >
+          {menuItems}
+        </MobileContextMenuModal>
+      ) : (
+        <DropdownMenu.Root
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setTarget(null);
+          }}
+          modal
+        >
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              aria-hidden
+              tabIndex={-1}
+              className="pointer-events-none fixed h-px w-px opacity-0"
+              style={{ left: anchor.x, top: anchor.y }}
+            />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              className={menuContentClass}
+              side="bottom"
+              align="start"
+              sideOffset={2}
+              collisionPadding={12}
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
+              <DropdownMenu.Item className={menuItemClass} onSelect={handleEdit}>
+                <Table2 className={ICON_XS} aria-hidden />
+                표 편집기
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className={menuDangerItemClass} onSelect={requestDelete}>
+                <Trash2 className={ICON_XS} aria-hidden />
+                표 삭제
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      )}
 
       <ConfirmModal
         isOpen={pendingDelete !== null}

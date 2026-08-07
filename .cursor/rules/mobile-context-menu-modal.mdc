@@ -1,0 +1,57 @@
+---
+description: Mobile portrait touch context menus use full-screen modals with a selection header.
+alwaysApply: true
+---
+
+# Mobile context menu → full-screen modal
+
+On **touch mobile portrait** (`useMobileContextMenuMode`), every context menu must open as a **full-screen modal** — not a pointer-anchored Radix popup.
+
+The modal **header** must describe **what was selected** (path, preview text, layer name, cell coords, …).
+
+## Detection
+
+| Module | Use |
+|--------|-----|
+| `src/hooks/useMobileContextMenuMode.ts` | `portrait && (isMobileLayout \|\| coarse \|\| touch+narrow)` |
+| Pass `isMobileLayout` from `App` when the shell already knows mobile layout (sidebar) |
+
+Desktop / landscape: keep Radix `ContextMenu` or anchored `DropdownMenu` at the pointer.
+
+## Shared UI
+
+| Module | Role |
+|--------|------|
+| `MobileContextMenuModal.tsx` | Full-screen `Dialog` shell, `title` + optional `subtitle`, z-`100010` |
+| `AdaptiveContextMenu.tsx` | `ContextMenu` (desktop) ↔ modal (mobile); `AdaptiveMenuItem` / `AdaptiveMenuSeparator` |
+| `mobileContextMenuStyles.ts` | Overlay/panel/item classes, dismiss guard constants |
+
+Prefer **`AdaptiveContextMenu`** for trigger-wrapped menus (cards, layer rows, edit history).
+
+Use **`MobileContextMenuModal` directly** when the menu is opened by coordinates/state (sidebar tree, preview table, cover canvas single modal, table cell menu).
+
+## Header copy
+
+- **Primary (`title`)** — the selected item: file path, message preview, layer label, `N행 M열`, …
+- **Subtitle** — context type: `채팅 메시지`, `검색 결과`, `레이어`, `미리보기 표`, …
+
+Never ship a mobile context menu with a generic title only (e.g. just “메뉴”).
+
+## Checklist for new context menus
+
+1. Wire `useMobileContextMenuMode(isMobileLayout?)` (or `AdaptiveContextMenu`).
+2. Mobile: `MobileContextMenuModal` or `AdaptiveContextMenu` with meaningful `title` / `subtitle`.
+3. Menu actions: `AdaptiveMenuItem` (auto-closes modal) or call `onOpenChange(false)` / `onClose`.
+4. z-index: nested portals inside the modal ≥ parent (`z-100010` baseline; see `modal-nested-z-index` rule).
+5. Long-press open → `vibrateLongPressAction()` (see `touch-long-press-haptics` rule).
+
+```text
+❌ BAD — Radix ContextMenu popup on phone portrait
+❌ BAD — mobile modal with no header / generic “옵션” title
+❌ BAD — new one-off full-screen menu component instead of MobileContextMenuModal
+✅ GOOD — AdaptiveContextMenu + title = message preview, subtitle = “채팅 메시지”
+✅ GOOD — SidebarContextMenu mobileDialog + path in header
+✅ GOOD — CoverEditor: single MobileContextMenuModal + coverElementLabel(title)
+```
+
+Prefer **English** in new code comments if Korean Unicode might corrupt.
