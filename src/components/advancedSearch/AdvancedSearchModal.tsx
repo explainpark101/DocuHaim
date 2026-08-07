@@ -69,7 +69,12 @@ function reasonLabel(hit: AdvancedSearchHit): string {
   if (hit.kind === 'folder') return '폴더';
   if (hit.kind === 'command') {
     if (hit.commandId === 'browse-directory') return '탐색';
-    if (hit.commandId === 'browse-new-file' || hit.commandId === 'browse-new-folder') {
+    if (
+      hit.commandId === 'browse-new-file'
+      || hit.commandId === 'browse-new-folder'
+      || hit.commandId === 'create-file'
+      || hit.commandId === 'create-folder'
+    ) {
       return '만들기';
     }
     if (hit.commandId === 'chat-select-group' || hit.commandId === 'chat-select-group-item') {
@@ -144,8 +149,12 @@ function HitIcon({
     if (commandId?.startsWith('chat')) return <MessageSquare size={16} className={className} />;
     if (commandId === 'home') return <Home size={16} className={className} />;
     if (commandId === 'browse-directory') return <Folder size={16} className={className} />;
-    if (commandId === 'browse-new-file') return <FilePlus size={16} className={className} />;
-    if (commandId === 'browse-new-folder') return <FolderPlus size={16} className={className} />;
+    if (commandId === 'browse-new-file' || commandId === 'create-file') {
+      return <FilePlus size={16} className={className} />;
+    }
+    if (commandId === 'browse-new-folder' || commandId === 'create-folder') {
+      return <FolderPlus size={16} className={className} />;
+    }
     if (commandId === 'export-pdf' || commandId === 'export-current' || commandId === 'editor-export-pdf') {
       return <Printer size={16} className={className} />;
     }
@@ -294,7 +303,7 @@ export default function AdvancedSearchModal({
       if (editorActionsAvailable) {
         return '설정·채팅·에디터 서식(굵게, AI…)을 검색하세요';
       }
-      return '설정·채팅 등 바로가기를 검색하거나 파일명·경로를 입력하세요';
+      return '설정·채팅·새 파일 등 바로가기를 검색하거나 파일명·경로를 입력하세요';
     }
     return null;
   }, [

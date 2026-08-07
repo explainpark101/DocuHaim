@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
@@ -77,6 +77,7 @@ import { MoveFileModal } from '@/components/modals/MoveFileModal';
 import { MoveFolderModal } from '@/components/modals/MoveFolderModal';
 import { CreateItemModal } from '@/components/modals/CreateItemModal';
 import { DownloadMethodModal } from '@/components/modals/DownloadMethodModal';
+import { resolveCreateItemPath } from '@/utils/createItemPath';
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -2986,6 +2987,47 @@ function MainApp() {
     [storageMode, localTree, webdavTree, loadLocalFolderChildren, loadWebdavFolderChildren],
   );
 
+  const ensureCreateModalFolderLoaded = useCallback(
+    async (folderPath) => {
+      const st = createModalContext?.storageType;
+      if (!folderPath || !st) return;
+      if (st === 'local') {
+        const node =
+          findNodeByPath(localTree, folderPath) ||
+          findNodeByPath(localTree, folderPath.replace(/\/$/, '')) ||
+          findNodeByPath(localTree, `${folderPath.replace(/\/$/, '')}/`);
+        if (node?.type === 'folder') {
+          await loadLocalFolderChildren(node);
+        }
+        return;
+      }
+      if (st === 'webdav') {
+        const node =
+          findNodeByPath(webdavTree, folderPath) ||
+          findNodeByPath(webdavTree, folderPath.replace(/\/$/, '')) ||
+          findNodeByPath(webdavTree, `${folderPath.replace(/\/$/, '')}/`);
+        if (node?.type === 'folder') {
+          await loadWebdavFolderChildren(node);
+        }
+      }
+    },
+    [
+      createModalContext?.storageType,
+      localTree,
+      webdavTree,
+      loadLocalFolderChildren,
+      loadWebdavFolderChildren,
+    ],
+  );
+
+  const createModalTree = useMemo(() => {
+    const st = createModalContext?.storageType;
+    if (st === 'local') return localTree;
+    if (st === 'webdav') return webdavTree;
+    if (st === 's3') return s3Tree;
+    return null;
+  }, [createModalContext?.storageType, localTree, webdavTree, s3Tree]);
+
   const handleOpenInNewWindow = useCallback(
     async (storageType, node) => {
       if (node?.type !== 'file' || !node?.path) return;
@@ -4942,12 +4984,30 @@ function MainApp() {
 
   // 6. Create & Delete
   const createItem = async (storageType, parentPath, parentDirHandle, type, nameInput) => {
-    const name = (nameInput || '').trim();
-    if (!name) return;
+    const resolved = resolveCreateItemPath(parentPath, nameInput, type === 'folder' ? 'folder' : 'file');
+    if (!resolved.ok) {
+      if (resolved.reason === 'outside-root') {
+        throw new Error('루트 밖으로 나갈 수 없습니다.');
+      }
+      return;
+    }
 
-    let finalName = name;
-    if (type === 'file' && !finalName.endsWith('.md')) finalName += '.md';
-    const newPath = parentPath + finalName + (type === 'folder' ? '/' : '');
+    const { path: newPath, parentDirPath, baseName: finalName } = resolved;
+    const expandParent = parentDirPath || parentPath || '';
+
+    const ensureLocalDir = async (dirPath) => {
+      if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+      const parts = String(dirPath || '')
+        .replace(/\/$/, '')
+        .split('/')
+        .filter(Boolean);
+      // Prefer walking from vault root so `..` / nested paths stay consistent.
+      let dir = localRootHandle;
+      for (const part of parts) {
+        dir = await dir.getDirectoryHandle(part, { create: true });
+      }
+      return dir;
+    };
 
     try {
       if (storageType === 's3') {
@@ -4956,28 +5016,35 @@ function MainApp() {
         if (type === 'folder') {
           await putObject(client, { Bucket: s3Creds.bucket, Key: newPath, Body: '' });
           loadS3Files();
-          const parentPaths = getParentPathsToExpand(parentPath);
+          const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
         } else {
           await putObject(client, { Bucket: s3Creds.bucket, Key: newPath, Body: '' });
           loadS3Files();
-          const parentPaths = getParentPathsToExpand(parentPath);
+          const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
           setCurrentFile({ type: 's3', id: newPath, name: finalName, content: '' });
           setEditorContent('');
           navigate(`/view/${newPath}`);
         }
       } else if (storageType === 'local') {
-        const targetDirHandle = parentDirHandle || localRootHandle;
-        if (!targetDirHandle) return alert("루트 폴더를 먼저 열어주세요.");
+        if (!localRootHandle && !parentDirHandle) {
+          return alert('루트 폴더를 먼저 열어주세요.');
+        }
+
+        const targetDirHandle = localRootHandle
+          ? await ensureLocalDir(parentDirPath)
+          : parentDirHandle;
+
+        if (!targetDirHandle) return alert('루트 폴더를 먼저 열어주세요.');
 
         if (type === 'folder') {
           await targetDirHandle.getDirectoryHandle(finalName, { create: true });
-          const parentPaths = getParentPathsToExpand(parentPath);
+          const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
         } else {
           const newFileHandle = await targetDirHandle.getFileHandle(finalName, { create: true });
-          const parentPaths = getParentPathsToExpand(parentPath);
+          const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
           setCurrentFile({
             type: 'local',
@@ -4995,12 +5062,12 @@ function MainApp() {
         if (type === 'folder') {
           await backend.mkdir(newPath);
           await refreshWebdavTree();
-          const parentPaths = getParentPathsToExpand(parentPath);
+          const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
         } else {
           await backend.writeText(newPath, '', 'text/markdown');
           await refreshWebdavTree();
-          const parentPaths = getParentPathsToExpand(parentPath);
+          const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
           setCurrentFile({ type: 'webdav', id: newPath, name: finalName, content: '', viewer: 'markdown' });
           setEditorContent('');
@@ -5008,7 +5075,7 @@ function MainApp() {
         }
       }
     } catch (e) {
-      alert("생성 실패: " + e.message);
+      alert('생성 실패: ' + e.message);
       throw e;
     }
   };
@@ -5198,11 +5265,12 @@ function MainApp() {
     try {
       await createItem(storageType, parentPath, parentDirHandle, type, nameInput);
       if (type === 'folder') {
-        const trimmed = (nameInput || '').trim();
-        const newPath = parentPath + trimmed + '/';
-        if (fromMoveModal) setMoveModalSelectPath(newPath);
-        if (fromAddToNoteModal) setAddToNoteSelectPath(newPath);
-        if (fromSaveSessionModal) setSaveSessionToNoteSelectPath(newPath);
+        const resolved = resolveCreateItemPath(parentPath, nameInput, 'folder');
+        if (resolved.ok) {
+          if (fromMoveModal) setMoveModalSelectPath(resolved.path);
+          if (fromAddToNoteModal) setAddToNoteSelectPath(resolved.path);
+          if (fromSaveSessionModal) setSaveSessionToNoteSelectPath(resolved.path);
+        }
       }
       setCreateModalOpen(false);
       setCreateModalContext(null);
@@ -7629,6 +7697,8 @@ function MainApp() {
         type={createModalContext?.type}
         storageType={createModalContext?.storageType}
         parentPath={createModalContext?.parentPath || ''}
+        tree={createModalTree}
+        ensureFolderLoaded={ensureCreateModalFolderLoaded}
         parentLabel={
           createModalContext
             ? createModalContext.storageType === 's3'

@@ -64,6 +64,17 @@ const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
   'print-focus-zoom': 'zoom',
 };
 
+/** Parent folder of an open file (`''` = vault root). */
+function parentDirOfFilePath(filePath: string | null | undefined): string {
+  const p = String(filePath || '')
+    .replace(/^\/+/, '')
+    .replace(/\\/g, '/');
+  if (!p) return '';
+  const idx = p.lastIndexOf('/');
+  if (idx < 0) return '';
+  return p.slice(0, idx + 1);
+}
+
 type TreeNode = {
   type?: string;
   path?: string;
@@ -379,6 +390,15 @@ export default function AdvancedSearchHost({
           setPickerMode('browse-directory');
           setBrowsePath('');
           return false;
+        }
+
+        if (commandId === 'create-file' || commandId === 'create-folder') {
+          const type = commandId === 'create-folder' ? 'folder' : 'file';
+          const parentPath = parentDirOfFilePath(currentFile?.id);
+          window.setTimeout(() => {
+            onRequestCreateItem?.(type, parentPath);
+          }, 0);
+          return;
         }
 
         if (commandId === 'chat-select-group') {

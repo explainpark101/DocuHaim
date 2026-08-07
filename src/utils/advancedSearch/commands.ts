@@ -58,6 +58,8 @@ export type AppCommandId =
   | 'browse-directory'
   | 'browse-new-file'
   | 'browse-new-folder'
+  | 'create-file'
+  | 'create-folder'
   | EditorActionId
   | PrintActionId
   | ChatActionId
@@ -412,6 +414,38 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '폴더',
       '디렉토리 탐색',
       '파일 탐색',
+    ],
+  },
+  {
+    id: 'create-file',
+    title: '새 파일',
+    description: '마크다운 파일 만들기 (상대 경로 · ../ 가능)',
+    path: '',
+    keywords: [
+      '새 파일',
+      'new file',
+      'create file',
+      '파일 만들기',
+      '파일 생성',
+      'md',
+      'markdown',
+      '만들기',
+    ],
+  },
+  {
+    id: 'create-folder',
+    title: '새 폴더',
+    description: '폴더 만들기 (상대 경로 · ../ 가능)',
+    path: '',
+    keywords: [
+      '새 폴더',
+      'new folder',
+      'create folder',
+      '폴더 만들기',
+      '폴더 생성',
+      '디렉토리',
+      'mkdir',
+      '만들기',
     ],
   },
 ] as const;

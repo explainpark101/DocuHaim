@@ -1,6 +1,9 @@
 /** Brief pulse when a touch long-press action fires (context menu, sheet, etc.). */
 export const LONG_PRESS_HAPTIC_MS = 12;
 
+/** Short error pulse (e.g. path escapes vault root). */
+export const ERROR_HAPTIC_PATTERN_MS: number[] = [40, 40, 40];
+
 const HAPTIC_DEDUP_MS = 150;
 
 let lastLongPressHapticAt = 0;
@@ -39,6 +42,18 @@ export function vibrateLongPressAction(
   try {
     navigator.vibrate(durationMs);
     lastLongPressHapticAt = Date.now();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Vibrate once for validation / hard-block feedback. */
+export function vibrateErrorFeedback(
+  pattern: number | number[] = ERROR_HAPTIC_PATTERN_MS,
+): void {
+  if (!canVibrate()) return;
+  try {
+    navigator.vibrate(pattern);
   } catch {
     /* ignore */
   }
