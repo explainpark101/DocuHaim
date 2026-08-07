@@ -27,6 +27,7 @@ import {
 } from '@/utils/treeMove';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
+import { TREE_TOUCH_DRAG_READY_MS } from '@/hooks/useTreeNodeTouchGesture';
 import {
   loadExpandedFolderPaths,
   saveExpandedFolderPaths,
@@ -301,8 +302,7 @@ export default function Sidebar({
       activationConstraint: { distance: 8 },
     }),
     useSensor(TouchSensor, {
-      // Slightly after long-press menu (500ms) so hold-still opens menu, hold+move drags.
-      activationConstraint: { delay: 600, tolerance: 8 },
+      activationConstraint: { delay: TREE_TOUCH_DRAG_READY_MS, tolerance: 8 },
     }),
   );
 
