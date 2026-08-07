@@ -127,7 +127,11 @@ export function MoveFolderModal({
     isS3 || isWebdav ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
 
   return (
-    <Modal isOpen={isOpen}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={canSubmit ? handleSubmit : undefined}
+    >
       <div className="p-6 flex flex-col gap-4 max-h-[90vh]">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
           폴더 위치 이동

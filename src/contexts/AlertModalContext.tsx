@@ -2,7 +2,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -10,6 +9,7 @@ import {
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
 import { IconCheck } from '@/components/icons';
+import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
 
 export type AlertModalOptions = {
   title?: string;
@@ -55,26 +55,11 @@ export function AlertModalProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  useEffect(() => {
-    if (!alert) return undefined;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeAlert();
-        return;
-      }
-      if (event.key !== 'Enter') return;
-      if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
-      const target = event.target as HTMLElement | null;
-      const targetTag = target?.tagName?.toLowerCase?.() ?? '';
-      if (targetTag === 'textarea') return;
-      if (target?.isContentEditable) return;
-      event.preventDefault();
-      closeAlert();
-    };
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [alert, closeAlert]);
+  useModalLayerKeyboard({
+    open: Boolean(alert),
+    onCancel: closeAlert,
+    onConfirm: closeAlert,
+  });
 
   const value = useMemo(
     () => ({ showAlert, closeAlert }),

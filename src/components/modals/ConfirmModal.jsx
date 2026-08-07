@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
 import { IconBack, IconCheck, IconTrash } from '@/components/icons';
+import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
@@ -44,27 +44,12 @@ export function ConfirmModal({
   const hasDiscard = discardLabel && typeof onDiscard === 'function';
   const danger = isDangerConfirm(variant, confirmLabel);
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        if (typeof onCancel === 'function') {
-          event.preventDefault();
-          onCancel();
-        }
-        return;
-      }
-      if (event.key !== 'Enter' || typeof onConfirm !== 'function' || confirmDisabled) return;
-      if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
-      const targetTag = event.target?.tagName?.toLowerCase?.() ?? '';
-      if (targetTag === 'textarea' || targetTag === 'input' || targetTag === 'select') return;
-      if (event.target?.isContentEditable) return;
-      event.preventDefault();
-      onConfirm();
-    };
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onCancel, onConfirm, confirmDisabled]);
+  useModalLayerKeyboard({
+    open: isOpen,
+    onCancel,
+    onConfirm: confirmDisabled ? undefined : onConfirm,
+    ignoreEnterInFields: true,
+  });
 
   return (
     <AnimatePresence>

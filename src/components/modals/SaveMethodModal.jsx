@@ -51,7 +51,7 @@ export function SaveMethodModal({
   };
 
   return (
-    <Modal isOpen={isOpen}>
+    <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-8 text-center">
         <h2 className="text-xl font-bold text-gray-800 dark:text-odp-fgStrong mb-2">저장 방식 선택</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">

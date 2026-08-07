@@ -12,7 +12,7 @@ export function SettingsModal({
   onImportClick,
 }) {
   return (
-    <Modal isOpen={isOpen}>
+    <Modal isOpen={isOpen} onClose={onCancel}>
       <div className="w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center bg-gray-50 dark:bg-odp-surface shrink-0">
           <h2 className="font-bold text-gray-700 dark:text-odp-fgStrong flex items-center gap-2">

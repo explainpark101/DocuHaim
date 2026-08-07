@@ -65,8 +65,12 @@ export function DeleteConfirmModal({
   };
 
   return (
-    <Modal isOpen={!!target}>
-      <div className="p-6">
+    <Modal
+      isOpen={!!target}
+      onClose={isProcessing ? undefined : onCancel}
+      onConfirm={isProcessing || !target ? undefined : handleConfirm}
+      ignoreEnterInFields
+    >      <div className="p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2 flex items-center gap-2">
           <IconTrash />{' '}
           {isTrashRoot

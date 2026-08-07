@@ -186,8 +186,7 @@ export function CreateItemModal({
       return;
     }
     if (e.key === 'Escape') {
-      e.preventDefault();
-      setSuggestOpen(false);
+      // Modal layer handles Esc (closes suggestions via onClose first).
       return;
     }
     if (e.key === 'Tab' && !e.shiftKey) {
@@ -195,6 +194,15 @@ export function CreateItemModal({
       const item = suggestions[activeSuggest] || suggestions[0];
       if (item) applySuggestion(item);
     }
+  };
+
+  const handleModalClose = () => {
+    if (isSubmitting) return;
+    if (suggestOpen) {
+      setSuggestOpen(false);
+      return;
+    }
+    onClose();
   };
 
   const isFolder = itemType === 'folder';
@@ -224,7 +232,7 @@ export function CreateItemModal({
     suggestOpen && !isOutsideRoot && autocomplete.ok && suggestions.length > 0;
 
   return (
-    <Modal isOpen={isOpen}>
+    <Modal isOpen={isOpen} onClose={handleModalClose}>
       <form onSubmit={handleSubmit} className="flex flex-col">
         <div className="p-6 pb-4">
           <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2 flex items-center gap-2">

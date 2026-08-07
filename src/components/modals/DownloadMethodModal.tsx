@@ -137,8 +137,19 @@ export function DownloadMethodModal({
   const choice: DownloadMethodChoice = { imageMode, headingMax, tableFormat };
   const remapPlan = showImageHandling ? planHeadingRemap(sourceLevels, headingMax) : null;
 
+  const modalConfirm = (() => {
+    if (showProgress) {
+      if (downloadComplete) return onCloseComplete;
+      return undefined;
+    }
+    if (!showDeliveryMethods) {
+      return isDownloading ? undefined : () => onSelectLegacy(choice);
+    }
+    return undefined;
+  })();
+
   return (
-    <Modal isOpen={isOpen} onClose={onCancel}>
+    <Modal isOpen={isOpen} onClose={showProgress && !downloadComplete ? undefined : onCancel} onConfirm={modalConfirm}>
       <div className="p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2">
           {title}

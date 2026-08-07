@@ -150,8 +150,20 @@ export default function SaveSessionToNoteModal({
   const canSubmit = isS3 || isWebdav ? true : Boolean(selectedRoot ? localRootHandle : selectedFolder?.handle);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="flex max-h-[90vh] flex-col gap-4 p-6">
+    <Modal
+      isOpen={isOpen}
+      onClose={isSaving ? undefined : onClose}
+      onConfirm={
+        canSubmit && !isSaving
+          ? () =>
+              void onConfirm({
+                path: parentPath,
+                fileName,
+                ...(parentDirHandle ? { handle: parentDirHandle } : {}),
+              })
+          : undefined
+      }
+    >      <div className="flex max-h-[90vh] flex-col gap-4 p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">내 노트에 저장</h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted">
           현재 다운로드 세션 문서를 연결된 저장소에 노트로 저장합니다.

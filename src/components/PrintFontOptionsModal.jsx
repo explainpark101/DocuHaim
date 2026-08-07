@@ -54,7 +54,7 @@ export default function PrintFontOptionsModal({ isOpen, onClose, fonts, onFontsC
   };
 
   return (
-    <Modal isOpen={isOpen}>
+    <Modal isOpen={isOpen} onClose={onClose} onConfirm={saving ? undefined : handleApply} ignoreEnterInFields>
       <div className="p-6 flex flex-col gap-4">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
           프린트 폰트 설정

@@ -406,7 +406,7 @@ export default function ChatAddToNoteModal({
 
   return (
     <>
-    <Modal isOpen={isOpen}>
+    <Modal isOpen={isOpen} onClose={isSubmitting ? undefined : onClose} onConfirm={canSubmit && !isSubmitting ? handleSubmit : undefined}>
       <div className="flex max-h-[90vh] flex-col gap-4 p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
           노트로 추가

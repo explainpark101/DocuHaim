@@ -3,7 +3,7 @@ import Modal from '@/components/modals/Modal';
 
 export function SetPasswordModal({ isOpen, masterPassword, onCancel, onSubmit }) {
   return (
-    <Modal isOpen={isOpen}>
+    <Modal isOpen={isOpen} onClose={onCancel}>
       <div className="p-8 text-center">
         <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
           <IconKey size={32} />

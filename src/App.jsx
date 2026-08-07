@@ -159,8 +159,10 @@ import {
 } from '@/utils/localTree';
 import { loadExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import {
+  ensureDirectoryReadWritePermission,
   hasStoredLocalRootHandle,
   loadLastLocalFolderName,
+  pickLocalRootDirectory,
   saveLocalRootHandle,
   tryRestoreLocalRootHandle,
 } from '@/utils/localFolderStore';
@@ -2302,6 +2304,10 @@ function MainApp() {
 
   // 4. Local Folder Load
   const attachLocalRootFolder = useCallback(async (dirHandle, { fullScan = false } = {}) => {
+    const canWrite = await ensureDirectoryReadWritePermission(dirHandle);
+    if (!canWrite) {
+      throw new Error('선택한 폴더에 쓰기 권한이 없습니다. 폴더를 다시 선택해 주세요.');
+    }
     setIsLocalTreeLoading(true);
     setLocalRootHandle(dirHandle);
     try {
@@ -2339,11 +2345,14 @@ function MainApp() {
 
   const openLocalFolder = async () => {
     try {
-      const dirHandle = await window.showDirectoryPicker();
+      // Must request readwrite; default showDirectoryPicker mode is read-only.
+      const dirHandle = await pickLocalRootDirectory();
       setStorageMode(STORAGE_MODE_LOCAL);
       await attachLocalRootFolder(dirHandle);
     } catch (e) {
+      if (e?.name === 'AbortError') return;
       console.error('Local folder selection cancelled or failed:', e);
+      alert(e?.message || '로컬 폴더를 열지 못했습니다.');
     }
   };
 
@@ -4075,7 +4084,11 @@ function MainApp() {
         setShowDownloadMethodModal(false);
         return;
       }
-      const dirHandle = await window.showDirectoryPicker();
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const canWrite = await ensureDirectoryReadWritePermission(dirHandle);
+      if (!canWrite) {
+        throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
+      }
       const fileName = currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
       const notePath = currentFile.id || '';
 
@@ -4193,12 +4206,8 @@ function MainApp() {
     if (node.type === 'folder') {
       const shouldUseZipFallback = isAndroidBrowser() || !('showDirectoryPicker' in window);
       const ensureDirReadWritePermission = async (dirHandle) => {
-        if (!dirHandle?.queryPermission || !dirHandle?.requestPermission) return;
-        const permissionDesc = { mode: 'readwrite' };
-        const current = await dirHandle.queryPermission(permissionDesc);
-        if (current === 'granted') return;
-        const requested = await dirHandle.requestPermission(permissionDesc);
-        if (requested !== 'granted') {
+        const ok = await ensureDirectoryReadWritePermission(dirHandle);
+        if (!ok) {
           throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
         }
       };
@@ -4214,7 +4223,7 @@ function MainApp() {
           if (shouldUseZipFallback) {
             await downloadFolderAsZip(storageType, node, folderName, indicatorId);
           } else {
-            const selectedDirHandle = await window.showDirectoryPicker();
+            const selectedDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
             await ensureDirReadWritePermission(selectedDirHandle);
             const targetRootDirHandle = await selectedDirHandle.getDirectoryHandle(folderName, { create: true });
             await ensureDirReadWritePermission(targetRootDirHandle);

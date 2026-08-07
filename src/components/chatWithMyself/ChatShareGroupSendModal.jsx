@@ -131,8 +131,11 @@ export default function ChatShareGroupSendModal({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={busy ? undefined : onClose}>
-      <div className="p-6">
+    <Modal
+      isOpen={isOpen}
+      onClose={busy ? undefined : onClose}
+      onConfirm={busy || !hasContent ? undefined : () => void handleSend()}
+    >      <div className="p-6">
         <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
           그룹에 보내기
         </h2>

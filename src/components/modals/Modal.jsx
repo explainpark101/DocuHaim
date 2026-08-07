@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
 
 const ANIMATION_DURATION_MS = 200;
 
@@ -12,6 +13,7 @@ const ANIMATION_DURATION_MS = 200;
  *   contentClassName?: string,
  *   contentStyle?: import('react').CSSProperties,
  *   overlayClassName?: string,
+ *   ignoreEnterInFields?: boolean,
  * }} props
  */
 export default function Modal({
@@ -22,9 +24,17 @@ export default function Modal({
   contentClassName = 'max-w-md max-h-[90vh]',
   contentStyle,
   overlayClassName = '',
+  ignoreEnterInFields = false,
 }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+
+  useModalLayerKeyboard({
+    open: isOpen,
+    onCancel: onClose,
+    onConfirm,
+    ignoreEnterInFields,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -44,28 +54,6 @@ export default function Modal({
       };
     }
   }, [isOpen, mounted]);
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        if (typeof onClose === 'function') {
-          event.preventDefault();
-          onClose();
-        }
-        return;
-      }
-      if (event.key !== 'Enter' || typeof onConfirm !== 'function') return;
-      if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
-      const targetTag = event.target?.tagName?.toLowerCase?.() ?? '';
-      if (targetTag === 'textarea') return;
-      if (event.target?.isContentEditable) return;
-      event.preventDefault();
-      onConfirm();
-    };
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onClose, onConfirm]);
 
   if (!mounted || typeof document === 'undefined') return null;
 
