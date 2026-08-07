@@ -213,8 +213,12 @@ export default function Sidebar({
   sessionWorkspace = null,
   sessionTree = [],
   onCloseSessionWorkspace,
+  /** App mobile layout (max-width 768px) — enables touch tree drag + modal menu. */
+  isMobileLayout = false,
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
+  const coarsePointer = useIsCoarsePointer();
+  const mobileTree = isMobileLayout || coarsePointer;
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const isSearchPending = searchInput !== searchTerm;
@@ -295,15 +299,16 @@ export default function Sidebar({
   );
   const EDGE_THRESHOLD = 48;
   const AUTO_SCROLL_SPEED = 12;
-  const coarse = useIsCoarsePointer();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: TREE_TOUCH_DRAG_READY_MS, tolerance: 8 },
-    }),
+    useSensor(
+      mobileTree ? TouchSensor : PointerSensor,
+      {
+        activationConstraint: mobileTree
+          ? { delay: TREE_TOUCH_DRAG_READY_MS, tolerance: 8 }
+          : { distance: 8 },
+      },
+    ),
   );
 
   const findTreeNode = useCallback(
@@ -800,13 +805,14 @@ export default function Sidebar({
     (storageType, node, event) => {
       activateTreeNode(storageType, node);
       setContextMenu({
-        x: coarse ? null : event?.clientX ?? null,
-        y: coarse ? null : event?.clientY ?? null,
+        x: mobileTree ? null : event?.clientX ?? null,
+        y: mobileTree ? null : event?.clientY ?? null,
         node,
         storageType,
+        modal: mobileTree,
       });
     },
-    [activateTreeNode, coarse],
+    [activateTreeNode, mobileTree],
   );
 
   useEffect(() => {
@@ -886,7 +892,7 @@ export default function Sidebar({
           y={contextMenu.y}
           node={contextMenuNode}
           storageType={contextMenuStorageType}
-          mobileDialog={coarse}
+          mobileDialog={contextMenu.modal ?? mobileTree}
           isTrashRoot={contextMenuNode.path === '.trash/'}
           deleteCount={
             (() => {
@@ -1189,7 +1195,7 @@ export default function Sidebar({
                   setLastFocusedS3FolderPath('');
                   openTreeContextMenu('s3', rootNode, e);
                 }}
-                coarse={coarse}
+                mobileTree={mobileTree}
               />
               {filteredS3Tree.length > 0 ? (
                 filteredS3Tree.map((node) => (
@@ -1231,7 +1237,7 @@ export default function Sidebar({
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
-                    coarse={coarse}
+                    mobileTree={mobileTree}
                   />
                 ))
               ) : (
@@ -1346,7 +1352,7 @@ export default function Sidebar({
                 setLastFocusedLocalFolder({ path: '', handle: localRootHandle });
                 openTreeContextMenu('local', rootNode, e);
               }}
-              coarse={coarse}
+              mobileTree={mobileTree}
             />
             {isLocalTreeLoading && !filteredLocalTree.length && (
               <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
@@ -1399,7 +1405,7 @@ export default function Sidebar({
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
-                    coarse={coarse}
+                    mobileTree={mobileTree}
                   />
                 ))
               ) : (
@@ -1499,7 +1505,7 @@ export default function Sidebar({
                   setLastFocusedWebdavFolderPath('');
                   openTreeContextMenu('webdav', rootNode, e);
                 }}
-                coarse={coarse}
+                mobileTree={mobileTree}
               />
               {isWebdavTreeLoading && !filteredWebdavTree.length && (
                 <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
@@ -1545,7 +1551,7 @@ export default function Sidebar({
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
-                    coarse={coarse}
+                    mobileTree={mobileTree}
                   />
                 ))
               ) : !isWebdavTreeLoading ? (
@@ -1558,7 +1564,7 @@ export default function Sidebar({
         </div>
         )}
       </div>
-      <DragOverlay dropAnimation={null} style={{ zIndex: coarse ? 100060 : undefined }}>
+      <DragOverlay dropAnimation={null} style={{ zIndex: mobileTree ? 100060 : undefined }}>
         <TreeDragOverlayPreview items={activeDragItems} isCopy={isCopyDrag} />
       </DragOverlay>
       </DndContext>

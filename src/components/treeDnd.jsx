@@ -19,7 +19,7 @@ export function RootDropZone({
   onFocusRoot,
   isFocused,
   isSelected = false,
-  coarse = false,
+  mobileTree = false,
 }) {
   const rootNode = {
     path: '',
@@ -52,7 +52,7 @@ export function RootDropZone({
   };
 
   const handleContextMenu = (e) => {
-    if (coarse) {
+    if (mobileTree) {
       e.preventDefault();
       return;
     }
@@ -67,7 +67,7 @@ export function RootDropZone({
   };
 
   const { contextMenuOpenedRef, bindTouchGesture } = useTreeNodeTouchGesture({
-    enabled: coarse && Boolean(onContextMenu),
+    enabled: mobileTree && Boolean(onContextMenu),
     onContextMenu: openFromLongPress,
   });
 
@@ -120,7 +120,7 @@ export function RootDropZone({
       onDragOver={canDrop ? handleOsDragOver : undefined}
       onDrop={canDrop ? handleOsDrop : undefined}
       onContextMenu={onContextMenu ? handleContextMenu : undefined}
-      {...(coarse && onContextMenu ? bindTouchGesture : {})}
+      {...(mobileTree && onContextMenu ? bindTouchGesture : {})}
       className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer ${
         isDropTarget
           ? 'bg-blue-100 dark:bg-blue-900/40 rounded'
@@ -131,7 +131,7 @@ export function RootDropZone({
         isFocused
           ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
           : ''
-      } ${coarse ? 'touch-pan-y' : ''}`}
+      } ${mobileTree ? 'touch-pan-y' : ''}`}
       style={{ paddingLeft: '8px' }}
     >
       <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">

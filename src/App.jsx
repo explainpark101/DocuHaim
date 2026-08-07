@@ -6680,6 +6680,7 @@ function MainApp() {
             }
           >
             <Sidebar
+              isMobileLayout={isMobile}
               appName={appName}
               onBrandClick={handleBrandClick}
               storageMode={storageMode}
