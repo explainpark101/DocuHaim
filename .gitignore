@@ -32,3 +32,6 @@ docs/.vitepress/dist
 public/llms.txt
 public/llms-*.txt
 .vitepress/cache/**/*
+
+# Private design / ops notes (not for VitePress or public repo)
+/private/
