@@ -28,7 +28,6 @@ import {
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
-import { TREE_TOUCH_DRAG_READY_MS } from '@/hooks/useTreeNodeTouchGesture';
 import {
   loadExpandedFolderPaths,
   saveExpandedFolderPaths,
@@ -306,9 +305,7 @@ export default function Sidebar({
     useSensor(
       mobileTree ? TouchSensor : PointerSensor,
       {
-        activationConstraint: mobileTree
-          ? { delay: TREE_TOUCH_DRAG_READY_MS, tolerance: 8 }
-          : { distance: 8 },
+        activationConstraint: { distance: 8 },
       },
     ),
   );
