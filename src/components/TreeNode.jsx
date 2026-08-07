@@ -19,6 +19,7 @@ import { PencilIcon, ArrowRightToLine, AlertCircle } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
+import { useTreeRowLongPress } from '@/hooks/useTreeRowLongPress';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -89,6 +90,8 @@ export default function TreeNode({
   folderSelectMode = false,
   /** When true, node cannot be dragged (e.g. mobile add-to-note picker). */
   disableDrag = false,
+  /** Coarse pointer — custom long-press opens context menu. */
+  coarse = false,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -228,6 +231,68 @@ export default function TreeNode({
 
   const isDragGhost =
     !isCopyDrag && (isDragging || (activeDragItemIds?.has?.(selectKey) ?? false));
+
+  const openContextMenuFromLongPress = useCallback(() => {
+    if (!onOpenContextMenu || isUnderDeletingFolder) return;
+    onOpenContextMenu(
+      { preventDefault: () => {}, stopPropagation: () => {} },
+      node,
+    );
+  }, [onOpenContextMenu, isUnderDeletingFolder, node]);
+
+  const { longPressOpenedRef, bindLongPress } = useTreeRowLongPress({
+    enabled: coarse && Boolean(onOpenContextMenu) && !isUnderDeletingFolder,
+    onLongPress: openContextMenuFromLongPress,
+  });
+
+  const composePointerHandler = (longPressHandler, dndHandler) => (event) => {
+    longPressHandler?.(event);
+    dndHandler?.(event);
+  };
+
+  const dragPointerHandlers = listeners
+    ? {
+        onPointerDown: listeners.onPointerDown,
+        onPointerMove: listeners.onPointerMove,
+        onPointerUp: listeners.onPointerUp,
+        onPointerCancel: listeners.onPointerCancel,
+      }
+    : {};
+
+  const dragKeyboardHandlers = listeners?.onKeyDown
+    ? { onKeyDown: listeners.onKeyDown }
+    : {};
+
+  const rowPointerHandlers =
+    coarse && onOpenContextMenu
+      ? {
+          onPointerDown: composePointerHandler(
+            bindLongPress.onPointerDown,
+            canDrag && !isRenaming ? dragPointerHandlers.onPointerDown : undefined,
+          ),
+          onPointerMove: composePointerHandler(
+            bindLongPress.onPointerMove,
+            canDrag && !isRenaming ? dragPointerHandlers.onPointerMove : undefined,
+          ),
+          onPointerUp: composePointerHandler(
+            bindLongPress.onPointerUp,
+            canDrag && !isRenaming ? dragPointerHandlers.onPointerUp : undefined,
+          ),
+          onPointerCancel: composePointerHandler(
+            bindLongPress.onPointerCancel,
+            canDrag && !isRenaming ? dragPointerHandlers.onPointerCancel : undefined,
+          ),
+        }
+      : {};
+
+  const dndProps =
+    canDrag && !isRenaming
+      ? coarse && onOpenContextMenu
+        ? { ...attributes, ...dragKeyboardHandlers, ...rowPointerHandlers }
+        : { ...listeners, ...attributes }
+      : coarse && onOpenContextMenu
+        ? rowPointerHandlers
+        : {};
 
   const getFileIcon = () => {
     if (node.type === 'folder') {
@@ -390,6 +455,10 @@ export default function TreeNode({
   const handleToggle = (e) => {
     e.stopPropagation();
     if (isUnderDeletingFolder) return;
+    if (longPressOpenedRef.current) {
+      longPressOpenedRef.current = false;
+      return;
+    }
 
     if (typeof onActivate === 'function') {
       onActivate(node);
@@ -556,7 +625,7 @@ export default function TreeNode({
           scale: isDragGhost ? 0.98 : 1,
         }}
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-        {...(canDrag && !isRenaming ? { ...listeners, ...attributes } : {})}
+        {...dndProps}
         onDragOver={canAcceptOsDrop ? handleOsDragOver : undefined}
         onDrop={canAcceptOsDrop ? handleOsDrop : undefined}
         className={`group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${
@@ -568,6 +637,8 @@ export default function TreeNode({
             ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
             : ''
         } ${showDropHighlight ? 'bg-blue-100 dark:bg-blue-900/40' : ''} ${
+          coarse ? 'touch-pan-y' : ''
+        } ${
           shouldShowStickyFolder
             ? 'sticky bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-[1px] border-b border-gray-200/80 dark:border-odp-borderSoft'
             : ''
@@ -581,6 +652,11 @@ export default function TreeNode({
         onContextMenu={
           onOpenContextMenu
             ? (e) => {
+                if (coarse) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
                 e.preventDefault();
                 e.stopPropagation();
                 if (!isUnderDeletingFolder) {
@@ -750,6 +826,7 @@ export default function TreeNode({
               foldersOnly={foldersOnly}
               folderSelectMode={folderSelectMode}
               disableDrag={disableDrag}
+              coarse={coarse}
             />
           ))}
     </div>
