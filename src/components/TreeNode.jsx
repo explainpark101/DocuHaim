@@ -90,8 +90,8 @@ export default function TreeNode({
   folderSelectMode = false,
   /** When true, node cannot be dragged (e.g. mobile add-to-note picker). */
   disableDrag = false,
-  /** Coarse pointer — custom long-press opens context menu. */
-  coarse = false,
+  /** Mobile tree UI — touch drag + modal context menu. */
+  mobileTree = false,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -204,9 +204,10 @@ export default function TreeNode({
   const {
     contextMenuOpenedRef,
     dragBlockedByMenuGesture,
+    dragReady,
     bindTouchGesture,
   } = useTreeNodeTouchGesture({
-    enabled: coarse && Boolean(onOpenContextMenu) && !isUnderDeletingFolder,
+    enabled: mobileTree && Boolean(onOpenContextMenu) && !isUnderDeletingFolder,
     onContextMenu: openContextMenuFromLongPress,
   });
 
@@ -270,7 +271,7 @@ export default function TreeNode({
     : {};
 
   const rowPointerHandlers =
-    coarse && onOpenContextMenu
+    mobileTree && onOpenContextMenu
       ? {
           onPointerDown: composePointerHandler(
             bindTouchGesture.onPointerDown,
@@ -293,10 +294,10 @@ export default function TreeNode({
 
   const dndProps =
     canDrag && !isRenaming
-      ? coarse && onOpenContextMenu
+      ? mobileTree && onOpenContextMenu
         ? { ...attributes, ...dragKeyboardHandlers, ...rowPointerHandlers }
         : { ...listeners, ...attributes }
-      : coarse && onOpenContextMenu
+      : mobileTree && onOpenContextMenu
         ? rowPointerHandlers
         : {};
 
@@ -643,7 +644,7 @@ export default function TreeNode({
             ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
             : ''
         } ${showDropHighlight ? 'bg-blue-100 dark:bg-blue-900/40' : ''} ${
-          coarse ? 'touch-pan-y' : ''
+          mobileTree && dragReady ? 'touch-none' : mobileTree ? 'touch-pan-y' : ''
         } ${
           shouldShowStickyFolder
             ? 'sticky bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-[1px] border-b border-gray-200/80 dark:border-odp-borderSoft'
@@ -658,7 +659,7 @@ export default function TreeNode({
         onContextMenu={
           onOpenContextMenu
             ? (e) => {
-                if (coarse) {
+                if (mobileTree) {
                   e.preventDefault();
                   e.stopPropagation();
                   return;
@@ -832,7 +833,7 @@ export default function TreeNode({
               foldersOnly={foldersOnly}
               folderSelectMode={folderSelectMode}
               disableDrag={disableDrag}
-              coarse={coarse}
+              mobileTree={mobileTree}
             />
           ))}
     </div>

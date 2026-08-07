@@ -32,6 +32,7 @@ export function useTreeNodeTouchGesture({
   const dragReadyRef = useRef(false);
   const contextMenuOpenedRef = useRef(false);
   const [dragBlockedByMenuGesture, setDragBlockedByMenuGesture] = useState(false);
+  const [dragReady, setDragReady] = useState(false);
 
   const clearTimers = useCallback(() => {
     if (dragReadyTimerRef.current) {
@@ -48,6 +49,7 @@ export function useTreeNodeTouchGesture({
     clearTimers();
     startRef.current = null;
     dragReadyRef.current = false;
+    setDragReady(false);
     setDragBlockedByMenuGesture(false);
   }, [clearTimers]);
 
@@ -63,6 +65,7 @@ export function useTreeNodeTouchGesture({
 
       contextMenuOpenedRef.current = false;
       dragReadyRef.current = false;
+      setDragReady(false);
       setDragBlockedByMenuGesture(false);
       clearTimers();
       startRef.current = { x: event.clientX, y: event.clientY };
@@ -70,6 +73,7 @@ export function useTreeNodeTouchGesture({
       dragReadyTimerRef.current = setTimeout(() => {
         dragReadyTimerRef.current = null;
         dragReadyRef.current = true;
+        setDragReady(true);
         vibrateLongPressAction();
       }, TREE_TOUCH_DRAG_READY_MS);
 
@@ -78,6 +82,7 @@ export function useTreeNodeTouchGesture({
         if (!dragReadyRef.current) return;
         contextMenuOpenedRef.current = true;
         setDragBlockedByMenuGesture(true);
+        setDragReady(false);
         vibrateLongPressAction();
         onContextMenu();
       }, TREE_TOUCH_CONTEXT_MENU_MS);
@@ -117,6 +122,7 @@ export function useTreeNodeTouchGesture({
   return {
     contextMenuOpenedRef,
     dragBlockedByMenuGesture,
+    dragReady,
     bindTouchGesture: {
       onPointerDown,
       onPointerMove,

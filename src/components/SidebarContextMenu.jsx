@@ -10,21 +10,29 @@ import {
   IconTrash,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucide-react';
-import {
-  chatDialogContentClass,
-  chatDialogOverlayClass,
-} from '@/components/chatWithMyself/ui/chatUiStyles';
 
 const VIEWPORT_PADDING = 8;
 const DISMISS_GUARD_MS = 450;
 const POINTER_BLOCK_MS = 500;
 
+const MOBILE_MODAL_OVERLAY_CLASS =
+  'fixed inset-0 z-100010 bg-black/50';
+const MOBILE_MODAL_PANEL_CLASS =
+  'fixed inset-0 z-100010 flex flex-col bg-white outline-none dark:bg-odp-bgSoft';
+
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
 
-const dialogPanelClass = chatDialogContentClass
-  .replace('-translate-x-1/2 ', '')
-  .replace('-translate-y-1/2 ', '');
+function formatTreeNodePath(node, storageType) {
+  if (!node) return '';
+  if (node.path === '.trash/') return '.trash/';
+  if (!node.path) {
+    if (storageType === 's3') return '/';
+    if (storageType === 'webdav') return '/';
+    return '/';
+  }
+  return node.path;
+}
 
 function SidebarContextMenuItems({
   node,
@@ -176,7 +184,7 @@ function SidebarContextMenuItems({
 
 /**
  * Sidebar tree context menu.
- * Desktop: fixed portal at pointer. Mobile: centered dialog.
+ * Desktop: fixed portal at pointer. Mobile: full-screen modal with path header.
  */
 export default function SidebarContextMenu({
   x,
@@ -269,8 +277,9 @@ export default function SidebarContextMenu({
   if (!node) return null;
 
   const displayName = isTrashRoot ? '쓰레기통' : node.name;
+  const pathLabel = formatTreeNodePath(node, storageType);
   const itemClass =
-    'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fg hover:bg-gray-100 dark:hover:bg-odp-focusBg disabled:opacity-50 disabled:pointer-events-none';
+    'flex items-center gap-2 w-full px-3 py-3 text-left text-sm text-gray-700 dark:text-odp-fg hover:bg-gray-100 dark:hover:bg-odp-focusBg disabled:opacity-50 disabled:pointer-events-none';
   const iconClass = 'shrink-0 w-4 h-4 text-gray-500 dark:text-odp-muted';
 
   const itemsProps = {
@@ -311,7 +320,7 @@ export default function SidebarContextMenu({
         <Dialog.Portal>
           <Dialog.Overlay asChild>
             <Motion.div
-              className={chatDialogOverlayClass}
+              className={MOBILE_MODAL_OVERLAY_CLASS}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={OVERLAY_TRANSITION}
@@ -324,31 +333,33 @@ export default function SidebarContextMenu({
             onInteractOutside={guardOutside}
           >
             <Motion.div
-              className={dialogPanelClass}
-              initial={{ opacity: 0, scale: 0.95, x: '-50%', y: 'calc(-50% + 8px)' }}
-              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+              className={MOBILE_MODAL_PANEL_CLASS}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={PANEL_TRANSITION}
             >
-              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-odp-borderSoft">
-                <div className="min-w-0">
-                  <Dialog.Title className="truncate text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
-                    {displayName}
+              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] dark:border-odp-borderSoft">
+                <div className="min-w-0 flex-1">
+                  <Dialog.Title className="break-all font-mono text-sm font-semibold leading-snug text-gray-800 dark:text-odp-fgStrong">
+                    {pathLabel}
                   </Dialog.Title>
-                  <p className="text-xs text-gray-500 dark:text-odp-muted">
+                  <p className="mt-1 truncate text-xs text-gray-500 dark:text-odp-muted">
+                    {displayName}
+                    {' · '}
                     {node.type === 'folder' ? '폴더' : '파일'}
                   </p>
                 </div>
                 <Dialog.Close asChild>
                   <button
                     type="button"
-                    className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
+                    className="shrink-0 rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg touch-manipulation"
                     aria-label="닫기"
                   >
-                    <X size={18} />
+                    <X size={20} />
                   </button>
                 </Dialog.Close>
               </div>
-              <div className="flex max-h-[min(60vh,420px)] flex-col gap-0.5 overflow-y-auto p-1">
+              <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <SidebarContextMenuItems {...itemsProps} />
               </div>
             </Motion.div>
