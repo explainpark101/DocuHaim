@@ -62,6 +62,7 @@ import {
 import {
   CHAT_MESSAGE_SCROLL_MARGIN,
 } from '@/utils/chatWithMyself/scrollToMessage';
+import { vibrateLongPressAction } from '@/utils/hapticFeedback';
 
 /** Near-bottom threshold for stick-to-bottom (px). */
 const STICK_BOTTOM_PX = 80;
@@ -589,11 +590,7 @@ const MessageBubble = memo(function MessageBubble({
     if (axisRef.current === 'h' || isDeleting) return;
     longPressOpenedRef.current = true;
     longPressMenuTimer.current = null;
-    try {
-      navigator.vibrate?.(12);
-    } catch {
-      /* ignore */
-    }
+    vibrateLongPressAction();
     // Keep press morph; rowSelected takes over when finger lifts.
     onOpenMobileSheet?.(msg);
   };

@@ -6,6 +6,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { vibrateLongPressAction } from '@/utils/hapticFeedback';
 
 /** Shrink feedback starts at this hold duration. */
 export const PRESSABLE_CARD_THRESHOLD_MS = 250;
@@ -69,11 +70,7 @@ export function usePressableCardMenu({
   const openMenuFromLongPress = useCallback(() => {
     longPressOpenedRef.current = true;
     longPressMenuTimer.current = null;
-    try {
-      navigator.vibrate?.(12);
-    } catch {
-      /* ignore */
-    }
+    vibrateLongPressAction();
     setPressing(true);
     setContextMenuOpen(true);
   }, []);

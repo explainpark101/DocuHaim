@@ -10,8 +10,10 @@ import { AlertModalProvider } from '@/contexts/AlertModalContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
+import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 
 initEditorAutocompleteDomFlag()
+initTouchLongPressHaptics()
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
 const isElectron = import.meta.env.VITE_ELECTRON === 'true'

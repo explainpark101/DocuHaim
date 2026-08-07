@@ -14,6 +14,7 @@ import {
   resolveHaimTableBlockFromPreview,
   type HaimTableBlock,
 } from '@/utils/haimTable';
+import { vibrateLongPressAction } from '@/utils/hapticFeedback';
 
 type MenuTarget = {
   table: HTMLTableElement;
@@ -117,11 +118,7 @@ export function PreviewTableContextMenu({
       start = { x: event.clientX, y: event.clientY };
       menuTimer = setTimeout(() => {
         opened = true;
-        try {
-          navigator.vibrate?.(12);
-        } catch {
-          /* ignore */
-        }
+        vibrateLongPressAction();
         const pr = previewRootOf();
         if (pressTable && pr) {
           openAt({
