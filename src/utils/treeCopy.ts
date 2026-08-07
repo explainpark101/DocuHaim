@@ -49,6 +49,47 @@ export function allocateUniqueCopyName(
   return candidate;
 }
 
+/**
+ * Prefer the original name when free; otherwise `name (1).ext`, `name (2).ext`, …
+ * Used when uploading into a folder that already has a same-named file.
+ */
+export function allocateUniqueNumberedName(
+  originalName: string,
+  existingNames: Iterable<string>,
+  options?: { forceSuffix?: boolean; isFolder?: boolean },
+): string {
+  const existing = new Set(
+    Array.from(existingNames, (entry) => String(entry || '').toLowerCase()).filter(Boolean),
+  );
+  const forceSuffix = options?.forceSuffix === true;
+  const isFolder = options?.isFolder === true;
+  if (!forceSuffix && originalName && !existing.has(originalName.toLowerCase())) {
+    return originalName;
+  }
+
+  const { baseName, ext } = splitCopyBaseName(originalName, isFolder);
+  let counter = 1;
+  let candidate = `${baseName} (${counter})${ext}`;
+  while (existing.has(candidate.toLowerCase())) {
+    counter += 1;
+    candidate = `${baseName} (${counter})${ext}`;
+  }
+  return candidate;
+}
+
+/** Case-insensitive name presence check for sibling entries. */
+export function treeChildNameTaken(
+  existingNames: Iterable<string>,
+  name: string,
+): boolean {
+  const lower = String(name || '').toLowerCase();
+  if (!lower) return false;
+  for (const entry of existingNames) {
+    if (String(entry || '').toLowerCase() === lower) return true;
+  }
+  return false;
+}
+
 export function getTreeChildNames(
   tree: Array<{ name?: string; children?: unknown[] }> | null | undefined,
   folderPath: string,

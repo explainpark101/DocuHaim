@@ -10,6 +10,12 @@ import {
   saveDownloadImageMode,
 } from '@/utils/downloadImageModeSettings';
 import {
+  type DownloadImageSyntax,
+  isDownloadImageSyntax,
+  loadDownloadImageSyntax,
+  saveDownloadImageSyntax,
+} from '@/utils/downloadImageSyntaxSettings';
+import {
   type DownloadTableFormat,
   isDownloadTableFormat,
   loadDownloadTableFormat,
@@ -42,6 +48,23 @@ const IMAGE_MODE_OPTIONS: {
   },
 ];
 
+const IMAGE_SYNTAX_OPTIONS: {
+  value: DownloadImageSyntax;
+  title: string;
+  description: string;
+}[] = [
+  {
+    value: 'wiki',
+    title: '위키 이미지 문법',
+    description: '![[.pictures/…]] 유지',
+  },
+  {
+    value: 'markdown',
+    title: '일반 마크다운 문법',
+    description: '![](.pictures/…) 로 변환',
+  },
+];
+
 const TABLE_FORMAT_OPTIONS: {
   value: DownloadTableFormat;
   title: string;
@@ -61,6 +84,7 @@ const TABLE_FORMAT_OPTIONS: {
 
 export type DownloadMethodChoice = {
   imageMode: DownloadImageMode;
+  imageSyntax: DownloadImageSyntax;
   headingMax: ExportHeadingLevel;
   tableFormat: DownloadTableFormat;
 };
@@ -100,6 +124,9 @@ export function DownloadMethodModal({
 }: Props) {
   const showProgress = Boolean(isDownloading || downloadComplete);
   const [imageMode, setImageMode] = useState<DownloadImageMode>(() => loadDownloadImageMode());
+  const [imageSyntax, setImageSyntax] = useState<DownloadImageSyntax>(() =>
+    loadDownloadImageSyntax(),
+  );
   const [headingMax, setHeadingMax] = useState<ExportHeadingLevel>(1);
   const [tableFormat, setTableFormat] = useState<DownloadTableFormat>(() =>
     loadDownloadTableFormat(),
@@ -115,9 +142,14 @@ export function DownloadMethodModal({
     [markdownText],
   );
 
+  /** Base64 data URIs only fit standard markdown `![]()` destinations. */
+  const effectiveImageSyntax: DownloadImageSyntax =
+    imageMode === 'base64' ? 'markdown' : imageSyntax;
+
   useEffect(() => {
     if (!isOpen) return;
     setImageMode(loadDownloadImageMode());
+    setImageSyntax(loadDownloadImageSyntax());
     setTableFormat(loadDownloadTableFormat());
     if (showImageHandling) setHeadingMax(defaultExportHeadingMax(markdownText));
   }, [isOpen, markdownText, showImageHandling]);
@@ -128,13 +160,24 @@ export function DownloadMethodModal({
     saveDownloadImageMode(next);
   };
 
+  const handleImageSyntaxChange = (next: string) => {
+    if (!isDownloadImageSyntax(next)) return;
+    setImageSyntax(next);
+    saveDownloadImageSyntax(next);
+  };
+
   const handleTableFormatChange = (next: string) => {
     if (!isDownloadTableFormat(next)) return;
     setTableFormat(next);
     saveDownloadTableFormat(next);
   };
 
-  const choice: DownloadMethodChoice = { imageMode, headingMax, tableFormat };
+  const choice: DownloadMethodChoice = {
+    imageMode,
+    imageSyntax: effectiveImageSyntax,
+    headingMax,
+    tableFormat,
+  };
   const remapPlan = showImageHandling ? planHeadingRemap(sourceLevels, headingMax) : null;
 
   const modalConfirm = (() => {
@@ -210,6 +253,46 @@ export function DownloadMethodModal({
                 >
                   {IMAGE_MODE_OPTIONS.map((option) => {
                     const selected = imageMode === option.value;
+                    return (
+                      <RadioGroup.Item
+                        key={option.value}
+                        value={option.value}
+                        className={[
+                          'flex-1 rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200',
+                          'focus-visible:ring-2 focus-visible:ring-blue-500/40',
+                          selected
+                            ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
+                            : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
+                        ].join(' ')}
+                      >
+                        <div className={selected ? '' : 'opacity-50'}>
+                          <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                            {option.title}
+                          </div>
+                          <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                            {option.description}
+                          </div>
+                        </div>
+                      </RadioGroup.Item>
+                    );
+                  })}
+                </RadioGroup.Root>
+              </div>
+            ) : null}
+
+            {showImageHandling && imageMode === 'files' ? (
+              <div className="mb-4">
+                <div className="mb-2 text-xs font-medium text-gray-500 dark:text-odp-muted">
+                  이미지 문법
+                </div>
+                <RadioGroup.Root
+                  className="flex items-center gap-2"
+                  value={imageSyntax}
+                  onValueChange={handleImageSyntaxChange}
+                  aria-label="이미지 문법"
+                >
+                  {IMAGE_SYNTAX_OPTIONS.map((option) => {
+                    const selected = imageSyntax === option.value;
                     return (
                       <RadioGroup.Item
                         key={option.value}

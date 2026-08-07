@@ -1,15 +1,23 @@
 import {
   WIKI_IMAGE_RE,
   markdownImageAttrsBlockFromSize,
+  parseMarkdownImageAttrsBlock,
   parseWikiImageInner,
+  wikiImageMarkupFromAttrs,
 } from '@/utils/wikiImageSyntax';
 import {
   decodeMarkdownImageSrc,
   isStorageImageSrc,
   resolveStorageImagePath,
 } from '@/utils/storageImagePath';
+import type { DownloadImageSyntax } from '@/utils/downloadImageSyntaxSettings';
 
 export const MARKDOWN_PICTURES_DIR = '.pictures';
+
+export type PlanMarkdownImageExportOptions = {
+  /** Image markup in the exported markdown. Default: markdown `![]()`. */
+  syntax?: DownloadImageSyntax;
+};
 
 const MARKDOWN_IMAGE_RE = /!\[([^\]]*)\]\(([^)\n]+)\)(\{[^}\n]*\})?/g;
 const FENCED_BLOCK_RE = /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g;
@@ -86,12 +94,16 @@ function resolveExportSourcePath(src: string, notePath?: string | null): string 
 }
 
 /**
- * Rewrite wiki/storage images to `![](.pictures/name)` and collect vault paths to bundle.
+ * Rewrite wiki/storage images to `.pictures/name` references and collect vault paths to bundle.
+ * `syntax: 'markdown'` → `![](.pictures/name){…}` (default)
+ * `syntax: 'wiki'` → `![[.pictures/name|…]]`
  */
 export function planMarkdownImageExport(
   markdown: string,
   notePath?: string | null,
+  options?: PlanMarkdownImageExportOptions,
 ): MarkdownImageExportPlan {
+  const syntax: DownloadImageSyntax = options?.syntax === 'wiki' ? 'wiki' : 'markdown';
   const source = String(markdown ?? '');
   const usedNames = new Set<string>();
   const pathToRelative = new Map<string, string>();
@@ -114,12 +126,18 @@ export function planMarkdownImageExport(
       const storagePath = String(parsed?.path || '').replace(/^\/+/, '');
       if (!storagePath) return full;
       const relativePath = allocate(storagePath);
-      const attrs = markdownImageAttrsBlockFromSize({
+      const size = {
         width: parsed?.width ?? null,
         height: parsed?.height ?? null,
         background: parsed?.background ?? null,
-      });
-      const replacement = attrs ? `![](${relativePath})${attrs}` : `![](${relativePath})`;
+      };
+      const replacement =
+        syntax === 'wiki'
+          ? wikiImageMarkupFromAttrs({ path: relativePath, ...size })
+          : (() => {
+              const attrs = markdownImageAttrsBlockFromSize(size);
+              return attrs ? `![](${relativePath})${attrs}` : `![](${relativePath})`;
+            })();
       const token = `\0MDIMG${placeholders.length}\0`;
       placeholders.push(replacement);
       return token;
@@ -134,6 +152,10 @@ export function planMarkdownImageExport(
         const resolved = resolveExportSourcePath(mdSrc, notePath);
         if (!resolved) return full;
         const relativePath = allocate(resolved);
+        if (syntax === 'wiki') {
+          const size = parseMarkdownImageAttrsBlock(rawAttrs);
+          return wikiImageMarkupFromAttrs({ path: relativePath, ...size });
+        }
         const srcIndex = dest.indexOf(mdSrc);
         const titlePart = srcIndex >= 0 ? dest.slice(srcIndex + mdSrc.length) : '';
         return `![${alt}](${relativePath}${titlePart})${rawAttrs || ''}`;

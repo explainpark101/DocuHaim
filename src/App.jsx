@@ -18,6 +18,7 @@ import {
 import { buildS3Tree, getFileLastModifiedMap, findFileNodeByPath, findNodeByPath, flattenTreeToPaths, getRecordingKeysFromTree } from '@/utils/s3Tree';
 import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/treeMove';
 import { allocateUniqueCopyName, getTreeChildNames } from '@/utils/treeCopy';
+import { resolveUploadDestFileName } from '@/utils/uploadNameConflict';
 import {
   createS3Client,
   listObjectsV2,
@@ -384,6 +385,8 @@ function MainApp() {
   const [pendingWebAuthnSave, setPendingWebAuthnSave] = useState(null);
   const [pendingPasswordSave, setPendingPasswordSave] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [uploadNameConflict, setUploadNameConflict] = useState(null);
+  const uploadNameConflictResolverRef = useRef(null);
   const expandPathsRef = useRef(null);
   const [showDownloadMethodModal, setShowDownloadMethodModal] = useState(false);
   const [downloadModalMode, setDownloadModalMode] = useState('default');
@@ -3802,7 +3805,11 @@ function MainApp() {
     throw new Error(`이미지를 찾지 못했습니다: ${path}`);
   };
 
-  const downloadSessionTransformed = async ({ imageMode = 'files', headingMax = 1 } = {}) => {
+  const downloadSessionTransformed = async ({
+    imageMode = 'files',
+    imageSyntax = 'markdown',
+    headingMax = 1,
+  } = {}) => {
     flushSessionEditorToWorkspace();
     const cur = currentFileRef.current;
     if (!cur || cur.type !== SESSION_STORAGE_TYPE) return;
@@ -3812,10 +3819,12 @@ function MainApp() {
       await downloadSessionWorkspace();
       return;
     }
+    const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
     const bundled = await bundleSessionMarkdownImages({
       markdown: remapMarkdownHeadingLevels(editorContentRef.current ?? '', headingMax),
       notePath: cur.id,
       readBytes: readSessionBytes,
+      imageSyntax: effectiveSyntax,
     });
     if (imageMode === 'base64') {
       const markdown = bundled.images.length
@@ -3910,8 +3919,14 @@ function MainApp() {
     return body instanceof Uint8Array ? body : new Uint8Array(body);
   };
 
-  const downloadMarkdownImageZip = async (storageType, notePath, fileName, markdownText) => {
-    const plan = planMarkdownImageExport(markdownText, notePath);
+  const downloadMarkdownImageZip = async (
+    storageType,
+    notePath,
+    fileName,
+    markdownText,
+    imageSyntax = 'markdown',
+  ) => {
+    const plan = planMarkdownImageExport(markdownText, notePath, { syntax: imageSyntax });
     if (!plan.images.length) return false;
     const { entries, missing } = await collectMarkdownExportImageBytes(plan.images, (path) =>
       readBackendBytes(storageType, path),
@@ -3924,7 +3939,7 @@ function MainApp() {
   };
 
   const downloadMarkdownImageBase64 = async (storageType, notePath, fileName, markdownText) => {
-    const plan = planMarkdownImageExport(markdownText, notePath);
+    const plan = planMarkdownImageExport(markdownText, notePath, { syntax: 'markdown' });
     if (!plan.images.length) return false;
     const { entries, missing } = await collectMarkdownExportImageBytes(plan.images, (path) =>
       readBackendBytes(storageType, path),
@@ -3939,6 +3954,7 @@ function MainApp() {
   /** Object URL 방식: 메모리 제한 ~100–200MB. presigned URL 인코딩 이슈 회피 */
   const handleDownloadCurrentFile = async ({
     imageMode = 'files',
+    imageSyntax = 'markdown',
     headingMax = 1,
     tableFormat = 'haim',
   } = {}) => {
@@ -3947,7 +3963,7 @@ function MainApp() {
     if (storageType === SESSION_STORAGE_TYPE) {
       try {
         if (downloadModalMode === 'session-transform') {
-          await downloadSessionTransformed({ imageMode, headingMax });
+          await downloadSessionTransformed({ imageMode, imageSyntax, headingMax });
         } else {
           await downloadSessionWorkspace();
         }
@@ -3974,10 +3990,17 @@ function MainApp() {
             getCachedTableStyleTemplate(id),
           );
         }
+        const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
         const bundled =
           imageMode === 'base64'
             ? await downloadMarkdownImageBase64(storageType, notePath, fileName, markdown)
-            : await downloadMarkdownImageZip(storageType, notePath, fileName, markdown);
+            : await downloadMarkdownImageZip(
+                storageType,
+                notePath,
+                fileName,
+                markdown,
+                effectiveSyntax,
+              );
         if (!bundled) {
           triggerBlobDownload(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), fileName);
         }
@@ -4072,6 +4095,7 @@ function MainApp() {
   /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시. md+이미지는 zip 없이 md/.pictures 또는 base64 단일 md */
   const handleDownloadToFolder = async ({
     imageMode = 'files',
+    imageSyntax = 'markdown',
     headingMax = 1,
     tableFormat = 'haim',
   } = {}) => {
@@ -4103,7 +4127,8 @@ function MainApp() {
             getCachedTableStyleTemplate(id),
           );
         }
-        const plan = planMarkdownImageExport(markdown, notePath);
+        const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
+        const plan = planMarkdownImageExport(markdown, notePath, { syntax: effectiveSyntax });
         if (plan.images.length) {
           const { entries, missing } = await collectMarkdownExportImageBytes(
             plan.images,
@@ -5128,6 +5153,29 @@ function MainApp() {
     uploadFolderInputRef.current?.click();
   };
 
+  const askUploadNameConflict = useCallback((fileName, renameAs) => {
+    return new Promise((resolve) => {
+      uploadNameConflictResolverRef.current = resolve;
+      setUploadNameConflict({ fileName, renameAs });
+    });
+  }, []);
+
+  const settleUploadNameConflict = useCallback((choice) => {
+    const resolve = uploadNameConflictResolverRef.current;
+    uploadNameConflictResolverRef.current = null;
+    setUploadNameConflict(null);
+    resolve?.(choice);
+  }, []);
+
+  const getUploadTreeForStorage = useCallback(
+    (storageType) => {
+      if (storageType === 's3') return s3Tree;
+      if (storageType === 'webdav') return webdavTree;
+      return localTree;
+    },
+    [s3Tree, webdavTree, localTree],
+  );
+
   const handleUploadFileSelect = async (e) => {
     const files = e.target.files;
     if (!files?.length || !uploadTarget) return;
@@ -5140,12 +5188,27 @@ function MainApp() {
       label: files.length > 1 ? `${files.length}개 파일 업로드 중` : '파일 업로드 중',
     });
     try {
+      const usedNames = new Set(
+        getTreeChildNames(getUploadTreeForStorage(storageType), parentPath || '', findNodeByPath),
+      );
+      let uploadedCount = 0;
+      let skippedCount = 0;
+
       if (storageType === 's3') {
         const client = getS3Client();
         if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const key = parentPath + file.name;
+          const destName = await resolveUploadDestFileName(
+            file.name,
+            usedNames,
+            askUploadNameConflict,
+          );
+          if (!destName) {
+            skippedCount += 1;
+            continue;
+          }
+          const key = parentPath + destName;
           const body = await file.arrayBuffer();
           await putObject(client, {
             Bucket: s3Creds.bucket,
@@ -5153,6 +5216,8 @@ function MainApp() {
             Body: new Uint8Array(body),
             ContentType: file.type || 'application/octet-stream',
           });
+          usedNames.add(destName);
+          uploadedCount += 1;
         }
         loadS3Files();
       } else if (storageType === 'local') {
@@ -5160,28 +5225,65 @@ function MainApp() {
         if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const newFileHandle = await targetDirHandle.getFileHandle(file.name, { create: true });
+          const destName = await resolveUploadDestFileName(
+            file.name,
+            usedNames,
+            askUploadNameConflict,
+          );
+          if (!destName) {
+            skippedCount += 1;
+            continue;
+          }
+          const newFileHandle = await targetDirHandle.getFileHandle(destName, { create: true });
           const writable = await newFileHandle.createWritable();
           await writable.write(await file.arrayBuffer());
           await writable.close();
+          usedNames.add(destName);
+          uploadedCount += 1;
         }
         refreshLocalTree();
       } else if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const key = parentPath + file.name;
+          const destName = await resolveUploadDestFileName(
+            file.name,
+            usedNames,
+            askUploadNameConflict,
+          );
+          if (!destName) {
+            skippedCount += 1;
+            continue;
+          }
+          const key = parentPath + destName;
           const body = new Uint8Array(await file.arrayBuffer());
           await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+          usedNames.add(destName);
+          uploadedCount += 1;
         }
         await refreshWebdavTree();
       }
       const parentPaths = getParentPathsToExpand(parentPath);
       expandPathsRef.current?.(storageType, parentPaths);
-      setOperationStatus(files.length > 1 ? `${files.length}개 파일 업로드 완료` : '업로드 완료');
+      if (uploadedCount === 0 && skippedCount > 0) {
+        setOperationStatus('업로드 취소됨');
+      } else if (skippedCount > 0) {
+        setOperationStatus(
+          uploadedCount > 1
+            ? `${uploadedCount}개 파일 업로드 완료 (${skippedCount}개 취소)`
+            : `업로드 완료 (${skippedCount}개 취소)`,
+        );
+      } else {
+        setOperationStatus(
+          uploadedCount > 1 ? `${uploadedCount}개 파일 업로드 완료` : '업로드 완료',
+        );
+      }
     } catch (err) {
       alert('업로드 실패: ' + err.message);
     } finally {
+      if (uploadNameConflictResolverRef.current) {
+        settleUploadNameConflict('cancel');
+      }
       removeIndicator(indicatorId);
       e.target.value = '';
     }
@@ -6197,11 +6299,21 @@ function MainApp() {
         label: totalItems > 1 ? `${totalItems}개 항목 업로드 중` : '업로드 중',
       });
       try {
+        const usedNames = new Set(
+          getTreeChildNames(
+            getUploadTreeForStorage(targetStorageType),
+            destPath || '',
+            findNodeByPath,
+          ),
+        );
+        let uploadedCount = 0;
+        let skippedCount = 0;
+
         if (targetStorageType === 's3') {
           const client = getS3Client();
           if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-          const uploadFile = async (file, prefix) => {
-            const key = prefix + file.name;
+          const uploadFile = async (file, prefix, destName = file.name) => {
+            const key = prefix + destName;
             const body = await file.arrayBuffer();
             await putObject(client, {
               Bucket: s3Creds.bucket,
@@ -6221,18 +6333,30 @@ function MainApp() {
             }
           };
           for (const file of files) {
-            await uploadFile(file, destPath);
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            await uploadFile(file, destPath, destName);
+            usedNames.add(destName);
+            uploadedCount += 1;
           }
           for (const handle of dirHandles) {
             await uploadDir(handle, destPath + (handle.name || '') + '/');
+            uploadedCount += 1;
           }
           loadS3Files();
           const parentPaths = getParentPathsToExpand(destPath);
           expandPathsRef.current?.(targetStorageType, parentPaths);
         } else if (targetStorageType === 'webdav') {
           const backend = createWebdavBackend(webdavConfig);
-          const uploadFile = async (file, prefix) => {
-            const key = prefix + file.name;
+          const uploadFile = async (file, prefix, destName = file.name) => {
+            const key = prefix + destName;
             const body = new Uint8Array(await file.arrayBuffer());
             await backend.writeBytes(key, body, file.type || 'application/octet-stream');
           };
@@ -6247,10 +6371,22 @@ function MainApp() {
             }
           };
           for (const file of files) {
-            await uploadFile(file, destPath);
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            await uploadFile(file, destPath, destName);
+            usedNames.add(destName);
+            uploadedCount += 1;
           }
           for (const handle of dirHandles) {
             await uploadDir(handle, destPath + (handle.name || '') + '/');
+            uploadedCount += 1;
           }
           await refreshWebdavTree();
           const parentPaths = getParentPathsToExpand(destPath);
@@ -6258,8 +6394,8 @@ function MainApp() {
         } else {
           const targetDirHandle = destHandle || localRootHandle;
           if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
-          const copyFile = async (file, dirHandle) => {
-            const newFileHandle = await dirHandle.getFileHandle(file.name, { create: true });
+          const copyFile = async (file, dirHandle, destName = file.name) => {
+            const newFileHandle = await dirHandle.getFileHandle(destName, { create: true });
             const writable = await newFileHandle.createWritable();
             await writable.write(await file.arrayBuffer());
             await writable.close();
@@ -6279,21 +6415,42 @@ function MainApp() {
             }
           };
           for (const file of files) {
-            await copyFile(file, targetDirHandle);
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            await copyFile(file, targetDirHandle, destName);
+            usedNames.add(destName);
+            uploadedCount += 1;
           }
           for (const handle of dirHandles) {
             const subDir = await targetDirHandle.getDirectoryHandle(handle.name, { create: true });
             await copyDir(handle, subDir);
+            uploadedCount += 1;
           }
           refreshLocalTree();
           const parentPaths = getParentPathsToExpand(destPath);
           expandPathsRef.current?.(targetStorageType, parentPaths);
         }
-        setOperationStatus(`업로드 완료`);
+        if (uploadedCount === 0 && skippedCount > 0) {
+          setOperationStatus('업로드 취소됨');
+        } else if (skippedCount > 0) {
+          setOperationStatus(`업로드 완료 (${skippedCount}개 취소)`);
+        } else {
+          setOperationStatus('업로드 완료');
+        }
       } catch (e) {
         alert('업로드 실패: ' + e.message);
         setOperationStatus(`업로드 실패: ${e.message}`);
       } finally {
+        if (uploadNameConflictResolverRef.current) {
+          settleUploadNameConflict('cancel');
+        }
         removeIndicator(indicatorId);
       }
     }
@@ -7495,6 +7652,22 @@ function MainApp() {
           setPendingWebAuthnSave(null);
           setPendingPasswordSave(null);
         }}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(uploadNameConflict)}
+        title="같은 이름의 파일"
+        message={
+          uploadNameConflict
+            ? `"${uploadNameConflict.fileName}" 파일이 이미 있습니다.\n대체하거나 "${uploadNameConflict.renameAs}"(으)로 이름을 바꿔 업로드할 수 있습니다.`
+            : ''
+        }
+        confirmLabel="대체"
+        discardLabel="업로드할 파일 이름 변경"
+        cancelLabel="업로드 취소"
+        onConfirm={() => settleUploadNameConflict('replace')}
+        onDiscard={() => settleUploadNameConflict('rename')}
+        onCancel={() => settleUploadNameConflict('cancel')}
       />
 
       <ConfirmModal

@@ -15,12 +15,15 @@ export async function bundleSessionMarkdownImages(options: {
   markdown: string;
   notePath: string;
   readBytes: (path: string) => Promise<Uint8Array>;
+  imageSyntax?: 'wiki' | 'markdown';
 }): Promise<{
   markdown: string;
   images: Array<{ path: string; data: Uint8Array }>;
   missing: string[];
 }> {
-  const plan = planMarkdownImageExport(options.markdown, options.notePath);
+  const plan = planMarkdownImageExport(options.markdown, options.notePath, {
+    syntax: options.imageSyntax === 'wiki' ? 'wiki' : 'markdown',
+  });
   const extracted = extractMarkdownDataUriImages(plan.markdown, {
     reservedNames: plan.images.map((image) => image.relativePath),
   });

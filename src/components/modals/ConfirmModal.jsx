@@ -88,7 +88,7 @@ export function ConfirmModal({
                 </p>
               )}
               {children ? <div className="mb-4">{children}</div> : null}
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 <Button type="button" variant="secondary" size="md" onClick={onCancel}>
                   <IconBack size={16} />
                   {cancelLabel}
