@@ -16,6 +16,10 @@ export default defineConfig({
     /^https?:\/\/localhost/,
     /\.cursor\//,
   ],
+  // Same asset as the app (`public/vite.svg` → `docs/public/vite.svg`).
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}vite.svg` }],
+  ],
   themeConfig: {
     nav: [
       { text: 'Custom Markdown', link: '/custom-markdown/' },
