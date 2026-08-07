@@ -3,6 +3,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -25,6 +26,9 @@ import {
   toTreeSelectKey,
 } from '@/utils/treeMove';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
+import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
+import { TREE_TOUCH_DRAG_READY_MS } from '@/hooks/useTreeNodeTouchGesture';
 import {
   loadExpandedFolderPaths,
   saveExpandedFolderPaths,
@@ -210,8 +214,13 @@ export default function Sidebar({
   sessionWorkspace = null,
   sessionTree = [],
   onCloseSessionWorkspace,
+  /** App mobile layout (max-width 768px) — enables touch tree drag + modal menu. */
+  isMobileLayout = false,
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
+  const coarsePointer = useIsCoarsePointer();
+  const mobileTree = isMobileLayout || coarsePointer;
+  const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const isSearchPending = searchInput !== searchTerm;
@@ -294,9 +303,14 @@ export default function Sidebar({
   const AUTO_SCROLL_SPEED = 12;
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
+    useSensor(
+      mobileTree ? TouchSensor : PointerSensor,
+      {
+        activationConstraint: mobileTree
+          ? { delay: TREE_TOUCH_DRAG_READY_MS, tolerance: 8 }
+          : { distance: 8 },
+      },
+    ),
   );
 
   const findTreeNode = useCallback(
@@ -789,6 +803,20 @@ export default function Sidebar({
     setLastActivatedNode({ storageType, node });
   }, []);
 
+  const openTreeContextMenu = useCallback(
+    (storageType, node, event) => {
+      activateTreeNode(storageType, node);
+      setContextMenu({
+        x: mobileTree ? null : event?.clientX ?? null,
+        y: mobileTree ? null : event?.clientY ?? null,
+        node,
+        storageType,
+        modal: mobileContextMenu,
+      });
+    },
+    [activateTreeNode, mobileTree],
+  );
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.defaultPrevented) return;
@@ -866,6 +894,7 @@ export default function Sidebar({
           y={contextMenu.y}
           node={contextMenuNode}
           storageType={contextMenuStorageType}
+          mobileDialog={contextMenu.modal ?? mobileContextMenu}
           isTrashRoot={contextMenuNode.path === '.trash/'}
           deleteCount={
             (() => {
@@ -1166,14 +1195,9 @@ export default function Sidebar({
                 onFocusRoot={() => setLastFocusedS3FolderPath('')}
                 onContextMenu={(e, rootNode) => {
                   setLastFocusedS3FolderPath('');
-                  activateTreeNode('s3', rootNode);
-                  setContextMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    node: rootNode,
-                    storageType: 's3',
-                  });
+                  openTreeContextMenu('s3', rootNode, e);
                 }}
+                mobileTree={mobileTree}
               />
               {filteredS3Tree.length > 0 ? (
                 filteredS3Tree.map((node) => (
@@ -1208,21 +1232,14 @@ export default function Sidebar({
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
                     isCopyDrag={isCopyDrag}
-                    onOpenContextMenu={(e, n) => {
-                      activateTreeNode('s3', n);
-                      setContextMenu({
-                        x: e.clientX,
-                        y: e.clientY,
-                        node: n,
-                        storageType: 's3',
-                      });
-                    }}
+                    onOpenContextMenu={(e, n) => openTreeContextMenu('s3', n, e)}
                     onActivate={(n) => activateTreeNode('s3', n)}
                     renameTarget={renameTarget}
                     onClearRenameTarget={() => setRenameTarget(null)}
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                    mobileTree={mobileTree}
                   />
                 ))
               ) : (
@@ -1335,14 +1352,9 @@ export default function Sidebar({
               }
               onContextMenu={(e, rootNode) => {
                 setLastFocusedLocalFolder({ path: '', handle: localRootHandle });
-                activateTreeNode('local', rootNode);
-                setContextMenu({
-                  x: e.clientX,
-                  y: e.clientY,
-                  node: rootNode,
-                  storageType: 'local',
-                });
+                openTreeContextMenu('local', rootNode, e);
               }}
+              mobileTree={mobileTree}
             />
             {isLocalTreeLoading && !filteredLocalTree.length && (
               <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
@@ -1387,15 +1399,7 @@ export default function Sidebar({
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
                     isCopyDrag={isCopyDrag}
-                    onOpenContextMenu={(e, n) => {
-                      activateTreeNode('local', n);
-                      setContextMenu({
-                        x: e.clientX,
-                        y: e.clientY,
-                        node: n,
-                        storageType: 'local',
-                      });
-                    }}
+                    onOpenContextMenu={(e, n) => openTreeContextMenu('local', n, e)}
                     onActivate={(n) => activateTreeNode('local', n)}
                     isFolderLoading={localFolderLoadingPath}
                     renameTarget={renameTarget}
@@ -1403,6 +1407,7 @@ export default function Sidebar({
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                    mobileTree={mobileTree}
                   />
                 ))
               ) : (
@@ -1500,14 +1505,9 @@ export default function Sidebar({
                 onFocusRoot={() => setLastFocusedWebdavFolderPath('')}
                 onContextMenu={(e, rootNode) => {
                   setLastFocusedWebdavFolderPath('');
-                  activateTreeNode('webdav', rootNode);
-                  setContextMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    node: rootNode,
-                    storageType: 'webdav',
-                  });
+                  openTreeContextMenu('webdav', rootNode, e);
                 }}
+                mobileTree={mobileTree}
               />
               {isWebdavTreeLoading && !filteredWebdavTree.length && (
                 <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
@@ -1545,15 +1545,7 @@ export default function Sidebar({
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
                     isCopyDrag={isCopyDrag}
-                    onOpenContextMenu={(e, n) => {
-                      activateTreeNode('webdav', n);
-                      setContextMenu({
-                        x: e.clientX,
-                        y: e.clientY,
-                        node: n,
-                        storageType: 'webdav',
-                      });
-                    }}
+                    onOpenContextMenu={(e, n) => openTreeContextMenu('webdav', n, e)}
                     onActivate={(n) => activateTreeNode('webdav', n)}
                     isFolderLoading={webdavFolderLoadingPath}
                     renameTarget={renameTarget}
@@ -1561,6 +1553,7 @@ export default function Sidebar({
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                    mobileTree={mobileTree}
                   />
                 ))
               ) : !isWebdavTreeLoading ? (
@@ -1573,7 +1566,7 @@ export default function Sidebar({
         </div>
         )}
       </div>
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={null} style={{ zIndex: mobileTree ? 100060 : undefined }}>
         <TreeDragOverlayPreview items={activeDragItems} isCopy={isCopyDrag} />
       </DragOverlay>
       </DndContext>

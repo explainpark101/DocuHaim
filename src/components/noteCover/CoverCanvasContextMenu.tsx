@@ -1,6 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
 import { ContextMenu, Select } from 'radix-ui';
 import {
+  AdaptiveMenuItem,
+  AdaptiveMenuSeparator,
+  AdaptiveMenuSurfaceProvider,
+} from '@/components/contextMenu/AdaptiveContextMenu';
+import {
   AlignCenter,
   AlignCenterHorizontal,
   AlignCenterVertical,
@@ -106,7 +111,7 @@ function patchElement(cover: NoteCover, id: string, patch: Partial<CoverElement>
 }
 
 function MenuSep() {
-  return <ContextMenu.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderStrong" />;
+  return <AdaptiveMenuSeparator />;
 }
 
 function MenuLabel({ children }: { children: ReactNode }) {
@@ -603,7 +608,7 @@ export type CoverCanvasContextMenuContentProps = {
  * Canvas context menu body for cover elements.
  * Kind depends on selection (group / multi / text / shape / image).
  */
-export default function CoverCanvasContextMenuContent({
+export function CoverCanvasContextMenuBody({
   cover,
   targetId,
   selectedIds,
@@ -664,23 +669,8 @@ export default function CoverCanvasContextMenuContent({
   })();
 
   return (
-    <ContextMenu.Content
-      className={wideMenuContentClass}
-      onCloseAutoFocus={(e) => e.preventDefault()}
-      onPointerDownOutside={(e) => {
-        const t = e.target;
-        if (t instanceof Element && t.closest(`[${CHAT_COLOR_PICKER_ATTR}]`)) {
-          e.preventDefault();
-        }
-      }}
-      onInteractOutside={(e) => {
-        const t = e.target;
-        if (t instanceof Element && t.closest(`[${CHAT_COLOR_PICKER_ATTR}]`)) {
-          e.preventDefault();
-        }
-      }}
-    >
-      <ContextMenu.Item
+    <>
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         onSelect={() => {
           if (!selectedIds.includes(targetId)) onSelectIds(effectiveIds);
@@ -693,11 +683,11 @@ export default function CoverCanvasContextMenuContent({
           <Lock size={16} className="shrink-0" />
         )}
         {lockLabelOn ? '잠금 해제' : '잠금'}
-      </ContextMenu.Item>
+      </AdaptiveMenuItem>
 
       {isGroup ? (
         <>
-          <ContextMenu.Item
+          <AdaptiveMenuItem
             className={chatMenuItemClass}
             onSelect={() => {
               if (!soleGroupId) return;
@@ -706,7 +696,7 @@ export default function CoverCanvasContextMenuContent({
           >
             <Ungroup size={16} className="shrink-0" />
             그룹 해제
-          </ContextMenu.Item>
+          </AdaptiveMenuItem>
           <MenuSep />
           <div className="px-1 py-1" onPointerDown={(e) => e.stopPropagation()}>
             <MenuLabel>정렬</MenuLabel>
@@ -717,7 +707,7 @@ export default function CoverCanvasContextMenuContent({
 
       {isMulti ? (
         <>
-          <ContextMenu.Item
+          <AdaptiveMenuItem
             className={chatMenuItemClass}
             disabled={!canGroup}
             onSelect={() => {
@@ -729,7 +719,7 @@ export default function CoverCanvasContextMenuContent({
           >
             <Group size={16} className="shrink-0" />
             그룹화
-          </ContextMenu.Item>
+          </AdaptiveMenuItem>
           <MenuSep />
           <div className="px-1 py-1" onPointerDown={(e) => e.stopPropagation()}>
             <MenuLabel>개체 정렬</MenuLabel>
@@ -765,69 +755,70 @@ export default function CoverCanvasContextMenuContent({
       {single?.type === 'image' ? (
         <>
           <MenuSep />
-          <ContextMenu.Item
+          <AdaptiveMenuItem
             className={chatMenuItemClass}
             disabled={lockedForEdit}
             onSelect={() => onImageCrop?.(single)}
           >
             <Crop size={16} className="shrink-0" />
             자르기
-          </ContextMenu.Item>
-          <ContextMenu.Item
+          </AdaptiveMenuItem>
+          <AdaptiveMenuItem
             className={chatMenuItemClass}
             disabled={lockedForEdit || !single.naturalAspect}
             onSelect={() => onRestoreImageAspect?.(single.id)}
           >
             <RotateCcw size={16} className="shrink-0" />
             원본 비율로 되돌리기
-          </ContextMenu.Item>
-          <ContextMenu.Item
+          </AdaptiveMenuItem>
+          <AdaptiveMenuItem
             className={chatMenuItemClass}
             disabled={lockedForEdit}
             onSelect={() => onToggleImageLockAspect?.(single.id)}
           >
             <Ratio size={16} className="shrink-0" />
             {single.lockAspect ? '무조건 비율 유지 해제' : '무조건 비율 유지'}
-          </ContextMenu.Item>
+          </AdaptiveMenuItem>
         </>
       ) : null}
 
       <MenuSep />
-      <ContextMenu.Item
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         disabled={lockedForEdit}
         onSelect={() => onChange(nudgeSelectionZ(cover, effectiveIds, 1))}
       >
         <ArrowUp size={16} className="shrink-0" />
         앞으로
-      </ContextMenu.Item>
-      <ContextMenu.Item
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         disabled={lockedForEdit}
         onSelect={() => onChange(nudgeSelectionZ(cover, effectiveIds, -1))}
       >
         <ArrowDown size={16} className="shrink-0" />
         뒤로
-      </ContextMenu.Item>
-      <ContextMenu.Item
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         disabled={lockedForEdit}
         onSelect={() => onChange(bringSelectionToFront(cover, effectiveIds))}
       >
         <ArrowUpToLine size={16} className="shrink-0" />
         맨 앞으로
-      </ContextMenu.Item>
-      <ContextMenu.Item
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
         className={chatMenuItemClass}
         disabled={lockedForEdit}
         onSelect={() => onChange(sendSelectionToBack(cover, effectiveIds))}
       >
         <ArrowDownToLine size={16} className="shrink-0" />
         맨 뒤로
-      </ContextMenu.Item>
+      </AdaptiveMenuItem>
       <MenuSep />
-      <ContextMenu.Item
+      <AdaptiveMenuItem
         className={chatMenuDangerItemClass}
+        danger
         onSelect={() => {
           if (!selectedIds.includes(targetId)) onSelectIds(effectiveIds);
           onRequestDelete(effectiveIds);
@@ -835,7 +826,34 @@ export default function CoverCanvasContextMenuContent({
       >
         <Trash2 size={16} className="shrink-0" />
         삭제
-      </ContextMenu.Item>
+      </AdaptiveMenuItem>
+    </>
+  );
+}
+
+export default function CoverCanvasContextMenuContent(
+  props: CoverCanvasContextMenuContentProps,
+) {
+  return (
+    <ContextMenu.Content
+      className={wideMenuContentClass}
+      onCloseAutoFocus={(e) => e.preventDefault()}
+      onPointerDownOutside={(e) => {
+        const t = e.target;
+        if (t instanceof Element && t.closest(`[${CHAT_COLOR_PICKER_ATTR}]`)) {
+          e.preventDefault();
+        }
+      }}
+      onInteractOutside={(e) => {
+        const t = e.target;
+        if (t instanceof Element && t.closest(`[${CHAT_COLOR_PICKER_ATTR}]`)) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <AdaptiveMenuSurfaceProvider surface="desktop">
+        <CoverCanvasContextMenuBody {...props} />
+      </AdaptiveMenuSurfaceProvider>
     </ContextMenu.Content>
   );
 }

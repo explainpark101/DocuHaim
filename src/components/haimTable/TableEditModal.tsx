@@ -33,6 +33,11 @@ import {
   X,
 } from 'lucide-react';
 import { ContextMenu, Tooltip, Form } from 'radix-ui';
+import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import {
+  MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
+} from '@/components/contextMenu/mobileContextMenuStyles';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import Modal from '@/components/modals/Modal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { HaimTableStyleFields } from '@/components/haimTable/HaimTableStyleFields';
@@ -146,6 +151,8 @@ type DeleteConfirmState = {
   kind: 'row' | 'col';
   indices: number[];
 };
+
+type CellMenuAt = { r: number; c: number };
 
 const isApplePlatform =
   typeof navigator !== 'undefined'
@@ -719,7 +726,9 @@ export function TableEditModal({
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
   const [deletePreview, setDeletePreview] = useState<DeleteConfirmState | null>(null);
   const deletePreviewRef = useRef<DeleteConfirmState | null>(null);
-  const [cellMenuOpen, setCellMenuOpen] = useState(false);
+  const [cellMenuAt, setCellMenuAt] = useState<CellMenuAt | null>(null);
+  const cellMenuOpen = cellMenuAt !== null;
+  const mobileContextMenu = useMobileContextMenuMode();
   const [tableSidebarW, setTableSidebarW] = useState(SIDEBAR_DEFAULT_W);
   const [cellSidebarW, setCellSidebarW] = useState(SIDEBAR_DEFAULT_W);
   const [spacePanReady, setSpacePanReady] = useState(false);
@@ -769,7 +778,7 @@ export function TableEditModal({
     setHoverInsert(null);
     setSpacePanReady(false);
     setPanning(false);
-    setCellMenuOpen(false);
+    setCellMenuAt(null);
     setDeletePreview(null);
     setHistoryKey((k) => k + 1);
     void loadTableStylesFromStorage().then((s) => setTemplates(s.templates));
@@ -2026,20 +2035,9 @@ export function TableEditModal({
                           const merge = mergeAt(meta.merges, r, c);
                           const selected = isSelected(r, c);
                           const colW = sizeAt(meta.colWidths, c);
-                          return (
-                            <ContextMenu.Root
-                              key={c}
-                              onOpenChange={(open) => {
-                                setCellMenuOpen(open);
-                                if (open) {
-                                  setHoverInsert(null);
-                                } else {
-                                  clearDeletePreview();
-                                }
-                              }}
-                            >
-                              <ContextMenu.Trigger asChild>
+                          const cellTd = (
                             <td
+                              key={c}
                               data-edit-r={r}
                               data-edit-c={c}
                               colSpan={merge?.colspan}
@@ -2053,6 +2051,10 @@ export function TableEditModal({
                               }`}
                               onContextMenu={() => {
                                 if (!isSelected(r, c)) selectSingleCell(r, c);
+                                if (mobileContextMenu) {
+                                  setCellMenuAt({ r, c });
+                                  setHoverInsert(null);
+                                }
                               }}
                               onMouseDown={(e) => {
                                 // Middle / space-pan: let the table pane handle panning
@@ -2225,7 +2227,25 @@ export function TableEditModal({
                                 </Form.Control>
                               </Form.Field>
                             </td>
-                              </ContextMenu.Trigger>
+                          );
+
+                          if (mobileContextMenu) {
+                            return cellTd;
+                          }
+
+                          return (
+                            <ContextMenu.Root
+                              key={c}
+                              onOpenChange={(open) => {
+                                setCellMenuAt(open ? { r, c } : null);
+                                if (open) {
+                                  setHoverInsert(null);
+                                } else {
+                                  clearDeletePreview();
+                                }
+                              }}
+                            >
+                              <ContextMenu.Trigger asChild>{cellTd}</ContextMenu.Trigger>
                               <ContextMenu.Portal>
                                 <ContextMenu.Content
                                   className={ctxMenuContentClass}
@@ -2278,6 +2298,45 @@ export function TableEditModal({
                     wrap={tableWrapRef.current}
                     colCount={colCount}
                   />
+                ) : null}
+
+                {mobileContextMenu && cellMenuAt ? (
+                  <MobileContextMenuModal
+                    open={cellMenuOpen}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setCellMenuAt(null);
+                        clearDeletePreview();
+                      }
+                    }}
+                    title={`${cellMenuAt.r + 1}행 ${cellMenuAt.c + 1}열`}
+                    subtitle="표 편집 셀"
+                  >
+                    <button
+                      type="button"
+                      className={MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS}
+                      disabled={rowCount <= 1}
+                      onClick={() => {
+                        requestDeleteRows(cellMenuAt.r);
+                        setCellMenuAt(null);
+                      }}
+                    >
+                      <Trash2 className={ICON_XS} aria-hidden />
+                      행 삭제
+                    </button>
+                    <button
+                      type="button"
+                      className={MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS}
+                      disabled={colCount <= 1}
+                      onClick={() => {
+                        requestDeleteCols(cellMenuAt.c);
+                        setCellMenuAt(null);
+                      }}
+                    >
+                      <Trash2 className={ICON_XS} aria-hidden />
+                      열 삭제
+                    </button>
+                  </MobileContextMenuModal>
                 ) : null}
 
                 {hoverInsert && !cellMenuOpen ? (

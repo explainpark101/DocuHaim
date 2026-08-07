@@ -2,6 +2,7 @@ import { useDroppable, pointerWithin, closestCenter } from '@dnd-kit/core';
 import { motion as Motion } from 'motion/react';
 import { IconFolder } from '@/components/icons';
 import { toDroppableId } from '@/utils/treeMove';
+import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
 
 export function treeCollisionDetection(args) {
   const pointerCollisions = pointerWithin(args);
@@ -18,6 +19,7 @@ export function RootDropZone({
   onFocusRoot,
   isFocused,
   isSelected = false,
+  mobileTree = false,
 }) {
   const rootNode = {
     path: '',
@@ -41,14 +43,33 @@ export function RootDropZone({
 
   const handleClick = (e) => {
     if (e.button !== 0) return;
+    if (contextMenuOpenedRef.current) {
+      contextMenuOpenedRef.current = false;
+      return;
+    }
     e.stopPropagation();
     onFocusRoot?.();
   };
 
   const handleContextMenu = (e) => {
+    if (mobileTree) {
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
     if (onContextMenu) onContextMenu(e, rootNode);
   };
+
+  const openFromLongPress = () => {
+    if (onContextMenu) {
+      onContextMenu({ preventDefault: () => {}, stopPropagation: () => {} }, rootNode);
+    }
+  };
+
+  const { contextMenuOpenedRef, bindTouchGesture } = useTreeNodeTouchGesture({
+    enabled: mobileTree && Boolean(onContextMenu),
+    onContextMenu: openFromLongPress,
+  });
 
   const handleOsDragOver = (e) => {
     const dt = e.dataTransfer;
@@ -99,6 +120,7 @@ export function RootDropZone({
       onDragOver={canDrop ? handleOsDragOver : undefined}
       onDrop={canDrop ? handleOsDrop : undefined}
       onContextMenu={onContextMenu ? handleContextMenu : undefined}
+      {...(mobileTree && onContextMenu ? bindTouchGesture : {})}
       className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer ${
         isDropTarget
           ? 'bg-blue-100 dark:bg-blue-900/40 rounded'
@@ -109,7 +131,7 @@ export function RootDropZone({
         isFocused
           ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
           : ''
-      }`}
+      } ${mobileTree ? 'touch-pan-y' : ''}`}
       style={{ paddingLeft: '8px' }}
     >
       <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">

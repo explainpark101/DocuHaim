@@ -16,7 +16,18 @@ Do **not** call `navigator.vibrate` directly in feature code.
 | `src/utils/hapticFeedback.ts` | `vibrateLongPressAction()` — call when a custom long-press timer fires |
 | `src/utils/initTouchLongPressHaptics.ts` | Bootstrapped in `main.jsx`; covers native `contextmenu` from touch (e.g. sidebar tree) |
 
+| `src/hooks/useTreeNodeTouchGesture.ts` | Sidebar tree rows: 500ms drag-ready haptic, 2000ms context menu haptic |
+
 Constants: `LONG_PRESS_HAPTIC_MS` (12). Helpers dedupe pulses within ~150ms.
+
+## Sidebar tree (mobile only)
+
+| Hold duration | Haptic | Action |
+|---------------|--------|--------|
+| 500ms | yes | Touch drag armed (`TouchSensor` delay matches) |
+| 2000ms (still holding, no move) | yes | `SidebarContextMenu` dialog |
+
+Use `useTreeNodeTouchGesture` — not `usePressableCardMenu` (500ms menu).
 
 ## When to call `vibrateLongPressAction()`
 
@@ -46,6 +57,7 @@ Typical cases:
 ✅ GOOD — vibrateLongPressAction() when the menu/sheet opens
 ✅ GOOD — rely on initTouchLongPressHaptics for native contextmenu-only surfaces
 ✅ GOOD — reuse usePressableCardMenu for card-style long-press menus
+✅ GOOD — sidebar tree rows: useTreeNodeTouchGesture (500ms drag / 2s menu) + SidebarContextMenu mobileDialog (pass isMobileLayout from App)
 ```
 
 Prefer **English** in new code comments if Korean Unicode might corrupt.

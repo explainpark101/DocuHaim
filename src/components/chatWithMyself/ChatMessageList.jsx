@@ -34,6 +34,7 @@ import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
 import ChatMessageContextMenu from '@/components/chatWithMyself/ChatMessageContextMenu';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import ChatMessageSelectCopyModal from '@/components/chatWithMyself/ChatMessageSelectCopyModal';
 import ChatMessageReactions from '@/components/chatWithMyself/ChatMessageReactions';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
@@ -514,6 +515,7 @@ const MessageBubble = memo(function MessageBubble({
   ogReloadKey = 0,
   shiftHeldRef,
   coarse,
+  mobileContextMenu = false,
   rowSelected = false,
   isEditing = false,
   getPresignedUrl,
@@ -974,7 +976,7 @@ const MessageBubble = memo(function MessageBubble({
     </div>
   );
 
-  if (coarse || isDeleting) {
+  if (mobileContextMenu || isDeleting) {
     return bubble;
   }
 
@@ -1081,6 +1083,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     /** @type {{ label: string, dateStr: string } | null} */ (null),
   );
   const coarse = useIsCoarsePointer();
+  const mobileContextMenu = useMobileContextMenuMode();
   const shiftHeldRef = useShiftHeldRef();
 
   useEffect(() => {
@@ -1549,6 +1552,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             ogReloadKey={ogReloadById[row.msg.id] || 0}
             shiftHeldRef={shiftHeldRef}
             coarse={coarse}
+            mobileContextMenu={mobileContextMenu}
             rowSelected={sheetMessage?.id === row.msg.id}
             isEditing={editingMessageId === row.msg.id}
             externalReactionPickerOpen={reactionPickerMsgId === row.msg.id}

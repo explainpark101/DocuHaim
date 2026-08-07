@@ -28,7 +28,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ContextMenu } from 'radix-ui';
+import {
+  AdaptiveContextMenu,
+  AdaptiveMenuItem,
+  AdaptiveMenuSeparator,
+} from '@/components/contextMenu/AdaptiveContextMenu';
 import { motion as Motion } from 'motion/react';
 import {
   ArrowDownToLine,
@@ -285,120 +289,126 @@ function LayerContextMenu({
   const canUngroup = Boolean(sharedGroup);
   const directlyLocked = isLayerDirectlyLocked(cover, targetId);
 
+  const menuTitle =
+    kind === 'group'
+      ? getGroup(tree, targetId)?.name ?? '그룹'
+      : (() => {
+          const el = tree.elements.find((e) => e.id === targetId);
+          return el ? coverElementLabel(el) : '레이어';
+        })();
+  const menuSubtitle = kind === 'group' ? '레이어 그룹' : '레이어';
+
   return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content
-          className={menuContentClass}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <ContextMenu.Item
-            className={menuItemClass}
-            onSelect={() => {
-              // Defer until the menu releases focus so the inline input can autofocus.
-              window.setTimeout(() => onStartRename(targetId), 0);
-            }}
-          >
-            <Pencil size={14} />
-            이름 변경
-          </ContextMenu.Item>
-          <ContextMenu.Item
-            className={menuItemClass}
-            onSelect={() => onChange(toggleLayerLocked(cover, targetId))}
-          >
-            {directlyLocked ? <LockOpen size={14} /> : <Lock size={14} />}
-            {directlyLocked ? '잠금 해제' : '잠금'}
-          </ContextMenu.Item>
-          <ContextMenu.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderStrong" />
-          <ContextMenu.Item
-            className={menuItemClass}
-            disabled={!canGroup}
-            onSelect={() => {
-              const result = groupSelectedElements(cover, selectionForTarget);
-              if (!result) return;
-              onChange(result.cover);
-              onSelectIds(
-                collectDescendantElementIds(result.cover, result.groupId),
-              );
-            }}
-          >
-            <Group size={14} />
-            그룹
-          </ContextMenu.Item>
-          <ContextMenu.Item
-            className={menuItemClass}
-            disabled={!canUngroup}
-            onSelect={() => {
-              if (!sharedGroup) return;
-              onChange(ungroupElements(cover, sharedGroup));
-            }}
-          >
-            <Ungroup size={14} />
-            그룹 해제
-          </ContextMenu.Item>
-          <ContextMenu.Item
-            className={menuItemClass}
-            onSelect={() => {
-              const created = createEmptyGroup(cover);
-              onChange(created.cover);
-            }}
-          >
-            <FolderPlus size={14} />
-            새 그룹
-          </ContextMenu.Item>
-          <ContextMenu.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderStrong" />
-          <ContextMenu.Item
-            className={menuItemClass}
-            disabled={kind === 'group' ? false : selectionForTarget.length === 0}
-            onSelect={() => {
-              if (kind === 'group') {
-                onChange(bringLayersToFront(cover, [targetId]));
-                return;
-              }
-              onChange(bringSelectionToFront(cover, selectionForTarget));
-            }}
-          >
-            <ArrowUpToLine size={14} />
-            맨 앞으로
-          </ContextMenu.Item>
-          <ContextMenu.Item
-            className={menuItemClass}
-            onSelect={() => {
-              if (kind === 'group') {
-                onChange(sendLayersToBack(cover, [targetId]));
-                return;
-              }
-              onChange(sendSelectionToBack(cover, selectionForTarget));
-            }}
-          >
-            <ArrowDownToLine size={14} />
-            맨 뒤로
-          </ContextMenu.Item>
-          <ContextMenu.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderStrong" />
-          <ContextMenu.Item
-            className={`${menuItemClass} text-red-600 dark:text-red-400`}
-            onSelect={() => {
-              const layerIds =
-                kind === 'group' ? [targetId] : selectionForTarget;
-              if (onRequestDeleteLayers) {
-                onRequestDeleteLayers(layerIds);
-                return;
-              }
-              if (kind === 'group') {
-                onChange(deleteLayers(cover, [targetId]));
-              } else {
-                onChange(deleteElementsForIds(cover, selectionForTarget));
-              }
-              onSelectIds([]);
-            }}
-          >
-            <Trash2 size={14} />
-            삭제
-          </ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+    <AdaptiveContextMenu
+      title={menuTitle}
+      subtitle={menuSubtitle}
+      contentClassName={menuContentClass}
+      trigger={children}
+    >
+      <AdaptiveMenuItem
+        className={menuItemClass}
+        onSelect={() => {
+          window.setTimeout(() => onStartRename(targetId), 0);
+        }}
+      >
+        <Pencil size={14} />
+        이름 변경
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
+        className={menuItemClass}
+        onSelect={() => onChange(toggleLayerLocked(cover, targetId))}
+      >
+        {directlyLocked ? <LockOpen size={14} /> : <Lock size={14} />}
+        {directlyLocked ? '잠금 해제' : '잠금'}
+      </AdaptiveMenuItem>
+      <AdaptiveMenuSeparator />
+      <AdaptiveMenuItem
+        className={menuItemClass}
+        disabled={!canGroup}
+        onSelect={() => {
+          const result = groupSelectedElements(cover, selectionForTarget);
+          if (!result) return;
+          onChange(result.cover);
+          onSelectIds(
+            collectDescendantElementIds(result.cover, result.groupId),
+          );
+        }}
+      >
+        <Group size={14} />
+        그룹
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
+        className={menuItemClass}
+        disabled={!canUngroup}
+        onSelect={() => {
+          if (!sharedGroup) return;
+          onChange(ungroupElements(cover, sharedGroup));
+        }}
+      >
+        <Ungroup size={14} />
+        그룹 해제
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
+        className={menuItemClass}
+        onSelect={() => {
+          const created = createEmptyGroup(cover);
+          onChange(created.cover);
+        }}
+      >
+        <FolderPlus size={14} />
+        새 그룹
+      </AdaptiveMenuItem>
+      <AdaptiveMenuSeparator />
+      <AdaptiveMenuItem
+        className={menuItemClass}
+        disabled={kind === 'group' ? false : selectionForTarget.length === 0}
+        onSelect={() => {
+          if (kind === 'group') {
+            onChange(bringLayersToFront(cover, [targetId]));
+            return;
+          }
+          onChange(bringSelectionToFront(cover, selectionForTarget));
+        }}
+      >
+        <ArrowUpToLine size={14} />
+        맨 앞으로
+      </AdaptiveMenuItem>
+      <AdaptiveMenuItem
+        className={menuItemClass}
+        onSelect={() => {
+          if (kind === 'group') {
+            onChange(sendLayersToBack(cover, [targetId]));
+            return;
+          }
+          onChange(sendSelectionToBack(cover, selectionForTarget));
+        }}
+      >
+        <ArrowDownToLine size={14} />
+        맨 뒤로
+      </AdaptiveMenuItem>
+      <AdaptiveMenuSeparator />
+      <AdaptiveMenuItem
+        className={`${menuItemClass} text-red-600 dark:text-red-400`}
+        danger
+        onSelect={() => {
+          const layerIds =
+            kind === 'group' ? [targetId] : selectionForTarget;
+          if (onRequestDeleteLayers) {
+            onRequestDeleteLayers(layerIds);
+            return;
+          }
+          if (kind === 'group') {
+            onChange(deleteLayers(cover, [targetId]));
+          } else {
+            onChange(deleteElementsForIds(cover, selectionForTarget));
+          }
+          onSelectIds([]);
+        }}
+      >
+        <Trash2 size={14} />
+        삭제
+      </AdaptiveMenuItem>
+    </AdaptiveContextMenu>
   );
 }
 
