@@ -1,0 +1,104 @@
+/**
+ * Fenced code blocks: Atom One Dark chrome + readable comments.
+ * Token colors come from highlight.js atom-one-dark.css (loaded via codeTheme="one-dark").
+ * Do not set a flat `color` on `.md-editor-code-block` — that would wash out .hljs-* tokens.
+ */
+
+.md-editor .md-editor-preview,
+.md-editor-dark .md-editor-preview,
+.dark .md-editor .md-editor-preview {
+  --md-theme-code-block-color: #abb2bf;
+  --md-theme-code-block-bg-color: #282c34;
+  --md-theme-code-before-bg-color: #282c34;
+}
+
+.md-editor-preview .md-editor-code {
+  color: var(--md-theme-code-block-color);
+  background-color: var(--md-theme-code-block-bg-color);
+}
+
+.md-editor-preview .md-editor-code pre code {
+  color: #abb2bf;
+  background-color: #282c34;
+}
+
+/* Let highlight.js token classes own the color (do not force inherited flat fg) */
+.md-editor-preview .md-editor-code pre code .md-editor-code-block {
+  color: unset;
+}
+
+/*
+ * Stock atom-one-dark comments (#5c6370) are low-contrast on #282c34.
+ * Bump toward One Dark / odp muted so // and # comments stay readable.
+ */
+.md-editor-preview .md-editor-code .hljs-comment,
+.md-editor-preview .md-editor-code .hljs-quote {
+  color: #7f848e;
+  font-style: italic;
+}
+
+/* Export / print: keep One Dark blocks (not light slate) so tokens print correctly */
+#export-pdf-preview .md-editor-preview .md-editor-code,
+.export-pdf-modal .md-editor-preview .md-editor-code,
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code {
+  --md-theme-code-block-color: #abb2bf;
+  --md-theme-code-block-bg-color: #282c34;
+  --md-theme-code-before-bg-color: #21252b;
+  border: 1px solid #3e4452;
+  background-color: #282c34;
+  box-shadow: none;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head,
+.export-pdf-modal .md-editor-preview .md-editor-code .md-editor-code-head,
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head {
+  background-color: #21252b;
+  border-bottom: 1px solid #3e4452;
+  color: #abb2bf;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-lang,
+#export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-flag span,
+#export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-action,
+:is(#export-pdf-preview, [data-export-pdf-preview])
+  .md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-code-lang,
+:is(#export-pdf-preview, [data-export-pdf-preview])
+  .md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-code-flag
+  span,
+:is(#export-pdf-preview, [data-export-pdf-preview])
+  .md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-code-action {
+  color: #abb2bf;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code pre,
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre {
+  background-color: #282c34;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code pre code,
+.export-pdf-modal .md-editor-preview .md-editor-code pre code,
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
+  background-color: #282c34;
+  color: #abb2bf;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+#export-pdf-preview .md-editor-preview .md-editor-code pre code .md-editor-code-block,
+:is(#export-pdf-preview, [data-export-pdf-preview])
+  .md-editor-preview
+  .md-editor-code
+  pre
+  code
+  .md-editor-code-block {
+  color: unset;
+}

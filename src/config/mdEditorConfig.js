@@ -14,10 +14,12 @@ import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlacehold
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
+import { HLJS_ATOM_ONE_DARK_CSS } from '@/utils/mdEditorCodeTheme';
 import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import '@/styles/md-editor-rt/preview-heading-fold.css';
+import '@/styles/md-editor-rt/code-one-dark.css';
 
 const TABLE_XSS_ATTRS = ['style', 'class', 'colspan', 'rowspan', 'align', 'valign', 'width', 'height', 'data-haim-table', 'data-haim-r', 'data-haim-c', 'data-haim-section', 'data-haim-width', 'data-haim-align', 'data-haim-box-w', 'data-haim-box-h'];
 
@@ -63,6 +65,17 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
 };
 
 config({
+  // Fenced ``` blocks: always Atom One Dark (comments + tokens stay visible).
+  editorExtensions: {
+    highlight: {
+      css: {
+        'one-dark': {
+          light: HLJS_ATOM_ONE_DARK_CSS,
+          dark: HLJS_ATOM_ONE_DARK_CSS,
+        },
+      },
+    },
+  },
   markdownItConfig(md) {
     XSSPlugin(md, {
       extendedWhiteList: PGBR_XSS_EXTENDED_WHITELIST,

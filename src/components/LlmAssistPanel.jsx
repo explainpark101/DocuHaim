@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ImagePlus, Loader2, RefreshCw, Replace, Sparkles, Eye, FileText, X } from 'lucide-react';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
+import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import {
   extractImageFilesFromClipboard,
@@ -328,6 +329,7 @@ export default function LlmAssistPanel({
                 id={RESULT_PREVIEW_ID}
                 theme={theme}
                 language="ko-KR"
+                codeTheme={MD_EDITOR_CODE_THEME}
                 value={result}
                 codeFoldable={false}
                 showCodeRowNumber={false}

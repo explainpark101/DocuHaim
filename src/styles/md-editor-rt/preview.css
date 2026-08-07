@@ -319,9 +319,10 @@
 .md-editor-katex-block[data-processed] {
   display: block;
 }
+/* Inline code (`code`): Notion-like red text + soft gray chip (match Export PDF / style.css) */
 .md-editor .md-editor-preview {
-  --md-theme-code-inline-color: var(--color-indigo-600);
-  --md-theme-code-inline-bg-color: var(--color-indigo-50);
+  --md-theme-code-inline-color: #eb5757;
+  --md-theme-code-inline-bg-color: rgba(135, 131, 120, 0.15);
   --md-theme-code-inline-radius: var(--md-theme-radius-s);
   --md-theme-code-block-color: var(--color-slate-300);
   --md-theme-code-block-bg-color: var(--color-gray-800);
@@ -330,8 +331,8 @@
 }
 .md-editor-dark .md-editor-preview,
 .dark .md-editor .md-editor-preview {
-  --md-theme-code-inline-color: var(--color-indigo-400);
-  --md-theme-code-inline-bg-color: var(--color-gray-700);
+  --md-theme-code-inline-color: #eb5757;
+  --md-theme-code-inline-bg-color: rgba(135, 131, 120, 0.15);
   --md-theme-code-inline-radius: var(--md-theme-radius-s);
   --md-theme-code-block-color: var(--color-gray-300);
   --md-theme-code-block-bg-color: var(--color-gray-700);
@@ -345,6 +346,10 @@
   border-radius: var(--md-theme-code-inline-radius);
   padding: calc(var(--spacing) * 0.5) 4px;
   line-height: var(--leading-normal);
+}
+.md-editor-preview :not(pre) > code {
+  color: var(--md-theme-code-inline-color);
+  background-color: var(--md-theme-code-inline-bg-color);
 }
 .md-editor-preview .md-editor-code {
   color: var(--md-theme-code-block-color);
@@ -658,7 +663,7 @@
   width: 100%;
   overflow: auto;
   vertical-align: bottom;
-  color: var(--md-theme-code-block-color);
+  /* Do not set color here — highlight.js .hljs-* tokens must keep their own colors */
 }
 .md-editor-preview details.md-editor-code .md-editor-code-head {
   cursor: pointer;

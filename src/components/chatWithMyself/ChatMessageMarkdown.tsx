@@ -7,7 +7,9 @@ import {
   extractChatBodyAttachments,
 } from '@/utils/chatWithMyself';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import '@/styles/md-editor-rt/preview.css';
+import '@/styles/md-editor-rt/code-one-dark.css';
 
 config({
   editorConfig: {
@@ -112,6 +114,7 @@ export default function ChatMessageMarkdown({
             value={mdText}
             theme={resolvedTheme}
             language="ko-KR"
+            codeTheme={MD_EDITOR_CODE_THEME}
             codeFoldable={false}
             showCodeRowNumber={false}
           />

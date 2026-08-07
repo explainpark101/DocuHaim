@@ -20,6 +20,7 @@ import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
 import MirrorEditToolbar from '@/components/MirrorEditToolbar';
 import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import {
   EDITOR_ACTION_COMMANDS,
   registerEditorActions,
@@ -1974,6 +1975,7 @@ export default function MarkdownEditor({
         className="h-full! max-h-dvh"
         theme={theme}
         language="ko-KR"
+        codeTheme={MD_EDITOR_CODE_THEME}
         previewOnly={previewOnly}
         autoDetectCode={true}
         toolbars={toolbars}

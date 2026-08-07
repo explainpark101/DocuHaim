@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useLocation, useNavigate } from 'react-router';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
+import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
@@ -337,33 +338,33 @@ const printFontStyles = `
     font-family: var(--print-font-code, inherit);
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code {
-    --md-theme-code-block-color: #0f172a;
-    --md-theme-code-block-bg-color: #f1f5f9;
-    --md-theme-code-before-bg-color: #e2e8f0;
+    --md-theme-code-block-color: #abb2bf;
+    --md-theme-code-block-bg-color: #282c34;
+    --md-theme-code-before-bg-color: #21252b;
     margin: 1.25em 0;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #3e4452;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-    background-color: #f1f5f9;
+    box-shadow: none;
+    background-color: #282c34;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head {
-    background-color: #e2e8f0;
-    border-bottom: 1px solid #cbd5e1;
-    color: #475569;
+    background-color: #21252b;
+    border-bottom: 1px solid #3e4452;
+    color: #abb2bf;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-lang,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-flag span,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-action {
-    color: #475569;
+    color: #abb2bf;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre {
     margin: 0;
-    background-color: #f8fafc;
+    background-color: #282c34;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #282c34;
+    color: #abb2bf;
     border: none;
     border-radius: 0;
     padding: 1em 1.2em;
@@ -2038,6 +2039,7 @@ export default function ExportPDFPage({
                   id={EDITOR_ID}
                   theme="light"
                   language="ko-KR"
+                  codeTheme={MD_EDITOR_CODE_THEME}
                   value={bodyMarkdown}
                   mdHeadingId={headingId}
                   codeFoldable={false}

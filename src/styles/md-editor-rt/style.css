@@ -382,9 +382,10 @@ html {
   display: block
 }
 
+/* Inline code (`code`): Notion-like red text + soft gray chip (match Export PDF) */
 .md-editor .md-editor-preview {
-  --md-theme-code-inline-color: var(--color-primary);
-  --md-theme-code-inline-bg-color: color-mix(in srgb, var(--color-blue-400) 10%, transparent);
+  --md-theme-code-inline-color: #eb5757;
+  --md-theme-code-inline-bg-color: rgba(135, 131, 120, 0.15);
   --md-theme-code-inline-radius: var(--md-theme-radius-s);
   --md-theme-code-block-color: var(--color-slate-400);
   --md-theme-code-block-bg-color: var(--color-slate-800);
@@ -392,9 +393,10 @@ html {
   --md-theme-code-block-radius: var(--md-theme-radius-m)
 }
 
-.md-editor-dark .md-editor-preview {
-  --md-theme-code-inline-color: var(--color-odp-accentRed);
-  --md-theme-code-inline-bg-color: var(--color-odp-bg);
+.md-editor-dark .md-editor-preview,
+.dark .md-editor .md-editor-preview {
+  --md-theme-code-inline-color: #eb5757;
+  --md-theme-code-inline-bg-color: rgba(135, 131, 120, 0.15);
   --md-theme-code-inline-radius: var(--md-theme-radius-s);
   --md-theme-code-block-color: var(--color-odp-fg);
   --md-theme-code-block-bg-color: var(--color-odp-bgSofter);
@@ -409,6 +411,12 @@ html {
   border-radius: var(--md-theme-code-inline-radius);
   padding: 2px 4px;
   line-height: 22px
+}
+
+/* Prefer :not(pre)>code so fenced blocks keep block colors */
+.md-editor-preview :not(pre) > code {
+  color: var(--md-theme-code-inline-color);
+  background-color: var(--md-theme-code-inline-bg-color);
 }
 
 .md-editor-preview .md-editor-code {
@@ -648,7 +656,7 @@ html {
   width: 100%;
   overflow: auto;
   vertical-align: bottom;
-  color: var(--md-theme-code-block-color)
+  /* Do not set color here — highlight.js .hljs-* tokens must keep their own colors */
 }
 
 .md-editor-preview details.md-editor-code .md-editor-code-head {
@@ -880,27 +888,27 @@ h5 + :is(h6, ul, ol) {
 #export-pdf-preview .md-editor-preview .md-editor-code {
   line-height: 1.6;
   margin: 1.25em 0;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #3e4452;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-  background-color: #f1f5f9;
+  box-shadow: none;
+  background-color: #282c34;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head {
-  background-color: #e2e8f0;
-  border-bottom: 1px solid #cbd5e1;
-  color: #475569;
+  background-color: #21252b;
+  border-bottom: 1px solid #3e4452;
+  color: #abb2bf;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code pre {
   margin: 0;
-  background-color: #f8fafc;
+  background-color: #282c34;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code pre code {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #282c34;
+  color: #abb2bf;
   padding: 1em 1.2em;
   border-radius: 0;
 }
@@ -3883,41 +3891,46 @@ svg.md-editor-icon {
 
   #export-pdf-preview .md-editor-preview .md-editor-code,
   .export-pdf-modal .md-editor-preview .md-editor-code {
-    --md-theme-code-block-color: #0f172a;
-    --md-theme-code-block-bg-color: #f1f5f9;
-    --md-theme-code-before-bg-color: #e2e8f0;
+    --md-theme-code-block-color: #abb2bf;
+    --md-theme-code-block-bg-color: #282c34;
+    --md-theme-code-before-bg-color: #21252b;
     margin: 1.25em 0 !important;
-    border: 1px solid #cbd5e1 !important;
+    border: 1px solid #3e4452 !important;
     border-radius: 8px !important;
     overflow: hidden !important;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;
-    background-color: #f1f5f9 !important;
+    box-shadow: none !important;
+    background-color: #282c34 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head,
   .export-pdf-modal .md-editor-preview .md-editor-code .md-editor-code-head {
-    background-color: #e2e8f0 !important;
-    border-bottom: 1px solid #cbd5e1 !important;
-    color: #475569 !important;
+    background-color: #21252b !important;
+    border-bottom: 1px solid #3e4452 !important;
+    color: #abb2bf !important;
   }
 
   #export-pdf-preview .md-editor-preview .md-editor-code pre,
   .export-pdf-modal .md-editor-preview .md-editor-code pre {
     margin: 0 !important;
-    background-color: #f8fafc !important;
+    background-color: #282c34 !important;
   }
 
   #export-pdf-preview .md-editor-preview .md-editor-code pre code,
   .export-pdf-modal .md-editor-preview .md-editor-code pre code {
-    background-color: #f8fafc !important;
-    color: #0f172a !important;
+    background-color: #282c34 !important;
+    color: #abb2bf !important;
     border: none !important;
     border-radius: 0 !important;
     padding: 1em 1.2em !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  #export-pdf-preview .md-editor-preview .md-editor-code pre code .md-editor-code-block,
+  .export-pdf-modal .md-editor-preview .md-editor-code pre code .md-editor-code-block {
+    color: unset !important;
   }
 
   #export-pdf-preview .md-editor-preview :not(pre) > code,
