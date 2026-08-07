@@ -141,7 +141,7 @@ export {
   getChatSyncTabId,
 } from './syncChannel.js';
 export { uploadChatImage, uploadGroupIcon, chatImagesToMarkdown } from './images.js';
-export { getCroppedImg } from './cropImage.js';
+export { getCroppedImg, getCroppedImgFromPadMeta, fileFromCroppedCanvas } from './cropImage.js';
 export { serializeEditVersion, parseEditVersion } from './editHistory.js';
 export {
   uploadChatFile,

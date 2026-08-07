@@ -1,7 +1,12 @@
+import { useEffect } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
 import { IconBack, IconCheck, IconTrash } from '@/components/icons';
 import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
+import {
+  ModalCornerResizeHandles,
+  useModalCornerResize,
+} from '@/components/modals/modalCornerResize';
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
@@ -26,6 +31,7 @@ function isDangerConfirm(variant, confirmLabel) {
  * @param {() => void} [props.onDiscard]
  * @param {import('react').ReactNode} [props.children]
  * @param {boolean} [props.confirmDisabled]
+ * @param {boolean} [props.resizable]
  */
 export function ConfirmModal({
   isOpen,
@@ -40,9 +46,17 @@ export function ConfirmModal({
   onDiscard,
   children,
   confirmDisabled = false,
+  resizable = true,
 }) {
   const hasDiscard = discardLabel && typeof onDiscard === 'function';
   const danger = isDangerConfirm(variant, confirmLabel);
+  const {
+    panelRef,
+    beginResize,
+    resetBox,
+    positioned,
+    positionedStyle,
+  } = useModalCornerResize(resizable, { minHeight: 200 });
 
   useModalLayerKeyboard({
     open: isOpen,
@@ -51,12 +65,16 @@ export function ConfirmModal({
     ignoreEnterInFields: true,
   });
 
+  useEffect(() => {
+    if (!isOpen) resetBox();
+  }, [isOpen, resetBox]);
+
   return (
     <AnimatePresence>
       {isOpen ? (
         <Motion.div
           key="confirm-modal"
-          className="fixed inset-0 z-100000 flex items-center justify-center p-4"
+          className={`fixed inset-0 z-100000 ${positioned ? '' : 'flex items-center justify-center p-4'}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -64,26 +82,30 @@ export function ConfirmModal({
         >
           <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
           <Motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? 'confirm-modal-title' : undefined}
-            className="relative bg-white dark:bg-odp-surface text-gray-800 dark:text-odp-fgStrong rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col"
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            className={`relative z-10 flex w-full max-w-md max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl dark:bg-odp-surface dark:text-odp-fgStrong ${
+              positioned ? 'max-w-none!' : ''
+            }`}
+            style={positionedStyle}
+            initial={positioned ? false : { opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={PANEL_TRANSITION}
           >
-            <div className="p-6 overflow-y-auto">
+            <div className="overflow-y-auto p-6">
               {title && (
                 <h2
                   id="confirm-modal-title"
-                  className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2"
+                  className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong"
                 >
                   {title}
                 </h2>
               )}
               {message && (
-                <p className="text-sm whitespace-pre-line text-gray-600 dark:text-gray-400 mb-4">
+                <p className="mb-4 whitespace-pre-line text-sm text-gray-600 dark:text-gray-400">
                   {message}
                 </p>
               )}
@@ -110,6 +132,7 @@ export function ConfirmModal({
                 </Button>
               </div>
             </div>
+            {resizable ? <ModalCornerResizeHandles onBeginResize={beginResize} /> : null}
           </Motion.div>
         </Motion.div>
       ) : null}

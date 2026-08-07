@@ -18,8 +18,11 @@ import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
 import MirrorEditToolbar from '@/components/MirrorEditToolbar';
+import ImageToolbar from '@/components/ImageToolbar';
 import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import ImageLinkModal from '@/components/modals/ImageLinkModal';
+import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import {
   EDITOR_ACTION_COMMANDS,
@@ -147,6 +150,11 @@ import {
   startMirrorEditPreviewRemirror,
   stopMirrorEditPreviewRemirror,
 } from '@/utils/mirrorEditPreviewRemirror';
+import {
+  schedulePreviewScrollFollow,
+  startPreviewScrollFollow,
+  stopPreviewScrollFollow,
+} from '@/utils/previewScrollFollow';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
 import {
   toggleBoldForSelection,
@@ -609,10 +617,13 @@ export default function MarkdownEditor({
   const openHaimTablePreviewRef = useRef(haimTableEdit.openPreviewTable);
   openHaimTableEditRef.current = haimTableEdit.openAtOffset;
   openHaimTablePreviewRef.current = haimTableEdit.openPreviewTable;
+  const handleToolbarImageUploadRef = useRef(null);
   const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
   const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
+  const [imageLinkModalOpen, setImageLinkModalOpen] = useState(false);
+  const [clipCropFile, setClipCropFile] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
@@ -741,6 +752,27 @@ export default function MarkdownEditor({
           message: '커서 또는 선택 영역이 마크다운 표 안에 있어야 합니다.',
         });
       }
+    };
+    handlers['editor-image-upload'] = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.onchange = () => {
+        const files = Array.from(input.files || []);
+        if (files.length) void handleToolbarImageUploadRef.current?.(files);
+      };
+      input.click();
+    };
+    handlers['editor-image-clip'] = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) setClipCropFile(file);
+      };
+      input.click();
     };
 
     return registerEditorActions(handlers);
@@ -1253,32 +1285,45 @@ export default function MarkdownEditor({
     };
   }, [previewOnly, mirrorEditEnabled]);
 
-  // Mirror Edit: keep preview caret/selection aligned while typing in CodeMirror.
+  // Dual-pane: keep preview scrolled to the editor caret (image-aware).
+  // Mirror Edit: also remirror caret/selection overlays onto the preview.
   useEffect(() => {
-    if (previewOnly || !mirrorEditEnabled) {
+    if (previewOnly) {
       setMirrorEditCaretHandler(null);
       stopMirrorEditPreviewRemirror();
+      stopPreviewScrollFollow();
       markMirrorEditCaretFromEditor();
       return undefined;
     }
 
     const root = containerRef.current;
-    startMirrorEditPreviewRemirror({
-      getPreviewRoot: () =>
-        (root ?? containerRef.current)?.querySelector('.md-editor-preview'),
-      getView: () => {
-        const api = editorRef.current?.value ?? editorRef.current;
-        return api?.getEditorView?.();
-      },
-    });
+    const getPreviewRoot = () =>
+      (root ?? containerRef.current)?.querySelector('.md-editor-preview');
+    const getView = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      return api?.getEditorView?.();
+    };
+
+    startPreviewScrollFollow({ getPreviewRoot, getView });
+
+    if (mirrorEditEnabled) {
+      startMirrorEditPreviewRemirror({ getPreviewRoot, getView });
+    } else {
+      stopMirrorEditPreviewRemirror();
+      markMirrorEditCaretFromEditor();
+    }
 
     setMirrorEditCaretHandler((_view, update) => {
-      scheduleMirrorEditPreviewRemirror({ withRetries: update.docChanged });
+      schedulePreviewScrollFollow({ withRetries: update.docChanged });
+      if (mirrorEditEnabled) {
+        scheduleMirrorEditPreviewRemirror({ withRetries: update.docChanged });
+      }
     });
 
     return () => {
       setMirrorEditCaretHandler(null);
       stopMirrorEditPreviewRemirror();
+      stopPreviewScrollFollow();
     };
   }, [previewOnly, mirrorEditEnabled]);
 
@@ -1307,8 +1352,10 @@ export default function MarkdownEditor({
     abandonDetachedPreviewMirrorEdit();
     if (!previewRoot) return;
 
+    // Preview HTML rebuilds with `value`; re-follow caret after DOM settles.
+    schedulePreviewScrollFollow({ withRetries: true });
+
     if (mirrorEditEnabled && !isMirrorEditActiveIn(previewRoot)) {
-      // Preview HTML rebuilds with `value`; remirror after that settles.
       scheduleMirrorEditPreviewRemirror({ withRetries: true });
       return;
     }
@@ -1867,6 +1914,48 @@ export default function MarkdownEditor({
     setFreeTransformConfirmOpen(false);
   }, [findResizableImageElement, freeTransformState]);
 
+  const insertMarkdownAtCursor = useCallback((markdown) => {
+    const text = String(markdown || '');
+    if (!text) return;
+    const api = editorRef.current?.value ?? editorRef.current;
+    if (typeof api?.insert === 'function') {
+      api.insert(() => ({
+        targetValue: text,
+        select: false,
+        deviationStart: 0,
+        deviationEnd: 0,
+      }));
+      api.focus?.();
+      return;
+    }
+    const view = api?.getEditorView?.();
+    if (!view) return;
+    view.dispatch(view.state.replaceSelection(text));
+    view.focus?.();
+  }, []);
+
+  const handleToolbarImageUpload = useCallback(async (files) => {
+    if (!files?.length || typeof onUploadImage !== 'function') return;
+    if (isUploadingEditorImage) return;
+    const paths = await onUploadImage(files);
+    if (!paths?.length) return;
+    insertMarkdownAtCursor(`${paths.map((p) => `![[${p}]]`).join('\n')}\n`);
+  }, [insertMarkdownAtCursor, isUploadingEditorImage, onUploadImage]);
+  handleToolbarImageUploadRef.current = handleToolbarImageUpload;
+
+  const handleToolbarImageClipConfirm = useCallback(async (file) => {
+    if (!file || typeof onUploadImage !== 'function') {
+      throw new Error('이미지 업로드를 사용할 수 없습니다.');
+    }
+    const paths = await onUploadImage([file]);
+    const nextPath = paths?.[0];
+    if (!nextPath) {
+      throw new Error('자른 이미지 업로드에 실패했습니다.');
+    }
+    insertMarkdownAtCursor(`![[${nextPath}]]\n`);
+    setClipCropFile(null);
+  }, [insertMarkdownAtCursor, onUploadImage]);
+
   const defToolbars = useMemo(() => [
     <ExportPDF
       key="export-pdf"
@@ -1918,12 +2007,36 @@ export default function MarkdownEditor({
       onChange={setMirrorEditEnabled}
       theme={theme}
     />,
-  ], [value, theme, currentFile, wrapTitles, setWrapTitles, foldBase64Images, setFoldBase64Images, autocompleteEnabled, setAutocompleteEnabled, mirrorEditEnabled, setMirrorEditEnabled]);
+    <ImageToolbar
+      key="image-toolbar"
+      disabled={typeof onUploadImage !== 'function'}
+      onRequestLink={() => setImageLinkModalOpen(true)}
+      onRequestUpload={(files) => {
+        void handleToolbarImageUpload(files);
+      }}
+      onRequestClip={(file) => setClipCropFile(file)}
+    />,
+  ], [
+    value,
+    theme,
+    currentFile,
+    wrapTitles,
+    setWrapTitles,
+    foldBase64Images,
+    setFoldBase64Images,
+    autocompleteEnabled,
+    setAutocompleteEnabled,
+    mirrorEditEnabled,
+    setMirrorEditEnabled,
+    onUploadImage,
+    handleToolbarImageUpload,
+  ]);
 
   const toolbars = useMemo(() => [
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
-    'codeRow', 'code', 'link', 'image', 'table', 'mermaid', 'katex', 1, 2, 3, 4, '-',
+    // 9 = ImageToolbar (replaces built-in `image` / Cropper.js 1 clip)
+    'codeRow', 'code', 'link', 9, 'table', 'mermaid', 'katex', 1, 2, 3, 4, '-',
     'revoke', 'next', 0, '=',
     6, 7, 8, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
     ...(catalogEl ? [5] : []),
@@ -1991,6 +2104,10 @@ export default function MarkdownEditor({
         codeTheme={MD_EDITOR_CODE_THEME}
         previewOnly={previewOnly}
         autoDetectCode={true}
+        // Built-in scrollAuto uses stale data-line maps + height ratios; images break it.
+        // previewScrollFollow keeps the caret region visible instead.
+        scrollAuto={false}
+        footers={['markdownTotal']}
         toolbars={toolbars}
         defToolbars={defToolbars}
         onUploadImg={onUploadImg}
@@ -2012,6 +2129,20 @@ export default function MarkdownEditor({
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
         onCrop={handleCropWikiImage}
+      />
+      <ImageLinkModal
+        isOpen={imageLinkModalOpen}
+        onClose={() => setImageLinkModalOpen(false)}
+        onConfirm={({ desc, url }) => {
+          const alt = desc || '';
+          insertMarkdownAtCursor(`![${alt}](${url})\n`);
+        }}
+      />
+      <ImageClipCropModal
+        isOpen={Boolean(clipCropFile)}
+        file={clipCropFile}
+        onClose={() => setClipCropFile(null)}
+        onConfirm={handleToolbarImageClipConfirm}
       />
       <TableEditModal
         isOpen={haimTableEdit.isOpen}

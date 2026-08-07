@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import Cropper, {
   getInitialCropFromCroppedAreaPixels,
@@ -6,9 +6,12 @@ import Cropper, {
   type MediaSize,
 } from 'react-easy-crop';
 import { ArrowLeft, Crop, Loader2, Scan } from 'lucide-react';
-import { Switch } from 'radix-ui';
+import { Switch, Tabs } from 'radix-ui';
 import { useImageCropUndoHistory } from '@/hooks/useImageCropUndoHistory';
-import { getCroppedImg } from '@/utils/chatWithMyself/cropImage';
+import {
+  getCroppedImg,
+  getCroppedImgFromPadMeta,
+} from '@/utils/chatWithMyself/cropImage';
 import {
   composeImageColorGrid,
   getOpaqueContentBounds,
@@ -17,6 +20,10 @@ import {
   type OpaqueContentBounds,
 } from '@/utils/chatWithMyself/cropPadImage';
 import type { ImageCropUndoSnapshot } from '@/utils/imageCrop/imageCropUndoHistoryDb';
+
+const NoteImageCropperJsPanel = lazy(() => import('@/components/modals/NoteImageCropperJsPanel'));
+
+type CropEditorTab = 'easy' | 'editor';
 
 const MIN_CROP_PX = 48;
 /** Pad relative to source size on each side (L/R/T/B). */
@@ -310,6 +317,7 @@ export default function NoteImageCropPanel({
     lockRatio: boolean;
   } | null>(null);
 
+  const [editorTab, setEditorTab] = useState<CropEditorTab>('easy');
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [cropSize, setCropSize] = useState<Size | null>(null);
@@ -417,6 +425,13 @@ export default function NoteImageCropPanel({
   }, []);
 
   useEffect(() => {
+    // Remounting the easy Cropper after a tab switch needs a fresh init.
+    if (editorTab !== 'easy') return;
+    didInitCropRef.current = false;
+  }, [editorTab]);
+
+  useEffect(() => {
+    setEditorTab('easy');
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     cropSizeRef.current = null;
@@ -508,6 +523,7 @@ export default function NoteImageCropPanel({
   }, []);
 
   useEffect(() => {
+    if (editorTab !== 'easy') return undefined;
     const stage = stageRef.current;
     if (!stage) return undefined;
     const bind = () => {
@@ -518,7 +534,7 @@ export default function NoteImageCropPanel({
     const observer = new MutationObserver(bind);
     observer.observe(stage, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [compositeSrc]);
+  }, [compositeSrc, editorTab]);
 
   const cropAreaMetrics = useCallback(() => {
     const stage = stageRef.current;
@@ -696,6 +712,7 @@ export default function NoteImageCropPanel({
 
   // Capture-phase: swallow undo/redo so backdrop (cover/editor) never receives them.
   useEffect(() => {
+    if (editorTab !== 'easy') return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
       if (!mod || event.altKey) return;
@@ -712,21 +729,33 @@ export default function NoteImageCropPanel({
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [busy, redo, undo]);
+  }, [busy, editorTab, redo, undo]);
 
   const handleConfirm = async () => {
     const area = croppedAreaRef.current;
-    const src = compositeSrc || imageSrc;
-    if (!area || busy || !src) return;
+    if (!area || busy || !imageSrc) return;
     setBusy(true);
     setError('');
     try {
       const baseName = (fileName || 'image').replace(/\.[^.]+$/, '') || 'image';
-      const file = await getCroppedImg(src, area, {
+      const options = {
         keepTransparency,
         fileName: keepTransparency ? `${baseName}-crop.png` : `${baseName}-crop.jpg`,
-      });
-      await onConfirm(file, area);
+      };
+      // Prefer original-resolution export: composite may be downscaled for the UI.
+      if (padMetaRef.current) {
+        const result = await getCroppedImgFromPadMeta(
+          imageSrc,
+          area,
+          padMetaRef.current,
+          options,
+        );
+        await onConfirm(result.file, result.area);
+      } else {
+        const src = compositeSrc || imageSrc;
+        const file = await getCroppedImg(src, area, options);
+        await onConfirm(file, area);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setBusy(false);
@@ -736,16 +765,59 @@ export default function NoteImageCropPanel({
   const cropImageSrc = compositeSrc;
 
   return (
-    <div className="flex flex-col gap-3 p-6">
-      <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">이미지 자르기</h2>
-      <p className="text-xs text-gray-500 dark:text-odp-muted">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-6">
+      <h2 className="shrink-0 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">이미지 자르기</h2>
+      <Tabs.Root
+        value={editorTab}
+        onValueChange={(value) => {
+          setEditorTab(value === 'editor' ? 'editor' : 'easy');
+          setError('');
+          setBusy(false);
+        }}
+        className="flex min-h-0 flex-1 flex-col gap-3"
+      >
+        <Tabs.List className="flex shrink-0 gap-1 rounded-lg border border-gray-200 p-1 dark:border-odp-borderSoft">
+          <Tabs.Trigger
+            value="easy"
+            className="flex-1 rounded-md px-3 py-1.5 text-xs font-medium text-gray-500 outline-none transition data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:text-odp-muted dark:data-[state=active]:bg-blue-500 dark:data-[state=active]:text-white"
+          >
+            모바일 자르기
+          </Tabs.Trigger>
+          <Tabs.Trigger
+            value="editor"
+            className="flex-1 rounded-md px-3 py-1.5 text-xs font-medium text-gray-500 outline-none transition data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:text-odp-muted dark:data-[state=active]:bg-blue-500 dark:data-[state=active]:text-white"
+          >
+            데스크탑 자르기
+          </Tabs.Trigger>
+        </Tabs.List>
+
+        <Tabs.Content value="editor" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+          <Suspense
+            fallback={(
+              <div className="flex min-h-[240px] flex-1 items-center justify-center text-sm text-neutral-500 dark:text-neutral-300">
+                <Loader2 size={18} className="mr-2 animate-spin" />
+                Cropper.js 준비 중…
+              </div>
+            )}
+          >
+            <NoteImageCropperJsPanel
+              imageSrc={imageSrc}
+              {...(fileName ? { fileName } : {})}
+              onCancel={onCancel}
+              onConfirm={onConfirm}
+            />
+          </Suspense>
+        </Tabs.Content>
+
+        <Tabs.Content value="easy" className="flex min-h-0 flex-1 flex-col gap-3 outline-none data-[state=inactive]:hidden">
+      <p className="shrink-0 text-xs text-gray-500 dark:text-odp-muted">
         모서리·변을 드래그해 비율을 자유롭게 조절하세요. Shift를 누르면 비율이 유지됩니다.
         이미지 바깥(투명 여백)까지 잘라 뒤쪽에서부터 자를 수 있습니다.
         투명 PNG는 원본·불투명 콘텐츠 가장자리에 가까이 두면 크기 조절·이동 모두 자동으로 맞춥니다.
       </p>
       <div
         ref={stageRef}
-        className="relative h-[min(56vh,360px)] w-full overflow-hidden rounded-lg"
+        className="relative min-h-[220px] w-full flex-1 overflow-hidden rounded-lg"
         style={keepTransparency ? CHECKERBOARD_STYLE : { backgroundColor: '#ffffff' }}
       >
         {cropImageSrc ? (
@@ -830,7 +902,7 @@ export default function NoteImageCropPanel({
           type="button"
           onClick={snapToOpaqueContent}
           disabled={busy || !cropImageSrc}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-odp-borderSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
+          className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-odp-borderSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
         >
           <Scan size={14} />
           투명 제외 · 콘텐츠에 맞추기
@@ -922,6 +994,8 @@ export default function NoteImageCropPanel({
           {busy ? '적용 중…' : '자르기 적용'}
         </button>
       </div>
+        </Tabs.Content>
+      </Tabs.Root>
     </div>
   );
 }

@@ -83,7 +83,7 @@ export default function WikiImageSizeModal({
       isOpen={isOpen}
       onClose={cropMode ? () => setCropMode(false) : onClose}
       onConfirm={cropMode ? undefined : handleApply}
-      contentClassName="max-w-lg"
+      contentClassName={cropMode ? 'max-w-2xl w-[min(96vw,42rem)] max-h-[90vh] h-[min(90vh,720px)]' : 'max-w-lg'}
     >
       {cropMode ? (
         <NoteImageCropPanel

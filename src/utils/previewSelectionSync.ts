@@ -252,7 +252,7 @@ function setPlainOffsetInElement(
   return { node: rootEl, offset: 0 };
 }
 
-function findDataLineBlockForSourceLine(
+export function findDataLineBlockForSourceLine(
   previewRoot: Element,
   line0: number,
 ): HTMLElement | null {
@@ -571,7 +571,7 @@ function ensurePreviewHostPositioned(host: HTMLElement): void {
 
 const PREVIEW_SCROLL_PAD_PX = 32;
 
-function findPreviewScrollContainer(previewRoot: Element): HTMLElement | null {
+export function findPreviewScrollContainer(previewRoot: Element): HTMLElement | null {
   const wrapper = previewRoot.closest('.md-editor-preview-wrapper');
   if (wrapper instanceof HTMLElement) return wrapper;
 
@@ -590,32 +590,10 @@ function findPreviewScrollContainer(previewRoot: Element): HTMLElement | null {
   return null;
 }
 
-/** Keep the mirrored caret/selection inside the preview pane's scrollport. */
-function scrollPreviewCaretIntoView(previewRoot: Element, range: Range): void {
-  const scroller = findPreviewScrollContainer(previewRoot);
-  if (!scroller) return;
-
-  let rect: DOMRect | null = null;
-  const bar = previewRoot.querySelector('.s3haim-preview-caret-mirror-bar');
-  if (bar instanceof HTMLElement) {
-    const br = bar.getBoundingClientRect();
-    if (br.height > 0 || br.width > 0) rect = br;
-  }
-  if (!rect) {
-    try {
-      const rects = range.getClientRects();
-      if (rects.length > 0) {
-        rect = range.collapsed ? rects[0]! : rects[rects.length - 1]!;
-      } else {
-        const b = range.getBoundingClientRect();
-        if (b.height > 0 || b.width > 0) rect = b;
-      }
-    } catch {
-      return;
-    }
-  }
-  if (!rect) return;
-
+function scrollRectIntoPreviewScroller(
+  scroller: HTMLElement,
+  rect: DOMRect,
+): void {
   const pad = PREVIEW_SCROLL_PAD_PX;
   const sRect = scroller.getBoundingClientRect();
   let dy = 0;
@@ -635,6 +613,78 @@ function scrollPreviewCaretIntoView(previewRoot: Element, range: Range): void {
 
   if (dy !== 0) scroller.scrollTop += dy;
   if (dx !== 0) scroller.scrollLeft += dx;
+}
+
+/** Keep the mirrored caret/selection inside the preview pane's scrollport. */
+export function scrollPreviewCaretIntoView(
+  previewRoot: Element,
+  range: Range,
+  caretRect?: DOMRect | null,
+): void {
+  const scroller = findPreviewScrollContainer(previewRoot);
+  if (!scroller) return;
+
+  let rect: DOMRect | null = caretRect ?? null;
+  if (!rect) {
+    const bar = previewRoot.querySelector('.s3haim-preview-caret-mirror-bar');
+    if (bar instanceof HTMLElement) {
+      const br = bar.getBoundingClientRect();
+      if (br.height > 0 || br.width > 0) rect = br;
+    }
+  }
+  if (!rect) {
+    const imageHost = findImageHostFromRange(range, previewRoot);
+    if (imageHost) {
+      rect = caretRectBesideImage(imageHost.host, imageHost.side);
+    }
+  }
+  if (!rect) {
+    try {
+      const rects = range.getClientRects();
+      if (rects.length > 0) {
+        rect = range.collapsed ? rects[0]! : rects[rects.length - 1]!;
+      } else {
+        const b = range.getBoundingClientRect();
+        if (b.height > 0 || b.width > 0) rect = b;
+      }
+    } catch {
+      rect = null;
+    }
+  }
+  if (!rect || (rect.height <= 0 && rect.width <= 0)) {
+    const block = findDataLineElement(range.startContainer, previewRoot);
+    if (block) {
+      scrollRectIntoPreviewScroller(scroller, block.getBoundingClientRect());
+    }
+    return;
+  }
+
+  scrollRectIntoPreviewScroller(scroller, rect);
+}
+
+/**
+ * Scroll preview so the CodeMirror caret/selection stays in view.
+ * Does not draw Mirror Edit overlays — safe for always-on dual-pane follow.
+ */
+export function scrollPreviewToEditorSelection(
+  view: EditorView,
+  previewRoot: Element,
+): boolean {
+  if (!view?.state || !previewRoot) return false;
+
+  const range = mapEditorSelectionToPreviewRange(view, previewRoot);
+  if (range) {
+    scrollPreviewCaretIntoView(previewRoot, range);
+    return true;
+  }
+
+  const line0 = view.state.doc.lineAt(view.state.selection.main.head).number - 1;
+  const block = findDataLineBlockForSourceLine(previewRoot, line0);
+  if (!block) return false;
+  const scroller = findPreviewScrollContainer(previewRoot);
+  if (!scroller) return false;
+  scrollRectIntoPreviewScroller(scroller, block.getBoundingClientRect());
+  return true;
 }
 
 function applyPreviewCaretOverlay(
@@ -871,7 +921,7 @@ export function mirrorPreviewSelection(
   if (range.collapsed) {
     cssHighlights()?.delete(PREVIEW_SYNC_HIGHLIGHT_NAME);
     applyPreviewCaretOverlay(previewRoot, range, options.caretRect);
-    scrollPreviewCaretIntoView(previewRoot, range);
+    scrollPreviewCaretIntoView(previewRoot, range, options.caretRect);
     return true;
   }
 

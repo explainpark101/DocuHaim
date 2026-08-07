@@ -75,6 +75,10 @@ config({
         },
       },
     },
+    // Stub: skip md-editor-rt CDN load of Cropper.js 1 (clip UI replaced by ImageToolbar).
+    cropper: {
+      instance: {},
+    },
   },
   markdownItConfig(md) {
     XSSPlugin(md, {

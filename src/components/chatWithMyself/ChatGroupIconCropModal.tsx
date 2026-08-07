@@ -6,7 +6,7 @@ import Cropper, {
   type Size,
 } from 'react-easy-crop';
 import { Dialog, Switch } from 'radix-ui';
-import { getCroppedImg } from '@/utils/chatWithMyself/cropImage';
+import { getCroppedImg, getCroppedImgFromPadMeta } from '@/utils/chatWithMyself/cropImage';
 import {
   composeImageColorGrid,
   getOpaqueContentBounds,
@@ -376,15 +376,25 @@ export default function ChatGroupIconCropModal({
   }, []);
 
   const handleConfirm = async () => {
-    if (!compositeSrc || !croppedAreaPixels || busy) return;
+    if (!compositeSrc || !croppedAreaPixels || busy || !imageSrc) return;
     setBusy(true);
     try {
       const padTransparent = !backgroundColor;
-      const file = await getCroppedImg(compositeSrc, croppedAreaPixels, {
+      const options = {
         keepTransparency: keepTransparency || padTransparent,
         backgroundColor:
           keepTransparency || padTransparent ? null : backgroundColor,
-      });
+      };
+      const file = padMeta
+        ? (
+          await getCroppedImgFromPadMeta(
+            imageSrc,
+            croppedAreaPixels,
+            padMeta,
+            options,
+          )
+        ).file
+        : await getCroppedImg(compositeSrc, croppedAreaPixels, options);
       await onConfirm(file);
       onOpenChange(false);
     } catch {

@@ -28,7 +28,9 @@ export type EditorActionId =
   | 'editor-export-pdf'
   | 'editor-pgbr'
   | 'editor-heading-remap'
-  | 'editor-checklist-progress';
+  | 'editor-checklist-progress'
+  | 'editor-image-upload'
+  | 'editor-image-clip';
 
 export type EditorActionHandler = () => void | Promise<void>;
 
@@ -280,5 +282,17 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     title: '체크리스트 진행률',
     description: '체크리스트 진행률 도구 열기',
     keywords: ['checklist', 'progress', '진행률', '체크리스트'],
+  },
+  {
+    id: 'editor-image-upload',
+    title: '이미지 업로드',
+    description: '이미지를 선택해 노트에 업로드',
+    keywords: ['image', 'upload', '이미지', '업로드', '사진'],
+  },
+  {
+    id: 'editor-image-clip',
+    title: '이미지 잘라서 업로드',
+    description: 'Cropper.js / react-easy-crop으로 자른 뒤 업로드',
+    keywords: ['image', 'crop', 'clip', '자르기', '크롭', 'cropper'],
   },
 ] as const;

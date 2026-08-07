@@ -10,7 +10,9 @@ export type CropPadMeta = {
   originY: number;
 };
 
-/** Max side length of the full padded canvas (not the source cell alone). */
+/** Max side length of the full padded canvas (not the source cell alone).
+ * Preview composites may downscale large images; export via
+ * `getCroppedImgFromPadMeta` to restore natural resolution. */
 const MAX_GRID_SIDE = 3072;
 
 function createImage(url: string): Promise<HTMLImageElement> {

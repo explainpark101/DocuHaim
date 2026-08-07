@@ -1977,7 +1977,7 @@ export default function CoverEditor({
       <Modal
         isOpen={Boolean(cropTarget)}
         onClose={() => setCropTarget(null)}
-        contentClassName="max-w-2xl"
+        contentClassName="max-w-2xl w-[min(96vw,42rem)] max-h-[90vh] h-[min(90vh,720px)]"
       >
         {cropTarget ? (
           <NoteImageCropPanel
