@@ -22,7 +22,7 @@ Desktop / landscape: keep Radix `ContextMenu` or anchored `DropdownMenu` at the 
 
 | Module | Role |
 |--------|------|
-| `MobileContextMenuModal.tsx` | Full-screen `Dialog` shell, `title` + optional `subtitle`, z-`100010` |
+| `MobileContextMenuModal.tsx` | Full-screen `Dialog` shell, `title` + optional `subtitle`, z-`100010`; wires `useHistoryOverlayBack` so mobile browser back closes the menu without leaving the page |
 | `AdaptiveContextMenu.tsx` | `ContextMenu` (desktop) ↔ modal (mobile); `AdaptiveMenuItem` / `AdaptiveMenuSeparator` |
 | `mobileContextMenuStyles.ts` | Overlay/panel/item classes, dismiss guard constants |
 
@@ -44,14 +44,17 @@ Never ship a mobile context menu with a generic title only (e.g. just “메뉴�
 3. Menu actions: `AdaptiveMenuItem` (auto-closes modal) or call `onOpenChange(false)` / `onClose`.
 4. z-index: nested portals inside the modal ≥ parent (`z-100010` baseline; see `modal-nested-z-index` rule).
 5. Long-press open → `vibrateLongPressAction()` (see `touch-long-press-haptics` rule).
+6. Mobile back: use `MobileContextMenuModal` (includes `useHistoryOverlayBack`); optional `historyOverlayId` when stacking with other overlays.
 
 ```text
 ❌ BAD — Radix ContextMenu popup on phone portrait
 ❌ BAD — mobile modal with no header / generic “옵션” title
 ❌ BAD — new one-off full-screen menu component instead of MobileContextMenuModal
+❌ BAD — context menu modal without history back (back navigates away from the app route)
 ✅ GOOD — AdaptiveContextMenu + title = message preview, subtitle = “채팅 메시지”
 ✅ GOOD — SidebarContextMenu mobileDialog + path in header
 ✅ GOOD — CoverEditor: single MobileContextMenuModal + coverElementLabel(title)
+✅ GOOD — browser back closes menu only (`useHistoryOverlayBack` in MobileContextMenuModal)
 ```
 
 Prefer **English** in new code comments if Korean Unicode might corrupt.

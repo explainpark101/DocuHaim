@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Dialog } from 'radix-ui';
 import { motion as Motion } from 'motion/react';
 import { X } from 'lucide-react';
+import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import {
   MOBILE_CONTEXT_MENU_DISMISS_GUARD_MS,
   MOBILE_CONTEXT_MENU_OVERLAY_CLASS,
@@ -27,6 +28,8 @@ type Props = {
   children: ReactNode;
   /** Extra class on scrollable body. */
   bodyClassName?: string;
+  /** History entry id for mobile back-button close (default: mobile-context-menu). */
+  historyOverlayId?: string;
 };
 
 /**
@@ -39,9 +42,14 @@ export default function MobileContextMenuModal({
   subtitle,
   children,
   bodyClassName = '',
+  historyOverlayId = 'mobile-context-menu',
 }: Props) {
   const dismissGuardUntilRef = useRef(0);
   const [pointerBlocked, setPointerBlocked] = useState(false);
+
+  const closeMenu = useCallback(() => onOpenChange(false), [onOpenChange]);
+
+  useHistoryOverlayBack(open, closeMenu, open, historyOverlayId);
 
   useEffect(() => {
     if (open) {
@@ -64,7 +72,6 @@ export default function MobileContextMenuModal({
   };
 
   const pointerBlockClass = pointerBlocked ? 'pointer-events-none' : '';
-  const closeMenu = () => onOpenChange(false);
 
   return (
     <Dialog.Root
