@@ -1,4 +1,9 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  type PointerEventHandler,
+  type ReactNode,
+} from 'react';
 import { ContextMenu } from 'radix-ui';
 import MobileContextMenuModal, {
   useMobileContextMenuClose,
@@ -100,7 +105,7 @@ type AdaptiveMenuItemProps = {
   danger?: boolean;
   disabled?: boolean;
   onSelect?: () => void;
-  onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerDown?: PointerEventHandler<HTMLElement>;
   children: ReactNode;
 };
 
@@ -141,8 +146,8 @@ export function AdaptiveMenuItem({
     <Item
       className={resolvedClass}
       disabled={disabled}
-      onPointerDown={onPointerDown}
-      onSelect={onSelect}
+      {...(onPointerDown ? { onPointerDown } : {})}
+      {...(onSelect ? { onSelect: () => onSelect() } : {})}
     >
       {children}
     </Item>

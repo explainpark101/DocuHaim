@@ -11,7 +11,7 @@ import {
 } from '@/components/contextMenu/mobileContextMenuStyles';
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
-const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
+const PANEL_TRANSITION = { type: 'spring' as const, stiffness: 420, damping: 32 };
 
 const MobileContextMenuCloseContext = createContext<(() => void) | null>(null);
 
