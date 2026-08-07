@@ -29,10 +29,13 @@ export function useTreeNodeTouchGesture({
   const dragReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
+  const targetRef = useRef<HTMLElement | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
   const dragReadyRef = useRef(false);
   const contextMenuOpenedRef = useRef(false);
   const [dragBlockedByMenuGesture, setDragBlockedByMenuGesture] = useState(false);
   const [dragReady, setDragReady] = useState(false);
+  const [isPressing, setIsPressing] = useState(false);
 
   const clearTimers = useCallback(() => {
     if (dragReadyTimerRef.current) {
@@ -48,8 +51,11 @@ export function useTreeNodeTouchGesture({
   const endPointerGesture = useCallback(() => {
     clearTimers();
     startRef.current = null;
+    targetRef.current = null;
+    pointerIdRef.current = null;
     dragReadyRef.current = false;
     setDragReady(false);
+    setIsPressing(false);
     setDragBlockedByMenuGesture(false);
   }, [clearTimers]);
 
@@ -69,12 +75,24 @@ export function useTreeNodeTouchGesture({
       setDragBlockedByMenuGesture(false);
       clearTimers();
       startRef.current = { x: event.clientX, y: event.clientY };
+      targetRef.current = event.currentTarget as HTMLElement;
+      pointerIdRef.current = event.pointerId;
+      setIsPressing(true);
 
       dragReadyTimerRef.current = setTimeout(() => {
         dragReadyTimerRef.current = null;
         dragReadyRef.current = true;
         setDragReady(true);
         vibrateLongPressAction();
+        const el = targetRef.current;
+        const pointerId = pointerIdRef.current;
+        if (el && pointerId != null) {
+          try {
+            el.setPointerCapture(pointerId);
+          } catch {
+            /* ignore */
+          }
+        }
       }, TREE_TOUCH_DRAG_READY_MS);
 
       menuTimerRef.current = setTimeout(() => {
@@ -106,7 +124,12 @@ export function useTreeNodeTouchGesture({
 
       if (!dragReadyRef.current) {
         endPointerGesture();
+        return;
       }
+
+      // After drag-ready haptic, block native scroll so TouchSensor can take over.
+      event.preventDefault();
+      event.stopPropagation();
     },
     [endPointerGesture],
   );
@@ -123,6 +146,7 @@ export function useTreeNodeTouchGesture({
     contextMenuOpenedRef,
     dragBlockedByMenuGesture,
     dragReady,
+    isPressing,
     bindTouchGesture: {
       onPointerDown,
       onPointerMove,

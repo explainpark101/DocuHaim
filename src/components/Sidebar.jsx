@@ -1049,7 +1049,8 @@ export default function Sidebar({
       >
       <div
         ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4 space-y-6"
+        data-sidebar-tree-scroll
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-4 space-y-6"
         onDragEnter={handleScrollAreaDragEnter}
         onDragOver={handleScrollAreaDragOver}
         onClick={(e) => {
