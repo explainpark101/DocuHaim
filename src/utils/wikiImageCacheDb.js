@@ -19,7 +19,7 @@ wikiImageCacheDb
     blobs: 'path, createdAt',
   });
 
-const DEBUG = true;
+const DEBUG = false;
 
 /**
  * Blob 캐시에서 Object URL 반환

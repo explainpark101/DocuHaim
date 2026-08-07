@@ -4,9 +4,21 @@ import {
   parseWikiImageInner,
 } from '@/utils/wikiImageSyntax';
 import { decodeMarkdownImageSrc, isStorageImageSrc } from '@/utils/storageImagePath';
+import { peekResolvedWikiImageUrl } from '@/utils/wikiImageResolver';
 
-const DEBUG_WIKI_IMAGE_PLUGIN = true;
+const DEBUG_WIKI_IMAGE_PLUGIN = false;
 const PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
+
+/** Prefer a stable remembered http(s) URL so rebuilds skip the placeholder flash.
+ * blob: URLs stay out of markdown HTML — XSS filters often strip them; hydration
+ * applies those synchronously after the DOM updates.
+ */
+function srcForStoragePath(path) {
+  const url = peekResolvedWikiImageUrl(path);
+  if (!url) return PLACEHOLDER_SRC;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return PLACEHOLDER_SRC;
+  return url;
+}
 
 /**
  * markdown-it 플러그인: ![[path]] / ![[path|size]] / ![[path|bg=#hex]] 를 data-wiki-path 를 가진 img 로 변환.
@@ -70,7 +82,7 @@ export function wikiImagePlugin(md) {
           }
           const style = buildWikiImageStyle(parsed ?? {});
           if (style) imgToken.attrSet('style', style);
-          imgToken.attrSet('src', PLACEHOLDER_SRC);
+          imgToken.attrSet('src', srcForStoragePath(path));
           imgToken.attrSet('alt', '');
           children.push(imgToken);
 
@@ -341,7 +353,8 @@ export function wikiImagePlugin(md) {
         const src = token.attrGet('src');
         if (src) token.attrSet('data-md-src', src);
         if (src && isStorageImageSrc(decodeMarkdownImageSrc(src))) {
-          token.attrSet('src', PLACEHOLDER_SRC);
+          const decoded = decodeMarkdownImageSrc(src);
+          token.attrSet('src', srcForStoragePath(decoded));
           token.attrSet('data-storage-image', '1');
         }
 

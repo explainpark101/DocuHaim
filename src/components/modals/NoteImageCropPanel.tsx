@@ -545,17 +545,25 @@ export default function NoteImageCropPanel({
     };
   }, [cropAreaEl]);
 
-  const applyPixelArea = useCallback((area: Area) => {
+  /**
+   * Map a source-pixel area onto the cropper.
+   * - fitNatural: size the crop window from the area at zoom 1 (init / fit-content).
+   * - default: keep the current zoom; size the window so it still shows `area`
+   *   (resize/pan snap must not reset zoom to 1).
+   */
+  const applyPixelArea = useCallback((area: Area, options?: { fitNatural?: boolean }) => {
     const media = mediaRef.current;
     if (!media) return;
     const mz = mediaZoomOf(media);
     const stage = stageRef.current?.getBoundingClientRect();
     const maxWidth = Math.max(MIN_CROP_PX, (stage?.width ?? media.width) - 16);
     const maxHeight = Math.max(MIN_CROP_PX, (stage?.height ?? media.height) - 16);
+    const fitNatural = Boolean(options?.fitNatural) || !cropSizeRef.current;
+    const zoomFactor = fitNatural ? 1 : Math.min(4, Math.max(1, zoomRef.current));
     const displaySize = clampCropSize(
       {
-        width: area.width * mz,
-        height: area.height * mz,
+        width: area.width * mz * zoomFactor,
+        height: area.height * mz * zoomFactor,
       },
       maxWidth,
       maxHeight,
@@ -612,7 +620,7 @@ export default function NoteImageCropPanel({
   const snapToOpaqueContent = useCallback(() => {
     const area = opaqueAreaRef.current;
     if (!area) return;
-    applyPixelArea(area);
+    applyPixelArea(area, { fitNatural: true });
     window.requestAnimationFrame(() => {
       recordNow();
     });
@@ -756,6 +764,8 @@ export default function NoteImageCropPanel({
             }}
             onCropChange={handleCropChange}
             onZoomChange={(next) => {
+              // Ignore library zoom while resizing the crop window (same as onCropChange).
+              if (freezeCropRef.current || dragRef.current || snappingRef.current) return;
               zoomRef.current = next;
               setZoom(next);
               recordSoon();

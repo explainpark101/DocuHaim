@@ -1,6 +1,9 @@
 /**
- * ![[path]] 위키 이미지용 URL 해석 (캐시 + Pre-signed URL)
- * MarkdownEditor, ExportPDFPage 등에서 공통 사용.
+ * ![[path]] wiki image URL resolution (cache + pre-signed URL).
+ * Shared by MarkdownEditor, ExportPDFPage, etc.
+ *
+ * Keeps a process-lifetime memory map of path → URL so preview re-renders
+ * can reuse the same src string (avoids flicker from new blob: URLs / async IDB).
  */
 import {
   getCachedWikiImageObjectUrl,
@@ -12,6 +15,52 @@ import { WIKI_IMAGE_CACHE_MODE_URL } from '@/utils/wikiImageSettings';
 import { getWikiImageCacheMode } from '@/utils/wikiImageRuntime';
 
 const inFlight = new Map();
+/** @type {Map<string, string>} */
+const memoryUrlByPath = new Map();
+
+/**
+ * Sync lookup for already-resolved URLs (markdown-it / hydration before paint).
+ * @param {string} path
+ * @returns {string|null}
+ */
+export function peekResolvedWikiImageUrl(path) {
+  if (!path) return null;
+  return memoryUrlByPath.get(path) || null;
+}
+
+/**
+ * @param {string} path
+ * @param {string} url
+ */
+function rememberResolvedWikiImageUrl(path, url) {
+  if (!path || !url) return;
+  const prev = memoryUrlByPath.get(path);
+  if (prev && prev !== url && typeof prev === 'string' && prev.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(prev);
+    } catch {
+      /* ignore */
+    }
+  }
+  memoryUrlByPath.set(path, url);
+}
+
+/**
+ * Drop memory entry (and revoke blob URLs) so the next resolve fetches fresh.
+ * @param {string} path
+ */
+function forgetResolvedWikiImageUrl(path) {
+  if (!path) return;
+  const prev = memoryUrlByPath.get(path);
+  memoryUrlByPath.delete(path);
+  if (prev && typeof prev === 'string' && prev.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(prev);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 /**
  * @param {string} path
@@ -23,10 +72,16 @@ export function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
     return Promise.resolve(null);
   }
   const skipCache = opts.skipCache === true;
+  if (!skipCache) {
+    const mem = memoryUrlByPath.get(path);
+    if (mem) return Promise.resolve(mem);
+  }
+
   const inFlightKey = skipCache ? `${path}:refresh` : path;
   if (inFlight.has(inFlightKey)) {
     return inFlight.get(inFlightKey);
   }
+
   const fetchFresh = () =>
     getPresignedUrl(path).then(async (url) => {
       if (!url) return null;
@@ -34,6 +89,7 @@ export function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
       if (mode === WIKI_IMAGE_CACHE_MODE_URL) {
         const expiresAt = Date.now() + 3600 * 1000;
         await setCachedWikiImageUrl({ path, url, expiresAt });
+        rememberResolvedWikiImageUrl(path, url);
         return url;
       }
       try {
@@ -41,25 +97,39 @@ export function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
         if (!res.ok) return null;
         const blob = await res.blob();
         await setCachedWikiImageBlob({ path, blob });
-        return URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        rememberResolvedWikiImageUrl(path, objectUrl);
+        return objectUrl;
       } catch {
         return null;
       }
     });
 
   const p = skipCache
-    ? fetchFresh()
+    ? (async () => {
+        forgetResolvedWikiImageUrl(path);
+        return fetchFresh();
+      })()
     : (async () => {
         const mode = getWikiImageCacheMode();
         if (mode === WIKI_IMAGE_CACHE_MODE_URL) {
           const cachedUrl = await getCachedWikiImageUrl(path);
-          if (cachedUrl) return cachedUrl;
+          if (cachedUrl) {
+            rememberResolvedWikiImageUrl(path, cachedUrl);
+            return cachedUrl;
+          }
           return fetchFresh();
         }
+        const mem = memoryUrlByPath.get(path);
+        if (mem) return mem;
         const cachedObjectUrl = await getCachedWikiImageObjectUrl(path);
-        if (cachedObjectUrl) return cachedObjectUrl;
+        if (cachedObjectUrl) {
+          rememberResolvedWikiImageUrl(path, cachedObjectUrl);
+          return cachedObjectUrl;
+        }
         return fetchFresh();
       })();
+
   inFlight.set(inFlightKey, p);
   p.finally(() => {
     inFlight.delete(inFlightKey);

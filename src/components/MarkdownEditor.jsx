@@ -92,7 +92,10 @@ import {
   hydrateNoteCoverPreviewsInRoot,
   teardownNoteCoverPreviewsInRoot,
 } from '@/utils/noteCover/hydrateNoteCoverPreview';
-import { enhancePreviewHeadingFolds } from '@/utils/previewHeadingFold';
+import {
+  enhancePreviewHeadingFolds,
+  previewNeedsHeadingFoldEnhance,
+} from '@/utils/previewHeadingFold';
 import {
   getHeadingFoldCollapsedIds,
   getHeadingFoldKeyFromFile,
@@ -106,10 +109,6 @@ import { useAlertModal } from '@/contexts/AlertModalContext';
 import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
 import { resolvePreviewHref } from '@/utils/appHref';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
-import {
-  hydrateStorageImagesInRoot,
-  markdownLikelyHasStorageImages,
-} from '@/utils/storageImageHydration';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { useTocTitleWrap } from '@/hooks/useTocTitleWrap';
@@ -131,6 +130,7 @@ import {
   restoreMirroredPreviewSelection,
   syncPreviewSelectionToEditor,
 } from '@/utils/previewSelectionSync';
+import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import {
   attachPreviewMirrorEdit,
   abandonDetachedPreviewMirrorEdit,
@@ -163,7 +163,6 @@ import {
   wrapSelectionWithInlineCode,
 } from '@/utils/editorMarkdownStyle';
 
-const DEBUG_WIKI_IMAGE = true;
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
 const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
 const buildPreviewHeadingId = (arg1, _arg2, arg3) => {
@@ -841,43 +840,12 @@ export default function MarkdownEditor({
     };
   }, [catalogEl, catalogWidth]);
 
-  useEffect(() => {
-    if (!onResolveWikiImageUrl || !value) {
-      if (DEBUG_WIKI_IMAGE && value && !onResolveWikiImageUrl) {
-        console.log('[wiki-image] Hydration: skipped (no onResolveWikiImageUrl)');
-      }
-      return;
-    }
-
-    const runHydration = (attempt = 0) => {
-      const root = containerRef.current;
-      if (!root) {
-        if (DEBUG_WIKI_IMAGE && attempt === 0) console.log('[wiki-image] Hydration: no containerRef.current');
-        return;
-      }
-      const count = hydrateStorageImagesInRoot(root, {
-        getPresignedUrl: onResolveWikiImageUrl,
-        currentNotePath: currentFile?.id,
-      });
-      if (count === 0 && markdownLikelyHasStorageImages(value)) {
-        if (DEBUG_WIKI_IMAGE) {
-          console.log('[wiki-image] Hydration: storage images in markdown but none in DOM yet', {
-            attempt: attempt + 1,
-          });
-        }
-      } else if (DEBUG_WIKI_IMAGE) {
-        console.log('[wiki-image] Hydration: bound imgs', { count, attempt: attempt + 1 });
-      }
-    };
-
-    const delays = [100, 350, 700, 1200];
-    const timers = delays.map((delay, i) =>
-      setTimeout(() => {
-        runHydration(i);
-      }, delay)
-    );
-    return () => timers.forEach((t) => clearTimeout(t));
-  }, [value, onResolveWikiImageUrl, currentFile?.id]);
+  useWikiImageHydration(
+    containerRef,
+    value,
+    onResolveWikiImageUrl,
+    currentFile?.id ?? null,
+  );
 
   // Auto-mount note-cover CoverSlide in preview; re-run when preview DOM settles/recreates.
   useEffect(() => {
@@ -948,42 +916,87 @@ export default function MarkdownEditor({
   }, [currentFile?.id, currentFile?.type, previewOnly]);
 
   // Preview heading fold chevrons (persist collapsed ids per document).
+  // Do not depend on `value` — tearing down on every keystroke flashes chevrons.
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !value) return undefined;
+    if (!container) return undefined;
 
     const docKey = getHeadingFoldKeyFromFile(currentFile);
     const collapsedRef = { current: /** @type {string[]} */ ([]) };
     let cancelled = false;
     /** @type {(() => void) | null} */
     let cleanupEnhance = null;
+    /** @type {MutationObserver | null} */
+    let mutationObserver = null;
+    /** @type {ReturnType<typeof setTimeout>[]} */
+    let timers = [];
 
-    const run = async () => {
-      if (docKey) {
-        const saved = await getHeadingFoldCollapsedIds(docKey);
-        if (cancelled) return;
-        if (saved) collapsedRef.current = saved;
-      }
-      const preview = container.querySelector('.md-editor-preview');
-      if (!preview || cancelled) return;
-      cleanupEnhance?.();
-      cleanupEnhance = enhancePreviewHeadingFolds(preview, {
+    const getPreview = () => container.querySelector('.md-editor-preview');
+
+    const applyEnhance = () => {
+      if (cancelled) return;
+      const preview = getPreview();
+      if (!preview) return;
+      // Preview HTML rebuild drops old chevrons with the nodes. Only bind headings
+      // that lack the enhance marker — never strip live chevrons (avoids flicker
+      // and MutationObserver loops from inserting buttons).
+      if (!previewNeedsHeadingFoldEnhance(preview)) return;
+
+      const nextCleanup = enhancePreviewHeadingFolds(preview, {
         collapsedIds: collapsedRef.current,
         onCollapsedChange: (ids) => {
           collapsedRef.current = ids;
           if (docKey) void saveHeadingFoldCollapsedIds(docKey, ids);
         },
       });
+      const prevCleanup = cleanupEnhance;
+      cleanupEnhance = () => {
+        prevCleanup?.();
+        nextCleanup();
+      };
     };
 
-    const delays = [100, 320, 650, 1200];
-    const timers = delays.map((delay) => setTimeout(() => { void run(); }, delay));
+    const ensureObserver = (preview) => {
+      if (!preview || mutationObserver || typeof MutationObserver === 'undefined') return;
+      mutationObserver = new MutationObserver(applyEnhance);
+      mutationObserver.observe(preview, {
+        childList: true,
+        subtree: true,
+      });
+    };
+
+    const boot = async () => {
+      if (docKey) {
+        const saved = await getHeadingFoldCollapsedIds(docKey);
+        if (cancelled) return;
+        if (saved) collapsedRef.current = saved;
+      }
+      if (cancelled) return;
+
+      ensureObserver(getPreview());
+      applyEnhance();
+
+      // Preview root / headings may appear slightly after mount.
+      timers = [80, 250, 600].map((delay) =>
+        setTimeout(() => {
+          if (cancelled) return;
+          ensureObserver(getPreview());
+          applyEnhance();
+        }, delay),
+      );
+    };
+
+    void boot();
+
     return () => {
       cancelled = true;
       timers.forEach((t) => clearTimeout(t));
+      mutationObserver?.disconnect();
+      mutationObserver = null;
       cleanupEnhance?.();
+      cleanupEnhance = null;
     };
-  }, [value, currentFile?.id, currentFile?.type]);
+  }, [currentFile?.id, currentFile?.type]);
 
   useEffect(() => {
     if (!previewOnly) return;

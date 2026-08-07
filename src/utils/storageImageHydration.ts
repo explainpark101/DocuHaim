@@ -1,4 +1,4 @@
-import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import { peekResolvedWikiImageUrl, resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import {
   decodeMarkdownImageSrc,
   isStorageImageSrc,
@@ -6,21 +6,55 @@ import {
 } from '@/utils/storageImagePath';
 
 const MAX_RETRIES = 2;
+const PLACEHOLDER_SRC_PREFIX = 'data:';
 
 type HydrateOptions = {
   getPresignedUrl: (path: string) => Promise<string | null>;
   currentNotePath?: string | null;
 };
 
+function imgSrcMatches(img: HTMLImageElement, url: string): boolean {
+  const attr = img.getAttribute('src') || '';
+  return attr === url || img.src === url;
+}
+
+function applySrc(img: HTMLImageElement, path: string, url: string) {
+  if (!imgSrcMatches(img, url)) {
+    img.src = url;
+  }
+  img.dataset.storageHydrated = path;
+  delete img.dataset.storageHydrating;
+}
+
 function bindResolvedSrc(
   img: HTMLImageElement,
   path: string,
   getPresignedUrl: (path: string) => Promise<string | null>,
 ) {
-  // Already showing a resolved URL for this path.
-  if (img.dataset.storageHydrated === path && img.getAttribute('src') && !img.src.startsWith('data:')) {
+  const mem = peekResolvedWikiImageUrl(path);
+  const attrSrc = img.getAttribute('src') || '';
+  const hasRealSrc = Boolean(attrSrc) && !attrSrc.startsWith(PLACEHOLDER_SRC_PREFIX);
+
+  // Already showing a resolved URL for this path — keep it (no reload).
+  if (img.dataset.storageHydrated === path && hasRealSrc) {
+    if (mem && !imgSrcMatches(img, mem)) {
+      applySrc(img, path, mem);
+    }
     return;
   }
+
+  // Sync path: reuse remembered URL before paint / before async IDB.
+  if (mem) {
+    applySrc(img, path, mem);
+    img.onerror = () => {
+      delete img.dataset.storageHydrated;
+      void resolveWikiImageUrl(path, getPresignedUrl, { skipCache: true }).then((url: string | null) => {
+        if (url) applySrc(img, path, url);
+      });
+    };
+    return;
+  }
+
   // In-flight for the same path — avoid duplicate fetch storms.
   if (img.dataset.storageHydrating === path) return;
 
@@ -35,9 +69,7 @@ function bindResolvedSrc(
   };
   const setSrc = (url: string | null | undefined) => {
     if (url) {
-      img.src = url;
-      img.dataset.storageHydrated = path;
-      delete img.dataset.storageHydrating;
+      applySrc(img, path, url);
       return;
     }
     finishFail();

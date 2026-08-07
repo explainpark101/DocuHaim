@@ -52,6 +52,36 @@ function collectSectionElements(heading: HTMLElement): HTMLElement[] {
   return nodes;
 }
 
+function isSkippableHeading(el: HTMLElement): boolean {
+  return Boolean(el.closest('[data-note-cover-placeholder], [data-note-cover-preview]'));
+}
+
+function listFoldableHeadings(previewRoot: ParentNode): HTMLElement[] {
+  return Array.from(previewRoot.querySelectorAll(HEADING_SELECTOR)).filter(
+    (el): el is HTMLElement => {
+      if (!(el instanceof HTMLElement)) return false;
+      if (isSkippableHeading(el)) return false;
+      return true;
+    },
+  );
+}
+
+/**
+ * True when the preview has foldable headings that are not enhanced yet
+ * (e.g. after md-editor-rt rebuilds preview HTML).
+ */
+export function previewNeedsHeadingFoldEnhance(
+  previewRoot: ParentNode | null | undefined,
+): boolean {
+  if (!previewRoot || typeof previewRoot.querySelectorAll !== 'function') return false;
+  const headings = listFoldableHeadings(previewRoot);
+  for (const heading of headings) {
+    if (heading.getAttribute(ENHANCED_ATTR) === '1') continue;
+    if (collectSectionElements(heading).length > 0) return true;
+  }
+  return false;
+}
+
 function createChevronButton(open: boolean): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
@@ -93,6 +123,7 @@ function setSectionHidden(nodes: HTMLElement[], hidden: boolean): void {
 
 /**
  * Attach fold chevrons to preview headings. Returns a cleanup function.
+ * Idempotent for headings already marked with data-md-preview-heading-fold.
  */
 export function enhancePreviewHeadingFolds(
   previewRoot: ParentNode | null | undefined,
@@ -102,22 +133,12 @@ export function enhancePreviewHeadingFolds(
     return () => {};
   }
 
-  const root = previewRoot as HTMLElement;
   const collapsed = new Set(
     Array.from(options.collapsedIds ?? []).filter((id) => typeof id === 'string' && id),
   );
   const cleanups: Array<() => void> = [];
 
-  const headings = Array.from(root.querySelectorAll(HEADING_SELECTOR)).filter(
-    (el): el is HTMLElement => {
-      if (!(el instanceof HTMLElement)) return false;
-      // Skip headings inside cover preview / other mounts.
-      if (el.closest('[data-note-cover-placeholder], [data-note-cover-preview]')) {
-        return false;
-      }
-      return true;
-    },
-  );
+  const headings = listFoldableHeadings(previewRoot);
 
   headings.forEach((heading, index) => {
     if (heading.getAttribute(ENHANCED_ATTR) === '1') return;

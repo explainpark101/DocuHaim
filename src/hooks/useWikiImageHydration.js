@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   hydrateStorageImagesInRoot,
   markdownLikelyHasStorageImages,
@@ -9,68 +9,87 @@ import { PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/printSettingsStore';
  * Wiki `![[path]]` and standard markdown storage images hydration.
  * Retries when the preview DOM settles, storage accessors appear, or the
  * network comes back online (Export PDF refresh / HMR / reconnect).
+ *
+ * Does not tear down observers on every markdown `value` change — that would
+ * delay re-binding and flash placeholders. DOM mutations drive re-hydrate;
+ * `value` only schedules a sync pass (memory cache hits before paint).
+ *
  * @param {{ current: HTMLElement | null }} rootRef
  * @param {string} value
  * @param {(path: string) => Promise<string|null>} [getPresignedUrl]
  * @param {string | null} [currentNotePath]
  */
 export function useWikiImageHydration(rootRef, value, getPresignedUrl, currentNotePath = null) {
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
   useEffect(() => {
-    if (!getPresignedUrl || !value) return undefined;
+    if (!getPresignedUrl) return undefined;
 
-    let rafId = 0;
     let cancelled = false;
+    /** @type {MutationObserver | null} */
+    let mutationObserver = null;
 
-    const runHydration = () => {
-      if (cancelled) return;
-      const root = rootRef?.current;
-      const scopedCount = hydrateStorageImagesInRoot(root, {
-        getPresignedUrl,
-        currentNotePath,
-      });
-      if (scopedCount > 0) return;
-      if (!markdownLikelyHasStorageImages(value)) return;
-      hydrateStorageImagesInRoot(document, {
-        getPresignedUrl,
-        currentNotePath,
-      });
-    };
-
-    const schedule = () => {
-      if (rafId) return;
-      rafId = window.requestAnimationFrame(() => {
-        rafId = 0;
+    const ensureObserver = (root) => {
+      if (!root || mutationObserver || typeof MutationObserver === 'undefined') return;
+      // Sync in the MO callback so remembered URLs attach before paint.
+      mutationObserver = new MutationObserver(() => {
+        if (cancelled) return;
         runHydration();
       });
-    };
-
-    const delays = [0, 100, 350, 700, 1200, 2500];
-    const timers = delays.map((delay) => setTimeout(runHydration, delay));
-
-    const root = rootRef?.current;
-    let mutationObserver = null;
-    if (root && typeof MutationObserver !== 'undefined') {
-      mutationObserver = new MutationObserver(schedule);
       mutationObserver.observe(root, {
         childList: true,
         subtree: true,
         attributes: true,
         attributeFilter: ['data-wiki-path', 'data-md-src'],
       });
-    }
+    };
 
-    const onOnline = () => schedule();
-    const onStoreReady = () => schedule();
+    const runHydration = () => {
+      if (cancelled) return;
+      const root = rootRef?.current;
+      ensureObserver(root);
+      const scopedCount = hydrateStorageImagesInRoot(root, {
+        getPresignedUrl,
+        currentNotePath,
+      });
+      if (scopedCount > 0) return;
+      if (!markdownLikelyHasStorageImages(valueRef.current)) return;
+      hydrateStorageImagesInRoot(document, {
+        getPresignedUrl,
+        currentNotePath,
+      });
+    };
+
+    ensureObserver(rootRef?.current);
+
+    // Initial settle only (not on every keystroke).
+    const delays = [0, 100, 350, 700];
+    const timers = delays.map((delay) => setTimeout(runHydration, delay));
+
+    const onOnline = () => runHydration();
+    const onStoreReady = () => runHydration();
     window.addEventListener('online', onOnline);
     window.addEventListener(PRINT_SETTINGS_STORE_CHANGED_EVENT, onStoreReady);
 
     return () => {
       cancelled = true;
-      if (rafId) window.cancelAnimationFrame(rafId);
       timers.forEach((t) => clearTimeout(t));
       mutationObserver?.disconnect();
+      mutationObserver = null;
       window.removeEventListener('online', onOnline);
       window.removeEventListener(PRINT_SETTINGS_STORE_CHANGED_EVENT, onStoreReady);
     };
+  }, [getPresignedUrl, rootRef, currentNotePath]);
+
+  // Markdown edits rebuild preview HTML. Apply remembered URLs immediately;
+  // MutationObserver covers cases where React commits after this effect.
+  useEffect(() => {
+    if (!getPresignedUrl || !value) return;
+    if (!markdownLikelyHasStorageImages(value)) return;
+    hydrateStorageImagesInRoot(rootRef?.current, {
+      getPresignedUrl,
+      currentNotePath,
+    });
   }, [value, getPresignedUrl, rootRef, currentNotePath]);
 }
