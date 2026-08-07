@@ -1,0 +1,51 @@
+---
+description: Mobile touch long-press actions must trigger navigator vibration via shared haptic helpers.
+alwaysApply: true
+---
+
+# Touch long-press haptics
+
+When the user **sustains touch** on mobile to trigger an action (context menu, action sheet, drag gate, etc.), provide brief haptic feedback via the **Vibration API**.
+
+Do **not** call `navigator.vibrate` directly in feature code.
+
+## Shared helpers
+
+| Module | Use |
+|--------|-----|
+| `src/utils/hapticFeedback.ts` | `vibrateLongPressAction()` — call when a custom long-press timer fires |
+| `src/utils/initTouchLongPressHaptics.ts` | Bootstrapped in `main.jsx`; covers native `contextmenu` from touch (e.g. sidebar tree) |
+
+Constants: `LONG_PRESS_HAPTIC_MS` (12). Helpers dedupe pulses within ~150ms.
+
+## When to call `vibrateLongPressAction()`
+
+Call it **once**, at the moment the long-press action actually fires (menu opens, sheet opens, drag mode starts, etc.) — not on `pointerdown`.
+
+Typical cases:
+
+- Custom `setTimeout` long-press handlers (`usePressableCardMenu`, chat bubbles, preview table menu, …)
+- Touch-only drag gates (e.g. cover editor move after hold threshold)
+- Any new coarse-pointer hold gesture that replaces right-click
+
+## Global safety net
+
+`initTouchLongPressHaptics()` listens for touch-derived `contextmenu` and vibrates when no custom handler already did. Custom handlers that call `vibrateLongPressAction()` are deduped automatically.
+
+## Checklist for new touch long-press UI
+
+1. Implement hold with `pointerdown` / `pointermove` slop / `pointerup` (or reuse `usePressableCardMenu`).
+2. On action fire → `vibrateLongPressAction()`.
+3. On coarse pointers, `preventDefault()` native `contextmenu` when the custom handler owns the gesture.
+4. Do **not** add per-feature vibration durations or raw `navigator.vibrate` calls.
+
+```text
+❌ BAD — navigator.vibrate?.(12) inline in a component
+❌ BAD — long-press menu with no haptic on mobile
+❌ BAD — vibrate on pointerdown instead of when the action fires
+✅ GOOD — vibrateLongPressAction() when the menu/sheet opens
+✅ GOOD — rely on initTouchLongPressHaptics for native contextmenu-only surfaces
+✅ GOOD — reuse usePressableCardMenu for card-style long-press menus
+```
+
+Prefer **English** in new code comments if Korean Unicode might corrupt.
