@@ -205,6 +205,7 @@ export default function TreeNode({
     contextMenuOpenedRef,
     dragBlockedByMenuGesture,
     dragReady,
+    isPressing,
     bindTouchGesture,
   } = useTreeNodeTouchGesture({
     enabled: mobileTree && Boolean(onOpenContextMenu) && !isUnderDeletingFolder,
@@ -250,6 +251,39 @@ export default function TreeNode({
   const isDragGhost =
     !isCopyDrag && (isDragging || (activeDragItemIds?.has?.(selectKey) ?? false));
 
+  const treeScrollLockRef = useRef(null);
+
+  const lockMobileTreeScroll = useCallback((target) => {
+    if (!mobileTree) return;
+    const el = target instanceof HTMLElement ? target : null;
+    if (el) el.style.touchAction = 'none';
+    const scroll = el?.closest?.('[data-sidebar-tree-scroll]');
+    if (scroll instanceof HTMLElement) {
+      treeScrollLockRef.current = scroll;
+      scroll.style.overflow = 'hidden';
+    }
+  }, [mobileTree]);
+
+  const unlockMobileTreeScroll = useCallback((target) => {
+    const el = target instanceof HTMLElement ? target : null;
+    if (el) el.style.touchAction = '';
+    const scroll = treeScrollLockRef.current;
+    if (scroll) {
+      scroll.style.overflow = '';
+      treeScrollLockRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    unlockMobileTreeScroll(rowRef.current);
+  }, [isDragging, unlockMobileTreeScroll]);
+
+  useEffect(
+    () => () => unlockMobileTreeScroll(rowRef.current),
+    [unlockMobileTreeScroll],
+  );
+
   const composePointerHandler = (gestureHandler, dndHandler) => (event) => {
     gestureHandler?.(event);
     dndHandler?.(event);
@@ -273,22 +307,25 @@ export default function TreeNode({
   const rowPointerHandlers =
     mobileTree && onOpenContextMenu
       ? {
-          onPointerDown: composePointerHandler(
-            bindTouchGesture.onPointerDown,
-            dragAllowed ? dragPointerHandlers.onPointerDown : undefined,
-          ),
-          onPointerMove: composePointerHandler(
-            bindTouchGesture.onPointerMove,
-            dragAllowed ? dragPointerHandlers.onPointerMove : undefined,
-          ),
-          onPointerUp: composePointerHandler(
-            bindTouchGesture.onPointerUp,
-            dragAllowed ? dragPointerHandlers.onPointerUp : undefined,
-          ),
-          onPointerCancel: composePointerHandler(
-            bindTouchGesture.onPointerCancel,
-            dragAllowed ? dragPointerHandlers.onPointerCancel : undefined,
-          ),
+          onPointerDown: (event) => {
+            if (dragAllowed) lockMobileTreeScroll(event.currentTarget);
+            bindTouchGesture.onPointerDown?.(event);
+            if (dragAllowed) dragPointerHandlers.onPointerDown?.(event);
+          },
+          onPointerMove: (event) => {
+            bindTouchGesture.onPointerMove?.(event);
+            if (dragAllowed) dragPointerHandlers.onPointerMove?.(event);
+          },
+          onPointerUp: (event) => {
+            bindTouchGesture.onPointerUp?.(event);
+            if (dragAllowed) dragPointerHandlers.onPointerUp?.(event);
+            unlockMobileTreeScroll(event.currentTarget);
+          },
+          onPointerCancel: (event) => {
+            bindTouchGesture.onPointerCancel?.(event);
+            if (dragAllowed) dragPointerHandlers.onPointerCancel?.(event);
+            unlockMobileTreeScroll(event.currentTarget);
+          },
         }
       : {};
 
@@ -644,7 +681,11 @@ export default function TreeNode({
             ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
             : ''
         } ${showDropHighlight ? 'bg-blue-100 dark:bg-blue-900/40' : ''} ${
-          mobileTree && dragReady ? 'touch-none' : mobileTree ? 'touch-pan-y' : ''
+          mobileTree && dragAllowed && (dragReady || isPressing)
+            ? 'touch-none'
+            : mobileTree
+              ? 'touch-pan-y'
+              : ''
         } ${
           shouldShowStickyFolder
             ? 'sticky bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-[1px] border-b border-gray-200/80 dark:border-odp-borderSoft'
