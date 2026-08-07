@@ -1,0 +1,1 @@
+const _="blob",a="url",t="s3haim_wiki_image_cache_mode";function n(){if(typeof window>"u")return _;try{return window.localStorage.getItem(t)==="url"?"url":_}catch{return _}}function i(e){if(!(typeof window>"u")&&!(e!==_&&e!=="url"))try{window.localStorage.setItem(t,e)}catch{}}export{_ as W,a,n as l,i as s};
