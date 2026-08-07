@@ -46,6 +46,7 @@ Typical cases:
 ✅ GOOD — vibrateLongPressAction() when the menu/sheet opens
 ✅ GOOD — rely on initTouchLongPressHaptics for native contextmenu-only surfaces
 ✅ GOOD — reuse usePressableCardMenu for card-style long-press menus
+✅ GOOD — sidebar tree rows: useTreeRowLongPress + SidebarContextMenu mobileDialog
 ```
 
 Prefer **English** in new code comments if Korean Unicode might corrupt.
