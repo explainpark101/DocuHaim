@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { MdPreview, config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
@@ -6,6 +6,7 @@ import {
   chatAttachmentsToMarkdown,
   extractChatBodyAttachments,
 } from '@/utils/chatWithMyself';
+import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import '@/styles/md-editor-rt/preview.css';
@@ -18,21 +19,6 @@ config({
     },
   },
 });
-
-function usePrefersColorScheme(): 'light' | 'dark' {
-  const [prefersDark, setPrefersDark] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handle = (e: MediaQueryListEvent) => setPrefersDark(e.matches);
-    mq.addEventListener('change', handle);
-    return () => mq.removeEventListener('change', handle);
-  }, []);
-  return prefersDark ? 'dark' : 'light';
-}
 
 type ChatMessageMarkdownProps = {
   text?: string | null;
@@ -58,8 +44,8 @@ export default function ChatMessageMarkdown({
   noteExists,
   onOpenViewPath,
 }: ChatMessageMarkdownProps) {
-  const systemTheme = usePrefersColorScheme();
-  const resolvedTheme = theme || systemTheme;
+  const appTheme = useDocumentTheme();
+  const resolvedTheme = theme || appTheme;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const { text: mdText, attachments } = useMemo(
     () => extractChatBodyAttachments(text || ''),

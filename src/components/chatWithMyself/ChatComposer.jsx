@@ -43,6 +43,7 @@ import {
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { registerChatActions } from '@/utils/advancedSearch/chatActions';
+import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 
 const ChatComposerMdEditor = lazy(
   () => import('@/components/chatWithMyself/ChatComposerMdEditor'),
@@ -84,21 +85,6 @@ function getComposerContentMaxH({ editing = false } = {}) {
   // Keep room for chat nav, status bar, group row, and reply chrome.
   const capped = Math.floor(vvH * 0.28);
   return Math.max(COMPOSER_MIN_H, Math.min(COMPOSER_MAX_H, capped));
-}
-
-function usePrefersColorScheme() {
-  const [prefersDark, setPrefersDark] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handle = (e) => setPrefersDark(e.matches);
-    mq.addEventListener('change', handle);
-    return () => mq.removeEventListener('change', handle);
-  }, []);
-  return prefersDark ? 'dark' : 'light';
 }
 
 function useIsCoarsePointer() {
@@ -233,8 +219,8 @@ export default function ChatComposer({
   const removedExistingPathsRef = useRef([]);
   const lineNumbersCompartmentRef = useRef(null);
   const lineNumbersViewsRef = useRef(new WeakSet());
-  const systemTheme = usePrefersColorScheme();
-  const resolvedTheme = theme || systemTheme;
+  const appTheme = useDocumentTheme();
+  const resolvedTheme = theme || appTheme;
   const isMobile = useIsCoarsePointer();
   const applePlatform = useMemo(() => isApplePlatform(), []);
   const sendModLabel = applePlatform ? 'Cmd+Enter' : 'Ctrl+Enter';

@@ -4,7 +4,7 @@ export const chatSelectTriggerClass =
   'inline-flex max-w-full items-center justify-between gap-1 rounded-md border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-surface px-2 py-1 text-sm text-gray-800 dark:text-odp-fgStrong outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50';
 
 export const chatSelectContentClass =
-  'z-[200] max-h-[min(280px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+  'z-100010 max-h-[min(280px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
 
 export const chatSelectItemClass =
   'relative flex cursor-pointer select-none items-center gap-2 rounded-sm py-1.5 pl-7 pr-3 text-sm text-gray-800 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-gray-100 dark:text-odp-fg dark:data-[highlighted]:bg-odp-focusBg';

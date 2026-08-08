@@ -18,6 +18,7 @@ import {
   chatDialogOverlayClass,
   chatFieldInputClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
+import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 
 ensureChatDefaultFrequentEmojis();
 
@@ -130,25 +131,6 @@ const VALID_POPULAR = POPULAR_LUCIDE.filter((n) => LUCIDE_NAME_SET.has(n));
 
 const MAX_LUCIDE_RESULTS = 96;
 
-function useEmojiMartTheme(): 'light' | 'dark' {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
-    typeof document !== 'undefined' &&
-    document.documentElement.classList.contains('dark')
-      ? 'dark'
-      : 'light',
-  );
-  useEffect(() => {
-    const root = document.documentElement;
-    const sync = () => {
-      setTheme(root.classList.contains('dark') ? 'dark' : 'light');
-    };
-    sync();
-    const obs = new MutationObserver(sync);
-    obs.observe(root, { attributes: true, attributeFilter: ['class'] });
-    return () => obs.disconnect();
-  }, []);
-  return theme;
-}
 
 function LucideIconGrid({
   names,
@@ -192,7 +174,7 @@ function PickerBody({
   const [tab, setTab] = useState<TabId>('emoji');
   const [lucideQuery, setLucideQuery] = useState('');
   const deferredQuery = useDeferredValue(lucideQuery.trim().toLowerCase());
-  const emojiTheme = useEmojiMartTheme();
+  const emojiTheme = useDocumentTheme();
 
   useEffect(() => {
     ensureChatDefaultFrequentEmojis();
