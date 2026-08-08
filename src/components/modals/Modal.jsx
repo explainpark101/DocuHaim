@@ -11,8 +11,8 @@ const ANIMATION_DURATION_MS = 200;
 /**
  * @param {{
  *   isOpen: boolean,
- *   onClose?: () => void,
- *   onConfirm?: () => void,
+ *   onClose?: (() => void) | undefined,
+ *   onConfirm?: (() => void) | undefined,
  *   children?: import('react').ReactNode,
  *   contentClassName?: string,
  *   contentStyle?: import('react').CSSProperties,
