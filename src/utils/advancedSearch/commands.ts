@@ -35,6 +35,7 @@ export type AppCommandId =
   | 'settings-navigation'
   | 'settings-display'
   | 'settings-chat'
+  | 'settings-og'
   | 'settings-advanced-search'
   | 'settings-wiki-image'
   | 'settings-snippets'
@@ -213,6 +214,23 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '채팅 입력창 helper text 표시',
     path: '/settings#settings-chat',
     keywords: ['채팅 설정', 'helper', '단축키 안내'],
+  },
+  {
+    id: 'settings-og',
+    title: '설정 · Open Graph Worker',
+    description: 'Social Preview Inspector Worker (우선 사용)',
+    path: '/settings#settings-og',
+    keywords: [
+      'opengraph',
+      'og',
+      'worker',
+      'cloudflare',
+      'social preview',
+      'inspect',
+      '링크 미리보기',
+      'microlink',
+      '메타데이터',
+    ],
   },
   {
     id: 'settings-advanced-search',

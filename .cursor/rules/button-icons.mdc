@@ -30,8 +30,8 @@ Every interactive button (`Button`, native `<button>`, and button-like controls 
   저장
 </Button>
 
-// ✅ GOOD — icon only with accessible name
-<Button variant="tertiary" onClick={onClose} aria-label="닫기" title="닫기">
+// ✅ GOOD — icon only with accessible name (+ Radix Tooltip if a hover hint is needed; never title=)
+<Button variant="tertiary" onClick={onClose} aria-label="닫기">
   <IconX size={14} />
 </Button>
 ```

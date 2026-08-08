@@ -2,6 +2,10 @@ import { cacheOg, deleteCachedOg, getCachedOg } from './chatDb.js';
 import { ogArchiveKey } from './paths.js';
 import { parseAppViewPath } from './format.js';
 import { parseWikiImageInner } from '@/utils/wikiImageSyntax';
+import {
+  buildOgWorkerInspectUrl,
+  loadOgWorkerUrl,
+} from '@/utils/ogWorkerSettings';
 
 const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/gi;
 
@@ -357,6 +361,142 @@ async function fetchMicrolink(
   return payload;
 }
 
+type SocialPreviewField = {
+  value?: string | null;
+  source?: string | null;
+  status?: string;
+};
+
+type SocialPreviewInspectResponse = {
+  url?: string;
+  extracted?: {
+    title?: string | null;
+    description?: string | null;
+    openGraph?: Record<string, string>;
+    twitter?: Record<string, string>;
+  };
+  previews?: {
+    openGraph?: { fields?: Record<string, SocialPreviewField> };
+    twitter?: { fields?: Record<string, SocialPreviewField> };
+  };
+  error?: string;
+  code?: string;
+};
+
+function previewFieldValue(
+  fields: Record<string, SocialPreviewField> | undefined,
+  key: string,
+): string {
+  return String(fields?.[key]?.value || '').trim();
+}
+
+/**
+ * User-configured Cloudflare Worker (Social Preview Inspector).
+ * GET {base}/inspect?url=…
+ * @see https://cloudflare-experiments.com/docs/experiments/social-preview-inspector
+ */
+async function fetchOgViaCloudflareWorker(
+  url: string,
+  workerBaseUrl: string,
+): Promise<OgPayload> {
+  const endpoint = buildOgWorkerInspectUrl(workerBaseUrl, url);
+  const res = await fetch(endpoint, OG_FETCH_INIT);
+  if (!res.ok) throw new Error(`og-worker ${res.status}`);
+  const data = (await res.json()) as SocialPreviewInspectResponse;
+  if (data.error) {
+    throw new Error(`og-worker: ${data.error}${data.code ? ` (${data.code})` : ''}`);
+  }
+
+  const extracted = data.extracted || {};
+  const ogTags = extracted.openGraph || {};
+  const twTags = extracted.twitter || {};
+  const ogFields = data.previews?.openGraph?.fields;
+  const twFields = data.previews?.twitter?.fields;
+
+  const title =
+    previewFieldValue(ogFields, 'title') ||
+    ogTags['og:title'] ||
+    twTags['twitter:title'] ||
+    extracted.title ||
+    '';
+  const description =
+    previewFieldValue(ogFields, 'description') ||
+    ogTags['og:description'] ||
+    twTags['twitter:description'] ||
+    extracted.description ||
+    '';
+  const image =
+    previewFieldValue(ogFields, 'image') ||
+    ogTags['og:image'] ||
+    twTags['twitter:image'] ||
+    previewFieldValue(twFields, 'image') ||
+    '';
+  const siteName = ogTags['og:site_name'] || '';
+  const type =
+    previewFieldValue(ogFields, 'type') || ogTags['og:type'] || 'website';
+  const canonical =
+    previewFieldValue(ogFields, 'url') ||
+    ogTags['og:url'] ||
+    data.url ||
+    url;
+
+  const payload: OgPayload = {
+    url: canonical,
+    fetchedAt: new Date().toISOString(),
+    title: String(title || '').trim(),
+    description: String(description || '').trim(),
+    image: String(image || '').trim(),
+    siteName: String(siteName || '').trim(),
+    type: String(type || 'website').trim() || 'website',
+    provider: 'og-worker',
+    embedHtml: '',
+  };
+  if (!hasOgContent(payload)) throw new Error('og-worker empty payload');
+  return payload;
+}
+
+/**
+ * Last-resort public API: https://www.opengraph.to/api (10 req/hour/IP).
+ * @see https://www.opengraph.to/api
+ */
+async function fetchOpenGraphTo(url: string): Promise<OgPayload> {
+  const endpoint = `https://www.opengraph.to/api/v1/og?url=${encodeURIComponent(url)}`;
+  const res = await fetch(endpoint, OG_FETCH_INIT);
+  if (res.status === 429) {
+    throw new Error('opengraph.to rate limited');
+  }
+  if (!res.ok) throw new Error(`opengraph.to ${res.status}`);
+  const data = (await res.json()) as {
+    url?: string;
+    title?: string;
+    description?: string;
+    siteName?: string;
+    type?: string;
+    image?: { url?: string } | null;
+    twitter?: { image?: string; title?: string; description?: string };
+    error?: string;
+  };
+  if (data.error) throw new Error(`opengraph.to: ${data.error}`);
+
+  const image =
+    data.image?.url ||
+    data.twitter?.image ||
+    '';
+  const payload: OgPayload = {
+    url: data.url || url,
+    fetchedAt: new Date().toISOString(),
+    title: data.title || data.twitter?.title || '',
+    description: data.description || data.twitter?.description || '',
+    image,
+    siteName: data.siteName || '',
+    type: data.type || 'website',
+    provider: 'opengraph.to',
+    embedHtml: '',
+  };
+  if (!hasOgContent(payload)) throw new Error('opengraph.to empty payload');
+  return payload;
+}
+
 /**
  * CORS HTML proxies tried in order. Each returns the target page HTML.
  */
@@ -596,10 +736,18 @@ function mergeOgPayloads(sourceUrl: string, payloads: OgPayload[]): OgPayload {
   };
 }
 
+function mergedIsStrong(
+  sourceUrl: string,
+  payloads: OgPayload[],
+): boolean {
+  if (!payloads.length) return false;
+  return isStrongOg(mergeOgPayloads(sourceUrl, payloads), sourceUrl);
+}
+
 /**
- * Live fetch across Microlink, CORS HTML proxies, and YouTube oEmbed.
- * Collects successful results, merges the richest fields, and stops early
- * once a strong preview (title+image or embed) is available.
+ * Live fetch. Optional user Cloudflare Worker (Social Preview Inspector) runs
+ * first when configured; then YouTube oEmbed, Microlink, HTML proxies,
+ * opengraph.to. Merges richest fields; stops early on a strong preview.
  */
 export async function fetchOgMetadata(
   url: string,
@@ -622,15 +770,27 @@ export async function fetchOgMetadata(
     }
   };
 
+  // Preferred path when set in Settings — before every other provider.
+  // Docs: https://cloudflare-experiments.com/docs/experiments/social-preview-inspector
+  const workerBase = loadOgWorkerUrl();
+  if (workerBase) {
+    await tryProvider('og-worker', () =>
+      fetchOgViaCloudflareWorker(target, workerBase),
+    );
+    if (mergedIsStrong(target, collected)) {
+      return mergeOgPayloads(target, collected);
+    }
+  }
+
   if (isYouTubeUrl(target)) {
     await tryProvider('youtube-oembed', () => fetchYouTubeOembed(target));
-    if (collected.length && isStrongOg(mergeOgPayloads(target, collected), target)) {
+    if (mergedIsStrong(target, collected)) {
       return mergeOgPayloads(target, collected);
     }
   }
 
   await tryProvider('microlink', () => fetchMicrolink(target, { force }));
-  if (collected.length && isStrongOg(mergeOgPayloads(target, collected), target)) {
+  if (mergedIsStrong(target, collected)) {
     return mergeOgPayloads(target, collected);
   }
 
@@ -638,13 +798,14 @@ export async function fetchOgMetadata(
     await tryProvider(`og-html:${proxy.id}`, () =>
       fetchOpenGraphViaProxy(target, proxy),
     );
-    if (
-      collected.length &&
-      isStrongOg(mergeOgPayloads(target, collected), target)
-    ) {
-      break;
+    if (mergedIsStrong(target, collected)) {
+      return mergeOgPayloads(target, collected);
     }
   }
+
+  // Rate-limited (10/hour/IP) — only after other providers fail to get a strong card.
+  // Docs: https://www.opengraph.to/api
+  await tryProvider('opengraph.to', () => fetchOpenGraphTo(target));
 
   if (!collected.length) throw new Error('OpenGraph loading failed');
   const merged = mergeOgPayloads(target, collected);

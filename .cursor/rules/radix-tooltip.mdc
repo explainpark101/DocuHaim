@@ -1,0 +1,62 @@
+---
+description: Product tooltips must use Radix Tooltip — never HTML title= or ad-hoc hover UI.
+alwaysApply: true
+---
+
+# Radix Tooltip only
+
+Every **product tooltip** (hover/focus hint on buttons, icons, toolbar controls, truncated labels, etc.) must use Radix **`Tooltip`** from `radix-ui` (or `@radix-ui/react-tooltip`).
+
+Do **not** use native HTML `title=` as the tooltip UI. Do not invent custom hover divs or other tooltip libraries.
+
+## Pattern
+
+```tsx
+import { Tooltip } from 'radix-ui';
+
+<Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+  <Tooltip.Root>
+    <Tooltip.Trigger asChild>
+      <button type="button" aria-label="닫기">
+        …
+      </button>
+    </Tooltip.Trigger>
+    <Tooltip.Portal>
+      <Tooltip.Content
+        side="top"
+        sideOffset={6}
+        className="z-100001 max-w-[min(92vw,280px)] rounded-md border …"
+      >
+        닫기
+        <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+      </Tooltip.Content>
+    </Tooltip.Portal>
+  </Tooltip.Root>
+</Tooltip.Provider>
+```
+
+Reuse an ancestor `Tooltip.Provider` when several tooltips share a surface (e.g. sidebar, toolbar). Prefer existing project styles (`TreeNode`, `CoverSidebar`, `AdvancedSearchSidebarTrigger`, `MdEditorToolbarTooltips`).
+
+## Accessibility
+
+- Icon-only triggers: keep **`aria-label`** (or visible text). Tooltip copy does not replace the accessible name.
+- Do **not** add `title=` “for accessibility” alongside Radix — use `aria-label` / visible label instead.
+
+## Nested in modals
+
+If the tooltip opens inside a `Modal` / dialog, set Content z-index **above** the parent (baseline `z-100001` / see `modal-nested-z-index` rule).
+
+## Out of scope
+
+- Non-UI attributes that are not user-facing hover hints (e.g. SVG `<title>` for graphics semantics, document `<title>`).
+- Confirm/dialog **titles** (`title=` prop on `ConfirmModal`, etc.) — those are dialog headings, not tooltips.
+
+```text
+❌ BAD — <button title="저장">…</button>
+❌ BAD — custom absolute div shown on mouseenter as the product tooltip
+❌ BAD — tippy.js / floating-ui ad-hoc tooltip kit for app chrome
+✅ GOOD — Tooltip.Provider → Root → Trigger asChild → Portal → Content (+ Arrow)
+✅ GOOD — icon button: aria-label + Radix Tooltip.Content with the same hint text
+```
+
+Prefer **English** in new code comments if Korean Unicode might corrupt.

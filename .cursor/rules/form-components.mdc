@@ -64,15 +64,4 @@ Use **`@dnd-kit/core`**, **`@dnd-kit/sortable`**, and **`@dnd-kit/utilities`** o
 
 ## Tooltip: Radix only
 
-Tooltips **must** use Radix (`Tooltip` from `radix-ui` or `@radix-ui/react-tooltip`). Do not use `title=`, custom hover divs, or other tooltip libraries as the product tooltip UI.
-
-```jsx
-// ❌ BAD
-<button title="Save">...</button>
-
-// ✅ GOOD
-import { Tooltip } from 'radix-ui';
-<Tooltip.Provider>
-  <Tooltip.Root>...</Tooltip.Root>
-</Tooltip.Provider>
-```
+See **`radix-tooltip`** rule — product tooltips must use Radix `Tooltip`; never HTML `title=`.

@@ -5,6 +5,7 @@ import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
+import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
@@ -1017,6 +1018,8 @@ export default function SettingsPage({
             </span>
           </label>
         </div>
+
+        <OgWorkerSettings />
 
         {/* Advanced Search */}
         <div
