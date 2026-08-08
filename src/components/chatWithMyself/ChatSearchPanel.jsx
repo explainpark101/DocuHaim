@@ -34,6 +34,7 @@ import {
   chatMenuItemClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
 import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCardMenu';
+import { copyText } from '@/utils/copyText';
 import {
   SELF_GROUP,
   formatMessageDateLabel,
@@ -75,16 +76,6 @@ function useIsCoarsePointer() {
     };
   }, []);
   return coarse;
-}
-
-async function copyText(text) {
-  const value = String(text ?? '');
-  if (!value) return;
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch {
-    /* ignore */
-  }
 }
 
 function SearchResultMenuItems({

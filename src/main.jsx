@@ -8,6 +8,7 @@ import App from '@/App.jsx'
 import { ActivityIndicatorProvider } from '@/contexts/ActivityIndicatorContext'
 import { AlertModalProvider } from '@/contexts/AlertModalContext'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ToastProvider } from '@/contexts/ToastContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
@@ -56,9 +57,11 @@ function AppShell() {
   return (
     <ActivityIndicatorProvider>
       <AlertModalProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
       </AlertModalProvider>
     </ActivityIndicatorProvider>
   )

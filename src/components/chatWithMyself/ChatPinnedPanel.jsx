@@ -39,6 +39,7 @@ import {
   chatMenuItemClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
 import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCardMenu';
+import { copyText } from '@/utils/copyText';
 
 /** @typedef {'pinned' | 'noted' | 'edited'} CollectionTabId */
 /** @typedef {'full' | 'activeLabel' | 'iconOnly'} TabDensity */
@@ -127,16 +128,6 @@ function useIsCoarsePointer() {
     };
   }, []);
   return coarse;
-}
-
-async function copyText(text) {
-  const value = String(text ?? '');
-  if (!value) return;
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch {
-    /* ignore */
-  }
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   SmilePlus,
   RefreshCw,
   TextSelect,
+  Link2,
 } from 'lucide-react';
 import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
 import {
@@ -27,19 +28,10 @@ import {
   formatChatMessagePlainText,
   shareChatMessage,
 } from '@/utils/chatWithMyself';
+import { copyText } from '@/utils/copyText';
 
 /** Briefly block selection after open (long-press residual selection). */
 const SELECT_NONE_MS = 200;
-
-async function copyText(text) {
-  const value = String(text ?? '');
-  if (!value) return;
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch {
-    /* ignore */
-  }
-}
 
 /**
  * Mobile message actions dialog (centered).
@@ -48,6 +40,7 @@ async function copyText(text) {
 export default function ChatMessageContextMenu({
   open,
   message,
+  linkHref = null,
   onOpenChange,
   onReply,
   onDelete,
@@ -83,6 +76,7 @@ export default function ChatMessageContextMenu({
     message?.collapsed === '1' || message?.collapsed === true;
   const shareAvailable = canOfferWebShare();
   const hasLinks = extractUrls(message?.body || '').length > 0;
+  const copyLinkHref = String(linkHref || '').trim() || null;
 
   const messagePreview =
     (message?.body || '').replace(/\s+/g, ' ').slice(0, 120) || '(빈 메시지)';
@@ -169,6 +163,22 @@ export default function ChatMessageContextMenu({
                 )}
                 {collapsed ? '펼치기' : '접기'}
               </button>
+              {copyLinkHref ? (
+                <button
+                  type="button"
+                  className={menuBtnClass}
+                  onClick={() => {
+                    void copyText(copyLinkHref, {
+                      message: '링크 복사됨',
+                      icon: 'link',
+                    });
+                    onOpenChange?.(false);
+                  }}
+                >
+                  <Link2 size={16} className="shrink-0 text-gray-500" />
+                  링크 복사
+                </button>
+              ) : null}
               <button
                 type="button"
                 className={menuBtnClass}

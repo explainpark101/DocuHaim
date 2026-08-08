@@ -27,6 +27,7 @@ import {
   Share2,
   RefreshCw,
   TextSelect,
+  Link2,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import { VList } from 'virtua';
@@ -64,6 +65,7 @@ import {
   CHAT_MESSAGE_SCROLL_MARGIN,
 } from '@/utils/chatWithMyself/scrollToMessage';
 import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+import { copyText, resolveAnchorHref } from '@/utils/copyText';
 
 /** Near-bottom threshold for stick-to-bottom (px). */
 const STICK_BOTTOM_PX = 80;
@@ -93,16 +95,6 @@ const BUBBLE_RADIUS_PRESSED = '1.125rem';
 
 const iconBtnClass =
   'inline-flex shrink-0 items-center justify-center rounded p-0.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 bg-transparent hover:bg-transparent focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400';
-
-async function copyText(text) {
-  const value = String(text ?? '');
-  if (!value) return;
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch {
-    /* ignore */
-  }
-}
 
 function useIsCoarsePointer() {
   const [coarse, setCoarse] = useState(() => {
@@ -164,12 +156,14 @@ function MessageActionItems({
   onSelectCopy,
   shiftHeldRef,
   getPresignedUrl,
+  linkHref = null,
   _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
   const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
   const shareAvailable = canOfferWebShare();
   const hasLinks = extractUrls(msg?.body || '').length > 0;
+  const copyLinkHref = String(linkHref || '').trim() || null;
   return (
     <>
       <_Item
@@ -220,6 +214,20 @@ function MessageActionItems({
         )}
         {collapsed ? '펼치기' : '접기'}
       </_Item>
+      {copyLinkHref ? (
+        <_Item
+          className={chatMenuItemClass}
+          onSelect={() => {
+            void copyText(copyLinkHref, {
+              message: '링크 복사됨',
+              icon: 'link',
+            });
+          }}
+        >
+          <Link2 size={16} className="shrink-0 text-gray-500" />
+          링크 복사
+        </_Item>
+      ) : null}
       <_Item
         className={chatMenuItemClass}
         onSelect={() => {
@@ -546,7 +554,11 @@ const MessageBubble = memo(function MessageBubble({
   const rowRef = useRef(null);
   const longPressOpenedRef = useRef(false);
   const swipedThisGestureRef = useRef(false);
+  const contextLinkHrefRef = useRef(/** @type {string|null} */ (null));
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [contextLinkHref, setContextLinkHref] = useState(
+    /** @type {string|null} */ (null),
+  );
   const contextMenuClamp = useViewportClampNudge(contextMenuOpen);
   const [pressing, setPressing] = useState(false);
   const [localReactionPickerOpen, setLocalReactionPickerOpen] = useState(false);
@@ -594,7 +606,14 @@ const MessageBubble = memo(function MessageBubble({
     longPressMenuTimer.current = null;
     vibrateLongPressAction();
     // Keep press morph; rowSelected takes over when finger lifts.
-    onOpenMobileSheet?.(msg);
+    onOpenMobileSheet?.(msg, contextLinkHrefRef.current);
+  };
+
+  const captureContextLink = (target) => {
+    const href = resolveAnchorHref(target);
+    contextLinkHrefRef.current = href;
+    setContextLinkHref(href);
+    return href;
   };
 
   const applyOffset = (x) => {
@@ -605,6 +624,8 @@ const MessageBubble = memo(function MessageBubble({
   useEffect(() => {
     if (!isDeleting) return;
     setContextMenuOpen(false);
+    setContextLinkHref(null);
+    contextLinkHrefRef.current = null;
     applyOffset(0);
     clearLongPress();
     endPressVisual();
@@ -678,7 +699,26 @@ const MessageBubble = memo(function MessageBubble({
         // Mouse: no swipe-to-reply (text selection / click only)
         if (e.pointerType === 'mouse') return;
         if (e.button !== 0 && e.button !== -1) return;
-        if (e.target.closest('button, a, input, textarea')) return;
+        if (e.target.closest('button, input, textarea')) return;
+        const onLink = Boolean(e.target.closest?.('a[href]'));
+        captureContextLink(e.target);
+        // Links: allow long-press menu (copy link) but not swipe-to-reply.
+        if (onLink) {
+          if (!coarse) return;
+          pointerIdRef.current = e.pointerId;
+          swipeStartRef.current = { x: e.clientX, y: e.clientY };
+          axisRef.current = null;
+          longPressOpenedRef.current = false;
+          swipedThisGestureRef.current = false;
+          clearLongPress();
+          longPressThresholdTimer.current = setTimeout(() => {
+            setPressing(true);
+          }, LONG_PRESS_THRESHOLD_MS);
+          longPressMenuTimer.current = setTimeout(() => {
+            openMobileSheetFromLongPress();
+          }, LONG_PRESS_MENU_MS);
+          return;
+        }
         pointerIdRef.current = e.pointerId;
         swipeStartRef.current = { x: e.clientX, y: e.clientY };
         axisRef.current = null;
@@ -758,6 +798,7 @@ const MessageBubble = memo(function MessageBubble({
         onBubbleActivate?.(msg);
       }}
       onContextMenu={(e) => {
+        captureContextLink(e.target);
         if (isDeleting || coarse) {
           e.preventDefault();
           e.stopPropagation();
@@ -986,9 +1027,15 @@ const MessageBubble = memo(function MessageBubble({
       onOpenChange={(next) => {
         if (isDeleting) {
           setContextMenuOpen(false);
+          setContextLinkHref(null);
+          contextLinkHrefRef.current = null;
           return;
         }
         setContextMenuOpen(next);
+        if (!next) {
+          setContextLinkHref(null);
+          contextLinkHrefRef.current = null;
+        }
       }}
     >
       <ContextMenu.Trigger asChild disabled={isDeleting}>
@@ -1016,6 +1063,7 @@ const MessageBubble = memo(function MessageBubble({
             onSelectCopy={onSelectCopy}
             shiftHeldRef={shiftHeldRef}
             getPresignedUrl={getPresignedUrl}
+            linkHref={contextLinkHref}
             _Item={ContextMenu.Item}
           />
         </ContextMenu.Content>
@@ -1070,6 +1118,9 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   const loadingNewerLockRef = useRef(false);
   const listHostRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [sheetMessage, setSheetMessage] = useState(null);
+  const [sheetLinkHref, setSheetLinkHref] = useState(
+    /** @type {string|null} */ (null),
+  );
   const [selectCopyMessage, setSelectCopyMessage] = useState(null);
   const [ogReloadById, setOgReloadById] = useState(
     /** @type {Record<string, number>} */ ({}),
@@ -1086,13 +1137,24 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   const mobileContextMenu = useMobileContextMenuMode();
   const shiftHeldRef = useShiftHeldRef();
 
+  const openMobileSheet = useCallback((msg, linkHref = null) => {
+    if (!msg) return;
+    setSheetLinkHref(linkHref || null);
+    setSheetMessage(msg);
+  }, []);
+
+  const closeMobileSheet = useCallback(() => {
+    setSheetMessage(null);
+    setSheetLinkHref(null);
+  }, []);
+
   useEffect(() => {
     if (!sheetMessage?.id) return;
     const current = messages.find((m) => m.id === sheetMessage.id);
     if (!current || current.pendingSync === 'delete') {
-      setSheetMessage(null);
+      closeMobileSheet();
     }
-  }, [messages, sheetMessage]);
+  }, [messages, sheetMessage, closeMobileSheet]);
 
   useEffect(() => {
     if (!selectCopyMessage?.id) return;
@@ -1123,9 +1185,9 @@ const ChatMessageList = forwardRef(function ChatMessageList(
 
   const handleSelectCopy = useCallback((msg) => {
     if (!msg) return;
-    setSheetMessage(null);
+    closeMobileSheet();
     setSelectCopyMessage(msg);
-  }, []);
+  }, [closeMobileSheet]);
 
   const handleReloadOg = useCallback((msg) => {
     const id = msg?.id;
@@ -1544,7 +1606,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             onToggleReaction={onToggleReaction}
             onOpenNote={onOpenNote}
             onOpenReply={onOpenReplyTarget}
-            onOpenMobileSheet={setSheetMessage}
+            onOpenMobileSheet={openMobileSheet}
             onSelectCopy={handleSelectCopy}
             onReloadOg={handleReloadOg}
             onBubbleActivate={handleBubbleActivate}
@@ -1610,6 +1672,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       lastMessageRowIndex,
       handleSelectCopy,
       handleReloadOg,
+      openMobileSheet,
       ogReloadById,
     ],
   );
@@ -1650,8 +1713,9 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       <ChatMessageContextMenu
         open={Boolean(sheetMessage)}
         message={sheetMessage}
+        linkHref={sheetLinkHref}
         onOpenChange={(next) => {
-          if (!next) setSheetMessage(null);
+          if (!next) closeMobileSheet();
         }}
         onReply={onReply}
         onDelete={onDelete}
@@ -1661,7 +1725,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         onTogglePin={onTogglePin}
         onToggleCollapse={onToggleCollapse}
         onOpenReactionPicker={(m) => {
-          setSheetMessage(null);
+          closeMobileSheet();
           setReactionPickerMsgId(m?.id || null);
         }}
         onReloadOg={handleReloadOg}
