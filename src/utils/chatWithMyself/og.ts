@@ -498,31 +498,136 @@ async function fetchOpenGraphTo(url: string): Promise<OgPayload> {
 }
 
 /**
+ * ChatGPT share pages need `ogimg=plain` for crawler-friendly OG tags/image.
+ */
+function prepareHtmlProxyTargetUrl(url: string): string {
+  const raw = String(url || '').trim();
+  if (!raw) return raw;
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.replace(/^www\./i, '');
+    if (
+      /(^|\.)chatgpt\.com$/i.test(host) &&
+      /\/share\//i.test(u.pathname) &&
+      !u.searchParams.has('ogimg')
+    ) {
+      u.searchParams.set('ogimg', 'plain');
+      return u.toString();
+    }
+  } catch {
+    /* keep original */
+  }
+  return raw;
+}
+
+/**
+ * Decode a JSON string body that may be truncated (no closing quote).
+ * Large pages via allorigins `/get` often hit this — OG metas still sit in <head>.
+ */
+function unescapeJsonStringPrefix(escaped: string): string {
+  let out = '';
+  for (let i = 0; i < escaped.length; i++) {
+    const ch = escaped[i]!;
+    if (ch === '"') break;
+    if (ch !== '\\') {
+      out += ch;
+      continue;
+    }
+    const next = escaped[i + 1];
+    if (next == null) break;
+    if (next === 'u') {
+      const hex = escaped.slice(i + 2, i + 6);
+      if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+        out += String.fromCharCode(parseInt(hex, 16));
+        i += 5;
+        continue;
+      }
+    }
+    const map: Record<string, string> = {
+      '"': '"',
+      '\\': '\\',
+      '/': '/',
+      b: '\b',
+      f: '\f',
+      n: '\n',
+      r: '\r',
+      t: '\t',
+    };
+    out += map[next] ?? next;
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * allorigins `/get` → `{ "contents": "<html>..." }`.
+ * Also accepts raw HTML and truncated JSON (SyntaxError on res.json()).
+ */
+export function unwrapAllOriginsContents(body: string): string {
+  const raw = String(body ?? '');
+  if (!raw.trim()) return '';
+
+  try {
+    const data = JSON.parse(raw) as { contents?: unknown };
+    if (typeof data?.contents === 'string') return data.contents;
+    if (data?.contents == null && typeof data === 'object') return '';
+  } catch {
+    /* truncated / invalid JSON — recover below */
+  }
+
+  const m = raw.match(/^\s*\{\s*"contents"\s*:\s*"/);
+  if (m) {
+    return unescapeJsonStringPrefix(raw.slice(m[0].length));
+  }
+
+  const trimmed = raw.trim();
+  if (/^(<!DOCTYPE|<html|<head|<meta)/i.test(trimmed)) return raw;
+  return '';
+}
+
+/** Prefer <head> only — enough for OG/twitter meta, cheaper to parse. */
+function htmlForOgParse(html: string): string {
+  const s = String(html || '');
+  if (!s) return '';
+  const lower = s.toLowerCase();
+  const end = lower.indexOf('</head>');
+  if (end >= 0) return s.slice(0, end + '</head>'.length);
+  // Incomplete download: keep a bounded prefix that usually includes metas.
+  return s.length > 256_000 ? s.slice(0, 256_000) : s;
+}
+
+/**
  * CORS HTML proxies tried in order. Each returns the target page HTML.
  */
 const OG_HTML_PROXIES: readonly OgHtmlProxy[] = Object.freeze([
   {
     id: 'corsproxy.io',
     async fetchHtml(targetUrl: string) {
-      const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+      const target = prepareHtmlProxyTargetUrl(targetUrl);
+      const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(target)}`;
       const res = await fetch(proxyUrl, OG_FETCH_INIT);
       if (!res.ok) throw new Error(`corsproxy.io ${res.status}`);
       const html = await res.text();
-      if (!String(html || '').trim()) {
+      // Misconfigured proxies sometimes echo allorigins JSON — unwrap if so.
+      const unwrapped = unwrapAllOriginsContents(html);
+      const body = unwrapped || html;
+      if (!String(body || '').trim()) {
         throw new Error('corsproxy.io empty body');
       }
-      return html;
+      return body;
     },
   },
   {
     id: 'allorigins.win',
     async fetchHtml(targetUrl: string) {
-      // allorigins.win returns JSON { contents: "<html>..." } (CORS-unlocked).
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+      // /get returns JSON { contents: "<html>..." }. Read as text so a
+      // truncated body does not throw JSON SyntaxError before we unwrap.
+      const target = prepareHtmlProxyTargetUrl(targetUrl);
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
       const res = await fetch(proxyUrl, OG_FETCH_INIT);
       if (!res.ok) throw new Error(`allorigins.win ${res.status}`);
-      const data = (await res.json()) as { contents?: string };
-      const html = String(data?.contents ?? '');
+      const text = await res.text();
+      const html = unwrapAllOriginsContents(text);
       if (!html.trim()) throw new Error('allorigins.win empty body');
       return html;
     },
@@ -544,15 +649,15 @@ function absolutizeUrl(
 
 /**
  * Parse Open Graph / twitter / document meta from an HTML string.
+ * Accepts raw HTML or an allorigins `{ contents }` JSON envelope.
  */
 export function parseOpenGraphHtml(
   htmlString: string,
   targetUrl: string,
 ): OGData {
-  const doc = new DOMParser().parseFromString(
-    String(htmlString || ''),
-    'text/html',
-  );
+  const unwrapped = unwrapAllOriginsContents(String(htmlString || ''));
+  const html = htmlForOgParse(unwrapped || String(htmlString || ''));
+  const doc = new DOMParser().parseFromString(html, 'text/html');
   const getMetaProperty = (prop: string): string | undefined => {
     const content =
       doc.querySelector(`meta[property="${prop}"]`)?.getAttribute('content') ||
@@ -940,48 +1045,21 @@ export async function reloadOgCacheForMessageBody(
 }
 
 /**
- * Cache-first: return archived OG immediately. When online, re-fetch with a
- * fresh connection in the background and call `onUpdate`.
+ * Cache-first: return archived OG as-is. Does not refresh in the background —
+ * force-reload only via `reloadOgCache` (chat context menu).
+ * Network fetch runs only on a cache miss.
  */
 export async function loadAndArchiveOg(
   url: string,
   storage?: OgArchiveStorage | null,
-  options: {
-    onUpdate?: (payload: LoadOgResult) => void;
-  } = {},
 ): Promise<LoadOgResult> {
-  const { onUpdate } = options;
   const cached = await readCachedOg(url, storage);
   const fallback = makeFallbackOg(url);
 
-  const refreshInBackground = (urlHash: string, key: string) => {
-    if (!isBrowserOnline()) return;
-    void (async () => {
-      try {
-        const fresh = await refreshAndArchiveOg(url, storage, {
-          urlHash,
-          key,
-          force: true,
-        });
-        onUpdate?.({
-          urlHash,
-          key,
-          data: fresh,
-          fromArchive: false,
-        });
-      } catch {
-        /* keep showing cached card */
-      }
-    })();
-  };
-
   if (cached?.data) {
-    const urlHash = cached.urlHash;
-    const key = cached.key;
-    refreshInBackground(urlHash, key);
     return {
-      urlHash,
-      key,
+      urlHash: cached.urlHash,
+      key: cached.key,
       data: cached.data,
       fromArchive: true,
     };

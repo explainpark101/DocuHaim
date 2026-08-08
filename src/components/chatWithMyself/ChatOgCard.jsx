@@ -36,11 +36,9 @@ export default function ChatOgCard({
     const shouldForce = reloadKey > prevReloadKeyRef.current;
     prevReloadKeyRef.current = reloadKey;
 
-    const load = async ({ showLoading = true, force = false } = {}) => {
-      if (showLoading) {
-        setLoading(true);
-        setShowEmbed(false);
-      }
+    const load = async ({ force = false } = {}) => {
+      setLoading(true);
+      setShowEmbed(false);
       try {
         if (force) {
           const fresh = await reloadOgCache(url, ogStorage);
@@ -50,11 +48,7 @@ export default function ChatOgCard({
           }
           return;
         }
-        const result = await loadAndArchiveOg(url, ogStorage, {
-          onUpdate: (next) => {
-            if (!cancelled && next?.data) setData(next.data);
-          },
-        });
+        const result = await loadAndArchiveOg(url, ogStorage);
         if (!cancelled) {
           setData(result.data);
           setLoading(false);
@@ -75,14 +69,8 @@ export default function ChatOgCard({
 
     void load({ force: shouldForce });
 
-    const onOnline = () => {
-      void load({ showLoading: false, force: false });
-    };
-    window.addEventListener('online', onOnline);
-
     return () => {
       cancelled = true;
-      window.removeEventListener('online', onOnline);
     };
     // ogStorage identity may change; archive adapters are equivalent for a given url
     // eslint-disable-next-line react-hooks/exhaustive-deps
