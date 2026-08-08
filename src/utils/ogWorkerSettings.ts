@@ -3,7 +3,7 @@
  * @see https://cloudflare-experiments.com/docs/experiments/social-preview-inspector
  */
 export const OG_WORKER_DEPLOY_URL =
-  'https://deploy.workers.cloudflare.com/?url=https://github.com/shrinathsnayak/cloudflare-experiments/tree/main/apps/experiments/social-preview-inspector';
+  'https://deploy.workers.cloudflare.com/?url=https://github.com/explainpark101/og/tree/main/';
 
 export const OG_WORKER_DEPLOY_BUTTON_IMG =
   'https://deploy.workers.cloudflare.com/button';
