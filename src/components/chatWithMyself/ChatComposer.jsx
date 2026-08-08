@@ -1,8 +1,10 @@
 import {
+  forwardRef,
   lazy,
   Suspense,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -158,38 +160,45 @@ function makeQueueId() {
     : `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export default function ChatComposer({
-  groups = [],
-  selectedGroup,
-  onSelectedGroupChange,
-  onAddGroup,
-  onSend,
-  _sending = false,
-  theme,
-  replyTo = null,
-  onClearReply,
-  editTarget = null,
-  onClearEdit,
-  onSaveEdit,
-  ogStorage = null,
-  timeZone,
-  getPresignedUrl,
-  /** When true, outer bar has no bg (parent paints full-bleed). */
-  bare = false,
-  showToolbar = true,
-  showLineNumbers = false,
-  /** Prefer native textarea over MdEditor/CodeMirror (perf). */
-  lightweight = false,
-  /** Share-target (or similar) seed: replace compose body once consumed. */
-  seedBody = null,
-  onSeedConsumed,
-  /** Fill parent height (resizable dock); editor expands to remaining space. */
-  fillParent = false,
-  /** Storage-backend scope so drafts never cross S3 / Local / WebDAV. */
-  draftScope = '',
-  /** Focus the message input once when the chat composer becomes ready. */
-  autoFocusOnMount = true,
-}) {
+/**
+ * @typedef {{ enqueueFiles: (fileList: FileList | File[] | null | undefined) => Promise<void> }} ChatComposerHandle
+ */
+
+const ChatComposer = forwardRef(function ChatComposer(
+  {
+    groups = [],
+    selectedGroup,
+    onSelectedGroupChange,
+    onAddGroup,
+    onSend,
+    _sending = false,
+    theme,
+    replyTo = null,
+    onClearReply,
+    editTarget = null,
+    onClearEdit,
+    onSaveEdit,
+    ogStorage = null,
+    timeZone,
+    getPresignedUrl,
+    /** When true, outer bar has no bg (parent paints full-bleed). */
+    bare = false,
+    showToolbar = true,
+    showLineNumbers = false,
+    /** Prefer native textarea over MdEditor/CodeMirror (perf). */
+    lightweight = false,
+    /** Share-target (or similar) seed: replace compose body once consumed. */
+    seedBody = null,
+    onSeedConsumed,
+    /** Fill parent height (resizable dock); editor expands to remaining space. */
+    fillParent = false,
+    /** Storage-backend scope so drafts never cross S3 / Local / WebDAV. */
+    draftScope = '',
+    /** Focus the message input once when the chat composer becomes ready. */
+    autoFocusOnMount = true,
+  },
+  ref,
+) {
   const [value, setValue] = useState('');
   const [markdownEnabled, setMarkdownEnabled] = useState(false);
   const [inlineAddOpen, setInlineAddOpen] = useState(false);
@@ -727,6 +736,14 @@ export default function ChatComposer({
     setImageQueue((prev) => [...prev, ...accepted]);
   }, []);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      enqueueFiles,
+    }),
+    [enqueueFiles],
+  );
+
   const removeQueuedImage = useCallback((id) => {
     setImageQueue((prev) => {
       const target = prev.find((p) => p.id === id);
@@ -1135,16 +1152,6 @@ export default function ChatComposer({
                 ? 'flex min-h-0 flex-1 flex-col gap-1.5'
                 : 'flex flex-col gap-1.5'
           }
-          onDragOver={(e) => {
-            if ([...e.dataTransfer.types].includes('Files')) {
-              e.preventDefault();
-            }
-          }}
-          onDrop={(e) => {
-            if (![...e.dataTransfer.types].includes('Files')) return;
-            e.preventDefault();
-            enqueueFiles(e.dataTransfer.files);
-          }}
         >
           {showToolbar ? (
             <>
@@ -1378,4 +1385,6 @@ export default function ChatComposer({
       </div>
     </div>
   );
-}
+});
+
+export default ChatComposer;

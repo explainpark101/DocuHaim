@@ -15,6 +15,7 @@ import ChatComposer from '@/components/chatWithMyself/ChatComposer';
 import ChatComposerDock from '@/components/chatWithMyself/ChatComposerDock';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
+import ChatFileDropOverlay from '@/components/chatWithMyself/ChatFileDropOverlay';
 import ChatGroupPanel from '@/components/chatWithMyself/ChatGroupPanel';
 import ChatMessageList from '@/components/chatWithMyself/ChatMessageList';
 import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
@@ -380,6 +381,7 @@ export default function ChatWithMyselfPane({
   const loadingNewerRef = useRef(false);
   /** @type {React.MutableRefObject<import('@/utils/chatWithMyself/scrollToMessage').ChatMessageListHandle | null>} */
   const messageListRef = useRef(null);
+  const composerRef = useRef(null);
 
   const noteLocalDayWrite = useCallback((dateStr) => {
     if (dateStr) syncApiRef.current?.invalidateDay(dateStr);
@@ -2135,10 +2137,18 @@ export default function ChatWithMyselfPane({
       (pinnedOpen ? 1 : 0),
   );
 
+  const handleComposerFilesDrop = useCallback((files) => {
+    void composerRef.current?.enqueueFiles?.(files);
+  }, []);
+
   return (
     <ChatImageLightboxProvider>
     <ChatUiPrefsProvider openLinksInNewWindow={openLinksInNewWindow}>
-    <div className="flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg">
+    <ChatFileDropOverlay
+      className="flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg"
+      disabled={!storageReady}
+      onFilesDrop={handleComposerFilesDrop}
+    >
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 dark:border-odp-borderSoft px-3 py-2">
         {isMobileLayout && !sidebarOpen ? (
           <button
@@ -2327,6 +2337,7 @@ export default function ChatWithMyselfPane({
                   }
                 >
                   <ChatComposer
+                    ref={composerRef}
                     key={storageScope || 'pending'}
                     bare
                     fillParent={!editTarget}
@@ -2607,7 +2618,7 @@ export default function ChatWithMyselfPane({
           setDeleteTarget(null);
         }}
       />
-    </div>
+    </ChatFileDropOverlay>
     </ChatUiPrefsProvider>
     </ChatImageLightboxProvider>
   );
