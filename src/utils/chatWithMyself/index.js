@@ -75,13 +75,16 @@ export {
   extractUrls,
   splitTextWithUrls,
   isYouTubeUrl,
+  fetchOpenGraph,
+  parseOpenGraphHtml,
+  fetchOgMetadata,
   loadAndArchiveOg,
   readCachedOg,
   refreshAndArchiveOg,
   reloadOgCache,
   reloadOgCacheForMessageBody,
   hashUrl,
-} from './og.js';
+} from './og';
 export {
   readMeta,
   writeMeta,

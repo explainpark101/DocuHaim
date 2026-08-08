@@ -4,7 +4,7 @@ import {
   isYouTubeUrl,
   loadAndArchiveOg,
   reloadOgCache,
-} from '@/utils/chatWithMyself/og.js';
+} from '@/utils/chatWithMyself/og';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';

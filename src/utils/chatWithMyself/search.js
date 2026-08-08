@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 import { getCachedOg } from './chatDb.js';
-import { extractUrls, hashUrl } from './og.js';
+import { extractUrls, hashUrl } from './og';
 import { ogArchiveKey } from './paths.js';
 
 /**
