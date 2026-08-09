@@ -43,6 +43,7 @@ import {
 } from '@/utils/base64ImageFoldExtension';
 import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
+import { isSafariBrowser } from '@/utils/isSafariBrowser';
 import { notifyMirrorEditCaretUpdate } from '@/utils/mirrorEditCaretBridge';
 import {
   markMirrorEditCaretFromEditor,
@@ -293,8 +294,9 @@ config({
     languageUserDefined: {
       'ko-KR': KO_KR,
     },
-    // Default library value is 500ms; Mirror Edit / dual-pane needs near-instant preview.
-    renderDelay: 0,
+    // Non-Safari: near-instant preview for Mirror Edit / dual-pane sync.
+    // Safari: restore library default — renderDelay 0 makes typing very laggy.
+    renderDelay: isSafariBrowser() ? 500 : 0,
   },
   codeMirrorExtensions(extensions, { keyBindings }) {
     const nextExtensions = [...extensions].filter(
@@ -634,7 +636,10 @@ export default function MarkdownEditor({
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
   const [autocompleteEnabled, setAutocompleteEnabled] = useEditorAutocomplete();
-  const [mirrorEditEnabled, setMirrorEditEnabled] = useMirrorEdit();
+  const [mirrorEditPref, setMirrorEditEnabled] = useMirrorEdit();
+  // Safari: skip custom preview↔editor scroll sync and Mirror Edit (unstable).
+  const safariMdEditor = useMemo(() => isSafariBrowser(), []);
+  const mirrorEditEnabled = safariMdEditor ? false : mirrorEditPref;
 
   /** Selection before Advanced Search steals focus (so bold/etc still apply to the prior range). */
   const asSelectionSnapshotRef = useRef(null);
@@ -1057,7 +1062,7 @@ export default function MarkdownEditor({
 
   // Preview selection → CodeMirror selection + mirrored highlight/caret on both panes.
   useEffect(() => {
-    if (previewOnly) return undefined;
+    if (previewOnly || safariMdEditor) return undefined;
     const root = containerRef.current;
     if (!root) return undefined;
 
@@ -1283,12 +1288,13 @@ export default function MarkdownEditor({
       root.removeEventListener('touchend', onTouchEnd);
       root.removeEventListener('keydown', onKeyDownCapture, true);
     };
-  }, [previewOnly, mirrorEditEnabled]);
+  }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
 
   // Dual-pane: keep preview scrolled to the editor caret (image-aware).
   // Mirror Edit: also remirror caret/selection overlays onto the preview.
+  // Safari: leave stock md-editor-rt behavior (no custom sync / Mirror Edit).
   useEffect(() => {
-    if (previewOnly) {
+    if (previewOnly || safariMdEditor) {
       setMirrorEditCaretHandler(null);
       stopMirrorEditPreviewRemirror();
       stopPreviewScrollFollow();
@@ -1325,11 +1331,11 @@ export default function MarkdownEditor({
       stopMirrorEditPreviewRemirror();
       stopPreviewScrollFollow();
     };
-  }, [previewOnly, mirrorEditEnabled]);
+  }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
 
   // Mirror Edit: double-click preview block → contentEditable in place.
   useEffect(() => {
-    if (previewOnly || !mirrorEditEnabled) {
+    if (previewOnly || safariMdEditor || !mirrorEditEnabled) {
       cancelPreviewMirrorEdit();
       return undefined;
     }
@@ -1344,9 +1350,10 @@ export default function MarkdownEditor({
       },
       isEnabled: () => mirrorEditEnabled,
     });
-  }, [previewOnly, mirrorEditEnabled]);
+  }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
 
   useEffect(() => {
+    if (safariMdEditor) return;
     const root = containerRef.current;
     const previewRoot = root?.querySelector('.md-editor-preview');
     abandonDetachedPreviewMirrorEdit();
@@ -1361,7 +1368,7 @@ export default function MarkdownEditor({
     }
 
     if (!mirrorEditEnabled) clearPreviewSelectionMirror(previewRoot);
-  }, [value, currentFile?.id, mirrorEditEnabled]);
+  }, [value, currentFile?.id, mirrorEditEnabled, safariMdEditor]);
 
   useEffect(() => {
     if (previewOnly) return;
@@ -2001,12 +2008,15 @@ export default function MarkdownEditor({
       onChange={setAutocompleteEnabled}
       theme={theme}
     />,
-    <MirrorEditToolbar
-      key="mirror-edit"
-      checked={mirrorEditEnabled}
-      onChange={setMirrorEditEnabled}
-      theme={theme}
-    />,
+    // Keep index 8 stable for `toolbars` (9 = ImageToolbar). Safari hides Mirror Edit.
+    safariMdEditor ? null : (
+      <MirrorEditToolbar
+        key="mirror-edit"
+        checked={mirrorEditEnabled}
+        onChange={setMirrorEditEnabled}
+        theme={theme}
+      />
+    ),
     <ImageToolbar
       key="image-toolbar"
       disabled={typeof onUploadImage !== 'function'}
@@ -2026,6 +2036,7 @@ export default function MarkdownEditor({
     setFoldBase64Images,
     autocompleteEnabled,
     setAutocompleteEnabled,
+    safariMdEditor,
     mirrorEditEnabled,
     setMirrorEditEnabled,
     onUploadImage,
@@ -2036,11 +2047,12 @@ export default function MarkdownEditor({
     'bold', 'underline', 'italic', '-',
     'strikeThrough', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
     // 9 = ImageToolbar (replaces built-in `image` / Cropper.js 1 clip)
+    // 8 = MirrorEditToolbar (hidden on Safari)
     'codeRow', 'code', 'link', 9, 'table', 'mermaid', 'katex', 1, 2, 3, 4, '-',
     'revoke', 'next', 0, '=',
-    6, 7, 8, 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
+    6, 7, ...(safariMdEditor ? [] : [8]), 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
     ...(catalogEl ? [5] : []),
-  ], [catalogEl]);
+  ], [catalogEl, safariMdEditor]);
 
   const onUploadImg = useMemo(() => {
     if (typeof onUploadImage !== 'function') return undefined;

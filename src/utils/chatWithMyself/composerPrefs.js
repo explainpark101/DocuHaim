@@ -1,3 +1,5 @@
+import { isSafariBrowser } from '@/utils/isSafariBrowser';
+
 /** Prefixed localStorage keys for chat-with-myself UI prefs. */
 export const CHAT_PREF_PREFIX = 's3haim_chat_';
 
@@ -27,16 +29,7 @@ export const CHAT_PREF_KEYS = {
   railPinnedOpen: `${CHAT_PREF_PREFIX}rail_pinned_open`,
 };
 
-/**
- * True for Safari (macOS / iOS), not Chrome/Edge/Firefox/CriOS etc.
- * Used only for unset localStorage defaults.
- */
-export function isSafariBrowser() {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent || '';
-  if (!/Safari/i.test(ua)) return false;
-  return !/Chrome|Chromium|CriOS|Edg|FxiOS|OPiOS|Android/i.test(ua);
-}
+export { isSafariBrowser };
 
 function readBoolPref(key) {
   if (typeof window === 'undefined') return null;

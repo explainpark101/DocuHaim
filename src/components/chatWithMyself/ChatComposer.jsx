@@ -42,6 +42,7 @@ import {
   writeComposerHelperTextPref,
   isChatMessageMarkdown,
   looksLikeMarkdown,
+  isSafariBrowser,
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { registerChatActions } from '@/utils/advancedSearch/chatActions';
@@ -222,6 +223,9 @@ const ChatComposer = forwardRef(function ChatComposer(
   const markdownEnabledRef = useRef(markdownEnabled);
   /** When user turns Markdown off while markup remains, skip auto-enable until markup clears. */
   const markdownUserOffRef = useRef(false);
+  /** Safari + lightweight: defer textarea→MdEditor until Space/Enter after markdown is detected. */
+  const safariDeferMdEditor = lightweight && isSafariBrowser();
+  const wasLightweightEditorRef = useRef(null);
   const imageQueueRef = useRef(imageQueue);
   const prevEditTargetRef = useRef(editTarget);
   const didAutofocusOnMountRef = useRef(false);
@@ -278,12 +282,15 @@ const ChatComposer = forwardRef(function ChatComposer(
     const text = String(next ?? '');
     setValue(text);
     if (looksLikeMarkdown(text)) {
-      if (!markdownUserOffRef.current) setMarkdownEnabled(true);
+      // Safari lightweight: keep textarea until Space/Enter promotes to MdEditor.
+      if (!markdownUserOffRef.current && !safariDeferMdEditor) {
+        setMarkdownEnabled(true);
+      }
     } else {
       markdownUserOffRef.current = false;
       setMarkdownEnabled(false);
     }
-  }, []);
+  }, [safariDeferMdEditor]);
 
   useEffect(() => {
     imageQueueRef.current = imageQueue;
@@ -629,6 +636,16 @@ const ChatComposer = forwardRef(function ChatComposer(
     };
   }, [focusComposerInput]);
 
+  // After textarea → MdEditor promotion, focus the CodeMirror editor surface.
+  useEffect(() => {
+    const wasLightweight = wasLightweightEditorRef.current;
+    wasLightweightEditorRef.current = useLightweightEditor;
+    if (wasLightweight === true && !useLightweightEditor) {
+      return scheduleFocusComposer();
+    }
+    return undefined;
+  }, [useLightweightEditor, scheduleFocusComposer]);
+
   // Advanced Search: "입력창에 포커스" while this composer is mounted.
   useEffect(() => {
     return registerChatActions({
@@ -848,6 +865,29 @@ const ChatComposer = forwardRef(function ChatComposer(
         return;
       }
 
+      // Safari lightweight: promote textarea → MdEditor only on Space/Enter
+      // once markdown markup is already present (do not auto-switch on detect).
+      if (
+        safariDeferMdEditor &&
+        useLightweightEditor &&
+        !markdownEnabledRef.current &&
+        !markdownUserOffRef.current &&
+        (e.key === ' ' || e.key === 'Enter') &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        looksLikeMarkdown(valueRef.current)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        const suffix = e.key === 'Enter' ? '\n' : ' ';
+        const next = `${valueRef.current}${suffix}`;
+        valueRef.current = next;
+        setValue(next);
+        setMarkdownEnabled(true);
+        return;
+      }
+
       if (e.key !== 'Enter') return;
 
       // Opt/Alt+Enter: no-op (do not send, do not insert newline).
@@ -891,7 +931,15 @@ const ChatComposer = forwardRef(function ChatComposer(
     };
     el.addEventListener('keydown', onKeyDown, true);
     return () => el.removeEventListener('keydown', onKeyDown, true);
-  }, [doSend, isMobile, editTarget, applePlatform, setMarkdownFromUser]);
+  }, [
+    doSend,
+    isMobile,
+    editTarget,
+    applePlatform,
+    setMarkdownFromUser,
+    safariDeferMdEditor,
+    useLightweightEditor,
+  ]);
 
   useEffect(() => {
     const el = wrapRef.current;

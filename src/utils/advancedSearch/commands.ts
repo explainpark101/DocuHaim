@@ -20,6 +20,7 @@ import {
   type SettingsToggleId,
 } from './settingsToggles';
 import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
+import { isSafariBrowser } from '@/utils/isSafariBrowser';
 
 export type AppCommandId =
   | 'home'
@@ -538,43 +539,46 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
   );
 
   const mirrorEditOn = context?.editorMirrorEditEnabled === true;
-  list.push(
-    mirrorEditOn
-      ? {
-          id: 'editor-mirror-edit-toggle',
-          title: 'Mirror Edit 끄기',
-          description: '양쪽 커서·즉시 프리뷰 동기화를 끕니다',
-          path: '',
-          keywords: [
-            'mirror edit',
-            'mirror',
-            'preview edit',
-            'contenteditable',
-            '더블클릭',
-            '프리뷰 편집',
-            '끄기',
-            'off',
-            'disable',
-          ],
-        }
-      : {
-          id: 'editor-mirror-edit-toggle',
-          title: 'Mirror Edit 켜기',
-          description: '프리뷰·마크다운에 커서를 함께 두고 즉시 동기화합니다',
-          path: '',
-          keywords: [
-            'mirror edit',
-            'mirror',
-            'preview edit',
-            'contenteditable',
-            '더블클릭',
-            '프리뷰 편집',
-            '켜기',
-            'on',
-            'enable',
-          ],
-        },
-  );
+  // Safari: Mirror Edit UI and sync are disabled — omit the AS toggle too.
+  if (!isSafariBrowser()) {
+    list.push(
+      mirrorEditOn
+        ? {
+            id: 'editor-mirror-edit-toggle',
+            title: 'Mirror Edit 끄기',
+            description: '양쪽 커서·즉시 프리뷰 동기화를 끕니다',
+            path: '',
+            keywords: [
+              'mirror edit',
+              'mirror',
+              'preview edit',
+              'contenteditable',
+              '더블클릭',
+              '프리뷰 편집',
+              '끄기',
+              'off',
+              'disable',
+            ],
+          }
+        : {
+            id: 'editor-mirror-edit-toggle',
+            title: 'Mirror Edit 켜기',
+            description: '프리뷰·마크다운에 커서를 함께 두고 즉시 동기화합니다',
+            path: '',
+            keywords: [
+              'mirror edit',
+              'mirror',
+              'preview edit',
+              'contenteditable',
+              '더블클릭',
+              '프리뷰 편집',
+              '켜기',
+              'on',
+              'enable',
+            ],
+          },
+    );
+  }
 
   if (isOpenMarkdownFile(context?.currentFile)) {
     const name =
