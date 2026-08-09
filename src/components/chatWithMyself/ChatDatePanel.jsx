@@ -18,16 +18,16 @@ export default function ChatDatePanel({
     <div
       className={`flex h-full min-h-0 w-full flex-col bg-white dark:bg-odp-bgSoft ${className}`}
     >
-      <div className="flex items-center gap-2 border-b border-gray-200 px-3 py-2 dark:border-odp-borderSoft">
-        <CalendarDays size={16} className="shrink-0 text-gray-500" />
-        <span className="flex-1 text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
+      <div className="flex min-w-0 items-center gap-2 border-b border-gray-200 px-3 py-2 dark:border-odp-borderSoft">
+        <CalendarDays size={16} className="shrink-0 text-ink dark:text-odp-fgStrong" />
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
           날짜
         </span>
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
+            className="shrink-0 rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
             aria-label="날짜 목록 닫기"
           >
             <X size={16} />

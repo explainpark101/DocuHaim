@@ -802,15 +802,15 @@ export default function ChatPinnedPanel({
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-white dark:bg-odp-bgSoft">
       <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft">
-        <div className="flex items-center gap-2 px-3 py-2">
-          <Pin size={16} className="shrink-0 text-gray-500" />
-          <span className="flex-1 text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
+        <div className="flex min-w-0 items-center gap-2 px-3 py-2">
+          <Pin size={16} className="shrink-0 text-ink dark:text-odp-fgStrong" />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
             모아보기
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
+            className="shrink-0 rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
             aria-label="모아보기 닫기"
           >
             <X size={16} />

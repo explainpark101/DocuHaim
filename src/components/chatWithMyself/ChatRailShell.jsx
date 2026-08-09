@@ -4,8 +4,10 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
 const CHAT_RAIL_DEFAULT_WIDTH = 400;
-const CHAT_RAIL_MIN_WIDTH = 240;
-const CHAT_RAIL_HARD_MIN = 140;
+/** Soft drag floor while open (~240px at 1600-wide viewports). */
+const CHAT_RAIL_MIN_VW = 15;
+/** Hard floor reserved for sibling rails / fit (~left sidebar min). */
+const CHAT_RAIL_HARD_MIN_VW = 10;
 const CHAT_RAIL_MAX_FLOOR = 400;
 const CHAT_RAIL_MAX_VW = 50;
 /** Keep at least this much room for the message column when fitting rails. */
@@ -13,18 +15,43 @@ const CHAT_MAIN_MIN_WIDTH = 280;
 
 const OPEN_SPRING = { type: 'spring', stiffness: 420, damping: 38, mass: 0.85 };
 
+function vwPx(vw) {
+  if (typeof window === 'undefined') return vw * 5;
+  return (window.innerWidth * vw) / 100;
+}
+
+function hardMinPx() {
+  return Math.max(1, Math.floor(vwPx(CHAT_RAIL_HARD_MIN_VW)));
+}
+
+function softMinPx() {
+  return Math.max(1, Math.floor(vwPx(CHAT_RAIL_MIN_VW)));
+}
+
 function maxRailWidthPx() {
   if (typeof window === 'undefined') return 640;
-  return Math.max(CHAT_RAIL_MAX_FLOOR, Math.floor((window.innerWidth * CHAT_RAIL_MAX_VW) / 100));
+  return Math.max(CHAT_RAIL_MAX_FLOOR, Math.floor(vwPx(CHAT_RAIL_MAX_VW)));
+}
+
+function initialBounds() {
+  const hardMin = hardMinPx();
+  return {
+    fitMax: maxRailWidthPx(),
+    hardMin,
+    softMin: softMinPx(),
+  };
 }
 
 function findRailsLayoutRoot(shell) {
-  if (!shell) return null;
-  return (
-    shell.closest('[data-chat-rails-root]') ||
-    shell.parentElement?.parentElement ||
-    shell.parentElement
-  );
+  if (shell) {
+    return (
+      shell.closest('[data-chat-rails-root]') ||
+      shell.parentElement?.parentElement ||
+      shell.parentElement
+    );
+  }
+  if (typeof document === 'undefined') return null;
+  return document.querySelector('[data-chat-rails-root]');
 }
 
 /**
@@ -32,6 +59,7 @@ function findRailsLayoutRoot(shell) {
  * Width is persisted per `storageKey`.
  * When `open` toggles, width animates 0 ↔ displayWidth so the chat column is pushed smoothly.
  * Dragging below ~1/3 of the configured minimum width closes the rail (`onClose`).
+ * Open min / hard floor track viewport width (vw), matching the left sidebar pattern.
  */
 export default function ChatRailShell({
   children,
@@ -49,7 +77,7 @@ export default function ChatRailShell({
   onClose,
 }) {
   const shellRef = useRef(null);
-  const [fitMax, setFitMax] = useState(maxRailWidthPx);
+  const [bounds, setBounds] = useState(initialBounds);
 
   useEffect(() => {
     const shell = shellRef.current;
@@ -57,14 +85,19 @@ export default function ChatRailShell({
     if (!root) return undefined;
 
     const update = () => {
+      const hardMin = hardMinPx();
+      const softMin = softMinPx();
       const rootW = root.clientWidth;
       const available = rootW - CHAT_MAIN_MIN_WIDTH - Math.max(0, reservedAside);
       // Allow one rail to grow freely; only reserve hard-min for sibling rails.
-      const siblingsFloor =
-        Math.max(0, openResizableCount - 1) * CHAT_RAIL_HARD_MIN;
+      const siblingsFloor = Math.max(0, openResizableCount - 1) * hardMin;
       const thisMax = available - siblingsFloor;
       const vwMax = maxRailWidthPx();
-      setFitMax(Math.max(CHAT_RAIL_HARD_MIN, Math.min(vwMax, thisMax)));
+      setBounds({
+        fitMax: Math.max(hardMin, Math.min(vwMax, thisMax)),
+        hardMin,
+        softMin,
+      });
     };
 
     update();
@@ -77,21 +110,21 @@ export default function ChatRailShell({
     };
   }, [reservedAside, openResizableCount, open]);
 
-  const dragMin = Math.min(CHAT_RAIL_MIN_WIDTH, fitMax);
-  const minWidth = Math.max(CHAT_RAIL_HARD_MIN, dragMin);
+  const dragMin = Math.min(bounds.softMin, bounds.fitMax);
+  const minWidth = Math.max(bounds.hardMin, dragMin);
   const collapseBelowWidth = Math.max(1, Math.floor(minWidth / 3));
 
   const { width, isResizing, handleProps } = useResizablePanelWidth({
     storageKey,
     defaultWidth,
     minWidth,
-    maxWidth: Math.max(fitMax, CHAT_RAIL_HARD_MIN),
+    maxWidth: Math.max(bounds.fitMax, bounds.hardMin),
     edge: 'right',
     collapseBelowWidth,
     onCollapseBelowMin: typeof onClose === 'function' ? onClose : undefined,
   });
 
-  const displayWidth = Math.min(width, fitMax);
+  const displayWidth = Math.min(width, bounds.fitMax);
 
   return (
     <AnimatePresence initial={false}>
@@ -114,7 +147,7 @@ export default function ChatRailShell({
               handleProps={{
                 ...handleProps,
                 'aria-valuenow': Math.round(displayWidth),
-                'aria-valuemax': Math.round(fitMax),
+                'aria-valuemax': Math.round(bounds.fitMax),
               }}
               isResizing={isResizing}
               edge="left"
