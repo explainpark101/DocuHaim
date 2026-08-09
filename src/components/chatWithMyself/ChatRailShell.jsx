@@ -4,9 +4,9 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
 const CHAT_RAIL_DEFAULT_WIDTH = 400;
-/** Soft drag floor while open (~240px at 1600-wide viewports). */
-const CHAT_RAIL_MIN_VW = 15;
-/** Hard floor reserved for sibling rails / fit (~left sidebar min). */
+/** Soft drag floor while open (matches left sidebar min). */
+const CHAT_RAIL_MIN_VW = 10;
+/** Hard floor reserved for sibling rails / fit. */
 const CHAT_RAIL_HARD_MIN_VW = 10;
 const CHAT_RAIL_MAX_FLOOR = 400;
 const CHAT_RAIL_MAX_VW = 50;

@@ -324,6 +324,8 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '채팅',
       '나와의 채팅',
       '나와의채팅',
+      '나에게 채팅',
+      '나에게채팅',
       'messenger',
       '메시지',
       'message',

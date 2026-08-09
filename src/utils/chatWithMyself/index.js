@@ -158,6 +158,10 @@ export {
   deleteChatAttachment,
 } from './attachments.js';
 export {
+  getCollectionMediaFlags,
+  upsertCollectionMembership,
+} from './collectionScan.js';
+export {
   fuzzyMatchText,
   splitSearchTokens,
   fuzzyMatchTokensInHaystacks,

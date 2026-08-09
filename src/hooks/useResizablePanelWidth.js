@@ -38,6 +38,8 @@ export function useResizablePanelWidth({
   onCollapseBelowMin,
 } = {}) {
   const dragFloor = collapseBelowWidth ?? minWidth;
+  /** Width committed when not collapsing — soft min, not the drag-collapse floor. */
+  const commitFloor = minWidth;
 
   const persistKey = versionedStorageKey(storageKey);
 
@@ -46,7 +48,7 @@ export function useResizablePanelWidth({
     try {
       const raw = window.localStorage.getItem(persistKey);
       const n = Number(raw);
-      if (Number.isFinite(n)) return Math.min(maxWidth, Math.max(dragFloor, n));
+      if (Number.isFinite(n)) return Math.min(maxWidth, Math.max(commitFloor, n));
     } catch {
       // ignore
     }
@@ -64,6 +66,7 @@ export function useResizablePanelWidth({
   const onCollapseBelowMinRef = useRef(onCollapseBelowMin);
   const deferRef = useRef(deferReactUpdateUntilEnd);
   const dragFloorRef = useRef(dragFloor);
+  const commitFloorRef = useRef(commitFloor);
   const maxWidthRef = useRef(maxWidth);
   const edgeRef = useRef(edge);
 
@@ -88,12 +91,26 @@ export function useResizablePanelWidth({
   }, [collapseBelowWidth, minWidth]);
 
   useEffect(() => {
+    commitFloorRef.current = minWidth;
+  }, [minWidth]);
+
+  useEffect(() => {
     maxWidthRef.current = maxWidth;
   }, [maxWidth]);
 
   useEffect(() => {
     edgeRef.current = edge;
   }, [edge]);
+
+  // Keep committed width at soft min when viewport / bounds change (not mid-drag).
+  useEffect(() => {
+    if (isResizing) return;
+    const floor = Math.min(minWidth, maxWidth);
+    setWidth((w) => {
+      const next = Math.min(maxWidth, Math.max(floor, w));
+      return next === w ? w : next;
+    });
+  }, [minWidth, maxWidth, isResizing]);
 
   const endResizeSession = useCallback(() => {
     resizeStateRef.current = {
@@ -147,7 +164,6 @@ export function useResizablePanelWidth({
       if (!resizeStateRef.current.isResizing) return;
       if (e.touches?.[0]) {
         e.preventDefault();
-        e.stopPropagation();
         applyDelta(e.touches[0].clientX);
       }
     };
@@ -160,6 +176,7 @@ export function useResizablePanelWidth({
       const finalWidth = liveWidthRef.current;
       const startWidth = resizeStateRef.current.startWidth;
       const floor = dragFloorRef.current;
+      const softFloor = commitFloorRef.current;
       const max = maxWidthRef.current;
       const collapse = onCollapseBelowMinRef.current;
 
@@ -173,7 +190,8 @@ export function useResizablePanelWidth({
       }
 
       if (finalWidth != null) {
-        setWidth(Math.min(max, Math.max(floor, finalWidth)));
+        // Snap up to soft min when not collapsing (collapse floor is only for close).
+        setWidth(Math.min(max, Math.max(softFloor, finalWidth)));
       }
     };
 
@@ -224,7 +242,7 @@ export function useResizablePanelWidth({
       role: 'separator',
       'aria-orientation': 'vertical',
       'aria-valuenow': Math.round(width),
-      'aria-valuemin': Math.round(dragFloor),
+      'aria-valuemin': Math.round(commitFloor),
       'aria-valuemax': Math.round(maxWidth),
       style: { touchAction: 'none' },
     },

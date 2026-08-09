@@ -59,6 +59,8 @@ import {
   deleteAllMessageEditHistory,
   chatAttachmentsToMarkdown,
   extractChatBodyAttachments,
+  getCollectionMediaFlags,
+  upsertCollectionMembership,
   detectTimeZone,
   findMessageById,
   listDayKeys,
@@ -362,6 +364,9 @@ export default function ChatWithMyselfPane({
   const [pinnedResults, setPinnedResults] = useState([]);
   const [notedResults, setNotedResults] = useState([]);
   const [editedResults, setEditedResults] = useState([]);
+  const [linkResults, setLinkResults] = useState([]);
+  const [fileResults, setFileResults] = useState([]);
+  const [photoResults, setPhotoResults] = useState([]);
   const [pinnedLoading, setPinnedLoading] = useState(false);
   const searchDayKeysRef = useRef([]);
   const searchGenRef = useRef(0);
@@ -1317,6 +1322,19 @@ export default function ChatWithMyselfPane({
             m.id === target.id ? { ...m, ...updated, dateStr } : m,
           ),
         );
+        {
+          const row = { ...updated, dateStr };
+          const media = getCollectionMediaFlags(updated.body);
+          setLinkResults((prev) =>
+            upsertCollectionMembership(prev, row, media.hasLinks),
+          );
+          setFileResults((prev) =>
+            upsertCollectionMembership(prev, row, media.hasFiles),
+          );
+          setPhotoResults((prev) =>
+            upsertCollectionMembership(prev, row, media.hasPhotos),
+          );
+        }
         postChatSyncEvent('day', { dateStr });
         noteLocalDayWrite(dateStr);
 
@@ -1372,6 +1390,9 @@ export default function ChatWithMyselfPane({
         setPinnedResults((prev) => prev.filter((m) => m.id !== message.id));
         setNotedResults((prev) => prev.filter((m) => m.id !== message.id));
         setEditedResults((prev) => prev.filter((m) => m.id !== message.id));
+        setLinkResults((prev) => prev.filter((m) => m.id !== message.id));
+        setFileResults((prev) => prev.filter((m) => m.id !== message.id));
+        setPhotoResults((prev) => prev.filter((m) => m.id !== message.id));
         setDayCounts((prev) => ({
           ...prev,
           [dateStr]: Math.max(0, (prev[dateStr] || 1) - 1),
@@ -1548,6 +1569,21 @@ export default function ChatWithMyselfPane({
         m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
       ),
     );
+    const mediaRow = {
+      id: messageId,
+      ...updated,
+      dateStr: dateStr || updated.dateStr,
+    };
+    const media = getCollectionMediaFlags(updated.body);
+    setLinkResults((prev) =>
+      upsertCollectionMembership(prev, mediaRow, media.hasLinks),
+    );
+    setFileResults((prev) =>
+      upsertCollectionMembership(prev, mediaRow, media.hasFiles),
+    );
+    setPhotoResults((prev) =>
+      upsertCollectionMembership(prev, mediaRow, media.hasPhotos),
+    );
   }, []);
 
   const handleDeleteEditHistoryEntry = useCallback(
@@ -1617,6 +1653,22 @@ export default function ChatWithMyselfPane({
           const next = prev.filter((m) => m.id !== message.id);
           return [{ ...updated, dateStr }, ...next];
         });
+        const pinPatch = { ...updated, dateStr };
+        setLinkResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        );
+        setFileResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        );
+        setPhotoResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        );
+        setNotedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        );
+        setEditedResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        );
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
       } catch (e) {
@@ -1654,6 +1706,15 @@ export default function ChatWithMyselfPane({
         setEditedResults((prev) =>
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
+        setLinkResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setFileResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
+        setPhotoResults((prev) =>
+          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        );
         setSearchResults((prev) =>
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
@@ -1673,6 +1734,9 @@ export default function ChatWithMyselfPane({
     setPinnedResults(apply);
     setNotedResults(apply);
     setEditedResults(apply);
+    setLinkResults(apply);
+    setFileResults(apply);
+    setPhotoResults(apply);
     setSearchResults(apply);
   }, []);
 
@@ -1811,6 +1875,9 @@ export default function ChatWithMyselfPane({
       const pinned = [];
       const noted = [];
       const edited = [];
+      const links = [];
+      const files = [];
+      const photos = [];
       for (const dateStr of keys) {
         const msgs = await readDayMessages(ctx, dateStr);
         for (const msg of msgs) {
@@ -1818,6 +1885,10 @@ export default function ChatWithMyselfPane({
           if (msg.pinnedAt) pinned.push(row);
           if (msg.notePath) noted.push(row);
           if (msg.editedAt) edited.push(row);
+          const media = getCollectionMediaFlags(msg.body);
+          if (media.hasLinks) links.push(row);
+          if (media.hasFiles) files.push(row);
+          if (media.hasPhotos) photos.push(row);
         }
       }
       pinned.sort(
@@ -1825,17 +1896,23 @@ export default function ChatWithMyselfPane({
           (Date.parse(b.pinnedAt || b.at) || 0) -
           (Date.parse(a.pinnedAt || a.at) || 0),
       );
-      noted.sort(
-        (a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0),
-      );
+      const byAtDesc = (a, b) =>
+        (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0);
+      noted.sort(byAtDesc);
       edited.sort(
         (a, b) =>
           (Date.parse(b.editedAt || b.at) || 0) -
           (Date.parse(a.editedAt || a.at) || 0),
       );
+      links.sort(byAtDesc);
+      files.sort(byAtDesc);
+      photos.sort(byAtDesc);
       setPinnedResults(pinned);
       setNotedResults(noted);
       setEditedResults(edited);
+      setLinkResults(links);
+      setFileResults(files);
+      setPhotoResults(photos);
     } finally {
       setPinnedLoading(false);
     }
@@ -2119,6 +2196,9 @@ export default function ChatWithMyselfPane({
     pinnedResults,
     notedResults,
     editedResults,
+    linkResults,
+    fileResults,
+    photoResults,
     loading: pinnedLoading,
     onSelectResult: handleSelectResult,
     onTogglePin: handleTogglePin,
@@ -2423,7 +2503,7 @@ export default function ChatWithMyselfPane({
                 open={pinnedOpen}
                 onClose={() => setPinnedOpen(false)}
                 storageKey="s3haim_chat_pinned_rail_width"
-                defaultWidth={380}
+                defaultWidth={420}
                 reservedAside={0}
                 openResizableCount={desktopResizableCount}
                 label="모아보기 사이드바 너비 조절"
@@ -2491,7 +2571,6 @@ export default function ChatWithMyselfPane({
                 <ChatPinnedPanel
                   open
                   onClose={() => setPinnedOpen(false)}
-                  disableTabAutoClose={isMobileLayout}
                   {...pinnedPanelProps}
                 />
               </ChatMobileDrawer>

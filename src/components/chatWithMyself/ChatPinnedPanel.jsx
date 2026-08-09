@@ -9,7 +9,10 @@ import useEmblaCarousel from 'embla-carousel-react';
 import {
   FileText,
   History,
+  Image,
+  Link2,
   Loader2,
+  Paperclip,
   Pencil,
   Pin,
   X,
@@ -41,13 +44,20 @@ import {
 import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCardMenu';
 import { copyText } from '@/utils/copyText';
 
-/** @typedef {'pinned' | 'noted' | 'edited'} CollectionTabId */
+/** @typedef {'pinned' | 'noted' | 'edited' | 'links' | 'files' | 'photos'} CollectionTabId */
 /** @typedef {'full' | 'activeLabel' | 'iconOnly'} TabDensity */
 
 /** Preview body max height for collection cards. */
 const PREVIEW_MAX_H_CLASS = 'max-h-32';
 
-const TAB_ORDER = /** @type {const} */ (['pinned', 'noted', 'edited']);
+const TAB_ORDER = /** @type {const} */ ([
+  'pinned',
+  'noted',
+  'edited',
+  'links',
+  'files',
+  'photos',
+]);
 
 /**
  * Keep line breaks for collection previews; collapse runs of newlines to one.
@@ -93,6 +103,24 @@ const TABS = [
     Icon: Pencil,
     empty: '수정된 메시지가 없습니다',
   },
+  {
+    id: /** @type {CollectionTabId} */ ('links'),
+    label: '링크',
+    Icon: Link2,
+    empty: '링크가 있는 메시지가 없습니다',
+  },
+  {
+    id: /** @type {CollectionTabId} */ ('files'),
+    label: '파일',
+    Icon: Paperclip,
+    empty: '파일이 있는 메시지가 없습니다',
+  },
+  {
+    id: /** @type {CollectionTabId} */ ('photos'),
+    label: '사진',
+    Icon: Image,
+    empty: '사진이 있는 메시지가 없습니다',
+  },
 ];
 
 const ICON_SIZE = 13;
@@ -100,9 +128,6 @@ const TAB_PAD_X = 8; // px-2
 const TAB_GAP = 6; // gap-1.5
 const COUNT_GAP = 4;
 const COUNT_FONT = '10px';
-/** Ignore close while the rail is still opening / extremely narrow. */
-const CLOSE_MIN_AVAILABLE = 72;
-const CLOSE_DEBOUNCE_MS = 320;
 
 const CHAR_STAGGER = 0.028;
 const CHAR_SPRING = { type: 'spring', stiffness: 520, damping: 34, mass: 0.45 };
@@ -415,19 +440,13 @@ function estimateTabWidth({
 }
 
 /**
- * Adaptive tabs: pretext width → Motion char stagger → icon-only → close rail.
+ * Adaptive tabs: pretext width → Motion char stagger → icon-only.
+ * Never auto-closes the rail (six tabs + soft min 10vw); user closes via X / drag.
  */
-function CollectionTabList({
-  tab,
-  onTabChange,
-  lists,
-  onClose,
-  allowAutoClose = true,
-}) {
+function CollectionTabList({ tab, onTabChange, lists }) {
   const listRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const fontSampleRef = useRef(/** @type {HTMLSpanElement | null} */ (null));
   const [density, setDensity] = useState(/** @type {TabDensity} */ ('full'));
-  const closeTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null));
   const measurersRef = useRef({
     label: createPretextMeasurer('500 11px ui-sans-serif, system-ui, sans-serif'),
     count: createPretextMeasurer(`500 ${COUNT_FONT} ui-sans-serif, system-ui, sans-serif`),
@@ -438,6 +457,9 @@ function CollectionTabList({
       pinned: lists.pinned?.length || 0,
       noted: lists.noted?.length || 0,
       edited: lists.edited?.length || 0,
+      links: lists.links?.length || 0,
+      files: lists.files?.length || 0,
+      photos: lists.photos?.length || 0,
     }),
     [lists],
   );
@@ -514,44 +536,11 @@ function CollectionTabList({
     });
 
     if (next === 'close') {
-      if (!allowAutoClose) {
-        setDensity('iconOnly');
-        return;
-      }
-      if (available < CLOSE_MIN_AVAILABLE) {
-        setDensity('iconOnly');
-        return;
-      }
       setDensity('iconOnly');
-      if (closeTimerRef.current) return;
-      closeTimerRef.current = setTimeout(() => {
-        closeTimerRef.current = null;
-        const w = listRef.current?.clientWidth ?? 0;
-        if (w < CLOSE_MIN_AVAILABLE) return;
-        const { label: ml, count: mc } = measurersRef.current;
-        let icons = 0;
-        for (const t of TABS) {
-          icons += estimateTabWidth({
-            measureLabel: ml,
-            measureCount: mc,
-            labelSlice: '',
-            count: counts[t.id] || 0,
-            showCount: false,
-          });
-        }
-        if (icons > w + 2) {
-          onClose?.();
-        }
-      }, CLOSE_DEBOUNCE_MS);
       return;
     }
-
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
     setDensity((prev) => (prev === next ? prev : next));
-  }, [counts, tab, onClose, allowAutoClose]);
+  }, [counts, tab]);
 
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -565,12 +554,6 @@ function CollectionTabList({
     return () => ro.disconnect();
   }, [evaluateDensity]);
 
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
-
   return (
     <Tabs.Root value={tab} onValueChange={onTabChange}>
       <span
@@ -582,7 +565,7 @@ function CollectionTabList({
       </span>
       <Tabs.List
         ref={listRef}
-        className="flex w-full items-stretch justify-start gap-0 overflow-hidden px-1"
+        className="flex w-full items-stretch justify-start gap-0 overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label="모아보기 분류"
       >
         {TABS.map(({ id, label, Icon }) => {
@@ -719,7 +702,7 @@ function CollectionSlide({
 }
 
 /**
- * Collection rail: pinned / noted / edited tabs (editor-tab style) + swipe carousel.
+ * Collection rail: pinned / noted / edited / links / files / photos + swipe carousel.
  */
 export default function ChatPinnedPanel({
   open,
@@ -727,6 +710,9 @@ export default function ChatPinnedPanel({
   pinnedResults = [],
   notedResults = [],
   editedResults = [],
+  linkResults = [],
+  fileResults = [],
+  photoResults = [],
   /** @deprecated Prefer pinnedResults */
   results,
   loading = false,
@@ -739,7 +725,6 @@ export default function ChatPinnedPanel({
   getPresignedUrl,
   noteExists,
   groups = [],
-  disableTabAutoClose = false,
 }) {
   const [tab, setTab] = useState(/** @type {CollectionTabId} */ ('pinned'));
   const coarse = useIsCoarsePointer();
@@ -750,8 +735,19 @@ export default function ChatPinnedPanel({
       pinned: pinnedResults?.length ? pinnedResults : results || [],
       noted: notedResults || [],
       edited: editedResults || [],
+      links: linkResults || [],
+      files: fileResults || [],
+      photos: photoResults || [],
     }),
-    [pinnedResults, notedResults, editedResults, results],
+    [
+      pinnedResults,
+      notedResults,
+      editedResults,
+      linkResults,
+      fileResults,
+      photoResults,
+      results,
+    ],
   );
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -821,8 +817,6 @@ export default function ChatPinnedPanel({
           tab={tab}
           onTabChange={handleTabChange}
           lists={lists}
-          onClose={onClose}
-          allowAutoClose={!disableTabAutoClose}
         />
       </div>
 
