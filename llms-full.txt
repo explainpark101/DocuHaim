@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-08-10T07:38:57.487Z
+Generated: 2026-08-10T09:33:53.446Z
 
 ============================================================
 Advanced Search
@@ -499,7 +499,7 @@ URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-file/
 Combined attachment scanner (order matters — wiki image first):
 
 ```js
-/!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g
+/!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[folder:([^|\]]+)(?:\|([^\]]*?))?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g
 ```
 
 File branch captures:
@@ -555,6 +555,83 @@ Name/path must already be sanitized so `|` / brackets do not appear.
 | 저장 경로 | `.chat-with-myself/files/YYYY-MM-DD/` (`paths.js`) |
 
 ============================================================
+Chat folder token (`[[folder:…]]`)
+============================================================
+
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-folder/
+
+# Chat folder token (`[[folder:…]]`)
+
+채팅에서 금고 폴더를 하나의 카드로 공유할 때 쓰는 토큰. `[[note:…]]`와 같이 채팅 첨부 전처리기가 분리·카드 UI로 렌더한다.
+
+## 문법
+
+```markdown
+[[folder:notes/project/|표시 라벨]]
+[[folder:notes/project/|project]]
+```
+
+경로는 보통 trailing `/` 로 끝난다 (없어도 파서가 `/` 를 붙인다).
+
+## Spec (interop)
+
+기준 구현: `format.js` (`formatFolderShareChatBody`), `attachments.js` / `og.ts` extractor.
+
+### 1. Match
+
+Combined attachment scanner (order: wiki image → file → **folder** → note):
+
+```js
+/!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[folder:([^|\]]+)(?:\|([^\]]*?))?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g
+```
+
+Folder branch:
+
+| Group | Meaning |
+|-------|---------|
+| 5 | `path` (no `\|` or `]` ) |
+| 6 | optional display label |
+
+### 2. Structured output
+
+```ts
+{ kind: 'folder', path: string, name: string, size: null }
+```
+
+- `path` = capture 5 trimmed; if non-empty and not ending with `/`, append `/`
+- `name` = `sanitizeChatFileMeta(capture 6 || basename(path) || "folder")`
+
+### 3. Canonical serialization (`formatFolderShareChatBody`)
+
+```text
+[[folder:{folderPath}|{label}]]
+```
+
+`folderPath` always ends with `/` when non-empty. Strip leading `/`; replace `[` `]` `|` in path/label with `_`.
+
+### 4. Host behavior (reference)
+
+- Render a folder card.
+- Tree → chat **drop stages** a folder chip in the composer; send includes `[[folder:…]]` with the message body.
+- Click opens a picker listing **descendant files** currently loaded in the storage tree; selecting a file opens that note/file (same as note open).
+- If the folder was deleted: **keep** the token; UI shows disabled state.
+
+### 5. Non-goals
+
+- Expanding a folder into many `[[note:]]` messages on share
+- Uploading folder contents as chat attachments
+- Resolving bare `[[Folder Name]]` without `folder:` prefix
+
+## 구현
+
+| 역할 | 경로 |
+|------|------|
+| 토큰 빌드 | `src/utils/chatWithMyself/format.js` (`formatFolderShareChatBody`) |
+| 파서 | `attachments.js`, `og.ts` (`splitTextWithUrls`) |
+| 트리 드롭 | `treeAttachDrop.ts` (`buildTreeNoteShareBodies`) |
+| UI | `ChatFolderLinkCard.tsx`, `ChatFolderPickModal.tsx` |
+
+============================================================
 Chat note token (`[[note:…]]`)
 ============================================================
 
@@ -577,12 +654,12 @@ URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-note/
 
 ### 1. Match
 
-Same combined regex as [chat-file.md](./chat-file.md); note branch:
+Same combined regex as [chat-file.md](./chat-file.md); note branch (groups after file + folder):
 
 | Group | Meaning |
 |-------|---------|
-| 5 | `pathOrLabel` (no `\|` or `]` ) |
-| 6 | optional display label |
+| 7 | `pathOrLabel` (no `\|` or `]` ) |
+| 8 | optional display label |
 
 ### 2. Structured output
 
@@ -1028,6 +1105,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [heading-levels.md](./heading-levels.md) | `#######` … `##########` (h7–h10) | 에디터 / Novel / 인쇄 |
 | [chat-file.md](./chat-file.md) | `[[file:…]]` | 채팅 |
 | [chat-note.md](./chat-note.md) | `[[note:…]]` | 채팅 |
+| [chat-folder.md](./chat-folder.md) | `[[folder:…]]` | 채팅 |
 | [chat-day-file-comments.md](./chat-day-file-comments.md) | `<!-- chat-msg … -->` 등 | 채팅 일별 파일 |
 | [chat-saved-note.md](./chat-saved-note.md) | `<!-- chat-with-myself … -->` + 카드 | 채팅→노트 |
 | [note-cover.md](./note-cover.md) | `<!-- note-cover … -->` | 인쇄 표지 |
@@ -1065,7 +1143,7 @@ Feature 문서의 **Spec** 섹션은 파서 중립 계약이다. markdown-it 토
 - md-editor-rt 기본 기능 (KaTeX, Mermaid, 이모지 등)
 - 미리보기 외부 링크 `target=_blank` (`previewLinkTargetBlankPlugin`) — **문법 아님**, 렌더러만
 - 녹음 동기화 — `.sync.pb` / `.sync.json` **사이드카**, 인라인 마커 없음
-- Obsidian식 일반 `[[wikilink]]` — **미지원** (`![[]]`, `[[file:]]`, `[[note:]]`만)
+- Obsidian식 일반 `[[wikilink]]` — **미지원** (`![[]]`, `[[file:]]`, `[[note:]]`, `[[folder:]]`만)
 
 ## 새 문법 추가 시
 
