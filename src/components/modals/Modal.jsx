@@ -108,6 +108,9 @@ export default function Modal({
         positioned ? '' : 'flex items-center justify-center p-4'
       } ${visible ? 'opacity-100 bg-black/40' : 'opacity-0 bg-black/0'} ${overlayClassName}`}
       aria-hidden={!visible}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
     >
       <div
         ref={panelRef}
@@ -121,6 +124,7 @@ export default function Modal({
             }`
         }`}
         style={mergedStyle}
+        onClick={(e) => e.stopPropagation()}
       >
         {children}
         {resizable ? (
