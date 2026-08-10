@@ -90,8 +90,16 @@ export {
   toggleSettingsToggle,
   subscribeSettingsToggles,
   getSettingsToggleStates,
+  isWorkspaceTabsAutoSaveCommandId,
+  getWorkspaceTabsAutoSaveCommands,
+  applyWorkspaceTabsAutoSaveCommand,
+  workspaceTabsAutoSaveModeFromCommandId,
 } from './settingsToggles';
-export type { SettingsToggleId, SettingsToggleDef } from './settingsToggles';
+export type {
+  SettingsToggleId,
+  SettingsToggleDef,
+  WorkspaceTabsAutoSaveCommandId,
+} from './settingsToggles';
 export {
   fuzzyMatchText,
   fuzzyMatchTokensInHaystacks,

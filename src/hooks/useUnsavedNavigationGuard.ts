@@ -1,8 +1,16 @@
 import { useCallback, useEffect } from 'react';
-import { useBlocker, type BlockerFunction } from 'react-router';
+import { useBlocker, type BlockerFunction, type Location } from 'react-router';
 
 type UseUnsavedNavigationGuardOptions = {
   isDirty: () => boolean;
+  /**
+   * When true, allow this in-app navigation even if dirty (e.g. workspace tab
+   * switches that auto-save in the background). beforeunload is unaffected.
+   */
+  shouldAllowNavigation?: (args: {
+    currentLocation: Location;
+    nextLocation: Location;
+  }) => boolean;
 };
 
 /**
@@ -13,7 +21,10 @@ type UseUnsavedNavigationGuardOptions = {
  * Prefer those callbacks over caching `blocker.proceed` in a ref — React Router
  * replaces `proceed`/`reset` each time the blocker object updates.
  */
-export function useUnsavedNavigationGuard({ isDirty }: UseUnsavedNavigationGuardOptions) {
+export function useUnsavedNavigationGuard({
+  isDirty,
+  shouldAllowNavigation,
+}: UseUnsavedNavigationGuardOptions) {
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) => {
       if (
@@ -22,9 +33,12 @@ export function useUnsavedNavigationGuard({ isDirty }: UseUnsavedNavigationGuard
       ) {
         return false;
       }
+      if (shouldAllowNavigation?.({ currentLocation, nextLocation })) {
+        return false;
+      }
       return isDirty();
     },
-    [isDirty],
+    [isDirty, shouldAllowNavigation],
   );
 
   const blocker = useBlocker(shouldBlock);

@@ -17,7 +17,9 @@ import {
 } from './chatActions';
 import {
   SETTINGS_TOGGLE_DEFS,
+  getWorkspaceTabsAutoSaveCommands,
   type SettingsToggleId,
+  type WorkspaceTabsAutoSaveCommandId,
 } from './settingsToggles';
 import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
@@ -66,7 +68,8 @@ export type AppCommandId =
   | EditorActionId
   | PrintActionId
   | ChatActionId
-  | SettingsToggleId;
+  | SettingsToggleId
+  | WorkspaceTabsAutoSaveCommandId;
 
 export type AppCommand = {
   id: AppCommandId;
@@ -729,6 +732,16 @@ function getSettingsToggleCommands(): AppCommand[] {
   });
 }
 
+function getWorkspaceTabsAutoSaveAppCommands(): AppCommand[] {
+  return getWorkspaceTabsAutoSaveCommands().map((cmd) => ({
+    id: cmd.id,
+    title: cmd.title,
+    description: cmd.description,
+    path: '',
+    keywords: cmd.keywords,
+  }));
+}
+
 /**
  * Relevance of a command to query. 0 = no useful match.
  * Uses chat-style fuzzy / partial matching (subsequence + substring).
@@ -821,10 +834,11 @@ export function matchAppCommandsRanked(
 
   const page = getPageActionCommands(context);
   const settingsToggles = getSettingsToggleCommands();
+  const tabsAutoSave = getWorkspaceTabsAutoSaveAppCommands();
   const seen = new Set<string>();
   const ranked: RankedAppCommand[] = [];
 
-  for (const command of [...core, ...page, ...settingsToggles]) {
+  for (const command of [...core, ...page, ...settingsToggles, ...tabsAutoSave]) {
     if (seen.has(command.id)) continue;
     seen.add(command.id);
     const score = scoreCommandRelevance(command, q);

@@ -7,8 +7,11 @@ import {
   saveAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
+  loadWorkspaceTabsAutoSaveMode,
   loadWorkspaceTabsEnabled,
+  saveWorkspaceTabsAutoSaveMode,
   saveWorkspaceTabsEnabled,
+  WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
 } from '@/utils/workspaceTabsSettings';
 import {
   getComposerHelperTextVisible,
@@ -111,6 +114,8 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
       '네비게이션',
       'navigation',
       '채팅',
+      'auto save',
+      '자동 저장',
     ],
     load: loadWorkspaceTabsEnabled,
     save: saveWorkspaceTabsEnabled,
@@ -270,4 +275,70 @@ export function getSettingsToggleStates(): Record<SettingsToggleId, boolean> {
     out[def.id] = def.load();
   }
   return out;
+}
+
+export type WorkspaceTabsAutoSaveCommandId =
+  | 'settings-tabs-autosave-off'
+  | 'settings-tabs-autosave-onFocusChange'
+  | 'settings-tabs-autosave-onWindowChange';
+
+const AUTO_SAVE_COMMAND_BY_MODE = {
+  off: 'settings-tabs-autosave-off',
+  onFocusChange: 'settings-tabs-autosave-onFocusChange',
+  onWindowChange: 'settings-tabs-autosave-onWindowChange',
+} as const;
+
+export function isWorkspaceTabsAutoSaveCommandId(
+  id: string | undefined | null,
+): id is WorkspaceTabsAutoSaveCommandId {
+  return (
+    id === 'settings-tabs-autosave-off' ||
+    id === 'settings-tabs-autosave-onFocusChange' ||
+    id === 'settings-tabs-autosave-onWindowChange'
+  );
+}
+
+export function workspaceTabsAutoSaveModeFromCommandId(
+  id: WorkspaceTabsAutoSaveCommandId,
+): 'off' | 'onFocusChange' | 'onWindowChange' {
+  if (id === 'settings-tabs-autosave-off') return 'off';
+  if (id === 'settings-tabs-autosave-onWindowChange') return 'onWindowChange';
+  return 'onFocusChange';
+}
+
+/** Situational: only modes other than the current one (when tabs are enabled). */
+export function getWorkspaceTabsAutoSaveCommands(): Array<{
+  id: WorkspaceTabsAutoSaveCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  if (!loadWorkspaceTabsEnabled()) return [];
+  const current = loadWorkspaceTabsAutoSaveMode();
+  return WORKSPACE_TABS_AUTO_SAVE_OPTIONS.filter((opt) => opt.value !== current).map((opt) => ({
+    id: AUTO_SAVE_COMMAND_BY_MODE[opt.value],
+    title: `탭 자동 저장: ${opt.label}`,
+    description: opt.description,
+    keywords: [
+      'tab',
+      'tabs',
+      '탭',
+      'auto save',
+      'autosave',
+      '자동 저장',
+      '저장',
+      'vscode',
+      'onFocusChange',
+      'onWindowChange',
+      'off',
+      opt.value,
+      opt.label,
+    ],
+  }));
+}
+
+export function applyWorkspaceTabsAutoSaveCommand(
+  id: WorkspaceTabsAutoSaveCommandId,
+): void {
+  saveWorkspaceTabsAutoSaveMode(workspaceTabsAutoSaveModeFromCommandId(id));
 }

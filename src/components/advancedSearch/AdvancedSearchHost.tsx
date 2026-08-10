@@ -44,7 +44,9 @@ import {
   toggleMirrorEditEnabled,
 } from '@/utils/mirrorEditSettings';
 import {
+  applyWorkspaceTabsAutoSaveCommand,
   isSettingsToggleId,
+  isWorkspaceTabsAutoSaveCommandId,
   subscribeSettingsToggles,
   toggleSettingsToggle,
 } from '@/utils/advancedSearch/settingsToggles';
@@ -428,6 +430,11 @@ export default function AdvancedSearchHost({
 
         if (isSettingsToggleId(commandId)) {
           toggleSettingsToggle(commandId);
+          return;
+        }
+
+        if (isWorkspaceTabsAutoSaveCommandId(commandId)) {
+          applyWorkspaceTabsAutoSaveCommand(commandId);
           return;
         }
 

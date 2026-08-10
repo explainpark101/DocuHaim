@@ -82,7 +82,11 @@ import {
   stripChatTab,
 } from '@/utils/workspaceTabs/legacyMode';
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
-import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
+import {
+  loadWorkspaceTabsAutoSaveMode,
+  loadWorkspaceTabsEnabled,
+  WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
+} from '@/utils/workspaceTabsSettings';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
@@ -392,6 +396,7 @@ function MainApp() {
   );
   const workspaceTabsEnabledRef = useRef(workspaceTabsEnabled);
   workspaceTabsEnabledRef.current = workspaceTabsEnabled;
+  const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
   const editedFileNameRef = useRef('');
   const [isSaving, setIsSaving] = useState(false);
   /** Tab ids (`type:path`) currently writing in the background. */
@@ -439,6 +444,8 @@ function MainApp() {
   const [showSuffixChangeConfirmModal, setShowSuffixChangeConfirmModal] = useState(false);
   const [suffixConfirmAction, setSuffixConfirmAction] = useState('renameOnly'); // 'renameOnly' | 'renameAndSave'
   const [showCloseFileConfirmModal, setShowCloseFileConfirmModal] = useState(false);
+  /** Tab id awaiting save/discard close confirm (`ConfirmModal`). */
+  const [pendingCloseTabId, setPendingCloseTabId] = useState(null);
   const [showOverwriteCredsConfirmModal, setShowOverwriteCredsConfirmModal] = useState(false);
   const [showCoverChangeConfirmModal, setShowCoverChangeConfirmModal] = useState(false);
   const pendingCoverSaveRef = useRef(null);
@@ -712,6 +719,37 @@ function MainApp() {
     })();
   }, []);
 
+  /** VS Code onFocusChange: save when leaving a dirty file tab. */
+  const maybeAutoSaveOnFocusChange = useCallback(
+    (file, content) => {
+      if (!workspaceTabsEnabledRef.current) return;
+      if (workspaceTabsAutoSaveModeRef.current !== 'onFocusChange') return;
+      queueBackgroundTabSave(file, content);
+    },
+    [queueBackgroundTabSave],
+  );
+
+  /** VS Code onWindowChange: save active dirty file when window/tab loses focus. */
+  const maybeAutoSaveOnWindowChange = useCallback(() => {
+    if (!workspaceTabsEnabledRef.current) return;
+    if (workspaceTabsAutoSaveModeRef.current !== 'onWindowChange') return;
+    const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+      editorContent: editorContentRef.current ?? '',
+      currentFile: currentFileRef.current,
+      editedFileName: editedFileNameRef.current ?? '',
+    });
+    workspaceTabsRef.current = flushed;
+    setWorkspaceTabs(flushed);
+    const leaving = getActiveFileTab(flushed);
+    if (
+      leaving &&
+      isFileTabDirty(leaving) &&
+      leaving.storageType !== SESSION_STORAGE_TYPE
+    ) {
+      queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+    }
+  }, [queueBackgroundTabSave]);
+
   const commitOpenFile = useCallback((file, content = '', options = {}) => {
     if (!file?.type || !file?.id) return false;
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
@@ -762,7 +800,7 @@ function MainApp() {
         isFileTabDirty(leaving) &&
         leaving.storageType !== SESSION_STORAGE_TYPE
       ) {
-        queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+        maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
       }
       const activated = activateTab(flushed, id);
       workspaceTabsRef.current = activated;
@@ -784,7 +822,7 @@ function MainApp() {
         navigate('/');
       }
     },
-    [navigate, queueBackgroundTabSave],
+    [navigate, maybeAutoSaveOnFocusChange],
   );
 
   const openChatWorkspaceTab = useCallback(
@@ -799,7 +837,7 @@ function MainApp() {
         });
         const leaving = getActiveFileTab(flushed);
         if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
-          queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+          maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
         }
         const next = stripChatTab(flushed);
         workspaceTabsRef.current = next;
@@ -816,7 +854,7 @@ function MainApp() {
       });
       const leaving = getActiveFileTab(flushed);
       if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
-        queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+        maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
       }
       const next = openOrActivateChat(flushed);
       workspaceTabsRef.current = next;
@@ -825,7 +863,7 @@ function MainApp() {
       currentFileRef.current = null;
       if (navigateUrl) navigate('/chat');
     },
-    [navigate, queueBackgroundTabSave],
+    [navigate, maybeAutoSaveOnFocusChange],
   );
 
   const collapseToLegacyWorkspace = useCallback(() => {
@@ -860,10 +898,9 @@ function MainApp() {
       const { skipDirtyConfirm = false, skipHistory = false } = options;
       const closing = workspaceTabsRef.current.tabs.find((t) => t.id === id);
       if (!skipDirtyConfirm && isFileTab(closing) && isFileTabDirty(closing)) {
-        const ok = window.confirm(
-          `「${closing.editedFileName || closing.path}」에 저장되지 않은 변경이 있습니다. 닫을까요?`,
-        );
-        if (!ok) return;
+        setPendingCloseTabId(id);
+        setShowCloseFileConfirmModal(true);
+        return;
       }
       if (!skipHistory && closing) {
         pushClosedTab(closedTabEntryFromWorkspaceTab(closing));
@@ -1127,6 +1164,32 @@ function MainApp() {
       }
     });
   }, [collapseToLegacyWorkspace, isChatRoute, openChatWorkspaceTab]);
+
+  useEffect(() => {
+    const onAutoSaveMode = (event) => {
+      const mode = event?.detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
+      workspaceTabsAutoSaveModeRef.current = mode;
+    };
+    window.addEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
+    return () => {
+      window.removeEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onWindowLoseFocus = () => {
+      maybeAutoSaveOnWindowChange();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') onWindowLoseFocus();
+    };
+    window.addEventListener('blur', onWindowLoseFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('blur', onWindowLoseFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [maybeAutoSaveOnWindowChange]);
 
   useEffect(() => {
     applyDocumentTheme(theme);
@@ -1494,7 +1557,24 @@ function MainApp() {
     return editable && file.content !== editorContentRef.current;
   }, []);
 
-  const navGuard = useUnsavedNavigationGuard({ isDirty: hasUnsavedEditorChanges });
+  const allowWorkspaceTabNavigation = useCallback(({ currentLocation, nextLocation }) => {
+    if (!workspaceTabsEnabledRef.current) return false;
+    const isShell = (pathname) => {
+      const p = String(pathname || '');
+      return (
+        p === '/' ||
+        p === '/chat' ||
+        p.endsWith('/chat') ||
+        p.startsWith('/view/')
+      );
+    };
+    return isShell(currentLocation.pathname) && isShell(nextLocation.pathname);
+  }, []);
+
+  const navGuard = useUnsavedNavigationGuard({
+    isDirty: hasUnsavedEditorChanges,
+    shouldAllowNavigation: allowWorkspaceTabNavigation,
+  });
 
   const revokeOpenFileObjectUrl = (file) => {
     if (
@@ -1734,8 +1814,13 @@ function MainApp() {
   };
 
   const handleRequestCloseEditor = () => {
-    const active = getActiveFileTab(workspaceTabsRef.current);
-    if (active ? isFileTabDirty(active) : hasUnsavedEditorChanges()) {
+    const active = getActiveTab(workspaceTabsRef.current);
+    if (active) {
+      closeWorkspaceTabById(active.id);
+      return;
+    }
+    if (hasUnsavedEditorChanges()) {
+      setPendingCloseTabId(null);
       setShowCloseFileConfirmModal(true);
     } else {
       closeCurrentFile();
@@ -1751,7 +1836,7 @@ function MainApp() {
     });
     const leaving = getActiveFileTab(flushed);
     if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
-      queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+      maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
     } else if (leaving?.storageType === SESSION_STORAGE_TYPE) {
       flushSessionEditorToWorkspace();
     }
@@ -1767,12 +1852,43 @@ function MainApp() {
 
   const handleCloseFileConfirmSave = async () => {
     setShowCloseFileConfirmModal(false);
-    await saveFile(null, { skipSuffixCheck: true });
-    closeCurrentFile();
+    const closeId =
+      pendingCloseTabId ||
+      getActiveFileTab(workspaceTabsRef.current)?.id ||
+      null;
+    setPendingCloseTabId(null);
+    if (!closeId) {
+      await saveFile(null, { skipSuffixCheck: true });
+      closeCurrentFile();
+      return;
+    }
+    const tab = workspaceTabsRef.current.tabs.find((t) => t.id === closeId);
+    if (isFileTab(tab)) {
+      const isActive = workspaceTabsRef.current.activeId === closeId;
+      if (isActive) {
+        await saveFileRef.current?.(null, { skipSuffixCheck: true });
+      } else {
+        await saveFileRef.current?.(tab.currentFile, {
+          skipSuffixCheck: true,
+          skipCoverChangeCheck: true,
+          contentOverride: tab.editorContent,
+        });
+      }
+    }
+    closeWorkspaceTabById(closeId, { skipDirtyConfirm: true });
   };
 
   const handleCloseFileConfirmDiscard = () => {
     setShowCloseFileConfirmModal(false);
+    const closeId =
+      pendingCloseTabId ||
+      getActiveTab(workspaceTabsRef.current)?.id ||
+      null;
+    setPendingCloseTabId(null);
+    if (closeId) {
+      closeWorkspaceTabById(closeId, { skipDirtyConfirm: true });
+      return;
+    }
     closeCurrentFile();
   };
 
@@ -3294,10 +3410,10 @@ function MainApp() {
       const leaving = getActiveFileTab(flushed);
       if (!leaving || !isFileTabDirty(leaving)) return;
 
-      // Fire-and-forget: navigate continues immediately.
-      queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+      // Fire-and-forget when onFocusChange: navigate continues immediately.
+      maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
     },
-    [flushSessionEditorToWorkspace, queueBackgroundTabSave],
+    [flushSessionEditorToWorkspace, maybeAutoSaveOnFocusChange],
   );
 
   const handleTreeNodeSelect = useCallback(
@@ -8080,14 +8196,6 @@ function MainApp() {
                   isChatRoute={isChatRoute}
                   onActivateTab={(id) => activateWorkspaceTab(id)}
                   onCloseTab={(id) => {
-                    const tab = workspaceTabs.tabs.find((t) => t.id === id);
-                    if (isFileTab(tab) && isFileTabDirty(tab)) {
-                      // Use the same close confirm modal for the active file tab.
-                      if (tab.id === workspaceTabs.activeId) {
-                        handleRequestCloseEditor();
-                        return;
-                      }
-                    }
                     closeWorkspaceTabById(id);
                   }}
                   onReorderTabs={reorderWorkspaceTabs}
@@ -8620,12 +8728,26 @@ function MainApp() {
       <ConfirmModal
         isOpen={showCloseFileConfirmModal}
         title="파일 닫기"
-        message="저장하지 않은 변경사항이 있습니다. 저장 후 닫으시겠습니까?"
+        message={(() => {
+          const tab =
+            (pendingCloseTabId &&
+              workspaceTabs.tabs.find((t) => t.id === pendingCloseTabId)) ||
+            getActiveFileTab(workspaceTabs);
+          const name = isFileTab(tab)
+            ? tab.editedFileName || tab.path
+            : '';
+          return name
+            ? `「${name}」에 저장하지 않은 변경사항이 있습니다. 저장 후 닫으시겠습니까?`
+            : '저장하지 않은 변경사항이 있습니다. 저장 후 닫으시겠습니까?';
+        })()}
         confirmLabel="저장 후 닫기"
         cancelLabel="취소"
         discardLabel="저장 안 하고 닫기"
         onConfirm={handleCloseFileConfirmSave}
-        onCancel={() => setShowCloseFileConfirmModal(false)}
+        onCancel={() => {
+          setShowCloseFileConfirmModal(false);
+          setPendingCloseTabId(null);
+        }}
         onDiscard={handleCloseFileConfirmDiscard}
       />
 

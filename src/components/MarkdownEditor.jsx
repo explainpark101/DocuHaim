@@ -152,17 +152,9 @@ import {
   isMirrorEditActiveIn,
   isMirrorEditTarget,
 } from '@/utils/previewMirrorEdit';
-import { setMirrorEditCaretHandler } from '@/utils/mirrorEditCaretBridge';
-import {
-  scheduleMirrorEditPreviewRemirror,
-  startMirrorEditPreviewRemirror,
-  stopMirrorEditPreviewRemirror,
-} from '@/utils/mirrorEditPreviewRemirror';
-import {
-  schedulePreviewScrollFollow,
-  startPreviewScrollFollow,
-  stopPreviewScrollFollow,
-} from '@/utils/previewScrollFollow';
+import { registerMirrorEditCaretHandler } from '@/utils/mirrorEditCaretBridge';
+import { createMirrorEditPreviewRemirror } from '@/utils/mirrorEditPreviewRemirror';
+import { createPreviewScrollFollow } from '@/utils/previewScrollFollow';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
 import {
   toggleBoldForSelection,
@@ -576,6 +568,8 @@ export default function MarkdownEditor({
   const { showAlert } = useAlertModal();
   const editorRef = useRef(null);
   const containerRef = useRef(null);
+  const previewScrollFollowRef = useRef(null);
+  const mirrorEditRemirrorRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
   const valueRef = useRef(value);
   const currentFileRef = useRef(currentFile);
@@ -1144,7 +1138,7 @@ export default function MarkdownEditor({
         target: eventTarget,
       });
       markMirrorEditCaretFromPreview();
-      scheduleMirrorEditPreviewRemirror({ withRetries: true });
+      mirrorEditRemirrorRef.current?.schedule({ withRetries: true });
     };
 
     const isContextMenuMouseDown = (e) => (
@@ -1286,7 +1280,7 @@ export default function MarkdownEditor({
       if (selInPreview) {
         mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed: true });
         syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
-        scheduleMirrorEditPreviewRemirror({ withRetries: true });
+        mirrorEditRemirrorRef.current?.schedule({ withRetries: true });
       } else {
         view.focus();
       }
@@ -1312,9 +1306,10 @@ export default function MarkdownEditor({
   // Safari: leave stock md-editor-rt behavior (no custom sync / Mirror Edit).
   useEffect(() => {
     if (previewOnly || safariMdEditor) {
-      setMirrorEditCaretHandler(null);
-      stopMirrorEditPreviewRemirror();
-      stopPreviewScrollFollow();
+      previewScrollFollowRef.current?.stop();
+      previewScrollFollowRef.current = null;
+      mirrorEditRemirrorRef.current?.stop();
+      mirrorEditRemirrorRef.current = null;
       markMirrorEditCaretFromEditor();
       return undefined;
     }
@@ -1327,26 +1322,36 @@ export default function MarkdownEditor({
       return api?.getEditorView?.();
     };
 
-    startPreviewScrollFollow({ getPreviewRoot, getView });
+    previewScrollFollowRef.current?.stop();
+    const scrollFollow = createPreviewScrollFollow({ getPreviewRoot, getView });
+    previewScrollFollowRef.current = scrollFollow;
 
+    mirrorEditRemirrorRef.current?.stop();
+    mirrorEditRemirrorRef.current = null;
     if (mirrorEditEnabled) {
-      startMirrorEditPreviewRemirror({ getPreviewRoot, getView });
+      mirrorEditRemirrorRef.current = createMirrorEditPreviewRemirror({
+        getPreviewRoot,
+        getView,
+      });
     } else {
-      stopMirrorEditPreviewRemirror();
       markMirrorEditCaretFromEditor();
     }
 
-    setMirrorEditCaretHandler((_view, update) => {
-      schedulePreviewScrollFollow({ withRetries: update.docChanged });
+    const unregisterCaret = registerMirrorEditCaretHandler((view, update) => {
+      const own = getView();
+      if (!own || view !== own) return;
+      scrollFollow.schedule({ withRetries: update.docChanged });
       if (mirrorEditEnabled) {
-        scheduleMirrorEditPreviewRemirror({ withRetries: update.docChanged });
+        mirrorEditRemirrorRef.current?.schedule({ withRetries: update.docChanged });
       }
     });
 
     return () => {
-      setMirrorEditCaretHandler(null);
-      stopMirrorEditPreviewRemirror();
-      stopPreviewScrollFollow();
+      unregisterCaret();
+      mirrorEditRemirrorRef.current?.stop();
+      mirrorEditRemirrorRef.current = null;
+      previewScrollFollowRef.current?.stop();
+      previewScrollFollowRef.current = null;
     };
   }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
 
@@ -1377,10 +1382,10 @@ export default function MarkdownEditor({
     if (!previewRoot) return;
 
     // Preview HTML rebuilds with `value`; re-follow caret after DOM settles.
-    schedulePreviewScrollFollow({ withRetries: true });
+    previewScrollFollowRef.current?.schedule({ withRetries: true });
 
     if (mirrorEditEnabled && !isMirrorEditActiveIn(previewRoot)) {
-      scheduleMirrorEditPreviewRemirror({ withRetries: true });
+      mirrorEditRemirrorRef.current?.schedule({ withRetries: true });
       return;
     }
 

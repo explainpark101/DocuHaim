@@ -25,7 +25,11 @@ import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
+  loadWorkspaceTabsAutoSaveMode,
   loadWorkspaceTabsEnabled,
+  saveWorkspaceTabsAutoSaveMode,
+  WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
+  WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
 } from '@/utils/workspaceTabsSettings';
 import {
   getComposerHelperTextVisible,
@@ -121,6 +125,9 @@ export default function SettingsPage({
   const [workspaceTabsEnabled, setWorkspaceTabsEnabled] = useState(() =>
     loadWorkspaceTabsEnabled(),
   );
+  const [workspaceTabsAutoSaveMode, setWorkspaceTabsAutoSaveMode] = useState(() =>
+    loadWorkspaceTabsAutoSaveMode(),
+  );
   const [composerHelperTextVisible, setComposerHelperTextVisible] = useState(() =>
     getComposerHelperTextVisible(),
   );
@@ -163,6 +170,17 @@ export default function SettingsPage({
         setAdvancedSearchStatus(advancedSearchEngine.getStatus());
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const onAutoSaveMode = (event) => {
+      const mode = event?.detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
+      setWorkspaceTabsAutoSaveMode(mode);
+    };
+    window.addEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
+    return () => {
+      window.removeEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
+    };
   }, []);
 
   useEffect(() => {
@@ -885,6 +903,49 @@ export default function SettingsPage({
                 </span>
               </span>
             </label>
+            {workspaceTabsEnabled ? (
+              <div className="pl-12 space-y-2">
+                <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                  탭 자동 저장 (VS Code Auto Save)
+                </p>
+                <RadioGroup.Root
+                  className="flex flex-col gap-2"
+                  value={workspaceTabsAutoSaveMode}
+                  onValueChange={(next) => {
+                    if (
+                      next !== 'off' &&
+                      next !== 'onFocusChange' &&
+                      next !== 'onWindowChange'
+                    ) {
+                      return;
+                    }
+                    saveWorkspaceTabsAutoSaveMode(next);
+                    setWorkspaceTabsAutoSaveMode(next);
+                  }}
+                  aria-label="탭 자동 저장"
+                >
+                  {WORKSPACE_TABS_AUTO_SAVE_OPTIONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className="flex items-start gap-2 text-xs text-gray-700 dark:text-odp-fg cursor-pointer"
+                    >
+                      <RadioGroup.Item
+                        value={opt.value}
+                        className="mt-0.5 size-3.5 shrink-0 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
+                      >
+                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                      </RadioGroup.Item>
+                      <span>
+                        <span className="font-medium">{opt.label}</span>
+                        <span className="block text-[11px] text-gray-500 dark:text-odp-muted mt-0.5">
+                          {opt.description}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </RadioGroup.Root>
+              </div>
+            ) : null}
           </div>
         </div>
 
