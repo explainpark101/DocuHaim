@@ -114,7 +114,7 @@ export function getVisualLineAtPoint(
   root: HTMLElement,
   clientX: number,
   clientY: number,
-): { lineText: string; occurrence: number } | null {
+): { lineText: string; occurrence: number; top: number; left: number; right: number; bottom: number } | null {
   const lines = clusterFragmentsIntoLines(collectLineFragments(root));
   if (!lines.length) return null;
 
@@ -156,7 +156,14 @@ export function getVisualLineAtPoint(
     const prev = normalizeWs((lines[i] ?? []).map((fragment) => fragment.text).join(''));
     if (prev === lineText) occurrence += 1;
   }
-  return { lineText, occurrence };
+  return {
+    lineText,
+    occurrence,
+    top: Math.min(...line.map((fragment) => fragment.top)),
+    left: Math.min(...line.map((fragment) => fragment.left)),
+    right: Math.max(...line.map((fragment) => fragment.right)),
+    bottom: Math.max(...line.map((fragment) => fragment.bottom)),
+  };
 }
 
 function insertPgbrBeforeSourceLine(lines: string[], lineIndex: number): string {
@@ -244,32 +251,15 @@ export function insertPgbrBeforeVisualLine(
     seen += 1;
     if (seen !== occurrence) continue;
 
+    // Always insert on the line above this source line (blank line + <pgbr/>).
+    // Never splice <pgbr/> into the middle of the line / sentence.
     const alreadyPgbrAbove = (() => {
       let prevIdx = i - 1;
       while (prevIdx >= 0 && !(lines[prevIdx] ?? '').trim()) prevIdx -= 1;
       return prevIdx >= 0 && PG_BR_RE.test((lines[prevIdx] ?? '').trim());
     })();
-
-    if (exact || rawIndex <= prefixLen || !line.slice(0, rawIndex).trim()) {
-      if (alreadyPgbrAbove) return { markdown, updated: false };
-      const nextMarkdown = insertPgbrBeforeSourceLine(lines, i);
-      return { markdown: nextMarkdown, updated: nextMarkdown !== markdown };
-    }
-
-    const before = line.slice(0, rawIndex).trimEnd();
-    const after = line.slice(rawIndex).trimStart();
-    if (!after) return { markdown, updated: false };
-
-    const next = [
-      ...lines.slice(0, i),
-      ...(before ? [before] : []),
-      '',
-      '<pgbr/>',
-      '',
-      after,
-      ...lines.slice(i + 1),
-    ];
-    const nextMarkdown = next.join('\n');
+    if (alreadyPgbrAbove) return { markdown, updated: false };
+    const nextMarkdown = insertPgbrBeforeSourceLine(lines, i);
     return { markdown: nextMarkdown, updated: nextMarkdown !== markdown };
   }
 

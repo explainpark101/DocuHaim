@@ -58,6 +58,7 @@ import {
 import { withFontFallback } from '@/utils/fontFallback';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
+import { usePrintTableFit } from '@/hooks/usePrintTableFit';
 import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
 import { usePrintPageStarts } from '@/hooks/usePrintPageStarts';
 import { usePrintPgbrSpacers } from '@/hooks/usePrintPgbrSpacers';
@@ -67,7 +68,7 @@ import { parseExportPdfPathFromAppPathname } from '@/utils/appHref';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { savePrintMarkdownToStorage } from '@/utils/printMarkdownSave';
 import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
-import { getVisualLineAtPoint, insertPgbrBeforeVisualLine } from '@/utils/printVisualLinePgbr';
+import { PrintPgbrContextMenu } from '@/components/print/PrintPgbrContextMenu';
 import {
   createDefaultNoteCover,
   formatNoteCoverIssues,
@@ -110,7 +111,6 @@ const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
 const PRINT_TOC_DEFAULT_WIDTH = 360;
 
 const headingId = ({ index }) => `pdf-ex-heading-${index}`;
-const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
 /** TOC stays active until the next heading crosses this viewport ratio from the top. */
 const TOC_ACTIVE_SCAN_RATIO = 2 / 3;
 
@@ -124,138 +124,6 @@ function getActiveHeadingId(headingEls) {
     }
   }
   return activeId;
-}
-
-function isFenceStart(line) {
-  return /^\s*(```+|~~~+)/.test(line);
-}
-
-function collectHeadingLineIndexes(markdown) {
-  const lines = String(markdown ?? '').split('\n');
-  const indexes = [];
-  let inFence = false;
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (isFenceStart(line)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) continue;
-
-    if (/^\s{0,3}#{1,6}\s+\S/.test(line)) {
-      indexes.push(i);
-      continue;
-    }
-    const next = lines[i + 1] ?? '';
-    if (
-      line.trim() &&
-      /^\s{0,3}(=+|-+)\s*$/.test(next)
-    ) {
-      indexes.push(i);
-    }
-  }
-
-  return { lines, indexes };
-}
-
-function collectHrLineIndexes(markdown) {
-  const lines = String(markdown ?? '').split('\n');
-  const indexes = [];
-  let inFence = false;
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (isFenceStart(line)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) continue;
-    const t = line.trim();
-    if (!t) continue;
-    if (/^<hr\b[^>]*\/?>$/i.test(t)) {
-      indexes.push(i);
-      continue;
-    }
-    if (/^(\*\s*){3,}$/.test(t) || /^(-\s*){3,}$/.test(t) || /^(_\s*){3,}$/.test(t)) {
-      indexes.push(i);
-    }
-  }
-
-  return { lines, indexes };
-}
-
-function insertPgbrBeforeHeading(markdown, headingIndex) {
-  if (!Number.isInteger(headingIndex) || headingIndex < 0) {
-    return { markdown, updated: false };
-  }
-  const { lines, indexes } = collectHeadingLineIndexes(markdown);
-  const lineIndex = indexes[headingIndex];
-  if (!Number.isInteger(lineIndex)) return { markdown, updated: false };
-
-  let prevIdx = lineIndex - 1;
-  while (prevIdx >= 0 && !lines[prevIdx].trim()) prevIdx -= 1;
-  if (prevIdx >= 0 && PG_BR_RE.test(lines[prevIdx].trim())) {
-    return { markdown, updated: false };
-  }
-
-  const insertion = ['<pgbr/>', ''];
-  if (lineIndex > 0 && lines[lineIndex - 1].trim() !== '') {
-    insertion.unshift('');
-  }
-  lines.splice(lineIndex, 0, ...insertion);
-  return { markdown: lines.join('\n'), updated: true };
-}
-
-function insertPgbrBeforeHr(markdown, hrIndex) {
-  if (!Number.isInteger(hrIndex) || hrIndex < 0) {
-    return { markdown, updated: false };
-  }
-  const { lines, indexes } = collectHrLineIndexes(markdown);
-  const lineIndex = indexes[hrIndex];
-  if (!Number.isInteger(lineIndex)) return { markdown, updated: false };
-
-  let prevIdx = lineIndex - 1;
-  while (prevIdx >= 0 && !lines[prevIdx].trim()) prevIdx -= 1;
-  if (prevIdx >= 0 && PG_BR_RE.test(lines[prevIdx].trim())) {
-    return { markdown, updated: false };
-  }
-
-  const insertion = ['<pgbr/>', ''];
-  if (lineIndex > 0 && lines[lineIndex - 1].trim() !== '') {
-    insertion.unshift('');
-  }
-  lines.splice(lineIndex, 0, ...insertion);
-  return { markdown: lines.join('\n'), updated: true };
-}
-
-function removePgbrByOccurrence(markdown, targetOccurrence) {
-  if (!Number.isInteger(targetOccurrence) || targetOccurrence < 0) {
-    return { markdown, updated: false };
-  }
-  const source = String(markdown ?? '');
-  const lines = source.split('\n');
-  let inFence = false;
-  let occurrence = -1;
-  let updated = false;
-
-  const nextLines = lines.map((line) => {
-    if (isFenceStart(line)) {
-      inFence = !inFence;
-      return line;
-    }
-    if (inFence) return line;
-    if (!/<pgbr\s*\/?\s*>/i.test(line)) return line;
-    return line.replace(/<pgbr\s*\/?\s*>/gi, (m) => {
-      occurrence += 1;
-      if (occurrence !== targetOccurrence) return m;
-      updated = true;
-      return '';
-    });
-  });
-
-  if (!updated) return { markdown, updated: false };
-  return { markdown: nextLines.join('\n'), updated: true };
 }
 
 const printFontStyles = `
@@ -302,6 +170,9 @@ const printFontStyles = `
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table {
+    max-width: 100%;
+  }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr {
     background-color: #ffffff !important;
   }
@@ -318,6 +189,8 @@ const printFontStyles = `
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr td {
     border-color: #e5e7eb !important;
     color: #111827;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h1,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h2,
@@ -581,10 +454,6 @@ export default function ExportPDFPage({
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [visibleHeadingIds, setVisibleHeadingIds] = useState([]);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
-  const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
-  const [linePgbrModalState, setLinePgbrModalState] = useState(null);
-  const [hrPgbrModalState, setHrPgbrModalState] = useState(null);
-  const [pgbrDeleteModalState, setPgbrDeleteModalState] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
@@ -621,6 +490,7 @@ export default function ExportPDFPage({
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
   usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
+  usePrintTableFit(paperContentRef, `${printLayoutKey}|${previewValue}`);
   usePrintPgbrSpacers(paperContentRef, pageInnerHeightPx, printLayoutKey);
   const { pageStarts, contentHeight } = usePrintPageStarts(
     paperContentRef,
@@ -1147,7 +1017,7 @@ export default function ExportPDFPage({
 
   useEffect(() => {
     const root = previewContainerRef.current;
-    if (!root) return;
+    if (!root) return undefined;
 
     const COVER_SEL = '.export-pdf-cover, [data-note-cover="1"]';
 
@@ -1161,7 +1031,6 @@ export default function ExportPDFPage({
       }
       const top = document.elementFromPoint(event.clientX, event.clientY);
       if (top?.closest?.(COVER_SEL)) return true;
-      // Geometry fallback: paper can paint above a cover sibling when boxes overlap.
       for (const cover of root.querySelectorAll(COVER_SEL)) {
         const rect = cover.getBoundingClientRect();
         if (
@@ -1177,23 +1046,11 @@ export default function ExportPDFPage({
     };
 
     const onContextMenu = (event) => {
-      // Cover has its own menus (e.g. image aspect); never treat it as paper pgbr insert.
       if (isCoverContextMenu(event)) return;
-      // macOS Ctrl+click fires contextmenu — do not treat it as pgbr insert.
       if (event.ctrlKey) return;
 
       const contentRoot = paperContentRef.current;
       if (!contentRoot) return;
-
-      const pgbr = event.target?.closest?.('.md-pgbr[data-md-pgbr="1"], .md-pgbr');
-      if (pgbr && contentRoot.contains(pgbr)) {
-        event.preventDefault();
-        const pgbrs = [...contentRoot.querySelectorAll('.md-pgbr[data-md-pgbr="1"], .md-pgbr')];
-        const occurrence = pgbrs.findIndex((el) => el === pgbr);
-        if (occurrence < 0) return;
-        setPgbrDeleteModalState({ occurrence });
-        return;
-      }
 
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
       if (img && contentRoot.contains(img)) {
@@ -1212,38 +1069,7 @@ export default function ExportPDFPage({
           occurrence,
           imageSrc: img.currentSrc || img.src || '',
         });
-        return;
       }
-
-      const heading = event.target?.closest?.('h1, h2, h3, h4, h5, h6');
-      if (heading && contentRoot.contains(heading)) {
-        event.preventDefault();
-        const headings = [...contentRoot.querySelectorAll('h1, h2, h3, h4, h5, h6')];
-        const index = headings.findIndex((h) => h === heading);
-        if (!Number.isInteger(index) || index < 0) return;
-        setHeadingPgbrModalState({
-          headingIndex: index,
-          headingText: heading.textContent?.trim() || '',
-        });
-        return;
-      }
-
-      const hr = event.target?.closest?.('hr');
-      if (hr && contentRoot.contains(hr)) {
-        event.preventDefault();
-        const hrs = [...contentRoot.querySelectorAll('hr')];
-        const index = hrs.findIndex((el) => el === hr);
-        if (!Number.isInteger(index) || index < 0) return;
-        setHrPgbrModalState({ hrIndex: index });
-        return;
-      }
-
-      // Only insert-by-line when the click actually landed in the paper body.
-      if (!(event.target instanceof Node) || !contentRoot.contains(event.target)) return;
-      const visualLine = getVisualLineAtPoint(contentRoot, event.clientX, event.clientY);
-      if (!visualLine?.lineText) return;
-      event.preventDefault();
-      setLinePgbrModalState(visualLine);
     };
     root.addEventListener('contextmenu', onContextMenu);
     return () => root.removeEventListener('contextmenu', onContextMenu);
@@ -1506,70 +1332,6 @@ export default function ExportPDFPage({
     setFreeTransformConfirmOpen(false);
   }, [findResizableImageElement, freeTransformState]);
 
-  const handleInsertPgbrBeforeHeading = useCallback(() => {
-    const modal = headingPgbrModalState;
-    if (!modal || !Number.isInteger(modal.headingIndex)) return;
-    const next = insertPgbrBeforeHeading(previewValue, modal.headingIndex);
-    if (!next.updated || next.markdown === previewValue) {
-      setHeadingPgbrModalState(null);
-      return;
-    }
-    setPreviewValue(next.markdown);
-    setPendingPrintReturnState({
-      currentFile,
-      editorContent: next.markdown,
-    });
-    setHeadingPgbrModalState(null);
-  }, [currentFile, headingPgbrModalState, previewValue]);
-
-  const handleDeletePgbr = useCallback(() => {
-    const modal = pgbrDeleteModalState;
-    if (!modal || !Number.isInteger(modal.occurrence)) return;
-    const next = removePgbrByOccurrence(previewValue, modal.occurrence);
-    if (!next.updated || next.markdown === previewValue) {
-      setPgbrDeleteModalState(null);
-      return;
-    }
-    setPreviewValue(next.markdown);
-    setPendingPrintReturnState({
-      currentFile,
-      editorContent: next.markdown,
-    });
-    setPgbrDeleteModalState(null);
-  }, [currentFile, pgbrDeleteModalState, previewValue]);
-
-  const handleInsertPgbrBeforeLine = useCallback(() => {
-    const modal = linePgbrModalState;
-    if (!modal?.lineText || !Number.isInteger(modal.occurrence)) return;
-    const next = insertPgbrBeforeVisualLine(previewValue, modal.lineText, modal.occurrence);
-    if (!next.updated || next.markdown === previewValue) {
-      setLinePgbrModalState(null);
-      return;
-    }
-    setPreviewValue(next.markdown);
-    setPendingPrintReturnState({
-      currentFile,
-      editorContent: next.markdown,
-    });
-    setLinePgbrModalState(null);
-  }, [currentFile, linePgbrModalState, previewValue]);
-
-  const handleInsertPgbrBeforeHr = useCallback(() => {
-    const modal = hrPgbrModalState;
-    if (!modal || !Number.isInteger(modal.hrIndex)) return;
-    const next = insertPgbrBeforeHr(previewValue, modal.hrIndex);
-    if (!next.updated || next.markdown === previewValue) {
-      setHrPgbrModalState(null);
-      return;
-    }
-    setPreviewValue(next.markdown);
-    setPendingPrintReturnState({
-      currentFile,
-      editorContent: next.markdown,
-    });
-    setHrPgbrModalState(null);
-  }, [currentFile, hrPgbrModalState, previewValue]);
-
   const updatePrintLayout = useCallback((partial) => {
     setPrintLayout((prev) => {
       const next = { ...prev, ...partial };
@@ -1725,8 +1487,8 @@ export default function ExportPDFPage({
     return () => root.removeEventListener('wheel', onWheel);
   }, [previewPanRoot]);
 
-  // Space+drag / middle-mouse drag pans the preview scroll area.
-  useScrollPointerPan(previewPanRoot);
+  // Space+drag always; middle-mouse pan only in cover add/edit mode.
+  useScrollPointerPan(previewPanRoot, true, { middleClick: Boolean(coverEditMode) });
 
   const fontStyleVars = {
     ...buildPrintLayoutCssVars(printLayout),
@@ -2273,42 +2035,17 @@ export default function ExportPDFPage({
         onCancel={() => setFreeTransformConfirmOpen(false)}
         onDiscard={handleConfirmTransformReset}
       />
-      <ConfirmModal
-        isOpen={Boolean(headingPgbrModalState)}
-        title="페이지 나누기 삽입"
-        message={`아래 heading 앞에 <pgbr/> 를 삽입합니다.\n\n${headingPgbrModalState?.headingText || '(제목 텍스트 없음)'}`}
-        confirmLabel="삽입"
-        cancelLabel="취소"
-        onConfirm={handleInsertPgbrBeforeHeading}
-        onCancel={() => setHeadingPgbrModalState(null)}
-      />
-      <ConfirmModal
-        isOpen={Boolean(linePgbrModalState)}
-        title="페이지 나누기 삽입"
-        message={`아래 줄 앞에 <pgbr/> 를 삽입합니다.\n\n${linePgbrModalState?.lineText || '(텍스트 없음)'}`}
-        confirmLabel="삽입"
-        cancelLabel="취소"
-        onConfirm={handleInsertPgbrBeforeLine}
-        onCancel={() => setLinePgbrModalState(null)}
-      />
-      <ConfirmModal
-        isOpen={Boolean(pgbrDeleteModalState)}
-        title="페이지 나누기 삭제"
-        message={"선택한 <pgbr/> 를 삭제합니다."}
-        variant="danger"
-        confirmLabel="삭제"
-        cancelLabel="취소"
-        onConfirm={handleDeletePgbr}
-        onCancel={() => setPgbrDeleteModalState(null)}
-      />
-      <ConfirmModal
-        isOpen={Boolean(hrPgbrModalState)}
-        title="페이지 나누기 삽입"
-        message={"선택한 구분선(HR) 앞에 <pgbr/> 를 삽입합니다."}
-        confirmLabel="삽입"
-        cancelLabel="취소"
-        onConfirm={handleInsertPgbrBeforeHr}
-        onCancel={() => setHrPgbrModalState(null)}
+      <PrintPgbrContextMenu
+        containerRef={previewContainerRef}
+        paperContentRef={paperContentRef}
+        getMarkdown={() => previewValueRef.current ?? ''}
+        setMarkdown={(next) => {
+          setPreviewValue(next);
+          setPendingPrintReturnState({
+            currentFile: currentFileRef.current,
+            editorContent: next,
+          });
+        }}
       />
     </div>
   );

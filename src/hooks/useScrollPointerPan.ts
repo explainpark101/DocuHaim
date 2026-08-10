@@ -7,6 +7,13 @@ function isEditableTarget(target: EventTarget | null): boolean {
   );
 }
 
+export type ScrollPointerPanOptions = {
+  /** Space + left-drag pan. Default true. */
+  spaceDrag?: boolean;
+  /** Middle-mouse-button drag pan. Default true. */
+  middleClick?: boolean;
+};
+
 /**
  * Space+drag or middle-mouse-drag pans a scrollable container (Figma-style).
  * Uses capture-phase pointerdown so child editors (e.g. cover move) do not steal the gesture.
@@ -14,9 +21,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function useScrollPointerPan(
   root: HTMLElement | null,
   enabled = true,
+  options: ScrollPointerPanOptions = {},
 ): void {
+  const spaceDrag = options.spaceDrag !== false;
+  const middleClick = options.middleClick !== false;
+
   useEffect(() => {
     if (!enabled || !root) return undefined;
+    if (!spaceDrag && !middleClick) return undefined;
 
     let spaceHeld = false;
     let pan: { pointerId: number; lastX: number; lastY: number } | null = null;
@@ -27,7 +39,7 @@ export function useScrollPointerPan(
         root.style.userSelect = 'none';
         return;
       }
-      if (spaceHeld) {
+      if (spaceDrag && spaceHeld) {
         root.style.cursor = 'grab';
         root.style.userSelect = '';
         return;
@@ -48,6 +60,7 @@ export function useScrollPointerPan(
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!spaceDrag) return;
       if (event.code !== 'Space' && event.key !== ' ') return;
       if (isEditableTarget(event.target)) return;
       if (event.repeat) {
@@ -60,6 +73,7 @@ export function useScrollPointerPan(
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
+      if (!spaceDrag) return;
       if (event.code !== 'Space' && event.key !== ' ') return;
       spaceHeld = false;
       if (!pan) syncCursor();
@@ -73,12 +87,12 @@ export function useScrollPointerPan(
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType === 'touch') return;
-      const middle = event.button === 1;
-      const spaceLeft = event.button === 0 && spaceHeld;
+      const middle = middleClick && event.button === 1;
+      const spaceLeft = spaceDrag && event.button === 0 && spaceHeld;
       if (!middle && !spaceLeft) return;
       if (isEditableTarget(event.target)) return;
 
-      // Always kill browser middle-click autoscroll inside the preview.
+      // Kill browser middle-click autoscroll only when we own the gesture.
       if (middle) event.preventDefault();
 
       const canScrollX = root.scrollWidth > root.clientWidth + 1;
@@ -121,31 +135,40 @@ export function useScrollPointerPan(
     };
 
     const onAuxClick = (event: MouseEvent) => {
+      if (!middleClick) return;
       if (event.button === 1) event.preventDefault();
     };
 
-    window.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('keyup', onKeyUp, true);
-    window.addEventListener('blur', clearSpace);
+    if (spaceDrag) {
+      window.addEventListener('keydown', onKeyDown, true);
+      window.addEventListener('keyup', onKeyUp, true);
+      window.addEventListener('blur', clearSpace);
+    }
     root.addEventListener('pointerdown', onPointerDown, true);
     root.addEventListener('pointermove', onPointerMove);
     root.addEventListener('pointerup', onPointerUp);
     root.addEventListener('pointercancel', onPointerUp);
     root.addEventListener('lostpointercapture', onLostCapture);
-    root.addEventListener('auxclick', onAuxClick);
+    if (middleClick) {
+      root.addEventListener('auxclick', onAuxClick);
+    }
 
     return () => {
-      window.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('keyup', onKeyUp, true);
-      window.removeEventListener('blur', clearSpace);
+      if (spaceDrag) {
+        window.removeEventListener('keydown', onKeyDown, true);
+        window.removeEventListener('keyup', onKeyUp, true);
+        window.removeEventListener('blur', clearSpace);
+      }
       root.removeEventListener('pointerdown', onPointerDown, true);
       root.removeEventListener('pointermove', onPointerMove);
       root.removeEventListener('pointerup', onPointerUp);
       root.removeEventListener('pointercancel', onPointerUp);
       root.removeEventListener('lostpointercapture', onLostCapture);
-      root.removeEventListener('auxclick', onAuxClick);
+      if (middleClick) {
+        root.removeEventListener('auxclick', onAuxClick);
+      }
       root.style.cursor = '';
       root.style.userSelect = '';
     };
-  }, [root, enabled]);
+  }, [root, enabled, spaceDrag, middleClick]);
 }
