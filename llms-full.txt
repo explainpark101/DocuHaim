@@ -1,6 +1,6 @@
-# S3Haim
+# Docu Haim
 
-Generated: 2026-08-09T12:00:16.252Z
+Generated: 2026-08-10T07:05:02.561Z
 
 ============================================================
 Advanced Search
@@ -1674,12 +1674,12 @@ Omit absent keys; join options with a single space. (`wikiImageMarkupFromAttrs`)
 관련 스킬: `.cursor/skills/md-editor-rt-wiki-image/`
 
 ============================================================
-S3 Haim Docs
+Docu Haim Docs
 ============================================================
 
 URL: https://explainpark101.github.io/s3haim/docs/
 
-# S3 Haim Docs
+# Docu Haim Docs
 
 앱 기능·문법 명세와, 다른 구현에서 포팅할 때 쓰는 **interop Spec** 문서입니다.
 
