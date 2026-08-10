@@ -924,25 +924,31 @@ export default function SettingsPage({
                   }}
                   aria-label="탭 자동 저장"
                 >
-                  {WORKSPACE_TABS_AUTO_SAVE_OPTIONS.map((opt) => (
-                    <label
-                      key={opt.value}
-                      className="flex items-start gap-2 text-xs text-gray-700 dark:text-odp-fg cursor-pointer"
-                    >
+                  {WORKSPACE_TABS_AUTO_SAVE_OPTIONS.map((opt) => {
+                    const selected = workspaceTabsAutoSaveMode === opt.value;
+                    return (
                       <RadioGroup.Item
+                        key={opt.value}
                         value={opt.value}
-                        className="mt-0.5 size-3.5 shrink-0 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
+                        className={[
+                          'rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200 origin-left w-90',
+                          'focus-visible:ring-2 focus-visible:ring-blue-500/40',
+                          selected
+                            ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
+                            : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
+                        ].join(' ')}
                       >
-                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                        <div className={selected ? '' : 'opacity-50'}>
+                          <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                            {opt.label}
+                          </div>
+                          <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                            {opt.description}
+                          </div>
+                        </div>
                       </RadioGroup.Item>
-                      <span>
-                        <span className="font-medium">{opt.label}</span>
-                        <span className="block text-[11px] text-gray-500 dark:text-odp-muted mt-0.5">
-                          {opt.description}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </RadioGroup.Root>
               </div>
             ) : null}
