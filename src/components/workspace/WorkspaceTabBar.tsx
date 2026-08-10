@@ -1,0 +1,164 @@
+import {
+  IconFile,
+  IconFileCode,
+  IconFileJson,
+  IconImage,
+  IconMusic,
+  IconVideo,
+} from '@/components/icons';
+import { MessageSquare, X } from 'lucide-react';
+import { Tooltip } from 'radix-ui';
+import type { ComponentType, SVGProps } from 'react';
+import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
+import {
+  isFileTab,
+  isFileTabDirty,
+  tabDirectoryPath,
+  tabDisplayTitle,
+} from '@/utils/workspaceTabs';
+
+type WorkspaceTabBarProps = {
+  tabs: WorkspaceTab[];
+  activeId: string | null;
+  onActivate: (id: string) => void;
+  onClose: (id: string) => void;
+};
+
+type IconComp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
+
+/** Match sidebar TreeNode file icon rules. */
+function fileTabIcon(tab: FileWorkspaceTab): IconComp {
+  const name = String(tab.editedFileName || tab.currentFile.name || tab.path || '');
+  const lower = name.toLowerCase();
+  const lastDot = lower.lastIndexOf('.');
+  const ext = lastDot > -1 ? lower.slice(lastDot + 1) : '';
+  const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
+  const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
+  const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
+
+  if (imageExts.includes(ext)) return IconImage;
+  if (videoExts.includes(ext)) return IconVideo;
+  if (audioExts.includes(ext)) return IconMusic;
+  if (ext === 'pdf') return IconFileJson;
+  if (
+    ext === 'md' ||
+    ext === 'markdown' ||
+    ext === 'mdx' ||
+    ext === 'html' ||
+    ext === 'htm' ||
+    ext === 'svg' ||
+    ext === 'json'
+  ) {
+    return IconFileCode;
+  }
+  return IconFile;
+}
+
+const tooltipContentClass =
+  'z-100001 max-w-[min(92vw,360px)] break-all rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong';
+
+export default function WorkspaceTabBar({
+  tabs,
+  activeId,
+  onActivate,
+  onClose,
+}: WorkspaceTabBarProps) {
+  if (tabs.length === 0) return null;
+
+  return (
+    <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+      <div
+        role="tablist"
+        aria-label="워크스페이스 탭"
+        className="flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+      >
+        {tabs.map((tab) => {
+          const active = tab.id === activeId;
+          const dirty = isFileTab(tab) && isFileTabDirty(tab);
+          const title = tabDisplayTitle(tab);
+          const FileIcon = isFileTab(tab) ? fileTabIcon(tab) : null;
+          const dirPath = isFileTab(tab) ? tabDirectoryPath(tab) : null;
+
+          const activateButton = (
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 text-left"
+              onClick={() => onActivate(tab.id)}
+            >
+              {tab.kind === 'chat' ? (
+                <MessageSquare size={13} className="shrink-0 opacity-80" aria-hidden />
+              ) : FileIcon ? (
+                <FileIcon size={13} className="shrink-0 opacity-80" aria-hidden />
+              ) : null}
+              {dirty ? (
+                <span
+                  className="size-1.5 shrink-0 rounded-full bg-amber-500"
+                  aria-label="저장되지 않은 변경"
+                />
+              ) : null}
+              <span className="truncate">{title}</span>
+            </button>
+          );
+
+          return (
+            <div
+              key={tab.id}
+              role="tab"
+              aria-selected={active}
+              className={`group relative flex max-w-56 min-w-0 shrink-0 items-center gap-1 rounded-t-md border border-b-0 px-2 text-xs transition-colors ${
+                active
+                  ? 'border-gray-200 bg-white text-gray-900 dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong'
+                  : 'border-transparent text-gray-600 hover:bg-white/70 dark:text-odp-muted dark:hover:bg-odp-focusBg/60'
+              }`}
+            >
+              {dirPath != null ? (
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>{activateButton}</Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      side="bottom"
+                      sideOffset={6}
+                      className={tooltipContentClass}
+                    >
+                      {dirPath}
+                      <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              ) : (
+                activateButton
+              )}
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`${title} 탭 닫기`}
+                    className={`shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-odp-focusBg dark:hover:text-odp-fgStrong ${
+                      active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClose(tab.id);
+                    }}
+                  >
+                    <X size={12} aria-hidden />
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="bottom"
+                    sideOffset={6}
+                    className={tooltipContentClass}
+                  >
+                    닫기
+                    <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </div>
+          );
+        })}
+      </div>
+    </Tooltip.Provider>
+  );
+}

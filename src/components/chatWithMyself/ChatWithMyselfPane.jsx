@@ -229,6 +229,7 @@ export default function ChatWithMyselfPane({
   onOpenNote,
   onAttachDropHostChange,
   onRegisterTreeAttachDrop,
+  isActive = true,
 }) {
   const location = useLocation();
   const ctx = useMemo(() => {
@@ -989,7 +990,7 @@ export default function ChatWithMyselfPane({
 
   // Deep-link to a message via /chat#msg-{id} (Link / navigate / hashchange).
   useEffect(() => {
-    if (!storageReady) return undefined;
+    if (!isActive || !storageReady) return undefined;
     const scrollToHash = () => {
       const rawHash = location.hash || window.location.hash || '';
       const match = rawHash.match(/^#?msg-(.+)$/);
@@ -1004,10 +1005,11 @@ export default function ChatWithMyselfPane({
     scrollToHash();
     window.addEventListener('hashchange', scrollToHash);
     return () => window.removeEventListener('hashchange', scrollToHash);
-  }, [storageReady, ctx, jumpToDate, location.hash, location.pathname]);
+  }, [isActive, storageReady, ctx, jumpToDate, location.hash, location.pathname]);
 
   // Advanced Search shortcuts: /chat#settings|groups|dates|search|pinned|group-{id}
   useEffect(() => {
+    if (!isActive) return undefined;
     if (location.pathname !== '/chat' && !location.pathname.endsWith('/chat')) {
       return undefined;
     }
@@ -1085,7 +1087,7 @@ export default function ChatWithMyselfPane({
       return undefined;
     }
     return undefined;
-  }, [location.hash, location.pathname, isMobileLayout, groups, editTarget]);
+  }, [isActive, location.hash, location.pathname, isMobileLayout, groups, editTarget]);
 
   // Prefer composer focus on open; skip when deep-link opens another rail/modal.
   const autoFocusComposer = useMemo(() => {

@@ -42,12 +42,43 @@ import {
 } from '@/utils/s3Client';
 import Sidebar from '@/components/Sidebar';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
-import EditorPane from '@/components/EditorPane';
+import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
 import ShareTargetGate, {
   useChatStorageCtx,
 } from '@/components/chatWithMyself/ShareTargetGate';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import { useAlertModal } from '@/contexts/AlertModalContext';
+import {
+  CHAT_TAB_ID,
+  anyFileTabDirty,
+  clearPersistedWorkspaceTabs,
+  emptyWorkspaceTabsState,
+  getActiveFileTab,
+  getActiveTab,
+  isChatTab,
+  isFileTab,
+  isFileTabDirty,
+  loadPersistedWorkspaceTabs,
+  savePersistedWorkspaceTabs,
+  toPersistedWorkspaceTabs,
+} from '@/utils/workspaceTabs';
+import {
+  activateTab,
+  applyOpenedFileReducer,
+  closeTab,
+  findFileTab,
+  flushEditorIntoActiveFileTab,
+  openOrActivateChat,
+  patchFileTab,
+  softCapPrompt,
+} from '@/utils/workspaceTabs/appBridge';
+import {
+  collapseWorkspaceToLegacy,
+  retainOnlyFileTab,
+  stripChatTab,
+} from '@/utils/workspaceTabs/legacyMode';
+import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
+import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
@@ -287,7 +318,6 @@ function getExt(fileName) {
 }
 
 function MainApp() {
-  const LAST_FILE_KEY = 's3haim_lastFile';
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
   const { showAlert } = useAlertModal();
   const auth = useAuth();
@@ -345,11 +375,20 @@ function MainApp() {
   const [showRestoreLocalFolderModal, setShowRestoreLocalFolderModal] = useState(false);
   const [pendingLocalFolderName, setPendingLocalFolderName] = useState('');
   
-  // Editor State
+  // Editor State (mirrors of the active file tab)
   const [currentFile, setCurrentFile] = useState(null);
   const [editorContent, setEditorContent] = useState('');
   /** 저장 시점의 최신 문자열 (Novel 디바운스 onChange 직후에도 동기 반영) */
   const editorContentRef = useRef('');
+  const [workspaceTabs, setWorkspaceTabs] = useState(() => emptyWorkspaceTabsState());
+  const workspaceTabsRef = useRef(workspaceTabs);
+  workspaceTabsRef.current = workspaceTabs;
+  const [workspaceTabsEnabled, setWorkspaceTabsEnabled] = useState(() =>
+    loadWorkspaceTabsEnabled(),
+  );
+  const workspaceTabsEnabledRef = useRef(workspaceTabsEnabled);
+  workspaceTabsEnabledRef.current = workspaceTabsEnabled;
+  const editedFileNameRef = useRef('');
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -389,6 +428,7 @@ function MainApp() {
   const [saveMethodModalCreds, setSaveMethodModalCreds] = useState(null);
   const [showUnsavedConfirmModal, setShowUnsavedConfirmModal] = useState(false);
   const [editedFileName, setEditedFileName] = useState('');
+  editedFileNameRef.current = editedFileName;
   const [showSuffixChangeConfirmModal, setShowSuffixChangeConfirmModal] = useState(false);
   const [suffixConfirmAction, setSuffixConfirmAction] = useState('renameOnly'); // 'renameOnly' | 'renameAndSave'
   const [showCloseFileConfirmModal, setShowCloseFileConfirmModal] = useState(false);
@@ -504,7 +544,10 @@ function MainApp() {
   );
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.endsWith('/chat');
-  const lockChatViewport = isMobile && isChatRoute;
+  const activeWorkspaceTab = getActiveTab(workspaceTabs);
+  const chatTabActive = isChatTab(activeWorkspaceTab);
+  const chatSurfaceActive = workspaceTabsEnabled ? chatTabActive : isChatRoute;
+  const lockChatViewport = isMobile && chatSurfaceActive;
   useVisualViewportLock(lockChatViewport);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -580,35 +623,200 @@ function MainApp() {
   const selectFileRawRef = useRef(null);
   const prevEditorContentRef = useRef('');
 
-  const saveLastOpenedFile = useCallback((value) => {
-    try {
-      const serialized = JSON.stringify(value);
-      window.sessionStorage.setItem(LAST_FILE_KEY, serialized);
-      // Backward compatibility for older tabs/windows.
-      window.localStorage.setItem(LAST_FILE_KEY, serialized);
-    } catch (_) {}
-  }, []);
-
   const loadLastOpenedFile = useCallback(() => {
+    const persisted = loadPersistedWorkspaceTabs();
+    if (persisted?.tabs?.length) {
+      const active = persisted.tabs.find((t) => {
+        if (t.kind === 'chat') return persisted.activeId === CHAT_TAB_ID;
+        return (
+          persisted.activeId === `${t.type}:${t.path}` ||
+          (!persisted.activeId && persisted.tabs[0] === t)
+        );
+      });
+      if (active?.kind === 'chat') return { type: 'chat' };
+      if (active?.kind === 'file') return { type: active.type, path: active.path };
+      const first = persisted.tabs[0];
+      if (first?.kind === 'chat') return { type: 'chat' };
+      if (first?.kind === 'file') return { type: first.type, path: first.path };
+    }
     try {
-      const sessionValue = window.sessionStorage.getItem(LAST_FILE_KEY);
+      const sessionValue = window.sessionStorage.getItem('s3haim_lastFile');
       if (sessionValue) return JSON.parse(sessionValue);
     } catch (_) {}
     try {
-      const localValue = window.localStorage.getItem(LAST_FILE_KEY);
+      const localValue = window.localStorage.getItem('s3haim_lastFile');
       if (localValue) return JSON.parse(localValue);
     } catch (_) {}
     return null;
   }, []);
 
   const clearLastOpenedFile = useCallback(() => {
-    try {
-      window.sessionStorage.removeItem(LAST_FILE_KEY);
-    } catch (_) {}
-    try {
-      window.localStorage.removeItem(LAST_FILE_KEY);
-    } catch (_) {}
+    clearPersistedWorkspaceTabs();
   }, []);
+
+  const commitOpenFile = useCallback((file, content = '', options = {}) => {
+    if (!file?.type || !file?.id) return false;
+    const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+      editorContent: editorContentRef.current ?? '',
+      currentFile: currentFileRef.current,
+      editedFileName: editedFileNameRef.current ?? '',
+    });
+    let next = applyOpenedFileReducer(flushed, file, content, {
+      promptCloseDirty: softCapPrompt,
+    });
+    if (next === flushed && !findFileTab(flushed, file.type, file.id)) {
+      return false;
+    }
+    if (options.baselineContent != null && typeof options.baselineContent === 'string') {
+      const id = `${file.type}:${file.id}`;
+      next = patchFileTab(next, id, {
+        baselineContent: options.baselineContent,
+        currentFile: { ...file, content: options.baselineContent },
+        editorContent: content,
+      });
+    }
+    // Legacy mode: one file slot only (drop other file tabs + chat tab).
+    if (!workspaceTabsEnabledRef.current) {
+      next = retainOnlyFileTab(next, `${file.type}:${file.id}`);
+    }
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+    setCurrentFile(file);
+    currentFileRef.current = file;
+    setEditorContent(content);
+    editorContentRef.current = content;
+    setEditedFileName(file.name || '');
+    return true;
+  }, []);
+
+  const activateWorkspaceTab = useCallback(
+    (id, options = {}) => {
+      const { navigateUrl = true } = options;
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const activated = activateTab(flushed, id);
+      workspaceTabsRef.current = activated;
+      setWorkspaceTabs(activated);
+      const active = getActiveTab(activated);
+      if (isFileTab(active)) {
+        const file = active.currentFile;
+        setCurrentFile(file);
+        currentFileRef.current = file;
+        setEditorContent(active.editorContent);
+        editorContentRef.current = active.editorContent;
+        setEditedFileName(active.editedFileName || String(file?.name || ''));
+        if (navigateUrl) navigate(`/view/${active.path}`);
+      } else if (isChatTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate('/chat');
+      } else if (navigateUrl) {
+        navigate('/');
+      }
+    },
+    [navigate],
+  );
+
+  const openChatWorkspaceTab = useCallback(
+    (options = {}) => {
+      const { navigateUrl = true } = options;
+      if (!workspaceTabsEnabledRef.current) {
+        // Legacy: exclusive /chat route — flush editor to the single file tab if any.
+        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+          editorContent: editorContentRef.current ?? '',
+          currentFile: currentFileRef.current,
+          editedFileName: editedFileNameRef.current ?? '',
+        });
+        const next = stripChatTab(flushed);
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate('/chat');
+        return;
+      }
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const next = openOrActivateChat(flushed);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      setCurrentFile(null);
+      currentFileRef.current = null;
+      if (navigateUrl) navigate('/chat');
+    },
+    [navigate],
+  );
+
+  const collapseToLegacyWorkspace = useCallback(() => {
+    const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+      editorContent: editorContentRef.current ?? '',
+      currentFile: currentFileRef.current,
+      editedFileName: editedFileNameRef.current ?? '',
+    });
+    const wasChat = isChatRoute;
+    const next = collapseWorkspaceToLegacy(flushed);
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+    const active = getActiveTab(next);
+    if (wasChat) {
+      // Stay on exclusive /chat; keep a single file tab in store for when leaving chat.
+      setCurrentFile(null);
+      currentFileRef.current = null;
+      return;
+    }
+    if (isFileTab(active)) {
+      const file = active.currentFile;
+      setCurrentFile(file);
+      currentFileRef.current = file;
+      setEditorContent(active.editorContent);
+      editorContentRef.current = active.editorContent;
+      setEditedFileName(active.editedFileName || String(file?.name || ''));
+    }
+  }, [isChatRoute]);
+
+  const closeWorkspaceTabById = useCallback(
+    (id, options = {}) => {
+      const { skipDirtyConfirm = false } = options;
+      const closing = workspaceTabsRef.current.tabs.find((t) => t.id === id);
+      if (!skipDirtyConfirm && isFileTab(closing) && isFileTabDirty(closing)) {
+        const ok = window.confirm(
+          `「${closing.editedFileName || closing.path}」에 저장되지 않은 변경이 있습니다. 닫을까요?`,
+        );
+        if (!ok) return;
+      }
+      const next = closeTab(workspaceTabsRef.current, id);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      const active = getActiveTab(next);
+      if (isFileTab(active)) {
+        const file = active.currentFile;
+        setCurrentFile(file);
+        currentFileRef.current = file;
+        setEditorContent(active.editorContent);
+        editorContentRef.current = active.editorContent;
+        setEditedFileName(active.editedFileName || String(file?.name || ''));
+        navigate(`/view/${active.path}`);
+      } else if (isChatTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        navigate('/chat');
+      } else {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        setEditorContent('');
+        editorContentRef.current = '';
+        setEditedFileName('');
+        navigate('/');
+      }
+    },
+    [navigate],
+  );
 
   const handleEditorTypeChange = useCallback((next) => {
     saveEditorType(next);
@@ -801,8 +1009,17 @@ function MainApp() {
       else if (id === 'settings-show-hidden') setShowHiddenFolders(enabled);
       else if (id === 'settings-hide-recording') setHideRecordingCompanions(enabled);
       else if (id === 'settings-tree-sticky') setTreeStickyFolderPathEnabled(enabled);
+      else if (id === 'settings-workspace-tabs') {
+        workspaceTabsEnabledRef.current = enabled;
+        setWorkspaceTabsEnabled(enabled);
+        if (!enabled) {
+          collapseToLegacyWorkspace();
+        } else if (isChatRoute) {
+          openChatWorkspaceTab({ navigateUrl: false });
+        }
+      }
     });
-  }, []);
+  }, [collapseToLegacyWorkspace, isChatRoute, openChatWorkspaceTab]);
 
   useEffect(() => {
     applyDocumentTheme(theme);
@@ -1157,6 +1374,13 @@ function MainApp() {
 
   const hasUnsavedEditorChanges = useCallback(() => {
     if (suppressUnsavedNavGuardRef.current) return false;
+    // Flush mirrors into a copy for accurate dirty check across tabs.
+    const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+      editorContent: editorContentRef.current ?? '',
+      currentFile: currentFileRef.current,
+      editedFileName: editedFileNameRef.current ?? '',
+    });
+    if (anyFileTabDirty(flushed.tabs)) return true;
     const file = currentFileRef.current;
     if (!file) return false;
     const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(file.viewer || 'markdown');
@@ -1176,6 +1400,12 @@ function MainApp() {
   };
 
   const clearOpenFileState = useCallback(() => {
+    // Close active file tab only (or clear mirrors when no tab model match).
+    const active = getActiveFileTab(workspaceTabsRef.current);
+    if (active) {
+      closeWorkspaceTabById(active.id, { skipDirtyConfirm: true });
+      return;
+    }
     setCurrentFile((prev) => {
       revokeOpenFileObjectUrl(prev);
       return null;
@@ -1184,7 +1414,7 @@ function MainApp() {
     setEditorContent('');
     editorContentRef.current = '';
     clearLastOpenedFile();
-  }, [clearLastOpenedFile]);
+  }, [clearLastOpenedFile, closeWorkspaceTabById]);
 
   const revokeSessionObjectUrls = useCallback(() => {
     for (const url of sessionObjectUrlsRef.current.values()) {
@@ -1241,58 +1471,46 @@ function MainApp() {
 
       if (viewer === 'image' || viewer === 'pdf' || viewer === 'audio' || viewer === 'video') {
         const url = getSessionObjectUrl(path, record.bytes, mime);
-        setCurrentFile((prev) => {
-          revokeOpenFileObjectUrl(prev);
-          return {
-            type: SESSION_STORAGE_TYPE,
-            id: path,
-            name: record.name,
-            viewer,
-            objectUrl: url,
-            size,
-          };
-        });
-        setEditorContent('');
-        editorContentRef.current = '';
+        const file = {
+          type: SESSION_STORAGE_TYPE,
+          id: path,
+          name: record.name,
+          viewer,
+          objectUrl: url,
+          size,
+        };
+        commitOpenFile(file, '');
         if (!skipNavigate) navigate(`/view/${path}`);
         return true;
       }
 
       if (viewer === 'unsupported') {
-        setCurrentFile((prev) => {
-          revokeOpenFileObjectUrl(prev);
-          return {
-            type: SESSION_STORAGE_TYPE,
-            id: path,
-            name: record.name,
-            viewer: 'unsupported',
-            size,
-          };
-        });
-        setEditorContent('');
-        editorContentRef.current = '';
+        const file = {
+          type: SESSION_STORAGE_TYPE,
+          id: path,
+          name: record.name,
+          viewer: 'unsupported',
+          size,
+        };
+        commitOpenFile(file, '');
         if (!skipNavigate) navigate(`/view/${path}`);
         return true;
       }
 
       const text = decodeSessionText(record.bytes);
-      setCurrentFile((prev) => {
-        revokeOpenFileObjectUrl(prev);
-        return {
-          type: SESSION_STORAGE_TYPE,
-          id: path,
-          name: record.name,
-          content: text,
-          viewer,
-          size,
-        };
-      });
-      setEditorContent(text);
-      editorContentRef.current = text;
+      const file = {
+        type: SESSION_STORAGE_TYPE,
+        id: path,
+        name: record.name,
+        content: text,
+        viewer,
+        size,
+      };
+      commitOpenFile(file, text);
       if (!skipNavigate) navigate(`/view/${path}`);
       return true;
     },
-    [getSessionObjectUrl, navigate],
+    [getSessionObjectUrl, navigate, commitOpenFile],
   );
 
   const openSessionWorkspace = useCallback(
@@ -1393,12 +1611,24 @@ function MainApp() {
   }, [flushSessionEditorToWorkspace, triggerBlobDownload]);
 
   const closeCurrentFile = () => {
-    clearOpenFileState();
+    const active = getActiveTab(workspaceTabsRef.current);
+    if (active) {
+      closeWorkspaceTabById(active.id, { skipDirtyConfirm: true });
+      return;
+    }
+    setCurrentFile((prev) => {
+      revokeOpenFileObjectUrl(prev);
+      return null;
+    });
+    currentFileRef.current = null;
+    setEditorContent('');
+    editorContentRef.current = '';
     navigate('/');
   };
 
   const handleRequestCloseEditor = () => {
-    if (hasUnsavedEditorChanges()) {
+    const active = getActiveFileTab(workspaceTabsRef.current);
+    if (active ? isFileTabDirty(active) : hasUnsavedEditorChanges()) {
       setShowCloseFileConfirmModal(true);
     } else {
       closeCurrentFile();
@@ -2428,19 +2658,27 @@ function MainApp() {
       if (!skipNavigate) navigate(`/view/${node.path}`);
     };
 
+    // Already-open file: activate that tab first, then sync from server/disk.
+    const existingBefore = findFileTab(workspaceTabsRef.current, type, node.path);
+    if (existingBefore && workspaceTabsEnabledRef.current) {
+      activateWorkspaceTab(existingBefore.id, { navigateUrl: !skipNavigate });
+    }
+
+    const commit = (file, content = '', commitOpts = {}) => {
+      const ok = commitOpenFile(file, content, commitOpts);
+      if (ok) goToViewPath();
+      return ok;
+    };
+
     if (type === 'webdav') {
       if (!webdavReady) return;
       try {
         const backend = createWebdavBackend(webdavConfig);
         const opened = await openPathFileFromBackend({ backend, type: 'webdav', node });
         if (!opened) return;
-        const { currentFile: openedFile, editorContent: content, revokePrev } = opened;
-        setCurrentFile((prev) => {
-          revokePrev(prev);
-          return openedFile;
-        });
-        setEditorContent(content);
-        goToViewPath();
+        const { currentFile: openedFile, editorContent: content } = opened;
+        // Do not revokePrev(other tab) — only this tab's media is replaced via commitOpenFile.
+        commit(openedFile, content);
       } catch (err) {
         console.error('WebDAV Read Error:', err);
       }
@@ -2461,22 +2699,15 @@ function MainApp() {
           const mime = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
           const blob = new Blob([body], { type: mime });
           const url = URL.createObjectURL(blob);
-          setCurrentFile((prev) => {
-            if (prev && (prev.viewer === 'image' || prev.viewer === 'pdf' || prev.viewer === 'audio' || prev.viewer === 'video') && prev.objectUrl) {
-              URL.revokeObjectURL(prev.objectUrl);
-            }
-            return {
-              type: 's3',
-              id: node.path,
-              name: node.name,
-              viewer: 'image',
-              objectUrl: url,
-              size: typeof ContentLength === 'number' ? ContentLength : null,
-              lastModified: node.lastModified,
-            };
-          });
-          setEditorContent('');
-          goToViewPath();
+          commit({
+            type: 's3',
+            id: node.path,
+            name: node.name,
+            viewer: 'image',
+            objectUrl: url,
+            size: typeof ContentLength === 'number' ? ContentLength : null,
+            lastModified: node.lastModified,
+          }, '');
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2488,22 +2719,15 @@ function MainApp() {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
           const blob = new Blob([body], { type: 'application/pdf' });
           const url = URL.createObjectURL(blob);
-          setCurrentFile((prev) => {
-            if (prev && (prev.viewer === 'image' || prev.viewer === 'pdf' || prev.viewer === 'audio' || prev.viewer === 'video') && prev.objectUrl) {
-              URL.revokeObjectURL(prev.objectUrl);
-            }
-            return {
-              type: 's3',
-              id: node.path,
-              name: node.name,
-              viewer: 'pdf',
-              objectUrl: url,
-              size: typeof ContentLength === 'number' ? ContentLength : null,
-              lastModified: node.lastModified,
-            };
-          });
-          setEditorContent('');
-          goToViewPath();
+          commit({
+            type: 's3',
+            id: node.path,
+            name: node.name,
+            viewer: 'pdf',
+            objectUrl: url,
+            size: typeof ContentLength === 'number' ? ContentLength : null,
+            lastModified: node.lastModified,
+          }, '');
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2524,35 +2748,25 @@ function MainApp() {
 
           const draftKey = getDraftKey('s3', node.path);
           const draft = await getMemoDraft(draftKey);
+          const existingTab = findFileTab(workspaceTabsRef.current, 's3', node.path);
+          const resolved = await resolveOpenTextContent({
+            serverText,
+            serverLastModTs,
+            existingTab,
+            draft,
+            confirmMessage: '서버에 더 최신 버전이 있습니다. 기존 내용을 버리고 서버 버전으로 교체할까요?',
+            deleteDraft: () => deleteMemoDraft(draftKey),
+          });
 
-          let contentToUse = serverText;
-          if (draft) {
-            if (serverLastModTs > draft.originalLastModified) {
-              const useServer = window.confirm(
-                '서버에 더 최신 버전이 있습니다. 기존 내용을 버리고 서버 버전으로 교체할까요?'
-              );
-              if (useServer) {
-                contentToUse = serverText;
-                await deleteMemoDraft(draftKey);
-              } else {
-                contentToUse = draft.content;
-              }
-            } else {
-              contentToUse = draft.content;
-            }
-          }
-
-          setCurrentFile({
+          commit({
             type: 's3',
             id: node.path,
             name: node.name,
-            content: contentToUse,
+            content: resolved.baselineContent,
             viewer: 'markdown',
             size: typeof ContentLength === 'number' ? ContentLength : null,
             lastModified: serverLastModified ?? node.lastModified,
-          });
-          setEditorContent(contentToUse);
-          goToViewPath();
+          }, resolved.contentToUse, { baselineContent: resolved.baselineContent });
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2573,7 +2787,7 @@ function MainApp() {
               display = raw;
             }
           }
-          setCurrentFile({
+          commit({
             type: 's3',
             id: node.path,
             name: node.name,
@@ -2581,9 +2795,7 @@ function MainApp() {
             viewer: 'json',
             size: typeof ContentLength === 'number' ? ContentLength : null,
             lastModified: node.lastModified,
-          });
-          setEditorContent(display);
-          goToViewPath();
+          }, display);
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2595,7 +2807,7 @@ function MainApp() {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
           const text = new TextDecoder('utf-8').decode(body);
           const viewer = ext === 'svg' ? 'svg' : 'html';
-          setCurrentFile({
+          commit({
             type: 's3',
             id: node.path,
             name: node.name,
@@ -2603,9 +2815,7 @@ function MainApp() {
             viewer,
             size: typeof ContentLength === 'number' ? ContentLength : null,
             lastModified: node.lastModified,
-          });
-          setEditorContent(text);
-          goToViewPath();
+          }, text);
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2623,22 +2833,15 @@ function MainApp() {
           const mime = ext === 'm4a' || ext === 'mp4' ? 'audio/mp4' : ext === 'mp3' ? 'audio/mpeg' : ext === 'ogg' || ext === 'ogv' ? 'audio/ogg' : ext === 'weba' ? 'audio/webm' : `audio/${ext}`;
           const blob = new Blob([body], { type: mime });
           const url = URL.createObjectURL(blob);
-          setCurrentFile((prev) => {
-            if (prev && (prev.viewer === 'image' || prev.viewer === 'pdf' || prev.viewer === 'audio' || prev.viewer === 'video') && prev.objectUrl) {
-              URL.revokeObjectURL(prev.objectUrl);
-            }
-            return {
-              type: 's3',
-              id: node.path,
-              name: node.name,
-              viewer: 'audio',
-              objectUrl: url,
-              size: typeof ContentLength === 'number' ? ContentLength : null,
-              lastModified: node.lastModified,
-            };
-          });
-          setEditorContent('');
-          goToViewPath();
+          commit({
+            type: 's3',
+            id: node.path,
+            name: node.name,
+            viewer: 'audio',
+            objectUrl: url,
+            size: typeof ContentLength === 'number' ? ContentLength : null,
+            lastModified: node.lastModified,
+          }, '');
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -2651,38 +2854,29 @@ function MainApp() {
           const mime = ext === 'mp4' || ext === 'mov' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : 'video/ogg';
           const blob = new Blob([body], { type: mime });
           const url = URL.createObjectURL(blob);
-          setCurrentFile((prev) => {
-            if (prev && (prev.viewer === 'image' || prev.viewer === 'pdf' || prev.viewer === 'audio' || prev.viewer === 'video') && prev.objectUrl) {
-              URL.revokeObjectURL(prev.objectUrl);
-            }
-            return {
-              type: 's3',
-              id: node.path,
-              name: node.name,
-              viewer: 'video',
-              objectUrl: url,
-              size: typeof ContentLength === 'number' ? ContentLength : null,
-              lastModified: node.lastModified,
-            };
-          });
-          setEditorContent('');
-          goToViewPath();
+          commit({
+            type: 's3',
+            id: node.path,
+            name: node.name,
+            viewer: 'video',
+            objectUrl: url,
+            size: typeof ContentLength === 'number' ? ContentLength : null,
+            lastModified: node.lastModified,
+          }, '');
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
         return;
       }
 
-      setCurrentFile({
+      commit({
         type: 's3',
         id: node.path,
         name: node.name,
         viewer: 'unsupported',
         size: null,
         lastModified: node.lastModified,
-      });
-      setEditorContent('');
-      goToViewPath();
+      }, '');
     } else if (type === 'local') {
       const file = await node.handle.getFile();
       const serverLastModTs = file.lastModified ?? 0;
@@ -2694,24 +2888,17 @@ function MainApp() {
       const openLocalBlobViewer = (viewer, mime) => {
         const blob = new Blob([file], { type: mime || file.type || undefined });
         const url = URL.createObjectURL(blob);
-        setCurrentFile((prev) => {
-          if (prev && (prev.viewer === 'image' || prev.viewer === 'pdf' || prev.viewer === 'audio' || prev.viewer === 'video') && prev.objectUrl) {
-            URL.revokeObjectURL(prev.objectUrl);
-          }
-          return {
-            type: 'local',
-            id: node.path,
-            name: node.name,
-            viewer,
-            objectUrl: url,
-            handle: node.handle,
-            parentHandle: node.parentHandle,
-            size: typeof file.size === 'number' ? file.size : null,
-            lastModified: file.lastModified,
-          };
-        });
-        setEditorContent('');
-        goToViewPath();
+        commit({
+          type: 'local',
+          id: node.path,
+          name: node.name,
+          viewer,
+          objectUrl: url,
+          handle: node.handle,
+          parentHandle: node.parentHandle,
+          size: typeof file.size === 'number' ? file.size : null,
+          lastModified: file.lastModified,
+        }, '');
       };
 
       if (imageExts.includes(ext)) {
@@ -2748,7 +2935,7 @@ function MainApp() {
             display = raw;
           }
         }
-        setCurrentFile({
+        commit({
           type: 'local',
           id: node.path,
           name: node.name,
@@ -2758,16 +2945,14 @@ function MainApp() {
           viewer: 'json',
           size: typeof file.size === 'number' ? file.size : null,
           lastModified: file.lastModified,
-        });
-        setEditorContent(display);
-        goToViewPath();
+        }, display);
         return;
       }
 
       if (ext === 'html' || ext === 'htm' || ext === 'svg') {
         const text = await file.text();
         const viewer = ext === 'svg' ? 'svg' : 'html';
-        setCurrentFile({
+        commit({
           type: 'local',
           id: node.path,
           name: node.name,
@@ -2777,14 +2962,12 @@ function MainApp() {
           viewer,
           size: typeof file.size === 'number' ? file.size : null,
           lastModified: file.lastModified,
-        });
-        setEditorContent(text);
-        goToViewPath();
+        }, text);
         return;
       }
 
       if (ext !== 'md' && ext !== 'markdown' && ext !== '') {
-        setCurrentFile({
+        commit({
           type: 'local',
           id: node.path,
           name: node.name,
@@ -2793,46 +2976,34 @@ function MainApp() {
           viewer: 'unsupported',
           size: typeof file.size === 'number' ? file.size : null,
           lastModified: file.lastModified,
-        });
-        setEditorContent('');
-        goToViewPath();
+        }, '');
         return;
       }
 
       const serverText = await file.text();
       const draftKey = getDraftKey('local', node.path);
       const draft = await getMemoDraft(draftKey);
+      const existingTab = findFileTab(workspaceTabsRef.current, 'local', node.path);
+      const resolved = await resolveOpenTextContent({
+        serverText,
+        serverLastModTs,
+        existingTab,
+        draft,
+        confirmMessage: '더 최신 버전이 있습니다. 기존 내용을 버리고 최신 버전으로 교체할까요?',
+        deleteDraft: () => deleteMemoDraft(draftKey),
+      });
 
-      let contentToUse = serverText;
-      if (draft) {
-        if (serverLastModTs > draft.originalLastModified) {
-          const useServer = window.confirm(
-            '더 최신 버전이 있습니다. 기존 내용을 버리고 최신 버전으로 교체할까요?'
-          );
-          if (useServer) {
-            contentToUse = serverText;
-            await deleteMemoDraft(draftKey);
-          } else {
-            contentToUse = draft.content;
-          }
-        } else {
-          contentToUse = draft.content;
-        }
-      }
-
-      setCurrentFile({
+      commit({
         type: 'local',
         id: node.path,
         name: node.name,
-        content: contentToUse,
+        content: resolved.baselineContent,
         handle: node.handle,
         parentHandle: node.parentHandle,
         viewer: 'markdown',
         size: typeof file.size === 'number' ? file.size : null,
         lastModified: file.lastModified,
-      });
-      setEditorContent(contentToUse);
-      goToViewPath();
+      }, resolved.contentToUse, { baselineContent: resolved.baselineContent });
     } else if (type === SESSION_STORAGE_TYPE) {
       flushSessionEditorToWorkspace();
       const workspace = sessionWorkspaceRef.current;
@@ -2847,6 +3018,8 @@ function MainApp() {
     s3Creds.bucket,
     flushSessionEditorToWorkspace,
     applySessionFileToEditor,
+    commitOpenFile,
+    activateWorkspaceTab,
   ]);
 
   const toSelectKey = (storageType, path) => `${storageType}:${path}`;
@@ -3199,19 +3372,28 @@ function MainApp() {
     });
   }, [location.pathname, isUnlocked]);
 
-  // Persist last opened file or chat for restore on next load
+  // Persist open workspace tabs (+ legacy lastFile mirror)
   useEffect(() => {
     if (!isUnlocked) return;
-    const onChat =
-      location.pathname === '/chat' || location.pathname.endsWith('/chat');
-    if (onChat) {
-      saveLastOpenedFile({ type: 'chat' });
+    const flushed = flushEditorIntoActiveFileTab(workspaceTabs, {
+      editorContent: editorContentRef.current ?? '',
+      currentFile: currentFileRef.current,
+      editedFileName: editedFileNameRef.current ?? '',
+    });
+    const payload = toPersistedWorkspaceTabs(
+      flushed.tabs.map((t) =>
+        t.kind === 'chat'
+          ? { kind: 'chat' }
+          : { kind: 'file', storageType: t.storageType, path: t.path },
+      ),
+      flushed.activeId,
+    );
+    if (payload.tabs.length === 0) {
+      clearPersistedWorkspaceTabs();
       return;
     }
-    if (!currentFile) return;
-    if (currentFile.type !== 's3' && currentFile.type !== 'local' && currentFile.type !== 'webdav') return;
-    saveLastOpenedFile({ type: currentFile.type, path: currentFile.id });
-  }, [isUnlocked, currentFile, location.pathname, saveLastOpenedFile]);
+    savePersistedWorkspaceTabs(payload);
+  }, [isUnlocked, workspaceTabs, currentFile, editorContent]);
 
   // Open file from ?open=, /view/* or /export-pdf/* route, or last-file cache once storage is ready.
   useEffect(() => {
@@ -3254,6 +3436,9 @@ function MainApp() {
     } else if (onChat) {
       hasRestoredLastFileRef.current = true;
       hasProcessedOpenFromUrlRef.current = true;
+      if (workspaceTabsEnabledRef.current) {
+        openChatWorkspaceTab({ navigateUrl: false });
+      }
       return;
     } else if (isExportPdfAppPathname(location.pathname)) {
       // Bare /export-pdf without a note path — do not restore last file into the editor.
@@ -3262,23 +3447,57 @@ function MainApp() {
       return;
     } else {
       if (hasRestoredLastFileRef.current) return;
-      const saved = loadLastOpenedFile();
-      if (!saved || typeof saved !== 'object') {
+      const persisted = loadPersistedWorkspaceTabs();
+      if (persisted?.tabs?.length) {
         hasRestoredLastFileRef.current = true;
-        return;
+        // Restore chat shell immediately; files open asynchronously below when possible.
+        if (
+          workspaceTabsEnabledRef.current &&
+          persisted.tabs.some((t) => t.kind === 'chat')
+        ) {
+          openChatWorkspaceTab({ navigateUrl: false });
+        }
+        const fileTabs = persisted.tabs.filter((t) => t.kind === 'file');
+        const activeFile =
+          fileTabs.find((t) => persisted.activeId === `${t.type}:${t.path}`) ||
+          (persisted.activeId === CHAT_TAB_ID ? null : fileTabs[0]);
+        if (persisted.activeId === CHAT_TAB_ID && workspaceTabsEnabledRef.current) {
+          hasProcessedOpenFromUrlRef.current = true;
+          navigate('/chat');
+          return;
+        }
+        if (persisted.activeId === CHAT_TAB_ID && !workspaceTabsEnabledRef.current) {
+          hasProcessedOpenFromUrlRef.current = true;
+          navigate('/chat');
+          return;
+        }
+        if (activeFile) {
+          type = activeFile.type;
+          path = activeFile.path;
+        } else {
+          hasProcessedOpenFromUrlRef.current = true;
+          return;
+        }
+      } else {
+        const saved = loadLastOpenedFile();
+        if (!saved || typeof saved !== 'object') {
+          hasRestoredLastFileRef.current = true;
+          return;
+        }
+        if (saved.type === 'chat') {
+          hasRestoredLastFileRef.current = true;
+          hasProcessedOpenFromUrlRef.current = true;
+          if (workspaceTabsEnabledRef.current) openChatWorkspaceTab();
+          else navigate('/chat');
+          return;
+        }
+        if (saved.type !== 's3' && saved.type !== 'local' && saved.type !== 'webdav') {
+          hasRestoredLastFileRef.current = true;
+          return;
+        }
+        type = saved.type;
+        path = saved.path;
       }
-      if (saved.type === 'chat') {
-        hasRestoredLastFileRef.current = true;
-        hasProcessedOpenFromUrlRef.current = true;
-        navigate('/chat');
-        return;
-      }
-      if (saved.type !== 's3' && saved.type !== 'local' && saved.type !== 'webdav') {
-        hasRestoredLastFileRef.current = true;
-        return;
-      }
-      type = saved.type;
-      path = saved.path;
     }
 
     if (!type || !path) return;
@@ -3354,6 +3573,7 @@ function MainApp() {
     selectFile,
     loadLastOpenedFile,
     navigate,
+    openChatWorkspaceTab,
   ]);
 
   selectFileRawRef.current = selectFileRaw;
@@ -3398,14 +3618,19 @@ function MainApp() {
   // Keep the open note in sync with browser history (back/forward, history.back, …).
   useEffect(() => {
     if (!isUnlocked || !hasProcessedOpenFromUrlRef.current) return;
-    if (isChatAppPathname(location.pathname) || isSettingsAppPathname(location.pathname)) return;
+    if (isChatAppPathname(location.pathname) || isSettingsAppPathname(location.pathname)) {
+      if (isChatAppPathname(location.pathname) && workspaceTabsEnabledRef.current) {
+        openChatWorkspaceTab({ navigateUrl: false });
+      }
+      return;
+    }
 
     const routeNotePath = parseOpenNotePathFromAppPathname(location.pathname);
     if (!routeNotePath) {
       // Bare /export-pdf keeps whatever was opened via navigation state.
       if (isExportPdfAppPathname(location.pathname)) return;
       prevHistoryViewPathRef.current = null;
-      if (currentFileRef.current) clearOpenFileState();
+      // Bare `/` does not close workspace tabs (tab bar owns lifecycle).
       return;
     }
 
@@ -3467,7 +3692,7 @@ function MainApp() {
     webdavReady,
     webdavTree,
     s3Tree,
-    clearOpenFileState,
+    openChatWorkspaceTab,
   ]);
 
   // Prompt to restore last local folder when returning in local mode
@@ -4896,6 +5121,22 @@ function MainApp() {
           currentFileRef.current = next;
           return next;
         });
+        {
+          const tabId = `${fileToSave.type}:${fileToSave.id}`;
+          if (findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id)) {
+            const patched = patchFileTab(workspaceTabsRef.current, tabId, {
+              currentFile: {
+                ...(findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id)?.currentFile || {}),
+                content: textToSave,
+                size: savedByteLength,
+              },
+              editorContent: textToSave,
+              baselineContent: textToSave,
+            });
+            workspaceTabsRef.current = patched;
+            setWorkspaceTabs(patched);
+          }
+        }
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
@@ -4918,6 +5159,24 @@ function MainApp() {
           currentFileRef.current = next;
           return next;
         });
+        {
+          const tabId = `${fileToSave.type}:${fileToSave.id}`;
+          const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
+          if (existing) {
+            const patched = patchFileTab(workspaceTabsRef.current, tabId, {
+              currentFile: {
+                ...existing.currentFile,
+                content: textToSave,
+                size: typeof file.size === 'number' ? file.size : existing.currentFile.size ?? null,
+                lastModified: file.lastModified,
+              },
+              editorContent: textToSave,
+              baselineContent: textToSave,
+            });
+            workspaceTabsRef.current = patched;
+            setWorkspaceTabs(patched);
+          }
+        }
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
@@ -4940,6 +5199,23 @@ function MainApp() {
           currentFileRef.current = next;
           return next;
         });
+        {
+          const tabId = `${fileToSave.type}:${fileToSave.id}`;
+          const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
+          if (existing) {
+            const patched = patchFileTab(workspaceTabsRef.current, tabId, {
+              currentFile: {
+                ...existing.currentFile,
+                content: textToSave,
+                size: savedByteLength,
+              },
+              editorContent: textToSave,
+              baselineContent: textToSave,
+            });
+            workspaceTabsRef.current = patched;
+            setWorkspaceTabs(patched);
+          }
+        }
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
@@ -5828,8 +6104,7 @@ function MainApp() {
     let failCount = 0;
     let lastError = null;
     let anyFolder = false;
-    const isChatRoute =
-      location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    const isChatRoute = chatSurfaceActive;
     let openFileAffected = false;
     /** @type {Array<{ path?: string, type?: string, name?: string }>} */
     const deletedNodesForChat = [];
@@ -5940,10 +6215,17 @@ function MainApp() {
       if (storagesTouched.has('webdav')) await refreshWebdavTree();
 
       if (openFileAffected) {
-        setCurrentFile(null);
-        setEditorContent('');
-        if (!isChatRoute) {
-          navigate('/');
+        const activeFile = getActiveFileTab(workspaceTabsRef.current);
+        if (activeFile) {
+          closeWorkspaceTabById(activeFile.id, { skipDirtyConfirm: true });
+        } else {
+          setCurrentFile(null);
+          currentFileRef.current = null;
+          setEditorContent('');
+          editorContentRef.current = '';
+          if (!isChatRoute) {
+            navigate('/');
+          }
         }
       }
 
@@ -7040,6 +7322,14 @@ function MainApp() {
     prevEditorContentRef.current = value;
     setEditorContent(value);
     setLastInputAt(Date.now());
+    const active = getActiveFileTab(workspaceTabsRef.current);
+    if (active) {
+      const next = patchFileTab(workspaceTabsRef.current, active.id, {
+        editorContent: value,
+      });
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+    }
   };
 
   const handleToggleRecording = async () => {
@@ -7431,9 +7721,10 @@ function MainApp() {
               onShareToChatWithMyself={handleShareNodeToChatWithMyself}
               onOpenChatWithMyself={() => {
                 if (isMobile) setSidebarOpen(false);
-                navigate('/chat');
+                if (workspaceTabsEnabled) openChatWorkspaceTab();
+                else navigate('/chat');
               }}
-              chatWithMyselfActive={location.pathname === '/chat' || location.pathname.endsWith('/chat')}
+              chatWithMyselfActive={chatSurfaceActive}
               chatAttachDropHost={chatAttachDropHost}
               onDropToChatAttach={handleDropToChatAttach}
               sessionWorkspace={sessionWorkspace}
@@ -7460,57 +7751,9 @@ function MainApp() {
             </button>
           )}
 
-          {/* Main Content Routes (z-50: above closed mobile sidebar z-40 so toolbar buttons receive taps) */}
+                    {/* Main Content Routes (z-50: above closed mobile sidebar z-40 so toolbar buttons receive taps) */}
           <div className="relative z-50 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
-            <Route
-              path="/chat"
-              element={
-                <Suspense fallback={<RouteSuspenseFallback />}>
-                  <ChatWithMyselfPane
-                    storageMode={storageMode}
-                    getS3Client={getS3Client}
-                    s3Bucket={s3Creds.bucket}
-                    localRootHandle={localRootHandle}
-                    webdavConfig={webdavConfig}
-                    theme={theme}
-                    isMobileLayout={isMobile}
-                    sidebarOpen={sidebarOpen}
-                    onOpenSidebar={() => setSidebarOpen(true)}
-                    s3Tree={s3Tree}
-                    localTree={localTree}
-                    webdavTree={webdavTree}
-                    shareGroupSend={shareGroupSend}
-                    onShareGroupSendConsumed={handleShareGroupSendConsumed}
-                    onOpenNote={handleOpenNoteFromChat}
-                    selectPathAfterCreateFolder={addToNoteSelectPath}
-                    onSelectPathAfterCreateFolderApplied={() => setAddToNoteSelectPath(null)}
-                    onRequestCreateFolderForNote={(parentPath, parentDirHandle) => {
-                      setCreateModalContext({
-                        storageType:
-                          storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'
-                            ? storageMode
-                            : 's3',
-                        parentPath,
-                        parentDirHandle,
-                        type: 'folder',
-                        fromAddToNoteModal: true,
-                      });
-                      setCreateModalOpen(true);
-                    }}
-                    onRequestMoveFolder={handleRequestMoveFolder}
-                    onCreateNoteFromMessage={handleCreateNoteFromChatMessage}
-                    getPresignedUrlForPath={getChatImageUrlForPath}
-                    onDropOnFolder={handleDropOnFolder}
-                    dropTarget={dropTarget}
-                    onLoadLocalFolderChildren={loadLocalFolderChildren}
-                    localFolderLoadingPath={localFolderLoadingPath}
-                    onAttachDropHostChange={setChatAttachDropHost}
-                    onRegisterTreeAttachDrop={handleRegisterChatAttachDrop}
-                  />
-                </Suspense>
-              }
-            />
             <Route
               path="/settings"
               element={
@@ -7586,194 +7829,187 @@ function MainApp() {
               }
             />
             <Route
-              path="/view/*"
+              path="*"
               element={
-                <EditorPane
-                  currentFile={currentFile}
-                  editorType={editorType}
-                  editorContent={editorContent}
-                  onChangeEditor={handleEditorChange}
-                  onSave={saveFile}
-                  isSaving={isSaving}
-                  onRefreshFromDisk={
-                    currentFile?.type === 'local' ? refreshLocalFileFromDisk : undefined
-                  }
-                  isRefreshingFromDisk={isRefreshingFromDisk}
-                  editedFileName={editedFileName}
-                  setEditedFileName={setEditedFileName}
-                  onRenameFullName={renameCurrentFileFullName}
-                  onRequestSuffixChangeConfirmForBlur={() => {
-                    setSuffixConfirmAction('renameOnly');
-                    setShowSuffixChangeConfirmModal(true);
-                  }}
-                  onRequestClose={handleRequestCloseEditor}
-                  onRequestMove={handleRequestMove}
-                  onViewUnsupportedAsText={handleViewUnsupportedAsText}
-                  onRequestDownload={handleRequestDownload}
-                  onShareToChatWithMyself={
-                    currentFile && currentFile.type !== SESSION_STORAGE_TYPE
-                      ? handleShareNoteToChatWithMyself
-                      : undefined
-                  }
-                  theme={theme}
-                  previewOnly={false}
-                  isMobileLayout={isMobile}
-                  sidebarOpen={sidebarOpen}
-                  sidebarCollapsed={sidebarCollapsed}
-                  onOpenSidebar={() => {
-                    if (isMobile) setSidebarOpen(true);
-                    else setSidebarCollapsed(false);
-                  }}
-                  onRequestCreateFile={() => {
-                    if (storageMode === 'local') {
-                      requestCreateItem('local', '', localRootHandle, 'file');
-                    } else if (storageMode === 'webdav') {
-                      requestCreateItem('webdav', '', null, 'file');
-                    } else {
-                      requestCreateItem('s3', '', null, 'file');
+                <WorkspaceMainPanels
+                  tabs={workspaceTabs.tabs}
+                  activeId={workspaceTabs.activeId}
+                  tabsEnabled={workspaceTabsEnabled}
+                  isChatRoute={isChatRoute}
+                  onActivateTab={(id) => activateWorkspaceTab(id)}
+                  onCloseTab={(id) => {
+                    const tab = workspaceTabs.tabs.find((t) => t.id === id);
+                    if (isFileTab(tab) && isFileTabDirty(tab)) {
+                      // Use the same close confirm modal for the active file tab.
+                      if (tab.id === workspaceTabs.activeId) {
+                        handleRequestCloseEditor();
+                        return;
+                      }
                     }
+                    closeWorkspaceTabById(id);
                   }}
-                  onOpenChatWithMyself={() => navigate('/chat')}
-                  onSaveSessionToNote={handleRequestSaveSessionToNote}
-                  onRequestSessionTransformDownload={handleRequestSessionTransformDownload}
-                  onOpenSessionFiles={handleOpenSessionFiles}
-                  onOpenSessionDirectory={
-                    typeof window !== 'undefined' && 'showDirectoryPicker' in window
-                      ? handleOpenSessionDirectory
-                      : undefined
-                  }
-                  onDropSessionTransfer={handleDropSessionTransfer}
-                  isOpeningSession={isOpeningSession}
-                  hideRecordingCompanions={hideRecordingCompanions}
-                  isRecording={isRecording}
-                  audioLevel={audioLevel}
-                  onToggleRecording={
-                    currentFile?.type === SESSION_STORAGE_TYPE ? undefined : handleToggleRecording
-                  }
-                  recordingPipelineStatus={recordingPipelineStatus}
-                  recordingsList={recordingsList}
-                  selectedRecordingKey={selectedRecordingKey}
-                  onSelectRecording={setSelectedRecordingKey}
-                  recordingAudioUrl={recordingAudioUrl}
-                  recordingSyncData={recordingSyncData}
-                  onUploadImage={handleUploadEditorImage}
-                  isUploadingEditorImage={isUploadingEditorImage}
-                  uploadImagePercent={editorImageUploadPercent}
-                  onCancelUploadImage={cancelEditorImageUpload}
-                  onResolveWikiImageUrl={getPresignedUrlForPath}
-                  onOpenViewPath={handleOpenNoteFromChat}
-                  snippetConfig={snippetConfig}
-                  getGeminiApiKey={getGeminiApiKey}
-                  onRequestDelete={() =>
-                    setDeleteTarget({
-                      node: {
-                        path: currentFile?.id,
-                        name: currentFile?.name,
-                        type: 'file',
-                        handle: currentFile?.handle,
-                        parentHandle: currentFile?.parentHandle,
-                      },
-                      type: currentFile?.type,
-                    })
-                  }
-                />
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <EditorPane
-                  currentFile={currentFile}
-                  editorType={editorType}
-                  editorContent={editorContent}
-                  onChangeEditor={handleEditorChange}
-                  onSave={saveFile}
-                  isSaving={isSaving}
-                  onRefreshFromDisk={
-                    currentFile?.type === 'local' ? refreshLocalFileFromDisk : undefined
-                  }
-                  isRefreshingFromDisk={isRefreshingFromDisk}
-                  editedFileName={editedFileName}
-                  setEditedFileName={setEditedFileName}
-                  onRenameFullName={renameCurrentFileFullName}
-                  onRequestSuffixChangeConfirmForBlur={() => {
-                    setSuffixConfirmAction('renameOnly');
-                    setShowSuffixChangeConfirmModal(true);
+                  mirrors={{
+                    currentFile,
+                    editorContent,
+                    editedFileName,
+                    setEditedFileName,
+                    onChangeEditor: handleEditorChange,
+                    onInactiveEditorChange: (tabId, value) => {
+                      const next = patchFileTab(workspaceTabsRef.current, tabId, {
+                        editorContent: value,
+                      });
+                      workspaceTabsRef.current = next;
+                      setWorkspaceTabs(next);
+                    },
+                    onInactiveEditedFileName: (tabId, name) => {
+                      const next = patchFileTab(workspaceTabsRef.current, tabId, {
+                        editedFileName: name,
+                      });
+                      workspaceTabsRef.current = next;
+                      setWorkspaceTabs(next);
+                    },
                   }}
-                  onRequestClose={handleRequestCloseEditor}
-                  onRequestMove={handleRequestMove}
-                  onViewUnsupportedAsText={handleViewUnsupportedAsText}
-                  onRequestDownload={handleRequestDownload}
-                  onShareToChatWithMyself={
-                    currentFile && currentFile.type !== SESSION_STORAGE_TYPE
-                      ? handleShareNoteToChatWithMyself
-                      : undefined
-                  }
-                  theme={theme}
-                  previewOnly={false}
-                  isMobileLayout={isMobile}
-                  sidebarOpen={sidebarOpen}
-                  sidebarCollapsed={sidebarCollapsed}
-                  onOpenSidebar={() => {
-                    if (isMobile) setSidebarOpen(true);
-                    else setSidebarCollapsed(false);
+                  editorPaneProps={({
+                    currentFile: paneFile,
+                    editorContent: paneContent,
+                    editedFileName: paneEditedName,
+                    setEditedFileName: paneSetEditedName,
+                    onChangeEditor,
+                    isActiveFile,
+                  }) => ({
+                    currentFile: paneFile,
+                    editorType,
+                    editorContent: paneContent,
+                    onChangeEditor,
+                    onSave: saveFile,
+                    isSaving,
+                    onRefreshFromDisk:
+                      paneFile?.type === 'local' ? refreshLocalFileFromDisk : undefined,
+                    isRefreshingFromDisk,
+                    editedFileName: paneEditedName,
+                    setEditedFileName: paneSetEditedName,
+                    onRenameFullName: renameCurrentFileFullName,
+                    onRequestSuffixChangeConfirmForBlur: () => {
+                      setSuffixConfirmAction('renameOnly');
+                      setShowSuffixChangeConfirmModal(true);
+                    },
+                    onRequestClose: handleRequestCloseEditor,
+                    onRequestMove: handleRequestMove,
+                    onViewUnsupportedAsText: handleViewUnsupportedAsText,
+                    onRequestDownload: handleRequestDownload,
+                    onShareToChatWithMyself:
+                      paneFile && paneFile.type !== SESSION_STORAGE_TYPE
+                        ? handleShareNoteToChatWithMyself
+                        : undefined,
+                    theme,
+                    previewOnly: false,
+                    isMobileLayout: isMobile,
+                    sidebarOpen,
+                    sidebarCollapsed,
+                    onOpenSidebar: () => {
+                      if (isMobile) setSidebarOpen(true);
+                      else setSidebarCollapsed(false);
+                    },
+                    onRequestCreateFile: () => {
+                      if (storageMode === 'local') {
+                        requestCreateItem('local', '', localRootHandle, 'file');
+                      } else if (storageMode === 'webdav') {
+                        requestCreateItem('webdav', '', null, 'file');
+                      } else {
+                        requestCreateItem('s3', '', null, 'file');
+                      }
+                    },
+                    onOpenChatWithMyself: () => {
+                      if (workspaceTabsEnabledRef.current) openChatWorkspaceTab();
+                      else navigate('/chat');
+                    },
+                    onSaveSessionToNote: handleRequestSaveSessionToNote,
+                    onRequestSessionTransformDownload: handleRequestSessionTransformDownload,
+                    onOpenSessionFiles: handleOpenSessionFiles,
+                    onOpenSessionDirectory:
+                      typeof window !== 'undefined' && 'showDirectoryPicker' in window
+                        ? handleOpenSessionDirectory
+                        : undefined,
+                    onDropSessionTransfer: handleDropSessionTransfer,
+                    isOpeningSession,
+                    hideRecordingCompanions,
+                    isRecording: isActiveFile ? isRecording : false,
+                    audioLevel: isActiveFile ? audioLevel : 0,
+                    onToggleRecording:
+                      !isActiveFile || paneFile?.type === SESSION_STORAGE_TYPE
+                        ? undefined
+                        : handleToggleRecording,
+                    recordingPipelineStatus,
+                    recordingsList: isActiveFile ? recordingsList : [],
+                    selectedRecordingKey: isActiveFile ? selectedRecordingKey : '',
+                    onSelectRecording: setSelectedRecordingKey,
+                    recordingAudioUrl: isActiveFile ? recordingAudioUrl : '',
+                    recordingSyncData: isActiveFile ? recordingSyncData : null,
+                    onUploadImage: handleUploadEditorImage,
+                    isUploadingEditorImage,
+                    uploadImagePercent: editorImageUploadPercent,
+                    onCancelUploadImage: cancelEditorImageUpload,
+                    onResolveWikiImageUrl: getPresignedUrlForPath,
+                    onOpenViewPath: handleOpenNoteFromChat,
+                    snippetConfig,
+                    getGeminiApiKey,
+                    onRequestDelete: () =>
+                      setDeleteTarget(
+                        paneFile
+                          ? {
+                              node: {
+                                path: paneFile?.id,
+                                name: paneFile?.name,
+                                type: 'file',
+                                handle: paneFile?.handle,
+                                parentHandle: paneFile?.parentHandle,
+                              },
+                              type: paneFile?.type,
+                            }
+                          : null,
+                      ),
+                  })}
+                  chatPaneProps={{
+                    storageMode,
+                    getS3Client,
+                    s3Bucket: s3Creds.bucket,
+                    localRootHandle,
+                    webdavConfig,
+                    theme,
+                    isMobileLayout: isMobile,
+                    sidebarOpen,
+                    onOpenSidebar: () => setSidebarOpen(true),
+                    s3Tree,
+                    localTree,
+                    webdavTree,
+                    shareGroupSend,
+                    onShareGroupSendConsumed: handleShareGroupSendConsumed,
+                    onOpenNote: handleOpenNoteFromChat,
+                    selectPathAfterCreateFolder: addToNoteSelectPath,
+                    onSelectPathAfterCreateFolderApplied: () => setAddToNoteSelectPath(null),
+                    onRequestCreateFolderForNote: (parentPath, parentDirHandle) => {
+                      setCreateModalContext({
+                        storageType:
+                          storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'
+                            ? storageMode
+                            : 's3',
+                        parentPath,
+                        parentDirHandle,
+                        type: 'folder',
+                        fromAddToNoteModal: true,
+                      });
+                      setCreateModalOpen(true);
+                    },
+                    onRequestMoveFolder: handleRequestMoveFolder,
+                    onCreateNoteFromMessage: handleCreateNoteFromChatMessage,
+                    getPresignedUrlForPath: getChatImageUrlForPath,
+                    onDropOnFolder: handleDropOnFolder,
+                    dropTarget,
+                    onLoadLocalFolderChildren: loadLocalFolderChildren,
+                    localFolderLoadingPath,
+                    onAttachDropHostChange: setChatAttachDropHost,
+                    onRegisterTreeAttachDrop: handleRegisterChatAttachDrop,
                   }}
-                  onRequestCreateFile={() => {
-                    if (storageMode === 'local') {
-                      requestCreateItem('local', '', localRootHandle, 'file');
-                    } else if (storageMode === 'webdav') {
-                      requestCreateItem('webdav', '', null, 'file');
-                    } else {
-                      requestCreateItem('s3', '', null, 'file');
-                    }
-                  }}
-                  onOpenChatWithMyself={() => navigate('/chat')}
-                  onSaveSessionToNote={handleRequestSaveSessionToNote}
-                  onRequestSessionTransformDownload={handleRequestSessionTransformDownload}
-                  onOpenSessionFiles={handleOpenSessionFiles}
-                  onOpenSessionDirectory={
-                    typeof window !== 'undefined' && 'showDirectoryPicker' in window
-                      ? handleOpenSessionDirectory
-                      : undefined
-                  }
-                  onDropSessionTransfer={handleDropSessionTransfer}
-                  isOpeningSession={isOpeningSession}
-                  hideRecordingCompanions={hideRecordingCompanions}
-                  isRecording={isRecording}
-                  audioLevel={audioLevel}
-                  onToggleRecording={
-                    currentFile?.type === SESSION_STORAGE_TYPE ? undefined : handleToggleRecording
-                  }
-                  recordingPipelineStatus={recordingPipelineStatus}
-                  recordingsList={recordingsList}
-                  selectedRecordingKey={selectedRecordingKey}
-                  onSelectRecording={setSelectedRecordingKey}
-                  recordingAudioUrl={recordingAudioUrl}
-                  recordingSyncData={recordingSyncData}
-                  onUploadImage={handleUploadEditorImage}
-                  isUploadingEditorImage={isUploadingEditorImage}
-                  uploadImagePercent={editorImageUploadPercent}
-                  onCancelUploadImage={cancelEditorImageUpload}
-                  onResolveWikiImageUrl={getPresignedUrlForPath}
-                  onOpenViewPath={handleOpenNoteFromChat}
-                  snippetConfig={snippetConfig}
-                  getGeminiApiKey={getGeminiApiKey}
-                  onRequestDelete={() =>
-                    setDeleteTarget(
-                      currentFile
-                        ? {
-                            node: {
-                              path: currentFile?.id,
-                              name: currentFile?.name,
-                              type: 'file',
-                              handle: currentFile?.handle,
-                              parentHandle: currentFile?.parentHandle,
-                            },
-                            type: currentFile?.type,
-                          }
-                        : null,
-                    )
-                  }
                 />
               }
             />
@@ -7809,7 +8045,7 @@ function MainApp() {
                 </span>
               </span>
             )}
-            {!(location.pathname === '/chat' || location.pathname.endsWith('/chat')) ? (
+            {!chatSurfaceActive ? (
               <>
                 <span className="truncate shrink-0 max-w-12 md:max-w-none" title={
                   currentFile?.type === 's3'

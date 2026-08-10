@@ -7,6 +7,10 @@ import {
   saveAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
+  loadWorkspaceTabsEnabled,
+  saveWorkspaceTabsEnabled,
+} from '@/utils/workspaceTabsSettings';
+import {
   getComposerHelperTextVisible,
   writeComposerHelperTextPref,
 } from '@/utils/chatWithMyself/composerPrefs.js';
@@ -42,6 +46,7 @@ import { advancedSearchEngine } from './engine';
 
 export type SettingsToggleId =
   | 'settings-alt-vim'
+  | 'settings-workspace-tabs'
   | 'settings-show-trash'
   | 'settings-show-hidden'
   | 'settings-hide-recording'
@@ -90,6 +95,24 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['alt', 'vim', 'hjkl', '커서', '네비게이션', 'navigation'],
     load: loadAltVimNavigationEnabled,
     save: saveAltVimNavigationEnabled,
+  },
+  {
+    id: 'settings-workspace-tabs',
+    enableTitle: '탭 기능 켜기',
+    disableTitle: '탭 기능 끄기',
+    description: '여러 파일과 나와의 채팅을 탭으로 동시에 열기',
+    keywords: [
+      'tab',
+      'tabs',
+      '탭',
+      '워크스페이스',
+      'workspace',
+      '네비게이션',
+      'navigation',
+      '채팅',
+    ],
+    load: loadWorkspaceTabsEnabled,
+    save: saveWorkspaceTabsEnabled,
   },
   {
     id: 'settings-show-trash',
