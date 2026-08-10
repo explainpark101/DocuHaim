@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
-import { IconDownload, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
+import { IconDownload, IconFolder, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
+import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
@@ -83,6 +84,8 @@ export default function SettingsPage({
   onEditorTypeChange,
   storageMode = STORAGE_MODE_S3,
   onStorageModeChange,
+  localFolderName = '',
+  onOpenLocalFolder,
   webdavConfig,
   onSaveWebdavConfig,
   isMobileLayout = false,
@@ -129,9 +132,16 @@ export default function SettingsPage({
   const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
   const [geminiModel, setGeminiModel, syncGeminiModel] = useGeminiModelState();
   const [s3ConnOpen, setS3ConnOpen] = useState(true);
+  const [localConnOpen, setLocalConnOpen] = useState(
+    () => storageMode === STORAGE_MODE_LOCAL,
+  );
   const [webdavConnOpen, setWebdavConnOpen] = useState(false);
   const [geminiConnOpen, setGeminiConnOpen] = useState(true);
   const location = useLocation();
+  const resolvedLocalFolderName =
+    String(localFolderName || '').trim() || loadLastLocalFolderName() || '';
+  const canPickLocalFolder =
+    typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
   useEffect(() => {
     syncGeminiModel();
@@ -152,6 +162,7 @@ export default function SettingsPage({
     const hash = String(location.hash || '').replace(/^#/, '');
     if (!hash.startsWith('settings-')) return undefined;
     if (hash === 'settings-s3') setS3ConnOpen(true);
+    if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-webdav') setWebdavConnOpen(true);
     if (hash === 'settings-gemini') setGeminiConnOpen(true);
     const timer = window.setTimeout(() => {
@@ -403,6 +414,75 @@ export default function SettingsPage({
             </>
           ) : null}
         </form>
+
+        {/* Local folder connection */}
+        <div
+          id="settings-local"
+          tabIndex={-1}
+          className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+        >
+          <button
+            type="button"
+            onClick={() => setLocalConnOpen((v) => !v)}
+            className="flex w-full items-center gap-2 text-left"
+            aria-expanded={localConnOpen}
+          >
+            {localConnOpen ? (
+              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            ) : (
+              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            )}
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+              Local 연결 정보
+            </h3>
+            {!localConnOpen ? (
+              <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
+                접힘
+              </span>
+            ) : null}
+          </button>
+          {localConnOpen ? (
+            <>
+              <p className="text-xs text-gray-600 dark:text-odp-muted">
+                Local Haim은 브라우저 File System Access API로 연 폴더를 사용합니다. 보안상 OS 전체
+                경로는 제공되지 않으며, 폴더 이름으로 열린 위치를 확인할 수 있습니다.
+              </p>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
+                  현재 열린 폴더
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  className="w-full rounded border px-3 py-2 text-sm text-gray-800 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
+                  value={
+                    resolvedLocalFolderName
+                      ? resolvedLocalFolderName
+                      : '(폴더가 열려 있지 않음)'
+                  }
+                  aria-label="현재 열린 로컬 폴더 이름"
+                />
+              </div>
+              {!canPickLocalFolder ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  이 브라우저는 폴더 선택을 지원하지 않습니다. Chromium 계열 브라우저를 사용해
+                  주세요.
+                </p>
+              ) : null}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={!canPickLocalFolder || typeof onOpenLocalFolder !== 'function'}
+                  onClick={() => onOpenLocalFolder?.()}
+                  className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <IconFolder size={16} />
+                  {resolvedLocalFolderName ? '다른 폴더 열기' : '폴더 선택'}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
 
         {/* Import / Export Section */}
         <div

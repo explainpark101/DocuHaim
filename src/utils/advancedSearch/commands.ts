@@ -28,6 +28,7 @@ export type AppCommandId =
   | 'settings-storage'
   | 'settings-storage-usage'
   | 'settings-s3'
+  | 'settings-local'
   | 'settings-backup'
   | 'settings-webdav'
   | 'settings-gemini'
@@ -159,6 +160,22 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: 'S3 Access Key·Bucket 등 연결 정보',
     path: '/settings#settings-s3',
     keywords: ['s3', 'bucket', 'access key', '시크릿', 'aws'],
+  },
+  {
+    id: 'settings-local',
+    title: '설정 · Local 연결',
+    description: 'Local Haim 폴더 확인·다른 폴더 열기',
+    path: '/settings#settings-local',
+    keywords: [
+      'local',
+      '로컬',
+      '폴더',
+      'folder',
+      'local haim',
+      '다른 폴더',
+      '폴더 선택',
+      '경로',
+    ],
   },
   {
     id: 'settings-backup',

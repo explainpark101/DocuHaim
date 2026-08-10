@@ -7433,6 +7433,10 @@ function MainApp() {
                     onSaveS3Creds={handleSaveS3Creds}
                     storageMode={storageMode}
                     onStorageModeChange={setStorageMode}
+                    localFolderName={
+                      localRootHandle?.name || pendingLocalFolderName || loadLastLocalFolderName()
+                    }
+                    onOpenLocalFolder={openLocalFolder}
                     webdavConfig={webdavConfig}
                     onSaveWebdavConfig={async (next) => {
                       setWebdavConfig(next);
