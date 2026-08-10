@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { MdEditor, config } from 'md-editor-rt';
+import {
+  createScopedPreviewHeadingId,
+  mdEditorIdFromReactId,
+} from '@/utils/mdEditorInstanceId';
+import { bindCatalogClickScrollFix } from '@/utils/catalogClickScrollFix';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
@@ -173,12 +178,6 @@ import {
 
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
 const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
-const buildPreviewHeadingId = (arg1, _arg2, arg3) => {
-  const fallbackIndex = Number.isInteger(arg3) ? arg3 : 0;
-  const objectIndex = typeof arg1 === 'object' && arg1 !== null ? Number(arg1.index) : NaN;
-  const index = Number.isInteger(objectIndex) ? objectIndex : fallbackIndex;
-  return `md-preview-heading-${index}`;
-};
 
 /** Windows: Ctrl, Mac: Cmd 를 mod 로 통일한 키 조합 문자열 반환 (keydown 매칭용) */
 function getKeyComboFromEvent(e) {
@@ -566,6 +565,14 @@ export default function MarkdownEditor({
 }) {
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
+  // Unique per keep-alive mount so catalog getElementById / preview-wrapper
+  // selectors do not hit a hidden sibling tab (default id is shared).
+  const reactId = useId();
+  const editorId = useMemo(() => mdEditorIdFromReactId(reactId), [reactId]);
+  const buildPreviewHeadingId = useMemo(
+    () => createScopedPreviewHeadingId(editorId),
+    [editorId],
+  );
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const previewScrollFollowRef = useRef(null);
@@ -893,6 +900,16 @@ export default function MarkdownEditor({
       window.removeEventListener('scroll', updateBox, true);
     };
   }, [catalogEl, catalogWidth]);
+
+  // Replace md-editor-rt catalog offsetTop scroll (breaks with keep-alive id
+  // collisions and preview containment/transforms) with getBoundingClientRect.
+  useEffect(() => {
+    if (!catalogEl) return undefined;
+    return bindCatalogClickScrollFix(catalogEl, {
+      getEditorRoot: () => containerRef.current,
+      mdHeadingId: (args) => buildPreviewHeadingId(args),
+    });
+  }, [catalogEl, buildPreviewHeadingId]);
 
   useWikiImageHydration(
     containerRef,
@@ -2231,6 +2248,7 @@ export default function MarkdownEditor({
       )}
       <MdEditor
         ref={editorRef}
+        id={editorId}
         modelValue={value}
         onChange={onChangeWithUndoHistory}
         mdHeadingId={buildPreviewHeadingId}
