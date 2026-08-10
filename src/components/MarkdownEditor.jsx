@@ -2144,8 +2144,9 @@ export default function MarkdownEditor({
     // 8 = MirrorEditToolbar (hidden on Safari)
     'codeRow', 'code', 'link', 9, 'table', 'mermaid', 'katex', 1, 2, 3, 4, '-',
     'revoke', 'next', 0, '=',
-    6, 7, ...(safariMdEditor ? [] : [8]), 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 'catalog',
+    6, 7, ...(safariMdEditor ? [] : [8]), 'pageFullscreen', 'fullscreen', 'previewOnly', 'preview',  'htmlPreview', 
     ...(catalogEl ? [5] : []),
+    'catalog',
   ], [catalogEl, safariMdEditor]);
 
   const onUploadImg = useMemo(() => {

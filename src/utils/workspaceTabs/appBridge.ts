@@ -1,4 +1,5 @@
 import type { FileWorkspaceTab, WorkspaceTabsState } from './types';
+import { closedTabEntryFromWorkspaceTab, pushClosedTab } from './closedTabHistory';
 import { tabDisplayTitle } from './helpers';
 import {
   activateTab,
@@ -57,6 +58,9 @@ export function applyOpenedFileReducer(
       opts?.promptCloseDirty != null ? { promptCloseDirty: opts.promptCloseDirty } : {};
     const evicted = evictForSoftCap(state.tabs, evictOpts);
     if (!evicted) return state;
+    for (const tab of evicted.closed) {
+      pushClosedTab(closedTabEntryFromWorkspaceTab(tab));
+    }
     return openOrReplaceFileTab(
       { ...state, tabs: evicted.tabs },
       {

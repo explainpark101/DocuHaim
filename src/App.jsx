@@ -52,6 +52,7 @@ import {
   CHAT_TAB_ID,
   anyFileTabDirty,
   clearPersistedWorkspaceTabs,
+  closedTabEntryFromWorkspaceTab,
   emptyWorkspaceTabsState,
   getActiveFileTab,
   getActiveTab,
@@ -59,6 +60,8 @@ import {
   isFileTab,
   isFileTabDirty,
   loadPersistedWorkspaceTabs,
+  popClosedTab,
+  pushClosedTab,
   savePersistedWorkspaceTabs,
   toPersistedWorkspaceTabs,
 } from '@/utils/workspaceTabs';
@@ -195,7 +198,7 @@ import {
   advancedSearchEngine,
   notifyAdvancedSearchChange,
 } from '@/utils/advancedSearch';
-import { webdavPropfindDeep } from '@/utils/webdavClient';
+import { webdavPropfindDeep, webdavHead } from '@/utils/webdavClient';
 import {
   readLocalDirectoryLevel,
   readLocalDirectoryTree,
@@ -783,13 +786,16 @@ function MainApp() {
 
   const closeWorkspaceTabById = useCallback(
     (id, options = {}) => {
-      const { skipDirtyConfirm = false } = options;
+      const { skipDirtyConfirm = false, skipHistory = false } = options;
       const closing = workspaceTabsRef.current.tabs.find((t) => t.id === id);
       if (!skipDirtyConfirm && isFileTab(closing) && isFileTabDirty(closing)) {
         const ok = window.confirm(
           `「${closing.editedFileName || closing.path}」에 저장되지 않은 변경이 있습니다. 닫을까요?`,
         );
         if (!ok) return;
+      }
+      if (!skipHistory && closing) {
+        pushClosedTab(closedTabEntryFromWorkspaceTab(closing));
       }
       const next = closeTab(workspaceTabsRef.current, id);
       workspaceTabsRef.current = next;
@@ -824,6 +830,20 @@ function MainApp() {
     workspaceTabsRef.current = next;
     setWorkspaceTabs(next);
   }, []);
+
+  const cycleWorkspaceTab = useCallback(
+    (delta) => {
+      if (!workspaceTabsEnabledRef.current) return;
+      const { tabs, activeId } = workspaceTabsRef.current;
+      if (!tabs.length) return;
+      let idx = tabs.findIndex((t) => t.id === activeId);
+      if (idx < 0) idx = delta > 0 ? -1 : 0;
+      const nextIdx = (idx + delta + tabs.length) % tabs.length;
+      const next = tabs[nextIdx];
+      if (next) activateWorkspaceTab(next.id);
+    },
+    [activateWorkspaceTab],
+  );
 
   const handleEditorTypeChange = useCallback((next) => {
     saveEditorType(next);
@@ -1770,6 +1790,128 @@ function MainApp() {
   }, []);
 
   const webdavReady = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
+
+  const resolveClosedFileNode = useCallback(
+    async (entry) => {
+      if (entry.kind !== 'file') return null;
+      const { storageType, path } = entry;
+      const fallbackName =
+        entry.name || path.split('/').filter(Boolean).pop() || 'file';
+      if (storageType === 'local') {
+        if (!localRootHandle) {
+          throw new Error('Local storage not ready');
+        }
+        const node =
+          findFileNodeByPath(localTree, path) ||
+          findNodeByPath(localTree, path) ||
+          (await resolveLocalFileNode(localRootHandle, path));
+        return node?.type === 'file' ? node : null;
+      }
+      if (storageType === 'webdav') {
+        if (!webdavReady || !webdavConfig) {
+          throw new Error('WebDAV not ready');
+        }
+        const node =
+          findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
+        if (node?.type === 'file') return node;
+        const meta = await webdavHead(webdavConfig, path);
+        if (!meta) return null;
+        return {
+          path,
+          id: path,
+          name: fallbackName,
+          type: 'file',
+        };
+      }
+      // s3
+      const node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
+      if (node?.type === 'file') return node;
+      const client = getS3Client();
+      if (!client || !s3Creds?.bucket) {
+        throw new Error('S3 not ready');
+      }
+      const meta = await headObject(client, s3Creds.bucket, path);
+      if (!meta) return null;
+      return {
+        path,
+        id: path,
+        name: fallbackName,
+        type: 'file',
+      };
+    },
+    [
+      localRootHandle,
+      localTree,
+      webdavReady,
+      webdavConfig,
+      webdavTree,
+      s3Tree,
+      getS3Client,
+      s3Creds?.bucket,
+    ],
+  );
+
+  const reopenClosedWorkspaceTab = useCallback(async () => {
+    if (!workspaceTabsEnabledRef.current) return;
+    // Pop until a reopen succeeds; drop missing server/local files from history.
+    for (;;) {
+      const entry = popClosedTab();
+      if (!entry) return;
+      if (entry.kind === 'chat') {
+        openChatWorkspaceTab();
+        return;
+      }
+      try {
+        const node = await resolveClosedFileNode(entry);
+        if (!node) {
+          // Missing — already popped; try older history.
+          continue;
+        }
+        await selectFileRawRef.current?.(entry.storageType, node);
+        return;
+      } catch (err) {
+        // Transient failure: put entry back and stop.
+        console.error('Reopen closed tab failed:', err);
+        pushClosedTab(entry);
+        return;
+      }
+    }
+  }, [openChatWorkspaceTab, resolveClosedFileNode]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (!workspaceTabsEnabledRef.current) return;
+      if (e.defaultPrevented || e.isComposing) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+
+      // Ctrl/Cmd+Shift+T — reopen most recently closed tab
+      if (e.shiftKey && (e.key === 'T' || e.key === 't')) {
+        e.preventDefault();
+        e.stopPropagation();
+        void reopenClosedWorkspaceTab();
+        return;
+      }
+
+      // Ctrl/Cmd+W — close active tab
+      if (!e.altKey && !e.shiftKey && (e.key === 'w' || e.key === 'W')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeId = workspaceTabsRef.current.activeId;
+        if (activeId) closeWorkspaceTabById(activeId);
+        return;
+      }
+
+      // Ctrl/Cmd+Tab / Ctrl/Cmd+Shift+Tab — cycle open tabs
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        cycleWorkspaceTab(e.shiftKey ? -1 : 1);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [reopenClosedWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab]);
 
   const { ready: chatStorageReady, ctx: chatStorageCtx } = useChatStorageCtx({
     storageMode,

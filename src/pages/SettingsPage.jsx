@@ -881,6 +881,7 @@ export default function SettingsPage({
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                   여러 파일과 「나와의 채팅」을 탭으로 동시에 열어 둘 수 있습니다. 끄면 기존처럼
                   한 번에 하나의 파일(또는 채팅)만 표시합니다.
+                  Ctrl+W 닫기 · Ctrl+Tab / Ctrl+Shift+Tab 전환 · Ctrl+Shift+T 닫은 탭 다시 열기.
                 </span>
               </span>
             </label>

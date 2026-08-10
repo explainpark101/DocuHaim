@@ -46,3 +46,15 @@ export {
   openOrReplaceFileTab,
   patchFileTab,
 } from './workspaceTabsStore';
+export {
+  CLOSED_TAB_HISTORY_KEY,
+  CLOSED_TAB_HISTORY_MAX,
+  clearClosedTabHistory,
+  closedTabEntryFromWorkspaceTab,
+  closedTabHistoryLength,
+  loadClosedTabHistory,
+  popClosedTab,
+  pushClosedTab,
+  saveClosedTabHistory,
+} from './closedTabHistory';
+export type { ClosedTabEntry } from './closedTabHistory';
