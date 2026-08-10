@@ -24,6 +24,7 @@ function RouteSuspenseFallback() {
 export default function WorkspaceMainPanels({
   tabs,
   activeId,
+  savingTabIds,
   onActivateTab,
   onCloseTab,
   onReorderTabs,
@@ -76,6 +77,7 @@ export default function WorkspaceMainPanels({
       <WorkspaceTabBar
         tabs={tabs}
         activeId={activeId}
+        savingTabIds={savingTabIds}
         onActivate={onActivateTab}
         onClose={onCloseTab}
         onReorder={onReorderTabs}

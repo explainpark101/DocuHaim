@@ -394,6 +394,9 @@ function MainApp() {
   workspaceTabsEnabledRef.current = workspaceTabsEnabled;
   const editedFileNameRef = useRef('');
   const [isSaving, setIsSaving] = useState(false);
+  /** Tab ids (`type:path`) currently writing in the background. */
+  const [savingTabIds, setSavingTabIds] = useState(() => []);
+  const savingTabIdsRef = useRef(new Set());
   const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [emptyTrashTarget, setEmptyTrashTarget] = useState(null);
@@ -658,6 +661,57 @@ function MainApp() {
     clearPersistedWorkspaceTabs();
   }, []);
 
+  const queueBackgroundTabSave = useCallback((file, content) => {
+    if (!file?.type || !file?.id) return;
+    if (file.type === SESSION_STORAGE_TYPE) return;
+    const viewer = file.viewer || 'markdown';
+    if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
+
+    const text = typeof content === 'string' ? content : '';
+    const tab = findFileTab(workspaceTabsRef.current, file.type, file.id);
+    const baseline =
+      tab != null
+        ? tab.baselineContent
+        : typeof file.content === 'string'
+          ? file.content
+          : '';
+    if (text === baseline) return;
+
+    const tabId = `${file.type}:${file.id}`;
+    if (savingTabIdsRef.current.has(tabId)) return;
+    savingTabIdsRef.current.add(tabId);
+    setSavingTabIds([...savingTabIdsRef.current]);
+
+    const origLastMod = file.lastModified;
+    const ts =
+      origLastMod instanceof Date
+        ? origLastMod.getTime()
+        : typeof origLastMod === 'number'
+          ? origLastMod
+          : 0;
+
+    void (async () => {
+      try {
+        await saveMemoDraft({
+          key: getDraftKey(file.type, file.id),
+          content: text,
+          originalLastModified: ts,
+        });
+        await saveFileRef.current?.(file, {
+          skipSuffixCheck: true,
+          skipCoverChangeCheck: true,
+          contentOverride: text,
+          background: true,
+        });
+      } catch (err) {
+        console.error('Background tab save failed:', err);
+      } finally {
+        savingTabIdsRef.current.delete(tabId);
+        setSavingTabIds([...savingTabIdsRef.current]);
+      }
+    })();
+  }, []);
+
   const commitOpenFile = useCallback((file, content = '', options = {}) => {
     if (!file?.type || !file?.id) return false;
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
@@ -701,6 +755,15 @@ function MainApp() {
         currentFile: currentFileRef.current,
         editedFileName: editedFileNameRef.current ?? '',
       });
+      const leaving = getActiveTab(flushed);
+      if (
+        isFileTab(leaving) &&
+        leaving.id !== id &&
+        isFileTabDirty(leaving) &&
+        leaving.storageType !== SESSION_STORAGE_TYPE
+      ) {
+        queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+      }
       const activated = activateTab(flushed, id);
       workspaceTabsRef.current = activated;
       setWorkspaceTabs(activated);
@@ -721,7 +784,7 @@ function MainApp() {
         navigate('/');
       }
     },
-    [navigate],
+    [navigate, queueBackgroundTabSave],
   );
 
   const openChatWorkspaceTab = useCallback(
@@ -734,6 +797,10 @@ function MainApp() {
           currentFile: currentFileRef.current,
           editedFileName: editedFileNameRef.current ?? '',
         });
+        const leaving = getActiveFileTab(flushed);
+        if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+          queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+        }
         const next = stripChatTab(flushed);
         workspaceTabsRef.current = next;
         setWorkspaceTabs(next);
@@ -747,6 +814,10 @@ function MainApp() {
         currentFile: currentFileRef.current,
         editedFileName: editedFileNameRef.current ?? '',
       });
+      const leaving = getActiveFileTab(flushed);
+      if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+        queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+      }
       const next = openOrActivateChat(flushed);
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
@@ -754,7 +825,7 @@ function MainApp() {
       currentFileRef.current = null;
       if (navigateUrl) navigate('/chat');
     },
-    [navigate],
+    [navigate, queueBackgroundTabSave],
   );
 
   const collapseToLegacyWorkspace = useCallback(() => {
@@ -1673,14 +1744,17 @@ function MainApp() {
 
   /** Logo / brand: go to `/` home (keep tabs open; clear active selection). */
   const handleBrandClick = async () => {
-    if (hasUnsavedEditorChanges()) {
-      await saveFile(null, { skipSuffixCheck: true });
-    }
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
       editorContent: editorContentRef.current ?? '',
       currentFile: currentFileRef.current,
       editedFileName: editedFileNameRef.current ?? '',
     });
+    const leaving = getActiveFileTab(flushed);
+    if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+      queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
+    } else if (leaving?.storageType === SESSION_STORAGE_TYPE) {
+      flushSessionEditorToWorkspace();
+    }
     const next = { ...flushed, activeId: null };
     workspaceTabsRef.current = next;
     setWorkspaceTabs(next);
@@ -3195,34 +3269,35 @@ function MainApp() {
   const toSelectKey = (storageType, path) => `${storageType}:${path}`;
 
   const saveCurrentMarkdownBeforeSwitch = useCallback(
-    async (storageType, node) => {
+    (storageType, node) => {
       const cur = currentFileRef.current;
-      if (!cur?.viewer || cur.viewer !== 'markdown') return;
+      if (!cur?.id) return;
       if (cur.type === storageType && cur.id === node.path) return;
+
+      const viewer = cur.viewer || 'markdown';
+      if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
+
       if (cur.type === SESSION_STORAGE_TYPE) {
         flushSessionEditorToWorkspace();
         return;
       }
-      const draftKey = getDraftKey(cur.type, cur.id);
-      const origLastMod = cur.lastModified;
-      const ts =
-        origLastMod instanceof Date
-          ? origLastMod.getTime()
-          : typeof origLastMod === 'number'
-            ? origLastMod
-            : 0;
-      try {
-        await saveMemoDraft({
-          key: draftKey,
-          content: editorContent,
-          originalLastModified: ts,
-        });
-        saveFileRef.current?.(null, { skipSuffixCheck: true }).catch(() => {});
-      } catch (e) {
-        console.error('memoDraft save before switch:', e);
-      }
+
+      // Flush mirrors so tab baseline/dirty match the editor.
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      workspaceTabsRef.current = flushed;
+      setWorkspaceTabs(flushed);
+
+      const leaving = getActiveFileTab(flushed);
+      if (!leaving || !isFileTabDirty(leaving)) return;
+
+      // Fire-and-forget: navigate continues immediately.
+      queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
     },
-    [editorContent, flushSessionEditorToWorkspace]
+    [flushSessionEditorToWorkspace, queueBackgroundTabSave],
   );
 
   const handleTreeNodeSelect = useCallback(
@@ -3265,7 +3340,7 @@ function MainApp() {
             if (node.type === 'file') {
               if (!confirmAndCancelEditorImageUpload()) return;
               if (isMobile) setSidebarOpen(false);
-              await saveCurrentMarkdownBeforeSwitch(storageType, node);
+              saveCurrentMarkdownBeforeSwitch(storageType, node);
               await selectFileRaw(storageType, node);
             }
             return;
@@ -3289,7 +3364,7 @@ function MainApp() {
       if (node.type === 'file') {
         if (!confirmAndCancelEditorImageUpload()) return;
         if (isMobile) setSidebarOpen(false);
-        await saveCurrentMarkdownBeforeSwitch(storageType, node);
+        saveCurrentMarkdownBeforeSwitch(storageType, node);
         await selectFileRaw(storageType, node);
       }
     },
@@ -5229,6 +5304,8 @@ function MainApp() {
       skipSuffixCheck = false,
       skipCoverChangeCheck = false,
       lastInputAt: inputModifiedAt,
+      contentOverride,
+      background = false,
     } = options;
     const fileToSave = fileOverride ?? currentFile;
     if (!fileToSave) return;
@@ -5241,12 +5318,15 @@ function MainApp() {
     const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
     if (!editableViewers.includes(viewer)) return;
 
+    const textToSave =
+      contentOverride != null ? String(contentOverride) : editorContentRef.current;
+
     if (
       !skipCoverChangeCheck
       && viewer === 'markdown'
       && noteCoverCommentChanged(
         String(fileToSave.content ?? ''),
-        String(editorContentRef.current ?? ''),
+        String(textToSave ?? ''),
       )
     ) {
       pendingCoverSaveRef.current = { fileOverride, options };
@@ -5254,14 +5334,26 @@ function MainApp() {
       return;
     }
 
-    setIsSaving(true);
+    const touchesActiveEditor =
+      !background &&
+      currentFileRef.current?.id === fileToSave.id &&
+      currentFileRef.current?.type === fileToSave.type;
+    if (touchesActiveEditor) setIsSaving(true);
+
+    const tabId =
+      fileToSave.type && fileToSave.id ? `${fileToSave.type}:${fileToSave.id}` : null;
+    const manageSavingBadge = Boolean(tabId) && !savingTabIdsRef.current.has(tabId);
+    if (tabId && manageSavingBadge) {
+      savingTabIdsRef.current.add(tabId);
+      setSavingTabIds([...savingTabIdsRef.current]);
+    }
+
     const indicatorId = addIndicator({
-      id: 'note-save',
+      id: background ? `note-save-bg:${fileToSave.type}:${fileToSave.id}` : 'note-save',
       type: ActivityTypes.NOTE_PROCESSING,
       label: '필기 저장 중',
       detail: fileToSave.name,
     });
-    const textToSave = editorContentRef.current;
     const contentTypeForViewer =
       viewer === 'json'
         ? 'application/json'
@@ -5272,6 +5364,28 @@ function MainApp() {
             : viewer === 'svg'
               ? 'image/svg+xml'
               : 'text/markdown';
+
+    const applySavedContentToTab = (extraFileFields = {}) => {
+      const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
+      if (!existing) return;
+      const tabId = `${fileToSave.type}:${fileToSave.id}`;
+      const patch = {
+        currentFile: {
+          ...existing.currentFile,
+          content: textToSave,
+          ...extraFileFields,
+        },
+        baselineContent: textToSave,
+      };
+      // Keep newer in-tab edits if the user typed while this save was in flight.
+      if (existing.editorContent === textToSave) {
+        patch.editorContent = textToSave;
+      }
+      const patched = patchFileTab(workspaceTabsRef.current, tabId, patch);
+      workspaceTabsRef.current = patched;
+      setWorkspaceTabs(patched);
+    };
+
     try {
       if (fileToSave.type === 's3') {
         const client = getS3Client();
@@ -5286,27 +5400,12 @@ function MainApp() {
         loadS3Files();
         const savedByteLength = new TextEncoder().encode(textToSave).length;
         setCurrentFile((prev) => {
-          if (prev?.id !== fileToSave.id) return prev;
+          if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
           const next = { ...prev, content: textToSave, size: savedByteLength };
           currentFileRef.current = next;
           return next;
         });
-        {
-          const tabId = `${fileToSave.type}:${fileToSave.id}`;
-          if (findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id)) {
-            const patched = patchFileTab(workspaceTabsRef.current, tabId, {
-              currentFile: {
-                ...(findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id)?.currentFile || {}),
-                content: textToSave,
-                size: savedByteLength,
-              },
-              editorContent: textToSave,
-              baselineContent: textToSave,
-            });
-            workspaceTabsRef.current = patched;
-            setWorkspaceTabs(patched);
-          }
-        }
+        applySavedContentToTab({ size: savedByteLength });
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
@@ -5319,7 +5418,7 @@ function MainApp() {
         await deleteMemoDraft(getDraftKey('local', fileToSave.id));
         const file = await fileToSave.handle.getFile();
         setCurrentFile((prev) => {
-          if (prev?.id !== fileToSave.id) return prev;
+          if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
           const next = {
             ...prev,
             content: textToSave,
@@ -5329,34 +5428,17 @@ function MainApp() {
           currentFileRef.current = next;
           return next;
         });
-        {
-          const tabId = `${fileToSave.type}:${fileToSave.id}`;
-          const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
-          if (existing) {
-            const patched = patchFileTab(workspaceTabsRef.current, tabId, {
-              currentFile: {
-                ...existing.currentFile,
-                content: textToSave,
-                size: typeof file.size === 'number' ? file.size : existing.currentFile.size ?? null,
-                lastModified: file.lastModified,
-              },
-              editorContent: textToSave,
-              baselineContent: textToSave,
-            });
-            workspaceTabsRef.current = patched;
-            setWorkspaceTabs(patched);
-          }
-        }
+        applySavedContentToTab({
+          ...(typeof file.size === 'number' ? { size: file.size } : {}),
+          lastModified: file.lastModified,
+        });
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
           content: textToSave,
         });
-        setIsSaving(false);
-        return;
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
         await downloadSessionWorkspace();
-        return;
       } else if (fileToSave.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         await backend.writeText(fileToSave.id, textToSave, contentTypeForViewer);
@@ -5364,28 +5446,12 @@ function MainApp() {
         await refreshWebdavTree();
         const savedByteLength = new TextEncoder().encode(textToSave).length;
         setCurrentFile((prev) => {
-          if (prev?.id !== fileToSave.id) return prev;
+          if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
           const next = { ...prev, content: textToSave, size: savedByteLength };
           currentFileRef.current = next;
           return next;
         });
-        {
-          const tabId = `${fileToSave.type}:${fileToSave.id}`;
-          const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
-          if (existing) {
-            const patched = patchFileTab(workspaceTabsRef.current, tabId, {
-              currentFile: {
-                ...existing.currentFile,
-                content: textToSave,
-                size: savedByteLength,
-              },
-              editorContent: textToSave,
-              baselineContent: textToSave,
-            });
-            workspaceTabsRef.current = patched;
-            setWorkspaceTabs(patched);
-          }
-        }
+        applySavedContentToTab({ size: savedByteLength });
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
@@ -5435,7 +5501,11 @@ function MainApp() {
       }
     } finally {
       removeIndicator(indicatorId);
-      setIsSaving(false);
+      if (touchesActiveEditor) setIsSaving(false);
+      if (tabId && manageSavingBadge) {
+        savingTabIdsRef.current.delete(tabId);
+        setSavingTabIds([...savingTabIdsRef.current]);
+      }
     }
   }, [
     currentFile,
@@ -6766,7 +6836,7 @@ function MainApp() {
       }
 
       if (!confirmAndCancelEditorImageUpload()) return;
-      await saveCurrentMarkdownBeforeSwitch(type, node);
+      saveCurrentMarkdownBeforeSwitch(type, node);
       setSelectedIds(new Set([toSelectKey(type, path)]));
       lastSelectedIdRef.current = toSelectKey(type, path);
       await selectFileRaw(type, node);
@@ -8005,6 +8075,7 @@ function MainApp() {
                 <WorkspaceMainPanels
                   tabs={workspaceTabs.tabs}
                   activeId={workspaceTabs.activeId}
+                  savingTabIds={savingTabIds}
                   tabsEnabled={workspaceTabsEnabled}
                   isChatRoute={isChatRoute}
                   onActivateTab={(id) => activateWorkspaceTab(id)}

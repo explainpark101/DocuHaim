@@ -20,7 +20,7 @@ import {
   IconMusic,
   IconVideo,
 } from '@/components/icons';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, X, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import {
   useMemo,
@@ -40,6 +40,7 @@ import {
 type WorkspaceTabBarProps = {
   tabs: WorkspaceTab[];
   activeId: string | null;
+  savingTabIds?: readonly string[];
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
   onReorder: (activeId: string, overId: string) => void;
@@ -81,11 +82,12 @@ const tooltipContentClass =
 type SortableTabProps = {
   tab: WorkspaceTab;
   active: boolean;
+  saving: boolean;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
 };
 
-function SortableWorkspaceTab({ tab, active, onActivate, onClose }: SortableTabProps) {
+function SortableWorkspaceTab({ tab, active, saving, onActivate, onClose }: SortableTabProps) {
   const dirty = isFileTab(tab) && isFileTabDirty(tab);
   const title = tabDisplayTitle(tab);
   const FileIcon = isFileTab(tab) ? fileTabIcon(tab) : null;
@@ -119,10 +121,16 @@ function SortableWorkspaceTab({ tab, active, onActivate, onClose }: SortableTabP
     >
       {tab.kind === 'chat' ? (
         <MessageSquare size={13} className="shrink-0 opacity-80" aria-hidden />
+      ) : saving ? (
+        <Loader2
+          size={13}
+          className="shrink-0 animate-spin opacity-80"
+          aria-label="저장 중"
+        />
       ) : FileIcon ? (
         <FileIcon size={13} className="shrink-0 opacity-80" aria-hidden />
       ) : null}
-      {dirty ? (
+      {dirty && !saving ? (
         <span
           className="size-1.5 shrink-0 rounded-full bg-amber-500"
           aria-label="저장되지 않은 변경"
@@ -193,6 +201,7 @@ function SortableWorkspaceTab({ tab, active, onActivate, onClose }: SortableTabP
 export default function WorkspaceTabBar({
   tabs,
   activeId,
+  savingTabIds = [],
   onActivate,
   onClose,
   onReorder,
@@ -203,6 +212,7 @@ export default function WorkspaceTabBar({
     }),
   );
   const sortableIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
+  const savingSet = useMemo(() => new Set(savingTabIds), [savingTabIds]);
 
   if (tabs.length === 0) return null;
 
@@ -229,6 +239,7 @@ export default function WorkspaceTabBar({
                 key={tab.id}
                 tab={tab}
                 active={tab.id === activeId}
+                saving={savingSet.has(tab.id)}
                 onActivate={onActivate}
                 onClose={onClose}
               />
