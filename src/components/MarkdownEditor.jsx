@@ -628,6 +628,9 @@ export default function MarkdownEditor({
   const handleToolbarImageUploadRef = useRef(null);
   const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
+  /** Snapshot of CM selection when opening heading remap ({ from, to, text } or null). */
+  const [headingRemapSelection, setHeadingRemapSelection] = useState(null);
+  const openHeadingRemapRef = useRef(() => {});
   const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [imageLinkModalOpen, setImageLinkModalOpen] = useState(false);
@@ -749,7 +752,10 @@ export default function MarkdownEditor({
       restoreSelectionIfNeeded();
       insertPgbr();
     };
-    handlers['editor-heading-remap'] = () => setHeadingRemapOpen(true);
+    handlers['editor-heading-remap'] = () => {
+      restoreSelectionIfNeeded();
+      openHeadingRemapRef.current();
+    };
     handlers['editor-checklist-progress'] = () => setChecklistProgressOpen(true);
     handlers['editor-table-edit'] = () => {
       restoreSelectionIfNeeded();
@@ -2062,6 +2068,25 @@ export default function MarkdownEditor({
     setClipCropFile(null);
   }, [insertMarkdownAtCursor, onUploadImage]);
 
+  const openHeadingRemap = useCallback(() => {
+    const api = editorRef.current?.value ?? editorRef.current;
+    const view = api?.getEditorView?.();
+    let snapshot = null;
+    if (view) {
+      const { from, to } = view.state.selection.main;
+      if (from !== to) {
+        snapshot = {
+          from,
+          to,
+          text: view.state.doc.sliceString(from, to),
+        };
+      }
+    }
+    setHeadingRemapSelection(snapshot);
+    setHeadingRemapOpen(true);
+  }, []);
+  openHeadingRemapRef.current = openHeadingRemap;
+
   const defToolbars = useMemo(() => [
     <ExportPDF
       key="export-pdf"
@@ -2073,9 +2098,7 @@ export default function MarkdownEditor({
     <MarkdownPageBreakToolbar key="insert-pgbr" editorRef={editorRef} />,
     <MarkdownHeadingRemapToolbar
       key="heading-remap"
-      onOpen={() => {
-        setHeadingRemapOpen(true);
-      }}
+      onOpen={openHeadingRemap}
     />,
     <LlmAssistToolbar
       key="llm-assist"
@@ -2140,6 +2163,7 @@ export default function MarkdownEditor({
     setMirrorEditEnabled,
     onUploadImage,
     handleToolbarImageUpload,
+    openHeadingRemap,
   ]);
 
   const toolbars = useMemo(() => [
@@ -2355,10 +2379,22 @@ export default function MarkdownEditor({
       <HeadingRemapModal
         isOpen={headingRemapOpen}
         markdown={value}
-        onClose={() => setHeadingRemapOpen(false)}
-        onApply={(next) => {
-          onChangeWithUndoHistory(next);
+        selectedMarkdown={headingRemapSelection?.text ?? ''}
+        onClose={() => {
           setHeadingRemapOpen(false);
+          setHeadingRemapSelection(null);
+        }}
+        onApply={(next, scope) => {
+          if (scope === 'selection' && headingRemapSelection) {
+            const { from, to } = headingRemapSelection;
+            const base = valueRef.current ?? value;
+            const spliced = `${base.slice(0, from)}${next}${base.slice(to)}`;
+            if (spliced !== base) onChangeWithUndoHistory(spliced);
+          } else if (next !== value) {
+            onChangeWithUndoHistory(next);
+          }
+          setHeadingRemapOpen(false);
+          setHeadingRemapSelection(null);
         }}
       />
       <LlmAssistModal

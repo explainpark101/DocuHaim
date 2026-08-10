@@ -906,7 +906,7 @@ export default function SettingsPage({
             {workspaceTabsEnabled ? (
               <div className="pl-12 space-y-2">
                 <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
-                  탭 자동 저장 (VS Code Auto Save)
+                  탭 자동 저장 설정
                 </p>
                 <RadioGroup.Root
                   className="flex flex-col gap-2"

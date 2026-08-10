@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
-import { Select } from 'radix-ui';
+import { RadioGroup, Select } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import {
   APP_HEADING_LEVELS,
@@ -12,32 +12,74 @@ import {
   type AppHeadingLevel,
 } from '@/utils/markdownHeadings';
 
+export type HeadingRemapScope = 'selection' | 'document';
+
+const SCOPE_OPTIONS: {
+  value: HeadingRemapScope;
+  title: string;
+  description: string;
+}[] = [
+  {
+    value: 'selection',
+    title: '선택 영역',
+    description: '현재 선택된 텍스트만 변경',
+  },
+  {
+    value: 'document',
+    title: '전체 문서',
+    description: '문서 전체 heading을 변경',
+  },
+];
+
 type Props = {
   isOpen: boolean;
   markdown: string;
+  /** Selected markdown snapshot when the modal opened (empty if none). */
+  selectedMarkdown?: string;
   onClose: () => void;
-  onApply: (nextMarkdown: string) => void;
+  onApply: (nextMarkdown: string, scope: HeadingRemapScope) => void;
 };
 
-export default function HeadingRemapModal({ isOpen, markdown, onClose, onApply }: Props) {
+export default function HeadingRemapModal({
+  isOpen,
+  markdown,
+  selectedMarkdown = '',
+  onClose,
+  onApply,
+}: Props) {
+  const hasSelection = selectedMarkdown.length > 0;
+  const [scope, setScope] = useState<HeadingRemapScope>('document');
   const [headingMax, setHeadingMax] = useState<AppHeadingLevel>(1);
+
+  const sourceMarkdown = scope === 'selection' ? selectedMarkdown : markdown;
 
   useEffect(() => {
     if (!isOpen) return;
-    setHeadingMax(defaultAppHeadingMax(markdown));
-  }, [isOpen, markdown]);
+    const nextScope: HeadingRemapScope = hasSelection ? 'selection' : 'document';
+    setScope(nextScope);
+    const initialSource = nextScope === 'selection' ? selectedMarkdown : markdown;
+    setHeadingMax(defaultAppHeadingMax(initialSource));
+  }, [isOpen, markdown, selectedMarkdown, hasSelection]);
 
   const preview = useMemo(
-    () => planHeadingRemapRows(markdown, headingMax, { maxLevel: MAX_APP_HEADING_LEVEL }),
-    [markdown, headingMax],
+    () => planHeadingRemapRows(sourceMarkdown, headingMax, { maxLevel: MAX_APP_HEADING_LEVEL }),
+    [sourceMarkdown, headingMax],
   );
+
+  const handleScopeChange = (next: string) => {
+    if (next !== 'selection' && next !== 'document') return;
+    if (next === 'selection' && !hasSelection) return;
+    setScope(next);
+    const nextSource = next === 'selection' ? selectedMarkdown : markdown;
+    setHeadingMax(defaultAppHeadingMax(nextSource));
+  };
 
   const handleApply = () => {
     if (!preview.sourceMax) return;
-    const next = remapMarkdownHeadingLevels(markdown, headingMax, {
+    const next = remapMarkdownHeadingLevels(sourceMarkdown, headingMax, {
       maxLevel: MAX_APP_HEADING_LEVEL,
     });
-    if (next !== markdown) onApply(next);
+    if (next !== sourceMarkdown) onApply(next, scope);
     onClose();
   };
 
@@ -50,6 +92,49 @@ export default function HeadingRemapModal({ isOpen, markdown, onClose, onApply }
         <p className="mt-1 text-sm text-gray-500 dark:text-odp-muted">
           감지된 최대 heading을 선택한 단계로 바꾸고, 하위 heading도 같은 간격으로 이동합니다.
         </p>
+
+        <div className="mt-4">
+          <div className="mb-2 text-xs font-medium text-gray-500 dark:text-odp-muted">
+            적용 범위
+          </div>
+          <RadioGroup.Root
+            className="flex items-center gap-2"
+            value={scope}
+            onValueChange={handleScopeChange}
+            aria-label="최대 heading 적용 범위"
+          >
+            {SCOPE_OPTIONS.map((option) => {
+              const selected = scope === option.value;
+              const disabled = option.value === 'selection' && !hasSelection;
+              return (
+                <RadioGroup.Item
+                  key={option.value}
+                  value={option.value}
+                  disabled={disabled}
+                  className={[
+                    'flex-1 rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200',
+                    'focus-visible:ring-2 focus-visible:ring-blue-500/40',
+                    'disabled:cursor-not-allowed disabled:opacity-40',
+                    selected
+                      ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
+                      : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
+                  ].join(' ')}
+                >
+                  <div className={selected ? '' : 'opacity-50'}>
+                    <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                      {option.title}
+                    </div>
+                    <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                      {option.value === 'selection' && !hasSelection
+                        ? '선택된 텍스트가 없습니다'
+                        : option.description}
+                    </div>
+                  </div>
+                </RadioGroup.Item>
+              );
+            })}
+          </RadioGroup.Root>
+        </div>
 
         <div className="mt-4">
           <label
@@ -137,7 +222,9 @@ export default function HeadingRemapModal({ isOpen, markdown, onClose, onApply }
             </div>
           ) : (
             <p className="rounded-md border border-dashed border-gray-200 px-3 py-6 text-center text-sm text-gray-500 dark:border-odp-borderSoft dark:text-odp-muted">
-              문서에 heading이 없습니다.
+              {scope === 'selection'
+                ? '선택 영역에 heading이 없습니다.'
+                : '문서에 heading이 없습니다.'}
             </p>
           )}
         </div>
