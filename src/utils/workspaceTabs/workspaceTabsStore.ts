@@ -191,3 +191,20 @@ export function findFileTab(
   const t = state.tabs.find((x) => x.id === id);
   return isFileTab(t) ? t : null;
 }
+
+/** Reorder tabs by moving `activeId` to the position of `overId`. */
+export function moveTab(
+  state: WorkspaceTabsState,
+  activeId: string,
+  overId: string,
+): WorkspaceTabsState {
+  if (activeId === overId) return state;
+  const oldIndex = state.tabs.findIndex((t) => t.id === activeId);
+  const newIndex = state.tabs.findIndex((t) => t.id === overId);
+  if (oldIndex < 0 || newIndex < 0) return state;
+  const tabs = state.tabs.slice();
+  const [removed] = tabs.splice(oldIndex, 1);
+  if (!removed) return state;
+  tabs.splice(newIndex, 0, removed);
+  return { ...state, tabs };
+}

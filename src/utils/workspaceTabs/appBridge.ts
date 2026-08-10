@@ -6,6 +6,7 @@ import {
   evictForSoftCap,
   findFileTab,
   getActiveFileTab,
+  moveTab,
   openOrActivateChat,
   openOrReplaceFileTab,
   patchFileTab,
@@ -100,4 +101,5 @@ export {
   getActiveFileTab,
   openOrActivateChat,
   patchFileTab,
+  moveTab,
 };

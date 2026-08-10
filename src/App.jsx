@@ -68,6 +68,7 @@ import {
   closeTab,
   findFileTab,
   flushEditorIntoActiveFileTab,
+  moveTab,
   openOrActivateChat,
   patchFileTab,
   softCapPrompt,
@@ -817,6 +818,12 @@ function MainApp() {
     },
     [navigate],
   );
+
+  const reorderWorkspaceTabs = useCallback((activeId, overId) => {
+    const next = moveTab(workspaceTabsRef.current, activeId, overId);
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+  }, []);
 
   const handleEditorTypeChange = useCallback((next) => {
     saveEditorType(next);
@@ -7870,6 +7877,7 @@ function MainApp() {
                     }
                     closeWorkspaceTabById(id);
                   }}
+                  onReorderTabs={reorderWorkspaceTabs}
                   mirrors={{
                     currentFile,
                     editorContent,

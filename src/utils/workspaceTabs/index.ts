@@ -41,6 +41,7 @@ export {
   findFileTab,
   getActiveFileTab,
   getActiveTab,
+  moveTab,
   openOrActivateChat,
   openOrReplaceFileTab,
   patchFileTab,

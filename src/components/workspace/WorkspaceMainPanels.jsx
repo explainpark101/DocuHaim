@@ -26,6 +26,7 @@ export default function WorkspaceMainPanels({
   activeId,
   onActivateTab,
   onCloseTab,
+  onReorderTabs,
   editorPaneProps,
   chatPaneProps,
   mirrors,
@@ -77,6 +78,7 @@ export default function WorkspaceMainPanels({
         activeId={activeId}
         onActivate={onActivateTab}
         onClose={onCloseTab}
+        onReorder={onReorderTabs}
       />
       <WorkspaceTabHost>
         {fileTabs.map((tab) => {
