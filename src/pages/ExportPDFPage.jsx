@@ -70,6 +70,7 @@ import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { savePrintMarkdownToStorage } from '@/utils/printMarkdownSave';
 import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
 import { PrintPgbrContextMenu } from '@/components/print/PrintPgbrContextMenu';
+import { insertPgbrBeforeHeadingByText } from '@/utils/printPgbrInsert';
 import {
   createDefaultNoteCover,
   formatNoteCoverIssues,
@@ -456,6 +457,8 @@ export default function ExportPDFPage({
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [visibleHeadingIds, setVisibleHeadingIds] = useState([]);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
+  /** TOC right-click: insert `<pgbr/>` before a heading (ConfirmModal). */
+  const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
@@ -1359,6 +1362,26 @@ export default function ExportPDFPage({
     setFreeTransformConfirmOpen(false);
   }, [currentFile, findResizableImageElement, freeTransformState, previewValue]);
 
+  const handleInsertPgbrBeforeHeading = useCallback(() => {
+    const state = headingPgbrModalState;
+    if (!state) return;
+    const md = previewValueRef.current ?? '';
+    const next = insertPgbrBeforeHeadingByText(
+      md,
+      state.headingText || '',
+      0,
+      state.headingIndex,
+    );
+    if (next.updated && next.markdown !== md) {
+      setPreviewValue(next.markdown);
+      setPendingPrintReturnState({
+        currentFile: currentFileRef.current,
+        editorContent: next.markdown,
+      });
+    }
+    setHeadingPgbrModalState(null);
+  }, [headingPgbrModalState]);
+
   const handleConfirmTransformReset = useCallback(() => {
     const active = activeTransformRef.current || freeTransformState;
     if (!active) return;
@@ -1952,8 +1975,12 @@ export default function ExportPDFPage({
                         onClick={() => handleTocItemClick(item.id)}
                         onContextMenu={(event) => {
                           event.preventDefault();
+                          const idMatch = String(item.id || '').match(/^pdf-ex-heading-(\d+)$/i);
+                          const fromId = idMatch?.[1] ? Number(idMatch[1]) : null;
+                          const headingIndex =
+                            Number.isInteger(fromId) && fromId >= 1 ? fromId : i + 1;
                           setHeadingPgbrModalState({
-                            headingIndex: i,
+                            headingIndex,
                             headingText: item.text || '',
                           });
                         }}
@@ -2077,6 +2104,15 @@ export default function ExportPDFPage({
         onConfirm={handleConfirmTransformApply}
         onCancel={() => setFreeTransformConfirmOpen(false)}
         onDiscard={handleConfirmTransformReset}
+      />
+      <ConfirmModal
+        isOpen={Boolean(headingPgbrModalState)}
+        title="페이지 나누기 삽입"
+        message={`아래 heading 앞에 <pgbr/> 를 삽입합니다.\n\n${headingPgbrModalState?.headingText || '(제목 텍스트 없음)'}`}
+        confirmLabel="삽입"
+        cancelLabel="취소"
+        onConfirm={handleInsertPgbrBeforeHeading}
+        onCancel={() => setHeadingPgbrModalState(null)}
       />
       <PrintPgbrContextMenu
         containerEl={previewPanRoot}
