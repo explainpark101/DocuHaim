@@ -332,6 +332,93 @@ export function base64ToUint8Array(b64: string): Uint8Array {
   return out;
 }
 
+export function isDataImageUri(value: string | null | undefined): boolean {
+  return /^data:image\//i.test(String(value || '').trim());
+}
+
+/**
+ * Build a File from a `data:image/...;base64,...` URI for vault/wiki upload.
+ */
+export function fileFromDataImageUri(dataUri: string, fileName?: string): File {
+  const raw = String(dataUri || '').trim();
+  const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(raw);
+  if (!match) {
+    throw new Error('Invalid data image URI');
+  }
+  const mime = match[1] || 'image/png';
+  const data = base64ToUint8Array(match[2] || '');
+  const name = fileName || `image${imageExtensionFromMime(mime)}`;
+  return new File([data as BlobPart], name, { type: mime });
+}
+
+export async function fileFromImageUrl(url: string, fileName?: string): Promise<File> {
+  const raw = String(url || '').trim();
+  if (!raw) {
+    throw new Error('Image URL is empty');
+  }
+  if (isDataImageUri(raw)) {
+    return fileFromDataImageUri(raw, fileName);
+  }
+  const response = await fetch(raw);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image (${response.status})`);
+  }
+  const blob = await response.blob();
+  const mime = blob.type?.startsWith('image/') ? blob.type : 'image/png';
+  const fromUrl = basename(decodeMarkdownImageSrc(raw).split('?')[0] || '');
+  const name =
+    fileName ||
+    (fromUrl && /\.[a-z0-9]+$/i.test(fromUrl)
+      ? sanitizeExportFileName(fromUrl)
+      : `image${imageExtensionFromMime(mime)}`);
+  return new File([blob], name, { type: mime });
+}
+
+export type PrepareMarkdownImageForWikiConvertResult =
+  | { mode: 'path'; path: string }
+  | { mode: 'file'; file: File };
+
+/**
+ * Prepare a standard markdown image for wiki conversion.
+ * Vault-relative destinations reuse the resolved path; data/remote need upload.
+ */
+export async function prepareMarkdownImageForWikiConvert(options: {
+  markdownSrc: string;
+  displaySrc?: string | null;
+  currentNotePath?: string | null;
+}): Promise<PrepareMarkdownImageForWikiConvertResult> {
+  const src = decodeMarkdownImageSrc(options.markdownSrc);
+  if (!src) {
+    throw new Error('Image source is empty');
+  }
+
+  if (isDataImageUri(src)) {
+    return { mode: 'file', file: fileFromDataImageUri(src) };
+  }
+
+  if (isStorageImageSrc(src)) {
+    const path = resolveStorageImagePath(src, options.currentNotePath);
+    if (path) {
+      return { mode: 'path', path };
+    }
+  }
+
+  const display = String(options.displaySrc || '').trim();
+  const fetchUrl = display || src;
+  if (!fetchUrl) {
+    throw new Error('No image URL available for upload');
+  }
+
+  const preferredName = isStorageImageSrc(src)
+    ? basename(src)
+    : basename(decodeMarkdownImageSrc(src).split('?')[0] || '');
+  const file = await fileFromImageUrl(
+    fetchUrl,
+    preferredName && preferredName !== 'image' ? preferredName : undefined,
+  );
+  return { mode: 'file', file };
+}
+
 /**
  * Turn inlined `data:image/...;base64,...` markdown images into `.pictures/` files.
  */

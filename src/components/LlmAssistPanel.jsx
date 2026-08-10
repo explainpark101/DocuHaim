@@ -3,6 +3,7 @@ import { ImagePlus, Loader2, RefreshCw, Replace, Sparkles, Eye, FileText, X } fr
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
+import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import {
   extractImageFilesFromClipboard,
@@ -330,6 +331,7 @@ export default function LlmAssistPanel({
                 theme={theme}
                 language="ko-KR"
                 codeTheme={MD_EDITOR_CODE_THEME}
+                customIcon={MD_EDITOR_CUSTOM_ICONS}
                 value={result}
                 codeFoldable={false}
                 showCodeRowNumber={false}

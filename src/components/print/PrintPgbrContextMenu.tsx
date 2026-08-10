@@ -3,10 +3,10 @@ import {
   useEffect,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { DropdownMenu } from 'radix-ui';
 import { Scissors, Trash2 } from 'lucide-react';
 import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
 import {
@@ -16,7 +16,7 @@ import {
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import { getVisualLineAtPoint } from '@/utils/printVisualLinePgbr';
 import {
-  headingTextOccurrenceInRoot,
+  headingTargetFromElement,
   insertPgbrBeforeHeadingByText,
   insertPgbrBeforeHrInBody,
   insertPgbrBeforeVisualLineInBody,
@@ -36,6 +36,7 @@ type MenuTarget =
       y: number;
       headingText: string;
       occurrence: number;
+      headingIndex: number;
       preview: PreviewBand;
       label: string;
     }
@@ -65,22 +66,21 @@ type MenuTarget =
     };
 
 type Props = {
-  /** Scroll/stage root that receives contextmenu (may be outside paper). */
-  containerRef: RefObject<HTMLElement | null>;
-  /** Paper body that contains MdPreview headings / lines. */
+  containerEl: HTMLElement | null;
+  containerRef?: RefObject<HTMLElement | null>;
   paperContentRef: RefObject<HTMLElement | null>;
   getMarkdown: () => string;
   setMarkdown: (next: string) => void;
 };
 
-const menuContentClass =
-  'z-100050 min-w-[200px] overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+const menuPanelClass =
+  'fixed z-100050 min-w-[200px] overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
 
 const menuItemClass =
-  'flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-800 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-gray-100 dark:text-odp-fg dark:data-[highlighted]:bg-odp-surface';
+  'flex w-full cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-800 outline-none hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-surface';
 
 const menuDangerItemClass =
-  'flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-red-50 dark:text-red-400 dark:data-[highlighted]:bg-red-950/40';
+  'flex w-full cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 outline-none hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40';
 
 const ICON_XS = 'h-3.5 w-3.5 shrink-0';
 
@@ -93,11 +93,39 @@ function paperPreviewBand(paper: HTMLElement, targetTop: number): PreviewBand {
   };
 }
 
+function applyPgbrAction(
+  target: MenuTarget,
+  getMarkdown: () => string,
+  setMarkdown: (next: string) => void,
+): boolean {
+  const md = getMarkdown();
+  let next: { markdown: string; updated: boolean };
+  if (target.kind === 'heading') {
+    next = insertPgbrBeforeHeadingByText(
+      md,
+      target.headingText,
+      target.occurrence,
+      target.headingIndex,
+    );
+  } else if (target.kind === 'hr') {
+    next = insertPgbrBeforeHrInBody(md, target.hrIndex);
+  } else if (target.kind === 'line') {
+    next = insertPgbrBeforeVisualLineInBody(md, target.lineText, target.occurrence);
+  } else {
+    next = removePgbrByOccurrenceInBody(md, target.occurrence);
+  }
+  if (!next.updated || next.markdown === md) return false;
+  setMarkdown(next.markdown);
+  return true;
+}
+
 /**
- * Export-PDF page-break context menu: insert / delete `<pgbr/>`.
- * Hovering the insert item shows a page-split preview band above the target.
+ * Export-PDF page-break context menu.
+ * Plain fixed portal + pointerup on the action (avoids capture-phase dismiss races).
+ * Heading insert uses `pdf-ex-heading-N` (1-based mdHeadingId) → markdown-it token map.
  */
 export function PrintPgbrContextMenu({
+  containerEl,
   containerRef,
   paperContentRef,
   getMarkdown,
@@ -107,17 +135,37 @@ export function PrintPgbrContextMenu({
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<MenuTarget | null>(null);
   const [hoverPreview, setHoverPreview] = useState(false);
-  const targetRef = useRef<MenuTarget | null>(null);
-  targetRef.current = target;
+  const pendingRef = useRef<MenuTarget | null>(null);
+  const getMarkdownRef = useRef(getMarkdown);
+  const setMarkdownRef = useRef(setMarkdown);
+  getMarkdownRef.current = getMarkdown;
+  setMarkdownRef.current = setMarkdown;
 
   const openAt = useCallback((next: MenuTarget) => {
+    pendingRef.current = next;
     setTarget(next);
     setHoverPreview(false);
     setOpen(true);
   }, []);
 
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+    setHoverPreview(false);
+    setTarget(null);
+    pendingRef.current = null;
+  }, []);
+
+  const runAction = useCallback((snapshot: MenuTarget | null) => {
+    if (!snapshot) return;
+    applyPgbrAction(snapshot, getMarkdownRef.current, setMarkdownRef.current);
+    pendingRef.current = null;
+    setOpen(false);
+    setHoverPreview(false);
+    setTarget(null);
+  }, []);
+
   useEffect(() => {
-    const root = containerRef.current;
+    const root = containerEl ?? containerRef?.current ?? null;
     if (!root) return undefined;
 
     const isCoverContextMenu = (event: MouseEvent) => {
@@ -148,7 +196,6 @@ export function PrintPgbrContextMenu({
         event.target instanceof Element
           ? event.target
           : (event.target as Node | null)?.parentElement;
-      // Live scroll uses paperContentRef; flip/2-up stage uses cloned preview DOM.
       const contentRoot: HTMLElement | null = (() => {
         if (paper && eventEl && paper.contains(eventEl)) return paper;
         const preview =
@@ -181,7 +228,6 @@ export function PrintPgbrContextMenu({
         return;
       }
 
-      // Images keep their own modal flow (handled elsewhere).
       if (
         (event.target as Element | null)?.closest?.(
           'img[data-wiki-path], img[data-md-src]',
@@ -190,7 +236,6 @@ export function PrintPgbrContextMenu({
         return;
       }
 
-      // Tables keep PreviewTableContextMenu.
       if ((event.target as Element | null)?.closest?.('table')) {
         return;
       }
@@ -201,17 +246,20 @@ export function PrintPgbrContextMenu({
       if (heading instanceof HTMLElement && contentRoot.contains(heading)) {
         event.preventDefault();
         event.stopPropagation();
-        const { text, occurrence } = headingTextOccurrenceInRoot(contentRoot, heading);
-        if (!text) return;
+        const { text, occurrence, headingIndex } = headingTargetFromElement(
+          contentRoot,
+          heading,
+        );
         const rect = heading.getBoundingClientRect();
         openAt({
           kind: 'heading',
           x: event.clientX,
           y: event.clientY,
-          headingText: text,
+          headingText: text || heading.textContent?.trim() || '',
           occurrence,
+          headingIndex,
           preview: paperPreviewBand(bandRoot, rect.top),
-          label: text,
+          label: text || '제목',
         });
         return;
       }
@@ -259,90 +307,64 @@ export function PrintPgbrContextMenu({
 
     root.addEventListener('contextmenu', onContextMenu);
     return () => root.removeEventListener('contextmenu', onContextMenu);
-  }, [containerRef, openAt, paperContentRef]);
+  }, [containerEl, containerRef, openAt, paperContentRef]);
 
-  const closeMenu = () => {
-    setOpen(false);
-    setTarget(null);
-    setHoverPreview(false);
-  };
+  // Bubble-phase dismiss so the action button receives pointerup first.
+  useEffect(() => {
+    if (!open || mobileContextMenu) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const el = event.target instanceof Element ? event.target : null;
+      if (el?.closest?.('[data-print-pgbr-menu="1"]')) return;
+      closeMenu();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenu();
+    };
+    // bubble (not capture): action button handlers run first
+    window.addEventListener('pointerdown', onPointerDown, false);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, false);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [closeMenu, mobileContextMenu, open]);
 
-  const handleInsert = () => {
-    const t = targetRef.current;
-    if (!t || t.kind === 'delete') return;
-    const md = getMarkdown();
-    let next: { markdown: string; updated: boolean };
-    if (t.kind === 'heading') {
-      next = insertPgbrBeforeHeadingByText(md, t.headingText, t.occurrence);
-    } else if (t.kind === 'hr') {
-      next = insertPgbrBeforeHrInBody(md, t.hrIndex);
-    } else {
-      next = insertPgbrBeforeVisualLineInBody(md, t.lineText, t.occurrence);
-    }
-    if (next.updated) setMarkdown(next.markdown);
-    closeMenu();
-  };
-
-  const handleDelete = () => {
-    const t = targetRef.current;
-    if (!t || t.kind !== 'delete') return;
-    const next = removePgbrByOccurrenceInBody(getMarkdown(), t.occurrence);
-    if (next.updated) setMarkdown(next.markdown);
-    closeMenu();
-  };
-
-  const showInsertPreview = target?.kind !== 'delete' && hoverPreview && target?.preview;
-  const anchor = target ?? { x: 0, y: 0 };
-
-  const insertItemDesktop = (
-    <DropdownMenu.Item
-      className={menuItemClass}
-      onPointerEnter={() => setHoverPreview(true)}
-      onPointerLeave={() => setHoverPreview(false)}
-      onSelect={() => handleInsert()}
-    >
-      <Scissors className={ICON_XS} aria-hidden />
-      페이지 나누기 삽입
-    </DropdownMenu.Item>
+  const showInsertPreview = Boolean(
+    target && target.kind !== 'delete' && hoverPreview && 'preview' in target,
   );
 
-  const deleteItemDesktop = (
-    <DropdownMenu.Item
-      className={menuDangerItemClass}
-      onSelect={() => handleDelete()}
+  const onActionPointerUp = (event: ReactPointerEvent) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const snapshot = pendingRef.current ?? target;
+    runAction(snapshot);
+  };
+
+  const actionButton = target?.kind === 'delete' ? (
+    <button
+      type="button"
+      data-print-pgbr-action="1"
+      className={mobileContextMenu ? MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS : menuDangerItemClass}
+      onPointerUp={onActionPointerUp}
     >
       <Trash2 className={ICON_XS} aria-hidden />
       페이지 나누기 삭제
-    </DropdownMenu.Item>
-  );
-
-  const insertItemMobile = (
+    </button>
+  ) : (
     <button
       type="button"
-      className={MOBILE_CONTEXT_MENU_ITEM_CLASS}
+      data-print-pgbr-action="1"
+      className={mobileContextMenu ? MOBILE_CONTEXT_MENU_ITEM_CLASS : menuItemClass}
       onPointerEnter={() => setHoverPreview(true)}
       onPointerLeave={() => setHoverPreview(false)}
-      onClick={() => handleInsert()}
+      onPointerUp={onActionPointerUp}
     >
       <Scissors className={ICON_XS} aria-hidden />
       페이지 나누기 삽입
     </button>
   );
-
-  const deleteItemMobile = (
-    <button
-      type="button"
-      className={MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS}
-      onClick={() => handleDelete()}
-    >
-      <Trash2 className={ICON_XS} aria-hidden />
-      페이지 나누기 삭제
-    </button>
-  );
-
-  const menuItems = target?.kind === 'delete'
-    ? (mobileContextMenu ? deleteItemMobile : deleteItemDesktop)
-    : (mobileContextMenu ? insertItemMobile : insertItemDesktop);
 
   const previewPortal =
     showInsertPreview && target && 'preview' in target
@@ -368,6 +390,24 @@ export function PrintPgbrContextMenu({
         )
       : null;
 
+  const desktopMenu =
+    open && target && !mobileContextMenu
+      ? createPortal(
+          <div
+            data-print-pgbr-menu="1"
+            className={menuPanelClass}
+            style={{
+              left: Math.min(target.x, window.innerWidth - 220),
+              top: Math.min(target.y, window.innerHeight - 80),
+            }}
+            role="menu"
+          >
+            {actionButton}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <>
       {previewPortal}
@@ -375,58 +415,24 @@ export function PrintPgbrContextMenu({
         <MobileContextMenuModal
           open={open}
           onOpenChange={(next) => {
-            setOpen(next);
-            if (!next) {
-              setTarget(null);
-              setHoverPreview(false);
-            }
+            if (!next) closeMenu();
+            else setOpen(true);
           }}
           title={target?.label || '페이지 나누기'}
           subtitle="인쇄 미리보기"
         >
           <div
+            data-print-pgbr-menu="1"
             onPointerEnter={() => {
               if (target?.kind !== 'delete') setHoverPreview(true);
             }}
             onPointerLeave={() => setHoverPreview(false)}
           >
-            {menuItems}
+            {actionButton}
           </div>
         </MobileContextMenuModal>
       ) : (
-        <DropdownMenu.Root
-          open={open}
-          onOpenChange={(next) => {
-            setOpen(next);
-            if (!next) {
-              setTarget(null);
-              setHoverPreview(false);
-            }
-          }}
-          modal
-        >
-          <DropdownMenu.Trigger asChild>
-            <button
-              type="button"
-              aria-hidden
-              tabIndex={-1}
-              className="pointer-events-none fixed h-px w-px opacity-0"
-              style={{ left: anchor.x, top: anchor.y }}
-            />
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              className={menuContentClass}
-              side="bottom"
-              align="start"
-              sideOffset={2}
-              collisionPadding={12}
-              onCloseAutoFocus={(e) => e.preventDefault()}
-            >
-              {menuItems}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        desktopMenu
       )}
     </>
   );

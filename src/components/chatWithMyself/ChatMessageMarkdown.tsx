@@ -9,8 +9,10 @@ import {
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
+import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/preview.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
+import '@/styles/md-editor-rt/code-copy.css';
 
 config({
   editorConfig: {
@@ -109,6 +111,7 @@ export default function ChatMessageMarkdown({
             theme={resolvedTheme}
             language="ko-KR"
             codeTheme={MD_EDITOR_CODE_THEME}
+            customIcon={MD_EDITOR_CUSTOM_ICONS}
             codeFoldable={false}
             showCodeRowNumber={false}
           />

@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { MdEditor, config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
+import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/style.css';
 
 config({
@@ -51,6 +52,7 @@ export default function ChatComposerMdEditor({
         onChange={onChange}
         theme={theme}
         language="ko-KR"
+        customIcon={MD_EDITOR_CUSTOM_ICONS}
         preview={false}
         toolbars={showToolbar ? CHAT_COMPOSER_TOOLBARS : []}
         footers={[]}

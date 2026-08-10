@@ -156,6 +156,25 @@ When serializing attrs back to source, prefer:
 
 Omit absent keys; join options with a single space. (`wikiImageMarkupFromAttrs`)
 
+When converting a standard markdown image `![alt](src){…}` to wiki form
+(`replaceMarkdownImageWithWikiPath` / size-modal **wiki image로 변경**),
+non-empty trimmed `alt` becomes an implicit caption on the following line:
+
+```text
+![[path|w=…]]
+alt text
+```
+
+Empty / whitespace-only alt → image markup only (no caption line).
+
+Destination handling for the convert action:
+
+| Markdown `src` | Result |
+|----------------|--------|
+| `data:image/…;base64,…` | Decode → upload → `![[uploadedPath]]` |
+| Vault-relative path | Reuse resolved storage path (no re-upload) |
+| `http(s):` / other remote | Fetch preview URL → upload → `![[uploadedPath]]` |
+
 ### 8. Non-goals
 
 - General `[[wikilink]]` without `!`

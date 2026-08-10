@@ -12,9 +12,11 @@ import { ToastProvider } from '@/contexts/ToastContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
+import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
 
 initEditorAutocompleteDomFlag()
 initTouchLongPressHaptics()
+initMdEditorCodeCopy()
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
 const isElectron = import.meta.env.VITE_ELECTRON === 'true'

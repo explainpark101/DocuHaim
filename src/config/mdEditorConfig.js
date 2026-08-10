@@ -22,6 +22,7 @@ import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import '@/styles/md-editor-rt/plan-frontmatter.css';
 import '@/styles/md-editor-rt/preview-heading-fold.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
+import '@/styles/md-editor-rt/code-copy.css';
 
 const TABLE_XSS_ATTRS = ['style', 'class', 'colspan', 'rowspan', 'align', 'valign', 'width', 'height', 'data-haim-table', 'data-haim-r', 'data-haim-c', 'data-haim-section', 'data-haim-width', 'data-haim-align', 'data-haim-box-w', 'data-haim-box-h'];
 

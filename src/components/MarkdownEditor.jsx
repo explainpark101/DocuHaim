@@ -24,6 +24,7 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
+import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import {
   EDITOR_ACTION_COMMANDS,
   registerEditorActions,
@@ -126,6 +127,7 @@ import {
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
+import { prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
 import {
   clearPreviewSelectionMirror,
   findDataLineElement,
@@ -1739,6 +1741,47 @@ export default function MarkdownEditor({
     [onChangeWithUndoHistory, onUploadImage, value, wikiImageModalState],
   );
 
+  const handleConvertMarkdownToWiki = useCallback(
+    async ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.key || modal.kind !== 'markdown') {
+        throw new Error('변환할 이미지를 찾을 수 없습니다.');
+      }
+      if (typeof onChangeWithUndoHistory !== 'function') {
+        throw new Error('문서를 수정할 수 없습니다.');
+      }
+      const prepared = await prepareMarkdownImageForWikiConvert({
+        markdownSrc: modal.key,
+        displaySrc: modal.imageSrc,
+        currentNotePath: currentFile?.id ?? null,
+      });
+      let nextPath = '';
+      if (prepared.mode === 'path') {
+        nextPath = prepared.path;
+      } else {
+        if (typeof onUploadImage !== 'function') {
+          throw new Error('이미지 업로드를 사용할 수 없습니다.');
+        }
+        const paths = await onUploadImage([prepared.file]);
+        nextPath = paths?.[0] || '';
+        if (!nextPath) {
+          throw new Error('이미지 업로드에 실패했습니다.');
+        }
+      }
+      const next = replaceMarkdownImageWithWikiPath(value, {
+        src: modal.key,
+        occurrence: modal.occurrence ?? 0,
+        nextPath,
+        width,
+        height,
+      });
+      if (next.updated && next.markdown !== value) {
+        onChangeWithUndoHistory(next.markdown);
+      }
+    },
+    [currentFile?.id, onChangeWithUndoHistory, onUploadImage, value, wikiImageModalState],
+  );
+
   const findResizableImageElement = useCallback((target) => {
     const root = containerRef.current;
     if (!root || !target?.kind || !target?.key) return null;
@@ -2118,6 +2161,7 @@ export default function MarkdownEditor({
         theme={theme}
         language="ko-KR"
         codeTheme={MD_EDITOR_CODE_THEME}
+        customIcon={MD_EDITOR_CUSTOM_ICONS}
         previewOnly={previewOnly}
         autoDetectCode={true}
         // Built-in scrollAuto uses stale data-line maps + height ratios; images break it.
@@ -2145,6 +2189,7 @@ export default function MarkdownEditor({
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
         onCrop={handleCropWikiImage}
+        onConvertToWiki={handleConvertMarkdownToWiki}
       />
       <ImageLinkModal
         isOpen={imageLinkModalOpen}

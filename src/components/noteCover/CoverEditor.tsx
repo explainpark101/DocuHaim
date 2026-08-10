@@ -10,6 +10,7 @@ import { AdaptiveMenuSurfaceProvider } from '@/components/contextMenu/AdaptiveCo
 import Modal from '@/components/modals/Modal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import NoteImageCropPanel from '@/components/modals/NoteImageCropPanel';
+import { useToast } from '@/contexts/ToastContext';
 import { useCoverImageUrl } from '@/hooks/useCoverImageUrl';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import {
@@ -111,6 +112,7 @@ type CoverEditorProps = {
   centerSnapTolerance?: number;
   /** Snap to other objects' edges and center lines while dragging. */
   objectSnapEnabled?: boolean;
+  onObjectSnapEnabledChange?: (enabled: boolean) => void;
   /** Pixel distance for object edge/center snap. */
   objectSnapTolerance?: number;
   /** Faint red solid outline on every text element box. */
@@ -125,6 +127,14 @@ type CoverEditorProps = {
   className?: string;
 };
 
+type PendingShiftClick = {
+  downAt: number;
+  targetIds: string[];
+  wasFullySelected: boolean;
+  selectionIsExactTarget: boolean;
+  selectionAtDown: string[];
+};
+
 type DragState =
   | {
       kind: 'move';
@@ -137,6 +147,13 @@ type DragState =
       frameH: number;
       /** Duplicate once the pointer moves past a small threshold (Alt / Cmd-drag). */
       pendingDuplicate?: boolean;
+      /** True once pointer moves past MOVE_DUPLICATE_THRESHOLD_PX. */
+      moved?: boolean;
+      /**
+       * Shift+click multi-select/deselect is applied on pointerup (not down).
+       * Deselect is skipped when the press lasts ≥ SHIFT_CLICK_DESELECT_MAX_MS.
+       */
+      pendingShiftClick?: PendingShiftClick;
     }
   | {
       kind: 'resize';
@@ -164,6 +181,8 @@ type DragState =
 const MOVE_DUPLICATE_THRESHOLD_PX = 3;
 const ARROW_NUDGE_BASE_PX = 10;
 const ARROW_NUDGE_REPEAT_DELAY_MS = 500;
+/** Shift+click deselection is ignored if pointerup is this late after pointerdown. */
+const SHIFT_CLICK_DESELECT_MAX_MS = 500;
 
 const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 
@@ -315,6 +334,7 @@ export default function CoverEditor({
   centerSnapEnabled = true,
   centerSnapTolerance = COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
   objectSnapEnabled = false,
+  onObjectSnapEnabledChange,
   objectSnapTolerance = COVER_OBJECT_SNAP_TOLERANCE_DEFAULT,
   textContainerOutlineEnabled = false,
   placePreviewEnabled = true,
@@ -324,6 +344,7 @@ export default function CoverEditor({
   onRedo,
   className = '',
 }: CoverEditorProps) {
+  const { showToast } = useToast();
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [placeTipPos, setPlaceTipPos] = useState<{ x: number; y: number } | null>(null);
@@ -399,6 +420,7 @@ export default function CoverEditor({
   const centerSnapToleranceRef = useRef(centerSnapTolerance);
   const objectSnapEnabledRef = useRef(objectSnapEnabled);
   const objectSnapToleranceRef = useRef(objectSnapTolerance);
+  const onObjectSnapEnabledChangeRef = useRef(onObjectSnapEnabledChange);
   const pastingRef = useRef(false);
   coverRef.current = cover;
   selectedIdsRef.current = selectedIds;
@@ -407,6 +429,7 @@ export default function CoverEditor({
   centerSnapToleranceRef.current = centerSnapTolerance;
   objectSnapEnabledRef.current = objectSnapEnabled;
   objectSnapToleranceRef.current = objectSnapTolerance;
+  onObjectSnapEnabledChangeRef.current = onObjectSnapEnabledChange;
 
   const findEl = useCallback((id: string) => {
     return coverRef.current.elements.find((el) => el.id === id) ?? null;
@@ -438,6 +461,21 @@ export default function CoverEditor({
       const dyPct = ((event.clientY - drag.startY) / drag.frameH) * 100;
 
       if (drag.kind === 'move') {
+        if (!drag.moved) {
+          const dist = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+          if (dist >= MOVE_DUPLICATE_THRESHOLD_PX) {
+            drag.moved = true;
+            const pending = drag.pendingShiftClick;
+            if (pending && !pending.wasFullySelected) {
+              onSelectIds([
+                ...new Set([...pending.selectionAtDown, ...pending.targetIds]),
+              ]);
+            }
+          }
+        }
+
+        if (!drag.ids.length) return;
+
         if (drag.pendingDuplicate) {
           const dist = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
           if (dist >= MOVE_DUPLICATE_THRESHOLD_PX) {
@@ -555,7 +593,7 @@ export default function CoverEditor({
     [onChange, onSelectIds],
   );
 
-  const endDrag = useCallback(() => {
+  const endDrag = useCallback((event?: Event) => {
     const drag = dragRef.current;
     if (drag?.kind === 'marquee') {
       const box = normalizePctRect({
@@ -574,6 +612,28 @@ export default function CoverEditor({
         onSelectIds(expanded);
       }
       setMarqueeRect(null);
+    } else if (
+      drag?.kind === 'move'
+      && drag.pendingShiftClick
+      && event?.type === 'pointerup'
+    ) {
+      const pending = drag.pendingShiftClick;
+      if (!drag.moved) {
+        if (pending.wasFullySelected) {
+          // Deselect only on a short click (not a hold used to start a drag).
+          if (
+            !pending.selectionIsExactTarget
+            && performance.now() - pending.downAt < SHIFT_CLICK_DESELECT_MAX_MS
+          ) {
+            const remove = new Set(pending.targetIds);
+            onSelectIds(pending.selectionAtDown.filter((x) => !remove.has(x)));
+          }
+        } else {
+          onSelectIds([
+            ...new Set([...pending.selectionAtDown, ...pending.targetIds]),
+          ]);
+        }
+      }
     }
     dragRef.current = null;
     setSnapGuides({ v: [], h: [] });
@@ -879,11 +939,13 @@ export default function CoverEditor({
     event.stopPropagation();
 
     // Alt or Cmd/Ctrl+drag on an already-selected target: duplicate after drag starts.
-    // Cmd/Ctrl or Shift+click: additive multi-select (toggle).
+    // Cmd/Ctrl+click: additive multi-select on pointerdown.
+    // Shift+click (no Cmd/Ctrl): additive toggle on pointerup (see pendingShiftClick).
     // Shift+drag (while moving): axis-lock — handled in onPointerMove.
     const modKey = event.metaKey || event.ctrlKey;
     const altKey = event.altKey;
     const shiftKey = event.shiftKey;
+    const shiftClickAdditive = shiftKey && !modKey && !altKey;
     const additive = (modKey || shiftKey) && !altKey;
     const targetIds = additive
       ? resolveCoverAdditiveSelection(
@@ -901,10 +963,27 @@ export default function CoverEditor({
       && targetIds.every((tid) => selected.includes(tid));
 
     let ids = selected;
-    if (additive) {
+    let pendingShiftClick: PendingShiftClick | undefined;
+
+    if (shiftClickAdditive) {
+      pendingShiftClick = {
+        downAt: performance.now(),
+        targetIds,
+        wasFullySelected: targetFullySelected,
+        selectionIsExactTarget,
+        selectionAtDown: [...selected],
+      };
+      if (targetFullySelected) {
+        // Keep selection on down so Shift+drag (axis-lock) can start.
+        ids = selected;
+      } else {
+        // Move the expanded set; commit selection on move threshold or pointerup.
+        ids = [...new Set([...selected, ...targetIds])];
+      }
+    } else if (additive) {
       if (targetFullySelected) {
         if (selectionIsExactTarget) {
-          // Sole selected: keep selection so Cmd-drag can copy / Shift-drag can move.
+          // Sole selected: keep selection so Cmd-drag can copy.
           ids = targetIds;
         } else {
           const remove = new Set(targetIds);
@@ -925,7 +1004,8 @@ export default function CoverEditor({
     }
 
     const movableIds = filterUnlockedElementIds(coverRef.current, ids);
-    if (!movableIds.length) return;
+    // Locked-only Shift+click still needs pointerup to toggle selection.
+    if (!movableIds.length && !pendingShiftClick) return;
 
     const pendingDuplicate = altKey || (modKey && targetFullySelected);
 
@@ -937,7 +1017,9 @@ export default function CoverEditor({
       origElements: coverRef.current.elements.map((e) => ({ ...e })),
       frameW: rect.width,
       frameH: rect.height,
+      moved: false,
       ...(pendingDuplicate ? { pendingDuplicate: true } : {}),
+      ...(pendingShiftClick ? { pendingShiftClick } : {}),
     };
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', endDrag);
@@ -1394,6 +1476,24 @@ export default function CoverEditor({
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey;
 
+      // Shift+Tab: toggle object snap (toast). Skip while typing in inputs.
+      if (
+        event.key === 'Tab'
+        && event.shiftKey
+        && !mod
+        && !event.altKey
+        && !event.repeat
+      ) {
+        if (isEditablePasteTarget(event.target)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const next = !objectSnapEnabledRef.current;
+        objectSnapEnabledRef.current = next;
+        onObjectSnapEnabledChangeRef.current?.(next);
+        showToast(next ? '개체 스냅 켜짐' : '개체 스냅 꺼짐');
+        return;
+      }
+
       if (event.key === 'Escape') {
         if (deleteConfirmOpenRef.current) return;
         // Place → edit → selection (one Esc step each).
@@ -1627,7 +1727,7 @@ export default function CoverEditor({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [editingTextId, onChange, onSelectIds, onUndo, onRedo, onPlaceModeChange]);
+  }, [editingTextId, onChange, onSelectIds, onUndo, onRedo, onPlaceModeChange, showToast]);
 
   const selectedSet = new Set(selectedIds);
   const singleSelected = selectedIds.length === 1 ? findEl(selectedIds[0]!) : null;

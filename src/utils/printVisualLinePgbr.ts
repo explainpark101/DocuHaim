@@ -1,3 +1,5 @@
+import { visibleInlineTextFromMarkdown } from '@/utils/printMarkdownVisibleText';
+
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
 
 function isFenceStart(line: string): boolean {
@@ -195,10 +197,22 @@ function markdownStructuralPrefixLength(rawLine: string): number {
 
 function findRawIndexOfVisibleNeedle(rawLine: string, needle: string, fromRaw = 0): number {
   const slice = rawLine.slice(fromRaw);
+  if (!slice.trim()) return -1;
   const direct = slice.indexOf(needle);
   if (direct >= 0) return fromRaw + direct;
 
   const collapsedNeedle = normalizeWs(needle);
+  if (!collapsedNeedle) return -1;
+
+  // Prefer markdown-stripped visible text (DOM textContent style).
+  const stripped = visibleInlineTextFromMarkdown(slice);
+  if (
+    stripped.length >= 8
+    && (stripped.includes(collapsedNeedle) || collapsedNeedle.includes(stripped))
+  ) {
+    return fromRaw;
+  }
+
   let visible = '';
   const visibleToRaw: number[] = [];
   for (let i = 0; i < slice.length; i += 1) {
@@ -240,13 +254,18 @@ export function insertPgbrBeforeVisualLine(
     if (inFence) continue;
 
     const prefixLen = markdownStructuralPrefixLength(line);
-    const visibleFull = normalizeWs(line);
-    const visibleAfterPrefix = normalizeWs(line.slice(prefixLen));
+    const visibleFull = visibleInlineTextFromMarkdown(line);
+    const visibleAfterPrefix = visibleInlineTextFromMarkdown(line.slice(prefixLen));
     const exact = visibleFull === needle || visibleAfterPrefix === needle;
-    const rawIndex = exact
-      ? (visibleAfterPrefix === needle ? prefixLen : 0)
+    // Soft-wrapped preview lines: DOM fragment is a substring of the source line.
+    const contains =
+      !exact
+      && needle.length >= 8
+      && (visibleFull.includes(needle) || visibleAfterPrefix.includes(needle));
+    const rawIndex = exact || contains
+      ? (visibleAfterPrefix === needle || visibleAfterPrefix.includes(needle) ? prefixLen : 0)
       : findRawIndexOfVisibleNeedle(line, needle);
-    if (rawIndex < 0 && !exact) continue;
+    if (rawIndex < 0 && !exact && !contains) continue;
 
     seen += 1;
     if (seen !== occurrence) continue;

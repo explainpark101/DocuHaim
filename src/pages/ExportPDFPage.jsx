@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
+import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
@@ -105,6 +106,7 @@ import {
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
+import { prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
@@ -1132,6 +1134,45 @@ export default function ExportPDFPage({
     [currentFile, previewValue, wikiImageModalState],
   );
 
+  const handleConvertMarkdownToWiki = useCallback(
+    async ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.key || modal.kind !== 'markdown') {
+        throw new Error('변환할 이미지를 찾을 수 없습니다.');
+      }
+      const prepared = await prepareMarkdownImageForWikiConvert({
+        markdownSrc: modal.key,
+        displaySrc: modal.imageSrc,
+        currentNotePath: currentFile?.id ?? null,
+      });
+      let nextPath = '';
+      if (prepared.mode === 'path') {
+        nextPath = prepared.path;
+      } else {
+        nextPath = await uploadPrintEditorImage(prepared.file, currentFile);
+        if (!nextPath) {
+          throw new Error('이미지 업로드에 실패했습니다.');
+        }
+      }
+      const next = replaceMarkdownImageWithWikiPath(previewValue, {
+        src: modal.key,
+        occurrence: modal.occurrence ?? 0,
+        nextPath,
+        width,
+        height,
+      });
+      if (!next.updated || next.markdown === previewValue) {
+        throw new Error('마크다운에서 해당 이미지를 찾지 못했습니다.');
+      }
+      setPreviewValue(next.markdown);
+      setPendingPrintReturnState({
+        currentFile,
+        editorContent: next.markdown,
+      });
+    },
+    [currentFile, previewValue, wikiImageModalState],
+  );
+
   const findResizableImageElement = useCallback((target) => {
     const root = previewContainerRef.current;
     if (!root || !target?.kind || !target?.key) return null;
@@ -1802,6 +1843,7 @@ export default function ExportPDFPage({
                   theme="light"
                   language="ko-KR"
                   codeTheme={MD_EDITOR_CODE_THEME}
+                  customIcon={MD_EDITOR_CUSTOM_ICONS}
                   value={bodyMarkdown}
                   mdHeadingId={headingId}
                   codeFoldable={false}
@@ -1963,6 +2005,7 @@ export default function ExportPDFPage({
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
         onCrop={handleCropWikiImage}
+        onConvertToWiki={handleConvertMarkdownToWiki}
       />
       <HaimTableBoxResizeLayer
         containerRef={previewContainerRef}
@@ -2036,6 +2079,7 @@ export default function ExportPDFPage({
         onDiscard={handleConfirmTransformReset}
       />
       <PrintPgbrContextMenu
+        containerEl={previewPanRoot}
         containerRef={previewContainerRef}
         paperContentRef={paperContentRef}
         getMarkdown={() => previewValueRef.current ?? ''}

@@ -290,7 +290,7 @@ export function replaceMarkdownImageWithWikiPath(markdown, {
   const IMAGE_RE = /!\[([^\]]*)\]\(([^)\n]+)\)(\{[^}\n]*\})?/g;
   let matchedCount = -1;
   let updated = false;
-  const next = source.replace(IMAGE_RE, (full, _alt, destination, rawAttrs = '') => {
+  const next = source.replace(IMAGE_RE, (full, alt, destination, rawAttrs = '') => {
     const dest = String(destination ?? '');
     const mdSrc = dest.trim().split(/\s+/)[0];
     if (!mdSrc || mdSrc !== src) return full;
@@ -298,12 +298,15 @@ export function replaceMarkdownImageWithWikiPath(markdown, {
     if (matchedCount !== occurrence) return full;
     updated = true;
     const existing = parseMarkdownImageAttrsBlock(rawAttrs);
-    return wikiImageMarkupFromAttrs({
+    const markup = wikiImageMarkupFromAttrs({
       path: nextPath,
       width: width === undefined ? existing.width : width,
       height: height === undefined ? existing.height : height,
       background: existing.background,
     });
+    // Markdown `![alt]()` becomes an implicit wiki caption (next line).
+    const caption = String(alt ?? '').trim();
+    return caption ? `${markup}\n${caption}` : markup;
   });
   return { markdown: next, updated };
 }

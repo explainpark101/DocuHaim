@@ -1,0 +1,43 @@
+/* Code fence copy button: icon + brief green success flash */
+
+.md-editor-preview .md-editor-code .md-editor-code-head .md-editor-copy-button {
+  color: inherit;
+  transition: color 0.15s ease;
+}
+
+.md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-copy-button.is-copy-success,
+.md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-copy-button.is-copy-success
+  .md-editor-icon {
+  color: #22c55e; /* green-500 */
+}
+
+.md-editor-dark
+  .md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-copy-button.is-copy-success,
+.dark
+  .md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-copy-button.is-copy-success,
+.md-editor-dark
+  .md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-copy-button.is-copy-success
+  .md-editor-icon,
+.dark
+  .md-editor-preview
+  .md-editor-code
+  .md-editor-code-head
+  .md-editor-copy-button.is-copy-success
+  .md-editor-icon {
+  color: #4ade80; /* green-400 */
+}

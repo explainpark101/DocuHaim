@@ -1,57 +1,59 @@
+import MarkdownIt from 'markdown-it';
 import { parseNoteCover, upsertNoteCoverComment } from '@/utils/noteCover/parse';
-import { MAX_APP_HEADING_LEVEL } from '@/utils/markdownHeadings';
+import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
+import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
 import { insertPgbrBeforeVisualLine } from '@/utils/printVisualLinePgbr';
+import {
+  normalizePrintVisibleText,
+  visibleInlineTextFromMarkdown,
+} from '@/utils/printMarkdownVisibleText';
 
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
-const ATX_HEADING_RE = new RegExp(`^\\s{0,3}(#{1,${MAX_APP_HEADING_LEVEL}})[ \\t]+(.*)$`);
 
 function isFenceStart(line: string): boolean {
   return /^\s*(```+|~~~+)/.test(line);
 }
 
-export function normalizePrintHeadingText(value: string): string {
-  return String(value ?? '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+export const normalizePrintHeadingText = normalizePrintVisibleText;
 
-function atxHeadingText(line: string): string | null {
-  const match = line.match(ATX_HEADING_RE);
-  if (!match) return null;
-  let content = String(match[2] ?? '').trim();
-  content = content.replace(/[ \t]+#+[ \t]*$/, '').trim();
-  return content || null;
-}
+/** Strip common inline markdown so DOM textContent can match ATX source. */
+export const visibleHeadingTextFromMarkdown = visibleInlineTextFromMarkdown;
 
-type HeadingTarget = { lineIndex: number; text: string };
-
-/** Collect ATX (h1–h10) + setext heading targets from markdown body. */
-export function collectBodyHeadingTargets(markdown: string): HeadingTarget[] {
-  const lines = String(markdown ?? '').split('\n');
-  const targets: HeadingTarget[] = [];
-  let inFence = false;
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i] ?? '';
-    if (isFenceStart(line)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) continue;
-
-    const atx = atxHeadingText(line);
-    if (atx != null) {
-      targets.push({ lineIndex: i, text: atx });
-      continue;
-    }
-
-    const next = lines[i + 1] ?? '';
-    if (line.trim() && /^\s{0,3}(=+|-+)\s*$/.test(next)) {
-      targets.push({ lineIndex: i, text: line.trim() });
-    }
+/** Same heading pipeline as Export PDF MdPreview (levels + plan frontmatter). */
+let headingLineMd: MarkdownIt | null = null;
+function getHeadingLineMarkdownIt(): MarkdownIt {
+  if (!headingLineMd) {
+    headingLineMd = new MarkdownIt({ html: true, linkify: false });
+    headingLevelsMarkdownItPlugin(headingLineMd);
+    planFrontmatterMarkdownItPlugin(headingLineMd);
   }
+  return headingLineMd;
+}
 
-  return targets;
+/**
+ * Source line of the heading with mdHeadingId `index` (1-based, same as md-editor-rt).
+ * md-editor-rt pushes to headsRef then passes `index: headsRef.length`, so the first
+ * heading is `pdf-ex-heading-1`, not `…-0`.
+ */
+export function findHeadingSourceLineIndex(body: string, headingIndex: number): number {
+  if (!Number.isInteger(headingIndex) || headingIndex < 1) return -1;
+  const tokens = getHeadingLineMarkdownIt().parse(String(body ?? ''), {});
+  let i = 0;
+  for (const token of tokens) {
+    if (token.type !== 'heading_open' || !token.map) continue;
+    i += 1;
+    if (i === headingIndex) return token.map[0] ?? -1;
+  }
+  return -1;
+}
+
+/** Parse `pdf-ex-heading-12` → 12 (1-based mdHeadingId index). */
+export function headingIndexFromElement(el: HTMLElement): number | null {
+  const id = String(el.id || '');
+  const match = id.match(/^pdf-ex-heading-(\d+)$/);
+  if (!match?.[1]) return null;
+  const n = Number(match[1]);
+  return Number.isInteger(n) && n >= 1 ? n : null;
 }
 
 function collectHrLineIndexes(markdown: string): { lines: string[]; indexes: number[] } {
@@ -102,7 +104,16 @@ function applyOnBody(
   const parsed = parseNoteCover(fullMarkdown);
   const result = updateBody(parsed.body);
   if (!result.updated) return { markdown: fullMarkdown, updated: false };
-  if (!parsed.cover) return result;
+  if (!parsed.cover) {
+    // Keep a broken/unparsed cover comment if present.
+    if (parsed.match?.[0]) {
+      return {
+        markdown: `${parsed.match[0]}\n${result.markdown.replace(/^\uFEFF/, '')}`,
+        updated: true,
+      };
+    }
+    return result;
+  }
   return {
     markdown: upsertNoteCoverComment(result.markdown, parsed.cover),
     updated: true,
@@ -110,33 +121,50 @@ function applyOnBody(
 }
 
 /**
- * Insert `<pgbr/>` above the heading matched by visible text + occurrence
- * within the note body (cover comment excluded from matching).
+ * Insert `<pgbr/>` above a heading identified by mdHeadingId index (`pdf-ex-heading-N`,
+ * 1-based) and/or visible text + occurrence.
  */
 export function insertPgbrBeforeHeadingByText(
   fullMarkdown: string,
   headingText: string,
   occurrence: number,
+  headingIndex?: number,
 ): { markdown: string; updated: boolean } {
-  const needle = normalizePrintHeadingText(headingText);
-  if (!needle || !Number.isInteger(occurrence) || occurrence < 0) {
+  const needle = visibleHeadingTextFromMarkdown(headingText);
+  const hasIndex = Number.isInteger(headingIndex) && headingIndex != null && headingIndex >= 1;
+  if (!hasIndex && (!needle || !Number.isInteger(occurrence) || occurrence < 0)) {
     return { markdown: fullMarkdown, updated: false };
   }
 
   return applyOnBody(fullMarkdown, (body) => {
-    const targets = collectBodyHeadingTargets(body);
-    let seen = -1;
     let lineIndex = -1;
-    for (const target of targets) {
-      if (normalizePrintHeadingText(target.text) !== needle) continue;
-      seen += 1;
-      if (seen !== occurrence) continue;
-      lineIndex = target.lineIndex;
-      break;
+
+    if (hasIndex) {
+      lineIndex = findHeadingSourceLineIndex(body, headingIndex!);
     }
+
+    if (lineIndex < 0 && needle) {
+      // Fallback: scan heading_open tokens and match visible text.
+      const tokens = getHeadingLineMarkdownIt().parse(body, {});
+      let seen = -1;
+      for (let t = 0; t < tokens.length; t += 1) {
+        const open = tokens[t];
+        if (open?.type !== 'heading_open' || !open.map) continue;
+        const inline = tokens[t + 1];
+        const raw = inline?.type === 'inline' ? String(inline.content ?? '') : '';
+        if (visibleHeadingTextFromMarkdown(raw) !== needle) continue;
+        seen += 1;
+        if (seen !== occurrence) continue;
+        lineIndex = open.map[0] ?? -1;
+        break;
+      }
+    }
+
     if (lineIndex < 0) return { markdown: body, updated: false };
     const lines = body.split('\n');
     const next = insertPgbrBeforeSourceLine(lines, lineIndex);
+    // Treat "already has pgbr" as success no-op only when content identical —
+    // still report updated:false so caller can tell; prefer true insert.
     return { markdown: next, updated: next !== body };
   });
 }
@@ -199,15 +227,20 @@ export function removePgbrByOccurrenceInBody(
   });
 }
 
-/** Count same-text heading occurrence before `headingEl` within `root`. */
-export function headingTextOccurrenceInRoot(
+/** Resolve heading identity from a preview heading element. */
+export function headingTargetFromElement(
   root: HTMLElement,
   headingEl: HTMLElement,
-): { text: string; occurrence: number } {
+): { text: string; occurrence: number; headingIndex: number } {
   const text = normalizePrintHeadingText(headingVisibleText(headingEl));
+  const fromId = headingIndexFromElement(headingEl);
   const headings = [
     ...root.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6'),
   ].filter((el) => root.contains(el));
+  const domIndex = headings.findIndex((el) => el === headingEl);
+  // mdHeadingId index is 1-based; DOM ordinal fallback must match.
+  const headingIndex = fromId ?? (domIndex < 0 ? 1 : domIndex + 1);
+
   let occurrence = 0;
   for (const el of headings) {
     if (el === headingEl) break;
@@ -215,7 +248,7 @@ export function headingTextOccurrenceInRoot(
       occurrence += 1;
     }
   }
-  return { text, occurrence };
+  return { text, occurrence, headingIndex };
 }
 
 function headingVisibleText(el: HTMLElement): string {

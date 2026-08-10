@@ -1218,7 +1218,7 @@ export default function CoverSidebar({
                       </Tooltip.Trigger>
                       <Tooltip.Portal>
                         <Tooltip.Content className={tooltipContentClass} side="top" sideOffset={6}>
-                          다른 개체의 테두리·가운데선에 맞춤 (그룹은 통째로, 그룹 안에서는 sibling과도)
+                          다른 개체의 테두리·가운데선에 맞춤 (Shift+Tab 토글 · 그룹은 통째로, 그룹 안에서는 sibling과도)
                           <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
                         </Tooltip.Content>
                       </Tooltip.Portal>
