@@ -13,11 +13,13 @@ import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
+import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { HLJS_ATOM_ONE_DARK_CSS } from '@/utils/mdEditorCodeTheme';
 import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
+import '@/styles/md-editor-rt/plan-frontmatter.css';
 import '@/styles/md-editor-rt/preview-heading-fold.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 
@@ -29,14 +31,27 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
   div: [
     'class',
     'data-md-pgbr',
+    'data-md-plan',
     'data-note-cover-placeholder',
     'data-note-cover-mount',
     'data-note-cover-preview',
     'data-color-mode',
     'role',
     'tabindex',
+    'aria-label',
+    'aria-level',
   ],
-  span: ['class', 'data-md-pgbr', 'aria-hidden', 'data-note-cover-fallback'],
+  span: [
+    'class',
+    'data-md-pgbr',
+    'data-md-plan-project',
+    'data-md-plan-progress',
+    'aria-hidden',
+    'data-note-cover-fallback',
+  ],
+  p: ['class'],
+  ul: ['class'],
+  li: ['class', 'data-status'],
   h6: ['id', 'class', 'data-heading-level'],
   a: ['href', 'class', 'target', 'rel', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
   table: TABLE_XSS_ATTRS,
@@ -95,6 +110,7 @@ config({
       { type: 'chat_saved_note', plugin: chatSavedNotePlugin, options: {} },
       { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
       { type: 'haim_table', plugin: haimTableMarkdownItPlugin, options: {} },
+      { type: 'plan_frontmatter', plugin: planFrontmatterMarkdownItPlugin, options: {} },
     ];
   },
   // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).

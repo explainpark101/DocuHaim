@@ -82,6 +82,7 @@ import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
 import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
+import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
@@ -538,6 +539,9 @@ config({
     }
     if (!next.some((p) => p.type === 'haim_table')) {
       next = [...next, { type: 'haim_table', plugin: haimTableMarkdownItPlugin, options: {} }];
+    }
+    if (!next.some((p) => p.type === 'plan_frontmatter')) {
+      next = [...next, { type: 'plan_frontmatter', plugin: planFrontmatterMarkdownItPlugin, options: {} }];
     }
     return next;
   },

@@ -62,6 +62,7 @@ export default defineConfig({
             { text: 'Chat saved note', link: '/custom-markdown/chat-saved-note' },
             { text: 'Note cover', link: '/custom-markdown/note-cover' },
             { text: 'Haim table', link: '/custom-markdown/haim-table' },
+            { text: 'Plan frontmatter', link: '/custom-markdown/plan-frontmatter' },
             { text: 'Preview hard break', link: '/custom-markdown/preview-hard-break' },
           ],
         },
