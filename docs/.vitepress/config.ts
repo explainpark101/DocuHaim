@@ -6,8 +6,8 @@ const appBase = (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/');
 const base = `${appBase}docs/`;
 
 export default defineConfig({
-  title: 'S3 Haim Docs',
-  description: 'S3 Haim docs — custom Markdown, Advanced Search, and interop specs',
+  title: 'Docu Haim Docs',
+  description: 'Docu Haim docs — custom Markdown, Advanced Search, and interop specs',
   lang: 'ko-KR',
   base,
   outDir: '../dist/docs',

@@ -1,8 +1,8 @@
 ---
-title: S3 Haim Docs
+title: Docu Haim Docs
 ---
 
-# S3 Haim Docs
+# Docu Haim Docs
 
 앱 기능·문법 명세와, 다른 구현에서 포팅할 때 쓰는 **interop Spec** 문서입니다.
 

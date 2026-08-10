@@ -1,6 +1,11 @@
 import { useCallback, useState, type DragEvent } from 'react';
 import { Archive, FileText, FolderOpen, Upload } from 'lucide-react';
+import { motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
+import {
+  emptyHomeItemVariants,
+  emptyHomeMenuContainerVariants,
+} from '@/components/emptyHomeMotion';
 import { IconFilePlus, IconMenu, IconMessage } from '@/components/icons';
 
 type Props = {
@@ -51,10 +56,14 @@ export default function SessionOpenPanel({
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4">
-      <div
+    <Motion.div
+      className="mx-auto flex w-full max-w-lg flex-col items-center gap-4"
+      variants={emptyHomeMenuContainerVariants}
+    >
+      <Motion.div
         role="button"
         tabIndex={0}
+        variants={emptyHomeItemVariants}
         onDragEnter={handleDragOver}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -139,28 +148,37 @@ export default function SessionOpenPanel({
             </label>
           )}
         </div>
-      </div>
+      </Motion.div>
 
-      <div className="flex w-full max-w-xs flex-col gap-2">
+      <Motion.div
+        className="flex w-full max-w-xs flex-col gap-2"
+        variants={emptyHomeMenuContainerVariants}
+      >
         {typeof onRequestCreateFile === 'function' ? (
-          <Button type="button" variant="secondary" size="md" className="w-full" onClick={onRequestCreateFile}>
-            <IconFilePlus size={16} />
-            파일 생성
-          </Button>
+          <Motion.div variants={emptyHomeItemVariants}>
+            <Button type="button" variant="secondary" size="md" className="w-full" onClick={onRequestCreateFile}>
+              <IconFilePlus size={16} />
+              파일 생성
+            </Button>
+          </Motion.div>
         ) : null}
         {typeof onOpenSidebar === 'function' ? (
-          <Button type="button" variant="secondary" size="md" className="w-full" onClick={onOpenSidebar}>
-            <IconMenu size={16} />
-            사이드바 열기
-          </Button>
+          <Motion.div variants={emptyHomeItemVariants}>
+            <Button type="button" variant="secondary" size="md" className="w-full" onClick={onOpenSidebar}>
+              <IconMenu size={16} />
+              사이드바 열기
+            </Button>
+          </Motion.div>
         ) : null}
         {typeof onOpenChatWithMyself === 'function' ? (
-          <Button type="button" variant="secondary" size="md" className="w-full" onClick={onOpenChatWithMyself}>
-            <IconMessage size={16} />
-            나와의 채팅 열기
-          </Button>
+          <Motion.div variants={emptyHomeItemVariants}>
+            <Button type="button" variant="secondary" size="md" className="w-full" onClick={onOpenChatWithMyself}>
+              <IconMessage size={16} />
+              나와의 채팅 열기
+            </Button>
+          </Motion.div>
         ) : null}
-      </div>
-    </div>
+      </Motion.div>
+    </Motion.div>
   );
 }

@@ -1,10 +1,10 @@
-# S3HAIM
+# Docu Haim
 
 **S3 / Local / WebDAV에 저장하는 마크다운 메모 앱**입니다.
 
 ## 이 앱은 무엇인가요?
 
-S3HAIM은 **마크다운**으로 메모를 작성하고, 저장소를 선택할 수 있는 웹 앱입니다.
+Docu Haim은 **마크다운**으로 메모를 작성하고, 저장소를 선택할 수 있는 웹 앱입니다.
 
 - **S3 Haim**: Amazon S3에 저장 — 기기 간 동기화(idle pull, 모바일 폴링, pending 재업로드) 지원
 - **Local Haim**: 브라우저 File System Access API로 로컬 폴더에 저장 — 동일 UX, 기기 간 동기화 없음

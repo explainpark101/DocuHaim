@@ -159,7 +159,7 @@ function expandedSetForStorageType(expanded, storageType) {
 }
 
 export default function Sidebar({
-  appName = 'S3 Haim',
+  appName = 'Docu Haim',
   storageMode = 's3',
   s3Tree,
   s3Bucket,

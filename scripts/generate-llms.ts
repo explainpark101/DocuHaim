@@ -9,7 +9,7 @@ const SITE =
 
 const PROJECT =
   process.env.PROJECT_NAME ||
-  "S3Haim";
+  "Docu Haim";
 
 const DOCS_DIR = path.join(process.cwd(), "docs");
 const OUTPUT_DIR = path.join(process.cwd(), "public");

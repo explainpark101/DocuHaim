@@ -37,7 +37,8 @@ function getRpId() {
 /**
  * 패스키 저장 시 표시할 사용자 식별용 문자열.
  * 현재 페이지 URL(호스트·경로)을 반영해, 어느 배포에서 쓰는 패스키인지 구분되게 한다.
- * e.g. explainpark101.github.io/s3haim → name: s3haim@explainpark101.github.io, displayName: S3 Haim (explainpark101.github.io/s3haim)
+ * e.g. explainpark101.github.io/s3haim → name: s3haim@explainpark101.github.io, displayName: Docu Haim (explainpark101.github.io/s3haim)
+ * HKDF info strings above stay "S3 Haim … V1" for crypto compatibility.
  */
 function getWebAuthnUserDisplay() {
   const host = getRpId();
@@ -46,7 +47,7 @@ function getWebAuthnUserDisplay() {
       ? window.location.pathname
       : '';
   const name = `s3haim@${host}`;
-  const displayName = pathname ? `S3 Haim (${host}${pathname})` : `S3 Haim (${host})`;
+  const displayName = pathname ? `Docu Haim (${host}${pathname})` : `Docu Haim (${host})`;
   return { name, displayName };
 }
 
@@ -153,7 +154,7 @@ export async function createPasskeyWithPRF() {
   const { name: userName, displayName: userDisplayName } = getWebAuthnUserDisplay();
 
   const optionsJSON = {
-    rp: { name: 'S3 Haim', id: rpId },
+    rp: { name: 'Docu Haim', id: rpId },
     user: {
       id: userId,
       name: userName,

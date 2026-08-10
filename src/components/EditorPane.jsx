@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
+import { motion as Motion, useReducedMotion } from 'motion/react';
 import {
   IconCloud,
   IconChevronDown,
@@ -22,6 +23,11 @@ import Button from '@/components/Button';
 import { ArrowLeftRight, ListTree, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
+import {
+  emptyHomeContainerVariants,
+  emptyHomeItemVariants,
+  emptyHomeMenuContainerVariants,
+} from '@/components/emptyHomeMotion';
 
 const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
 const NovelMarkdownEditor = lazy(() => import('@/components/NovelMarkdownEditor'));
@@ -184,6 +190,7 @@ export default function EditorPane({
     isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function';
   const desktopCollapsedTopBarPaddingClass =
     !isMobileLayout && sidebarCollapsed ? 'md:pl-14' : '';
+  const reduceMotion = useReducedMotion();
   if (!currentFile) {
     return (
       <div className="flex min-h-0 flex-1 flex-col text-gray-400">
@@ -199,10 +206,38 @@ export default function EditorPane({
             </button>
           </div>
         )}
-        <div className="flex flex-1 flex-col items-center justify-center px-4">
-          <IconFolder />
-          <p className="mt-4 text-center">사이드바에서 파일을 선택하거나, 로컬 파일을 열어 편집하세요.</p>
-          <div className="mt-6 flex w-full justify-center">
+        <Motion.div
+          className="flex flex-1 flex-col items-center justify-center px-4"
+          variants={emptyHomeContainerVariants}
+          initial={reduceMotion ? false : 'hidden'}
+          animate="show"
+        >
+          <Motion.div
+            className="flex items-center gap-3 sm:gap-4"
+            variants={emptyHomeItemVariants}
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}vite.svg`}
+              alt=""
+              width={56}
+              height={56}
+              className="h-12 w-12 shrink-0 drop-shadow-[0_8px_18px_rgba(15,23,42,0.28)] sm:h-14 sm:w-14 dark:drop-shadow-[0_0_22px_rgba(56,189,248,0.55)]"
+              decoding="async"
+            />
+            <h1 className="font-display text-3xl font-bold tracking-tight text-gray-800 dark:text-odp-fgStrong sm:text-4xl">
+              Docu Haim
+            </h1>
+          </Motion.div>
+          <Motion.p
+            className="mt-4 text-center text-gray-400 dark:text-odp-muted"
+            variants={emptyHomeItemVariants}
+          >
+            사이드바에서 파일을 선택하거나, 로컬 파일을 열어 편집하세요.
+          </Motion.p>
+          <Motion.div
+            className="mt-6 flex w-full justify-center"
+            variants={emptyHomeMenuContainerVariants}
+          >
             {typeof onOpenSessionFiles === 'function' && typeof onDropSessionTransfer === 'function' ? (
               <SessionOpenPanel
                 onOpenFiles={onOpenSessionFiles}
@@ -214,47 +249,56 @@ export default function EditorPane({
                 isBusy={isOpeningSession}
               />
             ) : (
-              <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
+              <Motion.div
+                className="mx-auto flex w-full max-w-xs flex-col gap-2"
+                variants={emptyHomeMenuContainerVariants}
+              >
                 {typeof onRequestCreateFile === 'function' ? (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="md"
-                    className="w-full"
-                    onClick={onRequestCreateFile}
-                  >
-                    <IconFilePlus size={16} />
-                    파일 생성
-                  </Button>
+                  <Motion.div variants={emptyHomeItemVariants}>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="md"
+                      className="w-full"
+                      onClick={onRequestCreateFile}
+                    >
+                      <IconFilePlus size={16} />
+                      파일 생성
+                    </Button>
+                  </Motion.div>
                 ) : null}
                 {typeof onOpenSidebar === 'function' ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    className="w-full"
-                    onClick={onOpenSidebar}
-                  >
-                    <IconMenu size={16} />
-                    사이드바 열기
-                  </Button>
+                  <Motion.div variants={emptyHomeItemVariants}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      className="w-full"
+                      onClick={onOpenSidebar}
+                    >
+                      <IconMenu size={16} />
+                      사이드바 열기
+                    </Button>
+                  </Motion.div>
                 ) : null}
                 {typeof onOpenChatWithMyself === 'function' ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    className="w-full"
-                    onClick={onOpenChatWithMyself}
-                  >
-                    <IconMessage size={16} />
-                    나와의 채팅 열기
-                  </Button>
+                  <Motion.div variants={emptyHomeItemVariants}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      className="w-full"
+                      onClick={onOpenChatWithMyself}
+                    >
+                      <IconMessage size={16} />
+                      나와의 채팅 열기
+                    </Button>
+                  </Motion.div>
                 ) : null}
-              </div>
+              </Motion.div>
             )}
-          </div>
-        </div>
+          </Motion.div>
+        </Motion.div>
       </div>
     );
   }

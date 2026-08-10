@@ -617,7 +617,7 @@ function MainApp() {
   useEffect(() => {
     const pathname = location.pathname || '/';
     if (pathname === '/') {
-      document.title = 'S3 Haim - Markdown Notes';
+      document.title = 'Docu Haim - Markdown Notes';
       return;
     }
     const onChat = pathname === '/chat' || pathname.endsWith('/chat');

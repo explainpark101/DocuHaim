@@ -36,7 +36,7 @@ function measureUntruncatedWidth(el) {
   return w;
 }
 
-/** Min width so the brand title ("S3 Haim") and header controls fit without truncating the name. */
+/** Min width so mode brand titles (e.g. "WebDAV Haim") and header controls fit without truncating. */
 function measureBrandExpandWidth(panelEl) {
   if (!panelEl) return SIDEBAR_DEFAULT_WIDTH;
   const row = panelEl.querySelector('[data-sidebar-header-row]');
@@ -190,7 +190,7 @@ export default function ResizableSidebarPanel({
     if (!isResizing) liveWidthRef.current = null;
   }, [isResizing]);
 
-  // When reopening from collapsed, ensure brand title ("S3 Haim") is fully visible.
+  // When reopening from collapsed, ensure mode brand title is fully visible.
   const wasCollapsedRef = useRef(collapsed);
   useEffect(() => {
     const wasCollapsed = wasCollapsedRef.current;
