@@ -2,18 +2,18 @@
 
 ## Documentation
 
-https://explainpark101.github.io/s3haim/docs/advanced-search/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-day-file-comments/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-file/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-note/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-saved-note/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/haim-table/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/heading-levels/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/markdown-image-attrs/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/note-cover/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/page-break/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/preview-hard-break/
-https://explainpark101.github.io/s3haim/docs/custom-markdown/wiki-image/
-https://explainpark101.github.io/s3haim/docs/
+https://explainpark101.github.io/DocuHaim/docs/advanced-search/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-day-file-comments/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-file/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-note/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-saved-note/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/haim-table/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/heading-levels/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/markdown-image-attrs/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/note-cover/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/page-break/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/preview-hard-break/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/wiki-image/
+https://explainpark101.github.io/DocuHaim/docs/
 

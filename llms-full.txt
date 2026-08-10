@@ -1,12 +1,12 @@
 # Docu Haim
 
-Generated: 2026-08-10T07:05:02.561Z
+Generated: 2026-08-10T07:12:28.065Z
 
 ============================================================
 Advanced Search
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/advanced-search/
+URL: https://explainpark101.github.io/DocuHaim/docs/advanced-search/
 
 # Advanced Search
 
@@ -382,7 +382,7 @@ Advanced Search는 “더 똑똑한 `includes`”가 아니라:
 Chat day-file HTML comments
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-day-file-comments/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-day-file-comments/
 
 # Chat day-file HTML comments
 
@@ -477,7 +477,7 @@ Messages and tombstones may be interleaved. Parser collects all tombstones into 
 Chat file token (`[[file:…]]`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-file/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-file/
 
 # Chat file token (`[[file:…]]`)
 
@@ -558,7 +558,7 @@ Name/path must already be sanitized so `|` / brackets do not appear.
 Chat note token (`[[note:…]]`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-note/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-note/
 
 # Chat note token (`[[note:…]]`)
 
@@ -623,7 +623,7 @@ else:               [[note:{notePath}|{label}]]
 Chat saved note (`<!-- chat-with-myself … -->`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/chat-saved-note/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-saved-note/
 
 # Chat saved note (`<!-- chat-with-myself … -->`)
 
@@ -728,7 +728,7 @@ HTML-escape `href` and `id` in attributes. Styling is host CSS (`chat-saved-note
 Haim table (`<!-- haim-table … -->` + GFM table)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/haim-table/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/haim-table/
 
 # Haim table (`<!-- haim-table … -->` + GFM table)
 
@@ -922,7 +922,7 @@ templates:
 Extended ATX headings (h7–h10)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/heading-levels/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/heading-levels/
 
 # Extended ATX headings (h7–h10)
 
@@ -1008,7 +1008,7 @@ Hosts that build TOC or remap headings should use **logical** level 1–10 (from
 s3haim custom Markdown
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/
 
 # s3haim custom Markdown
 
@@ -1080,7 +1080,7 @@ VitePress용 디렉터리 인덱스는 `index.md`다 (`README.md` 아님).
 Standard image size attrs (`![](){…}`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/markdown-image-attrs/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/markdown-image-attrs/
 
 # Standard image size attrs (`![](){…}`)
 
@@ -1176,7 +1176,7 @@ Omit empty keys; space-separated. Empty → no `{}` suffix.
 Note cover (`<!-- note-cover … -->`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/note-cover/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/note-cover/
 
 # Note cover (`<!-- note-cover … -->`)
 
@@ -1358,7 +1358,7 @@ Editor fold: first cover line shows a chevron left of line numbers (`cursor-poin
 Page break (`<pgbr/>`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/page-break/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/page-break/
 
 # Page break (`<pgbr/>`)
 
@@ -1434,7 +1434,7 @@ CSS details are host-specific; class + `data-md-pgbr="1"` are the contract.
 Preview hard break (`<br/>`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/preview-hard-break/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/preview-hard-break/
 
 # Preview hard break (`<br/>`)
 
@@ -1493,7 +1493,7 @@ Preview plain text treats each `<br>` as one `\n` so the mirrored caret can sit 
 Wiki image (`![[…]]`)
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/custom-markdown/wiki-image/
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/wiki-image/
 
 # Wiki image (`![[…]]`)
 
@@ -1677,7 +1677,7 @@ Omit absent keys; join options with a single space. (`wikiImageMarkupFromAttrs`)
 Docu Haim Docs
 ============================================================
 
-URL: https://explainpark101.github.io/s3haim/docs/
+URL: https://explainpark101.github.io/DocuHaim/docs/
 
 # Docu Haim Docs
 
@@ -1695,7 +1695,7 @@ URL: https://explainpark101.github.io/s3haim/docs/
 | 환경 | 예시 |
 |------|------|
 | 로컬 (`VITE_BASE_PATH=/`) | `/docs/` |
-| GitHub Pages (`/s3haim/`) | `/s3haim/docs/` |
+| GitHub Pages (`/DocuHaim/`) | `/DocuHaim/docs/` |
 
 로컬에서 문서만 보려면:
 
