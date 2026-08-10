@@ -129,6 +129,10 @@ import {
 } from '@/utils/wikiImageSyntax';
 import { prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
 import {
+  convertAllMarkdownImagesToWiki,
+  hasStandardMarkdownImages,
+} from '@/utils/convertMarkdownImagesToWiki';
+import {
   clearPreviewSelectionMirror,
   findDataLineElement,
   isPointInLivePreviewSelection,
@@ -565,6 +569,8 @@ export default function MarkdownEditor({
   snippetConfig = { snippets: [] },
   getGeminiApiKey,
   onOpenViewPath,
+  onRequestConvertAllImagesToWiki,
+  onRegisterConvertAllImagesToWiki,
 }) {
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
@@ -785,9 +791,14 @@ export default function MarkdownEditor({
       };
       input.click();
     };
+    handlers['editor-convert-all-images-to-wiki'] = () => {
+      if (typeof onRequestConvertAllImagesToWiki === 'function') {
+        onRequestConvertAllImagesToWiki();
+      }
+    };
 
     return registerEditorActions(handlers);
-  }, [previewOnly, navigateToExportPdf, showAlert]);
+  }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki]);
   const {
     width: catalogWidth,
     isResizing: catalogResizing,
@@ -1781,6 +1792,42 @@ export default function MarkdownEditor({
     },
     [currentFile?.id, onChangeWithUndoHistory, onUploadImage, value, wikiImageModalState],
   );
+
+  useEffect(() => {
+    if (typeof onRegisterConvertAllImagesToWiki !== 'function') return undefined;
+    onRegisterConvertAllImagesToWiki(async () => {
+      if (previewOnly) {
+        throw new Error('미리보기에서는 변환할 수 없습니다.');
+      }
+      if (typeof onChangeWithUndoHistory !== 'function') {
+        throw new Error('문서를 수정할 수 없습니다.');
+      }
+      if (!hasStandardMarkdownImages(value)) {
+        return { markdown: value, converted: 0, failed: [] };
+      }
+      const result = await convertAllMarkdownImagesToWiki(value, {
+        currentNotePath: currentFile?.id ?? null,
+        uploadFiles: async (files) => {
+          if (typeof onUploadImage !== 'function') {
+            throw new Error('이미지 업로드를 사용할 수 없습니다.');
+          }
+          return onUploadImage(files);
+        },
+      });
+      if (result.markdown !== value) {
+        onChangeWithUndoHistory(result.markdown);
+      }
+      return result;
+    });
+    return () => onRegisterConvertAllImagesToWiki(null);
+  }, [
+    currentFile?.id,
+    onChangeWithUndoHistory,
+    onRegisterConvertAllImagesToWiki,
+    onUploadImage,
+    previewOnly,
+    value,
+  ]);
 
   const findResizableImageElement = useCallback((target) => {
     const root = containerRef.current;

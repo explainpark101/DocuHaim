@@ -59,6 +59,10 @@ import { useNavigate } from 'react-router';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
+import {
+  convertAllMarkdownImagesToWiki,
+  hasStandardMarkdownImages,
+} from '@/utils/convertMarkdownImagesToWiki';
 import '@/styles/novel-editor.css';
 
 const DEBUG_WIKI_IMAGE = false;
@@ -243,6 +247,7 @@ export default function NovelMarkdownEditor({
   onCancelUploadImage,
   documentKey,
   onResolveWikiImageUrl,
+  onRegisterConvertAllImagesToWiki,
 }) {
   const navigate = useNavigate();
   const debounceTimerRef = useRef(null);
@@ -392,6 +397,49 @@ export default function NovelMarkdownEditor({
     onRegisterFlushBeforeSave(flushPendingMarkdown);
     return () => onRegisterFlushBeforeSave(null);
   }, [onRegisterFlushBeforeSave, flushPendingMarkdown]);
+
+  useEffect(() => {
+    if (typeof onRegisterConvertAllImagesToWiki !== 'function') return undefined;
+    onRegisterConvertAllImagesToWiki(async () => {
+      if (previewOnly) {
+        throw new Error('미리보기에서는 변환할 수 없습니다.');
+      }
+      flushPendingMarkdown();
+      const md = lastEmittedRef.current ?? value ?? '';
+      if (!hasStandardMarkdownImages(md)) {
+        return { markdown: md, converted: 0, failed: [] };
+      }
+      const result = await convertAllMarkdownImagesToWiki(md, {
+        currentNotePath: currentFile?.id ?? null,
+        uploadFiles: async (files) => {
+          if (typeof onUploadImage !== 'function') {
+            throw new Error('이미지 업로드를 사용할 수 없습니다.');
+          }
+          return onUploadImage(files);
+        },
+      });
+      if (result.markdown !== md) {
+        lastEmittedRef.current = result.markdown;
+        skipNextUpdateRef.current = true;
+        const ed = editorRef.current;
+        if (ed && !ed.isDestroyed) {
+          ed.commands.setContent(markdownToNovelEditorHtml(result.markdown));
+          setHydrateTick((t) => t + 1);
+        }
+        onChange?.(result.markdown);
+      }
+      return result;
+    });
+    return () => onRegisterConvertAllImagesToWiki(null);
+  }, [
+    currentFile?.id,
+    flushPendingMarkdown,
+    onChange,
+    onRegisterConvertAllImagesToWiki,
+    onUploadImage,
+    previewOnly,
+    value,
+  ]);
 
   useEffect(() => {
     return () => {

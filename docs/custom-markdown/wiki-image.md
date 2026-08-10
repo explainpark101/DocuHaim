@@ -157,7 +157,9 @@ When serializing attrs back to source, prefer:
 Omit absent keys; join options with a single space. (`wikiImageMarkupFromAttrs`)
 
 When converting a standard markdown image `![alt](src){…}` to wiki form
-(`replaceMarkdownImageWithWikiPath` / size-modal **wiki image로 변경**),
+(`replaceMarkdownImageWithWikiPath` / size-modal **wiki image로 변경** /
+파일 관리 **모든 image를 wiki image로** / Advanced Search
+`editor-convert-all-images-to-wiki`),
 non-empty trimmed `alt` becomes an implicit caption on the following line:
 
 ```text
@@ -174,6 +176,13 @@ Destination handling for the convert action:
 | `data:image/…;base64,…` | Decode → upload → `![[uploadedPath]]` |
 | Vault-relative path | Reuse resolved storage path (no re-upload) |
 | `http(s):` / other remote | Fetch preview URL → upload → `![[uploadedPath]]` |
+
+Bulk convert (`convertAllMarkdownImagesToWiki`):
+
+- Only matches outside fenced code blocks
+- Identical `src` values upload once and reuse the path
+- Size attrs `{w=… h=… bg=…}` map to wiki `|w=… h=… bg=…`
+- Failed images are left as standard markdown; others still convert
 
 ### 8. Non-goals
 
@@ -192,5 +201,6 @@ Destination handling for the convert action:
 | Hydration | `src/utils/storageImageHydration.ts`, `src/hooks/useWikiImageHydration.js` |
 | TipTap (Novel) | `src/extensions/wikiImageTiptap.js`, `src/utils/wikiImageHtmlInject.js` |
 | Hex helper | `src/utils/cssColor.ts` |
+| Bulk MD→wiki convert | `src/utils/convertMarkdownImagesToWiki.ts`, `EditorPane` file menu |
 
 관련 스킬: `.cursor/skills/md-editor-rt-wiki-image/`

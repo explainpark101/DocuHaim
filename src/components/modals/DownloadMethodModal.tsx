@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, ClipboardCopy } from 'lucide-react';
 import { RadioGroup, Select } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import { IconDownload, IconFolder } from '@/components/icons';
@@ -99,6 +99,7 @@ type Props = {
   confirmLabel?: string;
   onSelectLegacy: (choice: DownloadMethodChoice) => void;
   onSelectStorageApi: (choice: DownloadMethodChoice) => void;
+  onSelectClipboard?: (choice: DownloadMethodChoice) => void;
   onCancel: () => void;
   isDownloading?: boolean;
   downloadProgress?: number;
@@ -116,6 +117,7 @@ export function DownloadMethodModal({
   confirmLabel = '다운로드',
   onSelectLegacy,
   onSelectStorageApi,
+  onSelectClipboard,
   onCancel,
   isDownloading,
   downloadProgress = 0,
@@ -131,6 +133,8 @@ export function DownloadMethodModal({
   const [tableFormat, setTableFormat] = useState<DownloadTableFormat>(() =>
     loadDownloadTableFormat(),
   );
+  const showClipboardOption =
+    showImageHandling && imageMode === 'base64' && typeof onSelectClipboard === 'function';
 
   const sourceLevels = useMemo(
     () => (showImageHandling ? detectHeadingLevels(markdownText) : []),
@@ -482,11 +486,49 @@ export function DownloadMethodModal({
                   </div>
                 </div>
               </button>
+              {showClipboardOption ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectClipboard?.(choice)}
+                  disabled={isDownloading}
+                  className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 dark:border-odp-borderSoft hover:bg-gray-50 dark:hover:bg-odp-bgSoft transition flex items-center gap-3"
+                >
+                  <ClipboardCopy size={20} className="text-gray-500 shrink-0" />
+                  <div className="text-left">
+                    <div className="font-medium text-gray-800 dark:text-odp-fgStrong">
+                      클립보드에 복사
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-odp-muted mt-0.5">
+                      단일 MD 내용을 클립보드로 복사
+                    </div>
+                  </div>
+                </button>
+              ) : null}
             </div>
             ) : (
-              <p className="mb-4 text-xs text-gray-500 dark:text-odp-muted">
-                Base64 이미지는 파일로 분리해 ZIP으로, 파일 이미지는 단일 MD로 바꿀 수 있습니다.
-              </p>
+              <div className="mb-4 space-y-2">
+                <p className="text-xs text-gray-500 dark:text-odp-muted">
+                  Base64 이미지는 파일로 분리해 ZIP으로, 파일 이미지는 단일 MD로 바꿀 수 있습니다.
+                </p>
+                {showClipboardOption ? (
+                  <button
+                    type="button"
+                    onClick={() => onSelectClipboard?.(choice)}
+                    disabled={isDownloading}
+                    className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 dark:border-odp-borderSoft hover:bg-gray-50 dark:hover:bg-odp-bgSoft transition flex items-center gap-3"
+                  >
+                    <ClipboardCopy size={20} className="text-gray-500 shrink-0" />
+                    <div className="text-left">
+                      <div className="font-medium text-gray-800 dark:text-odp-fgStrong">
+                        클립보드에 복사
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-odp-muted mt-0.5">
+                        단일 MD 내용을 클립보드로 복사
+                      </div>
+                    </div>
+                  </button>
+                ) : null}
+              </div>
             )}
             <div className="flex justify-end gap-2">
               <button

@@ -20,9 +20,16 @@ import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
-import { ArrowLeftRight, ListTree, PenLine, X } from 'lucide-react';
+import { ArrowLeftRight, ImagePlus, ListTree, Loader2, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { useAlertModal } from '@/contexts/AlertModalContext';
+import {
+  convertAllMarkdownImagesToWiki,
+  countStandardMarkdownImages,
+  hasStandardMarkdownImages,
+} from '@/utils/convertMarkdownImagesToWiki';
 import {
   emptyHomeContainerVariants,
   emptyHomeItemVariants,
@@ -105,7 +112,11 @@ export default function EditorPane({
   const [novelTocVisible, setNovelTocVisible] = useState(true);
   const editorTopChromeRef = useRef(null);
   const novelFlushBeforeSaveRef = useRef(null);
+  const convertAllImagesToWikiRef = useRef(null);
+  const [convertAllImagesConfirmOpen, setConvertAllImagesConfirmOpen] = useState(false);
+  const [convertingAllImages, setConvertingAllImages] = useState(false);
   const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
+  const { showAlert } = useAlertModal();
 
   const handleToolbarSave = useCallback(() => {
     novelFlushBeforeSaveRef.current?.();
@@ -116,6 +127,68 @@ export default function EditorPane({
     novelFlushBeforeSaveRef.current?.();
     onRefreshFromDisk?.();
   }, [onRefreshFromDisk]);
+
+  const openConvertAllImagesConfirm = useCallback(() => {
+    setFileManagementOpen(false);
+    setConvertAllImagesConfirmOpen(true);
+  }, []);
+
+  const handleConfirmConvertAllImages = useCallback(async () => {
+    if (convertingAllImages) return;
+    setConvertingAllImages(true);
+    try {
+      let result;
+      if (typeof convertAllImagesToWikiRef.current === 'function') {
+        result = await convertAllImagesToWikiRef.current();
+      } else {
+        novelFlushBeforeSaveRef.current?.();
+        if (typeof onUploadImage !== 'function') {
+          throw new Error('이미지 업로드를 사용할 수 없습니다.');
+        }
+        result = await convertAllMarkdownImagesToWiki(editorContent ?? '', {
+          currentNotePath: currentFile?.id ?? null,
+          uploadFiles: onUploadImage,
+        });
+        if (result.markdown !== editorContent) {
+          onChangeEditor?.(result.markdown);
+        }
+      }
+      setConvertAllImagesConfirmOpen(false);
+      const failedCount = result?.failed?.length ?? 0;
+      const converted = result?.converted ?? 0;
+      if (converted === 0 && failedCount === 0) {
+        showAlert({
+          title: 'wiki image 변환',
+          message: '변환할 일반 이미지가 없습니다.',
+        });
+      } else if (failedCount > 0) {
+        showAlert({
+          title: 'wiki image 변환',
+          message: `${converted}개 변환 완료, ${failedCount}개는 실패했습니다.`,
+        });
+      } else {
+        showAlert({
+          title: 'wiki image 변환',
+          message: `${converted}개 이미지를 wiki image로 바꿨습니다.`,
+        });
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'wiki image로 변환하지 못했습니다.';
+      showAlert({ title: 'wiki image 변환', message });
+    } finally {
+      setConvertingAllImages(false);
+    }
+  }, [
+    convertingAllImages,
+    currentFile?.id,
+    editorContent,
+    onChangeEditor,
+    onUploadImage,
+    showAlert,
+  ]);
 
   useLayoutEffect(() => {
     if (!isMobileLayout) return;
@@ -310,6 +383,10 @@ export default function EditorPane({
   const isEditableViewer =
     viewer === 'markdown' || viewer === 'json' || viewer === 'raw' || viewer === 'html' || viewer === 'svg';
   const hasUnsavedChanges = isEditableViewer && currentFile.content !== editorContent;
+  const showConvertAllImagesToWiki =
+    viewer === 'markdown' &&
+    !previewOnly &&
+    hasStandardMarkdownImages(editorContent);
 
   const currentName = currentFile.name || '';
 
@@ -505,6 +582,21 @@ export default function EditorPane({
                     나와의 채팅에 공유하기
                   </button>
                 )}
+                {showConvertAllImagesToWiki ? (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
+                    onClick={openConvertAllImagesConfirm}
+                    disabled={convertingAllImages || isUploadingEditorImage}
+                  >
+                    {convertingAllImages || isUploadingEditorImage ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <ImagePlus size={14} />
+                    )}
+                    모든 image를 wiki image로
+                  </button>
+                ) : null}
                 {currentFile.type !== 'session' ? (
                 <button
                   type="button"
@@ -676,6 +768,9 @@ export default function EditorPane({
                       onRegisterFlushBeforeSave={(fn) => {
                         novelFlushBeforeSaveRef.current = fn;
                       }}
+                      onRegisterConvertAllImagesToWiki={(fn) => {
+                        convertAllImagesToWikiRef.current = fn;
+                      }}
                       onUploadImage={onUploadImage}
                       isUploadingEditorImage={isUploadingEditorImage}
                       uploadImagePercent={uploadImagePercent}
@@ -699,6 +794,10 @@ export default function EditorPane({
                       onOpenViewPath={onOpenViewPath}
                       snippetConfig={snippetConfig}
                       getGeminiApiKey={getGeminiApiKey}
+                      onRequestConvertAllImagesToWiki={openConvertAllImagesConfirm}
+                      onRegisterConvertAllImagesToWiki={(fn) => {
+                        convertAllImagesToWikiRef.current = fn;
+                      }}
                     />
                   )}
                 </Suspense>
@@ -811,6 +910,25 @@ export default function EditorPane({
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={convertAllImagesConfirmOpen}
+        title="모든 image를 wiki image로"
+        message={
+          convertingAllImages
+            ? '이미지를 변환하는 중입니다…'
+            : `문서의 일반 마크다운 이미지 ${countStandardMarkdownImages(editorContent)}개를 wiki image(![[path]])로 바꿉니다. base64·원격 이미지는 업로드됩니다.`
+        }
+        confirmLabel={convertingAllImages ? '변환 중…' : '변환'}
+        cancelLabel="취소"
+        confirmDisabled={convertingAllImages || isUploadingEditorImage}
+        onConfirm={() => {
+          void handleConfirmConvertAllImages();
+        }}
+        onCancel={() => {
+          if (convertingAllImages) return;
+          setConvertAllImagesConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

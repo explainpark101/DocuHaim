@@ -237,6 +237,7 @@ import {
   prepareSessionMarkdownForVault,
 } from '@/utils/sessionNoteImport';
 import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
+import { copyText } from '@/utils/copyText';
 import SaveSessionToNoteModal from '@/components/modals/SaveSessionToNoteModal';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -4007,16 +4008,103 @@ function MainApp() {
   };
 
   const downloadMarkdownImageBase64 = async (storageType, notePath, fileName, markdownText) => {
+    const built = await buildMarkdownImageBase64Content(storageType, notePath, markdownText);
+    if (!built) return false;
+    triggerBlobDownload(
+      new Blob([built.markdown], { type: 'text/markdown;charset=utf-8' }),
+      fileName,
+    );
+    const missingMessage = formatMissingExportImagesMessage(built.missing);
+    if (missingMessage) alert(missingMessage);
+    return true;
+  };
+
+  /** Build single-MD (base64-embedded) markdown for download or clipboard. */
+  const buildMarkdownImageBase64Content = async (storageType, notePath, markdownText) => {
     const plan = planMarkdownImageExport(markdownText, notePath, { syntax: 'markdown' });
-    if (!plan.images.length) return false;
+    if (!plan.images.length) {
+      return { markdown: plan.markdown || markdownText, missing: [] };
+    }
     const { entries, missing } = await collectMarkdownExportImageBytes(plan.images, (path) =>
       readBackendBytes(storageType, path),
     );
-    const markdown = embedMarkdownImagesAsDataUris(plan.markdown, entries);
-    triggerBlobDownload(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), fileName);
-    const missingMessage = formatMissingExportImagesMessage(missing);
-    if (missingMessage) alert(missingMessage);
+    return {
+      markdown: embedMarkdownImagesAsDataUris(plan.markdown, entries),
+      missing,
+    };
+  };
+
+  const copyMarkdownTextToClipboard = async (markdown) => {
+    const ok = await copyText(markdown, {
+      message: '파일이 클립보드에 복사되었습니다',
+      icon: 'copy',
+    });
+    if (!ok) {
+      alert('클립보드 복사에 실패했습니다.');
+      return false;
+    }
     return true;
+  };
+
+  /** Clipboard delivery for "단일 MD에 포함" (base64) export. */
+  const handleCopyCurrentFileToClipboard = async ({
+    imageMode = 'base64',
+    headingMax = 1,
+    tableFormat = 'haim',
+  } = {}) => {
+    if (!currentFile) return;
+    if (imageMode !== 'base64') return;
+    const storageType = currentFile.type;
+    const fileName = currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
+    if (!isMarkdownFileName(fileName)) return;
+
+    try {
+      if (storageType === SESSION_STORAGE_TYPE) {
+        flushSessionEditorToWorkspace();
+        const cur = currentFileRef.current;
+        if (!cur || cur.type !== SESSION_STORAGE_TYPE) return;
+        const bundled = await bundleSessionMarkdownImages({
+          markdown: remapMarkdownHeadingLevels(editorContentRef.current ?? '', headingMax),
+          notePath: cur.id,
+          readBytes: readSessionBytes,
+          imageSyntax: 'markdown',
+        });
+        const markdown = bundled.images.length
+          ? embedMarkdownImagesAsDataUris(bundled.markdown, bundled.images)
+          : bundled.markdown;
+        const copied = await copyMarkdownTextToClipboard(markdown);
+        if (!copied) return;
+        const missingMessage = formatMissingExportImagesMessage(bundled.missing);
+        if (missingMessage) alert(missingMessage);
+        setOperationStatus('클립보드에 복사 완료');
+        setShowDownloadMethodModal(false);
+        setDownloadModalMode('default');
+        return;
+      }
+
+      if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
+      const notePath = currentFile.id || '';
+      const backend = getBackendForType(storageType);
+      const { text } = await backend.readText(notePath);
+      let markdown = remapMarkdownHeadingLevels(text, headingMax);
+      if (tableFormat === 'html') {
+        const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
+        const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
+        markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
+          getCachedTableStyleTemplate(id),
+        );
+      }
+      const built = await buildMarkdownImageBase64Content(storageType, notePath, markdown);
+      const copied = await copyMarkdownTextToClipboard(built.markdown);
+      if (!copied) return;
+      const missingMessage = formatMissingExportImagesMessage(built.missing);
+      if (missingMessage) alert(missingMessage);
+      setShowDownloadMethodModal(false);
+      setDownloadModalMode('default');
+    } catch (e) {
+      console.error('클립보드 복사 실패:', e);
+      alert('클립보드 복사에 실패했습니다: ' + (e?.message || e));
+    }
   };
 
   /** Object URL 방식: 메모리 제한 ~100–200MB. presigned URL 인코딩 이슈 회피 */
@@ -8101,6 +8189,7 @@ function MainApp() {
         confirmLabel="다운로드"
         onSelectLegacy={handleDownloadCurrentFile}
         onSelectStorageApi={handleDownloadToFolder}
+        onSelectClipboard={handleCopyCurrentFileToClipboard}
         onCancel={() => {
           setShowDownloadMethodModal(false);
           setDownloadModalMode('default');

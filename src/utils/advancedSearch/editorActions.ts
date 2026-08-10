@@ -30,7 +30,8 @@ export type EditorActionId =
   | 'editor-heading-remap'
   | 'editor-checklist-progress'
   | 'editor-image-upload'
-  | 'editor-image-clip';
+  | 'editor-image-clip'
+  | 'editor-convert-all-images-to-wiki';
 
 export type EditorActionHandler = () => void | Promise<void>;
 
@@ -294,5 +295,21 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     title: '이미지 잘라서 업로드',
     description: 'Cropper.js / react-easy-crop으로 자른 뒤 업로드',
     keywords: ['image', 'crop', 'clip', '자르기', '크롭', 'cropper'],
+  },
+  {
+    id: 'editor-convert-all-images-to-wiki',
+    title: '모든 image를 wiki image로',
+    description: '일반 마크다운 이미지를 wiki image(![[path]])로 일괄 변환',
+    keywords: [
+      'image',
+      'wiki',
+      'convert',
+      'markdown',
+      'base64',
+      '이미지',
+      '변환',
+      '위키',
+      'wiki image',
+    ],
   },
 ] as const;
