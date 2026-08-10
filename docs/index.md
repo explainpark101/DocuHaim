@@ -18,7 +18,7 @@ title: Docu Haim Docs
 | 환경 | 예시 |
 |------|------|
 | 로컬 (`VITE_BASE_PATH=/`) | `/docs/` |
-| GitHub Pages (`/s3haim/`) | `/s3haim/docs/` |
+| GitHub Pages (`/DocuHaim/`) | `/DocuHaim/docs/` |
 
 로컬에서 문서만 보려면:
 

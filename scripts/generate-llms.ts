@@ -5,7 +5,7 @@ const path = require("path");
 
 const SITE =
   process.env.SITE_URL ||
-  "https://explainpark101.github.io/s3haim";
+  "https://explainpark101.github.io/DocuHaim";
 
 const PROJECT =
   process.env.PROJECT_NAME ||

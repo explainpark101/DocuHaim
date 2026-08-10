@@ -154,7 +154,7 @@ export async function createPasskeyWithPRF() {
   const { name: userName, displayName: userDisplayName } = getWebAuthnUserDisplay();
 
   const optionsJSON = {
-    rp: { name: 'Docu Haim', id: rpId },
+    rp: { name: 'S3 Haim', id: rpId },
     user: {
       id: userId,
       name: userName,

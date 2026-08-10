@@ -1,5 +1,5 @@
 {
-  "name": "s3haim",
+  "name": "DocuHaim",
   "private": true,
   "version": "0.1.0",
   "author": "Jaehyung Park <explainpark101@gmail.com>",
@@ -17,7 +17,7 @@
     "check": "eslint . --quiet && bun run typecheck",
     "build:image": "bun scripts/generate-og-image.ts",
     "llms": "bun scripts/generate-llms.ts",
-    "preview": "VITE_BASE_PATH=/s3haim bun run build && VITE_BASE_PATH=/s3haim vite preview"
+    "preview": "VITE_BASE_PATH=/DocuHaim bun run build && VITE_BASE_PATH=/DocuHaim vite preview"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",

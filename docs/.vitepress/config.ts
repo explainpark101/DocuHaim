@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress';
 
-/** App public base, e.g. `/` or `/s3haim/` (GitHub Pages). */
+/** App public base, e.g. `/` or `/DocuHaim/` (GitHub Pages). */
 const appBase = (process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/');
 /** Docs site lives at `{appBase}docs/`. */
 const base = `${appBase}docs/`;
