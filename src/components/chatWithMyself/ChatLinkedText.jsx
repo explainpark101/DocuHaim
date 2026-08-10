@@ -4,22 +4,28 @@ import { splitTextWithUrls, parseAppViewPath } from '@/utils/chatWithMyself';
 import ChatWikiImage from '@/components/chatWithMyself/ChatWikiImage';
 import ChatFileCard from '@/components/chatWithMyself/ChatFileCard';
 import ChatNoteLinkCard from '@/components/chatWithMyself/ChatNoteLinkCard';
+import ChatFolderLinkCard from '@/components/chatWithMyself/ChatFolderLinkCard';
 import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';
 
 const linkClass =
   'break-all wrap-anywhere underline underline-offset-2 text-blue-700 hover:text-blue-900 dark:text-sky-300 dark:hover:text-sky-200';
 
 /**
- * First non-empty text line when collapsed (skip images/files/notes and blank lines).
+ * First non-empty text line when collapsed (skip images/files/notes/folders and blank lines).
  * @param {ReturnType<typeof splitTextWithUrls>} parts
  */
 function collapsedFirstLine(parts) {
   let hasMedia = false;
   let text = '';
   for (const part of parts) {
-    if (part.type === 'wiki' || part.type === 'file' || part.type === 'note') {
+    if (
+      part.type === 'wiki' ||
+      part.type === 'file' ||
+      part.type === 'note' ||
+      part.type === 'folder'
+    ) {
       hasMedia = true;
-      if (part.type === 'note') {
+      if (part.type === 'note' || part.type === 'folder') {
         text += part.name || part.path || '';
       }
       continue;
@@ -49,7 +55,7 @@ function collapsedFirstLine(parts) {
 }
 
 /**
- * Render chat plain text with auto-linked http(s) URLs, note share cards,
+ * Render chat plain text with auto-linked http(s) URLs, note/folder share cards,
  * wiki images, and file cards.
  */
 export default function ChatLinkedText({
@@ -59,6 +65,8 @@ export default function ChatLinkedText({
   collapsed = false,
   onOpenViewPath,
   noteExists,
+  folderExists,
+  listFolderFiles,
 }) {
   const openInNewWindow = useOpenLinksInNewWindow();
   const parts = useMemo(() => splitTextWithUrls(text), [text]);
@@ -94,6 +102,22 @@ export default function ChatLinkedText({
               name={part.name}
               available={available}
               onOpen={available ? onOpenViewPath : undefined}
+            />
+          );
+        }
+        if (part.type === 'folder') {
+          const available =
+            typeof folderExists === 'function'
+              ? Boolean(folderExists(part.path))
+              : true;
+          return (
+            <ChatFolderLinkCard
+              key={`fd-${i}-${part.path}`}
+              path={part.path}
+              name={part.name}
+              available={available}
+              listFiles={listFolderFiles}
+              onOpenFile={available ? onOpenViewPath : undefined}
             />
           );
         }

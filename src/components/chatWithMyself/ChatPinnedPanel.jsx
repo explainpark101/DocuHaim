@@ -232,6 +232,8 @@ function CollectionCard({
   onViewEditHistory,
   getPresignedUrl,
   noteExists,
+  folderExists,
+  listFolderFiles,
   groups = [],
   coarse,
 }) {
@@ -321,6 +323,8 @@ function CollectionCard({
                     className="text-sm text-gray-800 dark:text-odp-fg"
                     getPresignedUrl={getPresignedUrl}
                     noteExists={noteExists}
+                    folderExists={folderExists}
+                    listFolderFiles={listFolderFiles}
                     onOpenViewPath={
                       onOpenNote ? (path) => onOpenNote(path, msg) : undefined
                     }
@@ -647,6 +651,8 @@ function CollectionSlide({
   onViewEditHistory,
   getPresignedUrl,
   noteExists,
+  folderExists,
+  listFolderFiles,
   groups,
   coarse,
 }) {
@@ -684,6 +690,8 @@ function CollectionSlide({
                 onViewEditHistory={onViewEditHistory}
                 getPresignedUrl={getPresignedUrl}
                 noteExists={noteExists}
+                folderExists={folderExists}
+                listFolderFiles={listFolderFiles}
                 groups={groups}
                 coarse={coarse}
               />
@@ -724,6 +732,8 @@ export default function ChatPinnedPanel({
   timeZone,
   getPresignedUrl,
   noteExists,
+  folderExists,
+  listFolderFiles,
   groups = [],
 }) {
   const [tab, setTab] = useState(/** @type {CollectionTabId} */ ('pinned'));
@@ -836,6 +846,8 @@ export default function ChatPinnedPanel({
               onViewEditHistory={onViewEditHistory}
               getPresignedUrl={getPresignedUrl}
               noteExists={noteExists}
+              folderExists={folderExists}
+              listFolderFiles={listFolderFiles}
               groups={groups}
               coarse={coarse}
             />

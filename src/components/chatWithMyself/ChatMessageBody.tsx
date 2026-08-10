@@ -13,6 +13,10 @@ type ChatMessageBodyProps = {
   theme?: 'light' | 'dark' | null;
   getPresignedUrl?: ((path: string) => Promise<string | null>) | undefined;
   noteExists?: ((path: string) => boolean) | undefined;
+  folderExists?: ((path: string) => boolean) | undefined;
+  listFolderFiles?:
+    | ((folderPath: string) => Array<{ path: string; name: string }>)
+    | undefined;
   onOpenViewPath?: ((path: string) => void) | undefined;
 };
 
@@ -28,6 +32,8 @@ export default function ChatMessageBody({
   theme = null,
   getPresignedUrl,
   noteExists,
+  folderExists,
+  listFolderFiles,
   onOpenViewPath,
 }: ChatMessageBodyProps) {
   const useMarkdown =
@@ -44,6 +50,8 @@ export default function ChatMessageBody({
         theme={theme}
         getPresignedUrl={getPresignedUrl}
         noteExists={noteExists}
+        folderExists={folderExists}
+        listFolderFiles={listFolderFiles}
         onOpenViewPath={onOpenViewPath}
       />
     );
@@ -56,6 +64,8 @@ export default function ChatMessageBody({
       collapsed={collapsed}
       getPresignedUrl={getPresignedUrl}
       noteExists={noteExists}
+      folderExists={folderExists}
+      listFolderFiles={listFolderFiles}
       onOpenViewPath={onOpenViewPath}
     />
   );

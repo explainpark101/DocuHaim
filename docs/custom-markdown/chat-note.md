@@ -15,12 +15,12 @@
 
 ### 1. Match
 
-Same combined regex as [chat-file.md](./chat-file.md); note branch:
+Same combined regex as [chat-file.md](./chat-file.md); note branch (groups after file + folder):
 
 | Group | Meaning |
 |-------|---------|
-| 5 | `pathOrLabel` (no `\|` or `]` ) |
-| 6 | optional display label |
+| 7 | `pathOrLabel` (no `\|` or `]` ) |
+| 8 | optional display label |
 
 ### 2. Structured output
 

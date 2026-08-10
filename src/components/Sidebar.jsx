@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
@@ -13,6 +14,8 @@ import {
   TreeDragOverlayPreview,
   treeCollisionDetection,
 } from '@/components/treeDnd';
+import ChatTreeAttachDroppable from '@/components/chatWithMyself/ChatTreeAttachDroppable';
+import { isChatTreeAttachDroppableId } from '@/utils/chatWithMyself';
 import {
   findNodeByPath,
   isRecordingCompanionFileKey,
@@ -25,6 +28,7 @@ import {
   parseDroppableId,
   toTreeSelectKey,
 } from '@/utils/treeMove';
+import { findApplicableTransferBusy } from '@/utils/treeTransferBusy';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
@@ -50,6 +54,9 @@ import SessionTreeList from '@/components/SessionTreeList';
 
 const EMPTY_SELECTED_IDS = new Set();
 
+/** Above main pane / chat drop overlay; DragOverlay is portaled to document.body. */
+const TREE_DRAG_OVERLAY_Z_INDEX = 100060;
+
 function getParentPathFromFilePath(filePath) {
   return getParentFolderPath(filePath);
 }
@@ -61,10 +68,30 @@ function isRenameableTreeNode(node) {
 
 function isTypingElement(target) {
   if (!target || typeof target !== 'object') return false;
-  const tag = target.tagName;
+  const el = /** @type {HTMLElement} */ (target);
+  const tag = el.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  if (target.isContentEditable) return true;
+  if (el.isContentEditable) return true;
+  // CodeMirror / Monaco / TipTap may bubble from non-editable chrome.
+  if (typeof el.closest === 'function') {
+    if (
+      el.closest(
+        '.cm-editor, .cm-content, .monaco-editor, .ProseMirror, [contenteditable="true"]',
+      )
+    ) {
+      return true;
+    }
+  }
   return false;
+}
+
+function isEventInsideSidebarTree(target) {
+  if (!target || typeof target !== 'object' || typeof target.closest !== 'function') {
+    return false;
+  }
+  return Boolean(
+    target.closest('[data-sidebar-tree-scroll], [data-tree-node-row], [data-tree-root-drop-zone]'),
+  );
 }
 
 function ChatWithMyselfEntry({ isActive, onOpen }) {
@@ -201,6 +228,7 @@ export default function Sidebar({
   onDropOnFolder,
   onDragEndNode,
   dropTarget,
+  transferBusyItems = null,
   expandPathsRef,
   onRefreshS3,
   onDownloadNode,
@@ -210,6 +238,10 @@ export default function Sidebar({
   onShareToChatWithMyself,
   onOpenChatWithMyself,
   chatWithMyselfActive = false,
+  /** Host element on ChatWithMyselfPane for portaled tree→attach droppable. */
+  chatAttachDropHost = null,
+  /** Called when tree items are dropped onto the chat attach zone. */
+  onDropToChatAttach,
   onBrandClick,
   sessionWorkspace = null,
   sessionTree = [],
@@ -364,6 +396,7 @@ export default function Sidebar({
   const requestDeleteNode = useCallback(
     (node, storageType) => {
       if (!node) return;
+      if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
       if (node.path === '.trash/') {
         onRequestEmptyTrash?.(node, storageType);
         return;
@@ -373,7 +406,7 @@ export default function Sidebar({
       if (!targets.length) return;
       onSetDeleteTarget(targets.length === 1 ? targets[0] : { targets });
     },
-    [findTreeNode, onRequestEmptyTrash, onSetDeleteTarget, selectedIds],
+    [findTreeNode, onRequestEmptyTrash, onSetDeleteTarget, selectedIds, transferBusyItems],
   );
 
   const handleDragStartNode = useCallback(() => {
@@ -406,6 +439,11 @@ export default function Sidebar({
     (event) => {
       const { over } = event;
       if (!over) {
+        clearHoverExpandTimer();
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+      if (isChatTreeAttachDroppableId(over.id)) {
         clearHoverExpandTimer();
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
@@ -455,6 +493,12 @@ export default function Sidebar({
         return;
       }
 
+      if (isChatTreeAttachDroppableId(over.id)) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        onDropToChatAttach?.(items);
+        return;
+      }
+
       const parsed = parseDroppableId(String(over.id));
       if (!parsed) {
         onDropOnFolder?.(null, null, 'dragLeave');
@@ -469,7 +513,14 @@ export default function Sidebar({
 
       onDropOnFolder?.(targetNode, parsed.storageType, 'drop', { items, copy });
     },
-    [clearHoverExpandTimer, handleDragEndNode, isCopyDragRef, onDropOnFolder, resolveDropTargetNode],
+    [
+      clearHoverExpandTimer,
+      handleDragEndNode,
+      isCopyDragRef,
+      onDropOnFolder,
+      onDropToChatAttach,
+      resolveDropTargetNode,
+    ],
   );
 
   const handleDndDragCancel = useCallback(() => {
@@ -832,31 +883,73 @@ export default function Sidebar({
           return;
         }
         if (!isRenameableTreeNode(node)) return;
+        if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
 
         e.preventDefault();
         setRenameTarget({ storageType, node });
         return;
       }
 
-      if (e.key === 'Delete') {
-        if (!selectedIds?.size) return;
-        // Prefer last activated node if it is in the selection; else first selected.
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Prefer tree focus; otherwise allow when focus is not inside the main editor.
+        const focusEl = document.activeElement;
+        const treeFocused =
+          isEventInsideSidebarTree(e.target) || isEventInsideSidebarTree(focusEl);
+        if (!treeFocused && isTypingElement(focusEl)) return;
+        if (
+          !treeFocused &&
+          focusEl &&
+          focusEl !== document.body &&
+          typeof focusEl.closest === 'function' &&
+          !focusEl.closest('[data-sidebar-root], [data-sidebar-tree-scroll]')
+        ) {
+          return;
+        }
+
+        // Prefer last activated node if it is in the selection; else first selected;
+        // else last activated node alone (folder click expands without selecting).
         let storageType = null;
         let node = null;
         if (lastActivatedNode) {
           const key = toTreeSelectKey(lastActivatedNode.storageType, lastActivatedNode.node.path);
-          if (selectedIds.has(key)) {
+          if (!selectedIds?.size || selectedIds.has(key)) {
             storageType = lastActivatedNode.storageType;
             node = lastActivatedNode.node;
           }
         }
-        if (!node) {
+        if (!node && selectedIds?.size) {
           const firstKey = selectedIds.values().next().value;
-          if (!firstKey) return;
-          const colonIdx = String(firstKey).indexOf(':');
-          storageType = colonIdx >= 0 ? firstKey.slice(0, colonIdx) : 's3';
-          const path = colonIdx >= 0 ? firstKey.slice(colonIdx + 1) : firstKey;
-          node = findTreeNode(storageType, path);
+          if (firstKey) {
+            const colonIdx = String(firstKey).indexOf(':');
+            storageType = colonIdx >= 0 ? firstKey.slice(0, colonIdx) : 's3';
+            const path = colonIdx >= 0 ? firstKey.slice(colonIdx + 1) : firstKey;
+            node = findTreeNode(storageType, path);
+          }
+        }
+        if (!node && lastActivatedNode) {
+          storageType = lastActivatedNode.storageType;
+          node = lastActivatedNode.node;
+        }
+        if (!node || !storageType) {
+          // Folder focus without activate (root focus rows)
+          if (isS3Mode && lastFocusedS3FolderPath != null && lastFocusedS3FolderPath !== '') {
+            storageType = 's3';
+            node = findTreeNode('s3', lastFocusedS3FolderPath);
+          } else if (
+            isLocalMode &&
+            lastFocusedLocalFolder?.path != null &&
+            lastFocusedLocalFolder.path !== ''
+          ) {
+            storageType = 'local';
+            node = findTreeNode('local', lastFocusedLocalFolder.path);
+          } else if (
+            isWebdavMode &&
+            lastFocusedWebdavFolderPath != null &&
+            lastFocusedWebdavFolderPath !== ''
+          ) {
+            storageType = 'webdav';
+            node = findTreeNode('webdav', lastFocusedWebdavFolderPath);
+          }
         }
         if (!node || !storageType) return;
         if (
@@ -866,26 +959,36 @@ export default function Sidebar({
         ) {
           return;
         }
-        if (node.path === '.trash/') return;
+        if (node.path === '.trash/' || node.path === '') return;
+        if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
         e.preventDefault();
+        e.stopPropagation();
         requestDeleteNode(node, storageType);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    // Capture so tree Delete wins over other document handlers when not typing.
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [
     findTreeNode,
     isWebdavMode,
     isS3Mode,
     isLocalMode,
     lastActivatedNode,
+    lastFocusedLocalFolder,
+    lastFocusedS3FolderPath,
+    lastFocusedWebdavFolderPath,
     requestDeleteNode,
     selectedIds,
+    transferBusyItems,
   ]);
 
   return (
-    <div className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col">
+    <div
+      data-sidebar-root
+      className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col"
+    >
       {contextMenu && contextMenuNode && (
         <SidebarContextMenu
           x={contextMenu.x}
@@ -1053,9 +1156,14 @@ export default function Sidebar({
       <div
         ref={scrollContainerRef}
         data-sidebar-tree-scroll
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-4 space-y-6"
+        tabIndex={-1}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-4 space-y-6 outline-none"
         onDragEnter={handleScrollAreaDragEnter}
         onDragOver={handleScrollAreaDragOver}
+        onPointerDownCapture={() => {
+          // Move focus into the tree so Delete/Backspace target selection, not the editor.
+          scrollContainerRef.current?.focus({ preventScroll: true });
+        }}
         onClick={(e) => {
           if (
             !e.target.closest('[data-tree-node-row]') &&
@@ -1069,7 +1177,8 @@ export default function Sidebar({
             onClearSelection?.();
           }
         }}
-        role="presentation"
+        role="tree"
+        aria-label="파일 트리"
       >
         {sessionWorkspace ? (
           <div>
@@ -1221,6 +1330,7 @@ export default function Sidebar({
                     onRename={onRenameItem}
                     deletingFolderPath={deletingFolderPath}
                     isDeletingFolder={isDeletingFolder}
+                    transferBusyItems={transferBusyItems}
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedS3}
                     onExpandedChange={handleExpandedChange}
@@ -1386,6 +1496,7 @@ export default function Sidebar({
                     onRename={onRenameItem}
                     deletingFolderPath={deletingFolderPath}
                     isDeletingFolder={isDeletingFolder}
+                    transferBusyItems={transferBusyItems}
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedLocal}
                     onExpandedChange={handleExpandedChange}
@@ -1534,6 +1645,7 @@ export default function Sidebar({
                     onRename={onRenameItem}
                     deletingFolderPath={deletingFolderPath}
                     isDeletingFolder={isDeletingFolder}
+                    transferBusyItems={transferBusyItems}
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedWebdav}
                     onExpandedChange={handleExpandedChange}
@@ -1570,9 +1682,20 @@ export default function Sidebar({
         </div>
         )}
       </div>
-      <DragOverlay dropAnimation={null} style={{ zIndex: mobileTree ? 100060 : undefined }}>
-        <TreeDragOverlayPreview items={activeDragItems} isCopy={isCopyDrag} />
-      </DragOverlay>
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <DragOverlay dropAnimation={null} zIndex={TREE_DRAG_OVERLAY_Z_INDEX}>
+              <TreeDragOverlayPreview items={activeDragItems} isCopy={isCopyDrag} />
+            </DragOverlay>,
+            document.body,
+          )
+        : null}
+      {chatWithMyselfActive && activeDragItems?.length ? (
+        <ChatTreeAttachDroppable
+          host={chatAttachDropHost}
+          enabled={Boolean(chatAttachDropHost)}
+        />
+      ) : null}
       </DndContext>
     </div>
   );

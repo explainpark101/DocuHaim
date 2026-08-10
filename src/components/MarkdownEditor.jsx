@@ -1290,7 +1290,7 @@ export default function MarkdownEditor({
     };
   }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
 
-  // Dual-pane: keep preview scrolled to the editor caret (image-aware).
+  // Dual-pane: bidirectional scroll sync + preview follow for editor caret.
   // Mirror Edit: also remirror caret/selection overlays onto the preview.
   // Safari: leave stock md-editor-rt behavior (no custom sync / Mirror Edit).
   useEffect(() => {
@@ -2117,7 +2117,7 @@ export default function MarkdownEditor({
         previewOnly={previewOnly}
         autoDetectCode={true}
         // Built-in scrollAuto uses stale data-line maps + height ratios; images break it.
-        // previewScrollFollow keeps the caret region visible instead.
+        // previewScrollFollow: image-aware bidirectional scroll + caret follow.
         scrollAuto={false}
         footers={['markdownTotal']}
         toolbars={toolbars}

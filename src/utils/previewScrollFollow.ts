@@ -1,13 +1,17 @@
 /**
- * Keep md-editor-rt preview scrolled to the CodeMirror caret while typing.
+ * Bidirectional scroll sync for md-editor-rt dual pane, plus caret follow.
  *
  * Built-in scrollAuto maps by stale [data-line] nodes and height ratios, which
  * jumps around tall / async-hydrated images. This module re-queries the live
- * preview DOM and scrolls to the mapped caret (or its data-line block).
+ * preview DOM and scrolls by mapped data-line blocks.
  *
- * Editor scroll events always map by the top visible editor line (not caret),
- * so wheel/trackpad scrolling still moves the preview when the caret stays
- * inside the viewport.
+ * Directions:
+ * - Editor scroll → preview: top visible editor line maps to a [data-line] block
+ * - Preview scroll → editor: top visible [data-line] block maps back to CM
+ * - Caret / doc updates → preview: keep the caret region visible (not reverse)
+ *
+ * A short sync lock prevents feedback loops when one side programmatically
+ * scrolls the other.
  */
 
 import type { EditorView } from '@codemirror/view';
@@ -22,9 +26,13 @@ type Getters = {
   getView: () => EditorView | null | undefined;
 };
 
+type SyncSource = 'none' | 'editor' | 'preview' | 'follow';
+
 const RETRY_MS = [0, 16, 48, 120, 280] as const;
 const BIND_RETRY_MS = 50;
 const BIND_RETRY_MAX = 40;
+/** Match the pad used when aligning preview to the editor top line. */
+const SCROLL_ALIGN_PAD_PX = 32;
 
 let getters: Getters | null = null;
 let followQueued = false;
@@ -32,7 +40,9 @@ let retryTimers: ReturnType<typeof setTimeout>[] = [];
 let bindRetryTimer: ReturnType<typeof setTimeout> | null = null;
 let bindRetryCount = 0;
 let boundScrollDom: HTMLElement | null = null;
+let boundPreviewScroller: HTMLElement | null = null;
 let imageListenerRoot: Element | null = null;
+let syncingFrom: SyncSource = 'none';
 
 function clearRetryTimers(): void {
   for (const t of retryTimers) clearTimeout(t);
@@ -47,12 +57,28 @@ function clearBindRetryTimer(): void {
   bindRetryCount = 0;
 }
 
+/** Clear the sync lock after scroll events from the other pane have settled. */
+function releaseSyncLock(source: Exclude<SyncSource, 'none'>): void {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (syncingFrom === source) syncingFrom = 'none';
+    });
+  });
+}
+
 function followNow(): boolean {
   if (!getters) return false;
   const previewRoot = getters.getPreviewRoot();
   const view = getters.getView();
   if (!previewRoot || !view) return false;
-  return scrollPreviewToEditorSelection(view, previewRoot);
+  // Do not yank the preview while the user is scrolling it.
+  if (syncingFrom === 'preview') return false;
+  if (syncingFrom !== 'none' && syncingFrom !== 'follow') return false;
+
+  syncingFrom = 'follow';
+  const ok = scrollPreviewToEditorSelection(view, previewRoot);
+  releaseSyncLock('follow');
+  return ok;
 }
 
 function queueFollow(): void {
@@ -69,6 +95,35 @@ function offsetTopWithinScroller(el: HTMLElement, scroller: HTMLElement): number
   const elRect = el.getBoundingClientRect();
   const scrollerRect = scroller.getBoundingClientRect();
   return elRect.top - scrollerRect.top + scroller.scrollTop;
+}
+
+/**
+ * Last [data-line] block whose top is at or above `y` inside the scroller.
+ * Mirrors findDataLineBlockForSourceLine, but by scroll offset instead of line.
+ */
+function findDataLineBlockAtScrollerY(
+  previewRoot: Element,
+  scroller: HTMLElement,
+  y: number,
+): { el: HTMLElement; line0: number } | null {
+  let best: HTMLElement | null = null;
+  let bestLine = -1;
+  let bestTop = -Infinity;
+
+  for (const node of previewRoot.querySelectorAll('[data-line]')) {
+    if (!(node instanceof HTMLElement)) continue;
+    const n = Number(node.getAttribute('data-line'));
+    if (!Number.isFinite(n)) continue;
+    const top = offsetTopWithinScroller(node, scroller);
+    if (top <= y && top >= bestTop) {
+      best = node;
+      bestLine = n;
+      bestTop = top;
+    }
+  }
+
+  if (!best || bestLine < 0) return null;
+  return { el: best, line0: bestLine };
 }
 
 /** Align preview to the top-most visible editor line (fresh DOM query). */
@@ -92,12 +147,57 @@ function syncPreviewToEditorScrollTop(): void {
     ? Math.max(0, Math.min(1, (viewTop - topBlock.top) / topBlock.height))
     : 0;
   const relativeTop = offsetTopWithinScroller(el, scroller);
-  const target = relativeTop + el.offsetHeight * within - 32;
+  const target = relativeTop + el.offsetHeight * within - SCROLL_ALIGN_PAD_PX;
   scroller.scrollTop = Math.max(0, target);
 }
 
+/** Align editor to the top-most visible preview [data-line] block. */
+function syncEditorToPreviewScrollTop(): void {
+  if (!getters) return;
+  const previewRoot = getters.getPreviewRoot();
+  const view = getters.getView();
+  if (!previewRoot || !view) return;
+
+  const scrollDom = view.scrollDOM;
+  const scroller = findPreviewScrollContainer(previewRoot);
+  if (!scroller) return;
+
+  // Undo the pad applied when syncing preview from the editor.
+  const y = scroller.scrollTop + SCROLL_ALIGN_PAD_PX;
+  const hit = findDataLineBlockAtScrollerY(previewRoot, scroller, y);
+  if (!hit) return;
+
+  const { el, line0 } = hit;
+  const lineNumber = Math.min(Math.max(1, line0 + 1), view.state.doc.lines);
+  const line = view.state.doc.line(lineNumber);
+  const block = view.lineBlockAt(line.from);
+
+  const relativeTop = offsetTopWithinScroller(el, scroller);
+  const within = el.offsetHeight > 0
+    ? Math.max(0, Math.min(1, (y - relativeTop) / el.offsetHeight))
+    : 0;
+
+  scrollDom.scrollTop = Math.max(0, block.top + block.height * within);
+}
+
 function onEditorScroll(): void {
-  syncPreviewToEditorScrollTop();
+  if (syncingFrom !== 'none') return;
+  syncingFrom = 'editor';
+  try {
+    syncPreviewToEditorScrollTop();
+  } finally {
+    releaseSyncLock('editor');
+  }
+}
+
+function onPreviewScroll(): void {
+  if (syncingFrom !== 'none') return;
+  syncingFrom = 'preview';
+  try {
+    syncEditorToPreviewScrollTop();
+  } finally {
+    releaseSyncLock('preview');
+  }
 }
 
 function onPreviewImageSettled(event: Event): void {
@@ -121,6 +221,18 @@ function bindEditorScroll(view: EditorView): boolean {
   }
   boundScrollDom = scrollDom;
   scrollDom.addEventListener('scroll', onEditorScroll, { passive: true });
+  return true;
+}
+
+function bindPreviewScroll(previewRoot: Element): boolean {
+  const scroller = findPreviewScrollContainer(previewRoot);
+  if (!scroller) return false;
+  if (boundPreviewScroller === scroller) return true;
+  if (boundPreviewScroller) {
+    boundPreviewScroller.removeEventListener('scroll', onPreviewScroll);
+  }
+  boundPreviewScroller = scroller;
+  scroller.addEventListener('scroll', onPreviewScroll, { passive: true });
   return true;
 }
 
@@ -148,7 +260,7 @@ function scheduleBindRetry(): void {
   }, BIND_RETRY_MS);
 }
 
-/** @returns true when both editor scroll and preview root are bound */
+/** @returns true when editor scroll, preview scroll, and preview root are bound */
 function ensureBindings(): boolean {
   if (!getters) return false;
   const view = getters.getView();
@@ -160,6 +272,7 @@ function ensureBindings(): boolean {
     ok = false;
   }
   if (previewRoot) {
+    if (!bindPreviewScroll(previewRoot)) ok = false;
     bindPreviewImageListeners(previewRoot);
   } else {
     ok = false;
@@ -202,6 +315,10 @@ export function stopPreviewScrollFollow(): void {
     boundScrollDom.removeEventListener('scroll', onEditorScroll);
     boundScrollDom = null;
   }
+  if (boundPreviewScroller) {
+    boundPreviewScroller.removeEventListener('scroll', onPreviewScroll);
+    boundPreviewScroller = null;
+  }
   if (imageListenerRoot) {
     imageListenerRoot.removeEventListener('load', onPreviewImageSettled, true);
     imageListenerRoot.removeEventListener('error', onPreviewImageSettled, true);
@@ -209,4 +326,5 @@ export function stopPreviewScrollFollow(): void {
   }
   getters = null;
   followQueued = false;
+  syncingFrom = 'none';
 }

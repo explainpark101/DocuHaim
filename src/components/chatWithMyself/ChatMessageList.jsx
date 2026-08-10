@@ -533,6 +533,8 @@ const MessageBubble = memo(function MessageBubble({
   externalReactionPickerOpen = false,
   onReactionPickerOpenChange,
   noteExists,
+  folderExists,
+  listFolderFiles,
   allowOgEmbed = true,
   /** will-change + brightness press filter (perf toggle). */
   enableBubblePressFx = true,
@@ -935,6 +937,8 @@ const MessageBubble = memo(function MessageBubble({
                 } ${isDeleting ? 'select-none' : 'select-text'}`}
                 getPresignedUrl={getPresignedUrl}
                 noteExists={noteExists}
+                folderExists={folderExists}
+                listFolderFiles={listFolderFiles}
                 onOpenViewPath={
                   onOpenNote ? (path) => onOpenNote(path, msg) : undefined
                 }
@@ -1102,6 +1106,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     groupLabelByKey = null,
     /** @type {((path: string) => boolean) | null | undefined} */
     noteExists,
+    /** @type {((path: string) => boolean) | null | undefined} */
+    folderExists,
+    /** @type {((folderPath: string) => Array<{ path: string, name: string }>) | null | undefined} */
+    listFolderFiles,
     /** Kept for settings API; virtualized path never uses layout/popLayout. */
     enableMessageLayoutAnim: _enableMessageLayoutAnim = true,
     /** Bubble will-change + brightness press filter. */
@@ -1623,6 +1631,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             }}
             getPresignedUrl={getPresignedUrl}
             noteExists={noteExists}
+            folderExists={folderExists}
+            listFolderFiles={listFolderFiles}
             enableBubblePressFx={enableBubblePressFx}
             reserveReactionSpace={index === lastMessageRowIndex}
             groupIconPath={
@@ -1666,6 +1676,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       handleBubbleActivate,
       getPresignedUrl,
       noteExists,
+      folderExists,
+      listFolderFiles,
       enableBubblePressFx,
       groupIconByName,
       groupLabelByKey,
@@ -1743,6 +1755,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         timeZone={timeZone}
         getPresignedUrl={getPresignedUrl}
         noteExists={noteExists}
+        folderExists={folderExists}
+        listFolderFiles={listFolderFiles}
         onOpenNote={onOpenNote}
         groupLabel={
           selectCopyMessage

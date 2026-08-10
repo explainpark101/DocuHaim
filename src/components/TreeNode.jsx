@@ -15,11 +15,15 @@ import {
   IconTrash,
   IconSettings,
 } from '@/components/icons';
-import { PencilIcon, ArrowRightToLine, AlertCircle } from 'lucide-react';
+import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
+import {
+  findApplicableTransferBusy,
+  transferBusyTooltipText,
+} from '@/utils/treeTransferBusy';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -43,7 +47,7 @@ function EmptyItemHint({ label }) {
           <Tooltip.Content
             side="top"
             sideOffset={6}
-            className="z-[100001] max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] leading-snug text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+            className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] leading-snug text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
           >
             {label}
             <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
@@ -92,6 +96,8 @@ export default function TreeNode({
   disableDrag = false,
   /** Mobile tree UI — touch drag + modal context menu. */
   mobileTree = false,
+  /** In-flight move/copy markers from App. */
+  transferBusyItems = null,
 }) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
@@ -141,6 +147,14 @@ export default function TreeNode({
     deletingFolderPath && node.path.startsWith(deletingFolderPath);
   const isDeletingThisFolder =
     isDeletingFolder && node.type === 'folder' && deletingFolderPath === node.path;
+  const transferBusy = findApplicableTransferBusy(
+    transferBusyItems,
+    storageType,
+    node.path,
+  );
+  const isTransferBusy = Boolean(transferBusy);
+  const transferBusyHint = transferBusyTooltipText(transferBusy);
+  const isNodeLocked = Boolean(isUnderDeletingFolder || isTransferBusy);
   const isFocusedFolder =
     node.type === 'folder' && focusedFolderPath && node.path === focusedFolderPath;
 
@@ -161,7 +175,7 @@ export default function TreeNode({
       ? '하위에 내용이 없는 빈 폴더입니다.'
       : null;
 
-  const canDrag = !disableDrag && !isTrashRoot && !isUnderDeletingFolder;
+  const canDrag = !disableDrag && !isTrashRoot && !isNodeLocked;
   // Dropping on a file targets its parent folder (sibling placement).
   const parentFolderPath =
     node.type === 'file' ? getParentFolderPath(node.path) : null;
@@ -186,26 +200,26 @@ export default function TreeNode({
     dropTarget?.storageType === storageType &&
     dropTarget?.folderPath &&
     node.path.startsWith(dropTarget.folderPath);
-  const showDropHighlight = !isTrashRoot && (isDropTarget || isUnderDropTarget);
-  const canAcceptOsDrop = !isTrashRoot;
-  const canAcceptInternalDrop = !isTrashRoot;
+  const showDropHighlight = !isTrashRoot && !isTransferBusy && (isDropTarget || isUnderDropTarget);
+  const canAcceptOsDrop = !isTrashRoot && !isTransferBusy;
+  const canAcceptInternalDrop = !isTrashRoot && !isTransferBusy;
 
   const dragId = toDraggableId(storageType, node.path);
   const dropId = toDroppableId(storageType, node.path);
 
   const openContextMenuFromLongPress = useCallback(() => {
-    if (!onOpenContextMenu || isUnderDeletingFolder) return;
+    if (!onOpenContextMenu || isNodeLocked) return;
     onOpenContextMenu(
       { preventDefault: () => {}, stopPropagation: () => {} },
       node,
     );
-  }, [onOpenContextMenu, isUnderDeletingFolder, node]);
+  }, [onOpenContextMenu, isNodeLocked, node]);
 
   const {
     contextMenuOpenedRef,
     bindTouchGesture,
   } = useTreeNodeTouchGesture({
-    enabled: mobileTree && Boolean(onOpenContextMenu) && !isUnderDeletingFolder,
+    enabled: mobileTree && Boolean(onOpenContextMenu) && !isNodeLocked,
     onContextMenu: openContextMenuFromLongPress,
   });
 
@@ -459,7 +473,7 @@ export default function TreeNode({
 
   const handleToggle = (e) => {
     e.stopPropagation();
-    if (isUnderDeletingFolder) return;
+    if (isNodeLocked) return;
     if (contextMenuOpenedRef.current) {
       contextMenuOpenedRef.current = false;
       return;
@@ -495,7 +509,7 @@ export default function TreeNode({
 
   const handleRenameStart = (e) => {
     e.stopPropagation();
-    if (isUnderDeletingFolder) return;
+    if (isNodeLocked) return;
     if (node.type === 'file') {
       setTempName(baseName);
     } else if (node.type === 'folder') {
@@ -505,7 +519,7 @@ export default function TreeNode({
   };
 
   const commitRename = () => {
-    if (isUnderDeletingFolder) {
+    if (isNodeLocked) {
       setIsRenaming(false);
       return;
     }
@@ -637,7 +651,7 @@ export default function TreeNode({
           isSelected
             ? 'bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong'
             : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg'
-        } ${isUnderDeletingFolder ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${
+        } ${isNodeLocked ? 'opacity-60 cursor-not-allowed pointer-events-auto' : 'cursor-pointer'} ${
           isFocusedFolder
             ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
             : ''
@@ -664,7 +678,7 @@ export default function TreeNode({
                 }
                 e.preventDefault();
                 e.stopPropagation();
-                if (!isUnderDeletingFolder) {
+                if (!isNodeLocked) {
                   onOpenContextMenu(e, node);
                 }
               }
@@ -695,12 +709,43 @@ export default function TreeNode({
             ) : null}
           </span>
           <span className={`${iconColorClass} shrink-0 inline-flex items-center gap-0.5`}>
-            {node.type === 'folder'
-              ? isTrashRoot
-                ? <IconTrash />
-                : <FileIconComponent />
-              : <FileIconComponent />}
-            {emptyHintLabel ? <EmptyItemHint label={emptyHintLabel} /> : null}
+            {isTransferBusy ? (
+              <Tooltip.Provider delayDuration={200} skipDelayDuration={80}>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <span
+                      className="inline-flex"
+                      aria-label={transferBusyHint || '전송 중'}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <Loader2 size={14} className="animate-spin text-blue-500 dark:text-blue-400" />
+                    </span>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      side="top"
+                      sideOffset={6}
+                      className="z-100001 max-w-[min(92vw,320px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] leading-snug text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+                    >
+                      {transferBusyHint || '전송 중'}
+                      <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </Tooltip.Provider>
+            ) : node.type === 'folder' ? (
+              isTrashRoot ? (
+                <IconTrash />
+              ) : (
+                <FileIconComponent />
+              )
+            ) : (
+              <FileIconComponent />
+            )}
+            {!isTransferBusy && emptyHintLabel ? (
+              <EmptyItemHint label={emptyHintLabel} />
+            ) : null}
           </span>
           {isRenaming && !isTrashRoot && (node.type === 'file' || node.type === 'folder') ? (
             <span className="flex items-baseline gap-1 min-w-0">
@@ -744,11 +789,12 @@ export default function TreeNode({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (isUnderDeletingFolder) return;
+                if (isNodeLocked) return;
                 onRequestMoveFolder(node, storageType);
               }}
-              className="p-1 rounded text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
-              title="폴더 위치 이동"
+              disabled={isTransferBusy}
+              className="p-1 rounded text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-odp-focusBg disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="폴더 위치 이동"
             >
               <ArrowRightToLine size={12} />
             </button>
@@ -756,8 +802,9 @@ export default function TreeNode({
           {node.type === 'file' && !isTrashRoot && (
             <button
               onClick={handleRenameStart}
-              className="px-2 py-1 text-[11px] rounded text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
-              title="파일명 수정"
+              disabled={isTransferBusy}
+              className="px-2 py-1 text-[11px] rounded text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-odp-focusBg disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="파일명 수정"
             >
               <PencilIcon className="size-3.5" />
             </button>
@@ -765,8 +812,9 @@ export default function TreeNode({
           {node.type === 'folder' && !isTrashRoot && (
             <button
               onClick={handleRenameStart}
-              className="p-1 rounded text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-odp-focusBg"
-              title="폴더명 수정"
+              disabled={isTransferBusy}
+              className="p-1 rounded text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-odp-focusBg disabled:opacity-40 disabled:pointer-events-none"
+              aria-label="폴더명 수정"
             >
               <PencilIcon className="size-3.5" />
             </button>
@@ -774,16 +822,16 @@ export default function TreeNode({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (isUnderDeletingFolder) return;
+              if (isNodeLocked) return;
               onDelete(node, storageType);
             }}
-            disabled={isDeletingThisFolder}
+            disabled={isDeletingThisFolder || isTransferBusy}
             className={`p-1 rounded text-gray-500 dark:text-gray-300 ${
-              isDeletingThisFolder
+              isDeletingThisFolder || isTransferBusy
                 ? 'opacity-60 cursor-wait'
                 : 'hover:bg-gray-200 dark:hover:bg-odp-focusBg hover:text-red-600 dark:hover:text-red-400'
             }`}
-            title="삭제"
+            aria-label="삭제"
           >
             <IconTrash />
           </button>
@@ -832,6 +880,7 @@ export default function TreeNode({
               folderSelectMode={folderSelectMode}
               disableDrag={disableDrag}
               mobileTree={mobileTree}
+              transferBusyItems={transferBusyItems}
             />
           ))}
     </div>

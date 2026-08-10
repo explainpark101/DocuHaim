@@ -98,12 +98,14 @@ import {
   reactionKey,
   normalizeReaction,
   normalizeStoragePath,
+  buildTreeShareItems,
+  listFilesUnderFolderPath,
 } from '@/utils/chatWithMyself';
 import {
   getPendingMessages,
   deletePendingMessage,
 } from '@/utils/chatWithMyself/chatDb.js';
-import { findFileNodeByPath } from '@/utils/s3Tree';
+import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import { getStorageScopeId } from '@/utils/storageScope';
 
 async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
@@ -225,6 +227,8 @@ export default function ChatWithMyselfPane({
   shareGroupSend = null,
   onShareGroupSendConsumed,
   onOpenNote,
+  onAttachDropHostChange,
+  onRegisterTreeAttachDrop,
 }) {
   const location = useLocation();
   const ctx = useMemo(() => {
@@ -258,12 +262,54 @@ export default function ChatWithMyselfPane({
     return s3Tree || [];
   }, [storageMode, s3Tree, localTree, webdavTree]);
 
+  const setAttachDropHostNode = useCallback(
+    (node) => {
+      onAttachDropHostChange?.(node);
+    },
+    [onAttachDropHostChange],
+  );
+
+  useEffect(() => {
+    return () => onAttachDropHostChange?.(null);
+  }, [onAttachDropHostChange]);
+
   const noteExists = useCallback(
     (path) => {
       const p = normalizeStoragePath(path);
       if (!p || p.startsWith('.trash/')) return false;
       return Boolean(findFileNodeByPath(fileTree, p));
     },
+    [fileTree],
+  );
+
+  const folderExists = useCallback(
+    (path) => {
+      const raw = normalizeStoragePath(path);
+      if (!raw || raw.startsWith('.trash/')) return false;
+      const withSlash = raw.endsWith('/') ? raw : `${raw}/`;
+      const without = withSlash.replace(/\/+$/, '');
+      const node =
+        findNodeByPath(fileTree, withSlash) ||
+        findNodeByPath(fileTree, without) ||
+        findNodeByPath(fileTree, raw);
+      return Boolean(node && node.type === 'folder');
+    },
+    [fileTree],
+  );
+
+  const listFolderFiles = useCallback(
+    (folderPath) =>
+      listFilesUnderFolderPath(fileTree, folderPath, (path) => {
+        const raw = normalizeStoragePath(path);
+        const withSlash = raw.endsWith('/') ? raw : `${raw}/`;
+        const without = withSlash.replace(/\/+$/, '');
+        return (
+          findNodeByPath(fileTree, withSlash) ||
+          findNodeByPath(fileTree, without) ||
+          findNodeByPath(fileTree, raw) ||
+          null
+        );
+      }),
     [fileTree],
   );
 
@@ -394,6 +440,27 @@ export default function ChatWithMyselfPane({
   const noteLocalMetaWrite = useCallback(() => {
     syncApiRef.current?.invalidateMeta();
   }, []);
+
+  const handleTreeAttachDrop = useCallback(
+    (items) => {
+      if (!storageReady) return;
+      try {
+        const shareItems = buildTreeShareItems(items, (_storageType, path) =>
+          findNodeByPath(fileTree, path) || findFileNodeByPath(fileTree, path),
+        );
+        if (!shareItems.length) return;
+        composerRef.current?.enqueueShareItems?.(shareItems);
+      } catch (err) {
+        console.warn('Tree → chat share stage failed:', err);
+      }
+    },
+    [storageReady, fileTree],
+  );
+
+  useEffect(() => {
+    onRegisterTreeAttachDrop?.(handleTreeAttachDrop);
+    return () => onRegisterTreeAttachDrop?.(null);
+  }, [handleTreeAttachDrop, onRegisterTreeAttachDrop]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -2173,6 +2240,8 @@ export default function ChatWithMyselfPane({
     timeZone,
     getPresignedUrl: getPresignedUrlForPath,
     noteExists,
+    folderExists,
+    listFolderFiles,
     focusTick: searchFocusTick,
     query: searchQuery,
     onQueryChange: setSearchQuery,
@@ -2221,6 +2290,8 @@ export default function ChatWithMyselfPane({
     timeZone,
     getPresignedUrl: getPresignedUrlForPath,
     noteExists,
+    folderExists,
+    listFolderFiles,
   };
 
   const desktopResizableCount = Math.max(
@@ -2242,6 +2313,7 @@ export default function ChatWithMyselfPane({
       className="flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg"
       disabled={!storageReady}
       onFilesDrop={handleComposerFilesDrop}
+      rootRef={setAttachDropHostNode}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 dark:border-odp-borderSoft px-3 py-2">
         {isMobileLayout && !sidebarOpen ? (
@@ -2402,6 +2474,8 @@ export default function ChatWithMyselfPane({
               onOpenReplyTarget={handleOpenReplyTarget}
               getPresignedUrl={getPresignedUrlForPath}
               noteExists={noteExists}
+              folderExists={folderExists}
+              listFolderFiles={listFolderFiles}
               groupIconByName={groupIconByName}
               groupLabelByKey={groupLabelByKey}
               enableMessageLayoutAnim={!perfReduceLayoutAnim}

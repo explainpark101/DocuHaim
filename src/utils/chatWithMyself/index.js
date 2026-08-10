@@ -37,6 +37,7 @@ export {
   chatMessageUrl,
   noteViewHref,
   formatNoteShareChatBody,
+  formatFolderShareChatBody,
   parseAppViewPath,
 } from './format.js';
 export { normalizeSharePayload, sharePayloadFromSearch } from './sharePayload.js';
@@ -185,6 +186,15 @@ export {
   composerDraftHasContent,
 } from './composerDraft.js';
 export { looksLikeMarkdown } from './markdownDetect.js';
+export {
+  CHAT_TREE_ATTACH_DROPPABLE_ID,
+  isChatTreeAttachDroppableId,
+  collectFileNodesUnderFolder,
+  listFilesUnderFolderPath,
+  resolveTreeAttachFileNodes,
+  buildTreeNoteShareBodies,
+  buildTreeShareItems,
+} from './treeAttachDrop.js';
 export {
   CHAT_PREF_PREFIX,
   CHAT_PREF_KEYS,

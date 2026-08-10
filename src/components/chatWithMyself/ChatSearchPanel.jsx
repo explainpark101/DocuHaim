@@ -142,6 +142,8 @@ function SearchResultCard({
   onViewEditHistory,
   getPresignedUrl,
   noteExists,
+  folderExists,
+  listFolderFiles,
   groups = [],
   coarse,
 }) {
@@ -245,6 +247,8 @@ function SearchResultCard({
                   className="text-sm text-gray-800 dark:text-odp-fg"
                   getPresignedUrl={getPresignedUrl}
                   noteExists={noteExists}
+                  folderExists={folderExists}
+                  listFolderFiles={listFolderFiles}
                   onOpenViewPath={
                     onOpenNote
                       ? (path) => onOpenNote(path, result)
@@ -301,6 +305,7 @@ function SearchResultCard({
         onOpenNote={onOpenNote}
         onViewEditHistory={onViewEditHistory}
         noteExists={noteExists}
+        onViewEditHistory={onViewEditHistory}
       />
     </AdaptiveContextMenu>
   );
@@ -326,6 +331,8 @@ export default function ChatSearchPanel({
   timeZone,
   getPresignedUrl,
   noteExists,
+  folderExists,
+  listFolderFiles,
   focusTick = 0,
   query = '',
   onQueryChange,
@@ -740,6 +747,8 @@ export default function ChatSearchPanel({
                 onViewEditHistory={onViewEditHistory}
                 getPresignedUrl={getPresignedUrl}
                 noteExists={noteExists}
+                folderExists={folderExists}
+                listFolderFiles={listFolderFiles}
                 groups={groups}
                 coarse={coarse}
               />

@@ -12,6 +12,7 @@ const WWW_RE = /\bwww\.[^\s<>)"'\]]+/gi;
 const WIKI_IMAGE_RE = /!\[\[([^\]]+)\]\]/g;
 const CHAT_FILE_RE = /\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]/g;
 const CHAT_NOTE_RE = /\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
+const CHAT_FOLDER_RE = /\[\[folder:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
 
 function basename(pathLike: string): string {
   const cleaned = String(pathLike || '')
@@ -66,6 +67,14 @@ export function scrubTextForIndex(raw: string): ScrubResult {
 
   text = text.replace(CHAT_NOTE_RE, (_full, path: string, name?: string) => {
     const label = String(name || '').trim() || basename(path);
+    if (label) extraTerms.push(label);
+    return ` ${label} `;
+  });
+
+  text = text.replace(CHAT_FOLDER_RE, (_full, path: string, name?: string) => {
+    const label =
+      String(name || '').trim() ||
+      basename(String(path || '').replace(/\/+$/, ''));
     if (label) extraTerms.push(label);
     return ` ${label} `;
   });

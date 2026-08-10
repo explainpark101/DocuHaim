@@ -34,6 +34,8 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
+    "@git-diff-view/file": "0.1.7",
+    "@git-diff-view/react": "^0.1.7",
     "@internationalized/date": "^3.12.3",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-dropdown-menu": "^2.1.24",

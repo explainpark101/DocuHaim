@@ -380,6 +380,26 @@ export function formatNoteShareChatBody(input = {}) {
 }
 
 /**
+ * Chat message body that renders as a shared-folder card.
+ * Path is normalized to end with `/`.
+ * @param {{ path?: string, name?: string }} input
+ */
+export function formatFolderShareChatBody(input = {}) {
+  let folderPath = String(input.path || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .replace(/[[\]|]/g, '_');
+  if (folderPath && !folderPath.endsWith('/')) folderPath = `${folderPath}/`;
+  const rawName =
+    String(input.name || '').trim() ||
+    folderPath.replace(/\/+$/, '').split('/').filter(Boolean).pop() ||
+    'folder';
+  const label = rawName.replace(/[[\]|]/g, '_').trim() || 'folder';
+  if (!folderPath) return `[[folder:${label}/|${label}]]`;
+  return `[[folder:${folderPath}|${label}]]`;
+}
+
+/**
  * If href points at this app's `/view/...` note route, return the storage path.
  * @param {string} href
  * @returns {string | null}
@@ -438,6 +458,17 @@ export function formatChatMessagePlainText(msg) {
           .pop() ||
         'note';
       return `[note: ${label}]`;
+    })
+    .replace(/\[\[folder:([^|\]]+)(?:\|([^\]]*?))?\]\]/g, (_, path, name) => {
+      const label =
+        String(name || '').trim() ||
+        String(path || '')
+          .replace(/\/+$/, '')
+          .split('/')
+          .filter(Boolean)
+          .pop() ||
+        'folder';
+      return `[folder: ${label}]`;
     })
     .replace(
       /\[([^\]]+)\]\(((?:\/view\/[^)\s]+|https?:\/\/[^)\s]+))\)/g,

@@ -42,6 +42,7 @@ export type ChatTextPart =
   | { type: 'text'; value: string }
   | { type: 'link'; value: string; label?: string }
   | { type: 'note'; path: string; name: string }
+  | { type: 'folder'; path: string; name: string }
   | {
       type: 'wiki';
       value: string;
@@ -106,6 +107,27 @@ function notePart(
     type: 'note',
     path: p,
     name: label.replace(/[[\]|]/g, '_').trim() || 'note',
+  };
+}
+
+function folderPart(
+  path: string | null | undefined,
+  name?: string | null,
+): Extract<ChatTextPart, { type: 'folder' }> | null {
+  let p = String(path || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .trim();
+  if (!p) return null;
+  if (!p.endsWith('/')) p = `${p}/`;
+  const label =
+    String(name || '').trim() ||
+    p.replace(/\/+$/, '').split('/').filter(Boolean).pop() ||
+    'folder';
+  return {
+    type: 'folder',
+    path: p,
+    name: label.replace(/[[\]|]/g, '_').trim() || 'folder',
   };
 }
 
@@ -184,9 +206,9 @@ export function splitTextWithUrls(
   const s = String(text ?? '');
   if (!s) return [{ type: 'text', value: '' }];
 
-  // Images: ![[path]]  Files: [[file:...]]  Notes: [[note:path|name?]]
+  // Images: ![[path]]  Files: [[file:...]]  Folders: [[folder:...]]  Notes: [[note:...]]
   const tokenRe =
-    /!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
+    /!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[folder:([^|\]]+)(?:\|([^\]]*?))?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
   const coarse: ChatTextPart[] = [];
   let last = 0;
   let tm: RegExpExecArray | null;
@@ -222,8 +244,11 @@ export function splitTextWithUrls(
         name: name || 'file',
         size: Number.isFinite(sizeNum) ? sizeNum : null,
       });
+    } else if (tm[5] != null) {
+      const part = folderPart(tm[5], tm[6]);
+      if (part) coarse.push(part);
     } else {
-      const part = notePart(tm[5], tm[6]);
+      const part = notePart(tm[7], tm[8]);
       if (part) coarse.push(part);
     }
     last = tm.index + tm[0].length;

@@ -128,7 +128,7 @@ export async function uploadChatAttachment(ctx, file, options = {}) {
 }
 
 /**
- * @param {{ kind: 'image'|'file'|'note', path: string, name?: string, size?: number, background?: string | null }[]} items
+ * @param {{ kind: 'image'|'file'|'note'|'folder', path: string, name?: string, size?: number, background?: string | null }[]} items
  */
 export function chatAttachmentsToMarkdown(items) {
   return (items || [])
@@ -145,6 +145,14 @@ export function chatAttachmentsToMarkdown(items) {
           item.name || item.path.split('/').filter(Boolean).pop() || 'note',
         );
         return `[[note:${item.path}|${name}]]`;
+      }
+      if (item.kind === 'folder') {
+        let path = String(item.path || '').replace(/\\/g, '/');
+        if (path && !path.endsWith('/')) path = `${path}/`;
+        const name = sanitizeChatFileMeta(
+          item.name || path.replace(/\/+$/, '').split('/').filter(Boolean).pop() || 'folder',
+        );
+        return `[[folder:${path}|${name}]]`;
       }
       const name = sanitizeChatFileMeta(item.name || item.path.split('/').pop());
       const size =
@@ -174,15 +182,15 @@ export function parseChatFileToken(inner) {
 
 /**
  * Split message body into plain text + attachment descriptors
- * (![[image]] / [[file:...]] / [[note:...]]).
- * @returns {{ text: string, attachments: Array<{ kind: 'image'|'file'|'note', path: string, name: string, size: number | null, background?: string | null }> }}
+ * (![[image]] / [[file:...]] / [[folder:...]] / [[note:...]]).
+ * @returns {{ text: string, attachments: Array<{ kind: 'image'|'file'|'note'|'folder', path: string, name: string, size: number | null, background?: string | null }> }}
  */
 export function extractChatBodyAttachments(body) {
   const s = String(body ?? '');
   if (!s) return { text: '', attachments: [] };
 
   const tokenRe =
-    /!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
+    /!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[folder:([^|\]]+)(?:\|([^\]]*?))?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
   const attachments = [];
   const textParts = [];
   let last = 0;
@@ -215,14 +223,27 @@ export function extractChatBodyAttachments(body) {
           size: Number.isFinite(sizeNum) ? sizeNum : null,
         });
       }
+    } else if (m[5] != null) {
+      let path = String(m[5] || '').trim().replace(/\\/g, '/');
+      if (path) {
+        if (!path.endsWith('/')) path = `${path}/`;
+        attachments.push({
+          kind: 'folder',
+          path,
+          name: sanitizeChatFileMeta(
+            m[6] || path.replace(/\/+$/, '').split('/').filter(Boolean).pop() || 'folder',
+          ),
+          size: null,
+        });
+      }
     } else {
-      const path = String(m[5] || '').trim();
+      const path = String(m[7] || '').trim();
       if (path) {
         attachments.push({
           kind: 'note',
           path,
           name: sanitizeChatFileMeta(
-            m[6] || path.split('/').filter(Boolean).pop() || 'note',
+            m[8] || path.split('/').filter(Boolean).pop() || 'note',
           ),
           size: null,
         });

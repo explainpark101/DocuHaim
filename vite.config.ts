@@ -236,6 +236,11 @@ function manualChunks(id: string): string | undefined {
     return 'vendor-novel';
   }
   if (
+    normalizedId.includes('/node_modules/@git-diff-view/')
+  ) {
+    return 'vendor-git-diff-view';
+  }
+  if (
     normalizedId.includes('/node_modules/emoji-mart/') ||
     normalizedId.includes('/node_modules/@emoji-mart/')
   ) {

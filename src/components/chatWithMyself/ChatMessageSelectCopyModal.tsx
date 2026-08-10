@@ -29,6 +29,8 @@ type ChatMessageSelectCopyModalProps = {
   groupLabel?: string;
   getPresignedUrl?: (path: string) => Promise<string | null>;
   noteExists?: (path: string) => boolean;
+  folderExists?: (path: string) => boolean;
+  listFolderFiles?: (folderPath: string) => Array<{ path: string; name: string }>;
   onOpenNote?: (path: string, message?: unknown) => void;
 };
 
@@ -45,6 +47,8 @@ export default function ChatMessageSelectCopyModal({
   groupLabel,
   getPresignedUrl,
   noteExists,
+  folderExists,
+  listFolderFiles,
   onOpenNote,
 }: ChatMessageSelectCopyModalProps) {
   const isOpen = Boolean(open && message);
@@ -113,6 +117,8 @@ export default function ChatMessageSelectCopyModal({
                   className="min-w-0 max-w-full wrap-anywhere select-text"
                   getPresignedUrl={getPresignedUrl}
                   noteExists={noteExists}
+                  folderExists={folderExists}
+                  listFolderFiles={listFolderFiles}
                   onOpenViewPath={
                     onOpenNote && message
                       ? (path) => onOpenNote(path, message)

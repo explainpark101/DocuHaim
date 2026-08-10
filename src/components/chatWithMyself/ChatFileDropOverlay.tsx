@@ -5,6 +5,7 @@ import {
   useState,
   type DragEvent,
   type ReactNode,
+  type Ref,
 } from 'react';
 import { Paperclip, Upload } from 'lucide-react';
 
@@ -13,12 +14,27 @@ function dataTransferHasFiles(dt: DataTransfer | null | undefined): boolean {
   return [...dt.types].includes('Files');
 }
 
+function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
+  if (!ref) return;
+  if (typeof ref === 'function') {
+    ref(value);
+    return;
+  }
+  try {
+    (ref as { current: T | null }).current = value;
+  } catch {
+    /* ignore */
+  }
+}
+
 export type ChatFileDropOverlayProps = {
   children: ReactNode;
   className?: string;
   /** When true, ignore OS file drags (e.g. storage not ready). */
   disabled?: boolean;
   onFilesDrop: (files: FileList) => void;
+  /** Optional ref to the outer relative host (tree→attach droppable portal). */
+  rootRef?: Ref<HTMLDivElement>;
 };
 
 /**
@@ -34,6 +50,7 @@ export default function ChatFileDropOverlay({
   className = '',
   disabled = false,
   onFilesDrop,
+  rootRef,
 }: ChatFileDropOverlayProps) {
   const [dragging, setDragging] = useState(false);
   const dragDepthRef = useRef(0);
@@ -94,8 +111,16 @@ export default function ChatFileDropOverlay({
     [disabled, onFilesDrop, resetDrag],
   );
 
+  const setRootNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      assignRef(rootRef, node);
+    },
+    [rootRef],
+  );
+
   return (
     <div
+      ref={setRootNode}
       className={`relative ${className}`.trim()}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}

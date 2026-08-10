@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Check, Paperclip, Pencil, Send, X, FileText } from 'lucide-react';
+import { Check, Paperclip, Pencil, Send, X, FileText, Folder } from 'lucide-react';
 import { Compartment, StateEffect } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
@@ -162,7 +162,10 @@ function makeQueueId() {
 }
 
 /**
- * @typedef {{ enqueueFiles: (fileList: FileList | File[] | null | undefined) => Promise<void> }} ChatComposerHandle
+ * @typedef {{
+ *   enqueueFiles: (fileList: FileList | File[] | null | undefined) => Promise<void>,
+ *   enqueueShareItems: (items: Array<{ kind: 'note'|'folder', path: string, name?: string }> | null | undefined) => void,
+ * }} ChatComposerHandle
  */
 
 const ChatComposer = forwardRef(function ChatComposer(
@@ -753,12 +756,49 @@ const ChatComposer = forwardRef(function ChatComposer(
     setImageQueue((prev) => [...prev, ...accepted]);
   }, []);
 
+  const enqueueShareItems = useCallback((items) => {
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) return;
+    const accepted = [];
+    for (const item of list) {
+      if (!item) continue;
+      const kind = item.kind === 'folder' ? 'folder' : item.kind === 'note' ? 'note' : null;
+      const path = String(item.path || '').trim();
+      if (!kind || !path) continue;
+      const name =
+        String(item.name || '').trim() ||
+        path.replace(/\/+$/, '').split('/').filter(Boolean).pop() ||
+        (kind === 'folder' ? 'folder' : 'note');
+      accepted.push({
+        id: makeQueueId(),
+        kind,
+        path,
+        name,
+        size: null,
+        file: null,
+        existing: false,
+        previewUrl: null,
+      });
+    }
+    if (!accepted.length) return;
+    setImageQueue((prev) => {
+      const seen = new Set(
+        prev
+          .filter((p) => (p.kind === 'note' || p.kind === 'folder') && p.path)
+          .map((p) => `${p.kind}:${p.path}`),
+      );
+      const next = accepted.filter((a) => !seen.has(`${a.kind}:${a.path}`));
+      return next.length ? [...prev, ...next] : prev;
+    });
+  }, []);
+
   useImperativeHandle(
     ref,
     () => ({
       enqueueFiles,
+      enqueueShareItems,
     }),
-    [enqueueFiles],
+    [enqueueFiles, enqueueShareItems],
   );
 
   const removeQueuedImage = useCallback((id) => {
@@ -794,6 +834,22 @@ const ChatComposer = forwardRef(function ChatComposer(
         file: q.file,
         background: q.kind === 'image' ? q.background || null : null,
       }));
+    const stagedShareMarkdown = chatAttachmentsToMarkdown(
+      queued
+        .filter(
+          (q) =>
+            !q.file &&
+            q.path &&
+            (q.kind === 'note' || q.kind === 'folder') &&
+            !q.existing,
+        )
+        .map((q) => ({
+          kind: q.kind,
+          path: q.path,
+          name: q.name,
+          size: null,
+        })),
+    );
     if (editTarget) {
       const existingMarkdown = chatAttachmentsToMarkdown(
         queued
@@ -806,7 +862,11 @@ const ChatComposer = forwardRef(function ChatComposer(
             background: q.background || null,
           })),
       );
-      if (!body && !existingMarkdown && newAttachments.length === 0) return;
+      // New note/folder shares staged during edit join existing attachment markdown.
+      const mergedExisting = [existingMarkdown, stagedShareMarkdown]
+        .filter(Boolean)
+        .join('\n');
+      if (!body && !mergedExisting && newAttachments.length === 0) return;
       const removedPaths = [...removedExistingPathsRef.current];
       removedExistingPathsRef.current = [];
       void onSaveEdit?.(
@@ -814,7 +874,7 @@ const ChatComposer = forwardRef(function ChatComposer(
         selectedGroup || SELF_GROUP,
         editTarget,
         newAttachments,
-        { existingMarkdown, removedPaths, markdown },
+        { existingMarkdown: mergedExisting, removedPaths, markdown },
       );
       setValue('');
       setMarkdownEnabled(false);
@@ -823,7 +883,9 @@ const ChatComposer = forwardRef(function ChatComposer(
       onClearEdit?.();
       return;
     }
-    onSend?.(body, selectedGroup || SELF_GROUP, replyTo || null, newAttachments, {
+    const finalBody = [stagedShareMarkdown, body].filter(Boolean).join('\n\n');
+    if (!finalBody && newAttachments.length === 0) return;
+    onSend?.(finalBody, selectedGroup || SELF_GROUP, replyTo || null, newAttachments, {
       markdown,
     });
     setValue('');
@@ -1093,31 +1155,48 @@ const ChatComposer = forwardRef(function ChatComposer(
         {imageQueue.length > 0 ? (
           <div className="mb-1 flex flex-wrap gap-2">
             {imageQueue.map((item) =>
-              item.kind === 'file' || item.kind === 'note' ? (
+              item.kind === 'file' || item.kind === 'note' || item.kind === 'folder' ? (
                 <div
                   key={item.id}
                   className={`relative flex max-w-[11rem] items-center gap-2 rounded-md border px-2 py-1.5 ${
                     item.kind === 'note'
                       ? 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-800/50 dark:bg-emerald-950/40'
-                      : 'border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bg/50'
+                      : item.kind === 'folder'
+                        ? 'border-amber-200 bg-amber-50/80 dark:border-amber-800/50 dark:bg-amber-950/40'
+                        : 'border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bg/50'
                   }`}
                 >
-                  <FileText
-                    size={16}
-                    className={`shrink-0 ${
-                      item.kind === 'note'
-                        ? 'text-emerald-600 dark:text-emerald-300'
-                        : 'text-blue-600 dark:text-blue-300'
-                    }`}
-                  />
+                  {item.kind === 'folder' ? (
+                    <Folder
+                      size={16}
+                      className="shrink-0 text-amber-600 dark:text-amber-300"
+                    />
+                  ) : (
+                    <FileText
+                      size={16}
+                      className={`shrink-0 ${
+                        item.kind === 'note'
+                          ? 'text-emerald-600 dark:text-emerald-300'
+                          : 'text-blue-600 dark:text-blue-300'
+                      }`}
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[11px] font-medium text-gray-800 dark:text-odp-fg">
-                      {item.name || item.file?.name || (item.kind === 'note' ? 'note' : 'file')}
+                      {item.name ||
+                        item.file?.name ||
+                        (item.kind === 'folder'
+                          ? 'folder'
+                          : item.kind === 'note'
+                            ? 'note'
+                            : 'file')}
                     </div>
                     <div className="text-[10px] text-gray-400">
                       {item.kind === 'note'
                         ? '노트'
-                        : formatChatAttachmentSize(item.size ?? item.file?.size)}
+                        : item.kind === 'folder'
+                          ? '폴더'
+                          : formatChatAttachmentSize(item.size ?? item.file?.size)}
                     </div>
                   </div>
                   <button

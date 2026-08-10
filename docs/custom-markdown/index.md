@@ -16,6 +16,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [heading-levels.md](./heading-levels.md) | `#######` … `##########` (h7–h10) | 에디터 / Novel / 인쇄 |
 | [chat-file.md](./chat-file.md) | `[[file:…]]` | 채팅 |
 | [chat-note.md](./chat-note.md) | `[[note:…]]` | 채팅 |
+| [chat-folder.md](./chat-folder.md) | `[[folder:…]]` | 채팅 |
 | [chat-day-file-comments.md](./chat-day-file-comments.md) | `<!-- chat-msg … -->` 등 | 채팅 일별 파일 |
 | [chat-saved-note.md](./chat-saved-note.md) | `<!-- chat-with-myself … -->` + 카드 | 채팅→노트 |
 | [note-cover.md](./note-cover.md) | `<!-- note-cover … -->` | 인쇄 표지 |
@@ -53,7 +54,7 @@ Feature 문서의 **Spec** 섹션은 파서 중립 계약이다. markdown-it 토
 - md-editor-rt 기본 기능 (KaTeX, Mermaid, 이모지 등)
 - 미리보기 외부 링크 `target=_blank` (`previewLinkTargetBlankPlugin`) — **문법 아님**, 렌더러만
 - 녹음 동기화 — `.sync.pb` / `.sync.json` **사이드카**, 인라인 마커 없음
-- Obsidian식 일반 `[[wikilink]]` — **미지원** (`![[]]`, `[[file:]]`, `[[note:]]`만)
+- Obsidian식 일반 `[[wikilink]]` — **미지원** (`![[]]`, `[[file:]]`, `[[note:]]`, `[[folder:]]`만)
 
 ## 새 문법 추가 시
 
