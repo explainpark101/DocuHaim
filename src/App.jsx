@@ -121,6 +121,11 @@ import {
   notifyCoverSettingsChanged,
   setCoverSettingsStore,
 } from '@/utils/coverSettingsStore';
+import {
+  loadOgWorkerSettingsFromStorage,
+  notifyOgWorkerSettingsChanged,
+  setOgWorkerSettingsStore,
+} from '@/utils/ogWorkerSettings';
 import UserWebfontStyles from '@/components/UserWebfontStyles';
 import {
   setLlmPromptTemplatesStore,
@@ -1662,6 +1667,7 @@ function MainApp() {
     setWebfontSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setTableStyleSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setCoverSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+    setOgWorkerSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
     void loadWebfontsFromStorage().then((settings) => {
       notifyWebfontsChanged(settings);
@@ -1669,6 +1675,9 @@ function MainApp() {
     void loadTableStylesFromStorage();
     void loadCoverSettingsFromStorage().then((settings) => {
       notifyCoverSettingsChanged(settings);
+    });
+    void loadOgWorkerSettingsFromStorage().then((settings) => {
+      notifyOgWorkerSettingsChanged(settings);
     });
   }, [getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig]);
 

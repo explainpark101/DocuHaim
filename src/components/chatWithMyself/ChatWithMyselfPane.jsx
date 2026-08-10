@@ -2191,14 +2191,28 @@ export default function ChatWithMyselfPane({
     onFiltersOpenChange: setSearchFiltersUiOpen,
   };
 
+  // Links / files / photos follow the sidebar group selection; pin/note/edit stay global.
+  const collectionMediaForView = useMemo(() => {
+    if (!viewGroupFilter) {
+      return { linkResults, fileResults, photoResults };
+    }
+    const inGroup = (m) =>
+      groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter);
+    return {
+      linkResults: linkResults.filter(inGroup),
+      fileResults: fileResults.filter(inGroup),
+      photoResults: photoResults.filter(inGroup),
+    };
+  }, [viewGroupFilter, groups, linkResults, fileResults, photoResults]);
+
   const pinnedPanelProps = {
     groups,
     pinnedResults,
     notedResults,
     editedResults,
-    linkResults,
-    fileResults,
-    photoResults,
+    linkResults: collectionMediaForView.linkResults,
+    fileResults: collectionMediaForView.fileResults,
+    photoResults: collectionMediaForView.photoResults,
     loading: pinnedLoading,
     onSelectResult: handleSelectResult,
     onTogglePin: handleTogglePin,
