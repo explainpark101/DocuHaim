@@ -36,8 +36,9 @@ export default function WorkspaceMainPanels({
   const hasChatTab = tabs.some((t) => t.kind === 'chat');
   const chatActive = tabsEnabled ? activeId === CHAT_TAB_ID : isChatRoute;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
+  // Home (`activeId` cleared) or no tabs → empty editor shell.
   const showEmpty = tabsEnabled
-    ? tabs.length === 0
+    ? tabs.length === 0 || activeId == null
     : !isChatRoute && !mirrors?.currentFile && fileTabs.length === 0;
 
   if (!tabsEnabled) {

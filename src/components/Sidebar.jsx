@@ -46,14 +46,40 @@ import {
   IconMoon,
   IconUpload,
   IconRefresh,
+  IconCheck,
 } from '@/components/icons';
 import { ArrowRightToLine, ChevronsLeft, Download, Loader2, MessageCircle, X } from 'lucide-react';
 import AdvancedSearchSidebarTrigger from '@/components/advancedSearch/AdvancedSearchSidebarTrigger';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 import SessionTreeList from '@/components/SessionTreeList';
+import {
+  AdaptiveContextMenu,
+  AdaptiveMenuItem,
+} from '@/components/contextMenu/AdaptiveContextMenu';
+import { MOBILE_CONTEXT_MENU_ITEM_CLASS } from '@/components/contextMenu/mobileContextMenuStyles';
+import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+import {
+  STORAGE_MODE_LOCAL,
+  STORAGE_MODE_S3,
+  STORAGE_MODE_WEBDAV,
+  getAppNameByStorageMode,
+} from '@/utils/storageSettings';
 
 const EMPTY_SELECTED_IDS = new Set();
 
+const BRAND_STORAGE_MODES = [
+  STORAGE_MODE_S3,
+  STORAGE_MODE_LOCAL,
+  STORAGE_MODE_WEBDAV,
+];
+
+const SIDEBAR_BRAND_MENU_CONTENT_CLASS =
+  'z-100010 min-w-[180px] overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+
+const SIDEBAR_BRAND_MENU_ITEM_CLASS =
+  'flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-gray-100 dark:text-odp-fg dark:data-[highlighted]:bg-odp-focusBg';
+
+const BRAND_LONG_PRESS_MS = 500;
 /** Above main pane / chat drop overlay; DragOverlay is portaled to document.body. */
 const TREE_DRAG_OVERLAY_Z_INDEX = 100060;
 
@@ -243,6 +269,7 @@ export default function Sidebar({
   /** Called when tree items are dropped onto the chat attach zone. */
   onDropToChatAttach,
   onBrandClick,
+  onStorageModeChange,
   sessionWorkspace = null,
   sessionTree = [],
   onCloseSessionWorkspace,
@@ -253,6 +280,21 @@ export default function Sidebar({
   const coarsePointer = useIsCoarsePointer();
   const mobileTree = isMobileLayout || coarsePointer;
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+  const brandLongPressTimerRef = useRef(null);
+  const brandLongPressOpenedRef = useRef(false);
+  const brandPressStartRef = useRef(null);
+
+  const clearBrandLongPress = useCallback(() => {
+    if (brandLongPressTimerRef.current) {
+      clearTimeout(brandLongPressTimerRef.current);
+      brandLongPressTimerRef.current = null;
+    }
+    brandPressStartRef.current = null;
+  }, []);
+
+  useEffect(() => () => clearBrandLongPress(), [clearBrandLongPress]);
+
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const isSearchPending = searchInput !== searchTerm;
@@ -1058,17 +1100,99 @@ export default function Sidebar({
                   <ChevronsLeft size={18} />
                 </button>
               )}
-              {typeof onBrandClick === 'function' ? (
-                <button
-                  type="button"
-                  data-sidebar-brand
-                  onClick={onBrandClick}
-                  className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate text-left hover:text-gray-900 dark:hover:text-white transition"
-                  title="홈으로"
-                  aria-label={`${appName} 홈으로`}
-                >
-                  {appName}
-                </button>
+              {typeof onBrandClick === 'function' || typeof onStorageModeChange === 'function' ? (
+                (() => {
+                  const brandButton = (
+                    <button
+                      type="button"
+                      data-sidebar-brand
+                      onClick={() => {
+                        if (brandLongPressOpenedRef.current) {
+                          brandLongPressOpenedRef.current = false;
+                          return;
+                        }
+                        if (brandMenuOpen) return;
+                        onBrandClick?.();
+                      }}
+                      onPointerDown={(e) => {
+                        if (!onStorageModeChange || !mobileContextMenu) return;
+                        if (e.pointerType === 'mouse') return;
+                        if (e.button !== 0 && e.button !== -1) return;
+                        brandLongPressOpenedRef.current = false;
+                        clearBrandLongPress();
+                        brandPressStartRef.current = { x: e.clientX, y: e.clientY };
+                        brandLongPressTimerRef.current = setTimeout(() => {
+                          brandLongPressTimerRef.current = null;
+                          brandLongPressOpenedRef.current = true;
+                          vibrateLongPressAction();
+                          setBrandMenuOpen(true);
+                        }, BRAND_LONG_PRESS_MS);
+                      }}
+                      onPointerMove={(e) => {
+                        const start = brandPressStartRef.current;
+                        if (!start || !brandLongPressTimerRef.current) return;
+                        if (
+                          Math.abs(e.clientX - start.x) > 10 ||
+                          Math.abs(e.clientY - start.y) > 10
+                        ) {
+                          clearBrandLongPress();
+                        }
+                      }}
+                      onPointerUp={clearBrandLongPress}
+                      onPointerCancel={clearBrandLongPress}
+                      onContextMenu={(e) => {
+                        if (mobileContextMenu && onStorageModeChange) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate text-left hover:text-gray-900 dark:hover:text-white transition"
+                      aria-label={`${appName} 홈으로`}
+                    >
+                      {appName}
+                    </button>
+                  );
+
+                  if (typeof onStorageModeChange !== 'function') {
+                    return brandButton;
+                  }
+
+                  return (
+                    <AdaptiveContextMenu
+                      open={brandMenuOpen}
+                      onOpenChange={setBrandMenuOpen}
+                      title={appName}
+                      subtitle="저장소 전환"
+                      isMobileLayout={isMobileLayout}
+                      contentClassName={SIDEBAR_BRAND_MENU_CONTENT_CLASS}
+                      trigger={brandButton}
+                    >
+                      {BRAND_STORAGE_MODES.map((mode) => {
+                        const selected = storageMode === mode;
+                        const label = getAppNameByStorageMode(mode);
+                        return (
+                          <AdaptiveMenuItem
+                            key={mode}
+                            disabled={selected}
+                            className={
+                              mobileContextMenu
+                                ? MOBILE_CONTEXT_MENU_ITEM_CLASS
+                                : SIDEBAR_BRAND_MENU_ITEM_CLASS
+                            }
+                            onSelect={() => {
+                              if (selected) return;
+                              onStorageModeChange(mode);
+                            }}
+                          >
+                            <span className="inline-flex w-4 shrink-0 items-center justify-center">
+                              {selected ? <IconCheck size={14} aria-hidden /> : null}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate">{label}</span>
+                          </AdaptiveMenuItem>
+                        );
+                      })}
+                    </AdaptiveContextMenu>
+                  );
+                })()
               ) : (
                 <h1
                   data-sidebar-brand

@@ -861,7 +861,16 @@ function MainApp() {
     saveStorageMode(storageMode);
     setSelectedIds(new Set());
     setCurrentFile(null);
+    currentFileRef.current = null;
     setEditorContent('');
+    editorContentRef.current = '';
+    // Drop workspace tabs from the previous storage backend.
+    let next = workspaceTabsRef.current;
+    for (const tab of [...next.tabs]) {
+      next = closeTab(next, tab.id);
+    }
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
   }, [storageMode]);
 
   useEffect(() => {
@@ -1635,12 +1644,24 @@ function MainApp() {
     }
   };
 
-  /** Logo / brand: close current file and go home; auto-save if dirty. */
+  /** Logo / brand: go to `/` home (keep tabs open; clear active selection). */
   const handleBrandClick = async () => {
     if (hasUnsavedEditorChanges()) {
       await saveFile(null, { skipSuffixCheck: true });
     }
-    closeCurrentFile();
+    const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+      editorContent: editorContentRef.current ?? '',
+      currentFile: currentFileRef.current,
+      editedFileName: editedFileNameRef.current ?? '',
+    });
+    const next = { ...flushed, activeId: null };
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+    setCurrentFile(null);
+    currentFileRef.current = null;
+    setEditorContent('');
+    editorContentRef.current = '';
+    navigate('/');
   };
 
   const handleCloseFileConfirmSave = async () => {
@@ -7663,6 +7684,7 @@ function MainApp() {
               isMobileLayout={isMobile}
               appName={appName}
               onBrandClick={handleBrandClick}
+              onStorageModeChange={setStorageMode}
               storageMode={storageMode}
               s3Tree={s3Tree}
               s3Bucket={s3Creds.bucket}
