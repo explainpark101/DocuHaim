@@ -12,9 +12,10 @@ type MdStateBlock = {
   line: number;
   lineMax: number;
   parentType: string;
-  push: (type: string, tag: string, nesting: number) => {
+  // Match markdown-it Nesting (-1 | 0 | 1) so real MarkdownIt is assignable to MarkdownItLike.
+  push: (type: string, tag: string, nesting: -1 | 0 | 1) => {
     content: string;
-    map: [number, number];
+    map: [number, number] | null;
     markup: string;
     block?: boolean;
   };
@@ -27,7 +28,8 @@ type MarkdownItLike = {
         beforeName: string,
         name: string,
         fn: (state: MdStateBlock, startLine: number, endLine: number, silent: boolean) => boolean,
-        options?: { alt?: string[] },
+        // Prefer required `alt` so real markdown-it RuleOptions is assignable under exactOptionalPropertyTypes.
+        options?: { alt: string[] },
       ) => void;
     };
   };

@@ -102,7 +102,7 @@ export async function convertAllMarkdownImagesToWiki(
       try {
         const result = await prepareMarkdownImageForWikiConvert({
           markdownSrc: src,
-          currentNotePath: options.currentNotePath,
+          currentNotePath: options.currentNotePath ?? null,
         });
         if (result.mode === 'path') {
           return { src, mode: 'path', path: result.path };

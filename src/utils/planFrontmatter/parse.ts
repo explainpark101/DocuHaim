@@ -79,7 +79,17 @@ function normalizeTodo(raw: unknown, index: number): PlanTodo | null {
  * True when YAML object looks like a Cursor-style `*.plan.md` frontmatter.
  * Requires a `todos` array (may be empty). `name` optional.
  */
-export function isPlanFrontmatterObject(value: unknown): value is Record<string, unknown> {
+export type PlanFrontmatterObject = {
+  todos: unknown[];
+  name?: unknown;
+  title?: unknown;
+  overview?: unknown;
+  description?: unknown;
+  isProject?: unknown;
+  is_project?: unknown;
+};
+
+export function isPlanFrontmatterObject(value: unknown): value is PlanFrontmatterObject {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const obj = value as Record<string, unknown>;
   if (!Array.isArray(obj.todos)) return false;
