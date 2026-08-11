@@ -129,10 +129,12 @@ import {
   getWikiImageOccurrenceInContainer,
   replaceMarkdownImageWithWikiPath,
   updateMarkdownImageSizeInMarkdown,
+  updateMarkdownImageSrcInMarkdown,
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
-import { prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
+import { isDataImageUri, prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
+import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
 import {
   convertAllMarkdownImagesToWiki,
   hasStandardMarkdownImages,
@@ -559,6 +561,7 @@ export default function MarkdownEditor({
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
   getGeminiApiKey,
+  getImgbbApiKey,
   onOpenViewPath,
   onRequestConvertAllImagesToWiki,
   onRegisterConvertAllImagesToWiki,
@@ -1821,6 +1824,59 @@ export default function MarkdownEditor({
     [currentFile?.id, onChangeWithUndoHistory, onUploadImage, value, wikiImageModalState],
   );
 
+  const handleConvertToImgbb = useCallback(
+    async ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.key || !modal?.kind) {
+        throw new Error('변환할 이미지를 찾을 수 없습니다.');
+      }
+      if (typeof onChangeWithUndoHistory !== 'function') {
+        throw new Error('문서를 수정할 수 없습니다.');
+      }
+      const apiKey =
+        typeof getImgbbApiKey === 'function'
+          ? String((await Promise.resolve(getImgbbApiKey())) || '').trim()
+          : '';
+      if (!apiKey) {
+        throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
+      }
+      const fetchSrc = resolveImgbbFetchSrc({
+        path: modal.key,
+        imageSrc: modal.imageSrc,
+      });
+      if (!fetchSrc) {
+        throw new Error('업로드할 이미지 소스를 찾지 못했습니다.');
+      }
+      const uploaded = await uploadImageToImgbb({
+        apiKey,
+        image: fetchSrc,
+        name: isDataImageUri(modal.key) ? 'image' : undefined,
+      });
+      const nextUrl = uploaded.url;
+      const next =
+        modal.kind === 'wiki'
+          ? updateWikiImagePathInMarkdown(value, {
+              path: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextPath: nextUrl,
+              width,
+              height,
+            })
+          : updateMarkdownImageSrcInMarkdown(value, {
+              src: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextSrc: nextUrl,
+              width,
+              height,
+            });
+      if (!next.updated || next.markdown === value) {
+        throw new Error('마크다운에서 해당 이미지를 찾지 못했습니다.');
+      }
+      onChangeWithUndoHistory(next.markdown);
+    },
+    [getImgbbApiKey, onChangeWithUndoHistory, value, wikiImageModalState],
+  );
+
   useEffect(() => {
     if (typeof onRegisterConvertAllImagesToWiki !== 'function') return undefined;
     onRegisterConvertAllImagesToWiki(async () => {
@@ -2285,6 +2341,7 @@ export default function MarkdownEditor({
         onStartFreeTransform={startFreeTransform}
         onCrop={handleCropWikiImage}
         onConvertToWiki={handleConvertMarkdownToWiki}
+        onConvertToImgbb={handleConvertToImgbb}
       />
       <ImageLinkModal
         isOpen={imageLinkModalOpen}

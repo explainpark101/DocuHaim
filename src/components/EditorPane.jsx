@@ -32,6 +32,10 @@ import {
 } from '@/utils/convertMarkdownImagesToWiki';
 import { copyCurrentPageAsFormattedHtml } from '@/utils/copyFormattedPageHtml';
 import {
+  collectImgbbCopyCandidates,
+} from '@/utils/imgbbCopyCandidates';
+import { uploadImageToImgbb } from '@/utils/imgbbUpload';
+import {
   emptyHomeContainerVariants,
   emptyHomeItemVariants,
   emptyHomeMenuContainerVariants,
@@ -101,6 +105,7 @@ export default function EditorPane({
   editorType,
   hideRecordingCompanions = false,
   getGeminiApiKey,
+  getImgbbApiKey,
 }) {
   const effectiveEditorType = editorType ?? loadEditorType();
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
@@ -117,6 +122,9 @@ export default function EditorPane({
   const [convertAllImagesConfirmOpen, setConvertAllImagesConfirmOpen] = useState(false);
   const [convertingAllImages, setConvertingAllImages] = useState(false);
   const [copyingFormattedHtml, setCopyingFormattedHtml] = useState(false);
+  const [imgbbCopyConfirmOpen, setImgbbCopyConfirmOpen] = useState(false);
+  const [imgbbCopyCandidates, setImgbbCopyCandidates] = useState([]);
+  const [imgbbCopyUploading, setImgbbCopyUploading] = useState(false);
   const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
   const { showAlert } = useAlertModal();
 
@@ -130,17 +138,31 @@ export default function EditorPane({
     onRefreshFromDisk?.();
   }, [onRefreshFromDisk]);
 
+  const finishCopyFormattedHtml = useCallback(async (imageSrcReplacements = null) => {
+    await copyCurrentPageAsFormattedHtml(document, {
+      imageSrcReplacements: imageSrcReplacements || undefined,
+    });
+    setFileManagementOpen(false);
+    showAlert({
+      title: '서식 유지 복사',
+      message: imageSrcReplacements?.size
+        ? 'ImgBB 업로드 후 현재 페이지를 HTML 서식과 이미지 포함 형태로 복사했습니다.'
+        : '현재 페이지를 HTML 서식과 이미지 포함 형태로 복사했습니다.',
+    });
+  }, [showAlert]);
+
   const handleCopyFormattedHtml = useCallback(async () => {
-    if (copyingFormattedHtml) return;
+    if (copyingFormattedHtml || imgbbCopyUploading) return;
     setCopyingFormattedHtml(true);
     try {
       novelFlushBeforeSaveRef.current?.();
-      await copyCurrentPageAsFormattedHtml();
-      setFileManagementOpen(false);
-      showAlert({
-        title: '서식 유지 복사',
-        message: '현재 페이지를 HTML 서식과 이미지 포함 형태로 복사했습니다.',
-      });
+      const candidates = collectImgbbCopyCandidates();
+      if (candidates.length > 0) {
+        setImgbbCopyCandidates(candidates);
+        setImgbbCopyConfirmOpen(true);
+        return;
+      }
+      await finishCopyFormattedHtml();
     } catch (err) {
       const message =
         err instanceof Error && err.message
@@ -150,7 +172,65 @@ export default function EditorPane({
     } finally {
       setCopyingFormattedHtml(false);
     }
-  }, [copyingFormattedHtml, showAlert]);
+  }, [copyingFormattedHtml, finishCopyFormattedHtml, imgbbCopyUploading, showAlert]);
+
+  const handleConfirmImgbbCopyUpload = useCallback(async () => {
+    if (imgbbCopyUploading) return;
+    setImgbbCopyUploading(true);
+    try {
+      const apiKey =
+        typeof getImgbbApiKey === 'function'
+          ? String((await Promise.resolve(getImgbbApiKey())) || '').trim()
+          : '';
+      if (!apiKey) {
+        throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
+      }
+      const replacements = new Map();
+      for (const candidate of imgbbCopyCandidates) {
+        const uploaded = await uploadImageToImgbb({
+          apiKey,
+          image: candidate.fetchSrc,
+          name: candidate.kind === 'base64' ? 'image' : undefined,
+        });
+        replacements.set(candidate.replaceKey, uploaded.url);
+      }
+      setImgbbCopyConfirmOpen(false);
+      setImgbbCopyCandidates([]);
+      await finishCopyFormattedHtml(replacements);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'ImgBB 업로드 후 복사에 실패했습니다.';
+      showAlert({ title: '서식 유지 복사', message });
+    } finally {
+      setImgbbCopyUploading(false);
+    }
+  }, [finishCopyFormattedHtml, getImgbbApiKey, imgbbCopyCandidates, imgbbCopyUploading, showAlert]);
+
+  const handleSkipImgbbCopyUpload = useCallback(async () => {
+    if (imgbbCopyUploading) return;
+    setImgbbCopyConfirmOpen(false);
+    setImgbbCopyCandidates([]);
+    setCopyingFormattedHtml(true);
+    try {
+      await finishCopyFormattedHtml();
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : '서식 유지 복사에 실패했습니다.';
+      showAlert({ title: '서식 유지 복사', message });
+    } finally {
+      setCopyingFormattedHtml(false);
+    }
+  }, [finishCopyFormattedHtml, imgbbCopyUploading, showAlert]);
+
+  const handleCancelImgbbCopy = useCallback(() => {
+    if (imgbbCopyUploading) return;
+    setImgbbCopyConfirmOpen(false);
+    setImgbbCopyCandidates([]);
+  }, [imgbbCopyUploading]);
 
   const openConvertAllImagesConfirm = useCallback(() => {
     setFileManagementOpen(false);
@@ -817,6 +897,7 @@ export default function EditorPane({
                       uploadImagePercent={uploadImagePercent}
                       onCancelUploadImage={onCancelUploadImage}
                       onResolveWikiImageUrl={onResolveWikiImageUrl}
+                      getImgbbApiKey={getImgbbApiKey}
                     />
                   ) : (
                     <MarkdownEditor
@@ -835,6 +916,7 @@ export default function EditorPane({
                       onOpenViewPath={onOpenViewPath}
                       snippetConfig={snippetConfig}
                       getGeminiApiKey={getGeminiApiKey}
+                      getImgbbApiKey={getImgbbApiKey}
                       onRequestConvertAllImagesToWiki={openConvertAllImagesConfirm}
                       onRegisterConvertAllImagesToWiki={(fn) => {
                         convertAllImagesToWikiRef.current = fn;
@@ -970,6 +1052,52 @@ export default function EditorPane({
           setConvertAllImagesConfirmOpen(false);
         }}
       />
+      <ConfirmModal
+        isOpen={imgbbCopyConfirmOpen}
+        title="ImgBB로 업로드할까요?"
+        message={
+          imgbbCopyUploading
+            ? '이미지를 ImgBB에 업로드하는 중입니다…'
+            : `외부 https가 아닌 wiki·base64 이미지 ${imgbbCopyCandidates.length}개를 ImgBB에 올린 뒤 복사할 수 있습니다.`
+        }
+        confirmLabel={imgbbCopyUploading ? '업로드 중…' : '업로드 후 복사'}
+        cancelLabel="취소"
+        discardLabel="업로드 없이 복사"
+        confirmDisabled={imgbbCopyUploading || imgbbCopyCandidates.length === 0}
+        onConfirm={() => {
+          void handleConfirmImgbbCopyUpload();
+        }}
+        onCancel={handleCancelImgbbCopy}
+        onDiscard={() => {
+          void handleSkipImgbbCopyUpload();
+        }}
+      >
+        <div className="max-h-[min(50vh,320px)] overflow-y-auto rounded-lg border border-gray-200 dark:border-odp-borderSoft">
+          <ul className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3">
+            {imgbbCopyCandidates.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-col gap-1 rounded-md border border-gray-100 bg-gray-50 p-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+              >
+                <div className="flex h-20 items-center justify-center overflow-hidden rounded bg-white dark:bg-odp-surface">
+                  {item.previewSrc ? (
+                    <img
+                      src={item.previewSrc}
+                      alt=""
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-[10px] text-gray-400">미리보기 없음</span>
+                  )}
+                </div>
+                <p className="truncate text-[10px] text-gray-600 dark:text-odp-muted" title={item.label}>
+                  {item.kind === 'wiki' ? 'wiki' : 'base64'} · {item.label}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </ConfirmModal>
     </div>
   );
 }

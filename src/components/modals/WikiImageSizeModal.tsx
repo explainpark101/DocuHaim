@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Crop, ImagePlus, Loader2, Scaling, X } from 'lucide-react';
+import { Check, Crop, ImagePlus, Loader2, Scaling, Upload, X } from 'lucide-react';
 import Modal from '@/components/modals/Modal';
 import NoteImageCropPanel from '@/components/modals/NoteImageCropPanel';
 import { isDataImageUri } from '@/utils/markdownImageExport';
+import { isPublicHttpImageUrl } from '@/utils/imgbbUpload';
 import { normalizeSizeValue } from '@/utils/wikiImageSyntax';
 
 const BASE64_DISPLAY_CHARS = 30;
@@ -55,6 +56,11 @@ export type WikiImageSizeConvertToWikiPayload = {
   height: string | null;
 };
 
+export type WikiImageSizeConvertToImgbbPayload = {
+  width: string | null;
+  height: string | null;
+};
+
 type WikiImageSizeModalProps = {
   isOpen: boolean;
   onClose?: () => void;
@@ -67,6 +73,7 @@ type WikiImageSizeModalProps = {
   onStartFreeTransform?: () => void;
   onCrop?: (payload: WikiImageSizeCropPayload) => void | Promise<void>;
   onConvertToWiki?: (payload: WikiImageSizeConvertToWikiPayload) => void | Promise<void>;
+  onConvertToImgbb?: (payload: WikiImageSizeConvertToImgbbPayload) => void | Promise<void>;
 };
 
 export default function WikiImageSizeModal({
@@ -81,12 +88,14 @@ export default function WikiImageSizeModal({
   onStartFreeTransform,
   onCrop,
   onConvertToWiki,
+  onConvertToImgbb,
 }: WikiImageSizeModalProps) {
   const [widthInput, setWidthInput] = useState(() => formatInputSize(initialWidth));
   const [heightInput, setHeightInput] = useState(() => formatInputSize(initialHeight));
   const [error, setError] = useState('');
   const [cropMode, setCropMode] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [convertingImgbb, setConvertingImgbb] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -95,10 +104,14 @@ export default function WikiImageSizeModal({
     setError('');
     setCropMode(false);
     setConverting(false);
+    setConvertingImgbb(false);
   }, [isOpen, initialWidth, initialHeight, path, imageSrc]);
 
   const pathDisplay = useMemo(() => displayPathValue(path), [path]);
   const showConvertToWiki = kind === 'markdown' && typeof onConvertToWiki === 'function';
+  const showConvertToImgbb =
+    typeof onConvertToImgbb === 'function' && !isPublicHttpImageUrl(path);
+  const busy = converting || convertingImgbb;
 
   const previewText = useMemo(() => {
     if (!path) return '';
@@ -140,7 +153,7 @@ export default function WikiImageSizeModal({
   };
 
   const handleConvertToWiki = async () => {
-    if (!showConvertToWiki || converting) return;
+    if (!showConvertToWiki || busy) return;
     const sizes = resolveSizes();
     if (!sizes) return;
     setConverting(true);
@@ -159,13 +172,33 @@ export default function WikiImageSizeModal({
     }
   };
 
+  const handleConvertToImgbb = async () => {
+    if (!showConvertToImgbb || busy) return;
+    const sizes = resolveSizes();
+    if (!sizes) return;
+    setConvertingImgbb(true);
+    setError('');
+    try {
+      await onConvertToImgbb?.(sizes);
+      onClose?.();
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'ImgBB로 변환하지 못했습니다.';
+      setError(message);
+    } finally {
+      setConvertingImgbb(false);
+    }
+  };
+
   const canCrop = Boolean(imageSrc) && typeof onCrop === 'function';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={cropMode ? () => setCropMode(false) : onClose}
-      onConfirm={cropMode || converting ? undefined : handleApply}
+      onConfirm={cropMode || busy ? undefined : handleApply}
       contentClassName={
         cropMode ? 'max-w-2xl w-[min(96vw,42rem)] max-h-[90vh] h-[min(90vh,720px)]' : 'max-w-lg'
       }
@@ -201,7 +234,7 @@ export default function WikiImageSizeModal({
               value={widthInput}
               onChange={(e) => setWidthInput(e.target.value)}
               placeholder="예: 320 / 320px / 50% / 60vw"
-              disabled={converting}
+              disabled={busy}
               className="w-full rounded border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
             />
           </label>
@@ -215,7 +248,7 @@ export default function WikiImageSizeModal({
               value={heightInput}
               onChange={(e) => setHeightInput(e.target.value)}
               placeholder="예: 240 / 240px / 40% / 40vh"
-              disabled={converting}
+              disabled={busy}
               className="w-full rounded border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
             />
           </label>
@@ -232,18 +265,31 @@ export default function WikiImageSizeModal({
                 onClick={() => {
                   void handleConvertToWiki();
                 }}
-                disabled={converting}
+                disabled={busy}
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition disabled:opacity-60"
               >
                 {converting ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
                 wiki image로 변경
               </button>
             ) : null}
+            {showConvertToImgbb ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleConvertToImgbb();
+                }}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition disabled:opacity-60"
+              >
+                {convertingImgbb ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                ImgBB로 변환
+              </button>
+            ) : null}
             {canCrop ? (
               <button
                 type="button"
                 onClick={() => setCropMode(true)}
-                disabled={converting}
+                disabled={busy}
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition disabled:opacity-60"
               >
                 <Crop size={16} />
@@ -257,7 +303,7 @@ export default function WikiImageSizeModal({
                   onStartFreeTransform();
                   onClose?.();
                 }}
-                disabled={converting}
+                disabled={busy}
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition disabled:opacity-60"
               >
                 <Scaling size={16} />
@@ -267,7 +313,7 @@ export default function WikiImageSizeModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={converting}
+              disabled={busy}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-odp-fgStrong bg-gray-100 dark:bg-odp-bgSoft hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition disabled:opacity-60"
             >
               <X size={16} />
@@ -276,7 +322,7 @@ export default function WikiImageSizeModal({
             <button
               type="button"
               onClick={handleApply}
-              disabled={converting}
+              disabled={busy}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition disabled:opacity-60"
             >
               <Check size={16} />

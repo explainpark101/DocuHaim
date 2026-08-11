@@ -63,6 +63,8 @@ import {
   convertAllMarkdownImagesToWiki,
   hasStandardMarkdownImages,
 } from '@/utils/convertMarkdownImagesToWiki';
+import { isDataImageUri } from '@/utils/markdownImageExport';
+import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
 import '@/styles/novel-editor.css';
 
 const DEBUG_WIKI_IMAGE = false;
@@ -248,6 +250,7 @@ export default function NovelMarkdownEditor({
   documentKey,
   onResolveWikiImageUrl,
   onRegisterConvertAllImagesToWiki,
+  getImgbbApiKey,
 }) {
   const navigate = useNavigate();
   const debounceTimerRef = useRef(null);
@@ -798,6 +801,69 @@ export default function NovelMarkdownEditor({
     [flushPendingMarkdown, onChange, onUploadImage, value, wikiImageModalState],
   );
 
+  const handleConvertToImgbb = useCallback(
+    async ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.path) {
+        throw new Error('변환할 이미지를 찾을 수 없습니다.');
+      }
+      const apiKey =
+        typeof getImgbbApiKey === 'function'
+          ? String((await Promise.resolve(getImgbbApiKey())) || '').trim()
+          : '';
+      if (!apiKey) {
+        throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
+      }
+      const fetchSrc = resolveImgbbFetchSrc({
+        path: modal.path,
+        imageSrc: modal.imageSrc,
+      });
+      if (!fetchSrc) {
+        throw new Error('업로드할 이미지 소스를 찾지 못했습니다.');
+      }
+      const uploaded = await uploadImageToImgbb({
+        apiKey,
+        image: fetchSrc,
+        name: isDataImageUri(modal.path) ? 'image' : undefined,
+      });
+      const nextPath = uploaded.url;
+
+      const ed = editorRef.current;
+      const view = ed?.view;
+      const pos = modal.nodePos;
+      if (view && Number.isInteger(pos)) {
+        const node = view.state.doc.nodeAt(pos);
+        if (node?.type?.name === 'wikiImage') {
+          view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            path: nextPath,
+            width: width || null,
+            height: height || null,
+          }, node.marks));
+          setHydrateTick((t) => t + 1);
+          flushPendingMarkdown();
+          return;
+        }
+      }
+
+      if (typeof onChange !== 'function') {
+        throw new Error('문서를 수정할 수 없습니다.');
+      }
+      const next = updateWikiImagePathInMarkdown(value, {
+        path: modal.path,
+        occurrence: modal.occurrence ?? 0,
+        nextPath,
+        width,
+        height,
+      });
+      if (!next.updated || next.markdown === value) {
+        throw new Error('마크다운에서 해당 이미지를 찾지 못했습니다.');
+      }
+      onChange(next.markdown);
+    },
+    [flushPendingMarkdown, getImgbbApiKey, onChange, value, wikiImageModalState],
+  );
+
   return (
     <div ref={containerRef} className="relative flex h-full min-h-0 w-full flex-1 flex-col">
       {isUploadingEditorImage && (
@@ -907,6 +973,7 @@ export default function NovelMarkdownEditor({
         imageSrc={wikiImageModalState?.imageSrc ?? ''}
         onApply={handleApplyWikiImageSize}
         onCrop={handleCropWikiImage}
+        onConvertToImgbb={handleConvertToImgbb}
       />
     </div>
   );

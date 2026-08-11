@@ -16,6 +16,7 @@ const initialCreds = {
   bucket: '',
   endpoint: '',
   googleAiStudioApiKey: '',
+  imgbbApiKey: '',
 };
 
 export function AuthProvider({ children }) {

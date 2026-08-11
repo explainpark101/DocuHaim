@@ -109,6 +109,7 @@ export default function SettingsPage({
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [googleAiKeyInput, setGoogleAiKeyInput] = useState('');
+  const [imgbbKeyInput, setImgbbKeyInput] = useState('');
   const [webdavForm, setWebdavForm] = useState(webdavConfig ?? {
     endpoint: '',
     username: '',
@@ -150,6 +151,7 @@ export default function SettingsPage({
   );
   const [webdavConnOpen, setWebdavConnOpen] = useState(false);
   const [geminiConnOpen, setGeminiConnOpen] = useState(true);
+  const [imgbbConnOpen, setImgbbConnOpen] = useState(true);
   const location = useLocation();
   const resolvedLocalFolderName =
     String(localFolderName || '').trim() || loadLastLocalFolderName() || '';
@@ -190,6 +192,7 @@ export default function SettingsPage({
     if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-webdav') setWebdavConnOpen(true);
     if (hash === 'settings-gemini') setGeminiConnOpen(true);
+    if (hash === 'settings-imgbb') setImgbbConnOpen(true);
     const timer = window.setTimeout(() => {
       const el = document.getElementById(hash);
       if (!el) return;
@@ -212,14 +215,22 @@ export default function SettingsPage({
   useEffect(() => {
     setFormCreds(s3Creds);
     setGoogleAiKeyInput('');
+    setImgbbKeyInput('');
   }, [s3Creds]);
 
   const hasStoredGoogleAiKey = Boolean((s3Creds?.googleAiStudioApiKey || '').trim());
+  const hasStoredImgbbKey = Boolean((s3Creds?.imgbbApiKey || '').trim());
 
   const buildCredsForSave = () => {
-    const trimmedKey = googleAiKeyInput.trim();
-    const nextKey = trimmedKey || (hasStoredGoogleAiKey ? s3Creds.googleAiStudioApiKey : '');
-    return { ...formCreds, googleAiStudioApiKey: nextKey };
+    const trimmedGeminiKey = googleAiKeyInput.trim();
+    const nextGeminiKey = trimmedGeminiKey || (hasStoredGoogleAiKey ? s3Creds.googleAiStudioApiKey : '');
+    const trimmedImgbbKey = imgbbKeyInput.trim();
+    const nextImgbbKey = trimmedImgbbKey || (hasStoredImgbbKey ? s3Creds.imgbbApiKey : '');
+    return {
+      ...formCreds,
+      googleAiStudioApiKey: nextGeminiKey,
+      imgbbApiKey: nextImgbbKey,
+    };
   };
   useEffect(() => {
     setWebdavForm(webdavConfig ?? {
@@ -712,6 +723,77 @@ export default function SettingsPage({
                 <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
                   마지막으로 사용한 모델이 저장되며, 다음에 AI 도우미를 열 때 자동으로 선택됩니다.
                 </p>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  API 키 저장
+                </button>
+              </div>
+            </>
+          ) : null}
+        </form>
+
+        <form
+          id="settings-imgbb"
+          tabIndex={-1}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const trimmedKey = imgbbKeyInput.trim();
+            if (!trimmedKey && !hasStoredImgbbKey) {
+              alert('API 키를 입력하세요.');
+              return;
+            }
+            onSaveS3Creds(buildCredsForSave());
+          }}
+          className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+        >
+          <button
+            type="button"
+            onClick={() => setImgbbConnOpen((v) => !v)}
+            className="flex w-full items-center gap-2 text-left"
+            aria-expanded={imgbbConnOpen}
+          >
+            {imgbbConnOpen ? (
+              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            ) : (
+              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            )}
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+              ImgBB
+            </h3>
+          </button>
+          {imgbbConnOpen ? (
+            <>
+              <p className="text-xs text-gray-600 dark:text-odp-muted">
+                ImgBB API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시
+                표시되지 않습니다. 키는{' '}
+                <a
+                  href="https://api.imgbb.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 underline dark:text-blue-400"
+                >
+                  api.imgbb.com
+                </a>
+                에서 발급할 수 있습니다.
+              </p>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                  value={imgbbKeyInput}
+                  onChange={(e) => setImgbbKeyInput(e.target.value)}
+                  placeholder={
+                    hasStoredImgbbKey ? '저장됨 — 변경 시 새 키 입력' : 'ImgBB API 키 입력'
+                  }
+                />
               </div>
               <div className="flex justify-end pt-1">
                 <button

@@ -357,6 +357,11 @@ function MainApp() {
     [s3Creds?.googleAiStudioApiKey],
   );
 
+  const getImgbbApiKey = useCallback(
+    () => (s3Creds?.imgbbApiKey || '').trim(),
+    [s3Creds?.imgbbApiKey],
+  );
+
   useEffect(() => {
     const onUnload = () => clearGeminiApiKeySession();
     window.addEventListener('beforeunload', onUnload);
@@ -1358,6 +1363,7 @@ function MainApp() {
     'bucket',
     'endpoint',
     'googleAiStudioApiKey',
+    'imgbbApiKey',
   ];
 
   const normalizeCredsForCompare = (creds) => {
@@ -8543,6 +8549,7 @@ function MainApp() {
                     onOpenViewPath: handleOpenNoteFromChat,
                     snippetConfig,
                     getGeminiApiKey,
+                    getImgbbApiKey,
                     onRequestDelete: () =>
                       setDeleteTarget(
                         paneFile

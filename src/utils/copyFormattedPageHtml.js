@@ -133,10 +133,42 @@ async function imageSrcToDataUrl(src) {
   return blobToDataUrl(await response.blob());
 }
 
-async function inlineImages(root) {
+/**
+ * @param {ParentNode} root
+ * @param {Map<string, string> | Record<string, string> | null | undefined} replacements
+ */
+function applyImageSrcReplacements(root, replacements) {
+  if (!replacements) return;
+  const lookup = replacements instanceof Map
+    ? (key) => (key ? replacements.get(key) : undefined)
+    : (key) => (key ? replacements[key] : undefined);
+
+  [...root.querySelectorAll('img')].forEach((img) => {
+    const wikiPath = img.getAttribute('data-wiki-path') || '';
+    const mdSrc = img.getAttribute('data-md-src') || '';
+    const src = img.getAttribute('src') || img.src || '';
+    const next =
+      lookup(wikiPath) ||
+      lookup(mdSrc) ||
+      lookup(src);
+    if (!next) return;
+    img.setAttribute('src', next);
+    img.removeAttribute('srcset');
+    img.removeAttribute('data-storage-hydrating');
+    img.removeAttribute('data-storage-hydrated');
+  });
+}
+
+async function inlineImages(root, skipKeys) {
+  const skip = skipKeys instanceof Set ? skipKeys : null;
   const imgs = [...root.querySelectorAll('img')];
   await Promise.all(imgs.map(async (img) => {
+    const wikiPath = img.getAttribute('data-wiki-path') || '';
+    const mdSrc = img.getAttribute('data-md-src') || '';
     const src = img.getAttribute('src') || img.src || '';
+    if (skip && (skip.has(wikiPath) || skip.has(mdSrc) || skip.has(src))) {
+      return;
+    }
     if (!src) return;
     try {
       const dataUrl = await imageSrcToDataUrl(src);
@@ -221,10 +253,22 @@ async function writeHtmlClipboard(html, text) {
   if (!ok) throw new Error('브라우저가 HTML 클립보드 쓰기를 거부했습니다.');
 }
 
-export async function copyCurrentPageAsFormattedHtml(scope = document) {
+/**
+ * @param {ParentNode} [scope]
+ * @param {{ imageSrcReplacements?: Map<string, string> | Record<string, string> }} [options]
+ */
+export async function copyCurrentPageAsFormattedHtml(scope = document, options = {}) {
   const sourceRoot = findCopyRoot(scope);
   if (!sourceRoot) {
     throw new Error('복사할 렌더링 영역을 찾지 못했습니다.');
+  }
+
+  const replacements = options?.imageSrcReplacements || null;
+  const replacedKeys = new Set();
+  if (replacements instanceof Map) {
+    for (const key of replacements.keys()) replacedKeys.add(key);
+  } else if (replacements && typeof replacements === 'object') {
+    for (const key of Object.keys(replacements)) replacedKeys.add(key);
   }
 
   const iframe = createLightModeFrame();
@@ -240,7 +284,8 @@ export async function copyCurrentPageAsFormattedHtml(scope = document) {
 
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     inlineComputedStyles(clone, clone);
-    await inlineImages(clone);
+    applyImageSrcReplacements(clone, replacements);
+    await inlineImages(clone, replacedKeys);
 
     const html = [
       '<div style="background:#ffffff;color:#111827;">',

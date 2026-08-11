@@ -335,3 +335,35 @@ export function updateMarkdownImageSizeInMarkdown(markdown, { src, occurrence = 
   });
   return { markdown: next, updated };
 }
+
+/** Replace a standard markdown image destination (keep alt + size attrs). */
+export function updateMarkdownImageSrcInMarkdown(markdown, {
+  src,
+  occurrence = 0,
+  nextSrc,
+  width,
+  height,
+}) {
+  if (!src || !nextSrc) return { markdown, updated: false };
+  const source = String(markdown ?? '');
+  const IMAGE_RE = /!\[([^\]]*)\]\(([^)\n]+)\)(\{[^}\n]*\})?/g;
+  let matchedCount = -1;
+  let updated = false;
+  const next = source.replace(IMAGE_RE, (full, alt, destination, rawAttrs = '') => {
+    const dest = String(destination ?? '');
+    const mdSrc = dest.trim().split(/\s+/)[0];
+    if (!mdSrc || mdSrc !== src) return full;
+    matchedCount += 1;
+    if (matchedCount !== occurrence) return full;
+    updated = true;
+    const existing = parseMarkdownImageAttrsBlock(rawAttrs);
+    const attrsBlock = markdownImageAttrsBlockFromSize({
+      width: width === undefined ? existing.width : width,
+      height: height === undefined ? existing.height : height,
+      background: existing.background,
+    });
+    const base = `![${alt}](${nextSrc})`;
+    return attrsBlock ? `${base}${attrsBlock}` : base;
+  });
+  return { markdown: next, updated };
+}

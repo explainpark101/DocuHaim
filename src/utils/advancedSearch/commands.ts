@@ -34,6 +34,7 @@ export type AppCommandId =
   | 'settings-backup'
   | 'settings-webdav'
   | 'settings-gemini'
+  | 'settings-imgbb'
   | 'settings-webauthn'
   | 'settings-editor'
   | 'settings-navigation'
@@ -200,6 +201,13 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: 'Gemini API 키·모델 설정',
     path: '/settings#settings-gemini',
     keywords: ['gemini', 'google ai', 'api key', 'llm', '지미니'],
+  },
+  {
+    id: 'settings-imgbb',
+    title: '설정 · ImgBB',
+    description: 'ImgBB API 키 (이미지 외부 업로드)',
+    path: '/settings#settings-imgbb',
+    keywords: ['imgbb', '이미지 업로드', 'image host', 'api key', 'ibb'],
   },
   {
     id: 'settings-webauthn',

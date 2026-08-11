@@ -104,10 +104,13 @@ import {
   getWikiImageOccurrenceInContainer,
   replaceMarkdownImageWithWikiPath,
   updateMarkdownImageSizeInMarkdown,
+  updateMarkdownImageSrcInMarkdown,
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
-import { prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
+import { isDataImageUri, prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
+import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
+import { useAuth } from '@/contexts/AuthContext';
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
@@ -426,6 +429,11 @@ export default function ExportPDFPage({
   const location = useLocation();
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
+  const { s3Creds } = useAuth();
+  const getImgbbApiKey = useCallback(
+    () => (s3Creds?.imgbbApiKey || '').trim(),
+    [s3Creds?.imgbbApiKey],
+  );
   const locationState = location.state && typeof location.state === 'object' ? location.state : null;
   const routeExportPath = parseExportPdfPathFromAppPathname(location.pathname);
   const initialValue =
@@ -1174,6 +1182,57 @@ export default function ExportPDFPage({
       });
     },
     [currentFile, previewValue, wikiImageModalState],
+  );
+
+  const handleConvertToImgbb = useCallback(
+    async ({ width, height }) => {
+      const modal = wikiImageModalState;
+      if (!modal?.key || !modal?.kind) {
+        throw new Error('변환할 이미지를 찾을 수 없습니다.');
+      }
+      const apiKey = getImgbbApiKey();
+      if (!apiKey) {
+        throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
+      }
+      const fetchSrc = resolveImgbbFetchSrc({
+        path: modal.key,
+        imageSrc: modal.imageSrc,
+      });
+      if (!fetchSrc) {
+        throw new Error('업로드할 이미지 소스를 찾지 못했습니다.');
+      }
+      const uploaded = await uploadImageToImgbb({
+        apiKey,
+        image: fetchSrc,
+        name: isDataImageUri(modal.key) ? 'image' : undefined,
+      });
+      const nextUrl = uploaded.url;
+      const next =
+        modal.kind === 'wiki'
+          ? updateWikiImagePathInMarkdown(previewValue, {
+              path: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextPath: nextUrl,
+              width,
+              height,
+            })
+          : updateMarkdownImageSrcInMarkdown(previewValue, {
+              src: modal.key,
+              occurrence: modal.occurrence ?? 0,
+              nextSrc: nextUrl,
+              width,
+              height,
+            });
+      if (!next.updated || next.markdown === previewValue) {
+        throw new Error('마크다운에서 해당 이미지를 찾지 못했습니다.');
+      }
+      setPreviewValue(next.markdown);
+      setPendingPrintReturnState({
+        currentFile,
+        editorContent: next.markdown,
+      });
+    },
+    [currentFile, getImgbbApiKey, previewValue, wikiImageModalState],
   );
 
   const findResizableImageElement = useCallback((target) => {
@@ -2033,6 +2092,7 @@ export default function ExportPDFPage({
         onStartFreeTransform={startFreeTransform}
         onCrop={handleCropWikiImage}
         onConvertToWiki={handleConvertMarkdownToWiki}
+        onConvertToImgbb={handleConvertToImgbb}
       />
       <HaimTableBoxResizeLayer
         containerRef={previewContainerRef}
