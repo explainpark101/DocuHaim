@@ -183,7 +183,7 @@ type SectionId = 'settings' | 'shortcuts' | 'layers' | 'background' | 'selection
 
 const DEFAULT_SECTION_OPEN: Record<SectionId, boolean> = {
   settings: false,
-  shortcuts: true,
+  shortcuts: false,
   layers: true,
   background: true,
   selection: true,

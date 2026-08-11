@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+KR:wght@100..900&display=swap');
 @import "tailwindcss";
 @config "../tailwind.config";
-/* App-bundled webfonts — also imported as ?raw for note-cover export */
+/* App-bundled webfonts — mirrored in noteCover/builtinWebfontCss.ts for MD export */
 @import './styles/builtin-webfonts.css';
 
 /* Paperozi/A2z + system glyph fallback — source of truth for font-sans / font-display */

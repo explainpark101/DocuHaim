@@ -1,9 +1,9 @@
 /**
  * Collect and embed webfont CSS used by note-cover text/shape elements.
- * Built-in faces come from `src/styles/builtin-webfonts.css` (same as app load).
+ * Built-in faces come from `builtinWebfontCss.ts` (mirrors builtin-webfonts.css).
  * User faces come from vault webfont settings cache.
  */
-import builtinWebfontCss from '@/styles/builtin-webfonts.css?raw';
+import { BUILTIN_WEBFONT_CSS } from '@/utils/noteCover/builtinWebfontCss';
 import { APP_BUILTIN_FONT_FAMILY_OPTIONS } from '@/utils/fontOptions';
 import {
   extractFontFamilyNamesFromCss,
@@ -14,6 +14,9 @@ import { isCoverShapeElement } from '@/utils/noteCover/types';
 
 const FONT_FACE_RE = /@font-face\s*\{[\s\S]*?\}/gi;
 
+/** Inherited cover body font when element.fontFamily is unset (app `font-sans`). */
+export const DEFAULT_COVER_FONT_FAMILY = 'Paperozi';
+
 /** First family token from a CSS font-family value (`"Paperozi", sans-serif` → Paperozi). */
 export function primaryFontFamilyName(value: string | null | undefined): string {
   const raw = String(value || '').trim();
@@ -23,18 +26,36 @@ export function primaryFontFamilyName(value: string | null | undefined): string 
   return name;
 }
 
+function elementUsesCoverText(el: NoteCover['elements'][number]): boolean {
+  if (el.type === 'text') return true;
+  if (!isCoverShapeElement(el)) return false;
+  return typeof el.text === 'string' && el.text.length > 0;
+}
+
 /** Unique primary font-family names referenced by cover text/shape elements. */
 export function collectCoverFontFamilies(cover: NoteCover): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
+  const push = (family: string) => {
+    const name = primaryFontFamilyName(family);
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(name);
+  };
+
   for (const el of cover.elements) {
     if (el.type !== 'text' && !isCoverShapeElement(el)) continue;
-    const family = primaryFontFamilyName(el.fontFamily);
-    if (!family) continue;
-    const key = family.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(family);
+    const explicit = primaryFontFamilyName(el.fontFamily);
+    if (explicit) {
+      push(explicit);
+      continue;
+    }
+    // Unset fontFamily inherits app sans (Paperozi) on cover surfaces.
+    if (elementUsesCoverText(el)) {
+      push(DEFAULT_COVER_FONT_FAMILY);
+    }
   }
   return out;
 }
@@ -67,7 +88,7 @@ function isBuiltinFamily(family: string): boolean {
 }
 
 function resolveBuiltinCss(family: string): string {
-  return extractFontFaceBlocksForFamily(builtinWebfontCss, family);
+  return extractFontFaceBlocksForFamily(BUILTIN_WEBFONT_CSS, family);
 }
 
 function resolveUserCss(family: string): string {
