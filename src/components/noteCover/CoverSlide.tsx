@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { useMemo } from 'react';
 import { getCoverFrameRect } from '@/utils/noteCover/layout';
 import {
   coverShapeShellStyle,
@@ -12,6 +13,7 @@ import {
   type CoverShapeElement,
   type NoteCover,
 } from '@/utils/noteCover/types';
+import { joinNoteCoverWebfontCss } from '@/utils/noteCover/webfonts';
 import { useCoverImageUrl } from '@/hooks/useCoverImageUrl';
 
 type GetPresignedUrl = ((path: string) => Promise<string | null>) | null | undefined;
@@ -27,6 +29,16 @@ type CoverSlideProps = {
   renderElements?: boolean;
   children?: ReactNode;
 };
+
+function CoverWebfontStyles({ cover }: { cover: NoteCover }) {
+  const css = useMemo(() => joinNoteCoverWebfontCss(cover.webfonts), [cover.webfonts]);
+  if (!css) return null;
+  return (
+    <style data-note-cover-webfonts="1">
+      {css}
+    </style>
+  );
+}
 
 function CoverBgImage({
   path,
@@ -135,6 +147,7 @@ export default function CoverSlide({
         event.stopPropagation();
       }}
     >
+      <CoverWebfontStyles cover={cover} />
       {cover.bg.imagePath ? (
         <CoverBgImage path={cover.bg.imagePath} getPresignedUrl={getPresignedUrl} />
       ) : null}

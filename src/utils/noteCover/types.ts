@@ -96,6 +96,16 @@ export type CoverShapeElement = CoverElementBase & {
 
 export type CoverElement = CoverTextElement | CoverImageElement | CoverShapeElement;
 
+/** Portable webfont CSS bundled with the cover for export / offline preview. */
+export type NoteCoverWebfont = {
+  /** Primary font-family name (matches element `fontFamily` first token). */
+  family: string;
+  /** `@font-face` / `@import` CSS needed to render this family. */
+  css: string;
+  /** Where the CSS was resolved from when last synced. */
+  source?: 'builtin' | 'user';
+};
+
 export function isCoverShapeType(type: unknown): type is CoverShapeType {
   return type === 'rect' || type === 'ellipse' || type === 'roundRect';
 }
@@ -118,6 +128,11 @@ export type NoteCover = {
   rootLayerIds: string[];
   groups: CoverGroup[];
   elements: CoverElement[];
+  /**
+   * Webfonts used by cover text/shape elements (builtin + user).
+   * Synced on serialize / markdown download so exported notes stay portable.
+   */
+  webfonts?: NoteCoverWebfont[];
 };
 
 export const DEFAULT_COVER_PAGE_SIZE_ID: PrintPageSizeId = 'a4';

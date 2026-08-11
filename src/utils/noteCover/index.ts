@@ -12,6 +12,7 @@ export type {
   CoverTextElement,
   CoverTextVAlign,
   NoteCover,
+  NoteCoverWebfont,
 } from '@/utils/noteCover/types';
 export {
   NOTE_COVER_VERSION,
@@ -31,6 +32,7 @@ export {
 } from '@/utils/noteCover/types';
 export {
   escapeCoverJsonForComment,
+  ensureNoteCoverWebfontsInMarkdown,
   findNoteCoverCommentRange,
   formatNoteCoverIssues,
   getNoteCoverCommentRaw,
@@ -50,6 +52,13 @@ export type {
   NormalizeNoteCoverResult,
   ParseNoteCoverResult,
 } from '@/utils/noteCover/parse';
+export {
+  buildCoverWebfontEntries,
+  collectCoverFontFamilies,
+  joinNoteCoverWebfontCss,
+  primaryFontFamilyName,
+  syncNoteCoverWebfonts,
+} from '@/utils/noteCover/webfonts';
 export {
   COVER_CENTER_SNAP_THRESHOLD_PCT,
   frameLocalToPage,

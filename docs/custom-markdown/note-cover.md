@@ -64,6 +64,18 @@ type NoteCover = {
   rootLayerIds: string[];  // front-first stack of element or group ids
   groups: CoverGroup[];
   elements: CoverElement[];
+  /**
+   * Portable webfont CSS for families used by text/shape elements.
+   * Synced on serialize and markdown download (builtin + user vault webfonts).
+   * Omit or [] when none resolved.
+   */
+  webfonts?: NoteCoverWebfont[];
+};
+
+type NoteCoverWebfont = {
+  family: string;                 // primary font-family name
+  css: string;                    // @font-face / @import CSS for that family
+  source?: 'builtin' | 'user';    // optional; set when last synced
 };
 
 type CoverGroup = {
@@ -134,6 +146,7 @@ type CoverElement =
 - Position defaults (if missing): text ≈ `(10,20,80,12)`, image ≈ `(20,40,50,35)`, shape ≈ `(10,20,80,30)`; `x,y` clamp 0–100; `w,h` clamp 1–100.
 - Orphan `groupId`s get synthetic groups; then `ensureLayerTree` repairs `rootLayerIds` / `childIds` consistency (host must keep a valid layer tree; see `layerTree.ts`).
 - `locked: true` on an element or group blocks canvas move/resize/in-place edit (group lock applies to descendants). Editor shows a yellow ring on locked elements only while selected; omit `locked` when false.
+- `webfonts`: on write/export, collect primary `fontFamily` tokens from text/shape elements; resolve CSS from app built-ins (`src/styles/builtin-webfonts.css`) and vault user webfonts; store as `{ family, css, source? }[]`. Omit when empty. Hosts that render the cover should inject `webfonts[].css` (see `CoverSlide`).
 
 **Shape render notes**
 
@@ -148,10 +161,10 @@ type CoverElement =
 |-------|----------|
 | Note MdPreview | Replace leading cover comment with a mount host; **auto-mount** `CoverSlide` when `enabled` (re-hydrate if preview DOM recreates). Cover uses `cover.pageSizeId` aspect + scaled fonts. Cover paper always **light**; body below follows editor theme. Click opens Export cover editor confirm. |
 | Export / print | Persist toolbar paper size onto `cover.pageSizeId` while editing; restore toolbar from cover when entering cover edit. Render/print as before (`--print-cover-fit-*`, named `@page size`, logical page 1). |
-| MD download / image bundle | `planMarkdownImageExport` / `embedMarkdownImagesAsDataUris` also rewrite `bg.imagePath` and image-element `path` (same as body wiki/md images): `.pictures/…` zip/folder mode, or `data:` URIs for single-file base64. |
+| MD download / image bundle | `planMarkdownImageExport` / `embedMarkdownImagesAsDataUris` also rewrite `bg.imagePath` and image-element `path` (same as body wiki/md images): `.pictures/…` zip/folder mode, or `data:` URIs for single-file base64. Also runs `ensureNoteCoverWebfontsInMarkdown` so `webfonts` is filled for portable fonts. |
 | Editor | Mutate JSON via upsert; fold cover JSON with gutter chevron (persisted in IndexedDB per document); never rely on in-body shortcodes for cover |
 
-Image `path` / `bg.imagePath` are storage keys (or, after download rewrite, `.pictures/…` / `data:`); URL resolution is host-specific (same as wiki images).
+Image `path` / `bg.imagePath` are storage keys (or, after download rewrite, `.pictures/…` / `data:`); URL resolution is host-specific (same as wiki images). Cover `webfonts` carries `@font-face` CSS so exported notes keep Paperozi / user webfonts without the vault settings store.
 
 Editor fold: first cover line shows a chevron left of line numbers (`cursor-pointer`); collapse hides the JSON body with a short motion animation. Fold open/closed state is stored in IndexedDB (`s3haim-note-cover-fold`) keyed by storage type + path and restored when the document is opened.
 
@@ -175,3 +188,4 @@ Editor fold: first cover line shows a chevron left of line numbers (`cursor-poin
 | Editor fold | `src/utils/noteCover/noteCoverFoldExtension.ts`, `noteCoverFoldStateDb.ts` |
 | Export | `src/pages/ExportPDFPage.jsx` |
 | MD image download | `src/utils/markdownImageExport.ts` (cover paths included) |
+| Cover webfonts | `src/utils/noteCover/webfonts.ts`, `src/styles/builtin-webfonts.css` |

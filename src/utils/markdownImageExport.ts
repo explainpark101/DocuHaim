@@ -13,7 +13,11 @@ import {
   resolveStorageImagePath,
 } from '@/utils/storageImagePath';
 import type { DownloadImageSyntax } from '@/utils/downloadImageSyntaxSettings';
-import { parseNoteCover, upsertNoteCoverComment } from '@/utils/noteCover/parse';
+import {
+  ensureNoteCoverWebfontsInMarkdown,
+  parseNoteCover,
+  upsertNoteCoverComment,
+} from '@/utils/noteCover/parse';
 import type { NoteCover } from '@/utils/noteCover/types';
 
 export const MARKDOWN_PICTURES_DIR = '.pictures';
@@ -246,6 +250,9 @@ export function planMarkdownImageExport(
     if (!resolved) return null;
     return allocate(resolved);
   });
+
+  // Embed cover webfont CSS (builtin + user) into note-cover JSON for portable export.
+  rewritten = ensureNoteCoverWebfontsInMarkdown(rewritten);
 
   return { markdown: rewritten, images };
 }

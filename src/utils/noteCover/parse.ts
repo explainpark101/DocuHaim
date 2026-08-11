@@ -16,9 +16,11 @@ import {
   type CoverTextElement,
   type CoverTextVAlign,
   type NoteCover,
+  type NoteCoverWebfont,
 } from '@/utils/noteCover/types';
 import { ensureLayerTree } from '@/utils/noteCover/layerTree';
 import { isPrintPageSizeId, type PrintPageSizeId } from '@/utils/printPageLayout';
+import { syncNoteCoverWebfonts } from '@/utils/noteCover/webfonts';
 
 const COVER_COMMENT_RE =
   /^[\uFEFF\s]*<!--\s*note-cover\s*([\s\S]*?)-->/;
@@ -285,6 +287,26 @@ function normalizeRootLayerIds(raw: unknown): string[] {
   return raw.filter((x): x is string => typeof x === 'string' && Boolean(x.trim()));
 }
 
+function normalizeWebfonts(raw: unknown): NoteCoverWebfont[] {
+  if (!Array.isArray(raw)) return [];
+  const out: NoteCoverWebfont[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const o = item as Record<string, unknown>;
+    const family = typeof o.family === 'string' ? o.family.trim() : '';
+    const css = typeof o.css === 'string' ? o.css.trim() : '';
+    if (!family || !css) continue;
+    const key = family.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const entry: NoteCoverWebfont = { family, css };
+    if (o.source === 'builtin' || o.source === 'user') entry.source = o.source;
+    out.push(entry);
+  }
+  return out;
+}
+
 export type NoteCoverIssueKind =
   | 'json_parse'
   | 'not_object'
@@ -324,6 +346,7 @@ export function normalizeNoteCoverWithIssues(raw: unknown): NormalizeNoteCoverRe
   }
   const groups = normalizeGroups(o.groups, elements);
   const rootLayerIds = normalizeRootLayerIds(o.rootLayerIds);
+  const webfonts = normalizeWebfonts(o.webfonts);
   const base: NoteCover = {
     v: NOTE_COVER_VERSION,
     enabled: o.enabled !== false,
@@ -333,6 +356,7 @@ export function normalizeNoteCoverWithIssues(raw: unknown): NormalizeNoteCoverRe
     rootLayerIds,
     groups,
     elements,
+    ...(webfonts.length ? { webfonts } : {}),
   };
   return { cover: ensureLayerTree(base), issues };
 }
@@ -434,7 +458,8 @@ export function stripNoteCoverComment(markdown: string): string {
 }
 
 export function serializeNoteCoverComment(cover: NoteCover): string {
-  const normalized = normalizeNoteCover(cover);
+  // Refresh portable webfont CSS from current element families before write.
+  const normalized = syncNoteCoverWebfonts(normalizeNoteCover(cover));
   const json = JSON.stringify(normalized);
   return `<!-- note-cover\n${escapeCoverJsonForComment(json)}\n-->`;
 }
@@ -452,4 +477,14 @@ export function upsertNoteCoverComment(
   const comment = serializeNoteCoverComment(cover);
   if (!body) return `${comment}\n`;
   return `${comment}\n${body.replace(/^\uFEFF/, '')}`;
+}
+
+/**
+ * Ensure leading note-cover JSON includes up-to-date `webfonts` for download / export.
+ * No-op when the document has no cover comment.
+ */
+export function ensureNoteCoverWebfontsInMarkdown(markdown: string): string {
+  const { cover } = parseNoteCover(markdown);
+  if (!cover) return markdown;
+  return upsertNoteCoverComment(markdown, syncNoteCoverWebfonts(cover));
 }
