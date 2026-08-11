@@ -5,6 +5,7 @@ type Resolver = ((path: string) => Promise<string | null>) | null | undefined;
 
 /**
  * Resolve a vault image path to a display URL for cover elements / backgrounds.
+ * Also accepts data:/http(s)/blob URLs from single-file (base64) exports.
  */
 export function useCoverImageUrl(
   path: string | null | undefined,
@@ -14,7 +15,7 @@ export function useCoverImageUrl(
   const trimmed = String(path ?? '').trim();
 
   useEffect(() => {
-    if (!trimmed || typeof getPresignedUrl !== 'function') {
+    if (!trimmed) {
       setUrl(null);
       return;
     }

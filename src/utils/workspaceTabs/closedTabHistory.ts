@@ -17,10 +17,24 @@ export type ClosedTabEntry =
 
 function readRaw(): unknown {
   if (typeof window === 'undefined') return null;
+  // Prefer localStorage so Ctrl+Shift+T survives restart; migrate legacy session key.
   try {
-    const raw = window.sessionStorage.getItem(CLOSED_TAB_HISTORY_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    const local = window.localStorage.getItem(CLOSED_TAB_HISTORY_KEY);
+    if (local) return JSON.parse(local);
+  } catch {
+    // ignore
+  }
+  try {
+    const session = window.sessionStorage.getItem(CLOSED_TAB_HISTORY_KEY);
+    if (!session) return null;
+    const parsed = JSON.parse(session);
+    try {
+      window.localStorage.setItem(CLOSED_TAB_HISTORY_KEY, session);
+      window.sessionStorage.removeItem(CLOSED_TAB_HISTORY_KEY);
+    } catch {
+      // ignore migrate failures
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -29,9 +43,14 @@ function readRaw(): unknown {
 function writeRaw(entries: ClosedTabEntry[]): void {
   if (typeof window === 'undefined') return;
   try {
-    window.sessionStorage.setItem(CLOSED_TAB_HISTORY_KEY, JSON.stringify(entries));
+    window.localStorage.setItem(CLOSED_TAB_HISTORY_KEY, JSON.stringify(entries));
   } catch {
     // quota / private mode
+  }
+  try {
+    window.sessionStorage.removeItem(CLOSED_TAB_HISTORY_KEY);
+  } catch {
+    // ignore
   }
 }
 
@@ -62,6 +81,11 @@ export function saveClosedTabHistory(entries: ClosedTabEntry[]): void {
 
 export function clearClosedTabHistory(): void {
   if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(CLOSED_TAB_HISTORY_KEY);
+  } catch {
+    // ignore
+  }
   try {
     window.sessionStorage.removeItem(CLOSED_TAB_HISTORY_KEY);
   } catch {

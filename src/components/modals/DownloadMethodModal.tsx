@@ -39,7 +39,7 @@ const IMAGE_MODE_OPTIONS: {
   {
     value: 'files',
     title: '파일로 분리',
-    description: '문서와 .pictures 폴더로 저장',
+    description: '문서와 .pictures로 분리 저장',
   },
   {
     value: 'base64',
@@ -215,7 +215,9 @@ export function DownloadMethodModal({
                   <span className="text-sm font-medium">저장 완료</span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  선택한 폴더에 파일이 저장되었습니다. 파일 탐색기에서 해당 파일을 더블클릭하여 열어보세요.
+                  {showImageHandling
+                    ? '선택한 위치에 파일명과 같은 폴더가 만들어지고, 그 안에 파일이 저장되었습니다.'
+                    : '선택한 폴더에 파일이 저장되었습니다. 파일 탐색기에서 해당 파일을 더블클릭하여 열어보세요.'}
                 </p>
                 <div className="flex justify-end">
                   <button
@@ -482,7 +484,7 @@ export function DownloadMethodModal({
                     Storage API를 이용한 방식
                   </div>
                   <div className="text-xs text-gray-500 dark:text-odp-muted mt-0.5">
-                    폴더 선택 후 직접 저장. 대용량 파일 지원, 진행률 표시
+                    폴더 선택 후 파일명 폴더에 저장. 대용량·진행률 지원
                   </div>
                 </div>
               </button>

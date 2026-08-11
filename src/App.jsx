@@ -17,7 +17,7 @@ import {
 } from '@/utils/webauthn';
 import { buildS3Tree, getFileLastModifiedMap, findFileNodeByPath, findNodeByPath, flattenTreeToPaths, getRecordingKeysFromTree } from '@/utils/s3Tree';
 import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/treeMove';
-import { allocateUniqueCopyName, getTreeChildNames, treeChildNameTaken } from '@/utils/treeCopy';
+import { allocateUniqueCopyName, allocateUniqueFileSystemName, getTreeChildNames, treeChildNameTaken } from '@/utils/treeCopy';
 import { resolveUploadDestFileName } from '@/utils/uploadNameConflict';
 import { resolveTreeDestName } from '@/utils/treeNameConflict';
 import { buildFileComparePayload } from '@/utils/buildFileComparePayload';
@@ -59,10 +59,14 @@ import {
   isChatTab,
   isFileTab,
   isFileTabDirty,
+  loadLastOpenTabsSnapshot,
   loadPersistedWorkspaceTabs,
   popClosedTab,
+  popTabsRestoreQueue,
   pushClosedTab,
+  saveLastOpenTabsSnapshot,
   savePersistedWorkspaceTabs,
+  seedTabsRestoreQueueFromSnapshot,
   toPersistedWorkspaceTabs,
 } from '@/utils/workspaceTabs';
 import {
@@ -74,6 +78,8 @@ import {
   moveTab,
   openOrActivateChat,
   patchFileTab,
+  retargetFileTab,
+  retargetFileTabsByPathPrefix,
   softCapPrompt,
 } from '@/utils/workspaceTabs/appBridge';
 import {
@@ -267,6 +273,7 @@ import {
   embedMarkdownImagesAsDataUris,
   formatMissingExportImagesMessage,
   isMarkdownFileName,
+  markdownExportBundleDirectoryName,
   planMarkdownImageExport,
   writeMarkdownImageBundleToDirectory,
   zipFileNameForMarkdown,
@@ -637,6 +644,8 @@ function MainApp() {
   const selectFileRawRef = useRef(null);
   const prevEditorContentRef = useRef('');
 
+  const hasSeededTabsRestoreQueueRef = useRef(false);
+
   const loadLastOpenedFile = useCallback(() => {
     const persisted = loadPersistedWorkspaceTabs();
     if (persisted?.tabs?.length) {
@@ -813,7 +822,11 @@ function MainApp() {
         setEditorContent(active.editorContent);
         editorContentRef.current = active.editorContent;
         setEditedFileName(active.editedFileName || String(file?.name || ''));
-        if (navigateUrl) navigate(`/view/${active.path}`);
+        if (navigateUrl) {
+          const viewPath =
+            (typeof file?.id === 'string' && file.id) || active.path;
+          navigate(`/view/${viewPath}`);
+        }
       } else if (isChatTab(active)) {
         setCurrentFile(null);
         currentFileRef.current = null;
@@ -916,7 +929,7 @@ function MainApp() {
         setEditorContent(active.editorContent);
         editorContentRef.current = active.editorContent;
         setEditedFileName(active.editedFileName || String(file?.name || ''));
-        navigate(`/view/${active.path}`);
+        navigate(`/view/${(typeof file?.id === 'string' && file.id) || active.path}`);
       } else if (isChatTab(active)) {
         setCurrentFile(null);
         currentFileRef.current = null;
@@ -2043,9 +2056,9 @@ function MainApp() {
 
   const reopenClosedWorkspaceTab = useCallback(async () => {
     if (!workspaceTabsEnabledRef.current) return;
-    // Pop until a reopen succeeds; drop missing server/local files from history.
+    // Prefer explicitly closed tabs; then cold-start queue from last open list.
     for (;;) {
-      const entry = popClosedTab();
+      const entry = popClosedTab() || popTabsRestoreQueue();
       if (!entry) return;
       if (entry.kind === 'chat') {
         openChatWorkspaceTab();
@@ -3754,7 +3767,67 @@ function MainApp() {
       return;
     }
     savePersistedWorkspaceTabs(payload);
+    // Keep last-open snapshot for Ctrl+Shift+T after restart. Do not shrink it while
+    // the cold-start path has only reopened the active tab (pagehide writes the truth).
+    const prevSnap = loadLastOpenTabsSnapshot();
+    if (!prevSnap || payload.tabs.length >= prevSnap.tabs.length) {
+      saveLastOpenTabsSnapshot(payload);
+    }
   }, [isUnlocked, workspaceTabs, currentFile, editorContent]);
+
+  // Save last-open snapshot on leave so Ctrl+Shift+T can restore siblings after restart
+  // (live workspaceTabs key is reduced to the auto-opened active tab on next boot).
+  useEffect(() => {
+    if (!isUnlocked) return undefined;
+    const persistLastOpenSnapshot = () => {
+      if (!workspaceTabsEnabledRef.current) return;
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const payload = toPersistedWorkspaceTabs(
+        flushed.tabs.map((t) =>
+          t.kind === 'chat'
+            ? { kind: 'chat' }
+            : { kind: 'file', storageType: t.storageType, path: t.path },
+        ),
+        flushed.activeId,
+      );
+      saveLastOpenTabsSnapshot(payload);
+    };
+    window.addEventListener('pagehide', persistLastOpenSnapshot);
+    window.addEventListener('beforeunload', persistLastOpenSnapshot);
+    return () => {
+      window.removeEventListener('pagehide', persistLastOpenSnapshot);
+      window.removeEventListener('beforeunload', persistLastOpenSnapshot);
+    };
+  }, [isUnlocked]);
+
+  // Seed Ctrl+Shift+T queue once from last-open snapshot (siblings of the auto-restored tab).
+  useEffect(() => {
+    if (!isUnlocked || !workspaceTabsEnabled) return;
+    if (hasSeededTabsRestoreQueueRef.current) return;
+    hasSeededTabsRestoreQueueRef.current = true;
+    const live = loadPersistedWorkspaceTabs();
+    const snap = loadLastOpenTabsSnapshot();
+    const source =
+      snap && live
+        ? snap.tabs.length >= live.tabs.length
+          ? snap
+          : live
+        : snap || live;
+    if (!source?.tabs?.length) return;
+    const openIds = new Set();
+    if (typeof source.activeId === 'string' && source.activeId) {
+      openIds.add(source.activeId);
+    } else {
+      const first = source.tabs[0];
+      if (first?.kind === 'chat') openIds.add(CHAT_TAB_ID);
+      else if (first?.kind === 'file') openIds.add(`${first.type}:${first.path}`);
+    }
+    seedTabsRestoreQueueFromSnapshot(source, openIds);
+  }, [isUnlocked, workspaceTabsEnabled]);
 
   // Open file from ?open=, /view/* or /export-pdf/* route, or last-file cache once storage is ready.
   useEffect(() => {
@@ -4834,7 +4907,7 @@ function MainApp() {
     }
   };
 
-  /** Storage API: 폴더 선택 후 스트리밍 저장. 진행률 표시. md+이미지는 zip 없이 md/.pictures 또는 base64 단일 md */
+  /** Storage API: pick folder, nest MD under `{fileName}/`, stream save with progress. */
   const handleDownloadToFolder = async ({
     imageMode = 'files',
     imageSyntax = 'markdown',
@@ -4869,6 +4942,12 @@ function MainApp() {
             getCachedTableStyleTemplate(id),
           );
         }
+        const bundleDirName = await allocateUniqueFileSystemName(
+          dirHandle,
+          markdownExportBundleDirectoryName(fileName),
+          { isFolder: true },
+        );
+        const bundleDirHandle = await dirHandle.getDirectoryHandle(bundleDirName, { create: true });
         const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
         const plan = planMarkdownImageExport(markdown, notePath, { syntax: effectiveSyntax });
         if (plan.images.length) {
@@ -4881,7 +4960,7 @@ function MainApp() {
           );
           if (imageMode === 'base64') {
             const bundled = embedMarkdownImagesAsDataUris(plan.markdown, entries);
-            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const fileHandle = await bundleDirHandle.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
             try {
               await writable.write(bundled);
@@ -4891,7 +4970,7 @@ function MainApp() {
             setDownloadProgress(100);
           } else {
             await writeMarkdownImageBundleToDirectory(
-              dirHandle,
+              bundleDirHandle,
               fileName,
               plan.markdown,
               entries,
@@ -4903,7 +4982,7 @@ function MainApp() {
           setDownloadComplete(true);
           return;
         }
-        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+        const fileHandle = await bundleDirHandle.getFileHandle(fileName, { create: true });
         const writable = await fileHandle.createWritable();
         try {
           await writable.write(markdown);
@@ -4915,7 +4994,8 @@ function MainApp() {
         return;
       }
 
-      const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+      const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
+      const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
       const writable = await fileHandle.createWritable();
 
       if (storageType === 's3') {
@@ -5797,11 +5877,62 @@ function MainApp() {
     return { ...file, id: newPath, name: newName, handle: newFileHandle, content: editorContent };
   };
 
-  const applyOpenFileIdentityChange = (updated) => {
+  const applyWorkspaceFilePathRetarget = (storageType, oldPath, newPath, filePatch = null) => {
+    if (!storageType || !oldPath || !newPath) return;
+    const next = retargetFileTab(workspaceTabsRef.current, storageType, oldPath, {
+      path: newPath,
+      ...(filePatch
+        ? {
+            currentFile: filePatch,
+            editedFileName:
+              typeof filePatch.name === 'string' ? filePatch.name : undefined,
+          }
+        : {}),
+    });
+    if (next === workspaceTabsRef.current) return;
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+  };
+
+  const applyWorkspaceFolderPathRetarget = (storageType, oldPrefix, newPrefix) => {
+    if (!storageType || !oldPrefix || !newPrefix || oldPrefix === newPrefix) return;
+    const from = oldPrefix.endsWith('/') ? oldPrefix : `${oldPrefix}/`;
+    const to = newPrefix.endsWith('/') ? newPrefix : `${newPrefix}/`;
+    const next = retargetFileTabsByPathPrefix(workspaceTabsRef.current, storageType, from, to);
+    if (next === workspaceTabsRef.current) return;
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+  };
+
+  const applyOpenFileIdentityChange = (updated, options = {}) => {
     if (!updated) return null;
+    const { oldPath = null, retargetTabs = true } = options;
+    const prev = currentFileRef.current;
+    const fromPath =
+      typeof oldPath === 'string' && oldPath
+        ? oldPath
+        : typeof prev?.id === 'string'
+          ? prev.id
+          : null;
+    const storageType = updated.type || prev?.type;
+    const nextPath = updated.id;
+
+    if (
+      retargetTabs &&
+      workspaceTabsEnabledRef.current &&
+      storageType &&
+      fromPath &&
+      typeof nextPath === 'string' &&
+      nextPath
+    ) {
+      applyWorkspaceFilePathRetarget(storageType, fromPath, nextPath, updated);
+    }
+
     currentFileRef.current = updated;
     setCurrentFile(updated);
-    const nextPath = updated.id;
+    if (typeof updated.name === 'string' && updated.name) {
+      setEditedFileName(updated.name);
+    }
     if (typeof nextPath !== 'string' || !nextPath) return updated;
     if (parseOpenNotePathFromAppPathname(location.pathname) === nextPath) return updated;
     suppressUnsavedNavGuardRef.current = true;
@@ -6679,29 +6810,46 @@ function MainApp() {
           const destPrefix = `${parentPath}${trimmed}/`;
           await moveS3FolderToFolder(node, parentPath, trimmed);
           await loadS3Files();
+          applyWorkspaceFolderPathRetarget('s3', prefix, destPrefix);
           if (currentFile && currentFile.type === 's3' && currentFile.id.startsWith(node.path)) {
             const newPath = currentFile.id.replace(prefix, destPrefix);
-            applyOpenFileIdentityChange({ ...currentFile, id: newPath });
+            applyOpenFileIdentityChange(
+              { ...currentFile, id: newPath },
+              { oldPath: currentFile.id, retargetTabs: false },
+            );
           }
         } else if (storageType === 'local') {
           const parentHandle = node.parentHandle || localRootHandle;
           if (!parentHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
+          const newPrefix =
+            node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
           await moveLocalFolderToFolder(node, parentHandle, '', trimmed);
-          if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(node.path))) {
-            const newPath = node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
-            const newPathForFile = currentFile.id.startsWith(node.path)
-              ? newPath + currentFile.id.slice(node.path.length)
-              : currentFile.id;
-            applyOpenFileIdentityChange({ ...currentFile, id: newPathForFile });
+          applyWorkspaceFolderPathRetarget('local', oldPrefix, newPrefix);
+          if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
+            const newPathForFile = currentFile.id.startsWith(oldPrefix)
+              ? newPrefix + currentFile.id.slice(oldPrefix.length)
+              : currentFile.id.startsWith(node.path)
+                ? newPrefix + currentFile.id.slice(node.path.length)
+                : currentFile.id;
+            applyOpenFileIdentityChange(
+              { ...currentFile, id: newPathForFile },
+              { oldPath: currentFile.id, retargetTabs: false },
+            );
           }
         } else if (storageType === 'webdav') {
+          const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
+          const destPrefix = node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
           await moveWebdavFolderToFolder(node, '', trimmed);
+          applyWorkspaceFolderPathRetarget('webdav', oldPrefix, destPrefix);
           if (currentFile && currentFile.type === 'webdav' && currentFile.id.startsWith(node.path)) {
-            const destPrefix = node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
-            const newPathForFile = currentFile.id.startsWith(node.path)
-              ? destPrefix + currentFile.id.slice(node.path.length)
-              : currentFile.id;
-            applyOpenFileIdentityChange({ ...currentFile, id: newPathForFile });
+            const newPathForFile = currentFile.id.startsWith(oldPrefix)
+              ? destPrefix + currentFile.id.slice(oldPrefix.length)
+              : destPrefix + currentFile.id.slice(node.path.length);
+            applyOpenFileIdentityChange(
+              { ...currentFile, id: newPathForFile },
+              { oldPath: currentFile.id, retargetTabs: false },
+            );
           }
         }
         return;
@@ -6711,6 +6859,7 @@ function MainApp() {
         const lastDot = originalName.lastIndexOf('.');
         const ext = lastDot > 0 ? originalName.slice(lastDot) : '';
         const newName = `${trimmed}${ext}`;
+        const oldPath = node.path;
 
         const isCurrentFile = currentFile?.type === 's3' && currentFile?.id === node.path;
         const fileToRename = isCurrentFile ? { ...currentFile, viewer: currentFile.viewer } : { id: node.path, name: node.name };
@@ -6718,7 +6867,14 @@ function MainApp() {
         const contentOverride = hasUnsaved ? editorContent : null;
 
         const updated = await renameS3File(fileToRename, newName, contentOverride);
-        if (isCurrentFile) applyOpenFileIdentityChange(updated);
+        if (isCurrentFile) {
+          applyOpenFileIdentityChange(updated, { oldPath });
+        } else {
+          applyWorkspaceFilePathRetarget('s3', oldPath, updated.id, {
+            ...updated,
+            name: newName,
+          });
+        }
       } else if (storageType === 'local') {
         const pHandle = node.parentHandle || localRootHandle;
         if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
@@ -6745,8 +6901,17 @@ function MainApp() {
         await refreshLocalTree();
 
         if (currentFile && currentFile.type === 'local' && currentFile.id === node.path) {
-          applyOpenFileIdentityChange({
-            ...currentFile,
+          applyOpenFileIdentityChange(
+            {
+              ...currentFile,
+              id: newPath,
+              name: newName,
+              handle: newFileHandle,
+            },
+            { oldPath },
+          );
+        } else {
+          applyWorkspaceFilePathRetarget('local', oldPath, newPath, {
             id: newPath,
             name: newName,
             handle: newFileHandle,
@@ -6774,7 +6939,15 @@ function MainApp() {
         }
         await refreshWebdavTree();
         if (isCurrentFile) {
-          applyOpenFileIdentityChange({ ...currentFile, id: newPath, name: newName });
+          applyOpenFileIdentityChange(
+            { ...currentFile, id: newPath, name: newName },
+            { oldPath },
+          );
+        } else {
+          applyWorkspaceFilePathRetarget('webdav', oldPath, newPath, {
+            id: newPath,
+            name: newName,
+          });
         }
       }
     } catch (e) {
@@ -7208,26 +7381,38 @@ function MainApp() {
               if (srcStorageType === 's3') {
                 await moveS3FileToFolder(fileNode, destPath, destName);
                 if (currentFileRef.current?.type === 's3' && currentFileRef.current.id === srcPath) {
-                  setCurrentFile((prev) =>
-                    prev && prev.id === srcPath
-                      ? { ...prev, id: destFilePath, name: destName }
-                      : prev,
+                  applyOpenFileIdentityChange(
+                    { ...currentFileRef.current, id: destFilePath, name: destName },
+                    { oldPath: srcPath },
                   );
                 } else {
+                  applyWorkspaceFilePathRetarget(srcStorageType, srcPath, destFilePath, {
+                    id: destFilePath,
+                    name: destName,
+                  });
                   await reloadOpenFileIfPath(srcStorageType, destFilePath);
                 }
               } else if (srcStorageType === 'webdav') {
                 const updated = await moveWebdavFileToFolder(fileNode, destPath, destName);
                 if (currentFileRef.current?.type === 'webdav' && currentFileRef.current.id === srcPath) {
-                  setCurrentFile(updated);
+                  applyOpenFileIdentityChange(updated, { oldPath: srcPath });
                 } else {
+                  applyWorkspaceFilePathRetarget(srcStorageType, srcPath, destFilePath, {
+                    id: destFilePath,
+                    name: destName,
+                  });
                   await reloadOpenFileIfPath(srcStorageType, destFilePath);
                 }
               } else {
                 const updated = await moveLocalFileToFolder(fileNode, destHandle, destPath, destName);
                 if (currentFileRef.current?.type === 'local' && currentFileRef.current.id === srcPath) {
-                  setCurrentFile(updated);
+                  applyOpenFileIdentityChange(updated, { oldPath: srcPath });
                 } else {
+                  applyWorkspaceFilePathRetarget(srcStorageType, srcPath, destFilePath, {
+                    id: destFilePath,
+                    name: destName,
+                    ...(updated?.handle ? { handle: updated.handle } : {}),
+                  });
                   await reloadOpenFileIfPath(srcStorageType, destFilePath);
                 }
               }
@@ -7239,6 +7424,24 @@ function MainApp() {
                 await moveWebdavFolderToFolder(srcNode, destPath, destName);
               } else {
                 await moveLocalFolderToFolder(srcNode, destHandle, destPath, destName);
+              }
+              const oldPrefix = srcNode.path.endsWith('/') ? srcNode.path : `${srcNode.path}/`;
+              const newPrefix = `${destPath}${destName}/`;
+              applyWorkspaceFolderPathRetarget(srcStorageType, oldPrefix, newPrefix);
+              if (
+                currentFileRef.current &&
+                currentFileRef.current.type === srcStorageType &&
+                (currentFileRef.current.id.startsWith(oldPrefix) ||
+                  currentFileRef.current.id.startsWith(srcNode.path))
+              ) {
+                const cur = currentFileRef.current;
+                const newPath = cur.id.startsWith(oldPrefix)
+                  ? newPrefix + cur.id.slice(oldPrefix.length)
+                  : newPrefix + cur.id.slice(srcNode.path.length);
+                applyOpenFileIdentityChange(
+                  { ...cur, id: newPath },
+                  { oldPath: cur.id, retargetTabs: false },
+                );
               }
               lastSuccessName = destName;
             }
@@ -7496,6 +7699,27 @@ function MainApp() {
           if (!destHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
           await moveLocalFolderToFolder(node, destHandle, destPath, destName);
         }
+        const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
+        const newPrefix = `${destPath}${destName}/`;
+        applyWorkspaceFolderPathRetarget(storageType, oldPrefix, newPrefix);
+        if (
+          currentFileRef.current &&
+          currentFileRef.current.type === storageType &&
+          (currentFileRef.current.id === node.path ||
+            currentFileRef.current.id.startsWith(oldPrefix) ||
+            currentFileRef.current.id.startsWith(node.path))
+        ) {
+          const cur = currentFileRef.current;
+          const newPath = cur.id.startsWith(oldPrefix)
+            ? newPrefix + cur.id.slice(oldPrefix.length)
+            : cur.id.startsWith(node.path)
+              ? newPrefix + cur.id.slice(node.path.length)
+              : cur.id;
+          applyOpenFileIdentityChange(
+            { ...cur, id: newPath },
+            { oldPath: cur.id, retargetTabs: false },
+          );
+        }
         setMoveFolderTarget(null);
         setOperationStatus(`폴더 이동 완료: ${destName}`);
       } finally {
@@ -7558,14 +7782,15 @@ function MainApp() {
         if (currentFile.type === 's3') {
           const updated = await moveS3FileToFolder(currentFile, destPath, destName);
           if (updated) {
-            setCurrentFile((prev) =>
-              prev && prev.type === 's3' ? { ...prev, id: updated.id, name: destName } : prev,
+            applyOpenFileIdentityChange(
+              { ...currentFile, id: updated.id, name: destName },
+              { oldPath: srcPath },
             );
           }
         } else if (currentFile.type === 'webdav') {
           const updated = await moveWebdavFileToFolder(currentFile, destPath, destName);
           if (updated) {
-            setCurrentFile(updated);
+            applyOpenFileIdentityChange(updated, { oldPath: srcPath });
           }
         } else if (currentFile.type === 'local') {
           const updated = await moveLocalFileToFolder(
@@ -7575,10 +7800,9 @@ function MainApp() {
             destName,
           );
           if (updated) {
-            setCurrentFile(updated);
+            applyOpenFileIdentityChange(updated, { oldPath: srcPath });
           }
         }
-        // Open file is retargeted above; content already matches the moved source.
         setIsMoveModalOpen(false);
         setOperationStatus(`파일 이동 완료: ${destPath}${destName}`);
       } finally {

@@ -11,6 +11,8 @@ import {
   openOrActivateChat,
   openOrReplaceFileTab,
   patchFileTab,
+  retargetFileTab,
+  retargetFileTabsByPathPrefix,
 } from './workspaceTabsStore';
 
 export function flushEditorIntoActiveFileTab(
@@ -106,4 +108,6 @@ export {
   openOrActivateChat,
   patchFileTab,
   moveTab,
+  retargetFileTab,
+  retargetFileTabsByPathPrefix,
 };

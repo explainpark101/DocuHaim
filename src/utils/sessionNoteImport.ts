@@ -3,6 +3,7 @@ import {
   collectMarkdownExportImageBytes,
   extractMarkdownDataUriImages,
   planMarkdownImageExport,
+  rewriteNoteCoverImagePathsInMarkdown,
 } from '@/utils/markdownImageExport';
 
 function basename(path: string): string {
@@ -80,6 +81,10 @@ export async function prepareSessionMarkdownForVault(options: {
   for (const [from, to] of rewriteMap) {
     markdown = markdown.split(`](${from}`).join(`](${to}`);
   }
+  markdown = rewriteNoteCoverImagePathsInMarkdown(
+    markdown,
+    (src) => rewriteMap.get(src) ?? null,
+  );
 
   return { markdown, images, missing: bundled.missing };
 }

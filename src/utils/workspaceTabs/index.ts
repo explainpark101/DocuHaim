@@ -45,7 +45,10 @@ export {
   openOrActivateChat,
   openOrReplaceFileTab,
   patchFileTab,
+  retargetFileTab,
+  retargetFileTabsByPathPrefix,
 } from './workspaceTabsStore';
+export type { RetargetFileTabInput, OpenFileTabInput } from './workspaceTabsStore';
 export {
   CLOSED_TAB_HISTORY_KEY,
   CLOSED_TAB_HISTORY_MAX,
@@ -58,3 +61,16 @@ export {
   saveClosedTabHistory,
 } from './closedTabHistory';
 export type { ClosedTabEntry } from './closedTabHistory';
+export {
+  LAST_OPEN_TABS_RESTORE_KEY,
+  TABS_RESTORE_QUEUE_KEY,
+  clearLastOpenTabsSnapshot,
+  clearTabsRestoreQueue,
+  loadLastOpenTabsSnapshot,
+  persistedTabId,
+  persistedTabToClosedEntry,
+  popTabsRestoreQueue,
+  saveLastOpenTabsSnapshot,
+  seedTabsRestoreQueueFromSnapshot,
+  tabsRestoreQueueLength,
+} from './lastOpenTabsRestore';

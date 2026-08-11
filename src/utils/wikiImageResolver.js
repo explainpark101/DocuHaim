@@ -68,37 +68,45 @@ function forgetResolvedWikiImageUrl(path) {
  * @param {{ skipCache?: boolean }} [opts]
  */
 export function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
-  if (!path || typeof getPresignedUrl !== 'function') {
+  if (!path) {
+    return Promise.resolve(null);
+  }
+  const trimmed = String(path).trim();
+  // Cover / markdown may embed data URIs or remote URLs after single-file export.
+  if (/^(https?:|data:|blob:|\/\/)/i.test(trimmed)) {
+    return Promise.resolve(trimmed);
+  }
+  if (typeof getPresignedUrl !== 'function') {
     return Promise.resolve(null);
   }
   const skipCache = opts.skipCache === true;
   if (!skipCache) {
-    const mem = memoryUrlByPath.get(path);
+    const mem = memoryUrlByPath.get(trimmed);
     if (mem) return Promise.resolve(mem);
   }
 
-  const inFlightKey = skipCache ? `${path}:refresh` : path;
+  const inFlightKey = skipCache ? `${trimmed}:refresh` : trimmed;
   if (inFlight.has(inFlightKey)) {
     return inFlight.get(inFlightKey);
   }
 
   const fetchFresh = () =>
-    getPresignedUrl(path).then(async (url) => {
+    getPresignedUrl(trimmed).then(async (url) => {
       if (!url) return null;
       const mode = getWikiImageCacheMode();
       if (mode === WIKI_IMAGE_CACHE_MODE_URL) {
         const expiresAt = Date.now() + 3600 * 1000;
-        await setCachedWikiImageUrl({ path, url, expiresAt });
-        rememberResolvedWikiImageUrl(path, url);
+        await setCachedWikiImageUrl({ path: trimmed, url, expiresAt });
+        rememberResolvedWikiImageUrl(trimmed, url);
         return url;
       }
       try {
         const res = await fetch(url);
         if (!res.ok) return null;
         const blob = await res.blob();
-        await setCachedWikiImageBlob({ path, blob });
+        await setCachedWikiImageBlob({ path: trimmed, blob });
         const objectUrl = URL.createObjectURL(blob);
-        rememberResolvedWikiImageUrl(path, objectUrl);
+        rememberResolvedWikiImageUrl(trimmed, objectUrl);
         return objectUrl;
       } catch {
         return null;
@@ -107,24 +115,24 @@ export function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
 
   const p = skipCache
     ? (async () => {
-        forgetResolvedWikiImageUrl(path);
+        forgetResolvedWikiImageUrl(trimmed);
         return fetchFresh();
       })()
     : (async () => {
         const mode = getWikiImageCacheMode();
         if (mode === WIKI_IMAGE_CACHE_MODE_URL) {
-          const cachedUrl = await getCachedWikiImageUrl(path);
+          const cachedUrl = await getCachedWikiImageUrl(trimmed);
           if (cachedUrl) {
-            rememberResolvedWikiImageUrl(path, cachedUrl);
+            rememberResolvedWikiImageUrl(trimmed, cachedUrl);
             return cachedUrl;
           }
           return fetchFresh();
         }
-        const mem = memoryUrlByPath.get(path);
+        const mem = memoryUrlByPath.get(trimmed);
         if (mem) return mem;
-        const cachedObjectUrl = await getCachedWikiImageObjectUrl(path);
+        const cachedObjectUrl = await getCachedWikiImageObjectUrl(trimmed);
         if (cachedObjectUrl) {
-          rememberResolvedWikiImageUrl(path, cachedObjectUrl);
+          rememberResolvedWikiImageUrl(trimmed, cachedObjectUrl);
           return cachedObjectUrl;
         }
         return fetchFresh();

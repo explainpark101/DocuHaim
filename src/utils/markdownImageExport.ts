@@ -7,10 +7,14 @@ import {
 } from '@/utils/wikiImageSyntax';
 import {
   decodeMarkdownImageSrc,
+  decodeStoragePath,
+  extractMarkdownImageDestinationSrc,
   isStorageImageSrc,
   resolveStorageImagePath,
 } from '@/utils/storageImagePath';
 import type { DownloadImageSyntax } from '@/utils/downloadImageSyntaxSettings';
+import { parseNoteCover, upsertNoteCoverComment } from '@/utils/noteCover/parse';
+import type { NoteCover } from '@/utils/noteCover/types';
 
 export const MARKDOWN_PICTURES_DIR = '.pictures';
 
@@ -21,6 +25,54 @@ export type PlanMarkdownImageExportOptions = {
 
 const MARKDOWN_IMAGE_RE = /!\[([^\]]*)\]\(([^)\n]+)\)(\{[^}\n]*\})?/g;
 const FENCED_BLOCK_RE = /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g;
+const DATA_IMAGE_URI_RE = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i;
+
+/**
+ * Rewrite note-cover `bg.imagePath` and image-element `path` values via `mapPath`.
+ * `mapPath` returns the replacement, or null/undefined to leave the value unchanged.
+ */
+export function mapNoteCoverImagePaths(
+  cover: NoteCover,
+  mapPath: (src: string) => string | null | undefined,
+): { cover: NoteCover; changed: boolean } {
+  let changed = false;
+  let imagePath = cover.bg.imagePath;
+  if (imagePath) {
+    const next = mapPath(imagePath);
+    if (typeof next === 'string' && next !== imagePath) {
+      imagePath = next;
+      changed = true;
+    }
+  }
+  const elements = cover.elements.map((el) => {
+    if (el.type !== 'image') return el;
+    const next = mapPath(el.path);
+    if (typeof next !== 'string' || next === el.path) return el;
+    changed = true;
+    return { ...el, path: next };
+  });
+  if (!changed) return { cover, changed: false };
+  return {
+    cover: {
+      ...cover,
+      bg: { ...cover.bg, imagePath },
+      elements,
+    },
+    changed: true,
+  };
+}
+
+/** Apply `mapPath` to note-cover image fields in leading `<!-- note-cover -->` JSON. */
+export function rewriteNoteCoverImagePathsInMarkdown(
+  markdown: string,
+  mapPath: (src: string) => string | null | undefined,
+): string {
+  const { cover } = parseNoteCover(markdown);
+  if (!cover) return markdown;
+  const mapped = mapNoteCoverImagePaths(cover, mapPath);
+  if (!mapped.changed) return markdown;
+  return upsertNoteCoverComment(markdown, mapped.cover);
+}
 
 export type MarkdownExportImage = {
   sourcePath: string;
@@ -44,9 +96,19 @@ export function zipFileNameForMarkdown(fileName: string): string {
   return `${name}.zip`;
 }
 
+/**
+ * Folder name for Storage API MD downloads (same as the markdown file name).
+ * Files are written under `{pickedDir}/{bundleDir}/{mdFile}` (+ `.pictures/`).
+ */
+export function markdownExportBundleDirectoryName(fileName: string): string {
+  const name = sanitizeExportFileName(String(fileName || 'download').trim() || 'download');
+  return name || 'download';
+}
+
 function sanitizeExportFileName(name: string): string {
   const cleaned = String(name || '')
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    .replace(/\s+/g, '_')
     .replace(/^\.+$/, '')
     .trim();
   return cleaned || 'image';
@@ -86,15 +148,25 @@ function mapOutsideFences(source: string, transform: (chunk: string) => string):
 
 /** Wiki keys and `.images/...` markdown dests are vault-root object keys. */
 function resolveExportSourcePath(src: string, notePath?: string | null): string | null {
-  const decoded = decodeMarkdownImageSrc(src);
+  // Use decodeStoragePath so cover/wiki vault keys with spaces are not truncated
+  // (decodeMarkdownImageSrc splits on whitespace for optional MD titles).
+  const decoded = decodeStoragePath(src);
   if (!decoded || !isStorageImageSrc(decoded)) return null;
   const normalized = decoded.replace(/^\/+/, '');
   if (normalized.startsWith('.images/')) return normalized;
   return resolveStorageImagePath(decoded, notePath);
 }
 
+/** Destination src for `![](...)`; keep full `data:` payloads (may contain spaces). */
+function markdownImageDestinationSrc(destination: string): string {
+  const trimmed = String(destination || '').trim();
+  if (/^data:/i.test(trimmed)) return trimmed;
+  return extractMarkdownImageDestinationSrc(trimmed);
+}
+
 /**
  * Rewrite wiki/storage images to `.pictures/name` references and collect vault paths to bundle.
+ * Also rewrites note-cover `bg.imagePath` / image-element `path` fields the same way.
  * `syntax: 'markdown'` → `![](.pictures/name){…}` (default)
  * `syntax: 'wiki'` → `![[.pictures/name|…]]`
  */
@@ -119,7 +191,7 @@ export function planMarkdownImageExport(
     return relativePath;
   };
 
-  const rewritten = mapOutsideFences(source, (chunk) => {
+  let rewritten = mapOutsideFences(source, (chunk) => {
     const placeholders: string[] = [];
     let next = chunk.replace(new RegExp(WIKI_IMAGE_RE.source, 'g'), (full, rawInner: string) => {
       const parsed = parseWikiImageInner(rawInner);
@@ -147,7 +219,7 @@ export function planMarkdownImageExport(
       new RegExp(MARKDOWN_IMAGE_RE.source, 'g'),
       (full, alt: string, destination: string, rawAttrs = '') => {
         const dest = String(destination ?? '');
-        const mdSrc = dest.trim().split(/\s+/)[0] || '';
+        const mdSrc = markdownImageDestinationSrc(dest);
         if (!mdSrc || !isStorageImageSrc(mdSrc)) return full;
         const resolved = resolveExportSourcePath(mdSrc, notePath);
         if (!resolved) return full;
@@ -166,6 +238,13 @@ export function planMarkdownImageExport(
       next = next.replace(`\0MDIMG${index}\0`, replacement);
     });
     return next;
+  });
+
+  rewritten = rewriteNoteCoverImagePathsInMarkdown(rewritten, (src) => {
+    if (!isStorageImageSrc(src)) return null;
+    const resolved = resolveExportSourcePath(src, notePath);
+    if (!resolved) return null;
+    return allocate(resolved);
   });
 
   return { markdown: rewritten, images };
@@ -420,7 +499,7 @@ export async function prepareMarkdownImageForWikiConvert(options: {
 }
 
 /**
- * Turn inlined `data:image/...;base64,...` markdown images into `.pictures/` files.
+ * Turn inlined `data:image/...;base64,...` markdown / note-cover images into `.pictures/` files.
  */
 export function extractMarkdownDataUriImages(
   markdown: string,
@@ -435,25 +514,35 @@ export function extractMarkdownDataUriImages(
     if (fileName) used.add(fileName.toLowerCase());
   }
   const images: Array<{ path: string; data: Uint8Array }> = [];
-  const rewritten = mapOutsideFences(String(markdown ?? ''), (chunk) =>
+
+  const allocateDataUri = (dataUri: string): string | null => {
+    const match = DATA_IMAGE_URI_RE.exec(dataUri);
+    if (!match) return null;
+    const mime = match[1] || 'image/png';
+    const data = base64ToUint8Array(match[2] || '');
+    const fileName = uniqueExportName(`image${imageExtensionFromMime(mime)}`, used);
+    const relativePath = `${MARKDOWN_PICTURES_DIR}/${fileName}`;
+    images.push({ path: relativePath, data });
+    return relativePath;
+  };
+
+  let rewritten = mapOutsideFences(String(markdown ?? ''), (chunk) =>
     chunk.replace(
       new RegExp(MARKDOWN_IMAGE_RE.source, 'g'),
       (full, alt: string, destination: string, rawAttrs = '') => {
         const dest = String(destination ?? '');
-        const mdSrc = dest.trim().split(/\s+/)[0] || '';
-        const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(mdSrc);
-        if (!match) return full;
-        const mime = match[1] || 'image/png';
-        const data = base64ToUint8Array(match[2] || '');
-        const fileName = uniqueExportName(`image${imageExtensionFromMime(mime)}`, used);
-        const relativePath = `${MARKDOWN_PICTURES_DIR}/${fileName}`;
-        images.push({ path: relativePath, data });
+        const mdSrc = markdownImageDestinationSrc(dest);
+        const relativePath = allocateDataUri(mdSrc);
+        if (!relativePath) return full;
         const srcIndex = dest.indexOf(mdSrc);
         const titlePart = srcIndex >= 0 ? dest.slice(srcIndex + mdSrc.length) : '';
         return `![${alt}](${relativePath}${titlePart})${rawAttrs || ''}`;
       },
     ),
   );
+
+  rewritten = rewriteNoteCoverImagePathsInMarkdown(rewritten, (src) => allocateDataUri(src));
+
   return { markdown: rewritten, images };
 }
 
@@ -462,20 +551,28 @@ export function embedMarkdownImagesAsDataUris(
   images: Array<{ path: string; data: Uint8Array }>,
 ): string {
   const byPath = new Map(images.map((image) => [image.path, image]));
-  return mapOutsideFences(String(markdown ?? ''), (chunk) =>
+  const toDataUri = (src: string): string | null => {
+    const image = byPath.get(src);
+    if (!image) return null;
+    const mime = sniffImageMimeFromBytes(image.data, src);
+    return `data:${mime};base64,${uint8ToBase64(image.data)}`;
+  };
+
+  let next = mapOutsideFences(String(markdown ?? ''), (chunk) =>
     chunk.replace(
       new RegExp(MARKDOWN_IMAGE_RE.source, 'g'),
       (full, alt: string, destination: string, rawAttrs = '') => {
         const dest = String(destination ?? '');
-        const mdSrc = dest.trim().split(/\s+/)[0] || '';
-        const image = mdSrc ? byPath.get(mdSrc) : undefined;
-        if (!image) return full;
-        const mime = sniffImageMimeFromBytes(image.data, mdSrc);
-        const dataUri = `data:${mime};base64,${uint8ToBase64(image.data)}`;
+        const mdSrc = markdownImageDestinationSrc(dest);
+        const dataUri = mdSrc ? toDataUri(mdSrc) : null;
+        if (!dataUri) return full;
         const srcIndex = dest.indexOf(mdSrc);
         const titlePart = srcIndex >= 0 ? dest.slice(srcIndex + mdSrc.length) : '';
         return `![${alt}](${dataUri}${titlePart})${rawAttrs || ''}`;
       },
     ),
   );
+
+  next = rewriteNoteCoverImagePathsInMarkdown(next, (src) => toDataUri(src));
+  return next;
 }

@@ -77,6 +77,32 @@ export function allocateUniqueNumberedName(
   return candidate;
 }
 
+/** Child entry names in a File System Access directory handle. */
+export async function listFileSystemDirectoryNames(
+  dirHandle: FileSystemDirectoryHandle,
+): Promise<string[]> {
+  const names: string[] = [];
+  for await (const entry of dirHandle.values()) {
+    if (entry?.name) names.push(entry.name);
+  }
+  return names;
+}
+
+/**
+ * Pick a free file/folder name under `dirHandle` using `name (1)` / `name (2)` …
+ * when the original name is already taken.
+ */
+export async function allocateUniqueFileSystemName(
+  dirHandle: FileSystemDirectoryHandle,
+  originalName: string,
+  options?: { isFolder?: boolean },
+): Promise<string> {
+  const existing = await listFileSystemDirectoryNames(dirHandle);
+  return allocateUniqueNumberedName(originalName, existing, {
+    isFolder: options?.isFolder === true,
+  });
+}
+
 /** Case-insensitive name presence check for sibling entries. */
 export function treeChildNameTaken(
   existingNames: Iterable<string>,

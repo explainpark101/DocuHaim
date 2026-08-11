@@ -192,6 +192,115 @@ export function findFileTab(
   return isFileTab(t) ? t : null;
 }
 
+export type RetargetFileTabInput = {
+  path: string;
+  currentFile?: FileWorkspaceTab['currentFile'];
+  editedFileName?: string;
+};
+
+/**
+ * Retarget a file tab after rename/move (id is `${storageType}:${path}`).
+ * If a tab already exists at the destination, merge into it and drop the source.
+ */
+export function retargetFileTab(
+  state: WorkspaceTabsState,
+  storageType: string,
+  oldPath: string,
+  input: RetargetFileTabInput,
+): WorkspaceTabsState {
+  const newPath = String(input.path || '');
+  if (!storageType || !oldPath || !newPath) return state;
+  if (oldPath === newPath) {
+    const existing = findFileTab(state, storageType, oldPath);
+    if (!existing) return state;
+    return patchFileTab(state, existing.id, {
+      ...(input.currentFile ? { currentFile: { ...existing.currentFile, ...input.currentFile } } : {}),
+      ...(input.editedFileName != null ? { editedFileName: input.editedFileName } : {}),
+    });
+  }
+
+  const oldId = `${storageType}:${oldPath}`;
+  const newId = `${storageType}:${newPath}`;
+  const oldTab = findFileTab(state, storageType, oldPath);
+  if (!oldTab) return state;
+
+  const destTab = findFileTab(state, storageType, newPath);
+  const nextName =
+    input.editedFileName ??
+    (typeof input.currentFile?.name === 'string' ? input.currentFile.name : undefined) ??
+    newPath.split('/').filter(Boolean).pop() ??
+    oldTab.editedFileName;
+
+  const nextCurrentFile: FileWorkspaceTab['currentFile'] = {
+    ...oldTab.currentFile,
+    ...(input.currentFile || {}),
+    id: newPath,
+    type: storageType,
+    ...(nextName ? { name: nextName } : {}),
+  };
+
+  if (destTab && destTab.id !== oldId) {
+    // Destination already open — keep dest slot, drop source, preserve editor if dest empty.
+    const merged: FileWorkspaceTab = {
+      ...destTab,
+      path: newPath,
+      currentFile: {
+        ...destTab.currentFile,
+        ...nextCurrentFile,
+      },
+      editedFileName: nextName || destTab.editedFileName,
+      editorContent: destTab.editorContent || oldTab.editorContent,
+      baselineContent: destTab.baselineContent || oldTab.baselineContent,
+      lastActivatedAt: Math.max(destTab.lastActivatedAt, oldTab.lastActivatedAt),
+    };
+    revokeFileTabObjectUrl(oldTab);
+    const tabs = state.tabs
+      .filter((t) => t.id !== oldId)
+      .map((t) => (t.id === newId ? merged : t));
+    const activeId =
+      state.activeId === oldId || state.activeId === newId ? newId : state.activeId;
+    return { tabs, activeId };
+  }
+
+  const retargeted: FileWorkspaceTab = {
+    ...oldTab,
+    id: newId,
+    path: newPath,
+    currentFile: nextCurrentFile,
+    editedFileName: nextName || oldTab.editedFileName,
+  };
+  const tabs = state.tabs.map((t) => (t.id === oldId ? retargeted : t));
+  const activeId = state.activeId === oldId ? newId : state.activeId;
+  return { tabs, activeId };
+}
+
+/**
+ * Rewrite open file tab paths after a folder rename/move (`oldPrefix` → `newPrefix`).
+ * Prefixes should include the trailing slash when targeting a folder.
+ */
+export function retargetFileTabsByPathPrefix(
+  state: WorkspaceTabsState,
+  storageType: string,
+  oldPrefix: string,
+  newPrefix: string,
+): WorkspaceTabsState {
+  if (!storageType || !oldPrefix || oldPrefix === newPrefix) return state;
+  let next = state;
+  for (const tab of state.tabs) {
+    if (!isFileTab(tab) || tab.storageType !== storageType) continue;
+    if (tab.path !== oldPrefix && !tab.path.startsWith(oldPrefix)) continue;
+    const newPath = newPrefix + tab.path.slice(oldPrefix.length);
+    next = retargetFileTab(next, storageType, tab.path, {
+      path: newPath,
+      currentFile: {
+        ...tab.currentFile,
+        id: newPath,
+      },
+    });
+  }
+  return next;
+}
+
 /** Reorder tabs by moving `activeId` to the position of `overId`. */
 export function moveTab(
   state: WorkspaceTabsState,
