@@ -38,7 +38,11 @@ export function useCoverImageUrl(
     }
     let cancelled = false;
     setUrl(null);
-    void resolveWikiImageUrl(trimmed, getPresignedUrl).then((resolved: string | null) => {
+    const resolver =
+      typeof getPresignedUrl === 'function'
+        ? getPresignedUrl
+        : async () => null;
+    void resolveWikiImageUrl(trimmed, resolver).then((resolved: string | null) => {
       if (!cancelled) setUrl(resolved || null);
     });
     return () => {

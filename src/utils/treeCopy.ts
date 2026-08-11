@@ -82,7 +82,10 @@ export async function listFileSystemDirectoryNames(
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<string[]> {
   const names: string[] = [];
-  for await (const entry of dirHandle.values()) {
+  const dirAny = dirHandle as FileSystemDirectoryHandle & {
+    values: () => AsyncIterableIterator<FileSystemHandle>;
+  };
+  for await (const entry of dirAny.values()) {
     if (entry?.name) names.push(entry.name);
   }
   return names;
