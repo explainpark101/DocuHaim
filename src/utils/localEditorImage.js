@@ -99,12 +99,18 @@ export async function uploadLocalEditorImage(rootHandle, file, options = {}) {
  */
 export async function getLocalWikiImageObjectUrl(rootHandle, path) {
   if (!rootHandle || !path) return null;
+  const trimmed = String(path).trim();
+  // note-cover may embed data URIs after base64 download — do not treat as vault keys.
+  if (/^(https?:|data:|blob:|\/\/)/i.test(trimmed)) return trimmed;
   try {
-    const fileHandle = await getLocalFileHandleForPath(rootHandle, path, { create: false });
+    const fileHandle = await getLocalFileHandleForPath(rootHandle, trimmed, { create: false });
     const file = await fileHandle.getFile();
     return URL.createObjectURL(file);
   } catch (err) {
-    console.warn('[wiki-image] getLocalWikiImageObjectUrl: failed', { path, err });
+    console.warn('[wiki-image] getLocalWikiImageObjectUrl: failed', {
+      path: trimmed.length > 120 ? `${trimmed.slice(0, 120)}…` : trimmed,
+      err,
+    });
     return null;
   }
 }

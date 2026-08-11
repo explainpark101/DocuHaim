@@ -2633,12 +2633,16 @@ function MainApp() {
   /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬/WebDAV: blob URL) */
   const getPresignedUrlForPath = useCallback(
     async (path) => {
+      const trimmed = String(path || '').trim();
+      if (!trimmed) return null;
+      // Cover / single-file export may store data: URIs in note-cover paths.
+      if (/^(https?:|data:|blob:|\/\/)/i.test(trimmed)) return trimmed;
       if (currentFile?.type === SESSION_STORAGE_TYPE) {
         const ws = sessionWorkspaceRef.current;
         const candidates = [
-          path,
-          String(path || '').replace(/^\/+/, ''),
-          resolveStorageImagePath(path, currentFile.id),
+          trimmed,
+          trimmed.replace(/^\/+/, ''),
+          resolveStorageImagePath(trimmed, currentFile.id),
         ].filter(Boolean);
         for (const key of candidates) {
           const record = ws?.files?.[key];
@@ -2646,38 +2650,38 @@ function MainApp() {
             return getSessionObjectUrl(record.path, record.bytes, mimeForSessionFileName(record.name));
           }
         }
-        console.warn('[wiki-image] getPresignedUrlForPath: session failed', { path });
+        console.warn('[wiki-image] getPresignedUrlForPath: session failed', { path: trimmed });
         return null;
       }
       if (currentFile?.type === 'local' && localRootHandle) {
-        const url = await getLocalWikiImageObjectUrl(localRootHandle, path);
+        const url = await getLocalWikiImageObjectUrl(localRootHandle, trimmed);
         if (url) {
-          console.log('[wiki-image] getPresignedUrlForPath: local ok', { path, urlLength: url.length });
+          console.log('[wiki-image] getPresignedUrlForPath: local ok', { path: trimmed, urlLength: url.length });
           return url;
         }
-        console.warn('[wiki-image] getPresignedUrlForPath: local failed', { path });
+        console.warn('[wiki-image] getPresignedUrlForPath: local failed', { path: trimmed });
         return null;
       }
       if (currentFile?.type === 'webdav' && webdavReady) {
         try {
           const backend = getBackendForType('webdav');
-          return await backend.getObjectUrl(path);
+          return await backend.getObjectUrl(trimmed);
         } catch (err) {
-          console.warn('[wiki-image] getPresignedUrlForPath: webdav failed', { path, err });
+          console.warn('[wiki-image] getPresignedUrlForPath: webdav failed', { path: trimmed, err });
           return null;
         }
       }
       const client = getS3Client();
       if (!client || !s3Creds.bucket) {
-        console.log('[wiki-image] getPresignedUrlForPath: no client or bucket', { path });
+        console.log('[wiki-image] getPresignedUrlForPath: no client or bucket', { path: trimmed });
         return null;
       }
       try {
-        const url = await getSignedGetUrl(client, s3Creds.bucket, path, 3600);
-        console.log('[wiki-image] getPresignedUrlForPath: ok', { path, urlLength: url?.length });
+        const url = await getSignedGetUrl(client, s3Creds.bucket, trimmed, 3600);
+        console.log('[wiki-image] getPresignedUrlForPath: ok', { path: trimmed, urlLength: url?.length });
         return url;
       } catch (err) {
-        console.warn('[wiki-image] getPresignedUrlForPath: failed', { path, err });
+        console.warn('[wiki-image] getPresignedUrlForPath: failed', { path: trimmed, err });
         return null;
       }
     },
@@ -4907,7 +4911,7 @@ function MainApp() {
     }
   };
 
-  /** Storage API: pick folder, nest MD under `{fileName}/`, stream save with progress. */
+  /** Storage API: pick folder; MD+images nest under `{fileName}/`, single MD saves as a file. */
   const handleDownloadToFolder = async ({
     imageMode = 'files',
     imageSyntax = 'markdown',
@@ -4942,54 +4946,65 @@ function MainApp() {
             getCachedTableStyleTemplate(id),
           );
         }
+        const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
+        const plan = planMarkdownImageExport(markdown, notePath, { syntax: effectiveSyntax });
+
+        const writeSingleMarkdownFile = async (content) => {
+          const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
+          const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
+          const writable = await fileHandle.createWritable();
+          try {
+            await writable.write(content);
+          } finally {
+            await writable.close();
+          }
+        };
+
+        // Single MD (base64 embed, or no images): write the file into the picked folder.
+        if (imageMode === 'base64' || !plan.images.length) {
+          if (plan.images.length) {
+            const { entries, missing } = await collectMarkdownExportImageBytes(
+              plan.images,
+              (path) => readBackendBytes(storageType, path),
+              (completed, total) => {
+                setDownloadProgress(Math.min(90, Math.round((completed / Math.max(total, 1)) * 90)));
+              },
+            );
+            const bundled = embedMarkdownImagesAsDataUris(plan.markdown, entries);
+            await writeSingleMarkdownFile(bundled);
+            const missingMessage = formatMissingExportImagesMessage(missing);
+            if (missingMessage) alert(missingMessage);
+          } else {
+            await writeSingleMarkdownFile(plan.markdown || markdown);
+          }
+          setDownloadProgress(100);
+          setDownloadComplete(true);
+          return;
+        }
+
+        // Split files: nest under a uniquely named folder next to .pictures/.
         const bundleDirName = await allocateUniqueFileSystemName(
           dirHandle,
           markdownExportBundleDirectoryName(fileName),
           { isFolder: true },
         );
         const bundleDirHandle = await dirHandle.getDirectoryHandle(bundleDirName, { create: true });
-        const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
-        const plan = planMarkdownImageExport(markdown, notePath, { syntax: effectiveSyntax });
-        if (plan.images.length) {
-          const { entries, missing } = await collectMarkdownExportImageBytes(
-            plan.images,
-            (path) => readBackendBytes(storageType, path),
-            (completed, total) => {
-              setDownloadProgress(Math.min(90, Math.round((completed / Math.max(total, 1)) * 90)));
-            },
-          );
-          if (imageMode === 'base64') {
-            const bundled = embedMarkdownImagesAsDataUris(plan.markdown, entries);
-            const fileHandle = await bundleDirHandle.getFileHandle(fileName, { create: true });
-            const writable = await fileHandle.createWritable();
-            try {
-              await writable.write(bundled);
-            } finally {
-              await writable.close();
-            }
-            setDownloadProgress(100);
-          } else {
-            await writeMarkdownImageBundleToDirectory(
-              bundleDirHandle,
-              fileName,
-              plan.markdown,
-              entries,
-              (percent) => setDownloadProgress(90 + Math.round(percent * 0.1)),
-            );
-          }
-          const missingMessage = formatMissingExportImagesMessage(missing);
-          if (missingMessage) alert(missingMessage);
-          setDownloadComplete(true);
-          return;
-        }
-        const fileHandle = await bundleDirHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        try {
-          await writable.write(markdown);
-        } finally {
-          await writable.close();
-        }
-        setDownloadProgress(100);
+        const { entries, missing } = await collectMarkdownExportImageBytes(
+          plan.images,
+          (path) => readBackendBytes(storageType, path),
+          (completed, total) => {
+            setDownloadProgress(Math.min(90, Math.round((completed / Math.max(total, 1)) * 90)));
+          },
+        );
+        await writeMarkdownImageBundleToDirectory(
+          bundleDirHandle,
+          fileName,
+          plan.markdown,
+          entries,
+          (percent) => setDownloadProgress(90 + Math.round(percent * 0.1)),
+        );
+        const missingMessage = formatMissingExportImagesMessage(missing);
+        if (missingMessage) alert(missingMessage);
         setDownloadComplete(true);
         return;
       }

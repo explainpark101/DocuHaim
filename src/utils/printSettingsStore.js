@@ -26,6 +26,7 @@ const store = {
 
 /**
  * ExportPDFPage etc.: wiki image URL resolver.
+ * Passes through data:/http(s)/blob URLs (cover base64 export) without storage lookup.
  * @param {'s3' | 'local' | 'webdav' | null | undefined} [fileType]
  * @returns {((path: string) => Promise<string|null>) | null}
  */
@@ -36,20 +37,26 @@ export function getPresignedUrlResolver(fileType = null) {
   const localHandle = store.localRootHandle;
   const webdavCfg = store.webdavConfig;
 
+  /** @type {((path: string) => Promise<string|null>) | null} */
+  let inner = null;
   if (mode === 'local' && localHandle) {
-    return (path) => getLocalWikiImageObjectUrl(localHandle, path);
-  }
-  if (mode === 'webdav' && webdavCfg?.endpoint && webdavCfg?.username) {
+    inner = (path) => getLocalWikiImageObjectUrl(localHandle, path);
+  } else if (mode === 'webdav' && webdavCfg?.endpoint && webdavCfg?.username) {
     const backend = createWebdavBackend(webdavCfg);
-    return (path) => backend.getObjectUrl(path);
+    inner = (path) => backend.getObjectUrl(path);
+  } else if (client && bucket) {
+    inner = (path) => getSignedGetUrl(client, bucket, path, 3600);
+  } else if (localHandle) {
+    inner = (path) => getLocalWikiImageObjectUrl(localHandle, path);
   }
-  if (client && bucket) {
-    return (path) => getSignedGetUrl(client, bucket, path, 3600);
-  }
-  if (localHandle) {
-    return (path) => getLocalWikiImageObjectUrl(localHandle, path);
-  }
-  return null;
+
+  return async (path) => {
+    const trimmed = String(path || '').trim();
+    if (!trimmed) return null;
+    if (/^(https?:|data:|blob:|\/\/)/i.test(trimmed)) return trimmed;
+    if (!inner) return null;
+    return inner(trimmed);
+  };
 }
 
 export function getPrintSettingsStoreEpoch() {
