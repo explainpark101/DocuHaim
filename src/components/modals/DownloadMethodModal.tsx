@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, ChevronDown, ClipboardCopy } from 'lucide-react';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import { RadioGroup, Select } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import { IconDownload, IconFolder } from '@/components/icons';
@@ -81,6 +82,36 @@ const TABLE_FORMAT_OPTIONS: {
     description: '병합·스타일을 HTML <table>로 변환',
   },
 ];
+
+const COLLAPSE_TRANSITION = { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const };
+
+/** Height/opacity enter-exit when image-mode toggles reveal or hide UI. */
+function AnimatedCollapse({
+  show,
+  id,
+  children,
+}: {
+  show: boolean;
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <AnimatePresence initial={false}>
+      {show ? (
+        <Motion.div
+          key={id}
+          initial={{ height: 0, opacity: 0, y: -6 }}
+          animate={{ height: 'auto', opacity: 1, y: 0 }}
+          exit={{ height: 0, opacity: 0, y: -6 }}
+          transition={COLLAPSE_TRANSITION}
+          className="overflow-hidden"
+        >
+          {children}
+        </Motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
 
 export type DownloadMethodChoice = {
   imageMode: DownloadImageMode;
@@ -286,7 +317,7 @@ export function DownloadMethodModal({
               </div>
             ) : null}
 
-            {showImageHandling && imageMode === 'files' ? (
+            <AnimatedCollapse show={Boolean(showImageHandling && imageMode === 'files')} id="image-syntax">
               <div className="mb-4">
                 <div className="mb-2 text-xs font-medium text-gray-500 dark:text-odp-muted">
                   이미지 문법
@@ -324,7 +355,7 @@ export function DownloadMethodModal({
                   })}
                 </RadioGroup.Root>
               </div>
-            ) : null}
+            </AnimatedCollapse>
 
             {showImageHandling && hasHaimTables ? (
               <div className="mb-4">
@@ -488,7 +519,7 @@ export function DownloadMethodModal({
                   </div>
                 </div>
               </button>
-              {showClipboardOption ? (
+              <AnimatedCollapse show={Boolean(showClipboardOption)} id="clipboard-delivery">
                 <button
                   type="button"
                   onClick={() => onSelectClipboard?.(choice)}
@@ -505,14 +536,14 @@ export function DownloadMethodModal({
                     </div>
                   </div>
                 </button>
-              ) : null}
+              </AnimatedCollapse>
             </div>
             ) : (
               <div className="mb-4 space-y-2">
                 <p className="text-xs text-gray-500 dark:text-odp-muted">
                   Base64 이미지는 파일로 분리해 ZIP으로, 파일 이미지는 단일 MD로 바꿀 수 있습니다.
                 </p>
-                {showClipboardOption ? (
+                <AnimatedCollapse show={Boolean(showClipboardOption)} id="clipboard-transform">
                   <button
                     type="button"
                     onClick={() => onSelectClipboard?.(choice)}
@@ -529,7 +560,7 @@ export function DownloadMethodModal({
                       </div>
                     </div>
                   </button>
-                ) : null}
+                </AnimatedCollapse>
               </div>
             )}
             <div className="flex justify-end gap-2">
