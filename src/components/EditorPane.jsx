@@ -20,7 +20,7 @@ import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
-import { ArrowLeftRight, ImagePlus, ListTree, Loader2, PenLine, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, ImagePlus, ListTree, Loader2, PenLine, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -30,6 +30,7 @@ import {
   countStandardMarkdownImages,
   hasStandardMarkdownImages,
 } from '@/utils/convertMarkdownImagesToWiki';
+import { copyCurrentPageAsFormattedHtml } from '@/utils/copyFormattedPageHtml';
 import {
   emptyHomeContainerVariants,
   emptyHomeItemVariants,
@@ -115,6 +116,7 @@ export default function EditorPane({
   const convertAllImagesToWikiRef = useRef(null);
   const [convertAllImagesConfirmOpen, setConvertAllImagesConfirmOpen] = useState(false);
   const [convertingAllImages, setConvertingAllImages] = useState(false);
+  const [copyingFormattedHtml, setCopyingFormattedHtml] = useState(false);
   const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
   const { showAlert } = useAlertModal();
 
@@ -127,6 +129,28 @@ export default function EditorPane({
     novelFlushBeforeSaveRef.current?.();
     onRefreshFromDisk?.();
   }, [onRefreshFromDisk]);
+
+  const handleCopyFormattedHtml = useCallback(async () => {
+    if (copyingFormattedHtml) return;
+    setCopyingFormattedHtml(true);
+    try {
+      novelFlushBeforeSaveRef.current?.();
+      await copyCurrentPageAsFormattedHtml();
+      setFileManagementOpen(false);
+      showAlert({
+        title: '서식 유지 복사',
+        message: '현재 페이지를 HTML 서식과 이미지 포함 형태로 복사했습니다.',
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : '서식 유지 복사에 실패했습니다.';
+      showAlert({ title: '서식 유지 복사', message });
+    } finally {
+      setCopyingFormattedHtml(false);
+    }
+  }, [copyingFormattedHtml, showAlert]);
 
   const openConvertAllImagesConfirm = useCallback(() => {
     setFileManagementOpen(false);
@@ -569,6 +593,23 @@ export default function EditorPane({
                     다운로드
                   </button>
                 )}
+                {viewer === 'markdown' ? (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
+                    onClick={() => {
+                      void handleCopyFormattedHtml();
+                    }}
+                    disabled={copyingFormattedHtml}
+                  >
+                    {copyingFormattedHtml ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <ClipboardCopy size={14} />
+                    )}
+                    서식 유지 복사
+                  </button>
+                ) : null}
                 {onShareToChatWithMyself && currentFile.type !== 'session' && (
                   <button
                     type="button"
