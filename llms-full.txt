@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-08-11T07:58:11.044Z
+Generated: 2026-08-11T08:40:25.835Z
 
 ============================================================
 Advanced Search
@@ -1405,7 +1405,7 @@ type CoverElement =
 - Position defaults (if missing): text ≈ `(10,20,80,12)`, image ≈ `(20,40,50,35)`, shape ≈ `(10,20,80,30)`; `x,y` clamp 0–100; `w,h` clamp 1–100.
 - Orphan `groupId`s get synthetic groups; then `ensureLayerTree` repairs `rootLayerIds` / `childIds` consistency (host must keep a valid layer tree; see `layerTree.ts`).
 - `locked: true` on an element or group blocks canvas move/resize/in-place edit (group lock applies to descendants). Editor shows a yellow ring on locked elements only while selected; omit `locked` when false.
-- `webfonts`: on write/export, collect primary `fontFamily` tokens from text/shape elements; resolve CSS from app built-ins (`src/styles/builtin-webfonts.css`) and vault user webfonts; store as `{ family, css, source? }[]`. Omit when empty. Hosts that render the cover should inject `webfonts[].css` (see `CoverSlide`).
+- `webfonts`: on write/export, collect primary `fontFamily` tokens from text/shape elements (unset → default `Paperozi`); resolve CSS from app built-ins (`builtinWebfontCss.ts` / `builtin-webfonts.css`) and vault user webfonts; store as `{ family, css, source? }[]`. Omit when empty. Hosts that render the cover should inject `webfonts[].css` (see `CoverSlide`).
 
 **Shape render notes**
 
