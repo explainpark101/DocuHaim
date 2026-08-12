@@ -40,6 +40,20 @@ export default function FontFamilyInput({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const fieldName = id || 'font-family';
 
+  const commaSplit = useMemo(() => {
+    const lastComma = inputValue.lastIndexOf(',');
+    if (lastComma < 0) {
+      return {
+        prefix: '',
+        query: inputValue.trim(),
+      };
+    }
+    return {
+      prefix: `${inputValue.slice(0, lastComma + 1)} `,
+      query: inputValue.slice(lastComma + 1).trim(),
+    };
+  }, [inputValue]);
+
   useEffect(() => {
     setInputValue(value);
   }, [value]);
@@ -57,10 +71,10 @@ export default function FontFamilyInput({
     [options, optionsTick],
   );
   const filtered =
-    inputValue.trim() === ''
+    commaSplit.query === ''
       ? liveOptions
       : liveOptions.filter((opt) =>
-          opt.toLowerCase().includes(inputValue.trim().toLowerCase()),
+          opt.toLowerCase().includes(commaSplit.query.toLowerCase()),
         );
 
   const handleBlur = () => {
@@ -79,8 +93,9 @@ export default function FontFamilyInput({
   };
 
   const handleSelect = (font: string) => {
-    setInputValue(font);
-    onChange(font);
+    const next = `${commaSplit.prefix}${font}`;
+    setInputValue(next);
+    onChange(next);
     setOpen(false);
   };
 
