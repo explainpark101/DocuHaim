@@ -79,6 +79,9 @@
 
 .md-editor .md-editor-preview .footnotes-return-btn {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   border: 1px solid var(--md-theme-border-color, var(--color-gray-200));
   border-radius: 9999px;
   background: color-mix(in srgb, var(--md-theme-bg-color, #fff) 92%, transparent);
@@ -90,6 +93,14 @@
   line-height: 1;
   cursor: pointer;
   transition: transform 0.16s ease, opacity 0.16s ease, box-shadow 0.16s ease;
+}
+
+.md-editor .md-editor-preview .footnotes-return-icon {
+  flex: 0 0 auto;
+}
+
+.md-editor .md-editor-preview .footnotes-return-label {
+  white-space: nowrap;
 }
 
 .md-editor .md-editor-preview .footnotes-return-btn:hover {
