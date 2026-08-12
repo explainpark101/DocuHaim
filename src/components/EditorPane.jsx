@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { motion as Motion, useReducedMotion } from 'motion/react';
 import {
   IconCloud,
@@ -20,10 +20,11 @@ import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
-import { ArrowLeftRight, ClipboardCopy, ImagePlus, ListTree, Loader2, PenLine, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, ImagePlus, ListTree, Loader2, PenLine, Settings, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import DocumentSettingsModal from '@/components/DocumentSettingsModal';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import {
   convertAllMarkdownImagesToWiki,
@@ -35,6 +36,11 @@ import {
   collectImgbbCopyCandidates,
 } from '@/utils/imgbbCopyCandidates';
 import { uploadImageToImgbb } from '@/utils/imgbbUpload';
+import {
+  DEFAULT_DOCUMENT_SETTINGS_META,
+  parseDocumentSettingsMeta,
+  upsertDocumentSettingsMeta,
+} from '@/utils/documentSettingsMeta';
 import {
   emptyHomeContainerVariants,
   emptyHomeItemVariants,
@@ -126,7 +132,13 @@ export default function EditorPane({
   const [imgbbCopyCandidates, setImgbbCopyCandidates] = useState([]);
   const [imgbbCopyUploading, setImgbbCopyUploading] = useState(false);
   const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
+  const [documentSettingsOpen, setDocumentSettingsOpen] = useState(false);
   const { showAlert } = useAlertModal();
+
+  const documentSettings = useMemo(() => {
+    const { meta } = parseDocumentSettingsMeta(editorContent ?? '');
+    return meta ?? DEFAULT_DOCUMENT_SETTINGS_META;
+  }, [editorContent]);
 
   const handleToolbarSave = useCallback(() => {
     novelFlushBeforeSaveRef.current?.();
@@ -137,6 +149,13 @@ export default function EditorPane({
     novelFlushBeforeSaveRef.current?.();
     onRefreshFromDisk?.();
   }, [onRefreshFromDisk]);
+
+  const handleApplyDocumentSettings = useCallback((nextSettings) => {
+    const nextMarkdown = upsertDocumentSettingsMeta(editorContent ?? '', nextSettings);
+    onChangeEditor?.(nextMarkdown);
+    setDocumentSettingsOpen(false);
+    setFileManagementOpen(false);
+  }, [editorContent, onChangeEditor]);
 
   const finishCopyFormattedHtml = useCallback(async (imageSrcReplacements = null) => {
     await copyCurrentPageAsFormattedHtml(document, {
@@ -690,6 +709,19 @@ export default function EditorPane({
                     서식 유지 복사
                   </button>
                 ) : null}
+                {currentFile.type !== 'session' ? (
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
+                  onClick={() => {
+                    setDocumentSettingsOpen(true);
+                    setFileManagementOpen(false);
+                  }}
+                >
+                  <Settings size={14} />
+                  문서 설정
+                </button>
+                ) : null}
                 {onShareToChatWithMyself && currentFile.type !== 'session' && (
                   <button
                     type="button"
@@ -1033,6 +1065,12 @@ export default function EditorPane({
           </div>
         )}
       </div>
+      <DocumentSettingsModal
+        isOpen={documentSettingsOpen}
+        onClose={() => setDocumentSettingsOpen(false)}
+        settings={documentSettings}
+        onApply={handleApplyDocumentSettings}
+      />
       <ConfirmModal
         isOpen={convertAllImagesConfirmOpen}
         title="모든 image를 wiki image로"

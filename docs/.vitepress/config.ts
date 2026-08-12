@@ -64,6 +64,7 @@ export default defineConfig({
             { text: 'Haim table', link: '/custom-markdown/haim-table' },
             { text: 'Plan frontmatter', link: '/custom-markdown/plan-frontmatter' },
             { text: 'Footnotes / Sources', link: '/custom-markdown/footnotes' },
+            { text: 'Document settings', link: '/custom-markdown/document-settings' },
             { text: 'Preview hard break', link: '/custom-markdown/preview-hard-break' },
           ],
         },

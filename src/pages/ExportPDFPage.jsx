@@ -57,6 +57,10 @@ import {
   stepZoomPercent,
 } from '@/utils/printPreviewView';
 import { withFontFallback } from '@/utils/fontFallback';
+import {
+  DEFAULT_DOCUMENT_SETTINGS_META,
+  parseDocumentSettingsMeta,
+} from '@/utils/documentSettingsMeta';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
 import { usePrintTableFit } from '@/hooks/usePrintTableFit';
@@ -586,6 +590,10 @@ export default function ExportPDFPage({
     setSavedValue(nextValue);
   }, [documentFile, documentValue, locationState]);
 
+  const documentSettings = useMemo(() => {
+    const { meta } = parseDocumentSettingsMeta(previewValue);
+    return meta ?? DEFAULT_DOCUMENT_SETTINGS_META;
+  }, [previewValue]);
   const bodyMarkdown = useMemo(() => stripNoteCoverComment(previewValue), [previewValue]);
   const parsedCoverResult = useMemo(() => parseNoteCover(previewValue), [previewValue]);
   const parsedCover = parsedCoverResult.cover;
@@ -1634,10 +1642,10 @@ export default function ExportPDFPage({
 
   const fontStyleVars = {
     ...buildPrintLayoutCssVars(printLayout),
-    '--print-font-body': withFontFallback(fonts.body),
-    '--print-font-heading': withFontFallback(fonts.heading),
-    '--print-font-bold': withFontFallback(fonts.bold),
-    '--print-font-code': withFontFallback(fonts.code, 'mono'),
+    '--print-font-body': withFontFallback(documentSettings.fonts?.body || fonts.body),
+    '--print-font-heading': withFontFallback(documentSettings.fonts?.heading || fonts.heading),
+    '--print-font-bold': withFontFallback(documentSettings.fonts?.bold || fonts.bold),
+    '--print-font-code': withFontFallback(documentSettings.fonts?.code || fonts.code, 'mono'),
   };
 
   if (isDocumentLoading) {
@@ -1671,6 +1679,9 @@ export default function ExportPDFPage({
       className="export-pdf-page flex flex-col h-full min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible bg-neutral-200 dark:bg-neutral-800 print:bg-white min-w-0"
       style={fontStyleVars}
     >
+      {documentSettings.webfontCss ? (
+        <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>
+      ) : null}
       <style>{printFontStyles}</style>
       <style>{buildPrintPageAtRule(printLayout.pageSizeId)}</style>
       <div ref={headerRef} className="sticky top-0 z-20 flex flex-col gap-2 px-4 py-3 border-b border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shrink-0 print:hidden">

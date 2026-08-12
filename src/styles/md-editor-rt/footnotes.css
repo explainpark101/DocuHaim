@@ -1,5 +1,28 @@
 /* Footnote / Sources list (numeric [^N] bottom sources) */
 
+.md-editor .md-editor-preview {
+  font-family: var(--print-font-body, inherit);
+}
+
+.md-editor .md-editor-preview h1,
+.md-editor .md-editor-preview h2,
+.md-editor .md-editor-preview h3,
+.md-editor .md-editor-preview h4,
+.md-editor .md-editor-preview h5,
+.md-editor .md-editor-preview h6 {
+  font-family: var(--print-font-heading, inherit);
+}
+
+.md-editor .md-editor-preview b,
+.md-editor .md-editor-preview strong {
+  font-family: var(--print-font-bold, inherit);
+}
+
+.md-editor .md-editor-preview code,
+.md-editor .md-editor-preview pre {
+  font-family: var(--print-font-code, inherit);
+}
+
 .md-editor .md-editor-preview .footnote-ref {
   font-size: 0.75em;
   line-height: 0;

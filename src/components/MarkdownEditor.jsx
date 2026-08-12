@@ -130,6 +130,8 @@ import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
 import {
   FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
 } from '@/utils/previewFootnotesSettings';
+import { parseDocumentSettingsMeta } from '@/utils/documentSettingsMeta';
+import { withFontFallback } from '@/utils/fontFallback';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
@@ -885,6 +887,7 @@ export default function MarkdownEditor({
       },
     });
   }, [previewOnly]);
+
   const {
     width: catalogWidth,
     isResizing: catalogResizing,
@@ -901,6 +904,22 @@ export default function MarkdownEditor({
       api?.toggleCatalog?.(false);
     },
   });
+
+  const documentSettings = useMemo(() => {
+    const { meta } = parseDocumentSettingsMeta(value ?? '');
+    return meta;
+  }, [value]);
+
+  const documentFontStyleVars = useMemo(() => {
+    const fonts = documentSettings?.fonts;
+    if (!fonts) return {};
+    return {
+      '--print-font-body': withFontFallback(fonts.body),
+      '--print-font-heading': withFontFallback(fonts.heading),
+      '--print-font-bold': withFontFallback(fonts.bold),
+      '--print-font-code': withFontFallback(fonts.code, 'mono'),
+    };
+  }, [documentSettings]);
 
   useEffect(() => {
     snippetConfigRef.current = snippetConfig || { snippets: [] };
@@ -2358,8 +2377,11 @@ export default function MarkdownEditor({
     <div
       ref={containerRef}
       className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}`}
-      style={{ '--md-catalog-width': `${catalogWidth}px` }}
+      style={{ '--md-catalog-width': `${catalogWidth}px`, ...documentFontStyleVars }}
     >
+      {documentSettings?.webfontCss ? (
+        <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>
+      ) : null}
       {catalogHandleBox &&
         createPortal(
           <TocResizeHandle

@@ -15,6 +15,10 @@ import {
   DEFAULT_NOTE_FOOTNOTES_META,
   parseNoteFootnotesMeta,
 } from '@/utils/noteFootnotesMeta';
+import {
+  DEFAULT_DOCUMENT_SETTINGS_META,
+  parseDocumentSettingsMeta,
+} from '@/utils/documentSettingsMeta';
 
 const SOURCE_LINE_RE = /^\[\^(\d+)\]\s*:?\s?(.*)$/;
 /** Line start: `[` `^` digits `]` optional spaces `:` — CommonMark would steal this. */
@@ -32,6 +36,8 @@ type SourceFootnoteEnv = {
   srcLines?: string[];
   sourceFootnotes?: SourceFootnotePack;
   sourceFootnotesEnabled?: boolean;
+  sourceFootnotesShowList?: boolean;
+  sourceFootnotesTitle?: string;
   references?: Record<string, { href?: string; title?: string }>;
 };
 
@@ -267,6 +273,13 @@ function escapeAttr(value: string): string {
     .replace(/\r?\n/g, ' ');
 }
 
+function escapeHtml(value: string): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function renderBackButtonIcon(): string {
   return (
     '<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
@@ -313,7 +326,7 @@ function renderSourcesHtml(md: MarkdownItLike, env: SourceFootnoteEnv): string {
   return (
     '<hr class="footnotes-sep">\n' +
     '<section class="footnotes">\n' +
-    '<p class="footnotes-title" role="heading" aria-level="2">Sources</p>\n' +
+    `<p class="footnotes-title" role="heading" aria-level="2">${escapeHtml(env.sourceFootnotesTitle || 'Sources')}</p>\n` +
     '<ol class="footnotes-list">\n' +
     items +
     '\n</ol>\n' +
@@ -388,9 +401,17 @@ export function footnoteMarkdownItPlugin(md: MarkdownItLike): void {
     if (state.inlineMode) return;
 
     const raw = rawMarkdownFromState(state);
-    const { meta, body: withoutMeta } = parseNoteFootnotesMeta(raw);
+    const {
+      meta: documentSettings,
+      body: withoutDocumentSettings,
+    } = parseDocumentSettingsMeta(raw);
+    const { meta, body: withoutMeta } = parseNoteFootnotesMeta(withoutDocumentSettings);
     const enabled = (meta ?? DEFAULT_NOTE_FOOTNOTES_META).enabled !== false;
     state.env.sourceFootnotesEnabled = enabled;
+    state.env.sourceFootnotesShowList =
+      (documentSettings ?? DEFAULT_DOCUMENT_SETTINGS_META).sourceList.show !== false;
+    state.env.sourceFootnotesTitle =
+      (documentSettings ?? DEFAULT_DOCUMENT_SETTINGS_META).sourceList.title || 'Sources';
 
     if (!enabled) {
       state.env.sourceFootnotes = { byLabel: {}, order: [] };
@@ -438,6 +459,7 @@ export function footnoteMarkdownItPlugin(md: MarkdownItLike): void {
   md.core.ruler.push('source_footnote_tail', (state) => {
     if (state.inlineMode) return;
     if (state.env.sourceFootnotesEnabled === false) return;
+    if (state.env.sourceFootnotesShowList === false) return;
     const html = renderSourcesHtml(md, state.env);
     if (!html) return;
     const token = {
