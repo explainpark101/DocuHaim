@@ -111,6 +111,8 @@ import {
 import { isDataImageUri, prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
 import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
 import { useAuth } from '@/contexts/AuthContext';
+import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
+import { FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT } from '@/utils/previewFootnotesSettings';
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
@@ -489,6 +491,7 @@ export default function ExportPDFPage({
   const [previewView, setPreviewView] = useState(() => loadPrintPreviewView());
   const [flipIndex, setFlipIndex] = useState(0);
   const [stageVisiblePages, setStageVisiblePages] = useState(null);
+  const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
   const activeTransformRef = useRef(null);
   const headerRef = useRef(null);
   const previewContainerRef = useRef(null);
@@ -812,6 +815,21 @@ export default function ExportPDFPage({
       window.removeEventListener('resize', updateTocTop);
       window.removeEventListener('scroll', updateTocTop, true);
       ro?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!previewPanRoot) return undefined;
+    return bindPreviewFootnoteClick(previewPanRoot);
+  }, [previewPanRoot]);
+
+  useEffect(() => {
+    const onFootnotesSourcesChanged = () => {
+      setPreviewFootnotesRenderKey((k) => k + 1);
+    };
+    window.addEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnotesSourcesChanged);
+    return () => {
+      window.removeEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnotesSourcesChanged);
     };
   }, []);
 
@@ -1921,6 +1939,7 @@ export default function ExportPDFPage({
                   firstPageNumber={bodyFirstPageNumber}
                 />
                 <MdPreview
+                  key={`footnotes-${previewFootnotesRenderKey}`}
                   id={EDITOR_ID}
                   theme="light"
                   language="ko-KR"

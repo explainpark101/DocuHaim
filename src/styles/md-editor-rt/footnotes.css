@@ -1,0 +1,74 @@
+/* Footnote / Sources list (numeric [^N] bottom sources) */
+
+.md-editor .md-editor-preview .footnote-ref {
+  font-size: 0.75em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.md-editor .md-editor-preview sub.footnote-ref {
+  vertical-align: sub;
+}
+
+.md-editor .md-editor-preview .footnote-ref--raw {
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+  font-weight: 600;
+}
+
+.md-editor .md-editor-preview .footnote-ref-link {
+  text-decoration: none;
+  color: var(--md-theme-link-color, inherit);
+}
+
+.md-editor .md-editor-preview .footnote-ref-link:hover {
+  color: var(--md-theme-link-hover-color, inherit);
+}
+
+.md-editor .md-editor-preview .footnotes-sep {
+  margin: 1.75rem 0 1rem;
+  border: 0;
+  border-top: 1px solid var(--md-theme-border-color, var(--color-gray-200));
+}
+
+.md-editor .md-editor-preview .footnotes {
+  margin-top: 0;
+  font-size: 0.9em;
+  color: var(--md-theme-color, inherit);
+  opacity: 0.92;
+}
+
+.md-editor .md-editor-preview .footnotes-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.95em;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.md-editor .md-editor-preview .footnotes-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.md-editor .md-editor-preview .footnote-item {
+  margin: 0.35rem 0;
+}
+
+.md-editor .md-editor-preview .footnote-label {
+  font-weight: 600;
+  margin-right: 0.25em;
+}
+
+.md-editor .md-editor-preview .footnote-item:target,
+.md-editor .md-editor-preview .footnote-ref a:target {
+  background-color: color-mix(in srgb, var(--md-theme-link-color, #6366f1) 18%, transparent);
+  border-radius: 2px;
+  outline: 2px solid color-mix(in srgb, var(--md-theme-link-color, #6366f1) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.md-editor .md-editor-preview .footnote-backref {
+  text-decoration: none;
+  margin-left: 0.15em;
+}

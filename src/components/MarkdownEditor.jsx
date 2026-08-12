@@ -119,6 +119,10 @@ import {
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
 import { resolvePreviewHref } from '@/utils/appHref';
+import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
+import {
+  FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
+} from '@/utils/previewFootnotesSettings';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
@@ -181,7 +185,7 @@ import {
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
 const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
 
-/** Windows: Ctrl, Mac: Cmd 를 mod 로 통일한 키 조합 문자열 반환 (keydown 매칭용) */
+/** Windows: Ctrl, Mac: Cmd ? mod ? ??? ? ?? ??? ?? (keydown ???) */
 function getKeyComboFromEvent(e) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
   const parts = [];
@@ -197,7 +201,7 @@ function getKeyComboFromEvent(e) {
   return parts.join('+');
 }
 
-/** 저장된 shortcut 문자열의 ctrl/meta 를 mod 로 정규화 (비교용) */
+/** ??? shortcut ???? ctrl/meta ? mod ? ??? (???) */
 function normalizeShortcutForMatch(shortcut) {
   if (!shortcut || typeof shortcut !== 'string') return '';
   return shortcut
@@ -252,11 +256,11 @@ function insertLineAboveInEditorView(view) {
   });
 }
 
-/** Mac KO/US 등에서 `·₩·\ 문자 또는 물리 키(Backquote/IntlBackslash)로 인라인 코드 감싸기 시도 */
+/** Mac KO/US ??? `�?�\ ?? ?? ?? ?(Backquote/IntlBackslash)? ??? ?? ??? ?? */
 function isInlineCodeFenceTriggerKey(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
   const { key, code } = e;
-  if (key === '`' || key === '₩' || key === '\\') return true;
+  if (key === '`' || key === '?' || key === '\\') return true;
   if (code === 'Backquote' || code === 'IntlBackslash') return true;
   return false;
 }
@@ -295,7 +299,7 @@ config({
       'ko-KR': KO_KR,
     },
     // Non-Safari: near-instant preview for Mirror Edit / dual-pane sync.
-    // Safari: restore library default — renderDelay 0 makes typing very laggy.
+    // Safari: restore library default � renderDelay 0 makes typing very laggy.
     renderDelay: isSafariBrowser() ? 500 : 0,
   },
   codeMirrorExtensions(extensions, { keyBindings }) {
@@ -343,7 +347,7 @@ config({
         key: 'ArrowRight',
         run: (view) => moveCaretSkippingImages(view, 1),
       },
-      // Ctrl/Alt+Arrow: CM group & syntax motion — keep image markup atomic.
+      // Ctrl/Alt+Arrow: CM group & syntax motion � keep image markup atomic.
       {
         key: 'Ctrl-ArrowLeft',
         mac: 'Alt-ArrowLeft',
@@ -484,9 +488,10 @@ config({
       },
       {
         type: 'multiCursorPreview',
+        // min 2: single-char matches wrap hundreds of spans and can stall CM paints.
         extension: highlightSelectionMatches({
-          minSelectionLength: 1,
-          maxMatches: 300,
+          minSelectionLength: 2,
+          maxMatches: 200,
         }),
       },
       {
@@ -514,7 +519,7 @@ config({
   },
   markdownItPlugins(plugins) {
     let next = plugins;
-    // wiki_image는 @/config/mdEditorConfig에서 전역 등록됨. 여기서는 중복 추가 방지.
+    // wiki_image? @/config/mdEditorConfig?? ?? ???. ???? ?? ?? ??.
     if (!next.some((p) => p.type === 'heading_levels')) {
       next = [...next, { type: 'heading_levels', plugin: headingLevelsMarkdownItPlugin, options: {} }];
     }
@@ -599,8 +604,8 @@ export default function MarkdownEditor({
     if (sig === coverIssuesAlertSigRef.current) return;
     coverIssuesAlertSigRef.current = sig;
     showAlert({
-      title: '표지 데이터 오류',
-      message: `표지(note-cover) 데이터에 문제가 있습니다.\n\n${sig}`,
+      title: '?? ??? ??',
+      message: `??(note-cover) ???? ??? ????.\n\n${sig}`,
     });
   }, [value, showAlert]);
 
@@ -643,6 +648,7 @@ export default function MarkdownEditor({
   const openHeadingRemapRef = useRef(() => {});
   const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
+  const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
   const [imageLinkModalOpen, setImageLinkModalOpen] = useState(false);
   const [clipCropFile, setClipCropFile] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
@@ -656,7 +662,7 @@ export default function MarkdownEditor({
   const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
   const [autocompleteEnabled, setAutocompleteEnabled] = useEditorAutocomplete();
   const [mirrorEditPref, setMirrorEditEnabled] = useMirrorEdit();
-  // Safari: skip custom preview↔editor scroll sync and Mirror Edit (unstable).
+  // Safari: skip custom preview?editor scroll sync and Mirror Edit (unstable).
   const safariMdEditor = useMemo(() => isSafariBrowser(), []);
   const mirrorEditEnabled = safariMdEditor ? false : mirrorEditPref;
 
@@ -775,8 +781,8 @@ export default function MarkdownEditor({
       const opened = openHaimTableEditRef.current(from, to);
       if (!opened) {
         showAlert({
-          title: '표 편집',
-          message: '커서 또는 선택 영역이 마크다운 표 안에 있어야 합니다.',
+          title: '? ??',
+          message: '?? ?? ?? ??? ???? ? ?? ??? ???.',
         });
       }
     };
@@ -990,7 +996,7 @@ export default function MarkdownEditor({
   }, [currentFile?.id, currentFile?.type, previewOnly]);
 
   // Preview heading fold chevrons (persist collapsed ids per document).
-  // Do not depend on `value` — tearing down on every keystroke flashes chevrons.
+  // Do not depend on `value` � tearing down on every keystroke flashes chevrons.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
@@ -1012,7 +1018,7 @@ export default function MarkdownEditor({
       const preview = getPreview();
       if (!preview) return;
       // Preview HTML rebuild drops old chevrons with the nodes. Only bind headings
-      // that lack the enhance marker — never strip live chevrons (avoids flicker
+      // that lack the enhance marker � never strip live chevrons (avoids flicker
       // and MutationObserver loops from inserting buttons).
       if (!previewNeedsHeadingFoldEnhance(preview)) return;
 
@@ -1079,7 +1085,7 @@ export default function MarkdownEditor({
   }, [previewOnly]);
 
   // Mobile: opening a note starts in toolbar Preview Only with Mirror Edit off.
-  // Do not lock the `previewOnly` prop — user can still toggle either control.
+  // Do not lock the `previewOnly` prop � user can still toggle either control.
   useEffect(() => {
     if (!isMobileLayout || previewOnly) return undefined;
     if (!currentFile?.id) return undefined;
@@ -1097,7 +1103,7 @@ export default function MarkdownEditor({
     };
   }, [isMobileLayout, previewOnly, currentFile?.id, setMirrorEditEnabled]);
 
-  // Preview selection → CodeMirror selection + mirrored highlight/caret on both panes.
+  // Preview selection ? CodeMirror selection + mirrored highlight/caret on both panes.
   useEffect(() => {
     if (previewOnly || safariMdEditor) return undefined;
     const root = containerRef.current;
@@ -1140,7 +1146,7 @@ export default function MarkdownEditor({
 
       const sel = window.getSelection?.();
       if (!sel || sel.rangeCount === 0) {
-        // Empty table cells often cannot host a native selection — still map by target.
+        // Empty table cells often cannot host a native selection � still map by target.
         if (!(eventTarget instanceof Element) || !eventTarget.closest('td, th')) return;
       } else {
         const range = sel.getRangeAt(0);
@@ -1218,7 +1224,7 @@ export default function MarkdownEditor({
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
 
-      // Toolbar preview-only: source CM is width 0% — never focus it (breaks Hangul IME).
+      // Toolbar preview-only: source CM is width 0% � never focus it (breaks Hangul IME).
       if (isMdEditorPreviewOnlyUi(root)) {
         const dragged = Boolean(
           pointerDown
@@ -1275,7 +1281,7 @@ export default function MarkdownEditor({
 
     // Mirror Edit ON only: if focus/selection is still on the preview, move editing
     // into CodeMirror. Skip while composing (Korean IME). In preview-only UI, never
-    // steal focus to the zero-width source pane — contentEditable handles input instead.
+    // steal focus to the zero-width source pane � contentEditable handles input instead.
     const onKeyDownCapture = (e) => {
       if (!mirrorEditOn()) return;
       if (e.isComposing || e.keyCode === 229 || e.key === 'Process') return;
@@ -1381,7 +1387,7 @@ export default function MarkdownEditor({
     };
   }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
 
-  // Mirror Edit: double-click preview block → contentEditable in place.
+  // Mirror Edit: double-click preview block ? contentEditable in place.
   useEffect(() => {
     if (previewOnly || safariMdEditor || !mirrorEditEnabled) {
       cancelPreviewMirrorEdit();
@@ -1501,7 +1507,7 @@ export default function MarkdownEditor({
     }
   }, [previewOnly, onUploadImage, isUploadingEditorImage]);
 
-  // 스니펫 단축키를 에디터 기본 단축키(cmd+[, cmd+] 등)보다 우선 적용: document 캡처로 최우선 처리
+  // ??? ???? ??? ?? ???(cmd+[, cmd+] ?)?? ?? ??: document ??? ??? ??
   useEffect(() => {
     if (previewOnly) return;
     const handleKeyDownCapture = (e) => {
@@ -1620,7 +1626,7 @@ export default function MarkdownEditor({
     return () => root.removeEventListener('contextmenu', onContextMenu);
   }, [showAlert]);
 
-  // Double-click preview table → table editor (mirror-edit already ignores tables).
+  // Double-click preview table ? table editor (mirror-edit already ignores tables).
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return undefined;
@@ -1642,8 +1648,8 @@ export default function MarkdownEditor({
       const opened = openHaimTablePreviewRef.current(table, previewRoot);
       if (!opened) {
         showAlert({
-          title: '표 편집',
-          message: '이 표를 마크다운 표로 찾지 못했습니다. 소스의 파이프 표인지 확인해 주세요.',
+          title: '? ??',
+          message: '? ?? ???? ?? ?? ?????. ??? ??? ??? ??? ???.',
         });
       }
     };
@@ -1651,6 +1657,22 @@ export default function MarkdownEditor({
     root.addEventListener('dblclick', onDblClick, true);
     return () => root.removeEventListener('dblclick', onDblClick, true);
   }, [showAlert]);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return undefined;
+    return bindPreviewFootnoteClick(root);
+  }, []);
+
+  useEffect(() => {
+    const onFootnotesSourcesChanged = () => {
+      setPreviewFootnotesRenderKey((k) => k + 1);
+    };
+    window.addEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnotesSourcesChanged);
+    return () => {
+      window.removeEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnotesSourcesChanged);
+    };
+  }, []);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1692,6 +1714,8 @@ export default function MarkdownEditor({
       if (!anchor || !root.contains(anchor)) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       if (typeof event.button === 'number' && event.button !== 0) return;
+      // Footnote in-preview nav is handled by bindPreviewFootnoteClick (capture).
+      if (anchor.hasAttribute('data-md-footnote-to')) return;
 
       const href = anchor.getAttribute('href') || '';
       const resolved = resolvePreviewHref(href, {
@@ -1756,12 +1780,12 @@ export default function MarkdownEditor({
     async ({ file }) => {
       const modal = wikiImageModalState;
       if (!modal?.key || typeof onUploadImage !== 'function') {
-        throw new Error('이미지 업로드를 사용할 수 없습니다.');
+        throw new Error('??? ???? ??? ? ????.');
       }
       const paths = await onUploadImage([file]);
       const nextPath = paths?.[0];
       if (!nextPath) {
-        throw new Error('자른 이미지 업로드에 실패했습니다.');
+        throw new Error('?? ??? ???? ??????.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') return;
       const next =
@@ -1787,10 +1811,10 @@ export default function MarkdownEditor({
     async ({ width, height }) => {
       const modal = wikiImageModalState;
       if (!modal?.key || modal.kind !== 'markdown') {
-        throw new Error('변환할 이미지를 찾을 수 없습니다.');
+        throw new Error('??? ???? ?? ? ????.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') {
-        throw new Error('문서를 수정할 수 없습니다.');
+        throw new Error('??? ??? ? ????.');
       }
       const prepared = await prepareMarkdownImageForWikiConvert({
         markdownSrc: modal.key,
@@ -1802,12 +1826,12 @@ export default function MarkdownEditor({
         nextPath = prepared.path;
       } else {
         if (typeof onUploadImage !== 'function') {
-          throw new Error('이미지 업로드를 사용할 수 없습니다.');
+          throw new Error('??? ???? ??? ? ????.');
         }
         const paths = await onUploadImage([prepared.file]);
         nextPath = paths?.[0] || '';
         if (!nextPath) {
-          throw new Error('이미지 업로드에 실패했습니다.');
+          throw new Error('??? ???? ??????.');
         }
       }
       const next = replaceMarkdownImageWithWikiPath(value, {
@@ -1828,24 +1852,24 @@ export default function MarkdownEditor({
     async ({ width, height }) => {
       const modal = wikiImageModalState;
       if (!modal?.key || !modal?.kind) {
-        throw new Error('변환할 이미지를 찾을 수 없습니다.');
+        throw new Error('??? ???? ?? ? ????.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') {
-        throw new Error('문서를 수정할 수 없습니다.');
+        throw new Error('??? ??? ? ????.');
       }
       const apiKey =
         typeof getImgbbApiKey === 'function'
           ? String((await Promise.resolve(getImgbbApiKey())) || '').trim()
           : '';
       if (!apiKey) {
-        throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
+        throw new Error('ImgBB API ?? ????. ???? ?? ?????.');
       }
       const fetchSrc = resolveImgbbFetchSrc({
         path: modal.key,
         imageSrc: modal.imageSrc,
       });
       if (!fetchSrc) {
-        throw new Error('업로드할 이미지 소스를 찾지 못했습니다.');
+        throw new Error('???? ??? ??? ?? ?????.');
       }
       const uploaded = await uploadImageToImgbb({
         apiKey,
@@ -1870,7 +1894,7 @@ export default function MarkdownEditor({
               height,
             });
       if (!next.updated || next.markdown === value) {
-        throw new Error('마크다운에서 해당 이미지를 찾지 못했습니다.');
+        throw new Error('?????? ?? ???? ?? ?????.');
       }
       onChangeWithUndoHistory(next.markdown);
     },
@@ -1881,10 +1905,10 @@ export default function MarkdownEditor({
     if (typeof onRegisterConvertAllImagesToWiki !== 'function') return undefined;
     onRegisterConvertAllImagesToWiki(async () => {
       if (previewOnly) {
-        throw new Error('미리보기에서는 변환할 수 없습니다.');
+        throw new Error('??????? ??? ? ????.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') {
-        throw new Error('문서를 수정할 수 없습니다.');
+        throw new Error('??? ??? ? ????.');
       }
       if (!hasStandardMarkdownImages(value)) {
         return { markdown: value, converted: 0, failed: [] };
@@ -1893,7 +1917,7 @@ export default function MarkdownEditor({
         currentNotePath: currentFile?.id ?? null,
         uploadFiles: async (files) => {
           if (typeof onUploadImage !== 'function') {
-            throw new Error('이미지 업로드를 사용할 수 없습니다.');
+            throw new Error('??? ???? ??? ? ????.');
           }
           return onUploadImage(files);
         },
@@ -2130,12 +2154,12 @@ export default function MarkdownEditor({
 
   const handleToolbarImageClipConfirm = useCallback(async (file) => {
     if (!file || typeof onUploadImage !== 'function') {
-      throw new Error('이미지 업로드를 사용할 수 없습니다.');
+      throw new Error('??? ???? ??? ? ????.');
     }
     const paths = await onUploadImage([file]);
     const nextPath = paths?.[0];
     if (!nextPath) {
-      throw new Error('자른 이미지 업로드에 실패했습니다.');
+      throw new Error('?? ??? ???? ??????.');
     }
     insertMarkdownAtCursor(`![[${nextPath}]]\n`);
     setClipCropFile(null);
@@ -2272,7 +2296,7 @@ export default function MarkdownEditor({
             handleProps={catalogResizeHandleProps}
             isResizing={catalogResizing}
             visibleOnHover
-            label="목차 너비 조절"
+            label="?? ?? ??"
             style={{
               position: 'fixed',
               top: catalogHandleBox.top,
@@ -2290,19 +2314,20 @@ export default function MarkdownEditor({
           aria-live="polite"
         >
           <Loader2 size={16} className="animate-spin shrink-0" />
-          <span>이미지 업로드 중… {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
+          <span>??? ??? ?� {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
           {typeof onCancelUploadImage === 'function' && (
             <button
               type="button"
               onClick={onCancelUploadImage}
               className="ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950"
             >
-              취소
+              ??
             </button>
           )}
         </div>
       )}
       <MdEditor
+        key={`footnotes-${previewFootnotesRenderKey}`}
         ref={editorRef}
         id={editorId}
         modelValue={value}
@@ -2374,8 +2399,8 @@ export default function MarkdownEditor({
         onEditTable={(table, previewRoot) => openHaimTablePreviewRef.current(table, previewRoot)}
         onEditFailed={() => {
           showAlert({
-            title: '표 편집',
-            message: '이 표를 마크다운 표로 찾지 못했습니다. 소스의 파이프 표인지 확인해 주세요.',
+            title: '? ??',
+            message: '? ?? ???? ?? ?? ?????. ??? ??? ??? ??? ???.',
           });
         }}
       />
@@ -2422,18 +2447,18 @@ export default function MarkdownEditor({
           onClick={() => setFreeTransformConfirmOpen(true)}
           className="fixed z-70 bottom-4 left-1/2 -translate-x-1/2 max-w-[min(92vw,680px)] rounded-lg border border-blue-300/60 bg-blue-950/85 px-3 py-2 text-left text-[11px] leading-4 text-blue-50 shadow-lg backdrop-blur-sm"
         >
-          <span className="block font-semibold mb-1">이미지 자유변형 안내</span>
-          <span className="block">- Shift + 드래그: 원본 비율 유지 / 일반 드래그: 비율 무시</span>
-          <span className="block">- 터치 드래그: 원본 비율 유지</span>
-          <span className="block">- 다른 곳 클릭(이 토스트 포함): 변형 완료 확인</span>
+          <span className="block font-semibold mb-1">??? ???? ??</span>
+          <span className="block">- Shift + ???: ?? ?? ?? / ?? ???: ?? ??</span>
+          <span className="block">- ?? ???: ?? ?? ??</span>
+          <span className="block">- ?? ? ??(? ??? ??): ?? ?? ??</span>
         </button>
       )}
       <ConfirmModal
         isOpen={coverExportConfirmOpen}
-        title="표지 편집으로 이동"
-        message="PDF 내보내기 페이지에서 표지를 확인하고 편집할 수 있습니다. 이동할까요?"
-        confirmLabel="이동"
-        cancelLabel="취소"
+        title="?? ???? ??"
+        message="PDF ???? ????? ??? ???? ??? ? ????. ??????"
+        confirmLabel="??"
+        cancelLabel="??"
         onConfirm={() => {
           setCoverExportConfirmOpen(false);
           navigateToExportPdf({ openCoverEdit: true });
@@ -2442,11 +2467,11 @@ export default function MarkdownEditor({
       />
       <ConfirmModal
         isOpen={freeTransformConfirmOpen}
-        title="자유변형 저장"
-        message="현재 변형을 어떻게 처리할까요?"
-        confirmLabel="적용"
-        cancelLabel="계속 수정"
-        discardLabel="변형 초기화"
+        title="???? ??"
+        message="?? ??? ??? ??????"
+        confirmLabel="??"
+        cancelLabel="?? ??"
+        discardLabel="?? ???"
         onConfirm={handleConfirmTransformApply}
         onCancel={() => setFreeTransformConfirmOpen(false)}
         onDiscard={handleConfirmTransformReset}

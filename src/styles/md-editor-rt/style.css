@@ -805,7 +805,7 @@ html {
 }
 
 .md-editor-preview h1 {
-  font-size: 2em
+  font-size: 1.75em
 }
 
 .md-editor-preview h2 {
@@ -3333,8 +3333,9 @@ div.smart-blue-theme hr {
   outline: none
 }
 
+/* Do not set `color` here — highlight `inherit` follows the highlight parent, not
+   the originating text, and can make glyphs invisible against the page background. */
 ::highlight(s3haim-preview-sync-sel) {
-  color: inherit;
   background-color: var(--s3haim-preview-sync-sel-bg);
 }
 
@@ -3447,6 +3448,20 @@ div.smart-blue-theme hr {
   display: none
 }
 
+/*
+ * Chromium/Electron: glyphs in .cm-content sometimes fail to rasterize until the
+ * caret invalidates that line. Own compositor layer + keep text color if native
+ * ::selection flashes while drawSelection hides the selection background.
+ */
+.md-editor .cm-scroller .cm-content {
+  transform: translateZ(0);
+}
+
+.md-editor .cm-scroller .cm-line::selection,
+.md-editor .cm-scroller .cm-line ::selection {
+  color: inherit !important;
+}
+
 .md-editor .cm-scroller .cm-content[contenteditable=true] {
   margin-block: 10px;
   margin-inline: 10px;
@@ -3483,8 +3498,10 @@ div.smart-blue-theme hr {
   background-color: color-mix(in srgb, var(--color-odp-accentBlue) 18%, transparent);
 }
 
-.md-editor .ͼ1 .cm-scroller {
-  font-family: var(--font-mono);
+/* Hangul-capable mono before proportional Noto — stabler CM metrics/paint. */
+.md-editor .ͼ1 .cm-scroller,
+.md-editor .cm-scroller {
+  font-family: "JetBrains Mono", D2Coding, "Noto Sans KR", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   line-height: 20px
 }
 

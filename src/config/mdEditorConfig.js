@@ -14,6 +14,7 @@ import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlacehold
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
 import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
+import { footnoteMarkdownItPlugin, disableCommonMarkLinkReferences } from '@/utils/footnoteMarkdownIt';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { HLJS_ATOM_ONE_DARK_CSS } from '@/utils/mdEditorCodeTheme';
 import '@/utils/markedHeadingLevels';
@@ -21,6 +22,7 @@ import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import '@/styles/md-editor-rt/plan-frontmatter.css';
 import '@/styles/md-editor-rt/preview-heading-fold.css';
+import '@/styles/md-editor-rt/footnotes.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';
 
@@ -52,9 +54,26 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
   ],
   p: ['class'],
   ul: ['class'],
-  li: ['class', 'data-status'],
+  li: ['class', 'id', 'data-status', 'data-md-footnote-id'],
   h6: ['id', 'class', 'data-heading-level'],
-  a: ['href', 'class', 'target', 'rel', 'data-chat-saved-note', 'data-chat-href', 'data-chat-id', 'title'],
+  a: [
+    'href',
+    'class',
+    'id',
+    'target',
+    'rel',
+    'data-chat-saved-note',
+    'data-chat-href',
+    'data-chat-id',
+    'data-md-footnote-to',
+    'data-md-footnote-id',
+    'title',
+  ],
+  sup: ['class'],
+  sub: ['class'],
+  section: ['class'],
+  hr: ['class'],
+  ol: ['class'],
   table: TABLE_XSS_ATTRS,
   thead: TABLE_XSS_ATTRS,
   tbody: TABLE_XSS_ATTRS,
@@ -100,6 +119,8 @@ config({
     XSSPlugin(md, {
       extendedWhiteList: PGBR_XSS_EXTENDED_WHITELIST,
     });
+    // Footnotes first so core prepare runs before block parse; reference defs stay off.
+    footnoteMarkdownItPlugin(md);
   },
   markdownItPlugins(plugins) {
     return [
@@ -112,6 +133,12 @@ config({
       { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
       { type: 'haim_table', plugin: haimTableMarkdownItPlugin, options: {} },
       { type: 'plan_frontmatter', plugin: planFrontmatterMarkdownItPlugin, options: {} },
+      // TEMP: re-disable after built-in plugins in case anything re-enables reference.
+      {
+        type: 'disable_commonmark_reference',
+        plugin: disableCommonMarkLinkReferences,
+        options: {},
+      },
     ];
   },
   // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).

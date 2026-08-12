@@ -44,7 +44,9 @@ import {
   toggleMirrorEditEnabled,
 } from '@/utils/mirrorEditSettings';
 import {
+  applyFootnoteDisplayModeCommand,
   applyWorkspaceTabsAutoSaveCommand,
+  isFootnoteDisplayModeCommandId,
   isSettingsToggleId,
   isWorkspaceTabsAutoSaveCommandId,
   subscribeSettingsToggles,
@@ -435,6 +437,11 @@ export default function AdvancedSearchHost({
 
         if (isWorkspaceTabsAutoSaveCommandId(commandId)) {
           applyWorkspaceTabsAutoSaveCommand(commandId);
+          return;
+        }
+
+        if (isFootnoteDisplayModeCommandId(commandId)) {
+          applyFootnoteDisplayModeCommand(commandId);
           return;
         }
 

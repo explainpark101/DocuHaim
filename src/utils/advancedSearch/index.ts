@@ -94,11 +94,16 @@ export {
   getWorkspaceTabsAutoSaveCommands,
   applyWorkspaceTabsAutoSaveCommand,
   workspaceTabsAutoSaveModeFromCommandId,
+  isFootnoteDisplayModeCommandId,
+  getFootnoteDisplayModeCommands,
+  applyFootnoteDisplayModeCommand,
+  footnoteDisplayModeFromCommandId,
 } from './settingsToggles';
 export type {
   SettingsToggleId,
   SettingsToggleDef,
   WorkspaceTabsAutoSaveCommandId,
+  FootnoteDisplayModeCommandId,
 } from './settingsToggles';
 export {
   fuzzyMatchText,

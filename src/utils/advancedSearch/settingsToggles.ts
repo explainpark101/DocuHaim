@@ -45,6 +45,12 @@ import {
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
 } from './settings';
+import {
+  FOOTNOTE_DISPLAY_MODE_OPTIONS,
+  loadFootnoteDisplayMode,
+  setFootnoteDisplayMode,
+  type FootnoteDisplayMode,
+} from '@/utils/previewFootnotesSettings';
 import { advancedSearchEngine } from './engine';
 
 export type SettingsToggleId =
@@ -341,4 +347,68 @@ export function applyWorkspaceTabsAutoSaveCommand(
   id: WorkspaceTabsAutoSaveCommandId,
 ): void {
   saveWorkspaceTabsAutoSaveMode(workspaceTabsAutoSaveModeFromCommandId(id));
+}
+
+export type FootnoteDisplayModeCommandId =
+  | 'settings-footnote-display-sup'
+  | 'settings-footnote-display-sub'
+  | 'settings-footnote-display-rawText';
+
+const FOOTNOTE_DISPLAY_COMMAND_BY_MODE = {
+  sup: 'settings-footnote-display-sup',
+  sub: 'settings-footnote-display-sub',
+  rawText: 'settings-footnote-display-rawText',
+} as const;
+
+export function isFootnoteDisplayModeCommandId(
+  id: string | undefined | null,
+): id is FootnoteDisplayModeCommandId {
+  return (
+    id === 'settings-footnote-display-sup' ||
+    id === 'settings-footnote-display-sub' ||
+    id === 'settings-footnote-display-rawText'
+  );
+}
+
+export function footnoteDisplayModeFromCommandId(
+  id: FootnoteDisplayModeCommandId,
+): FootnoteDisplayMode {
+  if (id === 'settings-footnote-display-sub') return 'sub';
+  if (id === 'settings-footnote-display-rawText') return 'rawText';
+  return 'sup';
+}
+
+/** Situational: only modes other than the current one. */
+export function getFootnoteDisplayModeCommands(): Array<{
+  id: FootnoteDisplayModeCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  const current = loadFootnoteDisplayMode();
+  return FOOTNOTE_DISPLAY_MODE_OPTIONS.filter((opt) => opt.value !== current).map((opt) => ({
+    id: FOOTNOTE_DISPLAY_COMMAND_BY_MODE[opt.value],
+    title: `각주 표기: ${opt.label}`,
+    description: opt.description,
+    keywords: [
+      'footnote',
+      'footnotes',
+      '각주',
+      '표기',
+      'display',
+      'sup',
+      'sub',
+      'raw',
+      '윗첨자',
+      '아랫첨자',
+      opt.value,
+      opt.label,
+    ],
+  }));
+}
+
+export function applyFootnoteDisplayModeCommand(
+  id: FootnoteDisplayModeCommandId,
+): void {
+  setFootnoteDisplayMode(footnoteDisplayModeFromCommandId(id));
 }

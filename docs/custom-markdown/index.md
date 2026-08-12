@@ -22,6 +22,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [note-cover.md](./note-cover.md) | `<!-- note-cover … -->` | 인쇄 표지 |
 | [haim-table.md](./haim-table.md) | `<!-- haim-table … -->` + GFM 표 | 에디터 / 미리보기 / 인쇄 / 다운로드 |
 | [plan-frontmatter.md](./plan-frontmatter.md) | `---` YAML plan (`name` / `todos` / …) | 에디터 / 미리보기 / 인쇄 |
+| [footnotes.md](./footnotes.md) | `[^1]` + `<!-- footnotes {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
 
 ## Spec conventions (all features)

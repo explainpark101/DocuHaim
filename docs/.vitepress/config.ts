@@ -63,6 +63,7 @@ export default defineConfig({
             { text: 'Note cover', link: '/custom-markdown/note-cover' },
             { text: 'Haim table', link: '/custom-markdown/haim-table' },
             { text: 'Plan frontmatter', link: '/custom-markdown/plan-frontmatter' },
+            { text: 'Footnotes / Sources', link: '/custom-markdown/footnotes' },
             { text: 'Preview hard break', link: '/custom-markdown/preview-hard-break' },
           ],
         },

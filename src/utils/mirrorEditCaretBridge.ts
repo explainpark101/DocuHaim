@@ -28,6 +28,8 @@ export function setMirrorEditCaretHandler(next: MirrorEditCaretHandler | null): 
 
 export function notifyMirrorEditCaretUpdate(update: ViewUpdate): void {
   if (!update.selectionSet && !update.docChanged) return;
+  // Avoid preview/highlight thrash mid-IME (can leave stale CM glyph paints).
+  if (update.view.composing || update.view.compositionStarted) return;
   if (handlers.size === 0) return;
   for (const handler of handlers) {
     try {

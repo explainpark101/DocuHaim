@@ -22,6 +22,12 @@ import {
   saveEditorType,
 } from '@/utils/editorTypeSettings';
 import {
+  FOOTNOTE_DISPLAY_MODE_OPTIONS,
+  loadFootnoteDisplayMode,
+  setFootnoteDisplayMode,
+  FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
+} from '@/utils/previewFootnotesSettings';
+import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
@@ -138,6 +144,9 @@ export default function SettingsPage({
   const [advancedSearchUiAnimation, setAdvancedSearchUiAnimation] = useState(() =>
     loadAdvancedSearchUiAnimationEnabled(),
   );
+  const [footnoteDisplayMode, setFootnoteDisplayModeState] = useState(() =>
+    loadFootnoteDisplayMode(),
+  );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -172,6 +181,17 @@ export default function SettingsPage({
         setAdvancedSearchStatus(advancedSearchEngine.getStatus());
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const onFootnoteDisplay = (event) => {
+      const mode = event?.detail?.mode ?? loadFootnoteDisplayMode();
+      setFootnoteDisplayModeState(mode);
+    };
+    window.addEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnoteDisplay);
+    return () => {
+      window.removeEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnoteDisplay);
+    };
   }, []);
 
   useEffect(() => {
@@ -913,6 +933,37 @@ export default function SettingsPage({
                 </span>
               </span>
             </label>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
+            <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+              문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>
+              (note-cover 아래)로 문서별 각주 on/off를 지정합니다. 여기서는 본문 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">[^N]</code> 표기
+              방식만 고릅니다.
+            </p>
+            <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">각주 표기 방식</p>
+            <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+              {FOOTNOTE_DISPLAY_MODE_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="footnoteDisplayMode"
+                    value={opt.value}
+                    checked={footnoteDisplayMode === opt.value}
+                    onChange={() => {
+                      setFootnoteDisplayMode(opt.value);
+                      setFootnoteDisplayModeState(opt.value);
+                    }}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <span>
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                      {opt.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
