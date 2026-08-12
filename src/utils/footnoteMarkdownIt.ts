@@ -267,6 +267,16 @@ function escapeAttr(value: string): string {
     .replace(/\r?\n/g, ' ');
 }
 
+function renderBackButtonIcon(): string {
+  return (
+    '<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M15 18l-6-6 6-6" />' +
+    '<path d="M21 12H9" />' +
+    '</svg>'
+  );
+}
+
 /** First non-empty source line (title). Used for preview tooltips. */
 export function footnoteSourceTitle(content: string): string {
   const first = String(content || '')
@@ -306,7 +316,13 @@ function renderSourcesHtml(md: MarkdownItLike, env: SourceFootnoteEnv): string {
     '<p class="footnotes-title" role="heading" aria-level="2">Sources</p>\n' +
     '<ol class="footnotes-list">\n' +
     items +
-    '\n</ol>\n</section>\n'
+    '\n</ol>\n' +
+    '<div class="footnotes-return-wrap">\n' +
+    '<button type="button" class="footnotes-return-btn is-hidden" data-md-footnote-back-button disabled aria-hidden="true">' +
+    renderBackButtonIcon() +
+    '<span class="footnotes-return-label">본문으로 돌아가기</span>' +
+    '</button>\n' +
+    '</div>\n</section>\n'
   );
 }
 

@@ -6,7 +6,12 @@
 import { findPreviewScrollContainer } from '@/utils/previewSelectionSync';
 
 const FOOTNOTE_TO_ATTR = 'data-md-footnote-to';
+const FOOTNOTE_BACK_BUTTON_ATTR = 'data-md-footnote-back-button';
 const SOURCE_SCROLL_OFFSET_TOP_PX = 2;
+const BACK_BUTTON_HIDDEN_CLASS = 'is-hidden';
+
+let lastFootnoteReturnTargetId: string | null = null;
+const footnoteReturnTargets = new WeakMap<object, string>();
 
 export function isPreviewFootnoteHash(href: string): boolean {
   // Legacy hash form still recognized for scroll helpers.
@@ -79,6 +84,42 @@ function getPreviewRootFromEventTarget(
   return inRoot ?? root;
 }
 
+function findBackButton(previewRoot: ParentNode | null | undefined): HTMLElement | null {
+  if (!previewRoot?.querySelector) return null;
+  return previewRoot.querySelector(`[${FOOTNOTE_BACK_BUTTON_ATTR}]`) as HTMLElement | null;
+}
+
+function syncBackButtonState(previewRoot: ParentNode | null | undefined): void {
+  const button = findBackButton(previewRoot);
+  if (!button) return;
+  const hasTarget = Boolean(previewRoot && footnoteReturnTargets.get(previewRoot as object));
+  button.classList.toggle(BACK_BUTTON_HIDDEN_CLASS, !hasTarget);
+  button.toggleAttribute('aria-hidden', !hasTarget);
+  button.toggleAttribute('disabled', !hasTarget);
+  button.setAttribute(
+    'data-footnote-return-target',
+    (previewRoot && footnoteReturnTargets.get(previewRoot as object)) ?? '',
+  );
+}
+
+function clearFootnoteReturnTarget(previewRoot: ParentNode | null | undefined): void {
+  if (previewRoot) {
+    footnoteReturnTargets.delete(previewRoot as object);
+  }
+  lastFootnoteReturnTargetId = null;
+  syncBackButtonState(previewRoot);
+}
+
+function setFootnoteReturnTarget(previewRoot: ParentNode | null | undefined, targetId: string): void {
+  if (previewRoot && targetId) {
+    footnoteReturnTargets.set(previewRoot as object, targetId);
+  } else if (previewRoot) {
+    footnoteReturnTargets.delete(previewRoot as object);
+  }
+  lastFootnoteReturnTargetId = targetId || null;
+  syncBackButtonState(previewRoot);
+}
+
 /**
  * Bind click handling for footnote links inside a preview host.
  * @returns cleanup
@@ -93,6 +134,21 @@ export function bindPreviewFootnoteClick(
     if (mouse.metaKey || mouse.ctrlKey || mouse.shiftKey || mouse.altKey) return;
     if (typeof mouse.button === 'number' && mouse.button !== 0) return;
 
+    const backButton = (mouse.target as Element | null)?.closest?.(
+      `[${FOOTNOTE_BACK_BUTTON_ATTR}]`,
+    );
+    if (backButton instanceof HTMLElement && root.contains(backButton)) {
+      const previewRoot = getPreviewRootFromEventTarget(mouse.target, root);
+      const targetId = (previewRoot && footnoteReturnTargets.get(previewRoot as object))
+        || lastFootnoteReturnTargetId;
+      if (!targetId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      scrollPreviewToFootnoteHash(targetId, previewRoot);
+      clearFootnoteReturnTarget(previewRoot);
+      return;
+    }
+
     const anchor = (mouse.target as Element | null)?.closest?.('a[href], a[data-md-footnote-to]');
     if (!anchor || !root.contains(anchor)) return;
 
@@ -104,9 +160,17 @@ export function bindPreviewFootnoteClick(
     const previewRoot = getPreviewRootFromEventTarget(mouse.target, root);
     event.preventDefault();
     event.stopPropagation();
+    if (targetId && targetId.startsWith('source-')) {
+      const refTargetId = anchor.getAttribute('data-md-footnote-id') || anchor.id;
+      if (refTargetId) setFootnoteReturnTarget(previewRoot, refTargetId);
+      else clearFootnoteReturnTarget(previewRoot);
+    } else {
+      clearFootnoteReturnTarget(previewRoot);
+    }
     scrollPreviewToFootnoteHash(targetId, previewRoot);
   };
 
   root.addEventListener('click', onClick, true);
+  syncBackButtonState(root);
   return () => root.removeEventListener('click', onClick, true);
 }
