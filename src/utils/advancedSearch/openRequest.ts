@@ -4,7 +4,9 @@ export type AdvancedSearchOpenMode =
   | 'default'
   | 'print-paper'
   | 'browse-directory'
-  | 'chat-groups';
+  | 'chat-groups'
+  | 'footnote-insert'
+  | 'footnote-existing';
 
 export type AdvancedSearchOpenDetail = {
   source?: string;

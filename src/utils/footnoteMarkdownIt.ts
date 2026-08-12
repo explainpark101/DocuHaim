@@ -236,10 +236,11 @@ function renderSourcesHtml(md: MarkdownItLike, env: SourceFootnoteEnv): string {
         .filter(Boolean)
         .map((line) => md.renderInline(line, {}))
         .join('<br>\n');
-      const body = inner ? ` ${inner}` : '';
       return (
-        `<li id="source-${label}" class="footnote-item" data-md-footnote-id="source-${label}">` +
-        `<p><span class="footnote-label">[^${label}]:</span>${body}` +
+        `<li id="source-${label}" class="footnote-item"` +
+        ` data-md-footnote-id="source-${label}" data-md-footnote-label="${label}">` +
+        `<span class="footnote-marker">[^${label}]</span>` +
+        `<p>${inner}` +
         ` <a href="#" class="footnote-backref" data-md-footnote-to="fnref-${label}">\u21a9\uFE0E</a></p></li>`
       );
     })

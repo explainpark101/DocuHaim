@@ -83,6 +83,23 @@ export {
 } from './chatGroups';
 export type { ChatGroupEntry } from './chatGroups';
 export {
+  listFootnoteInsertChoiceHits,
+  listExistingFootnoteHits,
+  registerFootnoteInsertHandlers,
+  hasFootnoteInsertHandlers,
+  getFootnoteInsertMarkdown,
+  runInsertExistingFootnote,
+  runOpenFootnoteCompose,
+  subscribeFootnoteInsertHandlers,
+  isFootnoteInsertCommandId,
+  isFootnoteRelatedCommandId,
+  FOOTNOTE_INSERT_COMMAND_ID,
+  FOOTNOTE_INSERT_PICK_EXISTING_ID,
+  FOOTNOTE_INSERT_COMPOSE_ID,
+  FOOTNOTE_INSERT_EXISTING_ITEM_ID,
+} from './footnoteInsert';
+export type { FootnoteInsertCommandId } from './footnoteInsert';
+export {
   SETTINGS_TOGGLE_DEFS,
   isSettingsToggleId,
   loadSettingsToggle,

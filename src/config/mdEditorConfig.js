@@ -54,7 +54,7 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
   ],
   p: ['class'],
   ul: ['class'],
-  li: ['class', 'id', 'data-status', 'data-md-footnote-id'],
+  li: ['class', 'id', 'data-status', 'data-md-footnote-id', 'data-md-footnote-label'],
   h6: ['id', 'class', 'data-heading-level'],
   a: [
     'href',

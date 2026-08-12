@@ -15,6 +15,7 @@ import {
   Search,
   Settings,
   Sparkles,
+  Superscript,
   TextCursorInput,
   FlipHorizontal2,
   X,
@@ -50,6 +51,10 @@ export type AdvancedSearchModalProps = {
   browsePath?: string;
   /** Nested chat group picker mode. */
   chatGroupsPickerMode?: boolean;
+  /** Nested footnote insert: existing vs compose. */
+  footnoteInsertPickerMode?: boolean;
+  /** Nested existing footnote label picker. */
+  footnoteExistingPickerMode?: boolean;
   /** Resolve chat group icon paths (storage-aware). */
   getPresignedUrl?:
     | ((path: string) => Promise<string | null | undefined>)
@@ -81,6 +86,15 @@ function reasonLabel(hit: AdvancedSearchHit): string {
       return '채팅 그룹';
     }
     if (hit.commandId === 'chat-clear-group') return '채팅 그룹';
+    if (
+      hit.commandId === 'editor-insert-footnote' ||
+      hit.commandId === 'footnote-insert-pick-existing' ||
+      hit.commandId === 'footnote-insert-compose' ||
+      hit.commandId === 'footnote-insert-existing-item' ||
+      hit.commandId?.startsWith('settings-footnote-')
+    ) {
+      return '각주';
+    }
     if (hit.commandId === 'chat-focus-composer') return '채팅';
     if (hit.commandId?.startsWith('chat')) return '채팅';
     if (
@@ -168,6 +182,15 @@ function HitIcon({
       return <FlipHorizontal2 size={16} className={className} />;
     }
     if (commandId === 'editor-bold') return <Bold size={16} className={className} />;
+    if (
+      commandId === 'editor-insert-footnote' ||
+      commandId === 'footnote-insert-pick-existing' ||
+      commandId === 'footnote-insert-compose' ||
+      commandId === 'footnote-insert-existing-item' ||
+      commandId?.startsWith('settings-footnote-')
+    ) {
+      return <Superscript size={16} className={className} />;
+    }
     if (commandId?.startsWith('editor-')) return <Bold size={16} className={className} />;
     return <Search size={16} className={className} />;
   }
@@ -205,6 +228,8 @@ export default function AdvancedSearchModal({
   browseDirectoryMode = false,
   browsePath = '',
   chatGroupsPickerMode = false,
+  footnoteInsertPickerMode = false,
+  footnoteExistingPickerMode = false,
   getPresignedUrl = undefined,
 }: AdvancedSearchModalProps) {
   const inputId = useId();
@@ -242,12 +267,24 @@ export default function AdvancedSearchModal({
     setActiveIndex(0);
   }, [browsePath, browseDirectoryMode, open]);
 
-  // Clear parent command query when entering chat group picker.
+  // Clear parent command query when entering nested pickers.
   useEffect(() => {
     if (!open || !chatGroupsPickerMode) return;
     setQuery('');
     setActiveIndex(0);
   }, [chatGroupsPickerMode, open]);
+
+  useEffect(() => {
+    if (!open || !footnoteInsertPickerMode) return;
+    setQuery('');
+    setActiveIndex(0);
+  }, [footnoteInsertPickerMode, open]);
+
+  useEffect(() => {
+    if (!open || !footnoteExistingPickerMode) return;
+    setQuery('');
+    setActiveIndex(0);
+  }, [footnoteExistingPickerMode, open]);
 
   // Always highlight the first result as soon as the query changes.
   useEffect(() => {
@@ -293,6 +330,8 @@ export default function AdvancedSearchModal({
           : '새 파일·폴더를 만들거나 폴더/파일을 선택하세요';
       }
       if (chatGroupsPickerMode) return '채팅 그룹을 검색하거나 선택하세요';
+      if (footnoteInsertPickerMode) return '기존 각주를 고르거나 직접 입력하세요';
+      if (footnoteExistingPickerMode) return '이 문서의 각주를 검색하거나 선택하세요';
       if (printPaperPickerMode) return '용지 크기를 검색하거나 선택하세요';
       if (preferPrintActions || printActionsAvailable) {
         return '목차·용지·저장·폰트·내보내기를 검색하세요';
@@ -318,6 +357,8 @@ export default function AdvancedSearchModal({
     browseDirectoryMode,
     browsePath,
     chatGroupsPickerMode,
+    footnoteInsertPickerMode,
+    footnoteExistingPickerMode,
   ]);
 
   const listFooterHint = useMemo(() => {
@@ -399,7 +440,11 @@ export default function AdvancedSearchModal({
                 : '디렉토리 탐색 · 폴더/파일 이름…'
               : chatGroupsPickerMode
                 ? '채팅 그룹 이름…'
-                : '설정, 채팅, 파일명, 경로…'
+                : footnoteInsertPickerMode
+                  ? '기존 각주 또는 직접 입력…'
+                  : footnoteExistingPickerMode
+                    ? '각주 번호·제목·URL…'
+                    : '설정, 채팅, 파일명, 경로…'
           }
           className="min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400 dark:text-odp-fgStrong dark:placeholder:text-odp-muted"
           autoComplete="off"
@@ -435,6 +480,18 @@ export default function AdvancedSearchModal({
           <span className="font-medium text-gray-700 dark:text-odp-fg">디렉토리 탐색</span>
           <span className="mx-1.5">·</span>
           <span className="font-mono">{browsePath || '/'}</span>
+        </div>
+      ) : footnoteInsertPickerMode ? (
+        <div className="border-b border-gray-100 px-3 py-1.5 text-[11px] text-gray-500 dark:border-odp-borderSoft dark:text-odp-muted">
+          <span className="font-medium text-gray-700 dark:text-odp-fg">각주 삽입</span>
+          <span className="mx-1.5">·</span>
+          <span>기존 각주 선택 또는 직접 입력</span>
+        </div>
+      ) : footnoteExistingPickerMode ? (
+        <div className="border-b border-gray-100 px-3 py-1.5 text-[11px] text-gray-500 dark:border-odp-borderSoft dark:text-odp-muted">
+          <span className="font-medium text-gray-700 dark:text-odp-fg">기존 각주 선택</span>
+          <span className="mx-1.5">·</span>
+          <span>본문 커서에 [^N] 삽입</span>
         </div>
       ) : null}
 

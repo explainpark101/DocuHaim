@@ -27,6 +27,7 @@ import ImageToolbar from '@/components/ImageToolbar';
 import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
+import FootnoteComposeModal from '@/components/modals/FootnoteComposeModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
@@ -34,7 +35,12 @@ import {
   EDITOR_ACTION_COMMANDS,
   registerEditorActions,
 } from '@/utils/advancedSearch/editorActions';
-import { subscribeOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
+import { subscribeOpenAdvancedSearch, requestOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
+import { registerFootnoteInsertHandlers } from '@/utils/advancedSearch/footnoteInsert';
+import {
+  insertExistingFootnoteRef,
+  insertNewFootnote,
+} from '@/utils/footnoteInsertApply';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
@@ -650,6 +656,10 @@ export default function MarkdownEditor({
   const [wikiImageModalState, setWikiImageModalState] = useState(null);
   const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
   const [imageLinkModalOpen, setImageLinkModalOpen] = useState(false);
+  const [footnoteComposeOpen, setFootnoteComposeOpen] = useState(false);
+  const footnoteInsertRangeRef = useRef({ from: 0, to: 0 });
+  const onChangeWithUndoHistoryRef = useRef(onChangeWithUndoHistory);
+  onChangeWithUndoHistoryRef.current = onChangeWithUndoHistory;
   const [clipCropFile, setClipCropFile] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
@@ -812,9 +822,68 @@ export default function MarkdownEditor({
         onRequestConvertAllImagesToWiki();
       }
     };
+    handlers['editor-insert-footnote'] = () => {
+      requestOpenAdvancedSearch({ mode: 'footnote-insert' });
+    };
 
     return registerEditorActions(handlers);
   }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki]);
+
+  useEffect(() => {
+    if (previewOnly) return undefined;
+
+    const getView = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      return api?.getEditorView?.() ?? null;
+    };
+
+    const restoreSelection = () => {
+      const view = getView();
+      const snap = asSelectionSnapshotRef.current;
+      if (!view || !snap) return;
+      view.dispatch({ selection: snap, scrollIntoView: true });
+    };
+
+    const applyDoc = (next, caret) => {
+      const view = getView();
+      if (view) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: next },
+          selection: { anchor: caret },
+          scrollIntoView: true,
+        });
+        view.focus?.();
+      }
+      onChangeWithUndoHistoryRef.current?.(next);
+    };
+
+    return registerFootnoteInsertHandlers({
+      getMarkdown: () => getView()?.state.doc.toString() ?? valueRef.current ?? '',
+      insertExisting: (label) => {
+        restoreSelection();
+        const view = getView();
+        const markdown = view?.state.doc.toString() ?? valueRef.current ?? '';
+        const sel = view?.state.selection.main;
+        const result = insertExistingFootnoteRef(
+          markdown,
+          sel?.from ?? 0,
+          sel?.to ?? 0,
+          label,
+        );
+        applyDoc(result.next, result.caret);
+      },
+      openCompose: () => {
+        restoreSelection();
+        const view = getView();
+        const sel = view?.state.selection.main;
+        footnoteInsertRangeRef.current = {
+          from: sel?.from ?? 0,
+          to: sel?.to ?? 0,
+        };
+        setFootnoteComposeOpen(true);
+      },
+    });
+  }, [previewOnly]);
   const {
     width: catalogWidth,
     isResizing: catalogResizing,
@@ -2374,6 +2443,26 @@ export default function MarkdownEditor({
         onConfirm={({ desc, url }) => {
           const alt = desc || '';
           insertMarkdownAtCursor(`![${alt}](${url})\n`);
+        }}
+      />
+      <FootnoteComposeModal
+        isOpen={footnoteComposeOpen}
+        onClose={() => setFootnoteComposeOpen(false)}
+        onConfirm={({ line1, line2 }) => {
+          const api = editorRef.current?.value ?? editorRef.current;
+          const view = api?.getEditorView?.();
+          const markdown = view?.state.doc.toString() ?? valueRef.current ?? '';
+          const { from, to } = footnoteInsertRangeRef.current;
+          const result = insertNewFootnote(markdown, from, to, line1, line2);
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: result.next },
+              selection: { anchor: result.caret },
+              scrollIntoView: true,
+            });
+            view.focus?.();
+          }
+          onChangeWithUndoHistoryRef.current?.(result.next);
         }}
       />
       <ImageClipCropModal

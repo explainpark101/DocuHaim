@@ -3,6 +3,7 @@
  */
 
 export type EditorActionId =
+  | 'editor-insert-footnote'
   | 'editor-bold'
   | 'editor-italic'
   | 'editor-underline'
@@ -102,6 +103,22 @@ export type EditorActionCommandDef = {
 
 /** Commands shown in Advanced Search only while an editor has registered actions. */
 export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
+  {
+    id: 'editor-insert-footnote',
+    title: '각주 삽입',
+    description: '기존 각주를 고르거나 제목·URL을 입력해 [^N]을 삽입',
+    keywords: [
+      'footnote',
+      'footnotes',
+      '각주',
+      '각주 삽입',
+      'insert footnote',
+      'source',
+      'sources',
+      '인용',
+      'citation',
+    ],
+  },
   {
     id: 'editor-bold',
     title: '굵게 (Bold)',

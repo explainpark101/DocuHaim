@@ -6,6 +6,8 @@ import {
   advancedSearchEngine,
   listBrowseDirectoryHits,
   listChatGroupHits,
+  listExistingFootnoteHits,
+  listFootnoteInsertChoiceHits,
   normalizeDirPath,
   subscribeOpenAdvancedSearch,
   type AdvancedSearchHit,
@@ -33,6 +35,15 @@ import {
 } from '@/utils/advancedSearch/chatActions';
 import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 import { requestOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
+import {
+  FOOTNOTE_INSERT_COMMAND_ID,
+  FOOTNOTE_INSERT_COMPOSE_ID,
+  FOOTNOTE_INSERT_EXISTING_ITEM_ID,
+  FOOTNOTE_INSERT_PICK_EXISTING_ID,
+  getFootnoteInsertMarkdown,
+  runInsertExistingFootnote,
+  runOpenFootnoteCompose,
+} from '@/utils/advancedSearch/footnoteInsert';
 import {
   loadEditorAutocompleteEnabled,
   subscribeEditorAutocomplete,
@@ -217,6 +228,8 @@ export default function AdvancedSearchHost({
       if (detail?.mode === 'print-paper') openSearch('print-paper');
       else if (detail?.mode === 'browse-directory') openSearch('browse-directory');
       else if (detail?.mode === 'chat-groups') openSearch('chat-groups');
+      else if (detail?.mode === 'footnote-insert') openSearch('footnote-insert');
+      else if (detail?.mode === 'footnote-existing') openSearch('footnote-existing');
       else openSearch('default');
     });
   }, [openSearch]);
@@ -285,6 +298,15 @@ export default function AdvancedSearchHost({
         return listChatGroupHits(groups, query, 80);
       }
 
+      if (pickerMode === 'footnote-insert') {
+        return listFootnoteInsertChoiceHits(query);
+      }
+
+      if (pickerMode === 'footnote-existing') {
+        const markdown = getFootnoteInsertMarkdown() || editorContent || '';
+        return listExistingFootnoteHits(markdown, query, 80);
+      }
+
       const hits = await advancedSearchEngine.search(query, getTrees(), 50, {
         currentFile,
         editorActionsAvailable,
@@ -339,6 +361,7 @@ export default function AdvancedSearchHost({
       pickerMode,
       browsePath,
       getChatGroups,
+      editorContent,
       settingsToggleEpoch,
     ],
   );
@@ -408,6 +431,33 @@ export default function AdvancedSearchHost({
         if (commandId === 'chat-select-group') {
           setPickerMode('chat-groups');
           return false;
+        }
+
+        if (commandId === FOOTNOTE_INSERT_COMMAND_ID) {
+          setPickerMode('footnote-insert');
+          return false;
+        }
+
+        if (commandId === FOOTNOTE_INSERT_PICK_EXISTING_ID) {
+          setPickerMode('footnote-existing');
+          return false;
+        }
+
+        if (commandId === FOOTNOTE_INSERT_COMPOSE_ID) {
+          window.setTimeout(() => {
+            runOpenFootnoteCompose();
+          }, 0);
+          return;
+        }
+
+        if (commandId === FOOTNOTE_INSERT_EXISTING_ITEM_ID) {
+          const label = String(hit.path || '').trim();
+          if (label) {
+            window.setTimeout(() => {
+              runInsertExistingFootnote(label);
+            }, 0);
+          }
+          return;
         }
 
         if (commandId === 'chat-select-group-item') {
@@ -539,6 +589,8 @@ export default function AdvancedSearchHost({
       browseDirectoryMode={pickerMode === 'browse-directory'}
       browsePath={browsePath}
       chatGroupsPickerMode={pickerMode === 'chat-groups'}
+      footnoteInsertPickerMode={pickerMode === 'footnote-insert'}
+      footnoteExistingPickerMode={pickerMode === 'footnote-existing'}
       {...(getPresignedUrl ? { getPresignedUrl } : {})}
     />
   );

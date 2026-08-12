@@ -52,6 +52,13 @@ Settings → 마크다운 에디터 → **각주 표기 방식** (also Advanced 
 
 Body always shows the literal form `[^N]` (not `[N]` / `^N`).
 
+## Insert (Advanced Search)
+
+With the markdown editor open, Cmd/Ctrl+K → **각주 삽입** (always listed above other footnote commands):
+
+1. **기존 각주 선택** — pick a trailing `[^N]` source; inserts that ref at the caret
+2. **직접 각주 내용 입력** — two-line modal (title + URL). Ctrl/Cmd+Enter inserts `[^N]` at the caret and appends the source block
+
 ## Spec (interop)
 
 Implementation: `noteFootnotesMeta.ts`, `footnoteMarkdownIt.ts`, `previewFootnotesSettings.ts`.
@@ -81,7 +88,7 @@ META_COMMENT  := '<!--' WS 'footnotes' WS JSON '-->'
 |------|------|
 | Inline ref | `<a href="#" class="footnote-ref-link" id="fnref-N" data-md-footnote-to="source-N">` + wrapped `[^N]` + `</a>` |
 | Wrap | `<sup\|sub class="footnote-ref">` or `<span class="footnote-ref footnote-ref--raw">` |
-| Item | `<li id="source-N" …><p><span class="footnote-label">[^N]:</span> …</p></li>` |
+| Item | `<li id="source-N" data-md-footnote-label="N" class="footnote-item">` + `<span class="footnote-marker">[^N]</span>` + `<p>…</p>` |
 | Backref | `<a href="#" class="footnote-backref" data-md-footnote-to="fnref-N">↩︎</a>` |
 
 Navigation uses `data-md-footnote-to` (not URL hash / path) so HashRouter and SPA path handlers do not steal the click.
@@ -102,4 +109,4 @@ Navigation uses `data-md-footnote-to` (not URL hash / path) so HashRouter and SP
 | Preview scroll | `src/utils/previewFootnoteScroll.ts` |
 | Global register | `src/config/mdEditorConfig.js` |
 | Styles | `src/styles/md-editor-rt/footnotes.css` |
-| AS commands | `settings-footnote-display-sup` / `-sub` / `-rawText` |
+| AS insert | `src/utils/advancedSearch/footnoteInsert.ts`, `FootnoteComposeModal.tsx` |

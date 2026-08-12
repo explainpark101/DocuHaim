@@ -23,6 +23,11 @@ import {
   type WorkspaceTabsAutoSaveCommandId,
   type FootnoteDisplayModeCommandId,
 } from './settingsToggles';
+import {
+  FOOTNOTE_INSERT_COMMAND_ID,
+  isFootnoteRelatedCommandId,
+  type FootnoteInsertCommandId,
+} from './footnoteInsert';
 import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
 
@@ -73,7 +78,8 @@ export type AppCommandId =
   | ChatActionId
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
-  | FootnoteDisplayModeCommandId;
+  | FootnoteDisplayModeCommandId
+  | FootnoteInsertCommandId;
 
 export type AppCommand = {
   id: AppCommandId;
@@ -641,6 +647,21 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
     });
   }
 
+  if (context?.editorActionsAvailable) {
+    const insertCmd = EDITOR_ACTION_COMMANDS.find(
+      (cmd) => cmd.id === FOOTNOTE_INSERT_COMMAND_ID,
+    );
+    if (insertCmd) {
+      list.push({
+        id: insertCmd.id,
+        title: insertCmd.title,
+        description: insertCmd.description,
+        path: '',
+        keywords: insertCmd.keywords,
+      });
+    }
+  }
+
   // Page-specific toolbar actions: only attached when a query is present (see matchAppCommands).
   // Callers that need the full list can pass includePageActions.
   if (context?.includePageActions) {
@@ -868,9 +889,12 @@ export function matchAppCommandsRanked(
     ranked.push({ command, score });
   }
 
-  ranked.sort(
-    (a, b) =>
-      b.score - a.score || a.command.title.localeCompare(b.command.title, 'ko'),
-  );
+  ranked.sort((a, b) => {
+    const aInsert = a.command.id === FOOTNOTE_INSERT_COMMAND_ID;
+    const bInsert = b.command.id === FOOTNOTE_INSERT_COMMAND_ID;
+    if (aInsert && isFootnoteRelatedCommandId(b.command.id) && !bInsert) return -1;
+    if (bInsert && isFootnoteRelatedCommandId(a.command.id) && !aInsert) return 1;
+    return b.score - a.score || a.command.title.localeCompare(b.command.title, 'ko');
+  });
   return ranked;
 }
