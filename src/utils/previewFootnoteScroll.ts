@@ -3,7 +3,10 @@
  * Avoids HashRouter and SPA path handling for #source-N links.
  */
 
+import { findPreviewScrollContainer } from '@/utils/previewSelectionSync';
+
 const FOOTNOTE_TO_ATTR = 'data-md-footnote-to';
+const SOURCE_SCROLL_OFFSET_TOP_PX = 2;
 
 export function isPreviewFootnoteHash(href: string): boolean {
   // Legacy hash form still recognized for scroll helpers.
@@ -24,8 +27,27 @@ function findPreviewTarget(
   return document.getElementById(id);
 }
 
+function isSourceFootnoteId(id: string): boolean {
+  return /^source-\d+$/i.test(id);
+}
+
+/** Align `target` to the top of the preview scroller (as far up as content allows). */
+function scrollPreviewTargetToStart(target: Element): void {
+  const scroller = findPreviewScrollContainer(target);
+  if (!scroller) {
+    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    return;
+  }
+  const elRect = target.getBoundingClientRect();
+  const scrollerRect = scroller.getBoundingClientRect();
+  const top =
+    scroller.scrollTop + (elRect.top - scrollerRect.top) - SOURCE_SCROLL_OFFSET_TOP_PX;
+  scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
 /**
  * Scroll to the footnote target inside `previewRoot` (or document).
+ * Sources align to the top of the preview pane; backrefs use nearest.
  * @returns true if handled
  */
 export function scrollPreviewToFootnoteHash(
@@ -39,7 +61,11 @@ export function scrollPreviewToFootnoteHash(
   const target = findPreviewTarget(id, previewRoot);
   if (!target) return false;
 
-  target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (isSourceFootnoteId(id)) {
+    scrollPreviewTargetToStart(target);
+  } else {
+    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
   return true;
 }
 

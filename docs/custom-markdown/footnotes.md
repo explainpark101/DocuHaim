@@ -74,12 +74,12 @@ META_COMMENT  := '<!--' WS 'footnotes' WS JSON '-->'
 
 ### 2. Parse algorithm
 
-0. **Guard (temporary):** disable markdown-it CommonMark `reference` block rule entirely (`md.disable('reference')`) so `[^N]: …` is never stored in `env.references`. After block parse, delete `env.references` as a safety net.
+0. **Priority:** footnotes win over CommonMark link-reference definitions. The built-in `reference` block rule skips `[^N]: …` (those stay footnote sources). Body `[^N]` is claimed before the inline `link` rule. Other `[label]: url` / `[label]` references stay CommonMark. After block parse, scrub leftover `env.references` keys matching `^N` (do not scrub bare `N`, so `[1]: url` still works).
 1. If a leading `<!-- footnotes … -->` exists (after optional note-cover / blanks), parse JSON; `enabled:false` disables the rest.
 2. From the document end, collect trailing source **entries**. Each entry is a `SOURCE_LINE` header plus immediately following non-blank continuation lines (no blanks inside an entry). Blank lines between entries are allowed. Stop when the next non-blank group above has no header (that group is body).
 3. Remove meta comment + sources block from the body before block parsing.
 4. Replace each `FOOTNOTE_REF` (claim before built-in `link`) with a known label by an in-preview link token; unknown labels stay literal `[^N]` text (still claimed so reference-links cannot steal them).
-5. After block parse, delete `env.references` so inline reference-links cannot resolve.
+5. After block parse, scrub leftover `env.references` keys matching `^N` (bare `N` and other labels stay for CommonMark).
 6. Append Sources HTML (when enabled).
 
 ### 3. Canonical HTML
@@ -91,7 +91,7 @@ META_COMMENT  := '<!--' WS 'footnotes' WS JSON '-->'
 | Item | `<li id="source-N" data-md-footnote-label="N" class="footnote-item">` + `<span class="footnote-marker">[^N]</span>` + `<p>…</p>` |
 | Backref | `<a href="#" class="footnote-backref" data-md-footnote-to="fnref-N">↩︎</a>` |
 
-Navigation uses `data-md-footnote-to` (not URL hash / path) so HashRouter and SPA path handlers do not steal the click.
+Navigation uses `data-md-footnote-to` (not URL hash / path) so HashRouter and SPA path handlers do not steal the click. Clicking a body ref scrolls the matching source to the **top** of the preview pane (as far up as remaining content allows). Backrefs keep `nearest`.
 
 Hover/focus on an inline ref shows a Radix Tooltip with the source **title** (first non-empty definition line). Do not use HTML `title=`.
 

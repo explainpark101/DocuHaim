@@ -14,7 +14,7 @@ import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlacehold
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
 import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
-import { footnoteMarkdownItPlugin, disableCommonMarkLinkReferences } from '@/utils/footnoteMarkdownIt';
+import { footnoteMarkdownItPlugin } from '@/utils/footnoteMarkdownIt';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { HLJS_ATOM_ONE_DARK_CSS } from '@/utils/mdEditorCodeTheme';
 import '@/utils/markedHeadingLevels';
@@ -121,7 +121,7 @@ config({
     XSSPlugin(md, {
       extendedWhiteList: PGBR_XSS_EXTENDED_WHITELIST,
     });
-    // Footnotes first so core prepare runs before block parse; reference defs stay off.
+    // Footnotes first so core prepare runs before block parse.
     footnoteMarkdownItPlugin(md);
   },
   markdownItPlugins(plugins) {
@@ -135,12 +135,6 @@ config({
       { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
       { type: 'haim_table', plugin: haimTableMarkdownItPlugin, options: {} },
       { type: 'plan_frontmatter', plugin: planFrontmatterMarkdownItPlugin, options: {} },
-      // TEMP: re-disable after built-in plugins in case anything re-enables reference.
-      {
-        type: 'disable_commonmark_reference',
-        plugin: disableCommonMarkLinkReferences,
-        options: {},
-      },
     ];
   },
   // Do not collapse long URLs/images to "..." in the editor (md-editor-rt linkShortener).

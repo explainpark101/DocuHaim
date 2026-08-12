@@ -5,9 +5,11 @@
  *
  * Important: markdown-it's built-in CommonMark `reference` block rule treats
  * `[^1]: url` as a link-reference definition and turns body `[^1]` into
- * `<a href="url">^1</a>`. Disable it entirely (temporary) via
- * `disableCommonMarkLinkReferences`.
+ * `<a href="url">^1</a>`. Footnotes win on overlap: skip numeric `[^N]:`
+ * defs, and claim body `[^N]` before the inline `link` rule. Other
+ * `[label]: url` references stay CommonMark.
  */
+import referenceRule from 'markdown-it/lib/rules_block/reference.mjs';
 import { loadFootnoteDisplayMode } from '@/utils/previewFootnotesSettings';
 import {
   DEFAULT_NOTE_FOOTNOTES_META,
@@ -15,6 +17,8 @@ import {
 } from '@/utils/noteFootnotesMeta';
 
 const SOURCE_LINE_RE = /^\[\^(\d+)\]\s*:?\s?(.*)$/;
+/** Line start: `[` `^` digits `]` optional spaces `:` — CommonMark would steal this. */
+const FOOTNOTE_DEF_LINE_RE = /^\[\^(\d+)\]\s*:/;
 const DIGIT_CODE_0 = 0x30;
 const DIGIT_CODE_9 = 0x39;
 
@@ -31,10 +35,29 @@ type SourceFootnoteEnv = {
   references?: Record<string, { href?: string; title?: string }>;
 };
 
+type BlockState = {
+  src: string;
+  bMarks: number[];
+  eMarks: number[];
+  tShift: number[];
+  sCount: number[];
+  blkIndent: number;
+};
+
 type MarkdownItLike = {
-  disable: (list: string | string[], ignoreInvalid?: boolean) => string[];
+  enable: (list: string | string[], ignoreInvalid?: boolean) => string[];
   block: {
-    ruler: Record<string, unknown>;
+    ruler: {
+      at: (
+        ruleName: string,
+        rule: (
+          state: BlockState,
+          startLine: number,
+          endLine: number,
+          silent: boolean,
+        ) => boolean,
+      ) => void;
+    };
   };
   inline: {
     ruler: {
@@ -95,19 +118,22 @@ function isDigitCode(code: number): boolean {
   return code >= DIGIT_CODE_0 && code <= DIGIT_CODE_9;
 }
 
-/** Drop all CommonMark link-reference entries (temporary safety net). */
-function scrubAllLinkReferences(env: SourceFootnoteEnv): void {
-  if (env.references) {
-    delete env.references;
-  }
+/** True when this block line would be a numeric footnote def (`[^1]: …`). */
+function isNumericFootnoteDefLine(state: BlockState, startLine: number): boolean {
+  if ((state.sCount[startLine] ?? 0) - (state.blkIndent || 0) >= 4) return false;
+  const pos = (state.bMarks[startLine] ?? 0) + (state.tShift[startLine] ?? 0);
+  const max = state.eMarks[startLine] ?? pos;
+  const line = state.src.slice(pos, max);
+  return FOOTNOTE_DEF_LINE_RE.test(line);
 }
 
-/**
- * TEMP: fully disable CommonMark `[label]: url` reference definitions.
- * Call early (markdownItConfig) and again after other plugins if needed.
- */
-export function disableCommonMarkLinkReferences(md: MarkdownItLike): void {
-  md.disable('reference', true);
+/** Drop CommonMark refs whose label is `^N` (from `[^N]:`). Keep `[1]: url`. */
+function scrubNumericFootnoteReferences(env: SourceFootnoteEnv): void {
+  const refs = env.references;
+  if (!refs) return;
+  for (const key of Object.keys(refs)) {
+    if (/^\^\d+$/.test(key)) delete refs[key];
+  }
 }
 
 function parseSourcesFromLines(lines: string[]): {
@@ -332,7 +358,15 @@ function sourceRefInline(state: InlineState, silent: boolean): boolean {
  * Register bottom-source footnotes for md-editor-rt preview / export PDF.
  */
 export function footnoteMarkdownItPlugin(md: MarkdownItLike): void {
-  disableCommonMarkLinkReferences(md);
+  md.enable('reference', true);
+  // CommonMark `[label]: url` stays on, but numeric `[^N]:` is footnote-only.
+  md.block.ruler.at(
+    'reference',
+    (state, startLine, endLine, silent) => {
+      if (isNumericFootnoteDefLine(state, startLine)) return false;
+      return referenceRule(state, startLine, endLine, silent);
+    },
+  );
 
   md.core.ruler.before('block', 'source_footnote_prepare', (state) => {
     if (state.inlineMode) return;
@@ -356,10 +390,10 @@ export function footnoteMarkdownItPlugin(md: MarkdownItLike): void {
     state.src = parsed.body;
   });
 
-  // After blocks: wipe link-reference map so inline `link` cannot emit ref anchors
+  // After blocks: drop leftover ^N / N keys so inline `link` cannot emit footnote-shaped refs
   md.core.ruler.after('block', 'source_footnote_scrub_refs', (state) => {
     if (state.inlineMode) return;
-    scrubAllLinkReferences(state.env);
+    scrubNumericFootnoteReferences(state.env);
   });
 
   md.inline.ruler.before('link', 'source_footnote_ref', sourceRefInline);
