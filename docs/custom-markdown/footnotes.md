@@ -86,12 +86,14 @@ META_COMMENT  := '<!--' WS 'footnotes' WS JSON '-->'
 
 | Part | HTML |
 |------|------|
-| Inline ref | `<a href="#" class="footnote-ref-link" id="fnref-N" data-md-footnote-to="source-N">` + wrapped `[^N]` + `</a>` |
-| Wrap | `<sup\|sub class="footnote-ref">` or `<span class="footnote-ref footnote-ref--raw">` |
+| Inline ref | `<a href="#" class="footnote-ref-link bg-transparent" … data-md-footnote-title="…" aria-label="각주 [^N]: …">` + wrapped `[^N]` + `</a>` |
+| Wrap | `<sup\|sub class="footnote-ref bg-transparent">` or `<span class="footnote-ref footnote-ref--raw bg-transparent">` |
 | Item | `<li id="source-N" data-md-footnote-label="N" class="footnote-item">` + `<span class="footnote-marker">[^N]</span>` + `<p>…</p>` |
 | Backref | `<a href="#" class="footnote-backref" data-md-footnote-to="fnref-N">↩︎</a>` |
 
 Navigation uses `data-md-footnote-to` (not URL hash / path) so HashRouter and SPA path handlers do not steal the click.
+
+Hover/focus on an inline ref shows a Radix Tooltip with the source **title** (first non-empty definition line). Do not use HTML `title=`.
 
 ### 4. Non-goals
 
@@ -107,6 +109,7 @@ Navigation uses `data-md-footnote-to` (not URL hash / path) so HashRouter and SP
 | markdown-it | `src/utils/footnoteMarkdownIt.ts` |
 | Display mode | `src/utils/previewFootnotesSettings.ts` |
 | Preview scroll | `src/utils/previewFootnoteScroll.ts` |
+| Preview tooltip | `src/components/PreviewFootnoteTooltips.tsx` |
 | Global register | `src/config/mdEditorConfig.js` |
 | Styles | `src/styles/md-editor-rt/footnotes.css` |
 | AS insert | `src/utils/advancedSearch/footnoteInsert.ts`, `FootnoteComposeModal.tsx` |

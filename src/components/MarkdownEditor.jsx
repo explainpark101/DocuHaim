@@ -25,6 +25,7 @@ import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
 import MirrorEditToolbar from '@/components/MirrorEditToolbar';
 import ImageToolbar from '@/components/ImageToolbar';
 import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
+import PreviewFootnoteTooltips from '@/components/PreviewFootnoteTooltips';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import FootnoteComposeModal from '@/components/modals/FootnoteComposeModal';
@@ -2418,6 +2419,7 @@ export default function MarkdownEditor({
         onUploadImg={onUploadImg}
       />
       <MdEditorToolbarTooltips containerRef={containerRef} />
+      <PreviewFootnoteTooltips containerRef={containerRef} />
       <WikiImageSizeModal
         key={
           wikiImageModalState

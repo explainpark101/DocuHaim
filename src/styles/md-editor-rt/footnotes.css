@@ -4,6 +4,7 @@
   font-size: 0.75em;
   line-height: 0;
   vertical-align: super;
+  background-color: transparent;
 }
 
 .md-editor .md-editor-preview sub.footnote-ref {
@@ -22,6 +23,22 @@
   text-decoration: none !important;
   border-block-end: 0 !important;
   color: var(--md-theme-link-color, inherit);
+  background-color: transparent;
+}
+
+/* Expand the hover/click box upward so superscript glyphs stay inside the hit target. */
+.md-editor .md-editor-preview a.footnote-ref-link {
+  position: relative;
+}
+
+.md-editor .md-editor-preview a.footnote-ref-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: -0.9em;
+  background-color: transparent;
 }
 
 .md-editor .md-editor-preview .footnote-ref-link:hover,

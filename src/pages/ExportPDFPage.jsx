@@ -113,6 +113,7 @@ import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
 import { FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT } from '@/utils/previewFootnotesSettings';
+import PreviewFootnoteTooltips from '@/components/PreviewFootnoteTooltips';
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
@@ -2205,6 +2206,10 @@ export default function ExportPDFPage({
             editorContent: next,
           });
         }}
+      />
+      <PreviewFootnoteTooltips
+        containerRef={previewContainerRef}
+        rootEl={previewPanRoot}
       />
     </div>
   );

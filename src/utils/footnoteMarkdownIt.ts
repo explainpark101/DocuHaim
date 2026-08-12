@@ -53,7 +53,16 @@ type MarkdownItLike = {
     };
   };
   renderer: {
-    rules: Record<string, ((tokens: Token[], idx: number) => string) | undefined>;
+    rules: Record<
+      string,
+      | ((
+          tokens: Token[],
+          idx: number,
+          options?: unknown,
+          env?: SourceFootnoteEnv,
+        ) => string)
+      | undefined
+    >;
   };
   renderInline: (src: string, env: unknown) => string;
 };
@@ -217,9 +226,28 @@ function rawMarkdownFromState(state: CoreState): string {
 
 function wrapRefLabel(label: string, mode: 'sup' | 'sub' | 'rawText'): string {
   const text = `[^${label}]`;
-  if (mode === 'sub') return `<sub class="footnote-ref">${text}</sub>`;
-  if (mode === 'rawText') return `<span class="footnote-ref footnote-ref--raw">${text}</span>`;
-  return `<sup class="footnote-ref">${text}</sup>`;
+  if (mode === 'sub') return `<sub class="footnote-ref bg-transparent">${text}</sub>`;
+  if (mode === 'rawText') {
+    return `<span class="footnote-ref footnote-ref--raw bg-transparent">${text}</span>`;
+  }
+  return `<sup class="footnote-ref bg-transparent">${text}</sup>`;
+}
+
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/\r?\n/g, ' ');
+}
+
+/** First non-empty source line (title). Used for preview tooltips. */
+export function footnoteSourceTitle(content: string): string {
+  const first = String(content || '')
+    .split(/\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+  return first ?? '';
 }
 
 function renderSourcesHtml(md: MarkdownItLike, env: SourceFootnoteEnv): string {
@@ -336,15 +364,22 @@ export function footnoteMarkdownItPlugin(md: MarkdownItLike): void {
 
   md.inline.ruler.before('link', 'source_footnote_ref', sourceRefInline);
 
-  md.renderer.rules.source_footnote_ref = (tokens, idx) => {
+  md.renderer.rules.source_footnote_ref = (tokens, idx, _options, env) => {
     const label = tokens[idx]?.meta?.label ?? '';
     const subId = tokens[idx]?.meta?.subId ?? 0;
     const refId = subId > 0 ? `fnref-${label}-${subId}` : `fnref-${label}`;
     const mode = loadFootnoteDisplayMode();
     const wrapped = wrapRefLabel(label, mode);
+    const title = footnoteSourceTitle(env?.sourceFootnotes?.byLabel?.[label] ?? '');
+    const titleAttr = title
+      ? ` data-md-footnote-title="${escapeAttr(title)}"`
+      : '';
+    const aria = escapeAttr(title ? `각주 [^${label}]: ${title}` : `각주 [^${label}]`);
     // href="#" avoids HashRouter / path navigation; scroll via data-md-footnote-to.
     return (
-      `<a href="#" class="footnote-ref-link" id="${refId}" data-md-footnote-to="source-${label}" data-md-footnote-id="${refId}">` +
+      `<a href="#" class="footnote-ref-link bg-transparent" id="${refId}"` +
+      ` data-md-footnote-to="source-${label}" data-md-footnote-id="${refId}"` +
+      `${titleAttr} aria-label="${aria}">` +
       wrapped +
       `</a>`
     );

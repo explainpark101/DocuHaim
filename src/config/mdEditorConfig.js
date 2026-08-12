@@ -67,6 +67,8 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
     'data-chat-id',
     'data-md-footnote-to',
     'data-md-footnote-id',
+    'data-md-footnote-title',
+    'aria-label',
     'title',
   ],
   sup: ['class'],
