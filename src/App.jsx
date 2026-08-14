@@ -4528,6 +4528,13 @@ function MainApp() {
     setDownloadComplete(false);
   };
 
+  const handleRequestSessionSaveChooser = () => {
+    setDownloadModalMode('session-save');
+    setShowDownloadMethodModal(true);
+    setDownloadProgress(0);
+    setDownloadComplete(false);
+  };
+
   const handleRequestSessionTransformDownload = () => {
     setDownloadModalMode('session-transform');
     setShowDownloadMethodModal(true);
@@ -4681,27 +4688,55 @@ function MainApp() {
   };
   writeSessionFileToHaimRef.current = writeSessionFileToHaim;
 
-  const downloadSessionTransformed = async ({
+  const applySessionMarkdownExportOptions = async ({
     imageMode = 'files',
     imageSyntax = 'markdown',
     headingMax = 1,
+    tableFormat = 'haim',
   } = {}) => {
     flushSessionEditorToWorkspace();
     const cur = currentFileRef.current;
-    if (!cur || cur.type !== SESSION_STORAGE_TYPE) return;
+    if (!cur || cur.type !== SESSION_STORAGE_TYPE) return null;
     const fileName = cur.name || 'untitled.md';
-    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(cur.viewer || 'markdown');
-    if (!editable || !isMarkdownFileName(fileName)) {
-      await downloadSessionWorkspace();
-      return;
+    if (!isMarkdownFileName(fileName)) {
+      return { cur, fileName, bundled: null };
+    }
+    let markdown = remapMarkdownHeadingLevels(editorContentRef.current ?? '', headingMax);
+    if (tableFormat === 'html') {
+      const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
+      const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
+      markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
+        getCachedTableStyleTemplate(id),
+      );
     }
     const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
     const bundled = await bundleSessionMarkdownImages({
-      markdown: remapMarkdownHeadingLevels(editorContentRef.current ?? '', headingMax),
+      markdown,
       notePath: cur.id,
       readBytes: readSessionBytes,
       imageSyntax: effectiveSyntax,
     });
+    return { cur, fileName, bundled };
+  };
+
+  const downloadSessionTransformed = async ({
+    imageMode = 'files',
+    imageSyntax = 'markdown',
+    headingMax = 1,
+    tableFormat = 'haim',
+  } = {}) => {
+    const prepared = await applySessionMarkdownExportOptions({
+      imageMode,
+      imageSyntax,
+      headingMax,
+      tableFormat,
+    });
+    if (!prepared) return;
+    const { fileName, bundled } = prepared;
+    if (!bundled) {
+      await downloadSessionWorkspace();
+      return;
+    }
     if (imageMode === 'base64') {
       const markdown = bundled.images.length
         ? embedMarkdownImagesAsDataUris(bundled.markdown, bundled.images)
@@ -4720,7 +4755,35 @@ function MainApp() {
     }
     const missingMessage = formatMissingExportImagesMessage(bundled.missing);
     if (missingMessage) alert(missingMessage);
-    setOperationStatus('변형 다운로드 완료');
+    setOperationStatus('다운로드 완료');
+  };
+
+  const writeSessionWorkspaceToDirectory = async (dirHandle, workspace, onProgress) => {
+    const records = Object.values(workspace?.files || {});
+    const total = Math.max(records.length, 1);
+    let done = 0;
+    for (const record of records) {
+      if (!record) continue;
+      const parts = String(record.path || record.name || 'file')
+        .replace(/\\/g, '/')
+        .split('/')
+        .filter(Boolean);
+      const fileName = parts.pop() || 'file';
+      let dir = dirHandle;
+      for (const part of parts) {
+        dir = await dir.getDirectoryHandle(part, { create: true });
+      }
+      const uniqueName = await allocateUniqueFileSystemName(dir, fileName);
+      const fileHandle = await dir.getFileHandle(uniqueName, { create: true });
+      const writable = await fileHandle.createWritable();
+      try {
+        await writable.write(record.bytes);
+      } finally {
+        await writable.close();
+      }
+      done += 1;
+      onProgress?.(Math.min(100, Math.round((done / total) * 100)));
+    }
   };
 
   const handleRequestSaveSessionToNote = () => {
@@ -4733,6 +4796,33 @@ function MainApp() {
       return;
     }
     setShowSaveSessionToNoteModal(true);
+  };
+
+  const handleSelectHaimFromDownload = () => {
+    setShowDownloadMethodModal(false);
+    setDownloadModalMode('default');
+    const cur = currentFileRef.current;
+    if (!cur || cur.type !== SESSION_STORAGE_TYPE) return;
+    const binding = sessionVaultBindingsRef.current[cur.id];
+    if (
+      binding?.destPath &&
+      binding.storageType === connectedHaimStorageType() &&
+      isConnectedHaimReady()
+    ) {
+      void (async () => {
+        try {
+          await writeSessionFileToHaimRef.current?.({
+            destPath: binding.destPath,
+            sessionFile: cur,
+          });
+        } catch (error) {
+          console.error('Save session to Haim failed:', error);
+          alert('노트 저장에 실패했습니다: ' + (error?.message || error));
+        }
+      })();
+      return;
+    }
+    handleRequestSaveSessionToNote();
   };
 
   const handleConfirmSaveSessionToNote = async ({ path, fileName }) => {
@@ -4901,7 +4991,9 @@ function MainApp() {
     if (storageType === SESSION_STORAGE_TYPE) {
       try {
         if (downloadModalMode === 'session-transform') {
-          await downloadSessionTransformed({ imageMode, imageSyntax, headingMax });
+          await downloadSessionTransformed({ imageMode, imageSyntax, headingMax, tableFormat });
+        } else if (isMarkdownFileName(currentFile.name || currentFile.id)) {
+          await downloadSessionTransformed({ imageMode, imageSyntax, headingMax, tableFormat });
         } else {
           await downloadSessionWorkspace();
         }
@@ -5039,7 +5131,14 @@ function MainApp() {
   } = {}) => {
     if (!currentFile) return;
     const storageType = currentFile.type;
-    if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
+    if (
+      storageType !== 's3' &&
+      storageType !== 'local' &&
+      storageType !== 'webdav' &&
+      storageType !== SESSION_STORAGE_TYPE
+    ) {
+      return;
+    }
     try {
       if (!('showDirectoryPicker' in window)) {
         openUnsupportedFolderDownloadModal();
@@ -5051,6 +5150,70 @@ function MainApp() {
       if (!canWrite) {
         throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
       }
+
+      if (storageType === SESSION_STORAGE_TYPE) {
+        const fileName =
+          currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
+        if (isMarkdownFileName(fileName)) {
+          const prepared = await applySessionMarkdownExportOptions({
+            imageMode,
+            imageSyntax,
+            headingMax,
+            tableFormat,
+          });
+          const bundled = prepared?.bundled;
+          if (!bundled) throw new Error('세션 문서를 준비하지 못했습니다.');
+
+          const writeSingleMarkdownFile = async (content) => {
+            const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
+            const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            try {
+              await writable.write(content);
+            } finally {
+              await writable.close();
+            }
+          };
+
+          if (imageMode === 'base64' || !bundled.images.length) {
+            const markdown = bundled.images.length
+              ? embedMarkdownImagesAsDataUris(bundled.markdown, bundled.images)
+              : bundled.markdown;
+            await writeSingleMarkdownFile(markdown);
+            setDownloadProgress(100);
+            setDownloadComplete(true);
+          } else {
+            const bundleDirName = await allocateUniqueFileSystemName(
+              dirHandle,
+              markdownExportBundleDirectoryName(fileName),
+              { isFolder: true },
+            );
+            const bundleDirHandle = await dirHandle.getDirectoryHandle(bundleDirName, {
+              create: true,
+            });
+            await writeMarkdownImageBundleToDirectory(
+              bundleDirHandle,
+              fileName,
+              bundled.markdown,
+              bundled.images,
+              (percent) => setDownloadProgress(percent),
+            );
+            setDownloadComplete(true);
+          }
+          const missingMessage = formatMissingExportImagesMessage(bundled.missing);
+          if (missingMessage) alert(missingMessage);
+          return;
+        }
+
+        const flushed = flushSessionEditorToWorkspace() ?? sessionWorkspaceRef.current;
+        if (!flushed) throw new Error('다운로드 세션이 없습니다.');
+        await writeSessionWorkspaceToDirectory(dirHandle, flushed, (percent) =>
+          setDownloadProgress(percent),
+        );
+        setDownloadComplete(true);
+        return;
+      }
+
       const fileName = currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
       const notePath = currentFile.id || '';
 
@@ -5670,7 +5833,7 @@ function MainApp() {
         Boolean(binding?.destPath) && binding.storageType === connectedHaimStorageType();
       if (!bindingOk) {
         if (fileOverride || background) return;
-        handleRequestSaveSessionToNote();
+        handleRequestSessionSaveChooser();
         return;
       }
     }
@@ -8660,7 +8823,6 @@ function MainApp() {
                     },
                     onSaveSessionToNote: handleRequestSaveSessionToNote,
                     onRequestSessionTransformDownload: handleRequestSessionTransformDownload,
-                    onDownloadSessionWorkspace: downloadSessionWorkspace,
                     onOpenSessionFiles: handleOpenSessionFiles,
                     onOpenSessionDirectory:
                       typeof window !== 'undefined' && 'showDirectoryPicker' in window
@@ -9166,7 +9328,13 @@ function MainApp() {
 
       <DownloadMethodModal
         isOpen={showDownloadMethodModal}
-        title={downloadModalMode === 'session-transform' ? '변형 다운로드' : '다운로드 방식 선택'}
+        title={
+          downloadModalMode === 'session-transform'
+            ? '변형 다운로드'
+            : downloadModalMode === 'session-save'
+              ? '저장 방식 선택'
+              : '다운로드 방식 선택'
+        }
         fileName={currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop()}
         markdownText={editorContent}
         showImageHandling={isMarkdownFileName(
@@ -9176,6 +9344,11 @@ function MainApp() {
         confirmLabel="다운로드"
         onSelectLegacy={handleDownloadCurrentFile}
         onSelectStorageApi={handleDownloadToFolder}
+        onSelectHaim={
+          currentFile?.type === SESSION_STORAGE_TYPE && downloadModalMode !== 'session-transform'
+            ? handleSelectHaimFromDownload
+            : undefined
+        }
         onSelectClipboard={handleCopyCurrentFileToClipboard}
         onCancel={() => {
           setShowDownloadMethodModal(false);

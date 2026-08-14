@@ -92,7 +92,6 @@ export default function EditorPane({
   isOpeningSession = false,
   onSaveSessionToNote,
   onRequestSessionTransformDownload,
-  onDownloadSessionWorkspace,
   isRecording = false,
   audioLevel = 0,
   onToggleRecording,
@@ -623,7 +622,7 @@ export default function EditorPane({
               <span className="hidden md:inline"> {isRefreshingFromDisk ? '새로고침 중...' : '새로고침'}</span>
             </Button>
           )}
-          {(currentFile.type !== 'session' || isSessionMarkdown || typeof onDownloadSessionWorkspace === 'function') && (
+          {(currentFile.type !== 'session' || isSessionMarkdown || onRequestDownload) && (
           <div ref={fileManagementRef} className="relative">
             <Button
               type="button"
@@ -667,12 +666,12 @@ export default function EditorPane({
                     변형 다운로드
                   </button>
                 ) : null}
-                {currentFile.type === 'session' && typeof onDownloadSessionWorkspace === 'function' ? (
+                {currentFile.type === 'session' && onRequestDownload ? (
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
                     onClick={() => {
-                      void onDownloadSessionWorkspace();
+                      onRequestDownload();
                       setFileManagementOpen(false);
                     }}
                   >
@@ -791,7 +790,7 @@ export default function EditorPane({
               isSaving
                 ? '저장 중...'
                 : currentFile.type === 'session'
-                  ? '연결된 저장소에 저장'
+                  ? '저장 방식 선택'
                   : '저장'
             }
             className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"

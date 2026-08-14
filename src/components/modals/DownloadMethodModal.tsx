@@ -3,7 +3,7 @@ import { Check, ChevronDown, ClipboardCopy } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { RadioGroup, Select } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
-import { IconDownload, IconFolder } from '@/components/icons';
+import { IconCloud, IconDownload, IconFolder } from '@/components/icons';
 import {
   type DownloadImageMode,
   isDownloadImageMode,
@@ -130,6 +130,7 @@ type Props = {
   confirmLabel?: string;
   onSelectLegacy: (choice: DownloadMethodChoice) => void;
   onSelectStorageApi: (choice: DownloadMethodChoice) => void;
+  onSelectHaim?: (choice: DownloadMethodChoice) => void;
   onSelectClipboard?: (choice: DownloadMethodChoice) => void;
   onCancel: () => void;
   isDownloading?: boolean;
@@ -148,6 +149,7 @@ export function DownloadMethodModal({
   confirmLabel = '다운로드',
   onSelectLegacy,
   onSelectStorageApi,
+  onSelectHaim,
   onSelectClipboard,
   onCancel,
   isDownloading,
@@ -487,6 +489,24 @@ export function DownloadMethodModal({
 
             {showDeliveryMethods ? (
             <div className="space-y-2 mb-4">
+              {typeof onSelectHaim === 'function' ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectHaim(choice)}
+                  disabled={isDownloading}
+                  className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 dark:border-odp-borderSoft hover:bg-gray-50 dark:hover:bg-odp-bgSoft transition flex items-center gap-3"
+                >
+                  <IconCloud size={20} className="text-gray-500 shrink-0" />
+                  <div className="text-left">
+                    <div className="font-medium text-gray-800 dark:text-odp-fgStrong">
+                      Haim 저장소에 저장
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-odp-muted mt-0.5">
+                      연결된 저장소에 노트로 저장
+                    </div>
+                  </div>
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => onSelectLegacy(choice)}
