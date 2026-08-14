@@ -15,6 +15,11 @@ import {
   sharePromptHasContent,
 } from '@/utils/chatWithMyself/pendingShares';
 import {
+  canOpenShareFilesAsSession,
+  filesForShareTargetSession,
+  sessionOriginForShareTargetFiles,
+} from '@/utils/chatWithMyself/shareTargetSession';
+import {
   SELF_GROUP,
   appendShareChatMessage,
   postChatLocalSyncEvent,
@@ -35,6 +40,7 @@ function pendingChooseToPrompt(choose) {
  * - Shows chooser above the lock blur
  * - Defers AuthModal until the chooser finishes
  * - Queues sendSelf/compose in IndexedDB without unlock
+ * - Opens markdown files as a download session when chosen
  * - Flushes sendSelf after unlock + storage ready (any route)
  */
 export default function ShareTargetGate({
@@ -43,6 +49,7 @@ export default function ShareTargetGate({
   chatCtx,
   onBlockingChange,
   onComposeClaimed,
+  onOpenAsSession,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -241,6 +248,29 @@ export default function ShareTargetGate({
     finishPrompt();
   }, [prompt, clearPromptRecord, finishPrompt]);
 
+  const handleOpenAsSession = useCallback(async () => {
+    const current = prompt;
+    if (!sharePromptHasContent(current) || actionLockRef.current) return false;
+    if (typeof onOpenAsSession !== 'function') return false;
+    const files = filesForShareTargetSession(normalizeShareFiles(current.files));
+    if (!files.length) return false;
+    actionLockRef.current = true;
+    try {
+      const origin = sessionOriginForShareTargetFiles(files);
+      const opened = await onOpenAsSession(files, origin);
+      if (opened === false) {
+        actionLockRef.current = false;
+        return false;
+      }
+      await clearPromptRecord(current);
+      finishPrompt();
+      return true;
+    } catch {
+      actionLockRef.current = false;
+      return false;
+    }
+  }, [prompt, onOpenAsSession, clearPromptRecord, finishPrompt]);
+
   // Flush sendSelf pending after unlock + storage ready (any page).
   // Module-level mutex in flushSendSelfPendingShares prevents double-append on re-entry.
   useEffect(() => {
@@ -281,18 +311,24 @@ export default function ShareTargetGate({
     })();
   }, [isUnlocked, storageReady, bootstrapDone, prompt]);
 
+  const shareFiles = normalizeShareFiles(prompt?.files);
+  const canOpenAsSession =
+    typeof onOpenAsSession === 'function' && canOpenShareFilesAsSession(shareFiles);
+
   return (
     <ChatShareTargetModal
       isOpen={sharePromptHasContent(prompt)}
       body={prompt?.body || ''}
-      files={normalizeShareFiles(prompt?.files)}
+      files={shareFiles}
       canSendAsSelf
+      canOpenAsSession={canOpenAsSession}
       onSendAsSelf={() => {
         void handleSendAsSelf();
       }}
       onComposeWithGroup={() => {
         void handleComposeWithGroup();
       }}
+      onOpenAsSession={() => handleOpenAsSession()}
       onClose={() => {
         void handleClose();
       }}

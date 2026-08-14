@@ -1,12 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileIcon, Send, Users, X } from 'lucide-react';
+import { FileIcon, FileText, Send, Users, X } from 'lucide-react';
 import Button from '@/components/Button';
 import Modal from '@/components/modals/Modal';
 import { formatChatAttachmentSize } from '@/utils/chatWithMyself';
 
 const PREVIEW_MAX = 280;
 
-function truncatePreview(body) {
+type ActionResult = boolean | void;
+
+type ChatShareTargetModalProps = {
+  isOpen: boolean;
+  body?: string;
+  files?: File[];
+  canSendAsSelf?: boolean;
+  canOpenAsSession?: boolean;
+  onSendAsSelf?: () => ActionResult | Promise<ActionResult>;
+  onComposeWithGroup?: () => ActionResult | Promise<ActionResult>;
+  onOpenAsSession?: () => ActionResult | Promise<ActionResult>;
+  onClose?: () => ActionResult | Promise<ActionResult>;
+};
+
+function truncatePreview(body: string): string {
   const text = String(body || '').trim();
   if (!text) return '';
   if (text.length <= PREVIEW_MAX) return text;
@@ -21,10 +35,12 @@ export default function ChatShareTargetModal({
   body = '',
   files = [],
   canSendAsSelf = true,
+  canOpenAsSession = false,
   onSendAsSelf,
   onComposeWithGroup,
+  onOpenAsSession,
   onClose,
-}) {
+}: ChatShareTargetModalProps) {
   const preview = truncatePreview(body);
   const fileList = useMemo(
     () => (Array.isArray(files) ? files.filter(Boolean) : []),
@@ -39,11 +55,22 @@ export default function ChatShareTargetModal({
     setBusy(false);
   }, [isOpen, body, fileList.length]);
 
-  const runOnce = (action) => {
+  const runOnce = (action?: () => ActionResult | Promise<ActionResult>) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
-    action?.();
+    void (async () => {
+      try {
+        const result = await action?.();
+        if (result === false) {
+          busyRef.current = false;
+          setBusy(false);
+        }
+      } catch {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    })();
   };
 
   const hasContent = Boolean(preview) || fileList.length > 0;
@@ -52,10 +79,12 @@ export default function ChatShareTargetModal({
     <Modal isOpen={isOpen} onClose={busy ? undefined : onClose}>
       <div className="p-6">
         <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
-          공유 내용 보내기
+          {canOpenAsSession ? '공유 내용' : '공유 내용 보내기'}
         </h2>
         <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-          공유받은 내용을 어떻게 보낼지 선택하세요.
+          {canOpenAsSession
+            ? '다운로드 세션으로 열거나 채팅으로 보낼 수 있습니다.'
+            : '공유받은 내용을 어떻게 보낼지 선택하세요.'}
         </p>
         {preview ? (
           <pre className="mb-3 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg">
@@ -85,9 +114,22 @@ export default function ChatShareTargetModal({
           </ul>
         ) : null}
         <div className="flex flex-col gap-2">
+          {canOpenAsSession ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={() => runOnce(onOpenAsSession)}
+              disabled={busy || !hasContent}
+              className="w-full"
+            >
+              <FileText size={16} aria-hidden />
+              다운로드 세션으로 열기
+            </Button>
+          ) : null}
           <Button
             type="button"
-            variant="primary"
+            variant={canOpenAsSession ? 'secondary' : 'primary'}
             size="md"
             onClick={() => runOnce(onSendAsSelf)}
             disabled={busy || !canSendAsSelf || !hasContent}

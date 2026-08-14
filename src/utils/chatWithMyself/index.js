@@ -58,6 +58,13 @@ export {
   normalizeShareFiles,
 } from './pendingShares.js';
 export { appendShareChatMessage } from './shareSend.js';
+export {
+  canOpenShareFilesAsSession,
+  filesForShareTargetSession,
+  isShareTargetMarkdownFile,
+  isShareTargetMarkdownMime,
+  sessionOriginForShareTargetFiles,
+} from './shareTargetSession.js';
 export { canOfferWebShare, shareChatMessage } from './shareChatMessage.js';
 export {
   SHARE_TARGET_CACHE,

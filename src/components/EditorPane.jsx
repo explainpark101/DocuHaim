@@ -92,6 +92,7 @@ export default function EditorPane({
   isOpeningSession = false,
   onSaveSessionToNote,
   onRequestSessionTransformDownload,
+  onDownloadSessionWorkspace,
   isRecording = false,
   audioLevel = 0,
   onToggleRecording,
@@ -622,7 +623,7 @@ export default function EditorPane({
               <span className="hidden md:inline"> {isRefreshingFromDisk ? '새로고침 중...' : '새로고침'}</span>
             </Button>
           )}
-          {(currentFile.type !== 'session' || isSessionMarkdown) && (
+          {(currentFile.type !== 'session' || isSessionMarkdown || typeof onDownloadSessionWorkspace === 'function') && (
           <div ref={fileManagementRef} className="relative">
             <Button
               type="button"
@@ -640,7 +641,7 @@ export default function EditorPane({
                 className="absolute right-0 top-full z-100 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
                 role="menu"
               >
-                {isSessionMarkdown && typeof onSaveSessionToNote === 'function' ? (
+                {currentFile.type === 'session' && isEditableViewer && typeof onSaveSessionToNote === 'function' ? (
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
@@ -664,6 +665,19 @@ export default function EditorPane({
                   >
                     <ArrowLeftRight size={14} />
                     변형 다운로드
+                  </button>
+                ) : null}
+                {currentFile.type === 'session' && typeof onDownloadSessionWorkspace === 'function' ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
+                    onClick={() => {
+                      void onDownloadSessionWorkspace();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <IconDownload size={14} />
+                    다운로드
                   </button>
                 ) : null}
                 {currentFile.type !== 'session' ? (
@@ -775,25 +789,17 @@ export default function EditorPane({
             disabled={isSaving || !isEditableViewer}
             title={
               isSaving
-                ? currentFile.type === 'session'
-                  ? '다운로드 중...'
-                  : '저장 중...'
+                ? '저장 중...'
                 : currentFile.type === 'session'
-                  ? '다운로드로 저장'
+                  ? '연결된 저장소에 저장'
                   : '저장'
             }
             className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"
           >
-            {currentFile.type === 'session' ? <IconDownload /> : <IconSave />}
+            <IconSave />
             <span className="hidden md:inline">
               {' '}
-              {isSaving
-                ? currentFile.type === 'session'
-                  ? '다운로드 중...'
-                  : '저장 중...'
-                : currentFile.type === 'session'
-                  ? '다운로드'
-                  : '저장'}
+              {isSaving ? '저장 중...' : '저장'}
             </span>
           </Button>
           {!previewOnly && (

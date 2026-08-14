@@ -385,6 +385,9 @@ function MainApp() {
   const [sessionWorkspace, setSessionWorkspace] = useState(null);
   const sessionWorkspaceRef = useRef(null);
   const sessionObjectUrlsRef = useRef(new Map());
+  /** session file id -> { destPath, storageType } after saving into connected Haim */
+  const sessionVaultBindingsRef = useRef(Object.create(null));
+  const writeSessionFileToHaimRef = useRef(null);
   const [isOpeningSession, setIsOpeningSession] = useState(false);
   const [isWebdavTreeLoading, setIsWebdavTreeLoading] = useState(false);
   const [webdavFolderLoadingPath, setWebdavFolderLoadingPath] = useState(null);
@@ -1658,6 +1661,7 @@ function MainApp() {
       return;
     }
     revokeSessionObjectUrls();
+    sessionVaultBindingsRef.current = Object.create(null);
     sessionWorkspaceRef.current = null;
     setSessionWorkspace(null);
     if (currentFileRef.current?.type === SESSION_STORAGE_TYPE) {
@@ -1725,18 +1729,20 @@ function MainApp() {
         sessionWorkspaceRef.current &&
         !window.confirm('이미 열린 다운로드 세션이 있습니다. 새 파일로 바꾸면 현재 세션은 사라집니다. 계속할까요?')
       ) {
-        return;
+        return false;
       }
       revokeSessionObjectUrls();
+      sessionVaultBindingsRef.current = Object.create(null);
       sessionWorkspaceRef.current = workspace;
       setSessionWorkspace(workspace);
       const path = pickDefaultSessionOpenPath(workspace);
       if (!path) {
         alert('열 수 있는 파일이 없습니다.');
-        return;
+        return false;
       }
       applySessionFileToEditor(path, workspace);
       if (isMobile) setSidebarOpen(false);
+      return true;
     },
     [applySessionFileToEditor, isMobile, revokeSessionObjectUrls],
   );
@@ -1746,10 +1752,11 @@ function MainApp() {
       setIsOpeningSession(true);
       try {
         const workspace = await workspaceFromFileList(fileList, origin);
-        await openSessionWorkspace(workspace);
+        return await openSessionWorkspace(workspace);
       } catch (error) {
         console.error('Session open failed:', error);
         alert(error?.message || '파일을 열지 못했습니다.');
+        return false;
       } finally {
         setIsOpeningSession(false);
       }
@@ -4543,6 +4550,137 @@ function MainApp() {
     throw new Error(`이미지를 찾지 못했습니다: ${path}`);
   };
 
+  const connectedHaimStorageType = () => {
+    if (storageMode === 'local') return 'local';
+    if (storageMode === 'webdav') return 'webdav';
+    return 's3';
+  };
+
+  const isConnectedHaimReady = () => {
+    if (storageMode === 's3') return Boolean(s3Creds.bucket);
+    if (storageMode === 'local') return Boolean(localRootHandle);
+    if (storageMode === 'webdav') return Boolean(webdavReady);
+    return false;
+  };
+
+  const writeSessionFileToHaim = async ({
+    destPath,
+    sessionFile = null,
+    content = null,
+    confirmOverwrite = false,
+  }) => {
+    const storageType = connectedHaimStorageType();
+    const file = sessionFile || currentFileRef.current;
+    if (!file || file.type !== SESSION_STORAGE_TYPE) {
+      throw new Error('다운로드 세션 파일이 없습니다.');
+    }
+    const textToSave = content != null ? String(content) : editorContentRef.current ?? '';
+    const isActive =
+      currentFileRef.current?.type === SESSION_STORAGE_TYPE &&
+      currentFileRef.current?.id === file.id;
+    if (isActive) {
+      flushSessionEditorToWorkspace();
+    } else if (sessionWorkspaceRef.current) {
+      const next = updateSessionFileText(sessionWorkspaceRef.current, file.id, textToSave);
+      sessionWorkspaceRef.current = next;
+      setSessionWorkspace(next);
+    }
+
+    const backend = getBackendForType(storageType);
+    if (confirmOverwrite) {
+      const existing = await backend.head?.(destPath);
+      if (existing && !window.confirm(`이미 있는 파일입니다. 덮어쓸까요?\n${destPath}`)) {
+        return { cancelled: true };
+      }
+    }
+
+    const viewer = file.viewer || 'markdown';
+    const destName =
+      String(destPath || '')
+        .split('/')
+        .filter(Boolean)
+        .pop() ||
+      file.name ||
+      'untitled.md';
+    const isMd =
+      isMarkdownFileName(destName) || isMarkdownFileName(file.name) || viewer === 'markdown';
+
+    let vaultText = textToSave;
+    if (isMd) {
+      const prepared = await prepareSessionMarkdownForVault({
+        markdown: textToSave,
+        sessionNotePath: file.id || destName,
+        destNotePath: destPath,
+        readBytes: readSessionBytes,
+      });
+      vaultText = prepared.markdown;
+      await backend.writeText(destPath, prepared.markdown, 'text/markdown; charset=utf-8');
+      for (const image of prepared.images) {
+        await backend.writeBytes(image.path, image.data, mimeForSessionFileName(image.path));
+      }
+      if (prepared.missing.length) alert(formatMissingExportImagesMessage(prepared.missing));
+    } else {
+      const contentTypeForViewer =
+        viewer === 'json'
+          ? 'application/json'
+          : viewer === 'raw'
+            ? 'text/plain'
+            : viewer === 'html'
+              ? 'text/html'
+              : viewer === 'svg'
+                ? 'image/svg+xml'
+                : 'text/plain';
+      await backend.writeText(destPath, textToSave, contentTypeForViewer);
+    }
+
+    if (storageType === 's3') loadS3Files();
+    else if (storageType === 'local') await refreshLocalTree();
+    else await refreshWebdavTree();
+
+    if (file.id) {
+      sessionVaultBindingsRef.current[file.id] = { destPath, storageType };
+    }
+
+    const savedByteLength = new TextEncoder().encode(textToSave).length;
+    if (isActive) {
+      setCurrentFile((prev) => {
+        if (!prev || prev.type !== SESSION_STORAGE_TYPE || prev.id !== file.id) return prev;
+        const next = { ...prev, content: textToSave, size: savedByteLength };
+        currentFileRef.current = next;
+        return next;
+      });
+      setLastAutoSaveAt(Date.now());
+    }
+
+    const existingTab = findFileTab(workspaceTabsRef.current, SESSION_STORAGE_TYPE, file.id);
+    if (existingTab) {
+      const tabId = `${SESSION_STORAGE_TYPE}:${file.id}`;
+      const patch = {
+        currentFile: {
+          ...existingTab.currentFile,
+          content: textToSave,
+          size: savedByteLength,
+        },
+        baselineContent: textToSave,
+      };
+      if (existingTab.editorContent === textToSave) {
+        patch.editorContent = textToSave;
+      }
+      const patched = patchFileTab(workspaceTabsRef.current, tabId, patch);
+      workspaceTabsRef.current = patched;
+      setWorkspaceTabs(patched);
+    }
+
+    notifyAdvancedSearchChange({
+      type: 'file',
+      path: destPath,
+      content: vaultText,
+    });
+    setOperationStatus(`노트 저장 완료: ${destPath}`);
+    return { cancelled: false, destPath };
+  };
+  writeSessionFileToHaimRef.current = writeSessionFileToHaim;
+
   const downloadSessionTransformed = async ({
     imageMode = 'files',
     imageSyntax = 'markdown',
@@ -4586,15 +4724,7 @@ function MainApp() {
   };
 
   const handleRequestSaveSessionToNote = () => {
-    const ready =
-      storageMode === 's3'
-        ? Boolean(s3Creds.bucket)
-        : storageMode === 'local'
-          ? Boolean(localRootHandle)
-          : storageMode === 'webdav'
-            ? webdavReady
-            : false;
-    if (!ready) {
+    if (!isConnectedHaimReady()) {
       alert(
         storageMode === 'local'
           ? '로컬 폴더를 먼저 열어 주세요.'
@@ -4613,31 +4743,14 @@ function MainApp() {
       return;
     }
     const destPath = `${path || ''}${finalName}`;
-    const storageType =
-      storageMode === 'local' ? 'local' : storageMode === 'webdav' ? 'webdav' : 's3';
     setIsSavingSessionToNote(true);
     try {
-      flushSessionEditorToWorkspace();
-      const cur = currentFileRef.current;
-      const backend = getBackendForType(storageType);
-      const existing = await backend.head?.(destPath);
-      if (existing && !window.confirm(`이미 있는 파일입니다. 덮어쓸까요?\n${destPath}`)) return;
-      const prepared = await prepareSessionMarkdownForVault({
-        markdown: editorContentRef.current ?? '',
-        sessionNotePath: cur?.id || finalName,
-        destNotePath: destPath,
-        readBytes: readSessionBytes,
+      const result = await writeSessionFileToHaim({
+        destPath,
+        confirmOverwrite: true,
       });
-      await backend.writeText(destPath, prepared.markdown, 'text/markdown; charset=utf-8');
-      for (const image of prepared.images) {
-        await backend.writeBytes(image.path, image.data, mimeForSessionFileName(image.path));
-      }
-      if (prepared.missing.length) alert(formatMissingExportImagesMessage(prepared.missing));
-      if (storageType === 's3') loadS3Files();
-      else if (storageType === 'local') await refreshLocalTree();
-      else await refreshWebdavTree();
+      if (result?.cancelled) return;
       setShowSaveSessionToNoteModal(false);
-      setOperationStatus(`노트 저장 완료: ${destPath}`);
       showAlert({
         title: '내 노트에 저장',
         message: '노트를 저장했습니다.',
@@ -5551,6 +5664,17 @@ function MainApp() {
       return;
     }
 
+    if (fileToSave.type === SESSION_STORAGE_TYPE) {
+      const binding = sessionVaultBindingsRef.current[fileToSave.id];
+      const bindingOk =
+        Boolean(binding?.destPath) && binding.storageType === connectedHaimStorageType();
+      if (!bindingOk) {
+        if (fileOverride || background) return;
+        handleRequestSaveSessionToNote();
+        return;
+      }
+    }
+
     const touchesActiveEditor =
       !background &&
       currentFileRef.current?.id === fileToSave.id &&
@@ -5655,7 +5779,15 @@ function MainApp() {
           content: textToSave,
         });
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
-        await downloadSessionWorkspace();
+        const binding = sessionVaultBindingsRef.current[fileToSave.id];
+        if (!binding?.destPath) {
+          throw new Error('저장 위치를 찾지 못했습니다.');
+        }
+        await writeSessionFileToHaimRef.current?.({
+          destPath: binding.destPath,
+          sessionFile: fileToSave,
+          content: textToSave,
+        });
       } else if (fileToSave.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         await backend.writeText(fileToSave.id, textToSave, contentTypeForViewer);
@@ -5730,7 +5862,6 @@ function MainApp() {
     getS3Client,
     s3Creds.bucket,
     loadS3Files,
-    downloadSessionWorkspace,
     webdavConfig,
     refreshWebdavTree,
     addIndicator,
@@ -5991,6 +6122,13 @@ function MainApp() {
         const lastSlash = String(currentFile.id || '').lastIndexOf('/');
         const dirPrefix = lastSlash >= 0 ? currentFile.id.slice(0, lastSlash + 1) : '';
         const newKey = dirPrefix + trimmed;
+        const prevBinding = sessionVaultBindingsRef.current[currentFile.id];
+        if (prevBinding && newKey !== currentFile.id) {
+          const nextBindings = { ...sessionVaultBindingsRef.current };
+          delete nextBindings[currentFile.id];
+          nextBindings[newKey] = prevBinding;
+          sessionVaultBindingsRef.current = nextBindings;
+        }
         updated = { ...currentFile, id: newKey, name: trimmed, content: editorContent };
       } else if (currentFile.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
@@ -8188,6 +8326,7 @@ function MainApp() {
         chatCtx={chatStorageCtx}
         onBlockingChange={handleShareBlockingChange}
         onComposeClaimed={handleShareComposeClaimed}
+        onOpenAsSession={handleOpenSessionFiles}
       />
 
       {isUnlocked ? (
@@ -8521,6 +8660,7 @@ function MainApp() {
                     },
                     onSaveSessionToNote: handleRequestSaveSessionToNote,
                     onRequestSessionTransformDownload: handleRequestSessionTransformDownload,
+                    onDownloadSessionWorkspace: downloadSessionWorkspace,
                     onOpenSessionFiles: handleOpenSessionFiles,
                     onOpenSessionDirectory:
                       typeof window !== 'undefined' && 'showDirectoryPicker' in window
