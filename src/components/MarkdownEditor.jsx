@@ -265,7 +265,7 @@ function insertLineAboveInEditorView(view) {
   });
 }
 
-/** Mac KO/US ??? `ù?ù\ ?? ?? ?? ?(Backquote/IntlBackslash)? ??? ?? ??? ?? */
+/** Mac KO/US ??? `???\ ?? ?? ?? ?(Backquote/IntlBackslash)? ??? ?? ??? ?? */
 function isInlineCodeFenceTriggerKey(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
   const { key, code } = e;
@@ -308,7 +308,7 @@ config({
       'ko-KR': KO_KR,
     },
     // Non-Safari: near-instant preview for Mirror Edit / dual-pane sync.
-    // Safari: restore library default ù renderDelay 0 makes typing very laggy.
+    // Safari: restore library default ? renderDelay 0 makes typing very laggy.
     renderDelay: isSafariBrowser() ? 500 : 0,
   },
   codeMirrorExtensions(extensions, { keyBindings }) {
@@ -356,7 +356,7 @@ config({
         key: 'ArrowRight',
         run: (view) => moveCaretSkippingImages(view, 1),
       },
-      // Ctrl/Alt+Arrow: CM group & syntax motion ù keep image markup atomic.
+      // Ctrl/Alt+Arrow: CM group & syntax motion ? keep image markup atomic.
       {
         key: 'Ctrl-ArrowLeft',
         mac: 'Alt-ArrowLeft',
@@ -675,7 +675,7 @@ export default function MarkdownEditor({
   const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
   const [autocompleteEnabled, setAutocompleteEnabled] = useEditorAutocomplete();
   const [mirrorEditPref, setMirrorEditEnabled] = useMirrorEdit();
-  // Safari: skip custom preview?editor scroll sync and Mirror Edit (unstable).
+  // Safari: skip Mirror Edit (unstable). Dual-pane scroll still uses previewScrollFollow.
   const safariMdEditor = useMemo(() => isSafariBrowser(), []);
   const mirrorEditEnabled = safariMdEditor ? false : mirrorEditPref;
 
@@ -1085,7 +1085,7 @@ export default function MarkdownEditor({
   }, [currentFile?.id, currentFile?.type, previewOnly]);
 
   // Preview heading fold chevrons (persist collapsed ids per document).
-  // Do not depend on `value` ù tearing down on every keystroke flashes chevrons.
+  // Do not depend on `value` ? tearing down on every keystroke flashes chevrons.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
@@ -1107,7 +1107,7 @@ export default function MarkdownEditor({
       const preview = getPreview();
       if (!preview) return;
       // Preview HTML rebuild drops old chevrons with the nodes. Only bind headings
-      // that lack the enhance marker ù never strip live chevrons (avoids flicker
+      // that lack the enhance marker ? never strip live chevrons (avoids flicker
       // and MutationObserver loops from inserting buttons).
       if (!previewNeedsHeadingFoldEnhance(preview)) return;
 
@@ -1174,7 +1174,7 @@ export default function MarkdownEditor({
   }, [previewOnly]);
 
   // Mobile: opening a note starts in toolbar Preview Only with Mirror Edit off.
-  // Do not lock the `previewOnly` prop ù user can still toggle either control.
+  // Do not lock the `previewOnly` prop ? user can still toggle either control.
   useEffect(() => {
     if (!isMobileLayout || previewOnly) return undefined;
     if (!currentFile?.id) return undefined;
@@ -1235,7 +1235,7 @@ export default function MarkdownEditor({
 
       const sel = window.getSelection?.();
       if (!sel || sel.rangeCount === 0) {
-        // Empty table cells often cannot host a native selection ù still map by target.
+        // Empty table cells often cannot host a native selection ? still map by target.
         if (!(eventTarget instanceof Element) || !eventTarget.closest('td, th')) return;
       } else {
         const range = sel.getRangeAt(0);
@@ -1313,7 +1313,7 @@ export default function MarkdownEditor({
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
 
-      // Toolbar preview-only: source CM is width 0% ù never focus it (breaks Hangul IME).
+      // Toolbar preview-only: source CM is width 0% ? never focus it (breaks Hangul IME).
       if (isMdEditorPreviewOnlyUi(root)) {
         const dragged = Boolean(
           pointerDown
@@ -1370,7 +1370,7 @@ export default function MarkdownEditor({
 
     // Mirror Edit ON only: if focus/selection is still on the preview, move editing
     // into CodeMirror. Skip while composing (Korean IME). In preview-only UI, never
-    // steal focus to the zero-width source pane ù contentEditable handles input instead.
+    // steal focus to the zero-width source pane ? contentEditable handles input instead.
     const onKeyDownCapture = (e) => {
       if (!mirrorEditOn()) return;
       if (e.isComposing || e.keyCode === 229 || e.key === 'Process') return;
@@ -1424,9 +1424,9 @@ export default function MarkdownEditor({
 
   // Dual-pane: bidirectional scroll sync + preview follow for editor caret.
   // Mirror Edit: also remirror caret/selection overlays onto the preview.
-  // Safari: leave stock md-editor-rt behavior (no custom sync / Mirror Edit).
+  // Safari: keep data-line scroll sync; skip Mirror Edit remirror only.
   useEffect(() => {
-    if (previewOnly || safariMdEditor) {
+    if (previewOnly) {
       previewScrollFollowRef.current?.stop();
       previewScrollFollowRef.current = null;
       mirrorEditRemirrorRef.current?.stop();
@@ -1474,7 +1474,7 @@ export default function MarkdownEditor({
       previewScrollFollowRef.current?.stop();
       previewScrollFollowRef.current = null;
     };
-  }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
+  }, [previewOnly, mirrorEditEnabled]);
 
   // Mirror Edit: double-click preview block ? contentEditable in place.
   useEffect(() => {
@@ -1496,7 +1496,6 @@ export default function MarkdownEditor({
   }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
 
   useEffect(() => {
-    if (safariMdEditor) return;
     const root = containerRef.current;
     const previewRoot = root?.querySelector('.md-editor-preview');
     abandonDetachedPreviewMirrorEdit();
@@ -1504,6 +1503,8 @@ export default function MarkdownEditor({
 
     // Preview HTML rebuilds with `value`; re-follow caret after DOM settles.
     previewScrollFollowRef.current?.schedule({ withRetries: true });
+
+    if (safariMdEditor) return;
 
     if (mirrorEditEnabled && !isMirrorEditActiveIn(previewRoot)) {
       mirrorEditRemirrorRef.current?.schedule({ withRetries: true });
@@ -2406,7 +2407,7 @@ export default function MarkdownEditor({
           aria-live="polite"
         >
           <Loader2 size={16} className="animate-spin shrink-0" />
-          <span>??? ??? ?ù {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
+          <span>??? ??? ?? {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
           {typeof onCancelUploadImage === 'function' && (
             <button
               type="button"

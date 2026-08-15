@@ -2829,6 +2829,8 @@ div.smart-blue-theme hr {
   display: flex;
   flex: 1;
   width: 0;
+  min-width: 0;
+  min-height: 0;
   position: relative
 }
 
@@ -2857,12 +2859,14 @@ div.smart-blue-theme hr {
 
 .md-editor-input-wrapper {
   height: 100%;
+  min-height: 0;
   box-sizing: border-box
 }
 
 .md-editor-preview-wrapper {
   position: relative;
   height: 100%;
+  min-height: 0;
   box-sizing: border-box;
   overflow: auto;
   scrollbar-width: none

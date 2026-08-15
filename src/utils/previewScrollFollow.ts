@@ -15,11 +15,14 @@
  *
  * A short sync lock prevents feedback loops when one side programmatically
  * scrolls the other.
+ *
+ * Safari often fires `scroll` on a nested/parent overflow node (or omits it
+ * when native scrollbars are hidden). Capture-phase listeners on `.md-editor`
+ * plus a wheel/touch rAF fallback keep both panes mapped.
  */
 
 import type { EditorView } from '@codemirror/view';
 import {
-  findDataLineBlockForSourceLine,
   findPreviewScrollContainer,
   scrollPreviewToEditorSelection,
 } from '@/utils/previewSelectionSync';
@@ -35,12 +38,19 @@ export type PreviewScrollFollowController = {
 };
 
 type SyncSource = 'none' | 'editor' | 'preview' | 'follow';
+type ScrollPane = 'editor' | 'preview';
 
 const RETRY_MS = [0, 16, 48, 120, 280] as const;
 const BIND_RETRY_MS = 50;
 const BIND_RETRY_MAX = 40;
 /** Match the pad used when aligning preview to the editor top line. */
 const SCROLL_ALIGN_PAD_PX = 32;
+/** Safari may deliver the echo `scroll` after layout, past a double-rAF. */
+const SYNC_LOCK_RELEASE_MS = 32;
+
+function isConnectedElement(el: HTMLElement | null): el is HTMLElement {
+  return Boolean(el?.isConnected);
+}
 
 /** Element top relative to a scroll container (handles nested offsetParents). */
 function offsetTopWithinScroller(el: HTMLElement, scroller: HTMLElement): number {
@@ -49,9 +59,56 @@ function offsetTopWithinScroller(el: HTMLElement, scroller: HTMLElement): number
   return elRect.top - scrollerRect.top + scroller.scrollTop;
 }
 
+function setScrollerTop(scroller: HTMLElement, top: number): void {
+  const next = Math.max(0, top);
+  if (Math.abs(scroller.scrollTop - next) < 0.5) return;
+  scroller.scrollTop = next;
+  // Safari sometimes ignores the first scrollTop write on overflow:auto.
+  if (Math.abs(scroller.scrollTop - next) > 1) {
+    scroller.scrollTo(0, next);
+  }
+}
+
+/**
+ * Block-level [data-line] markers (skip nested table cells / figures).
+ * Matches md-editor-rt scroll-auto, which only maps `.md-editor-preview > [data-line]`.
+ */
+function queryOutermostDataLineBlocks(previewRoot: Element): HTMLElement[] {
+  const all: HTMLElement[] = [];
+  for (const node of previewRoot.querySelectorAll('[data-line]')) {
+    if (node instanceof HTMLElement) all.push(node);
+  }
+  const outermost = all.filter((el) => {
+    let parent = el.parentElement;
+    while (parent && parent !== previewRoot) {
+      if (parent.hasAttribute('data-line')) return false;
+      parent = parent.parentElement;
+    }
+    return true;
+  });
+  return outermost.length > 0 ? outermost : all;
+}
+
+function findScrollDataLineBlock(
+  previewRoot: Element,
+  line0: number,
+): HTMLElement | null {
+  let best: HTMLElement | null = null;
+  let bestLine = -1;
+  for (const el of queryOutermostDataLineBlocks(previewRoot)) {
+    const n = Number(el.getAttribute('data-line'));
+    if (!Number.isFinite(n)) continue;
+    if (n <= line0 && n >= bestLine) {
+      best = el;
+      bestLine = n;
+    }
+  }
+  return best;
+}
+
 /**
  * Last [data-line] block whose top is at or above `y` inside the scroller.
- * Mirrors findDataLineBlockForSourceLine, but by scroll offset instead of line.
+ * Mirrors findScrollDataLineBlock, but by scroll offset instead of line.
  */
 function findDataLineBlockAtScrollerY(
   previewRoot: Element,
@@ -62,8 +119,7 @@ function findDataLineBlockAtScrollerY(
   let bestLine = -1;
   let bestTop = -Infinity;
 
-  for (const node of previewRoot.querySelectorAll('[data-line]')) {
-    if (!(node instanceof HTMLElement)) continue;
+  for (const node of queryOutermostDataLineBlocks(previewRoot)) {
     const n = Number(node.getAttribute('data-line'));
     if (!Number.isFinite(n)) continue;
     const top = offsetTopWithinScroller(node, scroller);
@@ -78,6 +134,17 @@ function findDataLineBlockAtScrollerY(
   return { el: best, line0: bestLine };
 }
 
+function findEditorHost(
+  view: EditorView | null | undefined,
+  previewRoot: Element | null | undefined,
+): HTMLElement | null {
+  const fromView = view?.dom?.closest('.md-editor');
+  if (fromView instanceof HTMLElement) return fromView;
+  const fromPreview = previewRoot?.closest('.md-editor');
+  if (fromPreview instanceof HTMLElement) return fromPreview;
+  return null;
+}
+
 export function createPreviewScrollFollow(
   getters: PreviewScrollFollowGetters,
 ): PreviewScrollFollowController {
@@ -85,8 +152,13 @@ export function createPreviewScrollFollow(
   let retryTimers: ReturnType<typeof setTimeout>[] = [];
   let bindRetryTimer: ReturnType<typeof setTimeout> | null = null;
   let bindRetryCount = 0;
+  let lockTimer: ReturnType<typeof setTimeout> | null = null;
+  let editorSyncRaf = 0;
+  let previewSyncRaf = 0;
   let boundScrollDom: HTMLElement | null = null;
   let boundPreviewScroller: HTMLElement | null = null;
+  let boundHost: HTMLElement | null = null;
+  let livePreviewScroller: HTMLElement | null = null;
   let imageListenerRoot: Element | null = null;
   let syncingFrom: SyncSource = 'none';
   let stopped = false;
@@ -104,12 +176,77 @@ export function createPreviewScrollFollow(
     bindRetryCount = 0;
   }
 
+  function clearLockTimer(): void {
+    if (lockTimer != null) {
+      clearTimeout(lockTimer);
+      lockTimer = null;
+    }
+  }
+
+  function cancelSyncRafs(): void {
+    if (editorSyncRaf) cancelAnimationFrame(editorSyncRaf);
+    if (previewSyncRaf) cancelAnimationFrame(previewSyncRaf);
+    editorSyncRaf = 0;
+    previewSyncRaf = 0;
+  }
+
   function releaseSyncLock(source: Exclude<SyncSource, 'none'>): void {
+    clearLockTimer();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (syncingFrom === source) syncingFrom = 'none';
+        lockTimer = setTimeout(() => {
+          lockTimer = null;
+          if (syncingFrom === source) syncingFrom = 'none';
+        }, SYNC_LOCK_RELEASE_MS);
       });
     });
+  }
+
+  function editorScroller(view: EditorView): HTMLElement {
+    return view.scrollDOM;
+  }
+
+  function previewScroller(previewRoot: Element): HTMLElement | null {
+    if (isConnectedElement(livePreviewScroller)) return livePreviewScroller;
+    if (isConnectedElement(boundPreviewScroller)) return boundPreviewScroller;
+    return findPreviewScrollContainer(previewRoot);
+  }
+
+  function paneFromEventTarget(target: EventTarget | null): ScrollPane | null {
+    if (!(target instanceof Node)) return null;
+    const view = getters.getView();
+    const previewRoot = getters.getPreviewRoot();
+    if (view && (target === view.scrollDOM || view.dom.contains(target))) {
+      return 'editor';
+    }
+    if (previewRoot) {
+      const wrap = previewRoot.closest('.md-editor-preview-wrapper') ?? previewRoot;
+      if (target === wrap || wrap.contains(target)) return 'preview';
+    }
+    return null;
+  }
+
+  function rememberScroller(pane: ScrollPane, target: EventTarget | null): void {
+    if (pane !== 'preview' || !(target instanceof HTMLElement)) return;
+    const previewRoot = getters.getPreviewRoot();
+    if (!previewRoot) return;
+    const designated = findPreviewScrollContainer(previewRoot);
+    if (!designated) return;
+    // Ignore nested overflow (code blocks). Keep the pane scroller or its ancestor.
+    if (target === designated || target.contains(designated)) {
+      livePreviewScroller = target;
+    }
+  }
+
+  function isPaneScrollerEvent(pane: ScrollPane, target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    if (pane === 'editor') {
+      const view = getters.getView();
+      return Boolean(view && (target === view.scrollDOM || target.contains(view.scrollDOM)));
+    }
+    const previewRoot = getters.getPreviewRoot();
+    const designated = previewRoot ? findPreviewScrollContainer(previewRoot) : null;
+    return Boolean(designated && (target === designated || target.contains(designated)));
   }
 
   function followNow(): boolean {
@@ -140,14 +277,14 @@ export function createPreviewScrollFollow(
     const view = getters.getView();
     if (!previewRoot || !view) return;
 
-    const scrollDom = view.scrollDOM;
-    const scroller = findPreviewScrollContainer(previewRoot);
+    const scrollDom = editorScroller(view);
+    const scroller = previewScroller(previewRoot);
     if (!scroller) return;
 
     const viewTop = scrollDom.scrollTop;
     const topBlock = view.lineBlockAtHeight(viewTop);
     const line0 = view.state.doc.lineAt(topBlock.from).number - 1;
-    const el = findDataLineBlockForSourceLine(previewRoot, line0);
+    const el = findScrollDataLineBlock(previewRoot, line0);
     if (!el) return;
 
     const within =
@@ -156,7 +293,7 @@ export function createPreviewScrollFollow(
         : 0;
     const relativeTop = offsetTopWithinScroller(el, scroller);
     const target = relativeTop + el.offsetHeight * within - SCROLL_ALIGN_PAD_PX;
-    scroller.scrollTop = Math.max(0, target);
+    setScrollerTop(scroller, target);
   }
 
   function syncEditorToPreviewScrollTop(): void {
@@ -164,8 +301,8 @@ export function createPreviewScrollFollow(
     const view = getters.getView();
     if (!previewRoot || !view) return;
 
-    const scrollDom = view.scrollDOM;
-    const scroller = findPreviewScrollContainer(previewRoot);
+    const scrollDom = editorScroller(view);
+    const scroller = previewScroller(previewRoot);
     if (!scroller) return;
 
     const y = scroller.scrollTop + SCROLL_ALIGN_PAD_PX;
@@ -183,11 +320,12 @@ export function createPreviewScrollFollow(
         ? Math.max(0, Math.min(1, (y - relativeTop) / el.offsetHeight))
         : 0;
 
-    scrollDom.scrollTop = Math.max(0, block.top + block.height * within);
+    setScrollerTop(scrollDom, block.top + block.height * within);
   }
 
   function onEditorScroll(): void {
-    if (stopped || syncingFrom !== 'none') return;
+    if (stopped) return;
+    if (syncingFrom === 'preview' || syncingFrom === 'follow') return;
     syncingFrom = 'editor';
     try {
       syncPreviewToEditorScrollTop();
@@ -197,13 +335,56 @@ export function createPreviewScrollFollow(
   }
 
   function onPreviewScroll(): void {
-    if (stopped || syncingFrom !== 'none') return;
+    if (stopped) return;
+    if (syncingFrom === 'editor' || syncingFrom === 'follow') return;
     syncingFrom = 'preview';
     try {
       syncEditorToPreviewScrollTop();
     } finally {
       releaseSyncLock('preview');
     }
+  }
+
+  function requestEditorSync(): void {
+    if (stopped || syncingFrom === 'preview' || syncingFrom === 'follow') return;
+    if (editorSyncRaf) return;
+    editorSyncRaf = requestAnimationFrame(() => {
+      editorSyncRaf = 0;
+      onEditorScroll();
+    });
+  }
+
+  function requestPreviewSync(): void {
+    if (stopped || syncingFrom === 'editor' || syncingFrom === 'follow') return;
+    if (previewSyncRaf) return;
+    previewSyncRaf = requestAnimationFrame(() => {
+      previewSyncRaf = 0;
+      onPreviewScroll();
+    });
+  }
+
+  function onCapturedScroll(event: Event): void {
+    const pane = paneFromEventTarget(event.target);
+    if (!pane || !isPaneScrollerEvent(pane, event.target)) return;
+    rememberScroller(pane, event.target);
+    if (pane === 'editor') requestEditorSync();
+    else requestPreviewSync();
+  }
+
+  function onCapturedWheelOrTouch(event: Event): void {
+    const pane = paneFromEventTarget(event.target);
+    if (!pane) return;
+    // After the browser applies the wheel/touch delta, read the live scroller.
+    requestAnimationFrame(() => {
+      const view = getters.getView();
+      const previewRoot = getters.getPreviewRoot();
+      if (pane === 'editor' && view) {
+        requestEditorSync();
+      } else if (pane === 'preview' && previewRoot) {
+        rememberScroller('preview', findPreviewScrollContainer(previewRoot));
+        requestPreviewSync();
+      }
+    });
   }
 
   function onPreviewImageSettled(event: Event): void {
@@ -222,10 +403,10 @@ export function createPreviewScrollFollow(
     if (!(scrollDom instanceof HTMLElement)) return false;
     if (boundScrollDom === scrollDom) return true;
     if (boundScrollDom) {
-      boundScrollDom.removeEventListener('scroll', onEditorScroll);
+      boundScrollDom.removeEventListener('scroll', onCapturedScroll);
     }
     boundScrollDom = scrollDom;
-    scrollDom.addEventListener('scroll', onEditorScroll, { passive: true });
+    scrollDom.addEventListener('scroll', onCapturedScroll, { passive: true });
     return true;
   }
 
@@ -234,10 +415,29 @@ export function createPreviewScrollFollow(
     if (!scroller) return false;
     if (boundPreviewScroller === scroller) return true;
     if (boundPreviewScroller) {
-      boundPreviewScroller.removeEventListener('scroll', onPreviewScroll);
+      boundPreviewScroller.removeEventListener('scroll', onCapturedScroll);
     }
     boundPreviewScroller = scroller;
-    scroller.addEventListener('scroll', onPreviewScroll, { passive: true });
+    livePreviewScroller = scroller;
+    scroller.addEventListener('scroll', onCapturedScroll, { passive: true });
+    return true;
+  }
+
+  function bindHost(view: EditorView | null | undefined, previewRoot: Element | null | undefined): boolean {
+    const host = findEditorHost(view, previewRoot);
+    if (!host) return false;
+    if (boundHost === host) return true;
+    if (boundHost) {
+      boundHost.removeEventListener('scroll', onCapturedScroll, true);
+      boundHost.removeEventListener('wheel', onCapturedWheelOrTouch, true);
+      boundHost.removeEventListener('touchmove', onCapturedWheelOrTouch, true);
+    }
+    boundHost = host;
+    // Capture: scroll does not bubble; Safari may fire on a child/parent of the
+    // node we would have bound directly.
+    host.addEventListener('scroll', onCapturedScroll, { capture: true, passive: true });
+    host.addEventListener('wheel', onCapturedWheelOrTouch, { capture: true, passive: true });
+    host.addEventListener('touchmove', onCapturedWheelOrTouch, { capture: true, passive: true });
     return true;
   }
 
@@ -280,6 +480,7 @@ export function createPreviewScrollFollow(
     } else {
       ok = false;
     }
+    if (!bindHost(view, previewRoot)) ok = false;
     return ok;
   }
 
@@ -306,19 +507,28 @@ export function createPreviewScrollFollow(
     stopped = true;
     clearRetryTimers();
     clearBindRetryTimer();
+    clearLockTimer();
+    cancelSyncRafs();
     if (boundScrollDom) {
-      boundScrollDom.removeEventListener('scroll', onEditorScroll);
+      boundScrollDom.removeEventListener('scroll', onCapturedScroll);
       boundScrollDom = null;
     }
     if (boundPreviewScroller) {
-      boundPreviewScroller.removeEventListener('scroll', onPreviewScroll);
+      boundPreviewScroller.removeEventListener('scroll', onCapturedScroll);
       boundPreviewScroller = null;
+    }
+    if (boundHost) {
+      boundHost.removeEventListener('scroll', onCapturedScroll, true);
+      boundHost.removeEventListener('wheel', onCapturedWheelOrTouch, true);
+      boundHost.removeEventListener('touchmove', onCapturedWheelOrTouch, true);
+      boundHost = null;
     }
     if (imageListenerRoot) {
       imageListenerRoot.removeEventListener('load', onPreviewImageSettled, true);
       imageListenerRoot.removeEventListener('error', onPreviewImageSettled, true);
       imageListenerRoot = null;
     }
+    livePreviewScroller = null;
     followQueued = false;
     syncingFrom = 'none';
   }

@@ -571,20 +571,34 @@ function ensurePreviewHostPositioned(host: HTMLElement): void {
 
 const PREVIEW_SCROLL_PAD_PX = 32;
 
+function isScrollableOverflowY(el: HTMLElement): boolean {
+  const overflowY = getComputedStyle(el).overflowY;
+  return overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay';
+}
+
+/**
+ * The element that actually scrolls preview HTML.
+ * Prefer `.md-editor-preview-wrapper`; if that node is overflow:hidden
+ * (CustomScrollbar host), use its first overflow:auto child instead.
+ */
 export function findPreviewScrollContainer(previewRoot: Element): HTMLElement | null {
   const wrapper = previewRoot.closest('.md-editor-preview-wrapper');
-  if (wrapper instanceof HTMLElement) return wrapper;
+  if (wrapper instanceof HTMLElement) {
+    if (isScrollableOverflowY(wrapper)) return wrapper;
+    const inner = wrapper.firstElementChild;
+    if (inner instanceof HTMLElement && isScrollableOverflowY(inner)) return inner;
+  }
+
+  const custom = previewRoot.closest('.md-editor-custom-scrollbar');
+  if (custom instanceof HTMLElement) {
+    const inner = custom.firstElementChild;
+    if (inner instanceof HTMLElement && isScrollableOverflowY(inner)) return inner;
+  }
 
   let el: HTMLElement | null =
     previewRoot instanceof HTMLElement ? previewRoot : previewRoot.parentElement;
   while (el) {
-    const style = getComputedStyle(el);
-    if (
-      /(auto|scroll|overlay)/.test(style.overflowY)
-      || /(auto|scroll|overlay)/.test(style.overflowX)
-    ) {
-      return el;
-    }
+    if (isScrollableOverflowY(el)) return el;
     el = el.parentElement;
   }
   return null;
