@@ -25,15 +25,27 @@ export function flushEditorIntoActiveFileTab(
 ): WorkspaceTabsState {
   const active = getActiveFileTab(state);
   if (!active) return state;
-  const nextFile: FileWorkspaceTab['currentFile'] = payload.currentFile
+  const incoming = payload.currentFile;
+  // Never rewrite the active tab in place when the editor already points at
+  // another path (e.g. create-file used to setCurrentFile without a new tab).
+  if (
+    incoming
+    && typeof incoming.id === 'string'
+    && incoming.id
+    && incoming.id !== active.path
+    && incoming.id !== active.currentFile?.id
+  ) {
+    return state;
+  }
+  const nextFile: FileWorkspaceTab['currentFile'] = incoming
     ? {
         ...active.currentFile,
-        ...payload.currentFile,
+        ...incoming,
         content:
           typeof active.currentFile.content === 'string'
             ? active.currentFile.content
-            : typeof payload.currentFile.content === 'string'
-              ? payload.currentFile.content
+            : typeof incoming.content === 'string'
+              ? incoming.content
               : active.baselineContent,
       }
     : active.currentFile;

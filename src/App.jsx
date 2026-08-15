@@ -6339,6 +6339,13 @@ function MainApp() {
     const { path: newPath, parentDirPath, baseName: finalName } = resolved;
     const expandParent = parentDirPath || parentPath || '';
 
+    const openCreatedFile = (file) => {
+      const content = typeof file.content === 'string' ? file.content : '';
+      if (commitOpenFile(file, content)) {
+        navigate(`/view/${file.id}`);
+      }
+    };
+
     const ensureLocalDir = async (dirPath) => {
       if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
       const parts = String(dirPath || '')
@@ -6367,9 +6374,7 @@ function MainApp() {
           loadS3Files();
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
-          setCurrentFile({ type: 's3', id: newPath, name: finalName, content: '' });
-          setEditorContent('');
-          navigate(`/view/${newPath}`);
+          openCreatedFile({ type: 's3', id: newPath, name: finalName, content: '' });
         }
       } else if (storageType === 'local') {
         if (!localRootHandle && !parentDirHandle) {
@@ -6390,15 +6395,13 @@ function MainApp() {
           const newFileHandle = await targetDirHandle.getFileHandle(finalName, { create: true });
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
-          setCurrentFile({
+          openCreatedFile({
             type: 'local',
             id: newPath,
             name: finalName,
             content: '',
             handle: newFileHandle,
           });
-          setEditorContent('');
-          navigate(`/view/${newPath}`);
         }
         refreshLocalTree();
       } else if (storageType === 'webdav') {
@@ -6413,9 +6416,13 @@ function MainApp() {
           await refreshWebdavTree();
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
-          setCurrentFile({ type: 'webdav', id: newPath, name: finalName, content: '', viewer: 'markdown' });
-          setEditorContent('');
-          navigate(`/view/${newPath}`);
+          openCreatedFile({
+            type: 'webdav',
+            id: newPath,
+            name: finalName,
+            content: '',
+            viewer: 'markdown',
+          });
         }
       }
     } catch (e) {
