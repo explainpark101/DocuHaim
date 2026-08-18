@@ -288,7 +288,7 @@ import SaveSessionToNoteModal from '@/components/modals/SaveSessionToNoteModal';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
-import { clearGeminiApiKeySession } from '@/utils/geminiApiKeySession';
+import { clearGeminiApiKeySession, clearOpenAiCompatibleApiKeySession } from '@/utils/llmApiKeySession';
 import { tryRestoreAuthSession } from '@/utils/authSession';
 import { applyDocumentTheme } from '@/utils/documentTheme';
 import {
@@ -357,16 +357,37 @@ function MainApp() {
     [s3Creds?.googleAiStudioApiKey],
   );
 
+  const getOpenAiCompatibleBaseUrl = useCallback(
+    () => (s3Creds?.openaiCompatibleBaseUrl || '').trim(),
+    [s3Creds?.openaiCompatibleBaseUrl],
+  );
+
+  const getOpenAiCompatibleApiKey = useCallback(
+    () => (s3Creds?.openaiCompatibleApiKey || '').trim(),
+    [s3Creds?.openaiCompatibleApiKey],
+  );
+
   const getImgbbApiKey = useCallback(
     () => (s3Creds?.imgbbApiKey || '').trim(),
     [s3Creds?.imgbbApiKey],
   );
 
   useEffect(() => {
-    const onUnload = () => clearGeminiApiKeySession();
+    const onUnload = () => {
+      clearGeminiApiKeySession();
+      clearOpenAiCompatibleApiKeySession();
+    };
     window.addEventListener('beforeunload', onUnload);
     return () => window.removeEventListener('beforeunload', onUnload);
   }, []);
+
+  useEffect(() => {
+    clearGeminiApiKeySession();
+  }, [s3Creds?.googleAiStudioApiKey]);
+
+  useEffect(() => {
+    clearOpenAiCompatibleApiKeySession();
+  }, [s3Creds?.openaiCompatibleApiKey, s3Creds?.openaiCompatibleBaseUrl]);
 
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light';
@@ -1366,6 +1387,8 @@ function MainApp() {
     'bucket',
     'endpoint',
     'googleAiStudioApiKey',
+    'openaiCompatibleBaseUrl',
+    'openaiCompatibleApiKey',
     'imgbbApiKey',
   ];
 
@@ -8729,6 +8752,8 @@ function MainApp() {
                     sidebarCollapsed={sidebarCollapsed}
                     onOpenSidebar={() => setSidebarOpen(true)}
                     getGeminiApiKey={getGeminiApiKey}
+                    getOpenAiCompatibleBaseUrl={getOpenAiCompatibleBaseUrl}
+                    getOpenAiCompatibleApiKey={getOpenAiCompatibleApiKey}
                     onCheckAppUpdate={handleCheckAppUpdate}
                     isCheckingAppUpdate={isCheckingAppUpdate}
                     latestAppBuildId={appBuildRemoteId}
@@ -8858,6 +8883,8 @@ function MainApp() {
                     onOpenViewPath: handleOpenNoteFromChat,
                     snippetConfig,
                     getGeminiApiKey,
+                    getOpenAiCompatibleBaseUrl,
+                    getOpenAiCompatibleApiKey,
                     getImgbbApiKey,
                     onRequestDelete: () =>
                       setDeleteTarget(

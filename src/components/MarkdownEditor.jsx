@@ -597,6 +597,8 @@ export default function MarkdownEditor({
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
   getGeminiApiKey,
+  getOpenAiCompatibleBaseUrl,
+  getOpenAiCompatibleApiKey,
   getImgbbApiKey,
   onOpenViewPath,
   onRequestConvertAllImagesToWiki,
@@ -2643,6 +2645,8 @@ export default function MarkdownEditor({
         editorRef={editorRef}
         onChange={onChangeWithUndoHistory}
         getGeminiApiKey={getGeminiApiKey ?? (() => '')}
+        getOpenAiCompatibleBaseUrl={getOpenAiCompatibleBaseUrl ?? (() => '')}
+        getOpenAiCompatibleApiKey={getOpenAiCompatibleApiKey ?? (() => '')}
         open={llmAssistOpen}
         onOpenChange={setLlmAssistOpen}
         theme={theme}

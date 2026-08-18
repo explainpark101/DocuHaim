@@ -174,7 +174,14 @@ function HitIcon({
     }
     if (commandId === 'print-scroll-heading') return <ListTree size={16} className={className} />;
     if (commandId?.startsWith('print-')) return <Printer size={16} className={className} />;
-    if (commandId === 'editor-llm-assist') return <Sparkles size={16} className={className} />;
+    if (
+      commandId === 'editor-llm-assist' ||
+      commandId === 'settings-llm-provider' ||
+      commandId === 'settings-gemini' ||
+      commandId === 'settings-openai-compat'
+    ) {
+      return <Sparkles size={16} className={className} />;
+    }
     if (commandId === 'editor-autocomplete-toggle') {
       return <TextCursorInput size={16} className={className} />;
     }

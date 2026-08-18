@@ -5,6 +5,9 @@ import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
+import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
+import LlmProviderSelect from '@/components/LlmProviderSelect';
+import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderSettings';
 import {
   extractImageFilesFromClipboard,
   LLM_ASSIST_MAX_IMAGES,
@@ -16,8 +19,14 @@ const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
 export default function LlmAssistPanel({
   theme = 'light',
   getGeminiApiKey,
+  getOpenAiCompatibleBaseUrl,
+  getOpenAiCompatibleApiKey,
+  llmProvider = 'gemini',
+  onLlmProviderChange = () => {},
   geminiModel,
   onGeminiModelChange,
+  openaiCompatibleModel = '',
+  onOpenaiCompatibleModelChange,
   selectedText,
   onRefreshSelection,
   attachedImages = [],
@@ -106,13 +115,28 @@ export default function LlmAssistPanel({
   return (
     <div ref={panelRef} className="space-y-3 text-xs">
       <div>
+        <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">제공자</label>
+        <LlmProviderSelect value={llmProvider} onChange={onLlmProviderChange} />
+      </div>
+
+      <div>
         <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">모델</label>
-        <GeminiModelSelect
-          getGeminiApiKey={getGeminiApiKey}
-          value={geminiModel}
-          onChange={onGeminiModelChange}
-          autoLoad={modelSelectAutoLoad}
-        />
+        {llmProvider === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
+          <OpenAiCompatibleModelSelect
+            getBaseUrl={getOpenAiCompatibleBaseUrl ?? (() => '')}
+            getApiKey={getOpenAiCompatibleApiKey ?? (() => '')}
+            value={openaiCompatibleModel}
+            onChange={onOpenaiCompatibleModelChange}
+            autoLoad={modelSelectAutoLoad}
+          />
+        ) : (
+          <GeminiModelSelect
+            getGeminiApiKey={getGeminiApiKey}
+            value={geminiModel}
+            onChange={onGeminiModelChange}
+            autoLoad={modelSelectAutoLoad}
+          />
+        )}
       </div>
 
       <div>

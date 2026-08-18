@@ -111,6 +111,8 @@ export default function EditorPane({
   editorType,
   hideRecordingCompanions = false,
   getGeminiApiKey,
+  getOpenAiCompatibleBaseUrl,
+  getOpenAiCompatibleApiKey,
   getImgbbApiKey,
 }) {
   const effectiveEditorType = editorType ?? loadEditorType();
@@ -953,6 +955,8 @@ export default function EditorPane({
                       onOpenViewPath={onOpenViewPath}
                       snippetConfig={snippetConfig}
                       getGeminiApiKey={getGeminiApiKey}
+                      getOpenAiCompatibleBaseUrl={getOpenAiCompatibleBaseUrl}
+                      getOpenAiCompatibleApiKey={getOpenAiCompatibleApiKey}
                       getImgbbApiKey={getImgbbApiKey}
                       onRequestConvertAllImagesToWiki={openConvertAllImagesConfirm}
                       onRegisterConvertAllImagesToWiki={(fn) => {

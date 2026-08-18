@@ -26,6 +26,8 @@ const EMPTY_STATE = {
   templateName: '',
   editingTemplateId: null,
   geminiModel: '',
+  openaiCompatibleModel: '',
+  llmProvider: 'gemini',
   theme: loadStoredTheme(),
 };
 
@@ -41,6 +43,8 @@ export default function LlmAssistPopoutPage() {
   const [result, setResult] = useState('');
   const [resultViewMode, setResultViewMode] = useState('text');
   const [geminiModel, setGeminiModel] = useState('');
+  const [openaiCompatibleModel, setOpenaiCompatibleModel] = useState('');
+  const [llmProvider, setLlmProvider] = useState('gemini');
   const [connected, setConnected] = useState(false);
   const readySentRef = useRef(false);
 
@@ -65,6 +69,8 @@ export default function LlmAssistPopoutPage() {
         setResult(next.result);
         setResultViewMode(next.resultViewMode);
         setGeminiModel(next.geminiModel);
+        setOpenaiCompatibleModel(next.openaiCompatibleModel);
+        setLlmProvider(next.llmProvider || 'gemini');
         setConnected(true);
         return;
       }
@@ -128,7 +134,7 @@ export default function LlmAssistPopoutPage() {
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-4 py-2.5 dark:border-violet-800/50 dark:bg-violet-950/40">
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <Sparkles size={16} className="shrink-0" aria-hidden />
-          <span className="truncate">Gemini AI</span>
+          <span className="truncate">AI 도우미</span>
           {!connected && (
             <span className="text-[10px] font-normal text-violet-600 dark:text-violet-300">연결 중…</span>
           )}
@@ -148,10 +154,22 @@ export default function LlmAssistPopoutPage() {
         <LlmAssistPanel
           theme={remoteState.theme}
           getGeminiApiKey={() => ''}
+          getOpenAiCompatibleBaseUrl={() => ''}
+          getOpenAiCompatibleApiKey={() => ''}
+          llmProvider={llmProvider}
+          onLlmProviderChange={(value) => {
+            setLlmProvider(value);
+            sendAction('set-llm-provider', { value });
+          }}
           geminiModel={geminiModel}
           onGeminiModelChange={(value) => {
             setGeminiModel(value);
             sendAction('set-gemini-model', { value });
+          }}
+          openaiCompatibleModel={openaiCompatibleModel}
+          onOpenaiCompatibleModelChange={(value) => {
+            setOpenaiCompatibleModel(value);
+            sendAction('set-openai-compatible-model', { value });
           }}
           selectedText={remoteState.selectedText}
           onRefreshSelection={() => sendAction('refresh-selection')}

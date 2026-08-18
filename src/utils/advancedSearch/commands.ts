@@ -41,6 +41,8 @@ export type AppCommandId =
   | 'settings-backup'
   | 'settings-webdav'
   | 'settings-gemini'
+  | 'settings-llm-provider'
+  | 'settings-openai-compat'
   | 'settings-imgbb'
   | 'settings-webauthn'
   | 'settings-editor'
@@ -205,11 +207,39 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     keywords: ['webdav', '웹dav', 'endpoint'],
   },
   {
+    id: 'settings-llm-provider',
+    title: '설정 · AI 도우미 제공자',
+    description: 'Gemini 또는 OpenAI 호환 LLM 선택',
+    path: '/settings#settings-llm-provider',
+    keywords: ['ai', 'llm', '제공자', 'provider', 'gemini', 'openai'],
+  },
+  {
     id: 'settings-gemini',
     title: '설정 · Gemini / Google AI',
     description: 'Gemini API 키·모델 설정',
     path: '/settings#settings-gemini',
     keywords: ['gemini', 'google ai', 'api key', 'llm', '지미니'],
+  },
+  {
+    id: 'settings-openai-compat',
+    title: '설정 · OpenAI 호환 LLM',
+    description: '커스텀 endpoint·API 키·모델 (Chat Completions)',
+    path: '/settings#settings-openai-compat',
+    keywords: [
+      'openai',
+      'open ai',
+      'compatible',
+      '호환',
+      'endpoint',
+      'base url',
+      'api key',
+      'llm',
+      'openrouter',
+      'ollama',
+      'vllm',
+      'lm studio',
+      'chat completions',
+    ],
   },
   {
     id: 'settings-imgbb',

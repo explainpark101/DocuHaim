@@ -7,8 +7,9 @@ import {
   LLM_PROMPT_TEMPLATES_SCOPE_EVENT,
   saveLlmPromptTemplate,
 } from '@/utils/llmPromptTemplatesDb';
-import { withGeminiApiKey } from '@/utils/geminiApiKeySession';
+import { withGeminiApiKey, withOpenAiCompatibleApiKey } from '@/utils/llmApiKeySession';
 import { generateGeminiTransform } from '@/utils/geminiClient';
+import { generateOpenAiCompatibleTransform } from '@/utils/openaiCompatibleClient';
 import {
   loadLlmModalHidden,
   loadLlmModalPosition,
@@ -17,7 +18,11 @@ import {
 } from '@/utils/llmModalPosition';
 import { getEditorSelectionFromRef, replaceEditorRange } from '@/utils/editorSelection';
 import { useGeminiModelState } from '@/components/GeminiModelSelect';
-import { loadLastUsedGeminiModel, saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
+import { useOpenAiCompatibleModelState } from '@/components/OpenAiCompatibleModelSelect';
+import { useLlmProviderState } from '@/components/LlmProviderSelect';
+import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
+import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
+import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderSettings';
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
 import {
   getLlmAssistPopoutUrl,
@@ -34,6 +39,8 @@ export default function LlmAssistModal({
   editorRef,
   onChange,
   getGeminiApiKey,
+  getOpenAiCompatibleBaseUrl,
+  getOpenAiCompatibleApiKey,
   open,
   onOpenChange,
   theme = 'light',
@@ -53,7 +60,10 @@ export default function LlmAssistModal({
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [editingTemplateId, setEditingTemplateId] = useState(null);
-  const [geminiModel, setGeminiModel] = useGeminiModelState();
+  const [geminiModel, setGeminiModel, syncGeminiModel] = useGeminiModelState();
+  const [openaiCompatibleModel, setOpenaiCompatibleModel, syncOpenaiCompatibleModel] =
+    useOpenAiCompatibleModelState();
+  const [llmProvider, setLlmProvider, syncLlmProvider] = useLlmProviderState();
 
   const popoutRef = useRef(null);
   const dragRef = useRef({ active: false, startX: 0, startY: 0, startLeftVw: 0, startTopVh: 0 });
@@ -74,6 +84,8 @@ export default function LlmAssistModal({
       templateName,
       editingTemplateId,
       geminiModel,
+      openaiCompatibleModel,
+      llmProvider,
       theme,
     }),
     [
@@ -90,6 +102,8 @@ export default function LlmAssistModal({
       templateName,
       editingTemplateId,
       geminiModel,
+      openaiCompatibleModel,
+      llmProvider,
       theme,
     ],
   );
@@ -176,11 +190,20 @@ export default function LlmAssistModal({
     if (!open) return;
     setHidden(false);
     saveLlmModalHidden(false);
-    setGeminiModel(loadLastUsedGeminiModel());
+    syncGeminiModel();
+    syncOpenaiCompatibleModel();
+    syncLlmProvider();
     refreshSelection();
     loadTemplates();
     setError('');
-  }, [open, refreshSelection, loadTemplates, setGeminiModel]);
+  }, [
+    open,
+    refreshSelection,
+    loadTemplates,
+    syncGeminiModel,
+    syncOpenaiCompatibleModel,
+    syncLlmProvider,
+  ]);
 
   useEffect(() => {
     const onScopeChange = () => {
@@ -249,6 +272,34 @@ export default function LlmAssistModal({
       if (!hasText && !hasImages) {
         throw new Error('에디터에서 텍스트를 선택하거나 이미지를 추가하세요.');
       }
+
+      if (llmProvider === LLM_PROVIDER_OPENAI_COMPATIBLE) {
+        const baseUrl =
+          (await Promise.resolve(
+            typeof getOpenAiCompatibleBaseUrl === 'function'
+              ? getOpenAiCompatibleBaseUrl()
+              : '',
+          ))?.trim() ?? '';
+        if (!baseUrl) {
+          throw new Error('OpenAI 호환 Endpoint를 설정 페이지에서 입력하세요.');
+        }
+        saveLastUsedOpenAiCompatibleModel(openaiCompatibleModel);
+        const output = await withOpenAiCompatibleApiKey(
+          getOpenAiCompatibleApiKey ?? (() => ''),
+          (apiKey) =>
+            generateOpenAiCompatibleTransform({
+              baseUrl,
+              apiKey,
+              model: openaiCompatibleModel,
+              instruction,
+              selectedText: text,
+              images: attachedImages,
+            }),
+        );
+        setResult(output);
+        return;
+      }
+
       if (isFreeTierBlockedModel(geminiModel)) {
         throw new Error(
           '선택한 모델은 무료 플랜에서 사용할 수 없습니다.\nGemini 2.0 Flash 또는 Gemini 2.5 Flash로 변경해 주세요.',
@@ -266,11 +317,21 @@ export default function LlmAssistModal({
       );
       setResult(output);
     } catch (err) {
-      setError(err?.message || 'Gemini 요청에 실패했습니다.');
+      setError(err?.message || 'LLM 요청에 실패했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [refreshSelection, attachedImages, geminiModel, getGeminiApiKey, instruction]);
+  }, [
+    refreshSelection,
+    attachedImages,
+    geminiModel,
+    openaiCompatibleModel,
+    llmProvider,
+    getGeminiApiKey,
+    getOpenAiCompatibleBaseUrl,
+    getOpenAiCompatibleApiKey,
+    instruction,
+  ]);
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
@@ -373,6 +434,14 @@ export default function LlmAssistModal({
         case 'set-gemini-model':
           if (typeof payload.value === 'string') setGeminiModel(payload.value);
           break;
+        case 'set-openai-compatible-model':
+          if (typeof payload.value === 'string') setOpenaiCompatibleModel(payload.value);
+          break;
+        case 'set-llm-provider':
+          if (payload.value === 'gemini' || payload.value === 'openai-compatible') {
+            setLlmProvider(payload.value);
+          }
+          break;
         case 'load-template':
           handleLoadTemplate(payload.id ?? '');
           break;
@@ -415,6 +484,8 @@ export default function LlmAssistModal({
       handleRun,
       handleApplyResult,
       setGeminiModel,
+      setOpenaiCompatibleModel,
+      setLlmProvider,
       handleLoadTemplate,
       handleSaveTemplate,
       handleNewTemplate,
@@ -488,8 +559,14 @@ export default function LlmAssistModal({
   const panelProps = {
     theme,
     getGeminiApiKey,
+    getOpenAiCompatibleBaseUrl: getOpenAiCompatibleBaseUrl ?? (() => ''),
+    getOpenAiCompatibleApiKey: getOpenAiCompatibleApiKey ?? (() => ''),
+    llmProvider,
+    onLlmProviderChange: setLlmProvider,
     geminiModel,
     onGeminiModelChange: setGeminiModel,
+    openaiCompatibleModel,
+    onOpenaiCompatibleModelChange: setOpenaiCompatibleModel,
     selectedText,
     onRefreshSelection: refreshSelection,
     attachedImages,
@@ -562,7 +639,7 @@ export default function LlmAssistModal({
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
           <Sparkles size={16} className="shrink-0" aria-hidden />
-          <span className="truncate">Gemini AI</span>
+          <span className="truncate">AI 도우미</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button

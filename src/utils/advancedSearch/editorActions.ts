@@ -274,8 +274,8 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   {
     id: 'editor-llm-assist',
     title: 'AI 도우미 열기',
-    description: 'Gemini AI 도우미 모달',
-    keywords: ['ai', 'llm', 'gemini', '인공지능', '도우미', 'assist'],
+    description: '선택 텍스트를 LLM으로 변환',
+    keywords: ['ai', 'llm', 'gemini', 'openai', '인공지능', '도우미', 'assist'],
   },
   {
     id: 'editor-export-pdf',

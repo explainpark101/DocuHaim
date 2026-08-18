@@ -16,6 +16,8 @@ const initialCreds = {
   bucket: '',
   endpoint: '',
   googleAiStudioApiKey: '',
+  openaiCompatibleBaseUrl: '',
+  openaiCompatibleApiKey: '',
   imgbbApiKey: '',
 };
 
