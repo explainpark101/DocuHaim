@@ -342,20 +342,47 @@ export function toggleHeadingForSelection(view: EditorView, level: number): bool
 
 
 
-// TODO: Implement this wrap Selections into brackets, parentheses, braces, etc.
-// It might be better to change function into "Wrapping[Text] Selection" features.
-export function toggleLatextSelection(view: EditorView): boolean {
-  return toggleInlineMarkdownWrap(view, '$');
+/**
+ * Wrap each non-empty selection with `open`/`close`. Never unwraps.
+ * Empty cursors are left unchanged so the typed character can insert normally.
+ */
+export function wrapInlineSelection(
+  view: EditorView,
+  open: string,
+  close: string = open,
+): boolean {
+  if (!view?.state || !open) return false;
+
+  const spec = view.state.changeByRange((range) => {
+    if (range.empty) return { range };
+    const selectedText = view.state.doc.sliceString(range.from, range.to);
+    const wrapped = `${open}${selectedText}${close}`;
+    return {
+      changes: { from: range.from, to: range.to, insert: wrapped },
+      range: EditorSelection.range(
+        range.from + open.length,
+        range.from + open.length + selectedText.length,
+      ),
+    };
+  });
+
+  if (spec.changes.empty) return false;
+  view.dispatch(spec);
+  return true;
 }
 
-export function toggleBracketsForSelection(view: EditorView): boolean {
-  return toggleInlineMarkdownWrap(view, '[]');
+export function wrapLatexForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '$');
 }
 
-export function toggleParenthesesForSelection(view: EditorView): boolean {
-  return toggleInlineMarkdownWrap(view, '()');
+export function wrapBracketsForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '[', ']');
 }
 
-export function toggleBracesForSelection(view: EditorView): boolean {
-  return toggleInlineMarkdownWrap(view, '{}');
+export function wrapParenthesesForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '(', ')');
+}
+
+export function wrapBracesForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '{', '}');
 }
