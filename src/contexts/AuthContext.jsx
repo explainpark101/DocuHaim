@@ -18,6 +18,7 @@ const initialCreds = {
   googleAiStudioApiKey: '',
   openaiCompatibleBaseUrl: '',
   openaiCompatibleApiKey: '',
+  llmProviderProfiles: [],
   imgbbApiKey: '',
 };
 

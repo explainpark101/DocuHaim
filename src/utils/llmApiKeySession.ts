@@ -141,3 +141,42 @@ export const withGeminiApiKey = geminiSession.withApiKey;
 export const clearOpenAiCompatibleApiKeySession = openaiCompatibleSession.clear;
 export const initOpenAiCompatibleApiKeySession = openaiCompatibleSession.init;
 export const withOpenAiCompatibleApiKey = openaiCompatibleSession.withApiKey;
+
+const profileSessions = new Map<string, ApiKeySession>();
+
+export function withLlmProfileApiKey<T>(
+  profileId: string,
+  getPlaintextApiKey: ApiKeyGetter,
+  fn: (apiKey: string) => Promise<T>,
+  options?: { allowEmpty?: boolean; missingKeyMessage?: string },
+): Promise<T> {
+  const id = String(profileId || '').trim() || 'default';
+  let session = profileSessions.get(id);
+  if (!session) {
+    session = createApiKeySession({
+      storageKey: `s3haim-llm-api-key-session:${id}`,
+      missingKeyMessage:
+        options?.missingKeyMessage ||
+        'API 키가 설정되지 않았습니다. 설정 페이지에서 제공자를 추가하세요.',
+      allowEmpty: options?.allowEmpty ?? false,
+    });
+    profileSessions.set(id, session);
+  }
+  return session.withApiKey(getPlaintextApiKey, fn);
+}
+
+export function clearLlmProfileApiKeySession(profileId: string): void {
+  const id = String(profileId || '').trim();
+  if (!id) return;
+  const session = profileSessions.get(id);
+  if (!session) return;
+  session.clear();
+  profileSessions.delete(id);
+}
+
+export function clearAllLlmApiKeySessions(): void {
+  geminiSession.clear();
+  openaiCompatibleSession.clear();
+  for (const session of profileSessions.values()) session.clear();
+  profileSessions.clear();
+}

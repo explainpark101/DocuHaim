@@ -7,7 +7,7 @@ import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import LlmProviderSelect from '@/components/LlmProviderSelect';
-import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderSettings';
+import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
 import {
   extractImageFilesFromClipboard,
   LLM_ASSIST_MAX_IMAGES,
@@ -18,15 +18,12 @@ const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
 
 export default function LlmAssistPanel({
   theme = 'light',
-  getGeminiApiKey,
-  getOpenAiCompatibleBaseUrl,
-  getOpenAiCompatibleApiKey,
-  llmProvider = 'gemini',
-  onLlmProviderChange = () => {},
-  geminiModel,
-  onGeminiModelChange,
-  openaiCompatibleModel = '',
-  onOpenaiCompatibleModelChange,
+  profiles = [],
+  selectedProfileId = '',
+  onSelectedProfileIdChange = () => {},
+  selectedProfile = null,
+  model = '',
+  onModelChange,
   selectedText,
   onRefreshSelection,
   attachedImages = [],
@@ -116,28 +113,35 @@ export default function LlmAssistPanel({
     <div ref={panelRef} className="space-y-3 text-xs">
       <div>
         <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">제공자</label>
-        <LlmProviderSelect value={llmProvider} onChange={onLlmProviderChange} />
+        <LlmProviderSelect
+          profiles={profiles}
+          value={selectedProfileId}
+          onChange={onSelectedProfileIdChange}
+        />
       </div>
 
-      <div>
-        <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">모델</label>
-        {llmProvider === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
-          <OpenAiCompatibleModelSelect
-            getBaseUrl={getOpenAiCompatibleBaseUrl ?? (() => '')}
-            getApiKey={getOpenAiCompatibleApiKey ?? (() => '')}
-            value={openaiCompatibleModel}
-            onChange={onOpenaiCompatibleModelChange}
-            autoLoad={modelSelectAutoLoad}
-          />
-        ) : (
-          <GeminiModelSelect
-            getGeminiApiKey={getGeminiApiKey}
-            value={geminiModel}
-            onChange={onGeminiModelChange}
-            autoLoad={modelSelectAutoLoad}
-          />
-        )}
-      </div>
+      {selectedProfile ? (
+        <div>
+          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">모델</label>
+          {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
+            <OpenAiCompatibleModelSelect
+              getBaseUrl={() => selectedProfile.baseUrl || ''}
+              getApiKey={() => selectedProfile.apiKey || ''}
+              value={model}
+              onChange={onModelChange}
+              autoLoad={modelSelectAutoLoad}
+            />
+          ) : (
+            <GeminiModelSelect
+              getGeminiApiKey={() => selectedProfile.apiKey || ''}
+              profileId={selectedProfile.id}
+              value={model}
+              onChange={onModelChange}
+              autoLoad={modelSelectAutoLoad}
+            />
+          )}
+        </div>
+      ) : null}
 
       <div>
         <div className="mb-1 flex items-center justify-between gap-2">
@@ -301,7 +305,7 @@ export default function LlmAssistPanel({
       <button
         type="button"
         onClick={onRun}
-        disabled={loading}
+        disabled={loading || !selectedProfile}
         className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}

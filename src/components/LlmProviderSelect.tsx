@@ -1,79 +1,94 @@
-import { useCallback, useEffect, useState } from 'react';
-import { RadioGroup } from 'radix-ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RadixSelectField } from '@/components/ui/RadixSelectField';
 import {
-  LLM_PROVIDER_CHANGED_EVENT,
-  LLM_PROVIDER_GEMINI,
-  LLM_PROVIDER_OPENAI_COMPATIBLE,
-  loadLlmProvider,
-  saveLlmProvider,
-  type LlmProviderId,
-} from '@/utils/llmProviderSettings';
-
-const ITEM_CLASS =
-  'size-3.5 rounded-full border border-gray-400 bg-white data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft';
-
-const INDICATOR_CLASS =
-  'relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white';
+  LLM_LAST_PROFILE_CHANGED_EVENT,
+  loadLastLlmProfileId,
+  resolveSelectedLlmProfile,
+  saveLastLlmProfileId,
+  type LlmProviderProfile,
+} from '@/utils/llmProviderProfiles';
 
 type LlmProviderSelectProps = {
-  value: LlmProviderId;
-  onChange: (next: LlmProviderId) => void;
+  profiles: LlmProviderProfile[];
+  value: string;
+  onChange: (profileId: string) => void;
   className?: string;
 };
 
-export function useLlmProviderState(): [
-  LlmProviderId,
-  (next: LlmProviderId) => void,
-  () => void,
-] {
-  const [provider, setProvider] = useState(() => loadLlmProvider());
+export function useLlmProfileIdState(
+  profiles: LlmProviderProfile[],
+): [string, (next: string) => void, () => void] {
+  const [profileId, setProfileId] = useState(() => loadLastLlmProfileId());
 
-  const setProviderAndSave = useCallback((next: LlmProviderId) => {
-    saveLlmProvider(next);
-    setProvider(loadLlmProvider());
+  const resolvedId = useMemo(() => {
+    const selected = resolveSelectedLlmProfile(profiles, profileId);
+    return selected?.id ?? '';
+  }, [profiles, profileId]);
+
+  const setProfileIdAndSave = useCallback((next: string) => {
+    saveLastLlmProfileId(next);
+    setProfileId(loadLastLlmProfileId());
   }, []);
 
   const syncFromStorage = useCallback(() => {
-    setProvider(loadLlmProvider());
+    setProfileId(loadLastLlmProfileId());
   }, []);
 
   useEffect(() => {
-    const onChange = () => setProvider(loadLlmProvider());
-    window.addEventListener(LLM_PROVIDER_CHANGED_EVENT, onChange);
-    return () => window.removeEventListener(LLM_PROVIDER_CHANGED_EVENT, onChange);
+    const onChange = () => setProfileId(loadLastLlmProfileId());
+    window.addEventListener(LLM_LAST_PROFILE_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(LLM_LAST_PROFILE_CHANGED_EVENT, onChange);
   }, []);
 
-  return [provider, setProviderAndSave, syncFromStorage];
+  useEffect(() => {
+    if (resolvedId && resolvedId !== profileId) {
+      saveLastLlmProfileId(resolvedId);
+      setProfileId(resolvedId);
+    }
+  }, [profileId, resolvedId]);
+
+  return [resolvedId, setProfileIdAndSave, syncFromStorage];
 }
 
 export default function LlmProviderSelect({
+  profiles,
   value,
   onChange,
   className = '',
 }: LlmProviderSelectProps) {
+  const options = useMemo(
+    () =>
+      profiles.map((p) => ({
+        value: p.id,
+        label:
+          p.kind === 'openai-compatible'
+            ? `${p.name} · OpenAI 호환`
+            : `${p.name} · Gemini`,
+      })),
+    [profiles],
+  );
+
+  if (!options.length) {
+    return (
+      <p className={`text-[11px] text-amber-700 dark:text-amber-300 ${className}`.trim()}>
+        저장된 제공자가 없습니다. 설정에서 추가하세요.
+      </p>
+    );
+  }
+
+  const firstOption = options[0];
+  const selectValue = options.some((o) => o.value === value)
+    ? value
+    : (firstOption?.value ?? '');
+
   return (
-    <RadioGroup.Root
-      className={`flex flex-wrap items-center gap-4 ${className}`.trim()}
-      value={value}
-      onValueChange={(next) => {
-        if (next === LLM_PROVIDER_GEMINI || next === LLM_PROVIDER_OPENAI_COMPATIBLE) {
-          onChange(next);
-        }
-      }}
+    <RadixSelectField
+      value={selectValue}
+      onValueChange={onChange}
+      options={options}
+      placeholder="제공자 선택"
       aria-label="AI 제공자"
-    >
-      <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg">
-        <RadioGroup.Item value={LLM_PROVIDER_GEMINI} className={ITEM_CLASS}>
-          <RadioGroup.Indicator className={INDICATOR_CLASS} />
-        </RadioGroup.Item>
-        <span>Google Gemini</span>
-      </label>
-      <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg">
-        <RadioGroup.Item value={LLM_PROVIDER_OPENAI_COMPATIBLE} className={ITEM_CLASS}>
-          <RadioGroup.Indicator className={INDICATOR_CLASS} />
-        </RadioGroup.Item>
-        <span>OpenAI 호환</span>
-      </label>
-    </RadioGroup.Root>
+      className={`w-full ${className}`.trim()}
+    />
   );
 }

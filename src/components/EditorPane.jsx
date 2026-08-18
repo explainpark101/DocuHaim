@@ -110,9 +110,7 @@ export default function EditorPane({
   snippetConfig = { snippets: [] },
   editorType,
   hideRecordingCompanions = false,
-  getGeminiApiKey,
-  getOpenAiCompatibleBaseUrl,
-  getOpenAiCompatibleApiKey,
+  llmProviderProfiles = [],
   getImgbbApiKey,
 }) {
   const effectiveEditorType = editorType ?? loadEditorType();
@@ -954,9 +952,7 @@ export default function EditorPane({
                       onResolveWikiImageUrl={onResolveWikiImageUrl}
                       onOpenViewPath={onOpenViewPath}
                       snippetConfig={snippetConfig}
-                      getGeminiApiKey={getGeminiApiKey}
-                      getOpenAiCompatibleBaseUrl={getOpenAiCompatibleBaseUrl}
-                      getOpenAiCompatibleApiKey={getOpenAiCompatibleApiKey}
+                      llmProviderProfiles={llmProviderProfiles}
                       getImgbbApiKey={getImgbbApiKey}
                       onRequestConvertAllImagesToWiki={openConvertAllImagesConfirm}
                       onRegisterConvertAllImagesToWiki={(fn) => {

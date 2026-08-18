@@ -54,13 +54,12 @@ import {
   convertTreeHoverExpandValue,
   treeHoverExpandSettingsToMs,
 } from '@/utils/treeHoverExpandSettings';
-import GeminiModelSelect, { useGeminiModelState } from '@/components/GeminiModelSelect';
-import OpenAiCompatibleModelSelect, {
-  useOpenAiCompatibleModelState,
-} from '@/components/OpenAiCompatibleModelSelect';
-import LlmProviderSelect, { useLlmProviderState } from '@/components/LlmProviderSelect';
-import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/openaiCompatibleSettings';
+import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfilesSettings';
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
+import {
+  resolveLlmProviderProfiles,
+  syncLegacyLlmCredsFromProfiles,
+} from '@/utils/llmProviderProfiles';
 import { getLocalAppBuildId } from '@/utils/pwaUpdate';
 import { RadioGroup } from 'radix-ui';
 import {
@@ -110,9 +109,6 @@ export default function SettingsPage({
   sidebarOpen = true,
   sidebarCollapsed = false,
   onOpenSidebar,
-  getGeminiApiKey,
-  getOpenAiCompatibleBaseUrl,
-  getOpenAiCompatibleApiKey,
   onCheckAppUpdate,
   isCheckingAppUpdate = false,
   latestAppBuildId = '',
@@ -121,8 +117,6 @@ export default function SettingsPage({
   onOpenStorageUsageFile,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
-  const [googleAiKeyInput, setGoogleAiKeyInput] = useState('');
-  const [openaiCompatibleKeyInput, setOpenaiCompatibleKeyInput] = useState('');
   const [imgbbKeyInput, setImgbbKeyInput] = useState('');
   const [webdavForm, setWebdavForm] = useState(webdavConfig ?? {
     endpoint: '',
@@ -161,29 +155,17 @@ export default function SettingsPage({
     /** @type {import('@/utils/advancedSearch/engine').RebuildCheckpointInfo | null} */ (null),
   );
   const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
-  const [geminiModel, setGeminiModel, syncGeminiModel] = useGeminiModelState();
-  const [openaiCompatibleModel, setOpenaiCompatibleModel, syncOpenaiCompatibleModel] =
-    useOpenAiCompatibleModelState();
-  const [llmProvider, setLlmProvider, syncLlmProvider] = useLlmProviderState();
   const [s3ConnOpen, setS3ConnOpen] = useState(true);
   const [localConnOpen, setLocalConnOpen] = useState(
     () => storageMode === STORAGE_MODE_LOCAL,
   );
   const [webdavConnOpen, setWebdavConnOpen] = useState(false);
-  const [geminiConnOpen, setGeminiConnOpen] = useState(true);
-  const [openaiCompatConnOpen, setOpenaiCompatConnOpen] = useState(true);
   const [imgbbConnOpen, setImgbbConnOpen] = useState(true);
   const location = useLocation();
   const resolvedLocalFolderName =
     String(localFolderName || '').trim() || loadLastLocalFolderName() || '';
   const canPickLocalFolder =
     typeof window !== 'undefined' && 'showDirectoryPicker' in window;
-
-  useEffect(() => {
-    syncGeminiModel();
-    syncOpenaiCompatibleModel();
-    syncLlmProvider();
-  }, [syncGeminiModel, syncOpenaiCompatibleModel, syncLlmProvider]);
 
   useEffect(() => {
     return subscribeSettingsToggles((id, enabled) => {
@@ -225,11 +207,16 @@ export default function SettingsPage({
     if (hash === 'settings-s3') setS3ConnOpen(true);
     if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-webdav') setWebdavConnOpen(true);
-    if (hash === 'settings-gemini') setGeminiConnOpen(true);
-    if (hash === 'settings-openai-compat') setOpenaiCompatConnOpen(true);
     if (hash === 'settings-imgbb') setImgbbConnOpen(true);
+    const llmHashes = new Set([
+      'settings-llm-providers',
+      'settings-llm-provider',
+      'settings-gemini',
+      'settings-openai-compat',
+    ]);
+    const scrollId = llmHashes.has(hash) ? 'settings-llm-providers' : hash;
     const timer = window.setTimeout(() => {
-      const el = document.getElementById(hash);
+      const el = document.getElementById(scrollId);
       if (!el) return;
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       try {
@@ -248,29 +235,27 @@ export default function SettingsPage({
   }, []);
 
   useEffect(() => {
-    setFormCreds(s3Creds);
-    setGoogleAiKeyInput('');
-    setOpenaiCompatibleKeyInput('');
+    setFormCreds({
+      ...s3Creds,
+      llmProviderProfiles: resolveLlmProviderProfiles(s3Creds),
+    });
     setImgbbKeyInput('');
   }, [s3Creds]);
 
-  const hasStoredGoogleAiKey = Boolean((s3Creds?.googleAiStudioApiKey || '').trim());
-  const hasStoredOpenaiCompatibleKey = Boolean((s3Creds?.openaiCompatibleApiKey || '').trim());
   const hasStoredImgbbKey = Boolean((s3Creds?.imgbbApiKey || '').trim());
 
-  const buildCredsForSave = () => {
-    const trimmedGeminiKey = googleAiKeyInput.trim();
-    const nextGeminiKey = trimmedGeminiKey || (hasStoredGoogleAiKey ? s3Creds.googleAiStudioApiKey : '');
-    const trimmedOpenaiKey = openaiCompatibleKeyInput.trim();
-    const nextOpenaiKey =
-      trimmedOpenaiKey || (hasStoredOpenaiCompatibleKey ? s3Creds.openaiCompatibleApiKey : '');
+  const buildCredsForSave = (nextProfiles) => {
+    const profiles =
+      nextProfiles !== undefined
+        ? nextProfiles
+        : resolveLlmProviderProfiles(formCreds);
+    const legacy = syncLegacyLlmCredsFromProfiles(profiles);
     const trimmedImgbbKey = imgbbKeyInput.trim();
     const nextImgbbKey = trimmedImgbbKey || (hasStoredImgbbKey ? s3Creds.imgbbApiKey : '');
     return {
       ...formCreds,
-      googleAiStudioApiKey: nextGeminiKey,
-      openaiCompatibleBaseUrl: String(formCreds.openaiCompatibleBaseUrl || '').trim(),
-      openaiCompatibleApiKey: nextOpenaiKey,
+      llmProviderProfiles: profiles,
+      ...legacy,
       imgbbApiKey: nextImgbbKey,
     };
   };
@@ -702,207 +687,13 @@ export default function SettingsPage({
           ) : null}
         </form>
 
-        <div
-          id="settings-llm-provider"
-          tabIndex={-1}
-          className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
-        >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-            AI 도우미 제공자
-          </h3>
-          <p className="text-xs text-gray-600 dark:text-odp-muted">
-            에디터 AI 도우미가 사용할 LLM을 선택합니다. OpenAI 호환은 직접 입력한 endpoint로
-            Chat Completions를 호출합니다.
-          </p>
-          <LlmProviderSelect value={llmProvider} onChange={setLlmProvider} />
-        </div>
-
-        <form
-          id="settings-gemini"
-          tabIndex={-1}
-          onSubmit={(e) => {
-            e.preventDefault();
-            const trimmedKey = googleAiKeyInput.trim();
-            if (!trimmedKey && !hasStoredGoogleAiKey) {
-              alert('API 키를 입력하세요.');
-              return;
-            }
-            onSaveS3Creds(buildCredsForSave());
+        <LlmProviderProfilesSettings
+          profiles={resolveLlmProviderProfiles(formCreds)}
+          onSaveProfiles={(next) => {
+            setFormCreds((p) => ({ ...p, llmProviderProfiles: next }));
+            onSaveS3Creds(buildCredsForSave(next));
           }}
-          className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
-        >
-          <button
-            type="button"
-            onClick={() => setGeminiConnOpen((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-            aria-expanded={geminiConnOpen}
-          >
-            {geminiConnOpen ? (
-              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            ) : (
-              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            )}
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-              Google AI Studio (Gemini)
-            </h3>
-          </button>
-          {geminiConnOpen ? (
-            <>
-              <p className="text-xs text-gray-600 dark:text-odp-muted">
-                Gemini API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시
-                표시되지 않습니다.
-              </p>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
-                  API Key
-                </label>
-                <input
-                  type="password"
-                  autoComplete="off"
-                  className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-                  value={googleAiKeyInput}
-                  onChange={(e) => setGoogleAiKeyInput(e.target.value)}
-                  placeholder={
-                    hasStoredGoogleAiKey ? '저장됨 — 변경 시 새 키 입력' : 'AI Studio API 키 입력'
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
-                  기본 모델
-                </label>
-                <GeminiModelSelect
-                  getGeminiApiKey={getGeminiApiKey}
-                  value={geminiModel}
-                  onChange={setGeminiModel}
-                  autoLoad={hasStoredGoogleAiKey || Boolean(googleAiKeyInput.trim())}
-                />
-                <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
-                  마지막으로 사용한 모델이 저장되며, 다음에 AI 도우미를 열 때 자동으로 선택됩니다.
-                </p>
-              </div>
-              <div className="flex justify-end pt-1">
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                >
-                  API 키 저장
-                </button>
-              </div>
-            </>
-          ) : null}
-        </form>
-
-        <form
-          id="settings-openai-compat"
-          tabIndex={-1}
-          onSubmit={(e) => {
-            e.preventDefault();
-            const nextUrl = normalizeOpenAiCompatibleBaseUrl(formCreds.openaiCompatibleBaseUrl || '');
-            if (!nextUrl) {
-              alert('Endpoint URL을 입력하세요. 예: https://api.openai.com/v1');
-              return;
-            }
-            onSaveS3Creds({
-              ...buildCredsForSave(),
-              openaiCompatibleBaseUrl: nextUrl,
-            });
-          }}
-          className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
-        >
-          <button
-            type="button"
-            onClick={() => setOpenaiCompatConnOpen((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-            aria-expanded={openaiCompatConnOpen}
-          >
-            {openaiCompatConnOpen ? (
-              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            ) : (
-              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            )}
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-              OpenAI 호환 LLM
-            </h3>
-          </button>
-          {openaiCompatConnOpen ? (
-            <>
-              <p className="text-xs text-gray-600 dark:text-odp-muted">
-                OpenAI Chat Completions 규격 endpoint와 API 키를 입력합니다. 키는 연결 정보와 함께
-                암호화되어 저장되며, 이 화면에서 다시 표시되지 않습니다. 로컬 서버는 키가 없어도
-                됩니다. 브라우저에서 호출하므로 서버 CORS가 허용되어야 합니다.
-              </p>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
-                  Endpoint URL
-                </label>
-                <input
-                  type="text"
-                  autoComplete="off"
-                  className="w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-                  value={formCreds.openaiCompatibleBaseUrl || ''}
-                  onChange={(e) =>
-                    setFormCreds((p) => ({ ...p, openaiCompatibleBaseUrl: e.target.value }))
-                  }
-                  placeholder="https://api.openai.com/v1"
-                />
-                <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
-                  예: https://api.openai.com/v1 , https://openrouter.ai/api/v1 ,
-                  http://localhost:11434/v1
-                </p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
-                  API Key (선택)
-                </label>
-                <input
-                  type="password"
-                  autoComplete="off"
-                  className="w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-                  value={openaiCompatibleKeyInput}
-                  onChange={(e) => setOpenaiCompatibleKeyInput(e.target.value)}
-                  placeholder={
-                    hasStoredOpenaiCompatibleKey
-                      ? '저장됨 — 변경 시 새 키 입력'
-                      : 'Bearer 토큰 (로컬 서버는 비워 두세요)'
-                  }
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
-                  기본 모델
-                </label>
-                <OpenAiCompatibleModelSelect
-                  getBaseUrl={() =>
-                    formCreds.openaiCompatibleBaseUrl ||
-                    (typeof getOpenAiCompatibleBaseUrl === 'function'
-                      ? getOpenAiCompatibleBaseUrl()
-                      : '')
-                  }
-                  getApiKey={() =>
-                    openaiCompatibleKeyInput.trim() ||
-                    (typeof getOpenAiCompatibleApiKey === 'function'
-                      ? getOpenAiCompatibleApiKey()
-                      : '')
-                  }
-                  value={openaiCompatibleModel}
-                  onChange={setOpenaiCompatibleModel}
-                  autoLoad={Boolean(
-                    normalizeOpenAiCompatibleBaseUrl(formCreds.openaiCompatibleBaseUrl || ''),
-                  )}
-                />
-              </div>
-              <div className="flex justify-end pt-1">
-                <button
-                  type="submit"
-                  className="rounded bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700"
-                >
-                  Endpoint 저장
-                </button>
-              </div>
-            </>
-          ) : null}
-        </form>
+        />
 
         <form
           id="settings-imgbb"

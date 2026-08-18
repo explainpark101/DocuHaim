@@ -25,9 +25,9 @@ const EMPTY_STATE = {
   selectedTemplateId: '',
   templateName: '',
   editingTemplateId: null,
-  geminiModel: '',
-  openaiCompatibleModel: '',
-  llmProvider: 'gemini',
+  profiles: [],
+  selectedProfileId: '',
+  model: '',
   theme: loadStoredTheme(),
 };
 
@@ -42,9 +42,8 @@ export default function LlmAssistPopoutPage() {
   const [templateName, setTemplateName] = useState('');
   const [result, setResult] = useState('');
   const [resultViewMode, setResultViewMode] = useState('text');
-  const [geminiModel, setGeminiModel] = useState('');
-  const [openaiCompatibleModel, setOpenaiCompatibleModel] = useState('');
-  const [llmProvider, setLlmProvider] = useState('gemini');
+  const [model, setModel] = useState('');
+  const [selectedProfileId, setSelectedProfileId] = useState('');
   const [connected, setConnected] = useState(false);
   const readySentRef = useRef(false);
 
@@ -68,9 +67,8 @@ export default function LlmAssistPopoutPage() {
         setTemplateName(next.templateName);
         setResult(next.result);
         setResultViewMode(next.resultViewMode);
-        setGeminiModel(next.geminiModel);
-        setOpenaiCompatibleModel(next.openaiCompatibleModel);
-        setLlmProvider(next.llmProvider || 'gemini');
+        setModel(next.model || '');
+        setSelectedProfileId(next.selectedProfileId || '');
         setConnected(true);
         return;
       }
@@ -153,23 +151,17 @@ export default function LlmAssistPopoutPage() {
       <main className="min-h-0 flex-1 overflow-y-auto p-4">
         <LlmAssistPanel
           theme={remoteState.theme}
-          getGeminiApiKey={() => ''}
-          getOpenAiCompatibleBaseUrl={() => ''}
-          getOpenAiCompatibleApiKey={() => ''}
-          llmProvider={llmProvider}
-          onLlmProviderChange={(value) => {
-            setLlmProvider(value);
-            sendAction('set-llm-provider', { value });
+          profiles={remoteState.profiles || []}
+          selectedProfileId={selectedProfileId}
+          onSelectedProfileIdChange={(value) => {
+            setSelectedProfileId(value);
+            sendAction('set-llm-profile-id', { value });
           }}
-          geminiModel={geminiModel}
-          onGeminiModelChange={(value) => {
-            setGeminiModel(value);
-            sendAction('set-gemini-model', { value });
-          }}
-          openaiCompatibleModel={openaiCompatibleModel}
-          onOpenaiCompatibleModelChange={(value) => {
-            setOpenaiCompatibleModel(value);
-            sendAction('set-openai-compatible-model', { value });
+          selectedProfile={(remoteState.profiles || []).find((p) => p.id === selectedProfileId) || null}
+          model={model}
+          onModelChange={(value) => {
+            setModel(value);
+            sendAction('set-model', { value });
           }}
           selectedText={remoteState.selectedText}
           onRefreshSelection={() => sendAction('refresh-selection')}

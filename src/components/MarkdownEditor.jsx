@@ -596,9 +596,7 @@ export default function MarkdownEditor({
   onCancelUploadImage,
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
-  getGeminiApiKey,
-  getOpenAiCompatibleBaseUrl,
-  getOpenAiCompatibleApiKey,
+  llmProviderProfiles = [],
   getImgbbApiKey,
   onOpenViewPath,
   onRequestConvertAllImagesToWiki,
@@ -2644,9 +2642,7 @@ export default function MarkdownEditor({
       <LlmAssistModal
         editorRef={editorRef}
         onChange={onChangeWithUndoHistory}
-        getGeminiApiKey={getGeminiApiKey ?? (() => '')}
-        getOpenAiCompatibleBaseUrl={getOpenAiCompatibleBaseUrl ?? (() => '')}
-        getOpenAiCompatibleApiKey={getOpenAiCompatibleApiKey ?? (() => '')}
+        llmProviderProfiles={llmProviderProfiles}
         open={llmAssistOpen}
         onOpenChange={setLlmAssistOpen}
         theme={theme}

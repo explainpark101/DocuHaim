@@ -288,7 +288,8 @@ import SaveSessionToNoteModal from '@/components/modals/SaveSessionToNoteModal';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
-import { clearGeminiApiKeySession, clearOpenAiCompatibleApiKeySession } from '@/utils/llmApiKeySession';
+import { clearAllLlmApiKeySessions } from '@/utils/llmApiKeySession';
+import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
 import { tryRestoreAuthSession } from '@/utils/authSession';
 import { applyDocumentTheme } from '@/utils/documentTheme';
 import {
@@ -352,19 +353,9 @@ function MainApp() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getGeminiApiKey = useCallback(
-    () => (s3Creds?.googleAiStudioApiKey || '').trim(),
-    [s3Creds?.googleAiStudioApiKey],
-  );
-
-  const getOpenAiCompatibleBaseUrl = useCallback(
-    () => (s3Creds?.openaiCompatibleBaseUrl || '').trim(),
-    [s3Creds?.openaiCompatibleBaseUrl],
-  );
-
-  const getOpenAiCompatibleApiKey = useCallback(
-    () => (s3Creds?.openaiCompatibleApiKey || '').trim(),
-    [s3Creds?.openaiCompatibleApiKey],
+  const llmProviderProfiles = useMemo(
+    () => resolveLlmProviderProfiles(s3Creds),
+    [s3Creds],
   );
 
   const getImgbbApiKey = useCallback(
@@ -374,20 +365,15 @@ function MainApp() {
 
   useEffect(() => {
     const onUnload = () => {
-      clearGeminiApiKeySession();
-      clearOpenAiCompatibleApiKeySession();
+      clearAllLlmApiKeySessions();
     };
     window.addEventListener('beforeunload', onUnload);
     return () => window.removeEventListener('beforeunload', onUnload);
   }, []);
 
   useEffect(() => {
-    clearGeminiApiKeySession();
-  }, [s3Creds?.googleAiStudioApiKey]);
-
-  useEffect(() => {
-    clearOpenAiCompatibleApiKeySession();
-  }, [s3Creds?.openaiCompatibleApiKey, s3Creds?.openaiCompatibleBaseUrl]);
+    clearAllLlmApiKeySessions();
+  }, [s3Creds?.googleAiStudioApiKey, s3Creds?.openaiCompatibleApiKey, s3Creds?.openaiCompatibleBaseUrl, s3Creds?.llmProviderProfiles]);
 
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light';
@@ -1389,6 +1375,7 @@ function MainApp() {
     'googleAiStudioApiKey',
     'openaiCompatibleBaseUrl',
     'openaiCompatibleApiKey',
+    'llmProviderProfiles',
     'imgbbApiKey',
   ];
 
@@ -1396,7 +1383,11 @@ function MainApp() {
     if (!creds || typeof creds !== 'object') return null;
     const out = {};
     for (const key of CREDS_COMPARE_KEYS) {
-      out[key] = creds[key] == null ? '' : String(creds[key]);
+      if (key === 'llmProviderProfiles') {
+        out[key] = JSON.stringify(resolveLlmProviderProfiles(creds));
+      } else {
+        out[key] = creds[key] == null ? '' : String(creds[key]);
+      }
     }
     return out;
   };
@@ -8751,9 +8742,6 @@ function MainApp() {
                     sidebarOpen={sidebarOpen}
                     sidebarCollapsed={sidebarCollapsed}
                     onOpenSidebar={() => setSidebarOpen(true)}
-                    getGeminiApiKey={getGeminiApiKey}
-                    getOpenAiCompatibleBaseUrl={getOpenAiCompatibleBaseUrl}
-                    getOpenAiCompatibleApiKey={getOpenAiCompatibleApiKey}
                     onCheckAppUpdate={handleCheckAppUpdate}
                     isCheckingAppUpdate={isCheckingAppUpdate}
                     latestAppBuildId={appBuildRemoteId}
@@ -8882,9 +8870,7 @@ function MainApp() {
                     onResolveWikiImageUrl: getPresignedUrlForPath,
                     onOpenViewPath: handleOpenNoteFromChat,
                     snippetConfig,
-                    getGeminiApiKey,
-                    getOpenAiCompatibleBaseUrl,
-                    getOpenAiCompatibleApiKey,
+                    llmProviderProfiles,
                     getImgbbApiKey,
                     onRequestDelete: () =>
                       setDeleteTarget(

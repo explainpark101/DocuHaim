@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { listGeminiModels } from '@/utils/geminiClient';
-import { withGeminiApiKey } from '@/utils/geminiApiKeySession';
+import { withLlmProfileApiKey } from '@/utils/llmApiKeySession';
 import {
   FALLBACK_GEMINI_MODELS,
   loadLastUsedGeminiModel,
@@ -27,6 +27,7 @@ function mergeModelOptions(models, selectedId) {
 
 export default function GeminiModelSelect({
   getGeminiApiKey,
+  profileId = 'gemini',
   value,
   onChange,
   autoLoad = false,
@@ -50,7 +51,9 @@ export default function GeminiModelSelect({
     setLoading(true);
     setError('');
     try {
-      const list = await withGeminiApiKey(getGeminiApiKey, (apiKey) => listGeminiModels(apiKey));
+      const list = await withLlmProfileApiKey(profileId, getGeminiApiKey, (apiKey) =>
+        listGeminiModels(apiKey),
+      );
       setModels(mergeModelOptions(list, value));
     } catch (err) {
       setError(err?.message || '모델 목록을 불러오지 못했습니다.');
@@ -58,7 +61,7 @@ export default function GeminiModelSelect({
     } finally {
       setLoading(false);
     }
-  }, [getGeminiApiKey, value]);
+  }, [getGeminiApiKey, profileId, value]);
 
   useEffect(() => {
     setModels((prev) => mergeModelOptions(prev, value));
