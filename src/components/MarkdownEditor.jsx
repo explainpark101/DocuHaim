@@ -189,6 +189,10 @@ import {
   toggleUnderlineForSelection,
   toggleUnorderedListForSelection,
   wrapSelectionWithInlineCode,
+  wrapLatexForSelection,
+  wrapBracketsForSelection,
+  wrapParenthesesForSelection,
+  wrapBracesForSelection,
 } from '@/utils/editorMarkdownStyle';
 
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
@@ -272,6 +276,24 @@ function isInlineCodeFenceTriggerKey(e) {
   if (key === '`' || key === '?' || key === '\\') return true;
   if (code === 'Backquote' || code === 'IntlBackslash') return true;
   return false;
+}
+
+/** Wrap the current selection when typing $, [, (, or {. Empty selection: no-op. */
+function wrapSelectionWithPairIfTriggerKey(view, event) {
+  if (event.defaultPrevented) return false;
+  if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
+  switch (event.key) {
+    case '$':
+      return wrapLatexForSelection(view);
+    case '[':
+      return wrapBracketsForSelection(view);
+    case '(':
+      return wrapParenthesesForSelection(view);
+    case '{':
+      return wrapBracesForSelection(view);
+    default:
+      return false;
+  }
 }
 
 function runAltVimNavigation(view, command) {
@@ -460,7 +482,7 @@ config({
           if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyC') {
             return wrapSelectionWithInlineCode(view);
           }
-          return false;
+          return wrapSelectionWithPairIfTriggerKey(view, event);
         },
       },
       { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
@@ -1561,6 +1583,12 @@ export default function MarkdownEditor({
               // CodeMirror: handled event must return true so later handlers / default are skipped
               return true;
             }
+          }
+
+          if (!view.composing && wrapSelectionWithPairIfTriggerKey(view, e)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return true;
           }
 
           const keyCombo = getKeyComboFromEvent(e);

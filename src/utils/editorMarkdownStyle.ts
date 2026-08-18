@@ -90,32 +90,66 @@ function planInlineWrap(
 
 function planInlineCodeWrap(doc: Text, range: SelectionRange): WrapPlan | null {
   if (range.empty) return null;
+
   const selectedText = doc.sliceString(range.from, range.to);
   if (!selectedText) return null;
 
   let fence = '`';
   while (selectedText.includes(fence)) fence += '`';
 
-  if (selectedText.startsWith(fence) && selectedText.endsWith(fence) && selectedText.length > fence.length * 2) {
-    const inner = selectedText.slice(fence.length, selectedText.length - fence.length);
+  // 여러 줄 선택인지 확인
+  const isSingleLine = !selectedText.includes('\n');
+
+  // 1줄 선택일 때만 backtick 제거
+  if (
+    isSingleLine &&
+    selectedText.startsWith(fence) &&
+    selectedText.endsWith(fence) &&
+    selectedText.length > fence.length * 2
+  ) {
+    const inner = selectedText.slice(
+      fence.length,
+      selectedText.length - fence.length,
+    );
+
     return {
-      change: { from: range.from, to: range.to, insert: inner },
-      next: EditorSelection.range(range.from, range.from + inner.length),
+      change: {
+        from: range.from,
+        to: range.to,
+        insert: inner,
+      },
+      next: EditorSelection.range(
+        range.from,
+        range.from + inner.length,
+      ),
     };
   }
 
   if (hasSurroundingMarks(doc, range.from, range.to, fence, fence)) {
     const leftFrom = range.from - fence.length;
     const rightTo = range.to + fence.length;
+
     return {
-      change: { from: leftFrom, to: rightTo, insert: selectedText },
-      next: EditorSelection.range(leftFrom, leftFrom + selectedText.length),
+      change: {
+        from: leftFrom,
+        to: rightTo,
+        insert: selectedText,
+      },
+      next: EditorSelection.range(
+        leftFrom,
+        leftFrom + selectedText.length,
+      ),
     };
   }
 
   const wrapped = `${fence}${selectedText}${fence}`;
+
   return {
-    change: { from: range.from, to: range.to, insert: wrapped },
+    change: {
+      from: range.from,
+      to: range.to,
+      insert: wrapped,
+    },
     next: EditorSelection.range(
       range.from + fence.length,
       range.from + fence.length + selectedText.length,
@@ -174,6 +208,8 @@ export function toggleSupForSelection(view: EditorView): boolean {
 export function toggleSubForSelection(view: EditorView): boolean {
   return toggleInlineMarkdownWrap(view, '~');
 }
+
+
 
 export function wrapSelectionWithInlineCode(view: EditorView): boolean {
   if (!view?.state) return false;
@@ -302,4 +338,51 @@ export function toggleHeadingForSelection(view: EditorView, level: number): bool
     }
     return `${marks} ${text}`;
   });
+}
+
+
+
+/**
+ * Wrap each non-empty selection with `open`/`close`. Never unwraps.
+ * Empty cursors are left unchanged so the typed character can insert normally.
+ */
+export function wrapInlineSelection(
+  view: EditorView,
+  open: string,
+  close: string = open,
+): boolean {
+  if (!view?.state || !open) return false;
+
+  const spec = view.state.changeByRange((range) => {
+    if (range.empty) return { range };
+    const selectedText = view.state.doc.sliceString(range.from, range.to);
+    const wrapped = `${open}${selectedText}${close}`;
+    return {
+      changes: { from: range.from, to: range.to, insert: wrapped },
+      range: EditorSelection.range(
+        range.from + open.length,
+        range.from + open.length + selectedText.length,
+      ),
+    };
+  });
+
+  if (spec.changes.empty) return false;
+  view.dispatch(spec);
+  return true;
+}
+
+export function wrapLatexForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '$');
+}
+
+export function wrapBracketsForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '[', ']');
+}
+
+export function wrapParenthesesForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '(', ')');
+}
+
+export function wrapBracesForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '{', '}');
 }
