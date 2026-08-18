@@ -189,6 +189,10 @@ import {
   toggleUnderlineForSelection,
   toggleUnorderedListForSelection,
   wrapSelectionWithInlineCode,
+  toggleLatextSelection,
+  toggleBracketsForSelection,
+  toggleParenthesesForSelection,
+  toggleBracesForSelection,
 } from '@/utils/editorMarkdownStyle';
 
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
@@ -462,6 +466,7 @@ config({
           }
           return false;
         },
+        // TODO: Implement this wrap Selections into brackets, parentheses, braces, etc.
       },
       { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
       { key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
