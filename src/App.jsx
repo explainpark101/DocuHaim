@@ -251,6 +251,7 @@ import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
 import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
+import { usePwaNewFileShortcut } from '@/hooks/usePwaNewFileShortcut';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
   SESSION_STORAGE_TYPE,
@@ -6556,6 +6557,22 @@ function MainApp() {
     [storageMode, localRootHandle, localTree],
   );
 
+  const requestNewFileAtRoot = useCallback(() => {
+    if (storageMode === STORAGE_MODE_LOCAL) {
+      setCreateModalContext({ storageType: 'local', parentPath: '', parentDirHandle: localRootHandle, type: 'file' });
+    } else if (storageMode === STORAGE_MODE_WEBDAV) {
+      setCreateModalContext({ storageType: 'webdav', parentPath: '', parentDirHandle: null, type: 'file' });
+    } else {
+      setCreateModalContext({ storageType: 's3', parentPath: '', parentDirHandle: null, type: 'file' });
+    }
+    setCreateModalOpen(true);
+  }, [storageMode, localRootHandle]);
+
+  usePwaNewFileShortcut({
+    enabled: isUnlocked && canScanStorageUsage,
+    onNewFile: requestNewFileAtRoot,
+  });
+
   const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
     setUploadTarget({ storageType, parentPath, parentDirHandle });
     uploadFileInputRef.current.value = '';
@@ -8914,15 +8931,7 @@ function MainApp() {
                       if (isMobile) setSidebarOpen(true);
                       else setSidebarCollapsed(false);
                     },
-                    onRequestCreateFile: () => {
-                      if (storageMode === 'local') {
-                        requestCreateItem('local', '', localRootHandle, 'file');
-                      } else if (storageMode === 'webdav') {
-                        requestCreateItem('webdav', '', null, 'file');
-                      } else {
-                        requestCreateItem('s3', '', null, 'file');
-                      }
-                    },
+                    onRequestCreateFile: requestNewFileAtRoot,
                     onOpenChatWithMyself: () => {
                       if (workspaceTabsEnabledRef.current) openChatWorkspaceTab();
                       else navigate('/chat');
