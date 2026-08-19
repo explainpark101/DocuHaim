@@ -657,6 +657,7 @@ function MainApp() {
   const [localFolderRestoreSettled, setLocalFolderRestoreSettled] = useState(false);
   const saveFileRef = useRef(null);
   const selectFileRawRef = useRef(null);
+  const openFileRequestSeqRef = useRef(0);
   const prevEditorContentRef = useRef('');
 
   const hasSeededTabsRestoreQueueRef = useRef(false);
@@ -3057,6 +3058,7 @@ function MainApp() {
   // 5. File Read & Save
   const selectFileRaw = useCallback(async (type, node, options = {}) => {
     if (node.type === 'folder') return;
+    const attemptId = ++openFileRequestSeqRef.current;
     const skipNavigate = options.skipNavigate === true;
     const goToViewPath = () => {
       if (!skipNavigate) navigate(`/view/${node.path}`);
@@ -3064,19 +3066,71 @@ function MainApp() {
 
     // Already-open file: activate that tab first, then sync from server/disk.
     const existingBefore = findFileTab(workspaceTabsRef.current, type, node.path);
-    if (existingBefore && workspaceTabsEnabledRef.current) {
-      activateWorkspaceTab(existingBefore.id, { navigateUrl: !skipNavigate });
+    let didNavigateEarly = false;
+
+    if (existingBefore) {
+      const activeBefore = getActiveFileTab(workspaceTabsRef.current);
+      const shouldActivate = activeBefore ? activeBefore.id !== existingBefore.id : true;
+      if (shouldActivate) {
+        activateWorkspaceTab(existingBefore.id, { navigateUrl: !skipNavigate });
+        if (!skipNavigate) didNavigateEarly = true;
+      }
     }
 
     const commit = (file, content = '', commitOpts = {}) => {
+      if (openFileRequestSeqRef.current !== attemptId) return false;
       const ok = commitOpenFile(file, content, commitOpts);
-      if (ok) goToViewPath();
+      if (ok && !skipNavigate && !didNavigateEarly) goToViewPath();
       return ok;
     };
 
-    if (type === 'webdav') {
+    const markAsLoading = () => {
+      if (openFileRequestSeqRef.current !== attemptId) return false;
+
+      if (existingBefore) {
+        const live = findFileTab(workspaceTabsRef.current, type, node.path);
+        if (!live) return true;
+
+        const next = patchFileTab(workspaceTabsRef.current, live.id, {
+          currentFile: { ...live.currentFile, viewer: 'loading' },
+        });
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+
+        const active = getActiveFileTab(next);
+        if (active && active.id === live.id) {
+          setCurrentFile(active.currentFile);
+          currentFileRef.current = active.currentFile;
+          setEditorContent(active.editorContent);
+          editorContentRef.current = active.editorContent;
+          setEditedFileName(active.editedFileName || String(active.currentFile?.name || ''));
+          editedFileNameRef.current = active.editedFileName || String(active.currentFile?.name || '');
+        }
+        return true;
+      }
+
+      const placeholder = {
+        type,
+        id: node.path,
+        name: node.name,
+        viewer: 'loading',
+      };
+
+      const ok = commitOpenFile(placeholder, '');
+      if (ok && !skipNavigate && !didNavigateEarly) {
+        goToViewPath();
+        didNavigateEarly = true;
+      }
+      return ok;
+    };
+
+    try {
+      if (type === 'webdav') {
       if (!webdavReady) return;
       try {
+        const ok = markAsLoading();
+        if (!ok) return;
+
         const backend = createWebdavBackend(webdavConfig);
         const opened = await openPathFileFromBackend({ backend, type: 'webdav', node });
         if (!opened) return;
@@ -3087,13 +3141,16 @@ function MainApp() {
         console.error('WebDAV Read Error:', err);
       }
       return;
-    }
+      }
 
     const ext = (node.name.split('.').pop() || '').toLowerCase();
 
     if (type === 's3') {
       const client = getS3Client();
       if (!client) return;
+
+      const ok = markAsLoading();
+      if (!ok) return;
 
       const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 
@@ -3282,6 +3339,9 @@ function MainApp() {
         lastModified: node.lastModified,
       }, '');
     } else if (type === 'local') {
+      const ok = markAsLoading();
+      if (!ok) return;
+
       const file = await node.handle.getFile();
       const serverLastModTs = file.lastModified ?? 0;
 
@@ -3413,6 +3473,30 @@ function MainApp() {
       const workspace = sessionWorkspaceRef.current;
       if (!workspace) return;
       applySessionFileToEditor(node.path, workspace, { skipNavigate });
+    }
+    } finally {
+      try {
+        if (
+          openFileRequestSeqRef.current === attemptId &&
+          currentFileRef.current?.type === type &&
+          currentFileRef.current?.id === node.path &&
+          currentFileRef.current?.viewer === 'loading'
+        ) {
+          const ok = commitOpenFile(
+            {
+              type,
+              id: node.path,
+              name: node.name,
+              viewer: 'unsupported',
+              lastModified: node.lastModified,
+            },
+            '',
+          );
+          if (ok && !skipNavigate && !didNavigateEarly) goToViewPath();
+        }
+      } catch (e) {
+        console.error('Failed to settle loading viewer:', e);
+      }
     }
   }, [
     navigate,

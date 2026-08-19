@@ -898,7 +898,12 @@ export default function EditorPane({
       )}
       </div>
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-odp-surface h-full">
-        {viewer === 'markdown' ? (
+        {viewer === 'loading' ? (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3">
+            <Loader2 size={18} className="animate-spin text-gray-400 dark:text-gray-500" aria-hidden />
+            <div className="text-sm text-gray-500 dark:text-odp-muted">파일 불러오는 중…</div>
+          </div>
+        ) : viewer === 'markdown' ? (
           <>
             <div className="flex-1 min-h-0">
               {recordingViewMode && recordingAudioUrl ? (
