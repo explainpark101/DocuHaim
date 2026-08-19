@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { listOpenAiCompatibleModels } from '@/utils/openaiCompatibleClient';
 import {
   loadLastUsedOpenAiCompatibleModel,
   saveLastUsedOpenAiCompatibleModel,
 } from '@/utils/openaiCompatibleSettings';
-
-type ModelOption = { id: string; displayName: string };
+import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 
 type OpenAiCompatibleModelSelectProps = {
   getBaseUrl: () => string | Promise<string>;
@@ -25,12 +24,11 @@ export default function OpenAiCompatibleModelSelect({
   autoLoad = false,
   className = '',
 }: OpenAiCompatibleModelSelectProps) {
-  const listId = useId();
   const getBaseUrlRef = useRef(getBaseUrl);
   const getApiKeyRef = useRef(getApiKey);
   getBaseUrlRef.current = getBaseUrl;
   getApiKeyRef.current = getApiKey;
-  const [fetched, setFetched] = useState<ModelOption[]>([]);
+  const [fetched, setFetched] = useState<ModelIdOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -70,17 +68,12 @@ export default function OpenAiCompatibleModelSelect({
   return (
     <div className={className}>
       <div className="flex items-center gap-2">
-        <input
-          type="text"
-          autoComplete="off"
-          spellCheck={false}
+        <ModelIdInputDropdown
           value={value}
-          onChange={(e) => handleChange(e.target.value)}
-          disabled={loading}
+          onChange={handleChange}
+          options={fetched}
+          loading={loading}
           placeholder="모델 ID 직접 입력 (예: gpt-4o-mini)"
-          list={listId}
-          aria-label="모델 ID"
-          className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
         />
         <button
           type="button"
@@ -93,41 +86,6 @@ export default function OpenAiCompatibleModelSelect({
           새로고침
         </button>
       </div>
-      <datalist id={listId}>
-        {fetched.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.displayName}
-          </option>
-        ))}
-      </datalist>
-      {fetched.length > 0 ? (
-        <div
-          role="listbox"
-          aria-label="서버에서 가져온 모델"
-          className="mt-1.5 max-h-36 overflow-auto rounded border border-gray-200 bg-white dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-        >
-          {fetched.map((m) => {
-            const selected = m.id === value;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                onClick={() => handleChange(m.id)}
-                className={[
-                  'block w-full truncate px-2 py-1.5 text-left text-[12px]',
-                  selected
-                    ? 'bg-blue-50 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200'
-                    : 'text-gray-700 hover:bg-gray-50 dark:text-odp-fg dark:hover:bg-odp-focusBg',
-                ].join(' ')}
-              >
-                {m.displayName}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
       <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
         새로고침으로 서버 모델을 가져오거나, 모델 ID를 직접 입력하세요.
       </p>

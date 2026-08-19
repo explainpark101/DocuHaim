@@ -145,9 +145,6 @@ export async function generateGeminiTransform({ apiKey, model, instruction, sele
   const hasImages = imageList.length > 0;
 
   if (!trimmedInstruction) throw new Error('지시사항을 입력하세요.');
-  if (!trimmedSelection && !hasImages) {
-    throw new Error('에디터에서 텍스트를 선택하거나 이미지를 추가하세요.');
-  }
 
   const parts = buildContentParts({
     instruction: trimmedInstruction,

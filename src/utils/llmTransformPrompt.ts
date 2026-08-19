@@ -21,11 +21,15 @@ export function buildLlmTransformPrompt({
     lines.push(
       '첨부된 이미지를 참고하여 지시사항에 따라 결과만 출력하세요. 설명이나 부가 코멘트는 최소화하세요.',
     );
-  } else {
+  } else if (trimmedSelection) {
     lines.push(
       '아래는 사용자가 선택한 텍스트입니다. 지시사항에 따라 결과만 출력하세요. 설명이나 부가 코멘트는 최소화하세요.',
       '',
       trimmedSelection,
+    );
+  } else {
+    lines.push(
+      '선택된 텍스트가 없습니다. 지시사항에 따라 결과만 출력하세요. 설명이나 부가 코멘트는 최소화하세요.',
     );
   }
 

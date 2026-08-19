@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { listGeminiModels } from '@/utils/geminiClient';
 import { withLlmProfileApiKey } from '@/utils/llmApiKeySession';
@@ -8,6 +8,11 @@ import {
   saveLastUsedGeminiModel,
 } from '@/utils/geminiModelSettings';
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
+
+// Module-level cache so repeated mount/unmount (e.g. AI panel show/hide) doesn't spam model listing.
+let cachedGeminiModels = null;
+let cachedGeminiModelsKey = null;
+let geminiModelsInFlight = null; // { key: string, promise: Promise<ModelOption[]> }
 
 function formatModelLabel(model) {
   if (isFreeTierBlockedModel(model.id)) {
@@ -33,16 +38,25 @@ export default function GeminiModelSelect({
   autoLoad = false,
   className = '',
 }) {
+  const getGeminiApiKeyRef = useRef(getGeminiApiKey);
+  getGeminiApiKeyRef.current = getGeminiApiKey;
+
+  const valueRef = useRef(value);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
   const [models, setModels] = useState(() => mergeModelOptions(FALLBACK_GEMINI_MODELS, value));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const refreshModels = useCallback(async () => {
-    if (typeof getGeminiApiKey !== 'function') {
+  const refreshModels = useCallback(async ({ force = false } = {}) => {
+    const getter = getGeminiApiKeyRef.current;
+    if (typeof getter !== 'function') {
       setError('API 키가 설정되지 않았습니다.');
       return;
     }
-    const key = (await Promise.resolve(getGeminiApiKey()))?.trim();
+    const key = (await Promise.resolve(getter()))?.trim();
     if (!key) {
       setError('API 키가 설정되지 않았습니다.');
       return;
@@ -51,17 +65,31 @@ export default function GeminiModelSelect({
     setLoading(true);
     setError('');
     try {
-      const list = await withLlmProfileApiKey(profileId, getGeminiApiKey, (apiKey) =>
-        listGeminiModels(apiKey),
-      );
-      setModels(mergeModelOptions(list, value));
+      if (!force && cachedGeminiModels && cachedGeminiModelsKey === key) {
+        setModels(mergeModelOptions(cachedGeminiModels, valueRef.current));
+        return;
+      }
+
+      if (geminiModelsInFlight && geminiModelsInFlight.key === key) {
+        const list = await geminiModelsInFlight.promise;
+        setModels(mergeModelOptions(list, valueRef.current));
+        return;
+      }
+
+      const promise = withLlmProfileApiKey(profileId, getter, (apiKey) => listGeminiModels(apiKey));
+      geminiModelsInFlight = { key, promise };
+      const list = await promise;
+      cachedGeminiModels = list;
+      cachedGeminiModelsKey = key;
+      setModels(mergeModelOptions(list, valueRef.current));
     } catch (err) {
       setError(err?.message || '모델 목록을 불러오지 못했습니다.');
-      setModels(mergeModelOptions(FALLBACK_GEMINI_MODELS, value));
+      setModels(mergeModelOptions(FALLBACK_GEMINI_MODELS, valueRef.current));
     } finally {
       setLoading(false);
+      if (geminiModelsInFlight && geminiModelsInFlight.key === key) geminiModelsInFlight = null;
     }
-  }, [getGeminiApiKey, profileId, value]);
+  }, [profileId]);
 
   useEffect(() => {
     setModels((prev) => mergeModelOptions(prev, value));
@@ -94,7 +122,7 @@ export default function GeminiModelSelect({
         </select>
         <button
           type="button"
-          onClick={refreshModels}
+          onClick={() => void refreshModels({ force: true })}
           disabled={loading}
           className="inline-flex shrink-0 items-center gap-1 rounded border border-gray-300 px-2 py-1.5 text-[11px] hover:bg-gray-50 disabled:opacity-60 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
           title="AI Studio 모델 목록 새로고침"

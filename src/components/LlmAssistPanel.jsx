@@ -160,7 +160,7 @@ export default function LlmAssistPanel({
           value={selectedText}
           rows={4}
           className="w-full resize-y rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] leading-relaxed text-gray-800 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
-          placeholder="에디터에서 텍스트를 선택하거나 아래에 이미지를 추가하세요."
+          placeholder="선택된 텍스트가 없어도, 입력한 지시사항으로 실행할 수 있습니다."
         />
       </div>
 

@@ -139,6 +139,8 @@ export default function LlmAssistModal({
   }, []);
 
   const startPositionDrag = useCallback((e, { onTap } = {}) => {
+    // We handle touch dragging via touchstart/touchend to avoid scroll/gesture quirks.
+    if (e.pointerType === 'touch') return;
     if (e.button !== 0) return;
     e.preventDefault();
     const startX = e.clientX;
@@ -182,6 +184,76 @@ export default function LlmAssistModal({
 
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
+  }, [position.leftVw, position.topVh]);
+
+  const startPositionTouchDrag = useCallback((e, { onTap } = {}) => {
+    const touches = e.changedTouches;
+    if (!touches || !touches.length) return;
+
+    // Only track the first touch that started the gesture.
+    const touch = touches[0];
+    const identifier = touch.identifier;
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+
+    // Prevent iOS/Android scrolling while the user drags the panel.
+    e.preventDefault();
+
+    let dragged = false;
+    dragRef.current = {
+      active: true,
+      startX,
+      startY,
+      startLeftVw: position.leftVw,
+      startTopVh: position.topVh,
+      touchIdentifier: identifier,
+    };
+
+    const onTouchMove = (ev) => {
+      if (!dragRef.current.active) return;
+      const current = Array.from(ev.touches || []).find((t) => t.identifier === identifier);
+      if (!current) return;
+
+      if (Math.hypot(current.clientX - startX, current.clientY - startY) > DRAG_THRESHOLD_PX) {
+        dragged = true;
+      }
+
+      const vw = window.innerWidth || 1;
+      const vh = window.innerHeight || 1;
+      const dxVw = ((current.clientX - startX) / vw) * 100;
+      const dyVh = ((current.clientY - startY) / vh) * 100;
+      setPosition({
+        leftVw: Math.min(92, Math.max(0, dragRef.current.startLeftVw + dxVw)),
+        topVh: Math.min(90, Math.max(0, dragRef.current.startTopVh + dyVh)),
+      });
+
+      // Required so preventDefault works even in Safari.
+      ev.preventDefault();
+    };
+
+    const finalize = () => {
+      if (!dragRef.current.active) return;
+      dragRef.current.active = false;
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
+      setPosition((prev) => {
+        saveLlmModalPosition(prev);
+        return prev;
+      });
+      if (!dragged) onTap?.();
+    };
+
+    const onTouchEnd = (ev) => {
+      if (!dragRef.current.active) return;
+      const ended = Array.from(ev.changedTouches || []).some((t) => t.identifier === identifier);
+      if (!ended) return;
+      finalize();
+    };
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd, { passive: false });
+    document.addEventListener('touchcancel', onTouchEnd, { passive: false });
   }, [position.leftVw, position.topVh]);
 
   const refreshSelection = useCallback(() => {
@@ -289,11 +361,6 @@ export default function LlmAssistModal({
     setLoading(true);
     try {
       const text = refreshSelection();
-      const hasText = Boolean(text.trim());
-      const hasImages = attachedImages.length > 0;
-      if (!hasText && !hasImages) {
-        throw new Error('에디터에서 텍스트를 선택하거나 이미지를 추가하세요.');
-      }
       if (!selectedProfile) {
         throw new Error('설정에서 AI 제공자를 추가한 뒤 선택하세요.');
       }
@@ -621,6 +688,7 @@ export default function LlmAssistModal({
         role="button"
         tabIndex={0}
         onPointerDown={(e) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
+        onTouchStart={(e) => startPositionTouchDrag(e, { onTap: popoutActive ? undefined : handleShow })}
         onKeyDown={(e) => {
           if (popoutActive) return;
           if (e.key === 'Enter' || e.key === ' ') {
@@ -628,7 +696,7 @@ export default function LlmAssistModal({
             handleShow();
           }
         }}
-        className="fixed z-[10050] flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
+        className="fixed z-10050 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
         style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
         title={chipTitle}
         aria-label={chipLabel}
@@ -641,15 +709,16 @@ export default function LlmAssistModal({
 
   return (
     <div
-      className="fixed z-[10050] w-[min(92vw,420px)] rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
+      className="fixed z-10050 w-[min(92vw,420px)] rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
       style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
       role="dialog"
       aria-modal="false"
       aria-label="AI 텍스트 도우미"
     >
       <div
-        className="flex cursor-grab active:cursor-grabbing items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
+        className="flex touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
         onPointerDown={(e) => startPositionDrag(e)}
+        onTouchStart={(e) => startPositionTouchDrag(e)}
       >
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
@@ -660,6 +729,7 @@ export default function LlmAssistModal({
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={handleOpenPopout}
             disabled={popoutActive}
             className="rounded p-1 text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-violet-200 dark:hover:bg-violet-900/50"
@@ -671,6 +741,7 @@ export default function LlmAssistModal({
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={handleHide}
             className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
             title="숨기기"
@@ -681,6 +752,7 @@ export default function LlmAssistModal({
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={handleClose}
             className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
             title="닫기"
