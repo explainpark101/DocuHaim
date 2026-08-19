@@ -4,6 +4,7 @@
 
 export type EditorActionId =
   | 'editor-insert-footnote'
+  | 'editor-insert-snippet'
   | 'editor-bold'
   | 'editor-italic'
   | 'editor-underline'
@@ -34,7 +35,7 @@ export type EditorActionId =
   | 'editor-image-clip'
   | 'editor-convert-all-images-to-wiki';
 
-export type EditorActionHandler = () => void | Promise<void>;
+export type EditorActionHandler = (payload?: unknown) => void | Promise<void>;
 
 type Listener = () => void;
 
@@ -75,11 +76,11 @@ export function isEditorActionId(id: string | undefined | null): id is EditorAct
   return Boolean(id && handlers.has(id as EditorActionId));
 }
 
-export function runEditorAction(id: string): boolean {
+export function runEditorAction(id: string, payload?: unknown): boolean {
   const fn = handlers.get(id as EditorActionId);
   if (!fn) return false;
   try {
-    void fn();
+    void fn(payload);
     return true;
   } catch (err) {
     console.warn('[advancedSearch] editor action failed', id, err);

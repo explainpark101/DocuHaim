@@ -8486,6 +8486,7 @@ function MainApp() {
           }
           onOpenFile={openAdvancedSearchFile}
           preferPrintActions
+          snippetConfig={snippetConfig}
         />
         <AuthModal
           isOpen={showAuthModal && !shareBlockingAuth}
@@ -8607,6 +8608,7 @@ function MainApp() {
           getPresignedUrl={getChatImageUrlForPath}
           currentFile={currentFile}
           editorContent={editorContent}
+          snippetConfig={snippetConfig}
           theme={theme}
         />
       ) : null}

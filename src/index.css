@@ -382,3 +382,9 @@ html.s3haim-editor-autocomplete-off .cm-tooltip.cm-tooltip-autocomplete {
 .md-editor-preview [data-mirror-edit-active] {
   cursor: text;
 }
+
+/* Global table cells: don't break words inside <th>/<td>. */
+th,
+td {
+  word-break: keep-all;
+}

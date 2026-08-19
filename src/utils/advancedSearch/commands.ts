@@ -31,6 +31,9 @@ import {
 import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
 
+/** Dynamic snippet command (created from snippetConfig). */
+export type SnippetActionId = `snippet-insert-${string}`;
+
 export type AppCommandId =
   | 'home'
   | 'settings'
@@ -81,7 +84,8 @@ export type AppCommandId =
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
   | FootnoteDisplayModeCommandId
-  | FootnoteInsertCommandId;
+  | FootnoteInsertCommandId
+  | SnippetActionId;
 
 export type AppCommand = {
   id: AppCommandId;
@@ -115,6 +119,19 @@ export type AppCommandContext = {
   editorAutocompleteEnabled?: boolean;
   /** Current Mirror Edit preference (localStorage). */
   editorMirrorEditEnabled?: boolean;
+  /**
+   * Snippet configuration from `.settings/snippets.json`.
+   * Used to expose snippet commands in Advanced Search.
+   */
+  snippetConfig?: {
+    snippets: Array<{
+      id: string;
+      name?: string;
+      prefix?: string;
+      body?: string;
+      description?: string;
+    }>;
+  };
   /**
    * When true, getAppCommands also includes editor/print toolbar actions.
    * Prefer matchAppCommands which attaches page actions only for non-empty queries.
@@ -765,6 +782,72 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
         description: cmd.description,
         path: '',
         keywords: [...cmd.keywords],
+      });
+    }
+  }
+
+  // Snippets: only show when query is non-empty (page actions path),
+  // and only when an editor is mounted (so insertion can succeed).
+  if (context?.editorActionsAvailable && context.snippetConfig?.snippets?.length) {
+    const snippets = context.snippetConfig.snippets || [];
+    const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+    const modLabelDisplay = isMac ? 'Cmd' : 'Ctrl';
+    const modLabelLower = isMac ? 'cmd' : 'ctrl';
+
+    const formatKeyCombo = (combo: string): string => {
+      return String(combo || '')
+        .toLowerCase()
+        .replace(/\bmod\b/g, modLabelDisplay)
+        .split('+')
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+        .join(' + ');
+    };
+
+    for (const s of snippets) {
+      const id = String(s?.id || '').trim();
+      const prefix = String(s?.prefix || '').trim();
+      const body = String(s?.body || '').trim();
+      if (!id || !prefix || !body) continue;
+
+      const name = String(s?.name || '').trim();
+      const description = String(s?.description || '').trim();
+
+      const firstLine = body.split(/\r?\n/)[0]?.trim() || '';
+      const bodyPreview = firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine;
+
+      const prefixLower = prefix.toLowerCase();
+      const prefixCmd = prefixLower.replace(/mod/g, 'cmd');
+      const prefixCtrl = prefixLower.replace(/mod/g, 'ctrl');
+
+      const prefixWithSpaces = prefixLower.replace(/\+/g, ' ');
+      const prefixCmdWithSpaces = prefixCmd.replace(/\+/g, ' ');
+      const prefixCtrlWithSpaces = prefixCtrl.replace(/\+/g, ' ');
+
+      const title = name ? `스니펫 · ${name}` : `스니펫 · ${formatKeyCombo(prefix)}`;
+      const cmdDescription = `${description ? `${description} · ` : ''}단축키: ${formatKeyCombo(prefix)} · ${bodyPreview}`;
+
+      list.push({
+        id: (`snippet-insert-${id}` as SnippetActionId),
+        title,
+        description: cmdDescription,
+        // Store snippet id here (hit.path) so host can resolve body.
+        path: id,
+        keywords: [
+          '스니펫',
+          'snippet',
+          name,
+          description,
+          prefixLower,
+          prefixWithSpaces,
+          prefixCmd,
+          prefixCmdWithSpaces,
+          prefixCtrl,
+          prefixCtrlWithSpaces,
+          modLabelLower, // helps matching "cmd/ctrl" too
+          bodyPreview,
+        ].filter(Boolean),
       });
     }
   }

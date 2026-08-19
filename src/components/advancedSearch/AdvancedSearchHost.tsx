@@ -130,6 +130,16 @@ export type AdvancedSearchHostProps = {
   currentFile?: OpenFileSnapshot;
   /** Live editor markdown (preferred over currentFile.content for export). */
   editorContent?: string;
+  /** `.settings/snippets.json` content for dynamic snippet commands. */
+  snippetConfig?: {
+    snippets: Array<{
+      id: string;
+      name?: string;
+      prefix?: string;
+      body?: string;
+      description?: string;
+    }>;
+  };
   theme?: 'light' | 'dark' | string;
   /** Prefer print-oriented empty hints when on the export page. */
   preferPrintActions?: boolean;
@@ -147,6 +157,7 @@ export default function AdvancedSearchHost({
   getPresignedUrl,
   currentFile = null,
   editorContent = '',
+  snippetConfig,
   theme = 'light',
   preferPrintActions = false,
 }: AdvancedSearchHostProps) {
@@ -314,6 +325,7 @@ export default function AdvancedSearchHost({
         chatActionsAvailable,
         editorAutocompleteEnabled,
         editorMirrorEditEnabled,
+        snippetConfig,
       });
 
       if (!printActionsAvailable) return hits;
@@ -358,6 +370,7 @@ export default function AdvancedSearchHost({
       chatActionsAvailable,
       editorAutocompleteEnabled,
       editorMirrorEditEnabled,
+      snippetConfig,
       pickerMode,
       browsePath,
       getChatGroups,
@@ -417,6 +430,16 @@ export default function AdvancedSearchHost({
           setPickerMode('browse-directory');
           setBrowsePath('');
           return false;
+        }
+
+        if (commandId?.startsWith('snippet-insert-')) {
+          const snippetId = hit.path;
+          const snippet = snippetConfig?.snippets?.find((s) => s.id === snippetId);
+          if (!snippet?.body) return;
+          window.setTimeout(() => {
+            runEditorAction('editor-insert-snippet', snippet.body);
+          }, 0);
+          return;
         }
 
         if (commandId === 'create-file' || commandId === 'create-folder') {
@@ -566,6 +589,7 @@ export default function AdvancedSearchHost({
       onRequestCreateItem,
       openExportPdf,
       currentFile,
+      snippetConfig,
       pickerMode,
       browsePath,
       enterBrowseFolder,

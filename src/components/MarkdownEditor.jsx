@@ -635,8 +635,8 @@ export default function MarkdownEditor({
     if (sig === coverIssuesAlertSigRef.current) return;
     coverIssuesAlertSigRef.current = sig;
     showAlert({
-      title: '?? ??? ??',
-      message: `??(note-cover) ???? ??? ????.\n\n${sig}`,
+      title: 'Cover syntax error',
+      message: `note-cover has invalid syntax.\n\n${sig}`,
     });
   }, [value, showAlert]);
 
@@ -816,8 +816,8 @@ export default function MarkdownEditor({
       const opened = openHaimTableEditRef.current(from, to);
       if (!opened) {
         showAlert({
-          title: '? ??',
-          message: '?? ?? ?? ??? ???? ? ?? ??? ???.',
+          title: 'No table',
+          message: 'No haim-table found at the cursor or selection position.',
         });
       }
     };
@@ -849,6 +849,20 @@ export default function MarkdownEditor({
     };
     handlers['editor-insert-footnote'] = () => {
       requestOpenAdvancedSearch({ mode: 'footnote-insert' });
+    };
+
+    // Advanced Search snippet insertion: host passes snippet body as payload.
+    handlers['editor-insert-snippet'] = (payload) => {
+      const body = typeof payload === 'string' ? payload : '';
+      if (!body) return;
+
+      restoreSelectionIfNeeded();
+      const api = getApi();
+      const view = api?.getEditorView?.();
+      if (!view) return;
+
+      view.dispatch(view.state.replaceSelection(body));
+      view.focus?.();
     };
 
     return registerEditorActions(handlers);
@@ -1766,8 +1780,8 @@ export default function MarkdownEditor({
       const opened = openHaimTablePreviewRef.current(table, previewRoot);
       if (!opened) {
         showAlert({
-          title: '? ??',
-          message: '? ?? ???? ?? ?? ?????. ??? ??? ??? ??? ???.',
+          title: 'No table',
+          message: 'No haim-table found at this position. Click inside a table cell and try again.',
         });
       }
     };
@@ -1898,12 +1912,12 @@ export default function MarkdownEditor({
     async ({ file }) => {
       const modal = wikiImageModalState;
       if (!modal?.key || typeof onUploadImage !== 'function') {
-        throw new Error('??? ???? ??? ? ????.');
+        throw new Error('Upload handler not available.');
       }
       const paths = await onUploadImage([file]);
       const nextPath = paths?.[0];
       if (!nextPath) {
-        throw new Error('?? ??? ???? ??????.');
+        throw new Error('Upload succeeded but no path was returned.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') return;
       const next =
@@ -1929,10 +1943,10 @@ export default function MarkdownEditor({
     async ({ width, height }) => {
       const modal = wikiImageModalState;
       if (!modal?.key || modal.kind !== 'markdown') {
-        throw new Error('??? ???? ?? ? ????.');
+        throw new Error('Cannot convert: not a markdown image.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') {
-        throw new Error('??? ??? ? ????.');
+        throw new Error('Cannot apply change.');
       }
       const prepared = await prepareMarkdownImageForWikiConvert({
         markdownSrc: modal.key,
@@ -1944,12 +1958,12 @@ export default function MarkdownEditor({
         nextPath = prepared.path;
       } else {
         if (typeof onUploadImage !== 'function') {
-          throw new Error('??? ???? ??? ? ????.');
+          throw new Error('Upload handler not available.');
         }
         const paths = await onUploadImage([prepared.file]);
         nextPath = paths?.[0] || '';
         if (!nextPath) {
-          throw new Error('??? ???? ??????.');
+          throw new Error('Upload succeeded but no path was returned.');
         }
       }
       const next = replaceMarkdownImageWithWikiPath(value, {
@@ -1970,24 +1984,24 @@ export default function MarkdownEditor({
     async ({ width, height }) => {
       const modal = wikiImageModalState;
       if (!modal?.key || !modal?.kind) {
-        throw new Error('??? ???? ?? ? ????.');
+        throw new Error('Cannot convert: image target is missing.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') {
-        throw new Error('??? ??? ? ????.');
+        throw new Error('Cannot apply change.');
       }
       const apiKey =
         typeof getImgbbApiKey === 'function'
           ? String((await Promise.resolve(getImgbbApiKey())) || '').trim()
           : '';
       if (!apiKey) {
-        throw new Error('ImgBB API ?? ????. ???? ?? ?????.');
+        throw new Error('ImgBB API key is missing. Please add it in settings.');
       }
       const fetchSrc = resolveImgbbFetchSrc({
         path: modal.key,
         imageSrc: modal.imageSrc,
       });
       if (!fetchSrc) {
-        throw new Error('???? ??? ??? ?? ?????.');
+        throw new Error('Cannot determine image source URL for upload.');
       }
       const uploaded = await uploadImageToImgbb({
         apiKey,
@@ -2012,7 +2026,7 @@ export default function MarkdownEditor({
               height,
             });
       if (!next.updated || next.markdown === value) {
-        throw new Error('?????? ?? ???? ?? ?????.');
+        throw new Error('ImgBB upload succeeded but markdown could not be updated.');
       }
       onChangeWithUndoHistory(next.markdown);
     },
@@ -2023,10 +2037,10 @@ export default function MarkdownEditor({
     if (typeof onRegisterConvertAllImagesToWiki !== 'function') return undefined;
     onRegisterConvertAllImagesToWiki(async () => {
       if (previewOnly) {
-        throw new Error('??????? ??? ? ????.');
+        throw new Error('Cannot convert images in preview-only mode.');
       }
       if (typeof onChangeWithUndoHistory !== 'function') {
-        throw new Error('??? ??? ? ????.');
+        throw new Error('Cannot apply change.');
       }
       if (!hasStandardMarkdownImages(value)) {
         return { markdown: value, converted: 0, failed: [] };
@@ -2035,7 +2049,7 @@ export default function MarkdownEditor({
         currentNotePath: currentFile?.id ?? null,
         uploadFiles: async (files) => {
           if (typeof onUploadImage !== 'function') {
-            throw new Error('??? ???? ??? ? ????.');
+            throw new Error('Upload handler not available.');
           }
           return onUploadImage(files);
         },
@@ -2272,12 +2286,12 @@ export default function MarkdownEditor({
 
   const handleToolbarImageClipConfirm = useCallback(async (file) => {
     if (!file || typeof onUploadImage !== 'function') {
-      throw new Error('??? ???? ??? ? ????.');
+      throw new Error('Upload handler not available.');
     }
     const paths = await onUploadImage([file]);
     const nextPath = paths?.[0];
     if (!nextPath) {
-      throw new Error('?? ??? ???? ??????.');
+      throw new Error('Upload succeeded but no path was returned.');
     }
     insertMarkdownAtCursor(`![[${nextPath}]]\n`);
     setClipCropFile(null);
@@ -2417,7 +2431,7 @@ export default function MarkdownEditor({
             handleProps={catalogResizeHandleProps}
             isResizing={catalogResizing}
             visibleOnHover
-            label="?? ?? ??"
+            label="TOC resize handle"
             style={{
               position: 'fixed',
               top: catalogHandleBox.top,
@@ -2435,14 +2449,14 @@ export default function MarkdownEditor({
           aria-live="polite"
         >
           <Loader2 size={16} className="animate-spin shrink-0" />
-          <span>??? ??? ?? {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
+          <span>Uploading image... {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
           {typeof onCancelUploadImage === 'function' && (
             <button
               type="button"
               onClick={onCancelUploadImage}
               className="ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950"
             >
-              ??
+              Cancel
             </button>
           )}
         </div>
@@ -2589,18 +2603,18 @@ export default function MarkdownEditor({
           onClick={() => setFreeTransformConfirmOpen(true)}
           className="fixed z-70 bottom-4 left-1/2 -translate-x-1/2 max-w-[min(92vw,680px)] rounded-lg border border-blue-300/60 bg-blue-950/85 px-3 py-2 text-left text-[11px] leading-4 text-blue-50 shadow-lg backdrop-blur-sm"
         >
-          <span className="block font-semibold mb-1">??? ???? ??</span>
-          <span className="block">- Shift + ???: ?? ?? ?? / ?? ???: ?? ??</span>
-          <span className="block">- ?? ???: ?? ?? ??</span>
-          <span className="block">- ?? ? ??(? ??? ??): ?? ?? ??</span>
+          <span className="block font-semibold mb-1">Free transform guide</span>
+          <span className="block">- Shift + drag: keep aspect ratio / plain drag: ignore ratio</span>
+          <span className="block">- Touch drag: keeps aspect ratio</span>
+          <span className="block">- Click elsewhere (including this banner): confirm transform</span>
         </button>
       )}
       <ConfirmModal
         isOpen={coverExportConfirmOpen}
-        title="?? ???? ??"
-        message="PDF ???? ????? ??? ???? ??? ? ????. ??????"
-        confirmLabel="??"
-        cancelLabel="??"
+        title="Cover export"
+        message="You need to open the Export PDF page to export the cover. Continue?"
+        confirmLabel="Continue"
+        cancelLabel="Cancel"
         onConfirm={() => {
           setCoverExportConfirmOpen(false);
           navigateToExportPdf({ openCoverEdit: true });
@@ -2609,11 +2623,11 @@ export default function MarkdownEditor({
       />
       <ConfirmModal
         isOpen={freeTransformConfirmOpen}
-        title="???? ??"
-        message="?? ??? ??? ??????"
-        confirmLabel="??"
-        cancelLabel="?? ??"
-        discardLabel="?? ???"
+        title="Save transform"
+        message="How would you like to handle the current transform?"
+        confirmLabel="Apply"
+        cancelLabel="Keep editing"
+        discardLabel="Reset transform"
         onConfirm={handleConfirmTransformApply}
         onCancel={() => setFreeTransformConfirmOpen(false)}
         onDiscard={handleConfirmTransformReset}

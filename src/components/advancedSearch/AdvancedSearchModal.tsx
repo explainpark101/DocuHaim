@@ -107,6 +107,7 @@ function reasonLabel(hit: AdvancedSearchHit): string {
     ) {
       return '설정 토글';
     }
+    if (hit.commandId?.startsWith('snippet-insert-')) return '스니펫';
     if (hit.commandId === 'print-scroll-heading') return '목차';
     if (hit.commandId?.startsWith('print-paper-')) return '용지';
     if (hit.commandId?.startsWith('print-')) return '인쇄';
@@ -188,6 +189,7 @@ function HitIcon({
     if (commandId === 'editor-mirror-edit-toggle') {
       return <FlipHorizontal2 size={16} className={className} />;
     }
+    if (commandId?.startsWith('snippet-insert-')) return <Sparkles size={16} className={className} />;
     if (commandId === 'editor-bold') return <Bold size={16} className={className} />;
     if (
       commandId === 'editor-insert-footnote' ||
@@ -506,7 +508,7 @@ export default function AdvancedSearchModal({
         id={listId}
         role="listbox"
         aria-label="검색 결과"
-        className="h-[min(52vh,420px)] min-h-[4.5rem] overscroll-contain"
+        className="h-[min(52vh,420px)] min-h-18 overscroll-contain"
       >
         {emptyHint ? (
           <p className="px-4 py-6 text-center text-sm text-gray-500 dark:text-odp-muted">
