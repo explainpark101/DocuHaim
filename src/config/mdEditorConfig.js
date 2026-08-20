@@ -18,6 +18,7 @@ import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdow
 import { footnoteMarkdownItPlugin } from '@/utils/footnoteMarkdownIt';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { HLJS_ATOM_ONE_DARK_CSS } from '@/utils/mdEditorCodeTheme';
+import { patchMermaidRender } from '@/utils/mermaidFixLabelNewlines';
 import '@/utils/markedHeadingLevels';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
@@ -26,6 +27,9 @@ import '@/styles/md-editor-rt/preview-heading-fold.css';
 import '@/styles/md-editor-rt/footnotes.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';
+
+// Pre-render $$math$$ + expand label "\\n" so multi-line nodes layout correctly.
+patchMermaidRender(mermaid);
 
 const TABLE_XSS_ATTRS = ['style', 'class', 'colspan', 'rowspan', 'align', 'valign', 'width', 'height', 'data-haim-table', 'data-haim-r', 'data-haim-c', 'data-haim-section', 'data-haim-width', 'data-haim-align', 'data-haim-box-w', 'data-haim-box-h'];
 
@@ -121,6 +125,13 @@ config({
     mermaid: {
       instance: mermaid,
     },
+  },
+  // Allow pre-rendered KaTeX MathML + <br/> from prepareMermaidSource.
+  mermaidConfig(config) {
+    return {
+      ...config,
+      securityLevel: 'loose',
+    };
   },
   markdownItConfig(md) {
     XSSPlugin(md, {

@@ -48,6 +48,36 @@ function emitBuildIdPlugin(): Plugin {
   };
 }
 
+/**
+ * Mermaid createText turns <br> into "\n" before KaTeX render, but KaTeX
+ * splitting only looked for <br> — multi-line $$ labels stayed one nowrap row.
+ * Split on real newlines too (build / non-prebundled loads).
+ */
+function fixMermaidKatexNewlinesPlugin(): Plugin {
+  const patch = (code: string): string | null => {
+    if (!code.includes('hasKatex(line)') || !code.includes('split(lineBreakRegex)')) {
+      return null;
+    }
+    const next = code.replace(
+      /text\.split\(lineBreakRegex\)\.map\(/g,
+      'text.split(/\\n|<br\\s*\\/?>/gi).map(',
+    );
+    return next === code ? null : next;
+  };
+
+  return {
+    name: 'fix-mermaid-katex-newlines',
+    enforce: 'pre',
+    transform(code, id) {
+      const normalizedId = id.replace(/\\/g, '/');
+      if (!normalizedId.includes('mermaid')) return;
+      const next = patch(code);
+      if (next == null) return;
+      return { code: next, map: null };
+    },
+  };
+}
+
 /** `/docs` (no slash) → `/docs/` so SPA history fallback does not serve the app shell. */
 function docsTrailingSlashPlugin(): Plugin {
   const bareDocsPath = `${normalizedBase.replace(/\/$/, '')}/docs`.replace(/\/{2,}/g, '/');
@@ -86,6 +116,7 @@ function docsTrailingSlashPlugin(): Plugin {
 }
 
 const plugins: PluginOption[] = [
+  fixMermaidKatexNewlinesPlugin(),
   react({
     // Keep node_modules out; also skip VitePress caches (Babel would otherwise
     // transform huge prebundled deps under .vitepress/cache/deps).
