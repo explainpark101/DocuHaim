@@ -17,6 +17,7 @@ import {
 } from '@/utils/webauthn';
 import { buildS3Tree, getFileLastModifiedMap, findFileNodeByPath, findNodeByPath, flattenTreeToPaths, getRecordingKeysFromTree } from '@/utils/s3Tree';
 import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/treeMove';
+import { resolveNewFileDefaultParentPath } from '@/utils/newFileDefaultParentPath';
 import { allocateUniqueCopyName, allocateUniqueFileSystemName, getTreeChildNames, treeChildNameTaken } from '@/utils/treeCopy';
 import { resolveUploadDestFileName } from '@/utils/uploadNameConflict';
 import { resolveTreeDestName } from '@/utils/treeNameConflict';
@@ -6557,20 +6558,32 @@ function MainApp() {
     [storageMode, localRootHandle, localTree],
   );
 
-  const requestNewFileAtRoot = useCallback(() => {
-    if (storageMode === STORAGE_MODE_LOCAL) {
-      setCreateModalContext({ storageType: 'local', parentPath: '', parentDirHandle: localRootHandle, type: 'file' });
-    } else if (storageMode === STORAGE_MODE_WEBDAV) {
-      setCreateModalContext({ storageType: 'webdav', parentPath: '', parentDirHandle: null, type: 'file' });
-    } else {
-      setCreateModalContext({ storageType: 's3', parentPath: '', parentDirHandle: null, type: 'file' });
-    }
-    setCreateModalOpen(true);
-  }, [storageMode, localRootHandle]);
+  const newFileDefaultParentPath = useMemo(
+    () =>
+      resolveNewFileDefaultParentPath({
+        pathname: location.pathname,
+        chatSurfaceActive,
+        workspaceTabsEnabled,
+        activeTab: activeWorkspaceTab,
+        currentFilePath: currentFile?.id,
+      }),
+    [
+      location.pathname,
+      chatSurfaceActive,
+      workspaceTabsEnabled,
+      activeWorkspaceTab,
+      currentFile?.id,
+    ],
+  );
+
+  /** Cmd/Ctrl+N (PWA) / empty-session create — parent of focused file, or vault root on chat/settings. */
+  const requestNewFile = useCallback(() => {
+    requestAdvancedSearchCreateItem('file', newFileDefaultParentPath);
+  }, [requestAdvancedSearchCreateItem, newFileDefaultParentPath]);
 
   usePwaNewFileShortcut({
     enabled: isUnlocked && canScanStorageUsage,
-    onNewFile: requestNewFileAtRoot,
+    onNewFile: requestNewFile,
   });
 
   const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
@@ -8624,6 +8637,7 @@ function MainApp() {
           getChatGroups={getAdvancedSearchChatGroups}
           getPresignedUrl={getChatImageUrlForPath}
           currentFile={currentFile}
+          defaultCreateParentPath={newFileDefaultParentPath}
           editorContent={editorContent}
           snippetConfig={snippetConfig}
           theme={theme}
@@ -8931,7 +8945,7 @@ function MainApp() {
                       if (isMobile) setSidebarOpen(true);
                       else setSidebarCollapsed(false);
                     },
-                    onRequestCreateFile: requestNewFileAtRoot,
+                    onRequestCreateFile: requestNewFile,
                     onOpenChatWithMyself: () => {
                       if (workspaceTabsEnabledRef.current) openChatWorkspaceTab();
                       else navigate('/chat');

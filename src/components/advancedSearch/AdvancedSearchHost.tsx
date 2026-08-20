@@ -128,6 +128,12 @@ export type AdvancedSearchHostProps = {
     | undefined;
   /** Currently open editor file (for contextual commands like export). */
   currentFile?: OpenFileSnapshot;
+  /**
+   * Default parent folder for create-file / create-folder (vault-relative, trailing `/`).
+   * Empty string = vault root. Prefer this over deriving from `currentFile` alone
+   * so chat/settings surfaces and focused tabs stay correct.
+   */
+  defaultCreateParentPath?: string;
   /** Live editor markdown (preferred over currentFile.content for export). */
   editorContent?: string;
   /** `.settings/snippets.json` content for dynamic snippet commands. */
@@ -156,6 +162,7 @@ export default function AdvancedSearchHost({
   getChatGroups,
   getPresignedUrl,
   currentFile = null,
+  defaultCreateParentPath,
   editorContent = '',
   snippetConfig,
   theme = 'light',
@@ -444,7 +451,10 @@ export default function AdvancedSearchHost({
 
         if (commandId === 'create-file' || commandId === 'create-folder') {
           const type = commandId === 'create-folder' ? 'folder' : 'file';
-          const parentPath = parentDirOfFilePath(currentFile?.id);
+          const parentPath =
+            typeof defaultCreateParentPath === 'string'
+              ? defaultCreateParentPath
+              : parentDirOfFilePath(currentFile?.id);
           window.setTimeout(() => {
             onRequestCreateItem?.(type, parentPath);
           }, 0);
@@ -589,6 +599,7 @@ export default function AdvancedSearchHost({
       onRequestCreateItem,
       openExportPdf,
       currentFile,
+      defaultCreateParentPath,
       snippetConfig,
       pickerMode,
       browsePath,

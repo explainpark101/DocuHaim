@@ -7,7 +7,8 @@ type UsePwaNewFileShortcutOptions = {
 };
 
 /**
- * PWA-only: Ctrl/Cmd+N opens the create-file flow instead of a new browser window.
+ * PWA-only: Ctrl/Cmd+N opens the create-file flow (parent = focused file dir)
+ * instead of a new browser window.
  */
 export function usePwaNewFileShortcut({
   enabled = true,
