@@ -6,6 +6,7 @@
 import { config, XSSPlugin } from 'md-editor-rt';
 import { EditorView } from '@codemirror/view';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
+import mermaid from 'mermaid';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
@@ -101,12 +102,6 @@ const PGBR_XSS_EXTENDED_WHITELIST = {
   ],
 };
 
-/** Mermaid CDN: md-editor-rt defaults to 11.9.0, which treats flowchart labels as
- * markdown and leaves literal backslash-n unexpanded. Fixed upstream in 11.12+. */
-const MERMAID_CDN_JS = 'https://unpkg.com/mermaid@11.12.0/dist/mermaid.min.js';
-const MERMAID_CDN_JS_INTEGRITY =
-  'sha384-o+g/BxPwhi0C3RK7oQBxQuNimeafQ3GE/ST4iT2BxVI4Wzt60SH4pq9iXVYujjaS';
-
 config({
   // Fenced ``` blocks: always Atom One Dark (comments + tokens stay visible).
   editorExtensions: {
@@ -122,16 +117,9 @@ config({
     cropper: {
       instance: {},
     },
+    // Use package.json mermaid (skips md-editor-rt CDN 11.9 which ignores backslash-n).
     mermaid: {
-      js: MERMAID_CDN_JS,
-    },
-  },
-  editorExtensionsAttrs: {
-    mermaid: {
-      js: {
-        integrity: MERMAID_CDN_JS_INTEGRITY,
-        crossOrigin: 'anonymous',
-      },
+      instance: mermaid,
     },
   },
   markdownItConfig(md) {

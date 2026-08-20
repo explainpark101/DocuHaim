@@ -217,6 +217,12 @@ function manualChunks(id: string): string | undefined {
     return 'vendor-md-editor';
   }
   if (
+    normalizedId.includes('/node_modules/mermaid/')
+    || normalizedId.includes('/node_modules/@mermaid-js/')
+  ) {
+    return 'vendor-mermaid';
+  }
+  if (
     normalizedId.includes('/node_modules/@aws-sdk/') ||
     normalizedId.includes('/node_modules/@smithy/')
   ) {
