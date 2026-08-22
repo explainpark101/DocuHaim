@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, createHashRouter, RouterProvider } from 'react-router'
-import { marked } from 'marked'
 import '@/index.css'
 import '@/config/mdEditorConfig'
 import App from '@/App.jsx'
@@ -21,7 +20,6 @@ initMdEditorCodeCopy()
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
 const isElectron = import.meta.env.VITE_ELECTRON === 'true'
 const routerBasename = isElectron ? '/' : base
-if (typeof window !== 'undefined') window.marked = marked
 
 /**
  * Hosts often SPA-fallback `/docs` to this app shell. VitePress lives at `/docs/`.

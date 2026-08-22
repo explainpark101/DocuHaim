@@ -1,6 +1,7 @@
 const LOCAL_STORAGE_KEY = 's3haim_print_page_layout';
 
-export const PRINT_PAGE_MARGIN_MM = 12;
+/** Chromium `PrintSettings` default margin per side (1.0 cm). */
+export const PRINT_PAGE_MARGIN_MM = 10;
 
 export const PRINT_PAGE_SIZES = [
   { id: 'a4', label: 'A4', widthMm: 210, heightMm: 297 },
@@ -30,8 +31,8 @@ export type PrintPageLayout = {
 
 export const DEFAULT_PRINT_PAGE_LAYOUT: PrintPageLayout = {
   pageSizeId: 'a4',
-  imageMaxWidth: '703px',
-  imageMaxHeight: '1032px',
+  imageMaxWidth: '718px',
+  imageMaxHeight: '1047px',
 };
 
 const PAGE_SIZE_IDS = new Set<string>(PRINT_PAGE_SIZES.map((size) => size.id));
@@ -218,6 +219,8 @@ export function buildPrintLayoutCssVars(layout: PrintPageLayout): Record<string,
 /**
  * CSS `@page size` keyword (e.g. `A4`) so the print/PDF dialog selects the
  * named preset instead of a custom mm×mm size.
+ *
+ * Margins match Chromium print dialog "Default" (1.0 cm per side).
  */
 export function getCssPageSizeDescriptor(pageSizeId: PrintPageSizeId): string {
   switch (pageSizeId) {

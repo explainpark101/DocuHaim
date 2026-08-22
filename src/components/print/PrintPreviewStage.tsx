@@ -33,6 +33,7 @@ type Props = {
   onZoomChange: (next: number) => void;
   pageSizeId: PrintPageSizeId;
   pageStarts: number[];
+  contentHeight: number;
   pageInnerHeightPx: number;
   hasCover: boolean;
   coverNode: ReactNode;
@@ -82,6 +83,7 @@ function BodyPageSlot({
   heightPx,
   pageInnerHeightPx,
   pageStart,
+  pageEnd,
   previewHtml,
   layoutKey,
 }: {
@@ -89,6 +91,7 @@ function BodyPageSlot({
   heightPx: number;
   pageInnerHeightPx: number;
   pageStart: number;
+  pageEnd: number;
   previewHtml: string;
   layoutKey: string;
 }) {
@@ -108,6 +111,7 @@ function BodyPageSlot({
   }, [layoutKey, previewHtml, pageStart]);
 
   const innerH = Math.max(1, pageInnerHeightPx);
+  const sliceHeight = Math.max(1, pageEnd - pageStart);
 
   return (
     <div
@@ -121,11 +125,13 @@ function BodyPageSlot({
       }}
     >
       <div className="relative overflow-hidden" style={{ height: innerH }}>
-        <div
-          ref={hostRef}
-          className="export-pdf-page-slot-clone origin-top-left"
-          style={{ transform: `translateY(-${pageStart}px)` }}
-        />
+        <div className="relative overflow-hidden" style={{ height: sliceHeight }}>
+          <div
+            ref={hostRef}
+            className="export-pdf-page-slot-clone origin-top-left"
+            style={{ transform: `translateY(-${pageStart}px)` }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -136,6 +142,7 @@ function LogicalPageSlot({
   hasCover,
   coverNode,
   pageStarts,
+  contentHeight,
   pageInnerHeightPx,
   widthPx,
   heightPx,
@@ -147,6 +154,7 @@ function LogicalPageSlot({
   hasCover: boolean;
   coverNode: ReactNode;
   pageStarts: number[];
+  contentHeight: number;
   pageInnerHeightPx: number;
   widthPx: number;
   heightPx: number;
@@ -167,12 +175,14 @@ function LogicalPageSlot({
   }
   const bodyIndex = logicalIndex - (hasCover ? 1 : 0);
   const pageStart = pageStarts[bodyIndex] ?? 0;
+  const pageEnd = pageStarts[bodyIndex + 1] ?? contentHeight;
   return (
     <BodyPageSlot
       widthPx={widthPx}
       heightPx={heightPx}
       pageInnerHeightPx={pageInnerHeightPx}
       pageStart={pageStart}
+      pageEnd={pageEnd}
       previewHtml={previewHtml}
       layoutKey={`${layoutKey}:${bodyIndex}`}
     />
@@ -184,6 +194,7 @@ function SpreadView({
   hasCover,
   coverNode,
   pageStarts,
+  contentHeight,
   pageInnerHeightPx,
   widthPx,
   heightPx,
@@ -195,6 +206,7 @@ function SpreadView({
   hasCover: boolean;
   coverNode: ReactNode;
   pageStarts: number[];
+  contentHeight: number;
   pageInnerHeightPx: number;
   widthPx: number;
   heightPx: number;
@@ -215,6 +227,7 @@ function SpreadView({
           hasCover={hasCover}
           coverNode={coverNode}
           pageStarts={pageStarts}
+          contentHeight={contentHeight}
           pageInnerHeightPx={pageInnerHeightPx}
           widthPx={widthPx}
           heightPx={heightPx}
@@ -233,6 +246,7 @@ function SpreadView({
         hasCover={hasCover}
         coverNode={coverNode}
         pageStarts={pageStarts}
+        contentHeight={contentHeight}
         pageInnerHeightPx={pageInnerHeightPx}
         widthPx={widthPx}
         heightPx={heightPx}
@@ -244,6 +258,7 @@ function SpreadView({
         hasCover={hasCover}
         coverNode={coverNode}
         pageStarts={pageStarts}
+        contentHeight={contentHeight}
         pageInnerHeightPx={pageInnerHeightPx}
         widthPx={widthPx}
         heightPx={heightPx}
@@ -259,6 +274,7 @@ function SinglePageView({
   hasCover,
   coverNode,
   pageStarts,
+  contentHeight,
   pageInnerHeightPx,
   widthPx,
   heightPx,
@@ -269,6 +285,7 @@ function SinglePageView({
   hasCover: boolean;
   coverNode: ReactNode;
   pageStarts: number[];
+  contentHeight: number;
   pageInnerHeightPx: number;
   widthPx: number;
   heightPx: number;
@@ -281,6 +298,7 @@ function SinglePageView({
       hasCover={hasCover}
       coverNode={coverNode}
       pageStarts={pageStarts}
+      contentHeight={contentHeight}
       pageInnerHeightPx={pageInnerHeightPx}
       widthPx={widthPx}
       heightPx={heightPx}
@@ -298,6 +316,7 @@ export default function PrintPreviewStage({
   onZoomChange,
   pageSizeId,
   pageStarts,
+  contentHeight,
   pageInnerHeightPx,
   hasCover,
   coverNode,
@@ -594,6 +613,7 @@ export default function PrintPreviewStage({
               hasCover={hasCover}
               coverNode={coverNode}
               pageStarts={pageStarts}
+              contentHeight={contentHeight}
               pageInnerHeightPx={pageInnerHeightPx}
               widthPx={widthPx}
               heightPx={heightPx}
@@ -623,6 +643,7 @@ export default function PrintPreviewStage({
               hasCover={hasCover}
               coverNode={coverNode}
               pageStarts={pageStarts}
+              contentHeight={contentHeight}
               pageInnerHeightPx={pageInnerHeightPx}
               widthPx={widthPx}
               heightPx={heightPx}
@@ -635,6 +656,7 @@ export default function PrintPreviewStage({
               hasCover={hasCover}
               coverNode={coverNode}
               pageStarts={pageStarts}
+              contentHeight={contentHeight}
               pageInnerHeightPx={pageInnerHeightPx}
               widthPx={widthPx}
               heightPx={heightPx}
@@ -687,6 +709,7 @@ function ScrollSpreadWindow({
   hasCover,
   coverNode,
   pageStarts,
+  contentHeight,
   pageInnerHeightPx,
   widthPx,
   heightPx,
@@ -701,6 +724,7 @@ function ScrollSpreadWindow({
   hasCover: boolean;
   coverNode: ReactNode;
   pageStarts: number[];
+  contentHeight: number;
   pageInnerHeightPx: number;
   widthPx: number;
   heightPx: number;
@@ -748,6 +772,7 @@ function ScrollSpreadWindow({
           hasCover={hasCover}
           coverNode={coverNode}
           pageStarts={pageStarts}
+          contentHeight={contentHeight}
           pageInnerHeightPx={pageInnerHeightPx}
           widthPx={widthPx}
           heightPx={heightPx}

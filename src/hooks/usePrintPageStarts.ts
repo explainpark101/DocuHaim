@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState, type RefObject } from 'react';
-import { computePrintPageStarts } from '@/utils/printPageBreaks';
+import { measurePrintPagination } from '@/utils/printPageBreaks';
 
 export function usePrintPageStarts(
   rootRef: RefObject<HTMLElement | null>,
@@ -19,14 +19,17 @@ export function usePrintPageStarts(
 
     let rafId = 0;
     const update = () => {
-      const starts = computePrintPageStarts(root, pageInnerHeightPx);
+      const { pageStarts: starts, contentHeight: height } = measurePrintPagination(
+        root,
+        pageInnerHeightPx,
+      );
       setPageStarts((prev) => (
         prev.length === starts.length
           && prev.every((value, index) => Math.abs(value - (starts[index] ?? 0)) < 0.5)
           ? prev
           : starts
       ));
-      setContentHeight(root.scrollHeight);
+      setContentHeight((prev) => (Math.abs(prev - height) < 0.5 ? prev : height));
     };
     const schedule = () => {
       if (rafId) return;
@@ -44,6 +47,8 @@ export function usePrintPageStarts(
       childList: true,
       subtree: true,
       characterData: true,
+      attributes: true,
+      attributeFilter: ['style', 'class', 'src', 'width', 'height'],
     });
     const images = [...root.querySelectorAll('img')];
     for (const img of images) {

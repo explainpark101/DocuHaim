@@ -1,4 +1,4 @@
-import { marked } from 'marked';
+import { renderAppMarkdown } from '@/utils/createAppMarkdownIt';
 import { getCachedOg } from './chatDb.js';
 import { extractUrls, hashUrl } from './og';
 import { ogArchiveKey } from './paths.js';
@@ -242,7 +242,7 @@ export function renderSearchResultHtml(
   let html;
   if (asMarkdown) {
     try {
-      html = marked.parse(raw, { async: false });
+      html = renderAppMarkdown(raw, 'search');
     } catch {
       html = null;
     }

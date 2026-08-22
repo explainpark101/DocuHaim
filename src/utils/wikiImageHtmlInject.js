@@ -1,12 +1,11 @@
 /**
- * marked HTML → novel 에디터용:
+ * markdown-it HTML → novel editor:
  * 1) ![[path]] / ![[path|size]] → wiki img
- * 2) md-editor wikiImageMarkdownIt 과 같이 «이미지 단락 + 바로 아래 텍스트 단락»을 캡션 쌍으로 표시
- *    (같은 단락에서 img + br + 나머지 도 분리)
+ * 2) Same caption pairing as md-editor wikiImageMarkdownIt
+ *    (image paragraph + next text paragraph, or img + br + tail in one paragraph)
  */
 
-import { marked } from 'marked';
-import '@/utils/markedHeadingLevels';
+import { renderAppMarkdown } from '@/utils/createAppMarkdownIt';
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
 import {
   buildWikiImageStyle,
@@ -237,11 +236,10 @@ export function mergeWikiCaptionPairsForTurndown(html) {
 }
 
 /**
- * marked GFM 체크리스트 HTML(`<ul><li><input type="checkbox">…`)을
- * Tiptap TaskList/TaskItem이 파싱하는 형태로 변환한다.
+ * markdown-it / md-editor task list HTML → Tiptap TaskList/TaskItem shape.
  * @param {string} html
  */
-export function convertMarkedTaskListsToTiptapHtml(html) {
+export function convertMarkdownTaskListsToTiptapHtml(html) {
   if (typeof document === 'undefined' || !html || typeof html !== 'string') return html;
   try {
     const wrap = document.createElement('div');
@@ -250,7 +248,7 @@ export function convertMarkedTaskListsToTiptapHtml(html) {
     uls.forEach((ul) => {
       const items = [...ul.children].filter((el) => el.tagName === 'LI');
       if (items.length === 0) return;
-      const markers = items.map((li) => findMarkedTaskCheckbox(li));
+      const markers = items.map((li) => findMarkdownTaskCheckbox(li));
       if (!markers.every(Boolean)) return;
 
       ul.setAttribute('data-type', 'taskList');
@@ -295,10 +293,19 @@ export function convertMarkedTaskListsToTiptapHtml(html) {
 }
 
 /** @param {HTMLElement} li */
-function findMarkedTaskCheckbox(li) {
-  const direct = li.querySelector(':scope > input[type="checkbox"]');
-  if (direct) {
-    return { input: direct, checked: direct.hasAttribute('checked') };
+function findMarkdownTaskCheckbox(li) {
+  const taskInput = li.querySelector(
+    ':scope > input.task-list-item-checkbox[type="checkbox"], :scope > input[type="checkbox"]',
+  );
+  if (taskInput) {
+    return { input: taskInput, checked: taskInput.hasAttribute('checked') };
+  }
+  const label = li.querySelector(':scope > label');
+  if (label) {
+    const inp = label.querySelector(':scope > input[type="checkbox"]');
+    if (inp) {
+      return { input: inp, checked: inp.hasAttribute('checked') };
+    }
   }
   const p = li.querySelector(':scope > p');
   if (p) {
@@ -310,11 +317,14 @@ function findMarkedTaskCheckbox(li) {
   return null;
 }
 
-/** 마크다운 전체 → novel 초기 HTML (marked + 위키 img + 캡션 쌍) */
+/** @deprecated Use convertMarkdownTaskListsToTiptapHtml */
+export const convertMarkedTaskListsToTiptapHtml = convertMarkdownTaskListsToTiptapHtml;
+
+/** Full markdown → novel initial HTML (markdown-it 15 + wiki img + caption pairs). */
 export function markdownToNovelEditorHtml(md) {
   try {
-    const raw = marked.parse(md ?? '', { async: false });
-    const withTasks = convertMarkedTaskListsToTiptapHtml(raw);
+    const raw = renderAppMarkdown(md ?? '', 'novel');
+    const withTasks = convertMarkdownTaskListsToTiptapHtml(raw);
     return annotateWikiImageCaptionPairs(injectWikiImagesIntoHtml(withTasks));
   } catch {
     return '<p></p>';

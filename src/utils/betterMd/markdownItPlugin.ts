@@ -1,119 +1,44 @@
-type CoreState = {
-    src: string;
-    tokens: Token[];
-    inlineMode?: boolean;
-};
+import type { MarkdownIt as MarkdownItInstance, StateInline } from 'markdown-it';
 
-type Token = {
-    type: string;
-    tag: string;
-    nesting: number;
-    content: string;
-    children?: Token[] | null;
-    markup?: string;
-    meta?: { label?: string; subId?: number };
-};
+const ASTERISK = 0x2a;
 
-type InlineState = {
-    src: string;
-    pos: number;
-    posMax: number;
-    push: (type: string, tag: string, nesting: number) => Token;
-  };
-  
-
-type MarkdownItLike = {
-    enable: (list: string | string[], ignoreInvalid?: boolean) => string[];
-    block: {
-      ruler: {
-        at: (
-          ruleName: string,
-          rule: (
-            startLine: number,
-            endLine: number,
-            silent: boolean,
-          ) => boolean,
-        ) => void;
-      };
-    };
-    inline: {
-      ruler: {
-        before: (
-          ruleName: string,
-          ruleId: string,
-          rule: (state: InlineState, silent: boolean) => boolean,
-        ) => void;
-      };
-    };
-    core: {
-      ruler: {
-        before: (ruleName: string, ruleId: string, rule: (state: CoreState) => void) => void;
-        after: (ruleName: string, ruleId: string, rule: (state: CoreState) => void) => void;
-        push: (ruleId: string, rule: (state: CoreState) => void) => void;
-      };
-    };
-    renderer: {
-      rules: Record<
-        string,
-        | ((
-            tokens: Token[],
-            idx: number,
-            options?: unknown,
-          ) => string)
-        | undefined
-      >;
-    };
-    renderInline: (src: string, env: unknown) => string;
-};
-
-const betterStrong = (
-  state: InlineState,
-  silent: boolean,
-): boolean => {
-  const pos = state.pos;
+/**
+ * Parse contiguous `**…**` runs before the core emphasis rule.
+ * Renderer maps strong tokens to `<b>` (see strong_open / strong_close below).
+ */
+function betterStrong(state: StateInline, silent: boolean): boolean {
+  const start = state.pos;
+  const max = state.posMax;
   const src = state.src;
 
-  if (src.charCodeAt(pos) !== 0x2a) {
-    return false;
-  }
+  if (start + 3 > max) return false;
+  if (src.charCodeAt(start) !== ASTERISK) return false;
+  if (src.charCodeAt(start + 1) !== ASTERISK) return false;
 
-  if (src.charCodeAt(pos + 1) !== 0x2a) {
-    return false;
-  }
+  const end = src.indexOf('**', start + 2);
+  if (end === -1 || end === start + 2) return false;
 
-  const end = src.indexOf("**", pos + 2);
+  if (silent) return true;
 
-  if (end === -1) {
-    return false;
-  }
+  const open = state.push('strong_open', 'strong', 1);
+  open.markup = '**';
 
-  if (silent) {
-    return true;
-  }
+  const text = state.push('text', '', 0);
+  text.content = src.slice(start + 2, end);
 
-  const tokenOpen = state.push("strong_open", "strong", 1);
-  tokenOpen.markup = "**";
-
-  const tokenText = state.push("text", "", 0);
-  tokenText.content = src.slice(pos + 2, end);
-
-  const tokenClose = state.push("strong_close", "strong", -1);
-  tokenClose.markup = "**";
+  const close = state.push('strong_close', 'strong', -1);
+  close.markup = '**';
 
   state.pos = end + 2;
-
   return true;
-};
+}
 
-const betterMd = (md: MarkdownItLike): void => {
-    md.inline.ruler.before(
-        "emphasis",
-        "better_strong",
-        betterStrong,
-    );
-    
-    md.renderer.rules.strong_open = () => "<b>";
-    md.renderer.rules.strong_close = () => "</b>";
-};
+/** Preview / export PDF: `**bold**` → `<b>…</b>` via markdown-it 15 inline + renderer hooks. */
+export function betterMdMarkdownItPlugin(md: MarkdownItInstance): void {
+  md.inline.ruler.before('emphasis', 'better_strong', betterStrong);
 
-export default betterMd;
+  md.renderer.rules.strong_open = () => '<b>';
+  md.renderer.rules.strong_close = () => '</b>';
+}
+
+export default betterMdMarkdownItPlugin;

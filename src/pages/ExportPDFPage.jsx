@@ -66,7 +66,6 @@ import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
 import { usePrintTableFit } from '@/hooks/usePrintTableFit';
 import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
 import { usePrintPageStarts } from '@/hooks/usePrintPageStarts';
-import { usePrintPgbrSpacers } from '@/hooks/usePrintPgbrSpacers';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { parseExportPdfPathFromAppPathname } from '@/utils/appHref';
@@ -235,14 +234,7 @@ const printFontStyles = `
     background-color: #282c34;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head {
-    background-color: #21252b;
-    border-bottom: 1px solid #3e4452;
-    color: #abb2bf;
-  }
-  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-lang,
-  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-flag span,
-  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-action {
-    color: #abb2bf;
+    display: none !important;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre {
     margin: 0;
@@ -512,13 +504,15 @@ export default function ExportPDFPage({
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
   usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
   usePrintTableFit(paperContentRef, `${printLayoutKey}|${previewValue}`);
-  usePrintPgbrSpacers(paperContentRef, pageInnerHeightPx, printLayoutKey);
+  const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
+  /** Measured inner height; until layout, fall back to A4 + Chrome default margin (10 mm). */
+  const effectivePageInnerHeightPx =
+    pageInnerHeightPx > 1 ? pageInnerHeightPx : printPageInnerPx.heightPx;
   const { pageStarts, contentHeight } = usePrintPageStarts(
     paperContentRef,
-    pageInnerHeightPx,
+    effectivePageInnerHeightPx,
     `${printLayoutKey}|${previewValue}`,
   );
-  const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
   const tocListRef = useRef(null);
   const tocProgrammaticScrollRef = useRef(false);
   const tocProgrammaticResetTimerRef = useRef(null);
@@ -1840,7 +1834,8 @@ export default function ExportPDFPage({
                 onZoomChange={handleStageZoomChange}
                 pageSizeId={printLayout.pageSizeId}
                 pageStarts={pageStarts}
-                pageInnerHeightPx={pageInnerHeightPx}
+                contentHeight={contentHeight}
+                pageInnerHeightPx={effectivePageInnerHeightPx}
                 hasCover={Boolean(activeCover?.enabled)}
                 coverNode={
                   activeCover?.enabled ? (
@@ -1852,7 +1847,7 @@ export default function ExportPDFPage({
                   ) : null
                 }
                 sourceContentRef={paperContentRef}
-                layoutKey={`${printLayoutKey}|${bodyMarkdown}|${pageInnerHeightPx}`}
+                layoutKey={`${printLayoutKey}|${bodyMarkdown}|${effectivePageInnerHeightPx}`}
                 flipIndex={flipIndex}
                 onFlipIndexChange={setFlipIndex}
                 onVisibleLogicalPagesChange={setStageVisiblePages}

@@ -1,9 +1,11 @@
-import type MarkdownIt from 'markdown-it';
-import type StateBlock from 'markdown-it/lib/rules_block/state_block.mjs';
+import MarkdownIt from 'markdown-it';
+import type { StateBlock } from 'markdown-it';
 import {
   MAX_APP_HEADING_LEVEL,
   MAX_EXPORT_HEADING_LEVEL,
 } from '@/utils/markdownHeadings';
+
+type MarkdownItInstance = InstanceType<typeof MarkdownIt>;
 
 function isSpace(code: number): boolean {
   return code === 0x09 || code === 0x20;
@@ -66,6 +68,6 @@ function headingMax10(
   return true;
 }
 
-export function headingLevelsMarkdownItPlugin(md: MarkdownIt): void {
+export function headingLevelsMarkdownItPlugin(md: MarkdownItInstance): void {
   md.block.ruler.at('heading', headingMax10);
 }

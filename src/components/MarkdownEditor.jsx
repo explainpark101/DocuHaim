@@ -96,6 +96,7 @@ import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
 import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
 import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
+import { betterMdMarkdownItPlugin } from '@/utils/betterMd/markdownItPlugin';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
@@ -551,6 +552,9 @@ config({
   markdownItPlugins(plugins) {
     let next = plugins;
     // wiki_image? @/config/mdEditorConfig?? ?? ???. ???? ?? ?? ??.
+    if (!next.some((p) => p.type === 'better_md')) {
+      next = [...next, { type: 'better_md', plugin: betterMdMarkdownItPlugin, options: {} }];
+    }
     if (!next.some((p) => p.type === 'heading_levels')) {
       next = [...next, { type: 'heading_levels', plugin: headingLevelsMarkdownItPlugin, options: {} }];
     }

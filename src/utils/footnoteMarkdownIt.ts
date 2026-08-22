@@ -9,7 +9,8 @@
  * defs, and claim body `[^N]` before the inline `link` rule. Other
  * `[label]: url` references stay CommonMark.
  */
-import referenceRule from 'markdown-it/lib/rules_block/reference.mjs';
+import { getMarkdownItReferenceRule } from '@/utils/markdownItReferenceRule';
+import type { StateBlock } from 'markdown-it';
 import { loadFootnoteDisplayMode } from '@/utils/previewFootnotesSettings';
 import {
   DEFAULT_NOTE_FOOTNOTES_META,
@@ -41,14 +42,7 @@ type SourceFootnoteEnv = {
   references?: Record<string, { href?: string; title?: string }>;
 };
 
-type BlockState = {
-  src: string;
-  bMarks: number[];
-  eMarks: number[];
-  tShift: number[];
-  sCount: number[];
-  blkIndent: number;
-};
+type BlockState = StateBlock;
 
 type MarkdownItLike = {
   enable: (list: string | string[], ignoreInvalid?: boolean) => string[];
@@ -393,7 +387,7 @@ export function footnoteMarkdownItPlugin(md: MarkdownItLike): void {
     'reference',
     (state, startLine, endLine, silent) => {
       if (isNumericFootnoteDefLine(state, startLine)) return false;
-      return referenceRule(state, startLine, endLine, silent);
+      return getMarkdownItReferenceRule()(state, startLine, endLine, silent);
     },
   );
 

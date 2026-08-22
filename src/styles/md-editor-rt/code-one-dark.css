@@ -52,9 +52,7 @@
 #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head,
 .export-pdf-modal .md-editor-preview .md-editor-code .md-editor-code-head,
 :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head {
-  background-color: #21252b;
-  border-bottom: 1px solid #3e4452;
-  color: #abb2bf;
+  display: none !important;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head .md-editor-code-lang,

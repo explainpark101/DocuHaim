@@ -12,8 +12,8 @@ type Props = {
 export default function PrintImageMaxSizeControls({
   maxWidth,
   maxHeight,
-  widthFallback = '703px',
-  heightFallback = '1032px',
+  widthFallback = '718px',
+  heightFallback = '1047px',
   onChange,
 }: Props) {
   const [widthInput, setWidthInput] = useState(maxWidth);
@@ -156,7 +156,7 @@ export default function PrintImageMaxSizeControls({
               commitWidth(event.currentTarget.value);
             }
           }}
-          placeholder="703px"
+          placeholder="718px"
           aria-label="모든 이미지 max-width (px)"
           title="휠: 10px / Shift+휠: 50px / Alt+휠: 1px"
           aria-invalid={widthError}
@@ -194,7 +194,7 @@ export default function PrintImageMaxSizeControls({
               commitHeight(event.currentTarget.value);
             }
           }}
-          placeholder="1032px"
+          placeholder="1047px"
           aria-label="모든 이미지 max-height (px)"
           title="휠: 10px / Shift+휠: 50px / Alt+휠: 1px"
           aria-invalid={heightError}

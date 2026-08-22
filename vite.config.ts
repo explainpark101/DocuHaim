@@ -352,7 +352,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(rootDir, './src'),
+      'markdown-it': path.resolve(rootDir, 'node_modules/markdown-it'),
     },
+    dedupe: ['markdown-it'],
   },
   worker: {
     format: 'es',

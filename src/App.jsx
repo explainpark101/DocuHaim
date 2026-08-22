@@ -1227,7 +1227,7 @@ function MainApp() {
     window.localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // 1. Init (marked & S3 client are from npm modules; no script loading)
+  // 1. Init (S3 client etc. are from npm modules; no script loading)
   // Same-tab reload: restore unlock from sessionStorage before showing AuthModal.
   // If a share-target chooser is open, defer AuthModal until that flow finishes.
   const [authWanted, setAuthWanted] = useState(false);

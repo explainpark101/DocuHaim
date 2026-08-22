@@ -64,6 +64,6 @@ CSS details are host-specific; class + `data-md-pgbr="1"` are the contract.
 | 역할 | 경로 |
 |------|------|
 | markdown-it | `src/utils/pageBreakMarkdownIt.js` |
-| 인쇄 보조 | `printVisualLinePgbr.ts`, `usePrintPgbrSpacers.ts`, `printPageBreaks.ts` |
+| 인쇄 보조 | `printVisualLinePgbr.ts`, `printPageBreaks.ts`, `usePrintPageStarts.ts` |
 | XSS whitelist | `src/config/mdEditorConfig.js` |
 | AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx` |

@@ -1,7 +1,5 @@
-import MarkdownIt from 'markdown-it';
+import { getAppMarkdownIt } from '@/utils/createAppMarkdownIt';
 import { parseNoteCover, upsertNoteCoverComment } from '@/utils/noteCover/parse';
-import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
-import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
 import { insertPgbrBeforeVisualLine } from '@/utils/printVisualLinePgbr';
 import {
   normalizePrintVisibleText,
@@ -20,14 +18,8 @@ export const normalizePrintHeadingText = normalizePrintVisibleText;
 export const visibleHeadingTextFromMarkdown = visibleInlineTextFromMarkdown;
 
 /** Same heading pipeline as Export PDF MdPreview (levels + plan frontmatter). */
-let headingLineMd: MarkdownIt | null = null;
-function getHeadingLineMarkdownIt(): MarkdownIt {
-  if (!headingLineMd) {
-    headingLineMd = new MarkdownIt({ html: true, linkify: false });
-    headingLevelsMarkdownItPlugin(headingLineMd);
-    planFrontmatterMarkdownItPlugin(headingLineMd);
-  }
-  return headingLineMd;
+function getHeadingLineMarkdownIt() {
+  return getAppMarkdownIt('print-heading');
 }
 
 /**

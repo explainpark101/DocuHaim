@@ -74,6 +74,6 @@ Hosts that build TOC or remap headings should use **logical** level 1–10 (from
 |------|------|
 | 상수·리맵 | `src/utils/markdownHeadings.ts` |
 | markdown-it | `src/utils/markdownItHeadingLevels.ts` |
-| marked (Novel) | `src/utils/markedHeadingLevels.ts` |
+| markdown-it | `src/utils/markdownItHeadingLevels.ts` |
 | TipTap | `src/extensions/novelHeading.ts` |
 | 툴바 | `src/components/MarkdownHeadingRemapToolbar.tsx` |
