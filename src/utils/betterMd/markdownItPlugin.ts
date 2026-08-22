@@ -23,13 +23,17 @@ function betterStrong(state: StateInline, silent: boolean): boolean {
   const open = state.push('strong_open', 'strong', 1);
   open.markup = '**';
 
-  const text = state.push('text', '', 0);
-  text.content = src.slice(start + 2, end);
+  const innerStart = start + 2;
+  const savedMax = state.posMax;
+  state.pos = innerStart;
+  state.posMax = end;
+  state.md.inline.tokenize(state);
+  state.posMax = savedMax;
+  state.pos = end + 2;
 
   const close = state.push('strong_close', 'strong', -1);
   close.markup = '**';
 
-  state.pos = end + 2;
   return true;
 }
 
