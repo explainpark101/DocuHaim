@@ -391,6 +391,9 @@ function manualChunks(id: string): string | undefined {
   if (normalizedId.includes('/node_modules/garu-ko/')) {
     return 'vendor-garu-ko';
   }
+  if (normalizedId.includes('/node_modules/pagedjs/')) {
+    return 'vendor-pagedjs';
+  }
   if (
     normalizedId.includes('/node_modules/cropperjs/')
     || normalizedId.includes('/node_modules/react-easy-crop/')

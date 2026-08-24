@@ -62,6 +62,7 @@ export default defineConfig({
             { text: 'Remote image', link: '/custom-markdown/remote-image' },
             { text: 'Image attrs', link: '/custom-markdown/markdown-image-attrs' },
             { text: 'Page break', link: '/custom-markdown/page-break' },
+            { text: 'Page break avoid', link: '/custom-markdown/page-break-avoid' },
             { text: 'Heading levels', link: '/custom-markdown/heading-levels' },
             { text: 'Chat file', link: '/custom-markdown/chat-file' },
             { text: 'Chat note', link: '/custom-markdown/chat-note' },

@@ -40,13 +40,38 @@
 /* Export / print: keep One Dark blocks (not light slate) so tokens print correctly */
 #export-pdf-preview .md-editor-preview .md-editor-code,
 .export-pdf-modal .md-editor-preview .md-editor-code,
-:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code {
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code,
+.export-pdf-pages .pagedjs_page_content .md-editor-code,
+.export-pdf-preview-stage .pagedjs_page_content .md-editor-code,
+.export-pdf-page-slot-clone .pagedjs_page_content .md-editor-code {
   --md-theme-code-block-color: #abb2bf;
   --md-theme-code-block-bg-color: #282c34;
   --md-theme-code-before-bg-color: #21252b;
   border: 1px solid #3e4452;
   background-color: #282c34;
   box-shadow: none;
+}
+
+.export-pdf-pages .pagedjs_page_content .md-editor-code .hljs-comment,
+.export-pdf-pages .pagedjs_page_content .md-editor-code .hljs-quote,
+.export-pdf-preview-stage .pagedjs_page_content .md-editor-code .hljs-comment,
+.export-pdf-preview-stage .pagedjs_page_content .md-editor-code .hljs-quote {
+  color: #7f848e;
+  font-style: italic;
+}
+
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code[data-print-code-continued-top="1"] {
+  border-top-color: transparent;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: 0;
+}
+
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code[data-print-code-continued-bottom="1"] {
+  border-bottom-color: transparent;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-bottom: 0;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head,
@@ -78,13 +103,17 @@
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code pre,
-:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre {
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre,
+.export-pdf-pages .pagedjs_page_content .md-editor-code pre,
+.export-pdf-preview-stage .pagedjs_page_content .md-editor-code pre {
   background-color: #282c34;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code pre code,
 .export-pdf-modal .md-editor-preview .md-editor-code pre code,
-:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code,
+.export-pdf-pages .pagedjs_page_content .md-editor-code pre code,
+.export-pdf-preview-stage .pagedjs_page_content .md-editor-code pre code {
   background-color: #282c34;
   color: #abb2bf;
   -webkit-print-color-adjust: exact;
@@ -97,6 +126,8 @@
   .md-editor-code
   pre
   code
-  .md-editor-code-block {
+  .md-editor-code-block,
+.export-pdf-pages .pagedjs_page_content .md-editor-code pre code .md-editor-code-block,
+.export-pdf-preview-stage .pagedjs_page_content .md-editor-code pre code .md-editor-code-block {
   color: unset;
 }

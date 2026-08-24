@@ -23,7 +23,7 @@ import {
   type PrintSpreadPair,
 } from '@/utils/printPreviewView';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
-import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagePack';
+import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagedJs';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 
 type Props = {
@@ -35,7 +35,7 @@ type Props = {
   pageSizeId: PrintPageSizeId;
   /** Number of packed body pages (not including cover). */
   bodyPageCount: number;
-  /** Host of `.export-pdf-page` nodes produced by packPrintPages. */
+  /** Host of Paged.js `.pagedjs_page` nodes under `[data-export-pdf-pages]`. */
   pagesHostRef: RefObject<HTMLElement | null>;
   /** Bumps when packed pages are rebuilt. */
   packLayoutKey: string;
@@ -99,7 +99,7 @@ function BodyPageSlot({
     host.replaceChildren();
     if (!pagesHost) return;
     const source = pagesHost.querySelector<HTMLElement>(
-      `[${PRINT_BODY_PAGE_ATTR}="${bodyIndex}"]`,
+      `.pagedjs_page[${PRINT_BODY_PAGE_ATTR}="${bodyIndex}"], [${PRINT_BODY_PAGE_ATTR}="${bodyIndex}"]`,
     );
     if (!source) return;
     const clone = source.cloneNode(true) as HTMLElement;
@@ -688,12 +688,12 @@ export function logicalPageIndexForHeading(
   pagesHostEl: HTMLElement,
   hasCover: boolean,
 ): number {
-  const page = headingEl.closest<HTMLElement>(`[${PRINT_BODY_PAGE_ATTR}]`);
+  const page = headingEl.closest<HTMLElement>(`.pagedjs_page[${PRINT_BODY_PAGE_ATTR}], [${PRINT_BODY_PAGE_ATTR}]`);
   if (page && pagesHostEl.contains(page)) {
     const bodyIndex = Number(page.getAttribute(PRINT_BODY_PAGE_ATTR) ?? '0');
     return (hasCover ? 1 : 0) + (Number.isFinite(bodyIndex) ? bodyIndex : 0);
   }
-  const pages = [...pagesHostEl.querySelectorAll<HTMLElement>(`[${PRINT_BODY_PAGE_ATTR}]`)];
+  const pages = [...pagesHostEl.querySelectorAll<HTMLElement>(`.pagedjs_page[${PRINT_BODY_PAGE_ATTR}], [${PRINT_BODY_PAGE_ATTR}]`)];
   for (let i = 0; i < pages.length; i += 1) {
     const candidate = pages[i];
     if (candidate?.contains(headingEl)) {

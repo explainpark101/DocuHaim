@@ -49,7 +49,7 @@ Do not leave the literal `<pgbr/>` in HTML output after transform (XSS / printer
 | Context | Expected presentation |
 |---------|----------------------|
 | Preview (editor) | Visible rule (CSS on `.md-pgbr`) |
-| Print / PDF Export | Host packs fixed page boxes; `<pgbr/>` forces a **new page** in the packer (`printPagePack.ts`). Markers are not printed as a visual rule. |
+| Print / PDF Export | Paged.js `@page` fragmentation; `<pgbr/>` uses `break-after: page`. Markers are not printed as a visual rule. |
 
 CSS `break-after` on `.md-pgbr` may still apply in legacy continuous print hosts; Export PDF uses overflow packing into `.export-pdf-page` nodes instead.
 
@@ -58,12 +58,13 @@ CSS `break-after` on `.md-pgbr` may still apply in legacy continuous print hosts
 - Attributes on `<pgbr>` (none supported)
 - Self-closing only vs void — both whitespace variants above are equivalent
 - Markdown thematic break `---` as page break (separate)
+- Keeping a table/code block together — see [page-break-avoid.md](./page-break-avoid.md)
 
 ## 구현
 
 | 역할 | 경로 |
 |------|------|
 | markdown-it | `src/utils/pageBreakMarkdownIt.js` |
-| 인쇄 패킹 | `printPagePack.ts`, `usePrintPackedPages.ts` |
+| 인쇄 패킹 | `printPagedJs.ts`, `usePagedJsPreview.ts` |
 | XSS whitelist | `src/config/mdEditorConfig.js` |
 | AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx` |

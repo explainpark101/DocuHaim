@@ -36,7 +36,9 @@ GFM pipe table 바로 위에 HTML 주석으로 셀 병합·구역/셀 스타일 
 
 ### 1. Grammar
 
-Comment (anywhere in the document, immediately before a GFM pipe table, optional blank lines between):
+Comment (anywhere in the document, immediately before a GFM pipe table, optional blank lines between).
+
+May be stacked with `<!-- page-break-avoid -->` (either order). See [page-break-avoid.md](./page-break-avoid.md).
 
 ```js
 /<!--\s*haim-table\s*([\s\S]*?)-->/

@@ -3,6 +3,7 @@ import { XSSPlugin } from 'md-editor-rt';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
+import { pageBreakAvoidMarkdownItPlugin } from '@/utils/pageBreakAvoidMarkdownIt';
 import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
 import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
 import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
@@ -41,6 +42,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-haim-mermaid-lazy',
     'data-haim-mermaid-error',
     'data-haim-imgbb-replace-key',
+    'data-page-break-avoid',
     'role',
     'tabindex',
     'aria-label',
@@ -89,6 +91,8 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
   section: ['class'],
   hr: ['class'],
   ol: ['class'],
+  pre: ['class', 'data-page-break-avoid'],
+  code: ['class', 'data-page-break-avoid'],
   table: [
     'style',
     'class',
@@ -107,6 +111,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-haim-align',
     'data-haim-box-w',
     'data-haim-box-h',
+    'data-page-break-avoid',
   ],
   thead: [
     'style',
@@ -126,6 +131,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-haim-align',
     'data-haim-box-w',
     'data-haim-box-h',
+    'data-page-break-avoid',
   ],
   tbody: [
     'style',
@@ -145,6 +151,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-haim-align',
     'data-haim-box-w',
     'data-haim-box-h',
+    'data-page-break-avoid',
   ],
   tfoot: [
     'style',
@@ -164,6 +171,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-haim-align',
     'data-haim-box-w',
     'data-haim-box-h',
+    'data-page-break-avoid',
   ],
   tr: ['class', 'style'],
   th: [
@@ -184,6 +192,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-haim-align',
     'data-haim-box-w',
     'data-haim-box-h',
+    'data-page-break-avoid',
   ],
   td: [
     'style',
@@ -203,6 +212,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-haim-align',
     'data-haim-box-w',
     'data-haim-box-h',
+    'data-page-break-avoid',
   ],
   img: [
     'src',
@@ -241,6 +251,11 @@ const APP_MARKDOWN_IT_PLUGIN_DEFS: AppMarkdownItPluginEntry[] = [
     options: {},
   },
   { type: 'haim_table', plugin: haimTableMarkdownItPlugin as unknown as MarkdownItPlugin, options: {} },
+  {
+    type: 'page_break_avoid',
+    plugin: pageBreakAvoidMarkdownItPlugin as unknown as MarkdownItPlugin,
+    options: {},
+  },
   { type: 'plan_frontmatter', plugin: planFrontmatterMarkdownItPlugin as unknown as MarkdownItPlugin, options: {} },
   // When noMermaid, md-editor-rt omits its mermaid fence — keep placeholders for lazy render.
   { type: 'mermaid', plugin: mermaidFenceMarkdownItPlugin as unknown as MarkdownItPlugin, options: {} },

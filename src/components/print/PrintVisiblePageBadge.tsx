@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagePack';
+import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagedJs';
 
 type Props = {
   pagesHostRef: RefObject<HTMLElement | null>;
@@ -53,7 +53,7 @@ function visiblePageNumbers(
   }
 
   const bodyOffset = hasCover ? 1 : 0;
-  const bodyPages = [...pagesHostEl.querySelectorAll<HTMLElement>(`[${PRINT_BODY_PAGE_ATTR}]`)];
+  const bodyPages = [...pagesHostEl.querySelectorAll<HTMLElement>(`.pagedjs_page[${PRINT_BODY_PAGE_ATTR}], [${PRINT_BODY_PAGE_ATTR}]`)];
   for (const pageEl of bodyPages) {
     if (!overlapsViewport(pageEl, visTopPx, visBottomPx, 24)) continue;
     const bodyIndex = Number(pageEl.getAttribute(PRINT_BODY_PAGE_ATTR) ?? '0');

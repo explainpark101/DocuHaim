@@ -20,6 +20,7 @@ import {
   normalizeHaimTableSizeList,
   serializeSizeList,
 } from '@/utils/haimTable/gridSize';
+import { findSidecarCommentStackBefore } from '@/utils/pageBreakAvoid';
 
 const HAIM_TABLE_COMMENT_RE = /<!--\s*haim-table\s*([\s\S]*?)-->/g;
 
@@ -329,8 +330,18 @@ export function findHaimTableBlocks(
     while (searchFrom < lines.length && (offsets[searchFrom] ?? 0) < commentEnd) {
       searchFrom += 1;
     }
-    while (searchFrom < lines.length && !(lines[searchFrom] ?? '').trim()) {
-      searchFrom += 1;
+    while (searchFrom < lines.length) {
+      const line = (lines[searchFrom] ?? '').trim();
+      if (!line) {
+        searchFrom += 1;
+        continue;
+      }
+      // Allow stacked sidecars between haim-table comment and GFM table.
+      if (/^<!--\s*page-break-avoid\s*-->$/i.test(line)) {
+        searchFrom += 1;
+        continue;
+      }
+      break;
     }
 
     const range = findGfmTableLineRange(lines, searchFrom);
@@ -433,8 +444,12 @@ export function upsertHaimTableBlock(
   const text = markdown.replace(/\r\n/g, '\n');
   const comment = serializeHaimTableComment(meta);
   const table = serializeGfmTable(grid);
-  const replacement = `${comment}\n${table}`;
-  return `${text.slice(0, block.start)}${replacement}${text.slice(block.end)}`;
+  const { stackStart, comments } = findSidecarCommentStackBefore(text, block.tableStart);
+  const others = comments
+    .map((c) => c.raw.trim())
+    .filter((c) => c && !/^<!--\s*haim-table\b/i.test(c));
+  const replacement = [...others, comment, table].join('\n');
+  return `${text.slice(0, stackStart)}${replacement}${text.slice(block.tableEnd)}`;
 }
 
 /** Remove a haim / GFM table block (comment + table) from markdown. */

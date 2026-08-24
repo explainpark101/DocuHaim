@@ -1,0 +1,8 @@
+.pagedjs_pages {
+    background: var(--color-neutral-500) !important;
+}
+
+.export-pdf-cover-stack.mx-auto.w-full.print\:mx-0.export-pdf-cover-stack--live.export-pdf-cover-stack--live {
+    max-height: 90vh !important;
+    overflow: auto !important;
+}
