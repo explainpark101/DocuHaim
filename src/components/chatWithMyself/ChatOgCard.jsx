@@ -10,6 +10,45 @@ import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';
 
 /**
+ * Skeleton matching the loaded card footprint so virtua row height does not
+ * jump when OG metadata / image arrives (avoids stick-bottom scroll fights).
+ */
+function OgCardSkeleton({ compact }) {
+  if (compact) {
+    return (
+      <div
+        className="mt-1.5 flex max-w-full items-center gap-2 overflow-hidden rounded-md border border-black/10 bg-white/80 px-2 py-1.5 dark:border-white/15 dark:bg-odp-bgSoft/90"
+        aria-hidden
+      >
+        <div className="h-10 w-10 shrink-0 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="h-2 w-16 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+          <div className="h-3 w-3/4 max-w-48 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-2 max-w-full min-w-0 overflow-hidden rounded-md border border-black/10 bg-white/80 dark:border-white/15 dark:bg-odp-bgSoft/90"
+      aria-busy="true"
+      aria-label="링크 미리보기 불러오는 중"
+      role="status"
+    >
+      {/* Same aspect as final OG image / YouTube frame — reserve height first. */}
+      <div className="aspect-video w-full animate-pulse bg-gray-100 dark:bg-odp-surface" />
+      <div className="space-y-2 px-2.5 py-2">
+        <div className="h-2 w-20 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+        <div className="h-4 w-[88%] animate-pulse rounded bg-black/10 dark:bg-white/10" />
+        <div className="h-3 w-full animate-pulse rounded bg-black/10 dark:bg-white/10" />
+        <div className="h-3 w-2/3 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+      </div>
+    </div>
+  );
+}
+
+/**
  * OG / YouTube card rendered inside a chat bubble (bottom attached).
  * @param {{ url: string, ogStorage?: object, compact?: boolean, allowEmbed?: boolean, reloadKey?: number }} props
  */
@@ -36,21 +75,36 @@ export default function ChatOgCard({
     const shouldForce = reloadKey > prevReloadKeyRef.current;
     prevReloadKeyRef.current = reloadKey;
 
+    const preloadImage = (src) =>
+      new Promise((resolve) => {
+        if (!src || typeof Image === 'undefined') {
+          resolve();
+          return;
+        }
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.referrerPolicy = 'no-referrer';
+        img.src = src;
+      });
+
     const load = async ({ force = false } = {}) => {
       setLoading(true);
       setShowEmbed(false);
+      // Drop stale card so we keep the reserved skeleton height instead of
+      // flashing a differently sized previous OG while the next one loads.
+      setData(null);
       try {
-        if (force) {
-          const fresh = await reloadOgCache(url, ogStorage);
-          if (!cancelled) {
-            setData(fresh);
-            setLoading(false);
-          }
-          return;
+        const next = force
+          ? await reloadOgCache(url, ogStorage)
+          : (await loadAndArchiveOg(url, ogStorage)).data;
+        // Decode OG image while skeleton still holds aspect-video height.
+        if (next?.image) {
+          await preloadImage(next.image);
         }
-        const result = await loadAndArchiveOg(url, ogStorage);
         if (!cancelled) {
-          setData(result.data);
+          setData(next);
           setLoading(false);
         }
       } catch {
@@ -80,17 +134,9 @@ export default function ChatOgCard({
     if (!allowEmbed) setShowEmbed(false);
   }, [allowEmbed]);
 
-  if (loading && !data) {
-    return (
-      <div
-        className={`mt-2 overflow-hidden rounded-md border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 animate-pulse ${
-          compact ? 'h-12' : 'h-20'
-        }`}
-      />
-    );
+  if (loading || !data) {
+    return <OgCardSkeleton compact={compact} />;
   }
-
-  if (!data) return null;
 
   const yt = isYouTubeUrl(url);
 
@@ -105,7 +151,7 @@ export default function ChatOgCard({
         {data.image ? (
           <button
             type="button"
-            className="shrink-0 overflow-hidden rounded"
+            className="h-10 w-10 shrink-0 overflow-hidden rounded bg-gray-100 dark:bg-odp-surface"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -117,7 +163,8 @@ export default function ChatOgCard({
               src={data.image}
               alt=""
               className="h-10 w-10 object-cover"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
               referrerPolicy="no-referrer"
             />
           </button>
@@ -159,11 +206,13 @@ export default function ChatOgCard({
           }}
           aria-label={yt ? '동영상 재생' : '이미지 크게 보기'}
         >
+          {/* Parent aspect-video already reserves height; fade only paints pixels. */}
           <ChatImageFade
             src={data.image}
             alt=""
             className="h-full w-full object-cover"
-            loading="lazy"
+            loading="eager"
+            decoding="async"
             referrerPolicy="no-referrer"
           />
           {yt ? (

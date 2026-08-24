@@ -388,6 +388,47 @@ export function pickDefaultSessionOpenPath(workspace: SessionWorkspace): string 
   return all[0] ?? null;
 }
 
+/** Next free `untitled.md` / `untitled-2.md` … path inside a session workspace. */
+export function allocateUntitledSessionPath(
+  workspace: SessionWorkspace | null | undefined,
+): string {
+  const used = new Set(Object.keys(workspace?.files ?? {}));
+  if (!used.has('untitled.md')) return 'untitled.md';
+  for (let i = 2; i < 10_000; i += 1) {
+    const name = `untitled-${i}.md`;
+    if (!used.has(name)) return name;
+  }
+  return `untitled-${Date.now()}.md`;
+}
+
+/** Empty single-file session for Cmd/Ctrl+N temp-file mode. */
+export function createEmptyUntitledSessionWorkspace(): SessionWorkspace {
+  const path = 'untitled.md';
+  return {
+    origin: 'md',
+    originName: 'untitled',
+    files: {
+      [path]: {
+        path,
+        name: 'untitled.md',
+        bytes: encodeSessionText(''),
+      },
+    },
+  };
+}
+
+/** Append an empty untitled markdown file to an existing session workspace. */
+export function addEmptyUntitledSessionFile(workspace: SessionWorkspace): {
+  workspace: SessionWorkspace;
+  path: string;
+} {
+  const path = allocateUntitledSessionPath(workspace);
+  return {
+    path,
+    workspace: putSessionFileBytes(workspace, path, encodeSessionText('')),
+  };
+}
+
 export function buildSessionTree(workspace: SessionWorkspace): SessionTreeNode[] {
   const root: SessionTreeNode = { name: 'root', type: 'folder', path: '', children: [] };
 

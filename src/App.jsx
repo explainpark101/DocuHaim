@@ -258,8 +258,10 @@ import { usePwaNewFileShortcut } from '@/hooks/usePwaNewFileShortcut';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
   SESSION_STORAGE_TYPE,
+  addEmptyUntitledSessionFile,
   buildSessionDownload,
   buildSessionTree,
+  createEmptyUntitledSessionWorkspace,
   decodeSessionText,
   mimeForSessionFileName,
   pickDefaultSessionOpenPath,
@@ -271,6 +273,7 @@ import {
   workspaceFromDirectoryHandle,
   workspaceFromFileList,
 } from '@/utils/sessionWorkspace';
+import { loadNewFileAsTempEnabled } from '@/utils/newFileTempSettings';
 import {
   buildMarkdownImageZipEntries,
   collectMarkdownExportImageBytes,
@@ -6736,9 +6739,38 @@ function MainApp() {
   );
 
   /** Cmd/Ctrl+N (PWA) / empty-session create — parent of focused file, or vault root on chat/settings. */
+  const requestNewTempFile = useCallback(() => {
+    flushSessionEditorToWorkspace();
+    const existing = sessionWorkspaceRef.current;
+    if (existing) {
+      const { workspace, path } = addEmptyUntitledSessionFile(existing);
+      sessionWorkspaceRef.current = workspace;
+      setSessionWorkspace(workspace);
+      applySessionFileToEditor(path, workspace);
+      if (isMobile) setSidebarOpen(false);
+      return;
+    }
+    const workspace = createEmptyUntitledSessionWorkspace();
+    revokeSessionObjectUrls();
+    sessionVaultBindingsRef.current = Object.create(null);
+    sessionWorkspaceRef.current = workspace;
+    setSessionWorkspace(workspace);
+    applySessionFileToEditor('untitled.md', workspace);
+    if (isMobile) setSidebarOpen(false);
+  }, [
+    applySessionFileToEditor,
+    flushSessionEditorToWorkspace,
+    isMobile,
+    revokeSessionObjectUrls,
+  ]);
+
   const requestNewFile = useCallback(() => {
+    if (loadNewFileAsTempEnabled()) {
+      requestNewTempFile();
+      return;
+    }
     requestAdvancedSearchCreateItem('file', newFileDefaultParentPath);
-  }, [requestAdvancedSearchCreateItem, newFileDefaultParentPath]);
+  }, [requestAdvancedSearchCreateItem, newFileDefaultParentPath, requestNewTempFile]);
 
   usePwaNewFileShortcut({
     enabled: isUnlocked && canScanStorageUsage,
