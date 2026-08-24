@@ -3575,20 +3575,22 @@ function MainApp() {
     }
     } finally {
       try {
-        if (!isCurrentAttempt()) return;
-        const live = findFileTab(workspaceTabsRef.current, type, node.path);
-        if (!live || live.currentFile?.viewer !== 'loading') return;
-        commitOpenFile(
-          {
-            type,
-            id: node.path,
-            name: node.name,
-            viewer: 'unsupported',
-            lastModified: node.lastModified,
-          },
-          '',
-          { activate: false },
-        );
+        if (isCurrentAttempt()) {
+          const live = findFileTab(workspaceTabsRef.current, type, node.path);
+          if (live && live.currentFile?.viewer === 'loading') {
+            commitOpenFile(
+              {
+                type,
+                id: node.path,
+                name: node.name,
+                viewer: 'unsupported',
+                lastModified: node.lastModified,
+              },
+              '',
+              { activate: false },
+            );
+          }
+        }
       } catch (e) {
         console.error('Failed to settle loading viewer:', e);
       }
