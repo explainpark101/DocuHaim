@@ -1,5 +1,6 @@
 import {
   CHAT_TAB_ID,
+  SETTINGS_TAB_ID,
   type FileWorkspaceTab,
   type WorkspaceTab,
   type WorkspaceTabsState,
@@ -10,7 +11,7 @@ import { getActiveTab } from './workspaceTabsStore';
 /**
  * Collapse multi-tab state to legacy single-slot:
  * - keep only one file tab (active file, else most recently activated file)
- * - drop chat tab (legacy uses exclusive /chat route)
+ * - drop chat / settings tabs (legacy uses exclusive /chat and /settings routes)
  * - revoke objectUrls for closed file tabs
  */
 export function collapseWorkspaceToLegacy(state: WorkspaceTabsState): WorkspaceTabsState {
@@ -57,6 +58,17 @@ export function stripChatTab(state: WorkspaceTabsState): WorkspaceTabsState {
   const tabs = state.tabs.filter((t) => t.kind !== 'chat');
   const activeId =
     state.activeId === CHAT_TAB_ID
+      ? (tabs[0]?.id ?? null)
+      : state.activeId && tabs.some((t) => t.id === state.activeId)
+        ? state.activeId
+        : (tabs[0]?.id ?? null);
+  return { tabs, activeId };
+}
+
+export function stripSettingsTab(state: WorkspaceTabsState): WorkspaceTabsState {
+  const tabs = state.tabs.filter((t) => t.kind !== 'settings');
+  const activeId =
+    state.activeId === SETTINGS_TAB_ID
       ? (tabs[0]?.id ?? null)
       : state.activeId && tabs.some((t) => t.id === state.activeId)
         ? state.activeId

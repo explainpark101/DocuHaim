@@ -9,6 +9,7 @@ import {
   IconFileJson,
   IconImage,
   IconImageFolder,
+  IconLock,
   IconMusic,
   IconVideo,
   IconFolder,
@@ -17,6 +18,7 @@ import {
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
+import { isEncMdPath } from '@/utils/encMd';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
@@ -328,6 +330,7 @@ export default function TreeNode({
       return isImagesFolder ? IconImageFolder : IconFolder;
     }
     if (node.type !== 'file') return IconFile;
+    if (isEncMdPath(node.name) || isEncMdPath(node.path)) return IconLock;
     const lower = node.name.toLowerCase();
     const lastDot = lower.lastIndexOf('.');
     const ext = lastDot > -1 ? lower.slice(lastDot + 1) : '';
@@ -361,6 +364,9 @@ export default function TreeNode({
       return 'text-yellow-600 dark:text-yellow-400';
     }
     const lower = node.name.toLowerCase();
+    if (isEncMdPath(node.name) || isEncMdPath(node.path)) {
+      return 'text-violet-600 dark:text-violet-400';
+    }
     const lastDot = lower.lastIndexOf('.');
     const ext = lastDot > -1 ? lower.slice(lastDot + 1) : '';
     const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];

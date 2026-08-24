@@ -1,13 +1,20 @@
 import { getDraftKey, getMemoDraft, deleteMemoDraft } from '@/utils/memoDraftsDb';
+import { isEncMdPath, tryUnlockEncMdContent } from '@/utils/encMd';
 
 /**
  * Open a path-based file (S3/WebDAV) via StorageBackend into editor state payloads.
  *
  * @param {Object} params
- * @param {{ readBytes: Function, getObjectUrl: Function }} params.backend
+ * @param {{ readBytes: Function, getObjectUrl: Function, readText?: Function }} params.backend
  * @param {'s3'|'webdav'} params.type
  * @param {{ path: string, name: string, lastModified?: Date|number }} params.node
- * @returns {Promise<{ currentFile: object, editorContent: string } | null>}
+ * @returns {Promise<{
+ *   currentFile: object,
+ *   editorContent: string,
+ *   revokePrev?: Function,
+ *   needsEncMdPassword?: boolean,
+ *   encMdCiphertext?: string,
+ * } | null>}
  */
 export async function openPathFileFromBackend({ backend, type, node }) {
   if (!backend || !node?.path) return null;
@@ -153,6 +160,46 @@ export async function openPathFileFromBackend({ backend, type, node }) {
           : 0;
 
     const draftKey = getDraftKey(type, node.path);
+    const encNote = isEncMdPath(node.path) || isEncMdPath(node.name);
+
+    if (encNote) {
+      // Never merge plaintext drafts; scrub any leftover IndexedDB draft.
+      await deleteMemoDraft(draftKey);
+      const unlocked = await tryUnlockEncMdContent(node.path, serverText);
+      if (unlocked.status === 'need-password') {
+        return {
+          currentFile: {
+            type,
+            id: node.path,
+            name: node.name,
+            content: '',
+            viewer: 'markdown',
+            size: contentLength,
+            lastModified: serverLastModified,
+            encMd: true,
+          },
+          editorContent: '',
+          needsEncMdPassword: true,
+          encMdCiphertext: unlocked.ciphertext,
+          revokePrev,
+        };
+      }
+      return {
+        currentFile: {
+          type,
+          id: node.path,
+          name: node.name,
+          content: unlocked.text,
+          viewer: 'markdown',
+          size: contentLength,
+          lastModified: serverLastModified,
+          encMd: true,
+        },
+        editorContent: unlocked.text,
+        revokePrev,
+      };
+    }
+
     const draft = await getMemoDraft(draftKey);
 
     let contentToUse = serverText;

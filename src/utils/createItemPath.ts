@@ -3,6 +3,7 @@ import {
   normalizeDirPath,
   type BrowseTreeNode,
 } from '@/utils/advancedSearch/browseDirectory';
+import { ensureCreateFileExtension } from '@/utils/createFileFormats';
 import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
 
 export type CreateItemType = 'file' | 'folder';
@@ -88,11 +89,13 @@ export function resolveCreateItemDirectory(
 /**
  * Resolve a create-item name against `parentPath`, allowing `/` and `..`.
  * Leading `/` (or `\`) starts from the vault root. Escaping above root → outside-root.
+ * @param options.fileFormat — create-file format id (`md`, `enc.md`, …) when extension omitted
  */
 export function resolveCreateItemPath(
   parentPath: string,
   nameInput: string,
   type: CreateItemType,
+  options?: { fileFormat?: string | null },
 ): ResolveCreateItemPathResult {
   const trimmed = String(nameInput || '').trim();
   if (!trimmed) return { ok: false, reason: 'empty' };
@@ -121,8 +124,8 @@ export function resolveCreateItemPath(
   let baseName = stack[stack.length - 1]!;
   const dirParts = stack.slice(0, -1);
 
-  if (type === 'file' && !baseName.endsWith('.md')) {
-    baseName = `${baseName}.md`;
+  if (type === 'file') {
+    baseName = ensureCreateFileExtension(baseName, options?.fileFormat);
   }
 
   const parentDirPath = dirParts.length ? `${dirParts.join('/')}/` : '';

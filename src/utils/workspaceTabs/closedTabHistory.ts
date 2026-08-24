@@ -8,6 +8,7 @@ export const CLOSED_TAB_HISTORY_MAX = 500;
 
 export type ClosedTabEntry =
   | { kind: 'chat' }
+  | { kind: 'settings' }
   | {
       kind: 'file';
       storageType: Exclude<FileStorageType, 'session'>;
@@ -57,7 +58,7 @@ function writeRaw(entries: ClosedTabEntry[]): void {
 function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat') return true;
+  if (v.kind === 'chat' || v.kind === 'settings') return true;
   if (
     v.kind === 'file' &&
     (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav') &&
@@ -95,6 +96,7 @@ export function clearClosedTabHistory(): void {
 
 export function closedTabEntryFromWorkspaceTab(tab: WorkspaceTab): ClosedTabEntry | null {
   if (tab.kind === 'chat') return { kind: 'chat' };
+  if (tab.kind === 'settings') return { kind: 'settings' };
   if (!isFileTab(tab)) return null;
   if (tab.storageType === 'session') return null;
   const name =
@@ -116,6 +118,7 @@ export function pushClosedTab(entry: ClosedTabEntry | null | undefined): void {
   const prev = loadClosedTabHistory();
   const filtered = prev.filter((e) => {
     if (entry.kind === 'chat') return e.kind !== 'chat';
+    if (entry.kind === 'settings') return e.kind !== 'settings';
     return !(
       e.kind === 'file' &&
       e.storageType === entry.storageType &&

@@ -18,6 +18,7 @@ import {
   IconFileJson,
   IconImage,
   IconMusic,
+  IconSettings,
   IconVideo,
 } from '@/components/icons';
 import { MessageSquare, X, Loader2 } from 'lucide-react';
@@ -204,6 +205,8 @@ function SortableWorkspaceTab({
     >
       {tab.kind === 'chat' ? (
         <MessageSquare size={13} className="shrink-0 opacity-80" aria-hidden />
+      ) : tab.kind === 'settings' ? (
+        <IconSettings size={13} className="shrink-0 opacity-80" aria-hidden />
       ) : saving || loading ? (
         <Loader2
           size={13}

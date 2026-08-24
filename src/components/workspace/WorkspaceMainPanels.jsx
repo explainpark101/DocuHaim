@@ -4,9 +4,10 @@ import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
 import WorkspaceTabHost, {
   WorkspaceKeepAlivePanel,
 } from '@/components/workspace/WorkspaceTabHost';
-import { CHAT_TAB_ID, isFileTab } from '@/utils/workspaceTabs';
+import { CHAT_TAB_ID, SETTINGS_TAB_ID, isFileTab } from '@/utils/workspaceTabs';
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 
 function RouteSuspenseFallback() {
   return (
@@ -17,9 +18,9 @@ function RouteSuspenseFallback() {
 }
 
 /**
- * Unified workspace: tab strip + keep-alive file editors + singleton chat.
+ * Unified workspace: tab strip + keep-alive file editors + singleton chat/settings.
  * When `tabsEnabled` is false (legacy), hide the tab bar and show either
- * exclusive chat (`isChatRoute`) or a single editor from mirrors.
+ * exclusive chat/settings (`isChatRoute` / `isSettingsRoute`) or a single editor from mirrors.
  */
 export default function WorkspaceMainPanels({
   tabs,
@@ -32,24 +33,35 @@ export default function WorkspaceMainPanels({
   isMobileLayout = false,
   editorPaneProps,
   chatPaneProps,
+  settingsPaneProps,
   mirrors,
   tabsEnabled = true,
   isChatRoute = false,
+  isSettingsRoute = false,
 }) {
   const fileTabs = tabs.filter(isFileTab);
   const hasChatTab = tabs.some((t) => t.kind === 'chat');
+  const hasSettingsTab = tabs.some((t) => t.kind === 'settings');
   const chatActive = tabsEnabled ? activeId === CHAT_TAB_ID : isChatRoute;
+  const settingsActive = tabsEnabled ? activeId === SETTINGS_TAB_ID : isSettingsRoute;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
+  const showSettings = tabsEnabled ? hasSettingsTab : isSettingsRoute;
   // Home (`activeId` cleared) or no tabs → empty editor shell.
   const showEmpty = tabsEnabled
     ? tabs.length === 0 || activeId == null
-    : !isChatRoute && !mirrors?.currentFile && fileTabs.length === 0;
+    : !isChatRoute && !isSettingsRoute && !mirrors?.currentFile && fileTabs.length === 0;
 
   if (!tabsEnabled) {
     return (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <WorkspaceTabHost>
-          {isChatRoute ? (
+          {isSettingsRoute ? (
+            <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+              <Suspense fallback={<RouteSuspenseFallback />}>
+                <SettingsPage {...settingsPaneProps} />
+              </Suspense>
+            </div>
+          ) : isChatRoute ? (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
               <Suspense fallback={<RouteSuspenseFallback />}>
                 <ChatWithMyselfPane {...chatPaneProps} isActive />
@@ -121,6 +133,14 @@ export default function WorkspaceMainPanels({
           <WorkspaceKeepAlivePanel active={chatActive}>
             <Suspense fallback={<RouteSuspenseFallback />}>
               <ChatWithMyselfPane {...chatPaneProps} isActive={chatActive} />
+            </Suspense>
+          </WorkspaceKeepAlivePanel>
+        ) : null}
+
+        {showSettings ? (
+          <WorkspaceKeepAlivePanel active={settingsActive}>
+            <Suspense fallback={<RouteSuspenseFallback />}>
+              <SettingsPage {...settingsPaneProps} />
             </Suspense>
           </WorkspaceKeepAlivePanel>
         ) : null}

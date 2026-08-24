@@ -53,6 +53,7 @@ import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useToast } from '@/contexts/ToastContext';
 import {
   CHAT_TAB_ID,
+  SETTINGS_TAB_ID,
   anyFileTabDirty,
   clearPersistedWorkspaceTabs,
   closedTabEntryFromWorkspaceTab,
@@ -62,6 +63,7 @@ import {
   isChatTab,
   isFileTab,
   isFileTabDirty,
+  isSettingsTab,
   loadLastOpenTabsSnapshot,
   loadPersistedWorkspaceTabs,
   popClosedTab,
@@ -80,6 +82,7 @@ import {
   flushEditorIntoActiveFileTab,
   moveTab,
   openOrActivateChat,
+  openOrActivateSettings,
   patchFileTab,
   retargetFileTab,
   retargetFileTabsByPathPrefix,
@@ -89,6 +92,7 @@ import {
   collapseWorkspaceToLegacy,
   retainOnlyFileTab,
   stripChatTab,
+  stripSettingsTab,
 } from '@/utils/workspaceTabs/legacyMode';
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
 import {
@@ -132,11 +136,21 @@ import { useVisualViewportLock } from '@/hooks/useVisualViewportLock';
 import { MoveFileModal } from '@/components/modals/MoveFileModal';
 import { MoveFolderModal } from '@/components/modals/MoveFolderModal';
 import { CreateItemModal } from '@/components/modals/CreateItemModal';
+import PromptModal from '@/components/modals/PromptModal';
 import { DownloadMethodModal } from '@/components/modals/DownloadMethodModal';
 import { resolveCreateItemPath } from '@/utils/createItemPath';
+import {
+  clearEncMdPassword,
+  decryptEncMdContent,
+  encryptEncMdContent,
+  getEncMdPassword,
+  isEncMdPath,
+  prepareEncMdVaultBody,
+  setEncMdPassword,
+  tryUnlockEncMdContent,
+} from '@/utils/encMd';
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const ExportPDFPage = lazy(() => import('@/pages/ExportPDFPage'));
 const LlmAssistPopoutPage = lazy(() => import('@/pages/LlmAssistPopoutPage'));
 
@@ -461,6 +475,8 @@ function MainApp() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalContext, setCreateModalContext] = useState(null);
   const [moveModalSelectPath, setMoveModalSelectPath] = useState(null);
+  /** @type {[{ title: string, message: string, error: string, resolve: Function, reject: Function } | null, Function]} */
+  const [encMdPrompt, setEncMdPrompt] = useState(null);
   const [addToNoteSelectPath, setAddToNoteSelectPath] = useState(null);
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const [showExportPasswordModal, setShowExportPasswordModal] = useState(false);
@@ -594,6 +610,7 @@ function MainApp() {
   );
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.endsWith('/chat');
+  const isSettingsRoute = isSettingsAppPathname(location.pathname);
   const activeWorkspaceTab = getActiveTab(workspaceTabs);
   const chatTabActive = isChatTab(activeWorkspaceTab);
   const chatSurfaceActive = workspaceTabsEnabled ? chatTabActive : isChatRoute;
@@ -685,15 +702,18 @@ function MainApp() {
     if (persisted?.tabs?.length) {
       const active = persisted.tabs.find((t) => {
         if (t.kind === 'chat') return persisted.activeId === CHAT_TAB_ID;
+        if (t.kind === 'settings') return persisted.activeId === SETTINGS_TAB_ID;
         return (
           persisted.activeId === `${t.type}:${t.path}` ||
           (!persisted.activeId && persisted.tabs[0] === t)
         );
       });
       if (active?.kind === 'chat') return { type: 'chat' };
+      if (active?.kind === 'settings') return { type: 'settings' };
       if (active?.kind === 'file') return { type: active.type, path: active.path };
       const first = persisted.tabs[0];
       if (first?.kind === 'chat') return { type: 'chat' };
+      if (first?.kind === 'settings') return { type: 'settings' };
       if (first?.kind === 'file') return { type: first.type, path: first.path };
     }
     try {
@@ -714,6 +734,8 @@ function MainApp() {
   const queueBackgroundTabSave = useCallback((file, content) => {
     if (!file?.type || !file?.id) return;
     if (file.type === SESSION_STORAGE_TYPE) return;
+    // Encrypted notes: never auto-save or write plaintext drafts.
+    if (isEncMdPath(file.id) || isEncMdPath(file.name)) return;
     const viewer = file.viewer || 'markdown';
     if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
 
@@ -874,6 +896,10 @@ function MainApp() {
         setCurrentFile(null);
         currentFileRef.current = null;
         if (navigateUrl) navigate('/chat');
+      } else if (isSettingsTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate('/settings');
       } else if (navigateUrl) {
         navigate('/');
       }
@@ -922,6 +948,50 @@ function MainApp() {
     [navigate, maybeAutoSaveOnFocusChange],
   );
 
+  const openSettingsWorkspaceTab = useCallback(
+    (options = {}) => {
+      const { navigateUrl = true, hash } = options;
+      const target =
+        typeof hash === 'string' && hash
+          ? `/settings${hash.startsWith('#') ? hash : `#${hash}`}`
+          : '/settings';
+      if (!workspaceTabsEnabledRef.current) {
+        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+          editorContent: editorContentRef.current ?? '',
+          currentFile: currentFileRef.current,
+          editedFileName: editedFileNameRef.current ?? '',
+        });
+        const leaving = getActiveFileTab(flushed);
+        if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+          maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
+        }
+        const next = stripSettingsTab(flushed);
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate(target);
+        return;
+      }
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const leaving = getActiveFileTab(flushed);
+      if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+        maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
+      }
+      const next = openOrActivateSettings(flushed);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      setCurrentFile(null);
+      currentFileRef.current = null;
+      if (navigateUrl) navigate(target);
+    },
+    [navigate, maybeAutoSaveOnFocusChange],
+  );
+
   const collapseToLegacyWorkspace = useCallback(() => {
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
       editorContent: editorContentRef.current ?? '',
@@ -961,6 +1031,11 @@ function MainApp() {
       if (!skipHistory && closing) {
         pushClosedTab(closedTabEntryFromWorkspaceTab(closing));
       }
+      if (isFileTab(closing)) {
+        const closedPath =
+          closing.currentFile?.id || closing.path || '';
+        if (closedPath) clearEncMdPassword(closedPath);
+      }
       const next = closeTab(workspaceTabsRef.current, id);
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
@@ -977,6 +1052,10 @@ function MainApp() {
         setCurrentFile(null);
         currentFileRef.current = null;
         navigate('/chat');
+      } else if (isSettingsTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        navigate('/settings');
       } else {
         setCurrentFile(null);
         currentFileRef.current = null;
@@ -1216,10 +1295,12 @@ function MainApp() {
           collapseToLegacyWorkspace();
         } else if (isChatRoute) {
           openChatWorkspaceTab({ navigateUrl: false });
+        } else if (isSettingsRoute) {
+          openSettingsWorkspaceTab({ navigateUrl: false });
         }
       }
     });
-  }, [collapseToLegacyWorkspace, isChatRoute, openChatWorkspaceTab]);
+  }, [collapseToLegacyWorkspace, isChatRoute, isSettingsRoute, openChatWorkspaceTab, openSettingsWorkspaceTab]);
 
   useEffect(() => {
     const onAutoSaveMode = (event) => {
@@ -1573,11 +1654,25 @@ function MainApp() {
       setShowUnsavedConfirmModal(true);
       return;
     }
+    if (workspaceTabsEnabledRef.current) {
+      const hasSettings = workspaceTabsRef.current.tabs.some((t) => t.kind === 'settings');
+      if (hasSettings) {
+        closeWorkspaceTabById(SETTINGS_TAB_ID);
+        return;
+      }
+    }
     navigate('/');
   };
 
   const handleUnsavedConfirmLeave = () => {
     setShowUnsavedConfirmModal(false);
+    if (workspaceTabsEnabledRef.current) {
+      const hasSettings = workspaceTabsRef.current.tabs.some((t) => t.kind === 'settings');
+      if (hasSettings) {
+        closeWorkspaceTabById(SETTINGS_TAB_ID, { skipHistory: false });
+        return;
+      }
+    }
     navigate('/');
   };
 
@@ -1629,6 +1724,8 @@ function MainApp() {
         p === '/' ||
         p === '/chat' ||
         p.endsWith('/chat') ||
+        p === '/settings' ||
+        p.endsWith('/settings') ||
         p.startsWith('/view/')
       );
     };
@@ -2119,6 +2216,10 @@ function MainApp() {
         openChatWorkspaceTab();
         return;
       }
+      if (entry.kind === 'settings') {
+        openSettingsWorkspaceTab();
+        return;
+      }
       try {
         const node = await resolveClosedFileNode(entry);
         if (!node) {
@@ -2134,7 +2235,7 @@ function MainApp() {
         return;
       }
     }
-  }, [openChatWorkspaceTab, resolveClosedFileNode]);
+  }, [openChatWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
 
   const restorePersistedWorkspaceTabs = useCallback(
     async (persisted, options = {}) => {
@@ -2145,6 +2246,11 @@ function MainApp() {
       for (const tab of persisted.tabs) {
         if (tab.kind === 'chat') {
           openChatWorkspaceTab({ navigateUrl: false });
+          restoredAny = true;
+          continue;
+        }
+        if (tab.kind === 'settings') {
+          openSettingsWorkspaceTab({ navigateUrl: false });
           restoredAny = true;
           continue;
         }
@@ -2175,6 +2281,12 @@ function MainApp() {
         }
         return restoredAny;
       }
+      if (targetActiveId === SETTINGS_TAB_ID) {
+        if (workspaceTabsRef.current.tabs.some((tab) => tab.id === SETTINGS_TAB_ID)) {
+          activateWorkspaceTab(SETTINGS_TAB_ID, { navigateUrl: navigateActiveUrl });
+        }
+        return restoredAny;
+      }
 
       if (typeof targetActiveId === 'string' && targetActiveId) {
         const activeExists = workspaceTabsRef.current.tabs.some((tab) => tab.id === targetActiveId);
@@ -2185,7 +2297,7 @@ function MainApp() {
 
       return restoredAny;
     },
-    [activateWorkspaceTab, openChatWorkspaceTab, resolveClosedFileNode],
+    [activateWorkspaceTab, openChatWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode],
   );
 
   useEffect(() => {
@@ -3243,7 +3355,13 @@ function MainApp() {
         const backend = createWebdavBackend(webdavConfig);
         const opened = await openPathFileFromBackend({ backend, type: 'webdav', node });
         if (!opened) return;
-        const { currentFile: openedFile, editorContent: content } = opened;
+        let { currentFile: openedFile, editorContent: content } = opened;
+        if (opened.needsEncMdPassword) {
+          const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
+          if (plain == null) return;
+          content = plain;
+          openedFile = { ...openedFile, content: plain, encMd: true };
+        }
         // Do not revokePrev(other tab) — only this tab's media is replaced via commitOpenFile.
         commit(openedFile, content);
       } catch (err) {
@@ -3317,7 +3435,12 @@ function MainApp() {
                 : 0;
 
           const draftKey = getDraftKey('s3', node.path);
-          const draft = await getMemoDraft(draftKey);
+          if (isEncMdPath(node.path)) {
+            await deleteMemoDraft(draftKey);
+          }
+          const draft = isEncMdPath(node.path)
+            ? null
+            : await getMemoDraft(draftKey);
           const existingTab = findFileTab(workspaceTabsRef.current, 's3', node.path);
           const resolved = await resolveOpenTextContent({
             serverText,
@@ -3328,15 +3451,25 @@ function MainApp() {
             deleteDraft: () => deleteMemoDraft(draftKey),
           });
 
+          let contentToUse = resolved.contentToUse;
+          let baselineContent = resolved.baselineContent;
+          if (isEncMdPath(node.path)) {
+            const plain = await unlockEncMdOrPrompt(node.path, serverText);
+            if (plain == null) return;
+            contentToUse = plain;
+            baselineContent = plain;
+          }
+
           commit({
             type: 's3',
             id: node.path,
             name: node.name,
-            content: resolved.baselineContent,
+            content: baselineContent,
             viewer: 'markdown',
             size: typeof ContentLength === 'number' ? ContentLength : null,
             lastModified: serverLastModified ?? node.lastModified,
-          }, resolved.contentToUse, { baselineContent: resolved.baselineContent });
+            ...(isEncMdPath(node.path) ? { encMd: true } : {}),
+          }, contentToUse, { baselineContent });
         } catch (err) {
           console.error('S3 Read Error:', err);
         }
@@ -3555,7 +3688,12 @@ function MainApp() {
 
       const serverText = await file.text();
       const draftKey = getDraftKey('local', node.path);
-      const draft = await getMemoDraft(draftKey);
+      if (isEncMdPath(node.path)) {
+        await deleteMemoDraft(draftKey);
+      }
+      const draft = isEncMdPath(node.path)
+        ? null
+        : await getMemoDraft(draftKey);
       const existingTab = findFileTab(workspaceTabsRef.current, 'local', node.path);
       const resolved = await resolveOpenTextContent({
         serverText,
@@ -3566,17 +3704,27 @@ function MainApp() {
         deleteDraft: () => deleteMemoDraft(draftKey),
       });
 
+      let contentToUse = resolved.contentToUse;
+      let baselineContent = resolved.baselineContent;
+      if (isEncMdPath(node.path)) {
+        const plain = await unlockEncMdOrPrompt(node.path, serverText);
+        if (plain == null) return;
+        contentToUse = plain;
+        baselineContent = plain;
+      }
+
       commit({
         type: 'local',
         id: node.path,
         name: node.name,
-        content: resolved.baselineContent,
+        content: baselineContent,
         handle: node.handle,
         parentHandle: node.parentHandle,
         viewer: 'markdown',
         size: typeof file.size === 'number' ? file.size : null,
         lastModified: file.lastModified,
-      }, resolved.contentToUse, { baselineContent: resolved.baselineContent });
+        ...(isEncMdPath(node.path) ? { encMd: true } : {}),
+      }, contentToUse, { baselineContent });
     } else if (type === SESSION_STORAGE_TYPE) {
       flushSessionEditorToWorkspace();
       const workspace = sessionWorkspaceRef.current;
@@ -3981,7 +4129,9 @@ function MainApp() {
       flushed.tabs.map((t) =>
         t.kind === 'chat'
           ? { kind: 'chat' }
-          : { kind: 'file', storageType: t.storageType, path: t.path },
+          : t.kind === 'settings'
+            ? { kind: 'settings' }
+            : { kind: 'file', storageType: t.storageType, path: t.path },
       ),
       flushed.activeId,
     );
@@ -4013,7 +4163,9 @@ function MainApp() {
         flushed.tabs.map((t) =>
           t.kind === 'chat'
             ? { kind: 'chat' }
-            : { kind: 'file', storageType: t.storageType, path: t.path },
+            : t.kind === 'settings'
+              ? { kind: 'settings' }
+              : { kind: 'file', storageType: t.storageType, path: t.path },
         ),
         flushed.activeId,
       );
@@ -4047,6 +4199,7 @@ function MainApp() {
     } else {
       const first = source.tabs[0];
       if (first?.kind === 'chat') openIds.add(CHAT_TAB_ID);
+      else if (first?.kind === 'settings') openIds.add(SETTINGS_TAB_ID);
       else if (first?.kind === 'file') openIds.add(`${first.type}:${first.path}`);
     }
     seedTabsRestoreQueueFromSnapshot(source, openIds);
@@ -4058,6 +4211,7 @@ function MainApp() {
 
     const onChat =
       location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    const onSettings = isSettingsAppPathname(location.pathname);
     const openParam =
       typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search).get('open')
@@ -4097,6 +4251,13 @@ function MainApp() {
         openChatWorkspaceTab({ navigateUrl: false });
       }
       return;
+    } else if (onSettings) {
+      hasRestoredLastFileRef.current = true;
+      hasProcessedOpenFromUrlRef.current = true;
+      if (workspaceTabsEnabledRef.current) {
+        openSettingsWorkspaceTab({ navigateUrl: false });
+      }
+      return;
     } else if (isExportPdfAppPathname(location.pathname)) {
       // Bare /export-pdf without a note path — do not restore last file into the editor.
       hasRestoredLastFileRef.current = true;
@@ -4107,25 +4268,29 @@ function MainApp() {
       const persisted = loadPersistedWorkspaceTabs();
       if (persisted?.tabs?.length) {
         hasRestoredLastFileRef.current = true;
-        // Restore chat shell immediately; files open asynchronously below when possible.
-        if (
-          workspaceTabsEnabledRef.current &&
-          persisted.tabs.some((t) => t.kind === 'chat')
-        ) {
-          openChatWorkspaceTab({ navigateUrl: false });
+        // Restore chat/settings shell immediately; files open asynchronously below when possible.
+        if (workspaceTabsEnabledRef.current) {
+          if (persisted.tabs.some((t) => t.kind === 'chat')) {
+            openChatWorkspaceTab({ navigateUrl: false });
+          }
+          if (persisted.tabs.some((t) => t.kind === 'settings')) {
+            openSettingsWorkspaceTab({ navigateUrl: false });
+          }
         }
         const fileTabs = persisted.tabs.filter((t) => t.kind === 'file');
         const activeFile =
           fileTabs.find((t) => persisted.activeId === `${t.type}:${t.path}`) ||
-          (persisted.activeId === CHAT_TAB_ID ? null : fileTabs[0]);
-        if (persisted.activeId === CHAT_TAB_ID && workspaceTabsEnabledRef.current) {
+          (persisted.activeId === CHAT_TAB_ID || persisted.activeId === SETTINGS_TAB_ID
+            ? null
+            : fileTabs[0]);
+        if (persisted.activeId === CHAT_TAB_ID) {
           hasProcessedOpenFromUrlRef.current = true;
           navigate('/chat');
           return;
         }
-        if (persisted.activeId === CHAT_TAB_ID && !workspaceTabsEnabledRef.current) {
+        if (persisted.activeId === SETTINGS_TAB_ID) {
           hasProcessedOpenFromUrlRef.current = true;
-          navigate('/chat');
+          navigate('/settings');
           return;
         }
         if (activeFile) {
@@ -4231,6 +4396,7 @@ function MainApp() {
     loadLastOpenedFile,
     navigate,
     openChatWorkspaceTab,
+    openSettingsWorkspaceTab,
   ]);
 
   selectFileRawRef.current = selectFileRaw;
@@ -4266,9 +4432,11 @@ function MainApp() {
       : null;
     const explicitActiveId = isChatAppPathname(location.pathname)
       ? CHAT_TAB_ID
-      : routeNotePath && routeStorageType
-        ? `${routeStorageType}:${routeNotePath}`
-        : null;
+      : isSettingsAppPathname(location.pathname)
+        ? SETTINGS_TAB_ID
+        : routeNotePath && routeStorageType
+          ? `${routeStorageType}:${routeNotePath}`
+          : null;
     const navigateActiveUrl = explicitActiveId == null && !isExportPdfAppPathname(location.pathname);
 
     hasRestoredPersistedWorkspaceTabsRef.current = true;
@@ -4324,12 +4492,23 @@ function MainApp() {
     [s3Tree, webdavTree, localTree, localRootHandle],
   );
 
+  // Open settings as a workspace tab whenever /settings is hit (incl. locked first-run).
+  useEffect(() => {
+    if (!isSettingsAppPathname(location.pathname)) return;
+    if (!workspaceTabsEnabledRef.current) return;
+    openSettingsWorkspaceTab({ navigateUrl: false });
+  }, [location.pathname, openSettingsWorkspaceTab]);
+
   // Keep the open note in sync with browser history (back/forward, history.back, …).
   useEffect(() => {
     if (!isUnlocked || !hasProcessedOpenFromUrlRef.current) return;
     if (isChatAppPathname(location.pathname) || isSettingsAppPathname(location.pathname)) {
-      if (isChatAppPathname(location.pathname) && workspaceTabsEnabledRef.current) {
-        openChatWorkspaceTab({ navigateUrl: false });
+      if (workspaceTabsEnabledRef.current) {
+        if (isChatAppPathname(location.pathname)) {
+          openChatWorkspaceTab({ navigateUrl: false });
+        } else {
+          openSettingsWorkspaceTab({ navigateUrl: false });
+        }
       }
       return;
     }
@@ -4402,6 +4581,7 @@ function MainApp() {
     webdavTree,
     s3Tree,
     openChatWorkspaceTab,
+    openSettingsWorkspaceTab,
   ]);
 
   // Prompt to restore last local folder when returning in local mode
@@ -6054,6 +6234,78 @@ function MainApp() {
     );
   };
 
+  /**
+   * Prompt for `.enc.md` password (Esc cancel, Enter confirm).
+   * @param {{ title?: string, message?: string, confirmLabel?: string }} [opts]
+   * @returns {Promise<string>}
+   */
+  const requestEncMdPassword = useCallback((opts = {}) => {
+    return new Promise((resolve, reject) => {
+      setEncMdPrompt({
+        title: opts.title || '암호화된 노트',
+        message:
+          opts.message ||
+          '비밀번호를 입력하세요.',
+        confirmLabel: opts.confirmLabel || '확인',
+        error: '',
+        resolve: (pw) => {
+          setEncMdPrompt(null);
+          resolve(pw);
+        },
+        reject: () => {
+          setEncMdPrompt(null);
+          reject(new Error('cancelled'));
+        },
+      });
+    });
+  }, []);
+
+  /**
+   * Unlock ciphertext for editor; prompts when session has no password.
+   * @returns {Promise<string|null>} plaintext or null if cancelled
+   */
+  const unlockEncMdOrPrompt = useCallback(
+    async (path, ciphertext) => {
+      const first = await tryUnlockEncMdContent(path, ciphertext);
+      if (first.status !== 'need-password') return first.text;
+
+      return new Promise((resolve) => {
+        const run = (password) => {
+          void (async () => {
+            try {
+              const plain = await decryptEncMdContent(ciphertext, password);
+              setEncMdPassword(path, password);
+              setEncMdPrompt(null);
+              resolve(plain);
+            } catch {
+              setEncMdPrompt((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      error:
+                        '비밀번호가 올바르지 않거나 파일을 열 수 없습니다.',
+                    }
+                  : null,
+              );
+            }
+          })();
+        };
+        setEncMdPrompt({
+          title: '암호화된 노트 잠금 해제',
+          message: '이 노트를 열 때 사용한 비밀번호를 입력하세요.',
+          confirmLabel: '잠금 해제',
+          error: '',
+          resolve: run,
+          reject: () => {
+            setEncMdPrompt(null);
+            resolve(null);
+          },
+        });
+      });
+    },
+    [],
+  );
+
   const saveFile = useCallback(async (fileOverride = null, options = {}) => {
     const {
       skipSuffixCheck = false,
@@ -6131,6 +6383,32 @@ function MainApp() {
               ? 'image/svg+xml'
               : 'text/markdown';
 
+    let vaultBody = textToSave;
+    if (isEncMdPath(fileToSave.id) || isEncMdPath(fileToSave.name)) {
+      try {
+        let pw = getEncMdPassword(fileToSave.id);
+        if (!pw) {
+          pw = await requestEncMdPassword({
+            title: '암호화된 노트 저장',
+            message: '저장하려면 비밀번호를 입력하세요.',
+            confirmLabel: '암호화 저장',
+          });
+        }
+        vaultBody = await prepareEncMdVaultBody(fileToSave.id, textToSave, pw);
+      } catch (e) {
+        removeIndicator(indicatorId);
+        if (touchesActiveEditor) setIsSaving(false);
+        if (tabId && manageSavingBadge) {
+          savingTabIdsRef.current.delete(tabId);
+          setSavingTabIds([...savingTabIdsRef.current]);
+        }
+        if (e?.message !== 'cancelled') {
+          alert(e?.message || '암호화 저장 실패');
+        }
+        return;
+      }
+    }
+
     const applySavedContentToTab = (extraFileFields = {}) => {
       const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
       if (!existing) return;
@@ -6159,12 +6437,12 @@ function MainApp() {
         await putObject(client, {
           Bucket: s3Creds.bucket,
           Key: fileToSave.id,
-          Body: textToSave,
+          Body: vaultBody,
           ContentType: contentTypeForViewer,
         });
         await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
-        const savedByteLength = new TextEncoder().encode(textToSave).length;
+        const savedByteLength = new TextEncoder().encode(vaultBody).length;
         setCurrentFile((prev) => {
           if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
           const next = { ...prev, content: textToSave, size: savedByteLength };
@@ -6175,11 +6453,11 @@ function MainApp() {
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
-          content: textToSave,
+          content: isEncMdPath(fileToSave.id) ? '' : textToSave,
         });
       } else if (fileToSave.type === 'local') {
         const writable = await fileToSave.handle.createWritable();
-        await writable.write(textToSave);
+        await writable.write(vaultBody);
         await writable.close();
         await deleteMemoDraft(getDraftKey('local', fileToSave.id));
         const file = await fileToSave.handle.getFile();
@@ -6201,7 +6479,7 @@ function MainApp() {
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
-          content: textToSave,
+          content: isEncMdPath(fileToSave.id) ? '' : textToSave,
         });
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
         const binding = sessionVaultBindingsRef.current[fileToSave.id];
@@ -6211,14 +6489,14 @@ function MainApp() {
         await writeSessionFileToHaimRef.current?.({
           destPath: binding.destPath,
           sessionFile: fileToSave,
-          content: textToSave,
+          content: vaultBody,
         });
       } else if (fileToSave.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
-        await backend.writeText(fileToSave.id, textToSave, contentTypeForViewer);
+        await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
         await deleteMemoDraft(getDraftKey('webdav', fileToSave.id));
         await refreshWebdavTree();
-        const savedByteLength = new TextEncoder().encode(textToSave).length;
+        const savedByteLength = new TextEncoder().encode(vaultBody).length;
         setCurrentFile((prev) => {
           if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
           const next = { ...prev, content: textToSave, size: savedByteLength };
@@ -6229,11 +6507,16 @@ function MainApp() {
         notifyAdvancedSearchChange({
           type: 'file',
           path: fileToSave.id,
-          content: textToSave,
+          content: isEncMdPath(fileToSave.id) ? '' : textToSave,
         });
       }
     } catch (e) {
-      if (fileToSave.type === 's3' && isAbortOrNetworkError(e)) {
+      const encNote =
+        isEncMdPath(fileToSave.id) || isEncMdPath(fileToSave.name);
+      // Never park plaintext (or password) in IndexedDB for encrypted notes.
+      if (encNote) {
+        alert('저장 실패: ' + (e?.message || String(e)));
+      } else if (fileToSave.type === 's3' && isAbortOrNetworkError(e)) {
         try {
           await savePendingUpload({
             key: fileToSave.id,
@@ -6291,6 +6574,7 @@ function MainApp() {
     refreshWebdavTree,
     addIndicator,
     removeIndicator,
+    requestEncMdPassword,
   ]);
 
   useEffect(() => {
@@ -6601,9 +6885,29 @@ function MainApp() {
     const { path: newPath, parentDirPath, baseName: finalName } = resolved;
     const expandParent = parentDirPath || parentPath || '';
 
+    let initialBody = '';
+    let openContent = '';
+    if (type !== 'folder' && isEncMdPath(newPath)) {
+      let password;
+      try {
+        password = await requestEncMdPassword({
+          title: '암호화해서 만들기',
+          message:
+            '이 노트를 암호화할 비밀번호를 입력하세요.\n같은 비밀번호로만 다시 열 수 있습니다.',
+          confirmLabel: '암호화 생성',
+        });
+      } catch {
+        return;
+      }
+      initialBody = await encryptEncMdContent('', password);
+      setEncMdPassword(newPath, password);
+      openContent = '';
+    }
+
     const openCreatedFile = (file) => {
-      const content = typeof file.content === 'string' ? file.content : '';
-      if (commitOpenFile(file, content)) {
+      const content =
+        typeof file.content === 'string' ? file.content : openContent;
+      if (commitOpenFile({ ...file, ...(isEncMdPath(newPath) ? { encMd: true } : {}) }, content)) {
         navigate(`/view/${file.id}`);
       }
     };
@@ -6632,11 +6936,11 @@ function MainApp() {
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
         } else {
-          await putObject(client, { Bucket: s3Creds.bucket, Key: newPath, Body: '' });
+          await putObject(client, { Bucket: s3Creds.bucket, Key: newPath, Body: initialBody });
           loadS3Files();
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
-          openCreatedFile({ type: 's3', id: newPath, name: finalName, content: '' });
+          openCreatedFile({ type: 's3', id: newPath, name: finalName, content: openContent });
         }
       } else if (storageType === 'local') {
         if (!localRootHandle && !parentDirHandle) {
@@ -6655,13 +6959,18 @@ function MainApp() {
           expandPathsRef.current?.(storageType, parentPaths);
         } else {
           const newFileHandle = await targetDirHandle.getFileHandle(finalName, { create: true });
+          if (initialBody) {
+            const writable = await newFileHandle.createWritable();
+            await writable.write(initialBody);
+            await writable.close();
+          }
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
           openCreatedFile({
             type: 'local',
             id: newPath,
             name: finalName,
-            content: '',
+            content: openContent,
             handle: newFileHandle,
           });
         }
@@ -6674,7 +6983,7 @@ function MainApp() {
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
         } else {
-          await backend.writeText(newPath, '', 'text/markdown');
+          await backend.writeText(newPath, initialBody, 'text/markdown');
           await refreshWebdavTree();
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPathsRef.current?.(storageType, parentPaths);
@@ -6682,7 +6991,7 @@ function MainApp() {
             type: 'webdav',
             id: newPath,
             name: finalName,
-            content: '',
+            content: openContent,
             viewer: 'markdown',
           });
         }
@@ -8470,16 +8779,19 @@ function MainApp() {
   };
 
   // 7. Auto Save (S3, local, WebDAV — 5s debounce)
+  // `.enc.md`: manual save only — never debounce-write plaintext or prompt for password.
   useEffect(() => {
     const editableTypes = ['s3', 'local', 'webdav'];
     if (!currentFile || !editableTypes.includes(currentFile.type)) return;
     if (currentFile.viewer !== 'markdown') return;
+    if (isEncMdPath(currentFile.id) || isEncMdPath(currentFile.name)) return;
     if (!lastInputAt) return;
 
     const now = Date.now();
     const timeout = setTimeout(async () => {
       if (currentFile.content === editorContent) return;
       if (!currentFile || !editableTypes.includes(currentFile.type)) return;
+      if (isEncMdPath(currentFile.id) || isEncMdPath(currentFile.name)) return;
       try {
         await saveFile(null, { lastInputAt });
         setLastAutoSaveAt(now);
@@ -8493,9 +8805,11 @@ function MainApp() {
   }, [lastInputAt, currentFile, editorContent]);
 
   // 8. Auto Sync (S3 + WebDAV, pull when idle >= 30s)
+  // Skip `.enc.md`: remote body is ciphertext; never pull it into the plaintext editor.
   useEffect(() => {
     if (!currentFile || (currentFile.type !== 's3' && currentFile.type !== 'webdav')) return;
     if (currentFile.viewer !== 'markdown') return;
+    if (isEncMdPath(currentFile.id) || isEncMdPath(currentFile.name)) return;
 
     const interval = setInterval(async () => {
       if (!lastInputAt) return;
@@ -8503,6 +8817,7 @@ function MainApp() {
       if (idleMs < 30000) return;
       // 로컬에 미저장 내용이 있으면 덮어쓰지 않음
       if (currentFile.content !== editorContent) return;
+      if (isEncMdPath(currentFile.id) || isEncMdPath(currentFile.name)) return;
 
       const backend = getBackendForType(currentFile.type);
       if (!backend) return;
@@ -8721,7 +9036,7 @@ function MainApp() {
           fileInputRef={fileInputRef}
           onCloseWithoutUnlock={() => {
             proceedWithoutStoredCreds();
-            navigate('/settings');
+            openSettingsWorkspaceTab();
           }}
           canUnlockWithWebAuthn={
             webauthnAvailable &&
@@ -8848,7 +9163,7 @@ function MainApp() {
         fileInputRef={fileInputRef}
         onCloseWithoutUnlock={() => {
           proceedWithoutStoredCreds();
-          navigate('/settings');
+          openSettingsWorkspaceTab();
         }}
         canUnlockWithWebAuthn={
           webauthnAvailable &&
@@ -8937,7 +9252,7 @@ function MainApp() {
               }}
               onOpenSettings={() => {
                 if (isMobile) setSidebarOpen(false);
-                navigate('/settings');
+                openSettingsWorkspaceTab();
               }}
               theme={theme}
               onToggleTheme={() =>
@@ -8995,79 +9310,6 @@ function MainApp() {
           <div className="relative z-50 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
             <Route
-              path="/settings"
-              element={
-                <Suspense fallback={<RouteSuspenseFallback />}>
-                  <SettingsPage
-                    s3Creds={s3Creds}
-                    masterPassword={masterPassword}
-                    onSaveS3Creds={handleSaveS3Creds}
-                    storageMode={storageMode}
-                    onStorageModeChange={setStorageMode}
-                    localFolderName={
-                      localRootHandle?.name || pendingLocalFolderName || loadLastLocalFolderName()
-                    }
-                    onOpenLocalFolder={openLocalFolder}
-                    webdavConfig={webdavConfig}
-                    onSaveWebdavConfig={async (next) => {
-                      setWebdavConfig(next);
-                      await saveWebdavConfig(next, masterPassword || undefined);
-                      if (storageMode === STORAGE_MODE_WEBDAV) {
-                        await refreshWebdavTree();
-                      }
-                      showAlert({
-                        title: '연결 정보',
-                        message: '연결 정보 업데이트가 완료되었습니다.',
-                      });
-                    }}
-                    onExportCreds={handleExportCreds}
-                    onImportClick={() => fileInputRef.current?.click()}
-                    showHiddenFolders={showHiddenFolders}
-                    onToggleHiddenFolders={() =>
-                      setSettingsToggle('settings-show-hidden', !showHiddenFolders)
-                    }
-                    showTrashFolder={showTrashFolder}
-                    onToggleTrashFolder={() =>
-                      setSettingsToggle('settings-show-trash', !showTrashFolder)
-                    }
-                    hideRecordingCompanions={hideRecordingCompanions}
-                    treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
-                    treeHoverExpandSettings={treeHoverExpandSettings}
-                    onTreeHoverExpandSettingsChange={setTreeHoverExpandSettings}
-                    onToggleHideRecordingCompanions={() =>
-                      setSettingsToggle('settings-hide-recording', !hideRecordingCompanions)
-                    }
-                    onToggleTreeStickyFolderPath={() =>
-                      setSettingsToggle('settings-tree-sticky', !treeStickyFolderPathEnabled)
-                    }
-                    onRequestClose={handleSettingsClose}
-                    webauthnSupported={webauthnPRFSupported}
-                    webauthnEnabled={isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword}
-                    webauthnStorageOnly={isStoredWithWebAuthn()}
-                    onEnableWebAuthn={enableWebAuthnUnlock}
-                    onDisableWebAuthn={disableWebAuthnUnlock}
-                    snippetConfig={snippetConfig}
-                    onChangeSnippetConfig={handleChangeSnippetConfig}
-                    onSaveSnippetConfig={handleSaveSnippetConfig}
-                    isSavingSnippets={isSavingSnippets}
-                    snippetConfigLoaded={snippetLoadedFromS3 || snippetLoadedFromLocal || snippetLoadedFromWebdav}
-                    editorType={editorType}
-                    onEditorTypeChange={handleEditorTypeChange}
-                    isMobileLayout={isMobile}
-                    sidebarOpen={sidebarOpen}
-                    sidebarCollapsed={sidebarCollapsed}
-                    onOpenSidebar={() => setSidebarOpen(true)}
-                    onCheckAppUpdate={handleCheckAppUpdate}
-                    isCheckingAppUpdate={isCheckingAppUpdate}
-                    latestAppBuildId={appBuildRemoteId}
-                    onScanStorageUsage={scanActiveStorageUsageTree}
-                    canScanStorageUsage={canScanStorageUsage}
-                    onOpenStorageUsageFile={handleOpenStorageUsageFile}
-                  />
-                </Suspense>
-              }
-            />
-            <Route
               path="*"
               element={
                 <WorkspaceMainPanels
@@ -9076,6 +9318,7 @@ function MainApp() {
                   savingTabIds={savingTabIds}
                   tabsEnabled={workspaceTabsEnabled}
                   isChatRoute={isChatRoute}
+                  isSettingsRoute={isSettingsRoute}
                   isMobileLayout={isMobile}
                   onActivateTab={(id) => activateWorkspaceTab(id)}
                   onCloseTab={(id) => {
@@ -9113,6 +9356,68 @@ function MainApp() {
                       workspaceTabsRef.current = next;
                       setWorkspaceTabs(next);
                     },
+                  }}
+                  settingsPaneProps={{
+                    s3Creds,
+                    masterPassword,
+                    onSaveS3Creds: handleSaveS3Creds,
+                    storageMode,
+                    onStorageModeChange: setStorageMode,
+                    localFolderName:
+                      localRootHandle?.name || pendingLocalFolderName || loadLastLocalFolderName(),
+                    onOpenLocalFolder: openLocalFolder,
+                    webdavConfig,
+                    onSaveWebdavConfig: async (next) => {
+                      setWebdavConfig(next);
+                      await saveWebdavConfig(next, masterPassword || undefined);
+                      if (storageMode === STORAGE_MODE_WEBDAV) {
+                        await refreshWebdavTree();
+                      }
+                      showAlert({
+                        title: '연결 정보',
+                        message: '연결 정보 업데이트가 완료되었습니다.',
+                      });
+                    },
+                    onExportCreds: handleExportCreds,
+                    onImportClick: () => fileInputRef.current?.click(),
+                    showHiddenFolders,
+                    onToggleHiddenFolders: () =>
+                      setSettingsToggle('settings-show-hidden', !showHiddenFolders),
+                    showTrashFolder,
+                    onToggleTrashFolder: () =>
+                      setSettingsToggle('settings-show-trash', !showTrashFolder),
+                    hideRecordingCompanions,
+                    treeStickyFolderPathEnabled,
+                    treeHoverExpandSettings,
+                    onTreeHoverExpandSettingsChange: setTreeHoverExpandSettings,
+                    onToggleHideRecordingCompanions: () =>
+                      setSettingsToggle('settings-hide-recording', !hideRecordingCompanions),
+                    onToggleTreeStickyFolderPath: () =>
+                      setSettingsToggle('settings-tree-sticky', !treeStickyFolderPathEnabled),
+                    onRequestClose: handleSettingsClose,
+                    webauthnSupported: webauthnPRFSupported,
+                    webauthnEnabled: isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword,
+                    webauthnStorageOnly: isStoredWithWebAuthn(),
+                    onEnableWebAuthn: enableWebAuthnUnlock,
+                    onDisableWebAuthn: disableWebAuthnUnlock,
+                    snippetConfig,
+                    onChangeSnippetConfig: handleChangeSnippetConfig,
+                    onSaveSnippetConfig: handleSaveSnippetConfig,
+                    isSavingSnippets,
+                    snippetConfigLoaded:
+                      snippetLoadedFromS3 || snippetLoadedFromLocal || snippetLoadedFromWebdav,
+                    editorType,
+                    onEditorTypeChange: handleEditorTypeChange,
+                    isMobileLayout: isMobile,
+                    sidebarOpen,
+                    sidebarCollapsed,
+                    onOpenSidebar: () => setSidebarOpen(true),
+                    onCheckAppUpdate: handleCheckAppUpdate,
+                    isCheckingAppUpdate,
+                    latestAppBuildId: appBuildRemoteId,
+                    onScanStorageUsage: scanActiveStorageUsageTree,
+                    canScanStorageUsage,
+                    onOpenStorageUsageFile: handleOpenStorageUsageFile,
                   }}
                   editorPaneProps={({
                     currentFile: paneFile,
@@ -9852,6 +10157,23 @@ function MainApp() {
         }}
         onSubmit={handleCreateItemSubmit}
         isSubmitting={isCreateSubmitting}
+      />
+
+      <PromptModal
+        isOpen={Boolean(encMdPrompt)}
+        title={encMdPrompt?.title || '비밀번호'}
+        message={encMdPrompt?.message || ''}
+        placeholder="비밀번호"
+        confirmLabel={encMdPrompt?.confirmLabel || '확인'}
+        cancelLabel="취소"
+        inputType="password"
+        error={encMdPrompt?.error || ''}
+        onCancel={() => {
+          encMdPrompt?.reject?.();
+        }}
+        onConfirm={(password) => {
+          encMdPrompt?.resolve?.(password);
+        }}
       />
 
     </div>

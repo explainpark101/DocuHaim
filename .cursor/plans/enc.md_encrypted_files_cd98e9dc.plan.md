@@ -4,16 +4,16 @@ overview: 새 파일 생성 모달에 `.md` / `.enc.md` 형식 배지를 추가�
 todos:
   - id: enc-md-util
     content: Add encMd helpers (detect, encrypt/decrypt, session password map) + createItemPath format support
-    status: pending
+    status: completed
   - id: create-modal-badges
-    content: "CREATE_FILE_FORMATS registry + CreateItemModal badges (map over registry); Cursor rule for new extensions"
-    status: pending
+    content: CREATE_FILE_FORMATS registry + CreateItemModal badges (map over registry); Cursor rule for new extensions
+    status: completed
   - id: create-open-save
     content: "App: PromptModal on create/open/save for .enc.md; openPathFileFromBackend + save encrypt"
-    status: pending
+    status: completed
   - id: tree-search-docs
     content: Tree lock affordance, AS index skip ciphertext, docs/custom-markdown/enc-md.md + index + sidebar
-    status: pending
+    status: completed
 isProject: false
 ---
 

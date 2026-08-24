@@ -4,6 +4,12 @@ import { Folder } from 'lucide-react';
 import { IconFilePlus, IconFolderPlus } from '@/components/icons';
 import Modal from '@/components/modals/Modal';
 import {
+  applyCreateFileFormat,
+  CREATE_FILE_FORMATS,
+  defaultCreateFileFormat,
+  detectCreateFileFormat,
+} from '@/utils/createFileFormats';
+import {
   isCreateItemPathTaken,
   listCreateItemFolderSuggestions,
   resolveCreateItemAutocompleteContext,
@@ -41,6 +47,9 @@ export function CreateItemModal({
 }) {
   const listboxId = useId();
   const [name, setName] = useState('');
+  const [fileFormatId, setFileFormatId] = useState(
+    () => defaultCreateFileFormat().id,
+  );
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [activeSuggest, setActiveSuggest] = useState(0);
   const [folderLoadTick, setFolderLoadTick] = useState(0);
@@ -51,6 +60,7 @@ export function CreateItemModal({
   useEffect(() => {
     if (isOpen) {
       setName('');
+      setFileFormatId(defaultCreateFileFormat().id);
       setSuggestOpen(false);
       setActiveSuggest(0);
       wasBlockedRef.current = false;
@@ -60,11 +70,28 @@ export function CreateItemModal({
 
   const itemType = type === 'folder' ? 'folder' : 'file';
   const trees = useMemo(() => [tree], [tree]);
+  const pathOptions = useMemo(
+    () => (itemType === 'file' ? { fileFormat: fileFormatId } : undefined),
+    [itemType, fileFormatId],
+  );
 
   const resolved = useMemo(
-    () => (name.trim() ? resolveCreateItemPath(parentPath, name, itemType) : null),
-    [name, parentPath, itemType],
+    () =>
+      name.trim()
+        ? resolveCreateItemPath(parentPath, name, itemType, pathOptions)
+        : null,
+    [name, parentPath, itemType, pathOptions],
   );
+
+  // Sync badge when the user types an explicit registered extension.
+  useEffect(() => {
+    if (itemType !== 'file' || !name.trim()) return;
+    if (!resolved?.ok) return;
+    const detected = detectCreateFileFormat(resolved.baseName);
+    if (detected.id !== fileFormatId) {
+      setFileFormatId(detected.id);
+    }
+  }, [itemType, name, resolved, fileFormatId]);
 
   const isOutsideRoot = resolved?.ok === false && resolved.reason === 'outside-root';
   const isDuplicate =
@@ -155,11 +182,22 @@ export function CreateItemModal({
     setActiveSuggest(0);
   };
 
+  const selectFileFormat = (formatId) => {
+    setFileFormatId(formatId);
+    if (!name.trim()) return;
+    setName(applyCreateFileFormat(name, formatId));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    const result = resolveCreateItemPath(parentPath, trimmed, itemType);
+    const result = resolveCreateItemPath(
+      parentPath,
+      trimmed,
+      itemType,
+      pathOptions,
+    );
     if (!result.ok) {
       if (result.reason === 'outside-root') playBlockedFeedback();
       return;
@@ -169,7 +207,12 @@ export function CreateItemModal({
       return;
     }
     setSuggestOpen(false);
-    onSubmit(trimmed);
+    // Ensure selected format extension is on the submitted name (App re-resolves).
+    const toSubmit =
+      itemType === 'file'
+        ? applyCreateFileFormat(trimmed, fileFormatId) || trimmed
+        : trimmed;
+    onSubmit(toSubmit);
   };
 
   const handleKeyDown = (e) => {
@@ -210,9 +253,13 @@ export function CreateItemModal({
   const Icon = isFolder ? IconFolderPlus : IconFilePlus;
   const rootLabel =
     storageType === 'local' ? '로컬: ' : storageType === 'webdav' ? 'WebDAV: ' : 'S3: ';
+  const selectedFormat =
+    CREATE_FILE_FORMATS.find((f) => f.id === fileFormatId) ||
+    defaultCreateFileFormat();
+  const emptyFilePlaceholder = `새 파일${selectedFormat.extension}`;
   const previewPath = (() => {
     if (!name.trim()) {
-      const placeholder = isFolder ? '새 폴더/' : '새 파일.md';
+      const placeholder = isFolder ? '새 폴더/' : emptyFilePlaceholder;
       return `${rootLabel}${parentPath || ''}${placeholder}`;
     }
     if (resolved?.ok) return `${rootLabel}${resolved.path}`;
@@ -259,7 +306,7 @@ export function CreateItemModal({
                 placeholder={
                   isFolder
                     ? '폴더 이름 또는 상대 경로 (../ · Tab 자동완성)'
-                    : '파일 이름 또는 상대 경로 (.md 생략, ../ · Tab 자동완성)'
+                    : `파일 이름 또는 상대 경로 (${selectedFormat.extension} 생략, ../ · Tab 자동완성)`
                 }
                 className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg outline-none focus:ring-2 ${inputBorderClass}`}
                 autoFocus
@@ -333,6 +380,41 @@ export function CreateItemModal({
               </div>
             )}
           </div>
+
+          {!isFolder ? (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                파일 형식 — 클릭하여 선택
+              </p>
+              <div className="flex flex-wrap gap-1.5" role="list">
+                {CREATE_FILE_FORMATS.map((fmt) => {
+                  const selected = fmt.id === fileFormatId;
+                  return (
+                    <button
+                      key={fmt.id}
+                      type="button"
+                      role="listitem"
+                      aria-pressed={selected}
+                      disabled={isSubmitting}
+                      onClick={() => selectFileFormat(fmt.id)}
+                      className={`inline-flex max-w-full flex-col items-start rounded-lg border px-2.5 py-1.5 text-left transition ${
+                        selected
+                          ? 'border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg dark:hover:bg-odp-focusBg'
+                      }`}
+                    >
+                      <span className="font-mono text-xs font-semibold">
+                        {fmt.label}
+                      </span>
+                      <span className="mt-0.5 text-[10px] leading-snug opacity-80">
+                        {fmt.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {isOutsideRoot && (
             <p className="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">

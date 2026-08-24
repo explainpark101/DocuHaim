@@ -1,5 +1,5 @@
 import type { FileStorageType, PersistedWorkspaceTab, PersistedWorkspaceTabs } from './types';
-import { CHAT_TAB_ID } from './types';
+import { CHAT_TAB_ID, SETTINGS_TAB_ID } from './types';
 import { fileTabId } from './helpers';
 import type { ClosedTabEntry } from './closedTabHistory';
 
@@ -45,7 +45,7 @@ function removeKey(key: string): void {
 function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat') return true;
+  if (v.kind === 'chat' || v.kind === 'settings') return true;
   if (
     v.kind === 'file' &&
     (v.type === 's3' || v.type === 'local' || v.type === 'webdav') &&
@@ -70,7 +70,7 @@ function normalizeSnapshot(raw: unknown): PersistedWorkspaceTabs | null {
 function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat') return true;
+  if (v.kind === 'chat' || v.kind === 'settings') return true;
   if (
     v.kind === 'file' &&
     (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav') &&
@@ -98,11 +98,14 @@ export function clearLastOpenTabsSnapshot(): void {
 }
 
 export function persistedTabId(tab: PersistedWorkspaceTab): string {
-  return tab.kind === 'chat' ? CHAT_TAB_ID : fileTabId(tab.type, tab.path);
+  if (tab.kind === 'chat') return CHAT_TAB_ID;
+  if (tab.kind === 'settings') return SETTINGS_TAB_ID;
+  return fileTabId(tab.type, tab.path);
 }
 
 export function persistedTabToClosedEntry(tab: PersistedWorkspaceTab): ClosedTabEntry | null {
   if (tab.kind === 'chat') return { kind: 'chat' };
+  if (tab.kind === 'settings') return { kind: 'settings' };
   return {
     kind: 'file',
     storageType: tab.type as Exclude<FileStorageType, 'session'>,
@@ -144,7 +147,13 @@ export function seedTabsRestoreQueueFromSnapshot(
     if (!entry) continue;
     const dup = entries.some((e) => {
       if (entry.kind === 'chat') return e.kind === 'chat';
-      return e.kind === 'file' && entry.kind === 'file' && e.storageType === entry.storageType && e.path === entry.path;
+      if (entry.kind === 'settings') return e.kind === 'settings';
+      return (
+        e.kind === 'file' &&
+        entry.kind === 'file' &&
+        e.storageType === entry.storageType &&
+        e.path === entry.path
+      );
     });
     if (!dup) entries.push(entry);
   }
@@ -162,10 +171,10 @@ export function popTabsRestoreQueue(): ClosedTabEntry | null {
   return first ?? null;
 }
 
-export function tabsRestoreQueueLength(): number {
-  return loadRestoreQueue().length;
-}
-
 export function clearTabsRestoreQueue(): void {
   removeKey(TABS_RESTORE_QUEUE_KEY);
+}
+
+export function tabsRestoreQueueLength(): number {
+  return loadRestoreQueue().length;
 }

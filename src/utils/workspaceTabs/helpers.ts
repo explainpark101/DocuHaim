@@ -1,8 +1,10 @@
 import {
   CHAT_TAB_ID,
+  SETTINGS_TAB_ID,
   type ChatWorkspaceTab,
   type FileStorageType,
   type FileWorkspaceTab,
+  type SettingsWorkspaceTab,
   type WorkspaceTab,
   isEditableViewer,
 } from './types';
@@ -13,6 +15,10 @@ export function fileTabId(storageType: string, path: string): string {
 
 export function createChatTab(): ChatWorkspaceTab {
   return { id: CHAT_TAB_ID, kind: 'chat' };
+}
+
+export function createSettingsTab(): SettingsWorkspaceTab {
+  return { id: SETTINGS_TAB_ID, kind: 'settings' };
 }
 
 export function createFileTab(params: {
@@ -44,6 +50,10 @@ export function isChatTab(tab: WorkspaceTab | null | undefined): tab is ChatWork
   return tab?.kind === 'chat';
 }
 
+export function isSettingsTab(tab: WorkspaceTab | null | undefined): tab is SettingsWorkspaceTab {
+  return tab?.kind === 'settings';
+}
+
 export function isFileTab(tab: WorkspaceTab | null | undefined): tab is FileWorkspaceTab {
   return tab?.kind === 'file';
 }
@@ -60,6 +70,7 @@ export function anyFileTabDirty(tabs: WorkspaceTab[]): boolean {
 
 export function tabDisplayTitle(tab: WorkspaceTab): string {
   if (tab.kind === 'chat') return '나와의 채팅';
+  if (tab.kind === 'settings') return '설정';
   const name = tab.editedFileName || String(tab.currentFile.name || '') || tab.path;
   return name.split('/').filter(Boolean).pop() || name || tab.path;
 }

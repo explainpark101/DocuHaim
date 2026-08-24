@@ -1,5 +1,6 @@
 import {
   CHAT_TAB_ID,
+  SETTINGS_TAB_ID,
   WORKSPACE_TAB_SOFT_CAP,
   type FileWorkspaceTab,
   type WorkspaceTab,
@@ -8,6 +9,7 @@ import {
 import {
   createChatTab,
   createFileTab,
+  createSettingsTab,
   isFileTab,
   isFileTabDirty,
   revokeFileTabObjectUrl,
@@ -95,6 +97,17 @@ export function openOrActivateChat(state: WorkspaceTabsState, now = Date.now()):
   return {
     tabs: [...state.tabs, createChatTab()],
     activeId: CHAT_TAB_ID,
+  };
+}
+
+export function openOrActivateSettings(state: WorkspaceTabsState, now = Date.now()): WorkspaceTabsState {
+  const existing = state.tabs.find((t) => t.kind === 'settings');
+  if (existing) {
+    return activateTab(state, SETTINGS_TAB_ID, now);
+  }
+  return {
+    tabs: [...state.tabs, createSettingsTab()],
+    activeId: SETTINGS_TAB_ID,
   };
 }
 

@@ -1,6 +1,7 @@
 import {
   CHAT_TAB_ID,
   LAST_FILE_KEY,
+  SETTINGS_TAB_ID,
   WORKSPACE_TABS_STORAGE_KEY,
   type FileStorageType,
   type PersistedWorkspaceTabs,
@@ -44,7 +45,7 @@ function clearBoth(key: string): void {
 function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat') return true;
+  if (v.kind === 'chat' || v.kind === 'settings') return true;
   if (
     v.kind === 'file' &&
     (v.type === 's3' || v.type === 'local' || v.type === 'webdav' || v.type === 'session') &&
@@ -65,6 +66,12 @@ function normalizePersisted(raw: unknown): PersistedWorkspaceTabs | null {
   return { version: 1, tabs, activeId };
 }
 
+function persistedId(tab: PersistedWorkspaceTab): string {
+  if (tab.kind === 'chat') return CHAT_TAB_ID;
+  if (tab.kind === 'settings') return SETTINGS_TAB_ID;
+  return fileTabId(tab.type, tab.path);
+}
+
 /** Hydrate from workspace schema or legacy `s3haim_lastFile`. */
 export function loadPersistedWorkspaceTabs(): PersistedWorkspaceTabs | null {
   if (typeof window === 'undefined') return null;
@@ -82,6 +89,9 @@ export function loadPersistedWorkspaceTabs(): PersistedWorkspaceTabs | null {
   const l = legacy as Record<string, unknown>;
   if (l.type === 'chat') {
     return { version: 1, tabs: [{ kind: 'chat' }], activeId: CHAT_TAB_ID };
+  }
+  if (l.type === 'settings') {
+    return { version: 1, tabs: [{ kind: 'settings' }], activeId: SETTINGS_TAB_ID };
   }
   if (
     (l.type === 's3' || l.type === 'local' || l.type === 'webdav') &&
@@ -104,16 +114,17 @@ export function savePersistedWorkspaceTabs(payload: PersistedWorkspaceTabs): voi
   writeBoth(WORKSPACE_TABS_STORAGE_KEY, payload);
 
   // Keep legacy key in sync for older clients / partial restores.
-  const active = payload.tabs.find((t) => {
-    if (t.kind === 'chat') return payload.activeId === CHAT_TAB_ID;
-    return payload.activeId === fileTabId(t.type, t.path);
-  });
+  const active = payload.tabs.find((t) => payload.activeId === persistedId(t));
   if (!active) {
     clearBoth(LAST_FILE_KEY);
     return;
   }
   if (active.kind === 'chat') {
     writeBoth(LAST_FILE_KEY, { type: 'chat' });
+    return;
+  }
+  if (active.kind === 'settings') {
+    writeBoth(LAST_FILE_KEY, { type: 'settings' });
     return;
   }
   writeBoth(LAST_FILE_KEY, { type: active.type, path: active.path });
@@ -126,13 +137,19 @@ export function clearPersistedWorkspaceTabs(): void {
 }
 
 export function toPersistedWorkspaceTabs(
-  tabs: { kind: 'chat' }[] | Array<{ kind: 'chat' } | { kind: 'file'; storageType: FileStorageType; path: string }>,
+  tabs: Array<
+    | { kind: 'chat' }
+    | { kind: 'settings' }
+    | { kind: 'file'; storageType: FileStorageType; path: string }
+  >,
   activeId: string | null,
 ): PersistedWorkspaceTabs {
   const persisted: PersistedWorkspaceTab[] = [];
   for (const t of tabs) {
     if (t.kind === 'chat') {
       persisted.push({ kind: 'chat' });
+    } else if (t.kind === 'settings') {
+      persisted.push({ kind: 'settings' });
     } else if (t.kind === 'file' && t.storageType !== 'session') {
       // Session tabs are ephemeral — do not persist.
       persisted.push({ kind: 'file', type: t.storageType, path: t.path });
@@ -140,14 +157,11 @@ export function toPersistedWorkspaceTabs(
   }
   let nextActive = activeId;
   if (nextActive) {
-    const ok = persisted.some((p) =>
-      p.kind === 'chat' ? nextActive === CHAT_TAB_ID : nextActive === fileTabId(p.type, p.path),
-    );
-    if (!ok) nextActive = persisted[0]
-      ? persisted[0].kind === 'chat'
-        ? CHAT_TAB_ID
-        : fileTabId(persisted[0].type, persisted[0].path)
-      : null;
+    const ok = persisted.some((p) => nextActive === persistedId(p));
+    if (!ok) {
+      const first = persisted[0];
+      nextActive = first ? persistedId(first) : null;
+    }
   }
   return { version: 1, tabs: persisted, activeId: nextActive };
 }

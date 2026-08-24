@@ -1,0 +1,42 @@
+---
+description: Register new vault create-file extensions in CREATE_FILE_FORMATS (CreateItemModal badges)
+alwaysApply: true
+---
+
+# Create-file formats (CreateItemModal badges)
+
+When adding a **new vault note/document extension** that users create via “새 파일” (e.g. `.enc.md`, `.slide.md`), register it in the **same change** so `CreateItemModal` shows a format badge. Do not hardcode badges in the modal.
+
+## What counts
+
+- User-creatable note/document file extensions offered in CreateItemModal
+- Composite extensions that still open as markdown (or a related editor), e.g. `.enc.md`
+
+## What does not count
+
+- Binary / media uploads
+- Sidecars not created via CreateItemModal (e.g. `.sync.pb`, chat day files)
+- Internal temp / session-only names (`untitled.md`)
+
+## Where to register
+
+| Step | Path |
+|------|------|
+| Format entry | `src/utils/createFileFormats.ts` → `CREATE_FILE_FORMATS` |
+| Path resolve | `src/utils/createItemPath.ts` uses `ensureCreateFileExtension` (longest match) |
+| Modal badges | `CreateItemModal` maps `CREATE_FILE_FORMATS` — do **not** add a one-off badge |
+| Open / save / tree / search | Wire the extension where content is loaded, written, or indexed |
+
+## Checklist
+
+1. Add `{ id, extension, label, description, default? }` to `CREATE_FILE_FORMATS` (longest extensions first in matching via helpers).
+2. Confirm `resolveCreateItemPath` keeps names that already end with the new extension.
+3. Implement open/save (and lock UI / index skip if encrypted or opaque).
+4. Prefer **English** in new code comments if Korean Unicode might corrupt.
+
+```text
+❌ BAD — support `.enc.md` open/save only; CreateItemModal still only implies `.md`
+❌ BAD — hardcode a second badge button inside CreateItemModal
+✅ GOOD — one CREATE_FILE_FORMATS row; modal maps the list into badges
+✅ GOOD — longest-match extension (`.enc.md` before `.md`)
+```

@@ -2,6 +2,7 @@ import {
   collectIndexablePathsFromTree,
   isIndexableFilePath,
 } from './collectSources';
+import { indexableEncMdBody } from '@/utils/encMd';
 import {
   applyChatUpsertPatch,
   applyFileUpsertPatch,
@@ -698,7 +699,8 @@ class AdvancedSearchEngine {
     for (const path of remainingFiles) {
       this.assertNotCancelled();
       try {
-        const { text } = (await this.backend!.readText?.(path)) || { text: '' };
+        const { text: raw } = (await this.backend!.readText?.(path)) || { text: '' };
+        const text = indexableEncMdBody(path, raw);
         await worker.processFile(path, text);
         fileOk += 1;
         this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
@@ -855,7 +857,8 @@ class AdvancedSearchEngine {
     for (const path of remainingFiles) {
       this.assertNotCancelled();
       try {
-        const { text } = (await this.backend!.readText?.(path)) || { text: '' };
+        const { text: raw } = (await this.backend!.readText?.(path)) || { text: '' };
+        const text = indexableEncMdBody(path, raw);
         await upsertFileDocument(next, path, text, bulk);
         fileOk += 1;
         this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
