@@ -367,25 +367,6 @@ export default function SettingsPage({
           </div>
         </div>
 
-        {canScanStorageUsage && (
-          <div id="settings-storage-usage" tabIndex={-1} className="scroll-mt-4">
-            <StorageUsageAnalysis
-              storageMode={storageMode}
-              onScanTree={onScanStorageUsage}
-              canScan={canScanStorageUsage}
-              onOpenFile={onOpenStorageUsageFile}
-            />
-          </div>
-        )}
-
-        <UnusedImageCleanup
-          storageMode={storageMode}
-          canScan={canScanStorageUsage}
-          onScanTree={onScanStorageUsage}
-          onReadText={onReadUnusedImageText}
-          onReadBytes={onReadUnusedImageBytes}
-          onDeletePaths={onDeleteUnusedImagePaths}
-        />
 
         {/* S3 Form */}
         <form
@@ -498,97 +479,6 @@ export default function SettingsPage({
           ) : null}
         </form>
 
-        {/* Local folder connection */}
-        <div
-          id="settings-local"
-          tabIndex={-1}
-          className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
-        >
-          <button
-            type="button"
-            onClick={() => setLocalConnOpen((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-            aria-expanded={localConnOpen}
-          >
-            {localConnOpen ? (
-              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            ) : (
-              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            )}
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-              Local 연결 정보
-            </h3>
-            {!localConnOpen ? (
-              <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
-                접힘
-              </span>
-            ) : null}
-          </button>
-          {localConnOpen ? (
-            <>
-              <p className="text-xs text-gray-600 dark:text-odp-muted">
-                Local Haim은 브라우저 File System Access API로 연 폴더를 사용합니다. 보안상 OS 전체
-                경로는 제공되지 않으며, 폴더 이름으로 열린 위치를 확인할 수 있습니다.
-              </p>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
-                  현재 열린 폴더
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  className="w-full rounded border px-3 py-2 text-sm text-gray-800 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
-                  value={
-                    resolvedLocalFolderName
-                      ? resolvedLocalFolderName
-                      : '(폴더가 열려 있지 않음)'
-                  }
-                  aria-label="현재 열린 로컬 폴더 이름"
-                />
-              </div>
-              {!canPickLocalFolder ? (
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  이 브라우저는 폴더 선택을 지원하지 않습니다. Chromium 계열 브라우저를 사용해
-                  주세요.
-                </p>
-              ) : null}
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={!canPickLocalFolder || typeof onOpenLocalFolder !== 'function'}
-                  onClick={() => onOpenLocalFolder?.()}
-                  className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <IconFolder size={16} />
-                  {resolvedLocalFolderName ? '다른 폴더 열기' : '폴더 선택'}
-                </button>
-              </div>
-            </>
-          ) : null}
-        </div>
-
-        {/* Import / Export Section */}
-        <div
-          id="settings-backup"
-          tabIndex={-1}
-          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
-        >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">데이터 백업/복원</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={onExportCreds}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
-            >
-              <IconDownload /> S3 연결정보 내보내기
-            </button>
-            <button
-              onClick={onImportClick}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
-            >
-              <IconUpload /> S3 연결정보 불러오기
-            </button>
-          </div>
-        </div>
 
         <form
           id="settings-webdav"
@@ -707,6 +597,173 @@ export default function SettingsPage({
           ) : null}
         </form>
 
+
+        {/* Local folder connection */}
+        <div
+          id="settings-local"
+          tabIndex={-1}
+          className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+        >
+          <button
+            type="button"
+            onClick={() => setLocalConnOpen((v) => !v)}
+            className="flex w-full items-center gap-2 text-left"
+            aria-expanded={localConnOpen}
+          >
+            {localConnOpen ? (
+              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            ) : (
+              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
+            )}
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+              Local 연결 정보
+            </h3>
+            {!localConnOpen ? (
+              <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
+                접힘
+              </span>
+            ) : null}
+          </button>
+          {localConnOpen ? (
+            <>
+              <p className="text-xs text-gray-600 dark:text-odp-muted">
+                Local Haim은 브라우저 File System Access API로 연 폴더를 사용합니다. 보안상 OS 전체
+                경로는 제공되지 않으며, 폴더 이름으로 열린 위치를 확인할 수 있습니다.
+              </p>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
+                  현재 열린 폴더
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  className="w-full rounded border px-3 py-2 text-sm text-gray-800 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
+                  value={
+                    resolvedLocalFolderName
+                      ? resolvedLocalFolderName
+                      : '(폴더가 열려 있지 않음)'
+                  }
+                  aria-label="현재 열린 로컬 폴더 이름"
+                />
+              </div>
+              {!canPickLocalFolder ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  이 브라우저는 폴더 선택을 지원하지 않습니다. Chromium 계열 브라우저를 사용해
+                  주세요.
+                </p>
+              ) : null}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={!canPickLocalFolder || typeof onOpenLocalFolder !== 'function'}
+                  onClick={() => onOpenLocalFolder?.()}
+                  className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <IconFolder size={16} />
+                  {resolvedLocalFolderName ? '다른 폴더 열기' : '폴더 선택'}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+
+
+        {/* Import / Export Section */}
+        <div
+          id="settings-backup"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">데이터 백업/복원</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={onExportCreds}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
+            >
+              <IconDownload /> S3 연결정보 내보내기
+            </button>
+            <button
+              onClick={onImportClick}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
+            >
+              <IconUpload /> S3 연결정보 불러오기
+            </button>
+          </div>
+        </div>
+
+
+        {/* WebAuthn: 지문/보안 키로 잠금 해제 또는 연결 정보 저장 */}
+        {showWebAuthnSection && (
+          <div
+          id="settings-webauthn"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
+            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">지문 / 보안 키</h3>
+            <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
+              {webauthnStorageOnly
+                ? 'S3 연결 정보가 보안 키로만 암호화되어 있습니다. 데이터 백업/복원 시에는 비밀번호를 사용합니다.'
+                : '지문, Windows Hello, Touch ID 등으로 앱 잠금 해제를 사용할 수 있습니다. 데이터 백업/복원 시에는 비밀번호를 사용합니다.'}
+            </p>
+            {webauthnStorageOnly ? (
+              <p className="text-xs text-gray-600 dark:text-odp-muted">저장소: 보안 키로 보호됨</p>
+            ) : webauthnEnabled ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-700 dark:text-odp-fg">지문/보안 키로 잠금 해제 사용 중</span>
+                <button
+                  type="button"
+                  onClick={() => onDisableWebAuthn?.()}
+                  className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                >
+                  사용 해제
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={webauthnLoading}
+                  onClick={async () => {
+                    if (webauthnLoading || !onEnableWebAuthn) return;
+                    let promise;
+                    try {
+                      promise = onEnableWebAuthn(masterPassword);
+                    } catch (err) {
+                      alert(err?.message || '보안 키 등록에 실패했습니다.');
+                      return;
+                    }
+                    setWebauthnLoading(true);
+                    try {
+                      await promise;
+                    } catch (err) {
+                      alert(err?.message || '보안 키 등록에 실패했습니다.');
+                    } finally {
+                      setWebauthnLoading(false);
+                    }
+                  }}
+                  className="text-left text-xs py-2 px-3 rounded border border-gray-300 dark:border-odp-borderStrong hover:bg-gray-100 dark:hover:bg-odp-surface transition"
+                  aria-label="지문/보안 키로 잠금 해제 등록"
+                >
+                  {webauthnLoading ? '등록 중…' : '지문/보안 키로 잠금 해제 사용 (등록)'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {canScanStorageUsage && (
+          <div id="settings-storage-usage" tabIndex={-1} className="scroll-mt-4">
+            <StorageUsageAnalysis
+              storageMode={storageMode}
+              onScanTree={onScanStorageUsage}
+              canScan={canScanStorageUsage}
+              onOpenFile={onOpenStorageUsageFile}
+            />
+          </div>
+        )}
+
+
         <LlmProviderProfilesSettings
           profiles={resolveLlmProviderProfiles(formCreds)}
           onSaveProfiles={(next) => {
@@ -714,6 +771,17 @@ export default function SettingsPage({
             onSaveS3Creds(buildCredsForSave(next));
           }}
         />
+
+
+        <UnusedImageCleanup
+          storageMode={storageMode}
+          canScan={canScanStorageUsage}
+          onScanTree={onScanStorageUsage}
+          onReadText={onReadUnusedImageText}
+          onReadBytes={onReadUnusedImageBytes}
+          onDeletePaths={onDeleteUnusedImagePaths}
+        />
+
 
         <form
           id="settings-imgbb"
@@ -786,64 +854,6 @@ export default function SettingsPage({
           ) : null}
         </form>
 
-        {/* WebAuthn: 지문/보안 키로 잠금 해제 또는 연결 정보 저장 */}
-        {showWebAuthnSection && (
-          <div
-          id="settings-webauthn"
-          tabIndex={-1}
-          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
-        >
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">지문 / 보안 키</h3>
-            <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
-              {webauthnStorageOnly
-                ? 'S3 연결 정보가 보안 키로만 암호화되어 있습니다. 데이터 백업/복원 시에는 비밀번호를 사용합니다.'
-                : '지문, Windows Hello, Touch ID 등으로 앱 잠금 해제를 사용할 수 있습니다. 데이터 백업/복원 시에는 비밀번호를 사용합니다.'}
-            </p>
-            {webauthnStorageOnly ? (
-              <p className="text-xs text-gray-600 dark:text-odp-muted">저장소: 보안 키로 보호됨</p>
-            ) : webauthnEnabled ? (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-700 dark:text-odp-fg">지문/보안 키로 잠금 해제 사용 중</span>
-                <button
-                  type="button"
-                  onClick={() => onDisableWebAuthn?.()}
-                  className="text-xs text-red-600 dark:text-red-400 hover:underline"
-                >
-                  사용 해제
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  disabled={webauthnLoading}
-                  onClick={async () => {
-                    if (webauthnLoading || !onEnableWebAuthn) return;
-                    let promise;
-                    try {
-                      promise = onEnableWebAuthn(masterPassword);
-                    } catch (err) {
-                      alert(err?.message || '보안 키 등록에 실패했습니다.');
-                      return;
-                    }
-                    setWebauthnLoading(true);
-                    try {
-                      await promise;
-                    } catch (err) {
-                      alert(err?.message || '보안 키 등록에 실패했습니다.');
-                    } finally {
-                      setWebauthnLoading(false);
-                    }
-                  }}
-                  className="text-left text-xs py-2 px-3 rounded border border-gray-300 dark:border-odp-borderStrong hover:bg-gray-100 dark:hover:bg-odp-surface transition"
-                  aria-label="지문/보안 키로 잠금 해제 등록"
-                >
-                  {webauthnLoading ? '등록 중…' : '지문/보안 키로 잠금 해제 사용 (등록)'}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Markdown 에디터 종류 */}
         <div
@@ -926,376 +936,6 @@ export default function SettingsPage({
           </div>
         </div>
 
-        {/* Navigation */}
-        <div
-          id="settings-navigation"
-          tabIndex={-1}
-          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
-        >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">네비게이션</h3>
-          <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
-            키보드로 에디터 안의 커서 위치를 조절하거나, 열린 파일 사이를 이동하는 옵션입니다.
-            탭 기능을 켜면 여러 파일과 「나와의 채팅」을 동시에 열어 두고 전환할 수 있습니다.
-          </p>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsToggle('settings-alt-vim', !altVimNavigationEnabled);
-                }}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
-                  altVimNavigationEnabled
-                    ? 'bg-blue-500 border-blue-500 shadow-sm'
-                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-                } group-hover:brightness-105 group-hover:border-blue-400`}
-                aria-pressed={altVimNavigationEnabled}
-                aria-label="Alt+Vim 커서 이동"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    altVimNavigationEnabled ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-                Alt + H/J/K/L Vim 커서 이동
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  md-editor-rt 편집 중 H·L은 한 글자씩, J·K는 위·아래 줄로 커서만 이동합니다.
-                  줄 단위 선택·이동(Alt+화살표)과는 다릅니다.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsToggle('settings-workspace-tabs', !workspaceTabsEnabled);
-                }}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
-                  workspaceTabsEnabled
-                    ? 'bg-blue-500 border-blue-500 shadow-sm'
-                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-                } group-hover:brightness-105 group-hover:border-blue-400`}
-                aria-pressed={workspaceTabsEnabled}
-                aria-label="탭 기능"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    workspaceTabsEnabled ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-                탭 기능
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  여러 파일과 「나와의 채팅」을 탭으로 동시에 열어 둘 수 있습니다. 끄면 기존처럼
-                  한 번에 하나의 파일(또는 채팅)만 표시합니다.
-                  Ctrl+W 닫기 · Ctrl+Tab / Ctrl+Shift+Tab 전환 · Ctrl+Shift+T 닫은 탭 다시 열기.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsToggle('settings-new-file-temp', !newFileAsTempEnabled);
-                }}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
-                  newFileAsTempEnabled
-                    ? 'bg-blue-500 border-blue-500 shadow-sm'
-                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-                } group-hover:brightness-105 group-hover:border-blue-400`}
-                aria-pressed={newFileAsTempEnabled}
-                aria-label="새 파일 임시(메모리) 생성"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    newFileAsTempEnabled ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-                새 파일 임시(메모리) 생성
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  켜면 Ctrl/Cmd+N이 이름·경로 없이 메모리 문서(untitled)를 엽니다. 저장 시
-                  파일명과 위치를 지정합니다. 끄면 기존처럼 생성 즉시 이름과 폴더를 묻습니다.
-                </span>
-              </span>
-            </label>
-            {workspaceTabsEnabled ? (
-              <div className="pl-12 space-y-2">
-                <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
-                  탭 자동 저장 설정
-                </p>
-                <RadioGroup.Root
-                  className="flex flex-col gap-2"
-                  value={workspaceTabsAutoSaveMode}
-                  onValueChange={(next) => {
-                    if (
-                      next !== 'off' &&
-                      next !== 'onFocusChange' &&
-                      next !== 'onWindowChange'
-                    ) {
-                      return;
-                    }
-                    saveWorkspaceTabsAutoSaveMode(next);
-                    setWorkspaceTabsAutoSaveMode(next);
-                  }}
-                  aria-label="탭 자동 저장"
-                >
-                  {WORKSPACE_TABS_AUTO_SAVE_OPTIONS.map((opt) => {
-                    const selected = workspaceTabsAutoSaveMode === opt.value;
-                    return (
-                      <RadioGroup.Item
-                        key={opt.value}
-                        value={opt.value}
-                        className={[
-                          'rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200 origin-left w-90',
-                          'focus-visible:ring-2 focus-visible:ring-blue-500/40',
-                          selected
-                            ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
-                            : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
-                        ].join(' ')}
-                      >
-                        <div className={selected ? '' : 'opacity-50'}>
-                          <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
-                            {opt.label}
-                          </div>
-                          <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
-                            {opt.description}
-                          </div>
-                        </div>
-                      </RadioGroup.Item>
-                    );
-                  })}
-                </RadioGroup.Root>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Display Options */}
-        <div
-          id="settings-display"
-          tabIndex={-1}
-          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
-        >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
-          <label
-            className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
-          >
-            <button
-              type="button"
-              onClick={onToggleTrashFolder}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
-                showTrashFolder
-                  ? 'bg-blue-500 border-blue-500 shadow-sm'
-                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-              } group-hover:brightness-105 group-hover:border-blue-400`}
-              aria-pressed={showTrashFolder}
-              aria-label="쓰레기통 보기 토글"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                  showTrashFolder ? 'translate-x-4' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-              쓰레기통 보기 (`.trash` 폴더)
-            </span>
-          </label>
-          <label
-            className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
-          >
-            <button
-              type="button"
-              onClick={onToggleHiddenFolders}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
-                showHiddenFolders
-                  ? 'bg-blue-500 border-blue-500 shadow-sm'
-                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-              } group-hover:brightness-105 group-hover:border-blue-400`}
-              aria-pressed={showHiddenFolders}
-              aria-label="숨김 폴더 보기 토글"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                  showHiddenFolders ? 'translate-x-4' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-              숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더, `.trash` 제외)
-            </span>
-          </label>
-          {typeof onToggleHideRecordingCompanions === 'function' && (
-            <label
-              className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
-            >
-              <button
-                type="button"
-                onClick={onToggleHideRecordingCompanions}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
-                  hideRecordingCompanions
-                    ? 'bg-blue-500 border-blue-500 shadow-sm'
-                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-                } group-hover:brightness-105 group-hover:border-blue-400`}
-                aria-pressed={hideRecordingCompanions}
-                aria-label="녹음·필기 동반 파일 숨기기"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    hideRecordingCompanions ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-                녹음·필기 동기화 파일 숨기기 (사이드바 목록·녹음 UI·동기화 보기에서 제외)
-              </span>
-            </label>
-          )}
-          {typeof onToggleTreeStickyFolderPath === 'function' && (
-            <label
-              className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
-            >
-              <button
-                type="button"
-                onClick={onToggleTreeStickyFolderPath}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
-                  treeStickyFolderPathEnabled
-                    ? 'bg-blue-500 border-blue-500 shadow-sm'
-                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-                } group-hover:brightness-105 group-hover:border-blue-400`}
-                aria-pressed={treeStickyFolderPathEnabled}
-                aria-label="트리 폴더 경로 sticky 표시"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    treeStickyFolderPathEnabled ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-                트리에서 열린 폴더 경로 sticky 표시 (스크롤 시 현재 경로 고정)
-              </span>
-            </label>
-          )}
-          {typeof onTreeHoverExpandSettingsChange === 'function' && (
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
-              <p className="text-xs font-semibold text-gray-700 dark:text-odp-fg mb-1">
-                사이드바 파일 이동 드래그 시 폴더 자동 펼침 대기 시간
-              </p>
-              <p className="text-[11px] text-gray-500 dark:text-odp-muted mb-3">
-                파일을 드래그한 채로 접힌 폴더 위에 올려두면, 설정한 시간 후 해당 폴더가 펼쳐집니다.
-                기본 단위는 초(s)입니다.
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-odp-fg">
-                  <span className="sr-only">대기 시간</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step={treeHoverExpandSettings.unit === 'ms' ? 1 : 0.1}
-                    value={treeHoverExpandSettings.value}
-                    onChange={(e) => {
-                      const next = Number(e.target.value);
-                      onTreeHoverExpandSettingsChange({
-                        ...treeHoverExpandSettings,
-                        value: Number.isFinite(next) && next >= 0 ? next : 0,
-                      });
-                    }}
-                    className="w-24 border border-gray-300 dark:border-odp-borderSoft rounded px-2 py-1.5 text-sm bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg"
-                    aria-label="폴더 자동 펼침 대기 시간"
-                  />
-                </label>
-                <div className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg">
-                  <RadioGroup.Root
-                    className="flex items-center gap-3"
-                    value={treeHoverExpandSettings.unit}
-                    onValueChange={(nextUnit) => {
-                      if (nextUnit !== 's' && nextUnit !== 'ms') return;
-                      if (treeHoverExpandSettings.unit === nextUnit) return;
-                      onTreeHoverExpandSettingsChange({
-                        unit: nextUnit,
-                        value: convertTreeHoverExpandValue(
-                          treeHoverExpandSettings.value,
-                          treeHoverExpandSettings.unit,
-                          nextUnit,
-                        ),
-                      });
-                    }}
-                    aria-label="대기 시간 단위"
-                  >
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <RadioGroup.Item
-                        value="s"
-                        className="size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
-                      >
-                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
-                      </RadioGroup.Item>
-                      <span>초 (s)</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <RadioGroup.Item
-                        value="ms"
-                        className="size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
-                      >
-                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
-                      </RadioGroup.Item>
-                      <span>밀리초 (ms)</span>
-                    </label>
-                  </RadioGroup.Root>
-                </div>
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted">
-                  = {treeHoverExpandSettingsToMs(treeHoverExpandSettings)} ms
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chat with myself */}
-        <div
-          id="settings-chat"
-          tabIndex={-1}
-          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
-        >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">나와의 채팅</h3>
-          <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
-            채팅 입력창 아래 단축키 안내 문구 표시 여부를 설정합니다.
-          </p>
-          <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-            <button
-              type="button"
-              onClick={() => {
-                setSettingsToggle('settings-composer-helper', !composerHelperTextVisible);
-              }}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
-                composerHelperTextVisible
-                  ? 'bg-blue-500 border-blue-500 shadow-sm'
-                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-              } group-hover:brightness-105 group-hover:border-blue-400`}
-              aria-pressed={composerHelperTextVisible}
-              aria-label="입력창 단축키 안내 표시"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                  composerHelperTextVisible ? 'translate-x-4' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-              입력창 단축키 안내 표시
-              <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                끄면 입력창 아래 helper text가 숨겨집니다. 채팅에서 X로 닫은 뒤에도 여기서 다시 켤 수 있습니다.
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <OgWorkerSettings />
 
         {/* Advanced Search */}
         <div
@@ -1570,6 +1210,339 @@ export default function SettingsPage({
         </div>
 
         {/* Wiki 이미지 캐싱 방식 */}
+
+        {/* Navigation */}
+        <div
+          id="settings-navigation"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">네비게이션</h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
+            키보드로 에디터 안의 커서 위치를 조절하거나, 열린 파일 사이를 이동하는 옵션입니다.
+            탭 기능을 켜면 여러 파일과 「나와의 채팅」을 동시에 열어 두고 전환할 수 있습니다.
+          </p>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsToggle('settings-alt-vim', !altVimNavigationEnabled);
+                }}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
+                  altVimNavigationEnabled
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={altVimNavigationEnabled}
+                aria-label="Alt+Vim 커서 이동"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    altVimNavigationEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                Alt + H/J/K/L Vim 커서 이동
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                  md-editor-rt 편집 중 H·L은 한 글자씩, J·K는 위·아래 줄로 커서만 이동합니다.
+                  줄 단위 선택·이동(Alt+화살표)과는 다릅니다.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsToggle('settings-workspace-tabs', !workspaceTabsEnabled);
+                }}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
+                  workspaceTabsEnabled
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={workspaceTabsEnabled}
+                aria-label="탭 기능"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    workspaceTabsEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                탭 기능
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                  여러 파일과 「나와의 채팅」을 탭으로 동시에 열어 둘 수 있습니다. 끄면 기존처럼
+                  한 번에 하나의 파일(또는 채팅)만 표시합니다.
+                  Ctrl+W 닫기 · Ctrl+Tab / Ctrl+Shift+Tab 전환 · Ctrl+Shift+T 닫은 탭 다시 열기.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsToggle('settings-new-file-temp', !newFileAsTempEnabled);
+                }}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
+                  newFileAsTempEnabled
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={newFileAsTempEnabled}
+                aria-label="새 파일 임시(메모리) 생성"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    newFileAsTempEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                새 파일 임시(메모리) 생성
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                  켜면 Ctrl/Cmd+N이 이름·경로 없이 메모리 문서(untitled)를 엽니다. 저장 시
+                  파일명과 위치를 지정합니다. 끄면 기존처럼 생성 즉시 이름과 폴더를 묻습니다.
+                </span>
+              </span>
+            </label>
+            {workspaceTabsEnabled ? (
+              <div className="pl-12 space-y-2">
+                <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                  탭 자동 저장 설정
+                </p>
+                <RadioGroup.Root
+                  className="flex flex-col gap-2"
+                  value={workspaceTabsAutoSaveMode}
+                  onValueChange={(next) => {
+                    if (
+                      next !== 'off' &&
+                      next !== 'onFocusChange' &&
+                      next !== 'onWindowChange'
+                    ) {
+                      return;
+                    }
+                    saveWorkspaceTabsAutoSaveMode(next);
+                    setWorkspaceTabsAutoSaveMode(next);
+                  }}
+                  aria-label="탭 자동 저장"
+                >
+                  {WORKSPACE_TABS_AUTO_SAVE_OPTIONS.map((opt) => {
+                    const selected = workspaceTabsAutoSaveMode === opt.value;
+                    return (
+                      <RadioGroup.Item
+                        key={opt.value}
+                        value={opt.value}
+                        className={[
+                          'rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200 origin-left w-90',
+                          'focus-visible:ring-2 focus-visible:ring-blue-500/40',
+                          selected
+                            ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
+                            : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
+                        ].join(' ')}
+                      >
+                        <div className={selected ? '' : 'opacity-50'}>
+                          <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                            {opt.label}
+                          </div>
+                          <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                            {opt.description}
+                          </div>
+                        </div>
+                      </RadioGroup.Item>
+                    );
+                  })}
+                </RadioGroup.Root>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+
+        {/* Display Options */}
+        <div
+          id="settings-display"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
+          <label
+            className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
+          >
+            <button
+              type="button"
+              onClick={onToggleTrashFolder}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                showTrashFolder
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={showTrashFolder}
+              aria-label="쓰레기통 보기 토글"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  showTrashFolder ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              쓰레기통 보기 (`.trash` 폴더)
+            </span>
+          </label>
+          <label
+            className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
+          >
+            <button
+              type="button"
+              onClick={onToggleHiddenFolders}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                showHiddenFolders
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={showHiddenFolders}
+              aria-label="숨김 폴더 보기 토글"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  showHiddenFolders ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더, `.trash` 제외)
+            </span>
+          </label>
+          {typeof onToggleHideRecordingCompanions === 'function' && (
+            <label
+              className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
+            >
+              <button
+                type="button"
+                onClick={onToggleHideRecordingCompanions}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                  hideRecordingCompanions
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={hideRecordingCompanions}
+                aria-label="녹음·필기 동반 파일 숨기기"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    hideRecordingCompanions ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                녹음·필기 동기화 파일 숨기기 (사이드바 목록·녹음 UI·동기화 보기에서 제외)
+              </span>
+            </label>
+          )}
+          {typeof onToggleTreeStickyFolderPath === 'function' && (
+            <label
+              className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
+            >
+              <button
+                type="button"
+                onClick={onToggleTreeStickyFolderPath}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                  treeStickyFolderPathEnabled
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={treeStickyFolderPathEnabled}
+                aria-label="트리 폴더 경로 sticky 표시"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    treeStickyFolderPathEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                트리에서 열린 폴더 경로 sticky 표시 (스크롤 시 현재 경로 고정)
+              </span>
+            </label>
+          )}
+          {typeof onTreeHoverExpandSettingsChange === 'function' && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
+              <p className="text-xs font-semibold text-gray-700 dark:text-odp-fg mb-1">
+                사이드바 파일 이동 드래그 시 폴더 자동 펼침 대기 시간
+              </p>
+              <p className="text-[11px] text-gray-500 dark:text-odp-muted mb-3">
+                파일을 드래그한 채로 접힌 폴더 위에 올려두면, 설정한 시간 후 해당 폴더가 펼쳐집니다.
+                기본 단위는 초(s)입니다.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-odp-fg">
+                  <span className="sr-only">대기 시간</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={treeHoverExpandSettings.unit === 'ms' ? 1 : 0.1}
+                    value={treeHoverExpandSettings.value}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      onTreeHoverExpandSettingsChange({
+                        ...treeHoverExpandSettings,
+                        value: Number.isFinite(next) && next >= 0 ? next : 0,
+                      });
+                    }}
+                    className="w-24 border border-gray-300 dark:border-odp-borderSoft rounded px-2 py-1.5 text-sm bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg"
+                    aria-label="폴더 자동 펼침 대기 시간"
+                  />
+                </label>
+                <div className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg">
+                  <RadioGroup.Root
+                    className="flex items-center gap-3"
+                    value={treeHoverExpandSettings.unit}
+                    onValueChange={(nextUnit) => {
+                      if (nextUnit !== 's' && nextUnit !== 'ms') return;
+                      if (treeHoverExpandSettings.unit === nextUnit) return;
+                      onTreeHoverExpandSettingsChange({
+                        unit: nextUnit,
+                        value: convertTreeHoverExpandValue(
+                          treeHoverExpandSettings.value,
+                          treeHoverExpandSettings.unit,
+                          nextUnit,
+                        ),
+                      });
+                    }}
+                    aria-label="대기 시간 단위"
+                  >
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <RadioGroup.Item
+                        value="s"
+                        className="size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
+                      >
+                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                      </RadioGroup.Item>
+                      <span>초 (s)</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <RadioGroup.Item
+                        value="ms"
+                        className="size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500"
+                      >
+                        <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                      </RadioGroup.Item>
+                      <span>밀리초 (ms)</span>
+                    </label>
+                  </RadioGroup.Root>
+                </div>
+                <span className="text-[11px] text-gray-500 dark:text-odp-muted">
+                  = {treeHoverExpandSettingsToMs(treeHoverExpandSettings)} ms
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+
         <div
           id="settings-wiki-image"
           tabIndex={-1}
@@ -1616,6 +1589,7 @@ export default function SettingsPage({
           </div>
         </div>
 
+
         <div id="settings-snippets" tabIndex={-1} className="scroll-mt-4">
           <SnippetSettings
             value={snippetConfig}
@@ -1626,11 +1600,58 @@ export default function SettingsPage({
           />
         </div>
 
-        <WebfontSettings />
 
         <TableStyleSettings />
 
+
         <CoverSettings />
+
+
+        <WebfontSettings />
+
+
+        {/* Chat with myself */}
+        <div
+          id="settings-chat"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">나와의 채팅</h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
+            채팅 입력창 아래 단축키 안내 문구 표시 여부를 설정합니다.
+          </p>
+          <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsToggle('settings-composer-helper', !composerHelperTextVisible);
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
+                composerHelperTextVisible
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={composerHelperTextVisible}
+              aria-label="입력창 단축키 안내 표시"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  composerHelperTextVisible ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              입력창 단축키 안내 표시
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                끄면 입력창 아래 helper text가 숨겨집니다. 채팅에서 X로 닫은 뒤에도 여기서 다시 켤 수 있습니다.
+              </span>
+            </span>
+          </label>
+        </div>
+
+
+        <OgWorkerSettings />
+
 
         {/* App update */}
         <div
@@ -1664,6 +1685,7 @@ export default function SettingsPage({
             {isCheckingAppUpdate ? '최신 버전 확인 중...' : '최신 버전 확인 및 즉시 업데이트'}
           </button>
         </div>
+
       </div>
     </div>
   );
