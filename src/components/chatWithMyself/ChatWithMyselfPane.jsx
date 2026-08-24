@@ -180,27 +180,53 @@ function normalizeOutgoingAttachments(items) {
     .filter(Boolean);
 }
 
+/** Prefer enough history on first paint so viewport fill rarely day-steps. */
+const INITIAL_MIN_MESSAGES = 40;
+const INITIAL_MAX_DAYS = 21;
+/** Silent fill safety net: multiple days per prepend to cut scroll stutter. */
+const FILL_BATCH_DAYS = 3;
+
 /**
- * Walk day keys newest→oldest until at least one message exists.
- * Empty "today" (prepended even when no file) must not hide older history.
- * Short non-empty lists are filled further by ChatMessageList when content
- * does not overflow the viewport (scroll never reaches the top edge).
+ * Walk day keys newest→oldest from startIndex: first until at least one
+ * message exists, then until minMessages / maxDays / end of keys.
+ * Empty "today" must not hide older history. Short leftovers may still be
+ * topped up by ChatMessageList silent fill when content does not overflow.
  *
  * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
  * @param {string[]} dayKeysNewestFirst
+ * @param {{ minMessages?: number, maxDays?: number, startIndex?: number }} [opts]
  * @returns {Promise<{ messages: import('@/utils/chatWithMyself/format.js').ChatMessage[], loadedDayIndex: number }>}
  */
-async function readMessagesUntilNonEmpty(ctx, dayKeysNewestFirst) {
+async function readMessagesForInitialWindow(ctx, dayKeysNewestFirst, opts = {}) {
+  const minMessages = Math.max(1, Number(opts.minMessages) || INITIAL_MIN_MESSAGES);
+  const maxDays = Math.max(1, Number(opts.maxDays) || INITIAL_MAX_DAYS);
   const keys = Array.isArray(dayKeysNewestFirst) ? dayKeysNewestFirst : [];
-  let loadedDayIndex = 0;
+  let loadedDayIndex = Math.max(0, Number(opts.startIndex) || 0);
   let messages = [];
+  let daysRead = 0;
+
   while (loadedDayIndex < keys.length && messages.length === 0) {
     const dateStr = keys[loadedDayIndex];
     loadedDayIndex += 1;
+    daysRead += 1;
     if (!dateStr) continue;
     const dayMsgs = await readDayMessages(ctx, dateStr);
     messages = prependUniqueMessages(dayMsgs || [], messages);
   }
+
+  while (
+    loadedDayIndex < keys.length &&
+    messages.length < minMessages &&
+    daysRead < maxDays
+  ) {
+    const dateStr = keys[loadedDayIndex];
+    loadedDayIndex += 1;
+    daysRead += 1;
+    if (!dateStr) continue;
+    const dayMsgs = await readDayMessages(ctx, dateStr);
+    messages = prependUniqueMessages(dayMsgs || [], messages);
+  }
+
   return { messages: dedupeMessagesById(messages), loadedDayIndex };
 }
 
@@ -636,10 +662,8 @@ export default function ChatWithMyselfPane({
       const ordered = keys.includes(today) ? keys : [today, ...keys];
       const unique = [...new Set(ordered)];
       setDayKeys(unique);
-      const { messages: msgs, loadedDayIndex: end } = await readMessagesUntilNonEmpty(
-        ctx,
-        unique,
-      );
+      const { messages: msgs, loadedDayIndex: end } =
+        await readMessagesForInitialWindow(ctx, unique);
       localTombstonesRef.current.clear();
       setMessages(msgs);
       setWindowNewestIndex(0);
@@ -719,7 +743,7 @@ export default function ChatWithMyselfPane({
 
       // Same empty-today trap as loadInitial: expand older days until history appears.
       if (!msgs.length && unique.length) {
-        const filled = await readMessagesUntilNonEmpty(ctx, unique);
+        const filled = await readMessagesForInitialWindow(ctx, unique);
         msgs = filled.messages;
         windowNewest = 0;
         windowEnd = filled.loadedDayIndex;
@@ -880,30 +904,58 @@ export default function ChatWithMyselfPane({
     onShareGroupSendConsumed?.();
   }, [onShareGroupSendConsumed]);
 
-  const handleLoadOlder = useCallback(async () => {
-    if (!storageReady || loadingOlderRef.current) return;
+  /**
+   * Load older day file(s) and prepend.
+   * @param {{ silent?: boolean, maxDays?: number }} [opts]
+   *   silent — skip loadingOlder UI (viewport fill)
+   *   maxDays — how many day files to read in one prepend (default 1)
+   * @returns {Promise<boolean>} true if the window advanced
+   */
+  const handleLoadOlder = useCallback(async (opts = {}) => {
+    const silent = Boolean(opts?.silent);
+    const maxDays = Math.max(1, Number(opts?.maxDays) || 1);
+    if (!storageReady || loadingOlderRef.current) return false;
     const keys = dayKeysRef.current;
-    const idx = loadedDayIndexRef.current;
-    if (idx >= keys.length) return;
-    const dateStr = keys[idx];
-    if (!dateStr) return;
+    const startIdx = loadedDayIndexRef.current;
+    if (startIdx >= keys.length) return false;
 
     loadingOlderRef.current = true;
-    loadedDayIndexRef.current = idx + 1;
-    setLoadingOlder(true);
-    setLoadedDayIndex(idx + 1);
+    if (!silent) setLoadingOlder(true);
+
+    let nextIdx = startIdx;
+    /** @type {import('@/utils/chatWithMyself/format.js').ChatMessage[]} */
+    let olderHead = [];
     try {
-      const older = await readDayMessages(ctx, dateStr);
-      setMessages((prev) => prependUniqueMessages(older, prev));
+      let daysAttempted = 0;
+      while (nextIdx < keys.length && daysAttempted < maxDays) {
+        const dateStr = keys[nextIdx];
+        nextIdx += 1;
+        daysAttempted += 1;
+        if (!dateStr) continue;
+        const older = await readDayMessages(ctx, dateStr);
+        olderHead = prependUniqueMessages(older || [], olderHead);
+      }
+      loadedDayIndexRef.current = nextIdx;
+      setLoadedDayIndex(nextIdx);
+      if (olderHead.length) {
+        setMessages((prev) => prependUniqueMessages(olderHead, prev));
+      }
+      return nextIdx > startIdx;
     } catch (e) {
-      loadedDayIndexRef.current = idx;
-      setLoadedDayIndex(idx);
+      loadedDayIndexRef.current = startIdx;
+      setLoadedDayIndex(startIdx);
       setError(e?.message || '이전 대화 로드 실패');
+      return false;
     } finally {
       loadingOlderRef.current = false;
-      setLoadingOlder(false);
+      if (!silent) setLoadingOlder(false);
     }
   }, [storageReady, ctx]);
+
+  const handleFillOlder = useCallback(
+    () => handleLoadOlder({ silent: true, maxDays: FILL_BATCH_DAYS }),
+    [handleLoadOlder],
+  );
 
   const handleLoadNewer = useCallback(async () => {
     if (!storageReady || loadingNewerRef.current) return;
@@ -951,7 +1003,8 @@ export default function ChatWithMyselfPane({
 
   /**
    * Jump to a day without loading middle days.
-   * Resets the message window to that day; older/newer load via infinite scroll.
+   * Loads that day plus older days up to the initial window budget; newer
+   * days load via infinite scroll.
    */
   const jumpToDate = useCallback(
     async (dateStr, messageId = null) => {
@@ -972,11 +1025,16 @@ export default function ChatWithMyselfPane({
 
       setJumping(true);
       try {
-        const msgs = await readDayMessages(ctx, dateStr);
+        const { messages: msgs, loadedDayIndex: end } =
+          await readMessagesForInitialWindow(ctx, keys, { startIndex: idx });
         setMessages(msgs);
         setWindowNewestIndex(idx);
-        setLoadedDayIndex(idx + 1);
-        const targetId = messageId || msgs[0]?.id || null;
+        setLoadedDayIndex(end);
+        const targetId =
+          messageId ||
+          msgs.find((m) => m.dateStr === dateStr)?.id ||
+          msgs[0]?.id ||
+          null;
         if (targetId) {
           if (messageId) setViewGroupFilter(null);
           setHighlightId(targetId);
@@ -2547,6 +2605,7 @@ export default function ChatWithMyselfPane({
               highlightId={highlightId}
               editingMessageId={editTarget?.id || null}
               onReachTop={handleLoadOlder}
+              onFillOlder={handleFillOlder}
               onReachBottom={handleLoadNewer}
               loadingOlder={loadingOlder}
               loadingNewer={loadingNewer}

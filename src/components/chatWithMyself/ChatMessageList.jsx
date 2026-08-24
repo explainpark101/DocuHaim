@@ -1163,6 +1163,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     highlightId,
     editingMessageId = null,
     onReachTop,
+    /** Silent multi-day older load for viewport fill (no loadingOlder UI). */
+    onFillOlder,
     onReachBottom,
     loadingOlder = false,
     loadingNewer = false,
@@ -1207,6 +1209,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   const initialBottomPinRef = useRef(true);
   const loadingOlderLockRef = useRef(false);
   const loadingNewerLockRef = useRef(false);
+  /** True while silent viewport-fill prepends; suppresses stick-bottom RO. */
+  const fillingRef = useRef(false);
+  const hasMoreRef = useRef(hasMore);
+  hasMoreRef.current = hasMore;
   const listHostRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [sheetMessage, setSheetMessage] = useState(null);
   const [sheetLinkHref, setSheetLinkHref] = useState(
@@ -1341,20 +1347,15 @@ const ChatMessageList = forwardRef(function ChatMessageList(
 
   const rows = useMemo(() => {
     const out = [];
-    if (loadingOlder) {
-      out.push({ type: 'loading-older', key: 'loading-older' });
-    } else if (!hasMore && messages.length > 0) {
+    if (!hasMore && messages.length > 0) {
       out.push({ type: 'end-older', key: 'end-older' });
     }
     for (const item of items) out.push(item);
     if (messages.length === 0) {
       out.push({ type: 'empty', key: 'empty' });
     }
-    if (loadingNewer) {
-      out.push({ type: 'loading-newer', key: 'loading-newer' });
-    }
     return out;
-  }, [items, loadingOlder, loadingNewer, hasMore, messages.length]);
+  }, [items, hasMore, messages.length]);
 
   const messageIdToIndex = useMemo(() => {
     const map = new Map();
@@ -1466,11 +1467,13 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   ]);
 
   // Keep stick-to-bottom when content height changes (images / OG).
+  // Skip while silent fill is prepending — virtua shift owns scroll then.
   useEffect(() => {
     if (highlightId || editingMessageId) return undefined;
     const host = listHostRef.current;
     if (!host || typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(() => {
+      if (fillingRef.current) return;
       if (!stickBottomRef.current || !listRef.current) return;
       listRef.current.scrollToIndex(Math.max(0, rows.length - 1), {
         align: 'end',
@@ -1580,9 +1583,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   );
 
   // Short lists (e.g. one message today) never scroll, so onReachTop never fires.
-  // Keep loading older days until content overflows the viewport or history ends.
+  // Keep loading older days (silent batch) until content overflows or history ends.
   useEffect(() => {
-    if (!hasMore || loadingOlder || !onReachTop) return undefined;
+    const fillFn = onFillOlder || onReachTop;
+    if (!hasMore || loadingOlder || !fillFn) return undefined;
 
     let cancelled = false;
     let raf = 0;
@@ -1601,41 +1605,44 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         if (attempts++ < 30) raf = requestAnimationFrame(tryFill);
         return;
       }
-      if (scrollSize > viewportSize + LOAD_EDGE_PX) return;
+      if (scrollSize > viewportSize + LOAD_EDGE_PX) {
+        fillingRef.current = false;
+        return;
+      }
       if (loadingOlderLockRef.current) return;
+      if (!hasMoreRef.current) {
+        fillingRef.current = false;
+        return;
+      }
 
+      fillingRef.current = true;
       loadingOlderLockRef.current = true;
-      // Stay pinned to newest while older days prepend above.
-      Promise.resolve(onReachTop()).finally(() => {
-        loadingOlderLockRef.current = false;
-      });
+      // Stay pinned to newest; virtua shift keeps bottom items visible.
+      Promise.resolve(fillFn())
+        .then((advanced) => {
+          loadingOlderLockRef.current = false;
+          if (cancelled || advanced === false) {
+            fillingRef.current = false;
+            return;
+          }
+          raf = requestAnimationFrame(tryFill);
+        })
+        .catch(() => {
+          loadingOlderLockRef.current = false;
+          fillingRef.current = false;
+        });
     };
 
     raf = requestAnimationFrame(tryFill);
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
+      fillingRef.current = false;
     };
-  }, [hasMore, loadingOlder, onReachTop, messages.length, rows.length]);
+  }, [hasMore, loadingOlder, onFillOlder, onReachTop, messages.length, rows.length]);
 
   const renderRow = useCallback(
     (row, index) => {
-      if (row.type === 'loading-older' || row.type === 'loading-newer') {
-        return (
-          <div
-            key={row.key}
-            className="mx-auto flex w-full max-w-full justify-center px-3 py-2 md:max-w-[min(100%,50vw)]"
-            aria-label={
-              row.type === 'loading-older'
-                ? '이전 대화 불러오는 중'
-                : '이후 대화 불러오는 중'
-            }
-            role="status"
-          >
-            <Loader2 size={16} className="animate-spin text-gray-400" />
-          </div>
-        );
-      }
       if (row.type === 'end-older') {
         return (
           <div
@@ -1792,15 +1799,6 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         ref={listHostRef}
         className="relative min-h-0 max-h-full flex-1 overflow-hidden"
       >
-        {overlayDate ? (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-30">
-            <ChatDateDivider
-              sticky={false}
-              label={overlayDate.label}
-              className="pointer-events-none shadow-sm"
-            />
-          </div>
-        ) : null}
         <VList
           ref={listRef}
           className="h-full max-h-full overscroll-contain"
@@ -1812,6 +1810,33 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         >
           {renderRow}
         </VList>
+        {overlayDate ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-30">
+            <ChatDateDivider
+              sticky={false}
+              label={overlayDate.label}
+              className="pointer-events-none shadow-sm"
+            />
+          </div>
+        ) : null}
+        {loadingOlder ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center py-2"
+            aria-label="이전 대화 불러오는 중"
+            role="status"
+          >
+            <Loader2 size={16} className="animate-spin text-gray-400" />
+          </div>
+        ) : null}
+        {loadingNewer ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center py-2"
+            aria-label="이후 대화 불러오는 중"
+            role="status"
+          >
+            <Loader2 size={16} className="animate-spin text-gray-400" />
+          </div>
+        ) : null}
       </div>
       <ChatMessageContextMenu
         open={Boolean(sheetMessage)}
