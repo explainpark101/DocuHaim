@@ -1,4 +1,5 @@
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
+import { putObjectWithProgress } from '@/utils/s3Client';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
 
 /**
@@ -102,7 +103,6 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
     ext,
   });
 
-  const { putObjectWithProgress } = await import('@/utils/s3Client');
   const body = new Uint8Array(await file.arrayBuffer());
   const contentType =
     mime && mime.startsWith('image/') ? mime : 'application/octet-stream';

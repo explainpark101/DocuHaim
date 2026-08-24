@@ -452,6 +452,9 @@ export default defineConfig({
         manualChunks,
       },
     },
+    // Gzipping every chunk for the size report spikes RAM on constrained
+    // hosts (Render ~2GB Node heap) right after generateBundle.
+    reportCompressedSize: false,
     // Heavy editors (md-editor, novel, monaco) still exceed 500 kB alone.
     chunkSizeWarningLimit: 1200,
   },

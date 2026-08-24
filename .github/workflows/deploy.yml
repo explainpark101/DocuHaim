@@ -38,6 +38,7 @@ jobs:
         env:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
           VITE_APP_BUILD_ID: ${{ github.sha }}
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Verify build output
         run: |

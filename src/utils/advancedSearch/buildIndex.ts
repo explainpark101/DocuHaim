@@ -9,12 +9,7 @@ import {
   releaseDocId,
   type DocIdMapState,
 } from './docIdMap';
-import {
-  lucivyAdd,
-  lucivyRemove,
-  lucivyUpdate,
-  type LucivyDocFields,
-} from './lucivyBackend';
+import type { LucivyDocFields } from './lucivyBackend';
 import {
   prepareChatLucivyFields,
   prepareFileLucivyFields,
@@ -30,6 +25,15 @@ export type UpsertOptions = {
   writeLucivy?: boolean;
 };
 
+async function lucivyApi() {
+  return import('./lucivyBackend');
+}
+
+async function removeLucivyNumericId(n: number) {
+  const { lucivyRemove } = await lucivyApi();
+  await lucivyRemove(n);
+}
+
 async function writeLucivyDoc(
   map: DocIdMapState,
   docId: string,
@@ -37,6 +41,7 @@ async function writeLucivyDoc(
   existed: boolean,
 ): Promise<number> {
   const numericId = allocateNumericId(map, docId);
+  const { lucivyAdd, lucivyUpdate } = await lucivyApi();
   if (existed) await lucivyUpdate(numericId, fields);
   else await lucivyAdd(numericId, fields);
   return numericId;
@@ -104,7 +109,7 @@ export async function upsertChatDayDocuments(
     if (!still) {
       if (writeLucivy) {
         const n = releaseDocId(map, docId) ?? meta.numericId;
-        if (typeof n === 'number') await lucivyRemove(n);
+        if (typeof n === 'number') await removeLucivyNumericId(n);
       } else {
         releaseDocId(map, docId);
       }
@@ -185,7 +190,7 @@ export async function removeDocument(
   if (!meta) return;
   if (options.writeLucivy !== false) {
     const n = releaseDocId(map, docId) ?? meta.numericId;
-    if (typeof n === 'number') await lucivyRemove(n);
+    if (typeof n === 'number') await removeLucivyNumericId(n);
   } else {
     releaseDocId(map, docId);
   }
@@ -217,7 +222,7 @@ export async function pruneIndexToPaths(
     }
     if (options.writeLucivy !== false) {
       const n = releaseDocId(map, docId) ?? meta.numericId;
-      if (typeof n === 'number') await lucivyRemove(n);
+      if (typeof n === 'number') await removeLucivyNumericId(n);
     } else {
       releaseDocId(map, docId);
     }

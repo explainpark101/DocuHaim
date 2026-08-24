@@ -171,7 +171,7 @@ import {
 import { decodeSyncData } from '@/utils/syncProto';
 import { savePendingUpload, getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
-import { isFileProbablyImage, uploadEditorImage, buildEditorImagePathPrefix } from '@/utils/editorImageUpload';
+import { isFileProbablyImage, uploadEditorImage, buildEditorImagePathPrefix, normalizeEditorImagePathPrefix, sniffImageMimeFromFile, getExtensionFromMime } from '@/utils/editorImageUpload';
 import { uploadLocalEditorImage, getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
@@ -184,6 +184,7 @@ import {
 import {
   loadTableStylesFromStorage,
   setTableStyleSettingsStore,
+  getCachedTableStyleTemplate,
 } from '@/utils/tableStyleSettingsStore';
 import {
   loadCoverSettingsFromStorage,
@@ -2781,11 +2782,6 @@ function MainApp() {
             });
           } else if (isWebdavUpload) {
             const backend = getBackendForType('webdav');
-            const {
-              normalizeEditorImagePathPrefix,
-              sniffImageMimeFromFile,
-              getExtensionFromMime,
-            } = await import('@/utils/editorImageUpload');
             const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
             const uuid =
               typeof crypto !== 'undefined' && crypto.randomUUID
@@ -2805,11 +2801,6 @@ function MainApp() {
             await backend.writeBytes(path, body, mime || 'application/octet-stream');
             reportProgress(file, 100);
           } else if (isSessionUpload) {
-            const {
-              normalizeEditorImagePathPrefix,
-              sniffImageMimeFromFile,
-              getExtensionFromMime,
-            } = await import('@/utils/editorImageUpload');
             const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
             const uuid =
               typeof crypto !== 'undefined' && crypto.randomUUID
@@ -5352,7 +5343,6 @@ function MainApp() {
     let markdown = remapMarkdownHeadingLevels(editorContentRef.current ?? '', headingMax);
     if (tableFormat === 'html') {
       const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
-      const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
       markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
         getCachedTableStyleTemplate(id),
       );
@@ -5609,7 +5599,6 @@ function MainApp() {
       let markdown = remapMarkdownHeadingLevels(text, headingMax);
       if (tableFormat === 'html') {
         const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
-        const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
         markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
           getCachedTableStyleTemplate(id),
         );
@@ -5663,7 +5652,6 @@ function MainApp() {
         let markdown = remapMarkdownHeadingLevels(text, headingMax);
         if (tableFormat === 'html') {
           const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
-          const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
           markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
             getCachedTableStyleTemplate(id),
           );
@@ -5871,7 +5859,6 @@ function MainApp() {
         let markdown = remapMarkdownHeadingLevels(text, headingMax);
         if (tableFormat === 'html') {
           const { convertHaimTablesToHtmlInMarkdown } = await import('@/utils/haimTable/toHtml');
-          const { getCachedTableStyleTemplate } = await import('@/utils/tableStyleSettingsStore');
           markdown = convertHaimTablesToHtmlInMarkdown(markdown, (id) =>
             getCachedTableStyleTemplate(id),
           );

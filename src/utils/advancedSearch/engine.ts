@@ -47,7 +47,7 @@ import {
   type DocIdMapState,
 } from './docIdMap';
 import { isSearchIsolationReady, searchIsolationBlockedReason } from './isolation';
-import { gzip } from 'fflate';
+import { gzip, gunzipSync, strFromU8 } from 'fflate';
 
 export type BuildLogLevel = 'info' | 'ok' | 'warn' | 'error';
 
@@ -665,7 +665,6 @@ class AdvancedSearchEngine {
       );
       this.emit();
       const snapshot = gunzipBytes(checkpoint.luceGz);
-      const { gunzipSync, strFromU8 } = await import('fflate');
       let docsMap = new Map<string, import('./types').DocMeta>();
       try {
         const raw = gunzipSync(checkpoint.docsGz);
