@@ -275,6 +275,11 @@ export default function Sidebar({
   onCloseSessionWorkspace,
   /** App mobile layout (max-width 768px) — enables touch tree drag + modal menu. */
   isMobileLayout = false,
+  /**
+   * Ref filled with `{ open(args) }` so workspace file tabs can open this same menu.
+   * `open({ storageType, path, name?, currentFile?, clientX?, clientY?, onCloseTab? })`
+   */
+  fileTabContextMenuRef = null,
 }) {
   const TREE_STICKY_SECTION_TOP = 33;
   const coarsePointer = useIsCoarsePointer();
@@ -387,6 +392,9 @@ export default function Sidebar({
 
   const findTreeNode = useCallback(
     (storageType, path) => {
+      if (storageType === 'session') {
+        return findNodeByPath(sessionTree, path);
+      }
       const tree =
         storageType === 's3'
           ? s3Tree
@@ -395,7 +403,7 @@ export default function Sidebar({
             : localTree;
       return findNodeByPath(tree, path);
     },
-    [s3Tree, localTree, webdavTree],
+    [s3Tree, localTree, webdavTree, sessionTree],
   );
 
   const resolveDropTargetNode = useCallback(
@@ -895,7 +903,7 @@ export default function Sidebar({
   }, []);
 
   const openTreeContextMenu = useCallback(
-    (storageType, node, event) => {
+    (storageType, node, event, extras = {}) => {
       activateTreeNode(storageType, node);
       setContextMenu({
         x: mobileTree ? null : event?.clientX ?? null,
@@ -903,10 +911,61 @@ export default function Sidebar({
         node,
         storageType,
         modal: mobileContextMenu,
+        onCloseTab: typeof extras.onCloseTab === 'function' ? extras.onCloseTab : null,
       });
     },
-    [activateTreeNode, mobileTree],
+    [activateTreeNode, mobileTree, mobileContextMenu],
   );
+
+  const openFileTabContextMenu = useCallback(
+    ({
+      storageType,
+      path,
+      name,
+      currentFile,
+      clientX,
+      clientY,
+      onCloseTab,
+    } = {}) => {
+      if (!storageType || !path) return;
+      let node = findTreeNode(storageType, path);
+      if (!node || node.type !== 'file') {
+        const fallbackName =
+          name ||
+          (typeof currentFile?.name === 'string' ? currentFile.name : '') ||
+          String(path).split('/').filter(Boolean).pop() ||
+          path;
+        node = {
+          type: 'file',
+          path,
+          name: fallbackName,
+          ...(currentFile?.handle ? { handle: currentFile.handle } : {}),
+          ...(currentFile?.parentHandle ? { parentHandle: currentFile.parentHandle } : {}),
+          ...(currentFile?.lastModified != null
+            ? { lastModified: currentFile.lastModified }
+            : {}),
+        };
+      }
+      const event =
+        clientX != null && clientY != null
+          ? { clientX, clientY }
+          : null;
+      openTreeContextMenu(storageType, node, event, {
+        onCloseTab: typeof onCloseTab === 'function' ? onCloseTab : undefined,
+      });
+    },
+    [findTreeNode, openTreeContextMenu],
+  );
+
+  useEffect(() => {
+    if (!fileTabContextMenuRef) return undefined;
+    fileTabContextMenuRef.current = { open: openFileTabContextMenu };
+    return () => {
+      if (fileTabContextMenuRef.current?.open === openFileTabContextMenu) {
+        fileTabContextMenuRef.current = null;
+      }
+    };
+  }, [fileTabContextMenuRef, openFileTabContextMenu]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1051,6 +1110,9 @@ export default function Sidebar({
             })()
           }
           onClose={() => setContextMenu(null)}
+          onCloseTab={
+            typeof contextMenu.onCloseTab === 'function' ? contextMenu.onCloseTab : undefined
+          }
           onCreateFile={
             contextMenuNode.type === 'folder'
               ? () => onCreateItem(contextMenuStorageType, contextMenuNode.path, contextMenuNode.handle, 'file')

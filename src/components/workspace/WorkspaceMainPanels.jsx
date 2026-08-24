@@ -28,6 +28,8 @@ export default function WorkspaceMainPanels({
   onActivateTab,
   onCloseTab,
   onReorderTabs,
+  onFileTabContextMenu,
+  isMobileLayout = false,
   editorPaneProps,
   chatPaneProps,
   mirrors,
@@ -81,6 +83,8 @@ export default function WorkspaceMainPanels({
         onActivate={onActivateTab}
         onClose={onCloseTab}
         onReorder={onReorderTabs}
+        onFileTabContextMenu={onFileTabContextMenu}
+        isMobileLayout={isMobileLayout}
       />
       <WorkspaceTabHost>
         {fileTabs.map((tab) => {

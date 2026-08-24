@@ -60,14 +60,21 @@ export function applyOpenedFileReducer(
   state: WorkspaceTabsState,
   file: FileWorkspaceTab['currentFile'],
   editorContent: string,
-  opts?: { promptCloseDirty?: (tab: FileWorkspaceTab) => boolean },
+  opts?: {
+    promptCloseDirty?: (tab: FileWorkspaceTab) => boolean;
+    /** When false, update an existing tab without changing activeId (default true). */
+    activate?: boolean;
+  },
 ): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
   const storageType = String(file.type || '') as FileWorkspaceTab['storageType'];
   const path = String(file.id || '');
   if (!storageType || !path) return state;
 
   const existing = findFileTab(state, storageType, path);
   if (!existing) {
+    // Background load finished after the tab was closed — discard.
+    if (!activate) return state;
     const evictOpts =
       opts?.promptCloseDirty != null ? { promptCloseDirty: opts.promptCloseDirty } : {};
     const evicted = evictForSoftCap(state.tabs, evictOpts);
@@ -84,16 +91,23 @@ export function applyOpenedFileReducer(
         editorContent,
         editedFileName: String(file.name || ''),
       },
+      Date.now(),
+      { activate },
     );
   }
 
-  return openOrReplaceFileTab(state, {
-    storageType,
-    path,
-    currentFile: file,
-    editorContent,
-    editedFileName: String(file.name || ''),
-  });
+  return openOrReplaceFileTab(
+    state,
+    {
+      storageType,
+      path,
+      currentFile: file,
+      editorContent,
+      editedFileName: String(file.name || ''),
+    },
+    Date.now(),
+    { activate },
+  );
 }
 
 export function activateFileTabReducer(

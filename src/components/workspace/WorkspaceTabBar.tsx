@@ -23,10 +23,13 @@ import {
 import { MessageSquare, X, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import {
+  useCallback,
   useMemo,
+  useRef,
   type ComponentType,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type SVGProps,
 } from 'react';
 import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
@@ -36,6 +39,9 @@ import {
   tabDirectoryPath,
   tabDisplayTitle,
 } from '@/utils/workspaceTabs';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
+import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+import { PRESSABLE_CARD_MENU_MS } from '@/components/chatWithMyself/usePressableCardMenu';
 
 type WorkspaceTabBarProps = {
   tabs: WorkspaceTab[];
@@ -44,6 +50,12 @@ type WorkspaceTabBarProps = {
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
   onReorder: (activeId: string, overId: string) => void;
+  /** Open TreeNode / Sidebar context menu for a file tab (right-click / long-press). */
+  onFileTabContextMenu?: (
+    tab: FileWorkspaceTab,
+    point: { clientX: number; clientY: number },
+  ) => void;
+  isMobileLayout?: boolean;
 };
 
 type IconComp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
@@ -85,13 +97,27 @@ type SortableTabProps = {
   saving: boolean;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
+  onFileTabContextMenu?: WorkspaceTabBarProps['onFileTabContextMenu'];
+  mobileContextMenu: boolean;
 };
 
-function SortableWorkspaceTab({ tab, active, saving, onActivate, onClose }: SortableTabProps) {
+function SortableWorkspaceTab({
+  tab,
+  active,
+  saving,
+  onActivate,
+  onClose,
+  onFileTabContextMenu,
+  mobileContextMenu,
+}: SortableTabProps) {
   const dirty = isFileTab(tab) && isFileTabDirty(tab);
+  const loading = isFileTab(tab) && tab.currentFile?.viewer === 'loading';
   const title = tabDisplayTitle(tab);
   const FileIcon = isFileTab(tab) ? fileTabIcon(tab) : null;
   const dirPath = isFileTab(tab) ? tabDirectoryPath(tab) : null;
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressOpenedRef = useRef(false);
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id,
@@ -104,6 +130,22 @@ function SortableWorkspaceTab({ tab, active, saving, onActivate, onClose }: Sort
     zIndex: isDragging ? 2 : undefined,
   };
 
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    pressStartRef.current = null;
+  }, []);
+
+  const openFileMenu = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!isFileTab(tab) || !onFileTabContextMenu) return;
+      onFileTabContextMenu(tab, { clientX, clientY });
+    },
+    [onFileTabContextMenu, tab],
+  );
+
   const handleMiddleClose = (e: ReactMouseEvent) => {
     if (e.button !== 1) return;
     e.preventDefault();
@@ -111,26 +153,67 @@ function SortableWorkspaceTab({ tab, active, saving, onActivate, onClose }: Sort
     onClose(tab.id);
   };
 
+  const handleContextMenu = (e: ReactMouseEvent) => {
+    // Suppress the browser menu on workspace tabs.
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isFileTab(tab) || !onFileTabContextMenu) return;
+    openFileMenu(e.clientX, e.clientY);
+  };
+
+  const handlePointerDown = (e: ReactPointerEvent) => {
+    if (!mobileContextMenu || !isFileTab(tab) || !onFileTabContextMenu) return;
+    if (e.pointerType === 'mouse') return;
+    if (e.button !== 0) return;
+    longPressOpenedRef.current = false;
+    pressStartRef.current = { x: e.clientX, y: e.clientY };
+    clearLongPress();
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      longPressOpenedRef.current = true;
+      vibrateLongPressAction();
+      const start = pressStartRef.current;
+      openFileMenu(start?.x ?? e.clientX, start?.y ?? e.clientY);
+    }, PRESSABLE_CARD_MENU_MS);
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent) => {
+    if (!pressStartRef.current || !longPressTimerRef.current) return;
+    const dx = e.clientX - pressStartRef.current.x;
+    const dy = e.clientY - pressStartRef.current.y;
+    if (dx * dx + dy * dy > 64) clearLongPress();
+  };
+
+  const handlePointerUpOrCancel = () => {
+    clearLongPress();
+  };
+
   const activateButton = (
     <button
       type="button"
       className="flex min-w-0 flex-1 cursor-grab items-center gap-1.5 py-1.5 text-left active:cursor-grabbing"
-      onClick={() => onActivate(tab.id)}
+      onClick={() => {
+        if (longPressOpenedRef.current) {
+          longPressOpenedRef.current = false;
+          return;
+        }
+        onActivate(tab.id);
+      }}
       {...attributes}
       {...listeners}
     >
       {tab.kind === 'chat' ? (
         <MessageSquare size={13} className="shrink-0 opacity-80" aria-hidden />
-      ) : saving ? (
+      ) : saving || loading ? (
         <Loader2
           size={13}
           className="shrink-0 animate-spin opacity-80"
-          aria-label="저장 중"
+          aria-label={saving ? '저장 중' : '로딩 중'}
         />
       ) : FileIcon ? (
         <FileIcon size={13} className="shrink-0 opacity-80" aria-hidden />
       ) : null}
-      {dirty && !saving ? (
+      {dirty && !saving && !loading ? (
         <span
           className="size-1.5 shrink-0 rounded-full bg-amber-500"
           aria-label="저장되지 않은 변경"
@@ -151,6 +234,11 @@ function SortableWorkspaceTab({ tab, active, saving, onActivate, onClose }: Sort
         if (e.button === 1) e.preventDefault();
       }}
       onAuxClick={handleMiddleClose}
+      onContextMenu={handleContextMenu}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUpOrCancel}
+      onPointerCancel={handlePointerUpOrCancel}
       className={`group relative flex max-w-56 min-w-0 shrink-0 items-center gap-1 rounded-t-md border border-b-0 px-2 text-xs transition-colors ${
         active
           ? 'border-gray-200 bg-white text-gray-900 dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong'
@@ -205,6 +293,8 @@ export default function WorkspaceTabBar({
   onActivate,
   onClose,
   onReorder,
+  onFileTabContextMenu,
+  isMobileLayout = false,
 }: WorkspaceTabBarProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -213,6 +303,7 @@ export default function WorkspaceTabBar({
   );
   const sortableIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
   const savingSet = useMemo(() => new Set(savingTabIds), [savingTabIds]);
+  const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
 
   if (tabs.length === 0) return null;
 
@@ -242,6 +333,8 @@ export default function WorkspaceTabBar({
                 saving={savingSet.has(tab.id)}
                 onActivate={onActivate}
                 onClose={onClose}
+                onFileTabContextMenu={onFileTabContextMenu}
+                mobileContextMenu={mobileContextMenu}
               />
             ))}
           </div>

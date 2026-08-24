@@ -58,6 +58,7 @@ function unescapeAttr(value) {
  * @property {string} group
  * @property {string} body
  * @property {boolean} [markdown] - render body as markdown (default false)
+ * @property {boolean} [encrypted] - body is password-encrypted JSON (default false)
  * @property {string} [replyTo]
  * @property {string} [replySnippet]
  * @property {string} [replyGroup]
@@ -77,6 +78,16 @@ function unescapeAttr(value) {
  */
 export function isChatMessageMarkdown(msg) {
   const v = msg?.markdown;
+  return v === true || v === '1' || v === 'true';
+}
+
+/**
+ * Per-message encrypted flag. Missing / legacy → false.
+ * Body holds `{ ciphertext, iv, salt }` JSON from encryptData.
+ * @param {{ encrypted?: unknown } | null | undefined} msg
+ */
+export function isChatMessageEncrypted(msg) {
+  const v = msg?.encrypted;
   return v === true || v === '1' || v === 'true';
 }
 
@@ -159,6 +170,8 @@ export function parseDayFile(content) {
       collapsed: attrs.collapsed === '1' || attrs.collapsed === 'true' ? '1' : '',
       markdown:
         attrs.markdown === '1' || attrs.markdown === 'true',
+      encrypted:
+        attrs.encrypted === '1' || attrs.encrypted === 'true',
       reactions: parseReactionsAttr(attrs.reactions || ''),
       reactionsAt: attrs.reactionsAt || '',
       editHistory,
@@ -198,6 +211,7 @@ export function serializeMessage(msg) {
       ? '1'
       : '';
   const markdown = isChatMessageMarkdown(msg) ? '1' : '';
+  const encrypted = isChatMessageEncrypted(msg) ? '1' : '';
   const reactionsRaw = serializeReactionsAttr(msg.reactions);
   const reactions = escapeAttr(reactionsRaw);
   const reactionsAt = escapeAttr(msg.reactionsAt || '');
@@ -210,10 +224,11 @@ export function serializeMessage(msg) {
   const notePathAttr = notePath ? ` notePath="${notePath}"` : '';
   const collapsedAttr = collapsed ? ` collapsed="${collapsed}"` : '';
   const markdownAttr = markdown ? ` markdown="${markdown}"` : '';
+  const encryptedAttr = encrypted ? ` encrypted="${encrypted}"` : '';
   const reactionsAttr = reactions ? ` reactions="${reactions}"` : '';
   const reactionsAtAttr =
     reactions && reactionsAt ? ` reactionsAt="${reactionsAt}"` : '';
-  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr}${collapsedAttr}${markdownAttr}${reactionsAttr}${reactionsAtAttr} -->\n${body}\n\n`;
+  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr}${collapsedAttr}${markdownAttr}${encryptedAttr}${reactionsAttr}${reactionsAtAttr} -->\n${body}\n\n`;
   // Edit history is stored under `.chat-with-myself/edits/<id>/` (not inline).
   return out;
 }
@@ -441,6 +456,9 @@ export function parseAppViewPath(href) {
  * Plain text for clipboard (strips attachment tokens to readable labels).
  */
 export function formatChatMessagePlainText(msg) {
+  if (isChatMessageEncrypted(msg)) {
+    return '암호화된 메시지';
+  }
   const raw = String(msg?.body ?? '');
   if (!raw) return '';
   return raw
@@ -479,6 +497,9 @@ export function formatChatMessagePlainText(msg) {
 
 /** Raw markdown body for clipboard. */
 export function formatChatMessageMarkdownCopy(msg) {
+  if (isChatMessageEncrypted(msg)) {
+    return '암호화된 메시지';
+  }
   return String(msg?.body ?? '').replace(/\n+$/, '');
 }
 

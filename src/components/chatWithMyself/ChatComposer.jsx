@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { Check, Paperclip, Pencil, Send, X, FileText, Folder } from 'lucide-react';
+import { Tooltip } from 'radix-ui';
 import { Compartment, StateEffect } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
@@ -20,6 +21,7 @@ import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { chatComposerAreaMaxHeight } from '@/components/chatWithMyself/ChatComposerDock';
+import PromptModal from '@/components/modals/PromptModal';
 import {
   ADD_GROUP_VALUE,
   SELF_GROUP,
@@ -215,6 +217,7 @@ const ChatComposer = forwardRef(function ChatComposer(
   const [imageQueue, setImageQueue] = useState([]);
   const [draftReady, setDraftReady] = useState(false);
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
+  const [encryptPromptOpen, setEncryptPromptOpen] = useState(false);
   /** Markdown messages prefer MdEditor so toolbar formatting matches render. */
   const useLightweightEditor = lightweight && !markdownEnabled;
   const openChatImage = useChatImageLightbox();
@@ -823,7 +826,9 @@ const ChatComposer = forwardRef(function ChatComposer(
     });
   }, []);
 
-  const doSend = useCallback(async () => {
+  const doSend = useCallback(async (options = {}) => {
+    const encryptPassword =
+      typeof options.encryptPassword === 'string' ? options.encryptPassword.trim() : '';
     const body = valueRef.current.trim();
     const queued = imageQueueRef.current;
     const markdown = Boolean(markdownEnabledRef.current);
@@ -887,6 +892,7 @@ const ChatComposer = forwardRef(function ChatComposer(
     if (!finalBody && newAttachments.length === 0) return;
     onSend?.(finalBody, selectedGroup || SELF_GROUP, replyTo || null, newAttachments, {
       markdown,
+      ...(encryptPassword ? { encryptPassword } : {}),
     });
     setValue('');
     setMarkdownEnabled(false);
@@ -905,6 +911,14 @@ const ChatComposer = forwardRef(function ChatComposer(
     clearImageQueue,
     draftScope,
   ]);
+
+  const openEncryptSendPrompt = useCallback(() => {
+    if (editTarget) return;
+    const body = valueRef.current.trim();
+    const queued = imageQueueRef.current;
+    if (!body && queued.length === 0) return;
+    setEncryptPromptOpen(true);
+  }, [editTarget]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -959,6 +973,14 @@ const ChatComposer = forwardRef(function ChatComposer(
         return;
       }
 
+      // Ctrl+Shift+Enter: encrypt send (compose only; all platforms).
+      if (e.ctrlKey && e.shiftKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!editTarget) openEncryptSendPrompt();
+        return;
+      }
+
       // Cmd+Enter always sends (or saves while editing).
       if (e.metaKey) {
         e.preventDefault();
@@ -995,6 +1017,7 @@ const ChatComposer = forwardRef(function ChatComposer(
     return () => el.removeEventListener('keydown', onKeyDown, true);
   }, [
     doSend,
+    openEncryptSendPrompt,
     isMobile,
     editTarget,
     applePlatform,
@@ -1472,20 +1495,43 @@ const ChatComposer = forwardRef(function ChatComposer(
                 </Suspense>
               )}
             </div>
-            <button
-              type="button"
-              onClick={doSend}
-              disabled={!canSend}
-              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 ${
-                editTarget
-                  ? 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500'
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-              title={editTarget ? '수정 완료' : '전송'}
-              aria-label={editTarget ? '수정 완료' : '전송'}
-            >
-              {editTarget ? <Check size={18} /> : <Send size={18} />}
-            </button>
+            <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => doSend()}
+                    onContextMenu={(e) => {
+                      if (editTarget) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openEncryptSendPrompt();
+                    }}
+                    disabled={!canSend}
+                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 ${
+                      editTarget
+                        ? 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                    aria-label={editTarget ? '수정 완료' : '전송'}
+                  >
+                    {editTarget ? <Check size={18} /> : <Send size={18} />}
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="top"
+                    sideOffset={6}
+                    className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+                  >
+                    {editTarget
+                      ? '수정 완료'
+                      : '전송 · 우클릭 또는 Ctrl+Shift+Enter로 암호화 전송'}
+                    <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
           </div>
         </div>
         {!isMobile && showHelperText ? (
@@ -1493,7 +1539,7 @@ const ChatComposer = forwardRef(function ChatComposer(
             <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
               {editTarget
                 ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈 · Ctrl+M 마크다운`
-                : `${sendModLabel} / Enter 전송 · Shift+Enter 줄바꿈 · Ctrl+M 마크다운 · 첨부는 전송 시 업로드`}
+                : `${sendModLabel} / Enter 전송 · Ctrl+Shift+Enter 암호화 · Shift+Enter 줄바꿈 · Ctrl+M 마크다운 · 첨부는 전송 시 업로드`}
             </p>
             <button
               type="button"
@@ -1502,7 +1548,6 @@ const ChatComposer = forwardRef(function ChatComposer(
                 setShowHelperText(false);
               }}
               className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-black/5 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-gray-300"
-              title="단축키 안내 숨기기"
               aria-label="단축키 안내 숨기기"
             >
               <X size={12} strokeWidth={2.25} />
@@ -1510,6 +1555,20 @@ const ChatComposer = forwardRef(function ChatComposer(
           </div>
         ) : null}
       </div>
+      <PromptModal
+        isOpen={encryptPromptOpen}
+        title="암호화해서 보내기"
+        message={"이 메시지를 암호화할 비밀번호를 입력하세요.\n같은 비밀번호로만 다시 열 수 있습니다."}
+        placeholder="비밀번호"
+        confirmLabel="암호화 전송"
+        cancelLabel="취소"
+        inputType="password"
+        onCancel={() => setEncryptPromptOpen(false)}
+        onConfirm={(password) => {
+          setEncryptPromptOpen(false);
+          void doSend({ encryptPassword: password });
+        }}
+      />
     </div>
   );
 });

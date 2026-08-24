@@ -107,14 +107,17 @@ export type OpenFileTabInput = {
 };
 
 /**
- * Insert or replace file tab contents and activate.
+ * Insert or replace file tab contents.
+ * By default activates the tab; pass `{ activate: false }` to update in the background.
  * Caller handles soft-cap via `evictForSoftCap` before calling when opening a new id.
  */
 export function openOrReplaceFileTab(
   state: WorkspaceTabsState,
   input: OpenFileTabInput,
   now = Date.now(),
+  opts?: { activate?: boolean },
 ): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
   const tab = createFileTab({ ...input, now });
   const idx = state.tabs.findIndex((t) => t.id === tab.id);
   let tabs: WorkspaceTab[];
@@ -127,11 +130,16 @@ export function openOrReplaceFileTab(
         revokeFileTabObjectUrl(prev);
       }
     }
-    tabs = state.tabs.map((t, i) => (i === idx ? tab : t));
+    // Keep soft-cap LRU order stable for background content updates.
+    const nextTab =
+      !activate && isFileTab(prev)
+        ? { ...tab, lastActivatedAt: prev.lastActivatedAt }
+        : tab;
+    tabs = state.tabs.map((t, i) => (i === idx ? nextTab : t));
   } else {
     tabs = [...state.tabs, tab];
   }
-  return { tabs, activeId: tab.id };
+  return { tabs, activeId: activate ? tab.id : state.activeId };
 }
 
 export function patchFileTab(

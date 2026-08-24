@@ -49,6 +49,7 @@ import ShareTargetGate, {
 } from '@/components/chatWithMyself/ShareTargetGate';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import { useAlertModal } from '@/contexts/AlertModalContext';
+import { useToast } from '@/contexts/ToastContext';
 import {
   CHAT_TAB_ID,
   anyFileTabDirty,
@@ -338,6 +339,7 @@ function getExt(fileName) {
 function MainApp() {
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
   const { showAlert } = useAlertModal();
+  const { showToast } = useToast();
   const auth = useAuth();
   const {
     isUnlocked,
@@ -659,7 +661,10 @@ function MainApp() {
   const [localFolderRestoreSettled, setLocalFolderRestoreSettled] = useState(false);
   const saveFileRef = useRef(null);
   const selectFileRawRef = useRef(null);
-  const openFileRequestSeqRef = useRef(0);
+  /** Per-tab open generation (`type:path` → seq). Parallel opens stay independent. */
+  const openFileRequestSeqByKeyRef = useRef(new Map());
+  /** Sidebar fills `{ open }` so file tabs can reuse TreeNode context menu. */
+  const fileTabContextMenuRef = useRef(null);
   const prevEditorContentRef = useRef('');
 
   const hasSeededTabsRestoreQueueRef = useRef(false);
@@ -780,20 +785,25 @@ function MainApp() {
 
   const commitOpenFile = useCallback((file, content = '', options = {}) => {
     if (!file?.type || !file?.id) return false;
+    const activate = options.activate !== false;
+    const tabId = `${file.type}:${file.id}`;
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
       editorContent: editorContentRef.current ?? '',
       currentFile: currentFileRef.current,
       editedFileName: editedFileNameRef.current ?? '',
     });
+    const existing = findFileTab(flushed, file.type, file.id);
+    // Background finish after close: do not reopen the tab.
+    if (!existing && !activate) return false;
     let next = applyOpenedFileReducer(flushed, file, content, {
       promptCloseDirty: softCapPrompt,
+      activate,
     });
     if (next === flushed && !findFileTab(flushed, file.type, file.id)) {
       return false;
     }
     if (options.baselineContent != null && typeof options.baselineContent === 'string') {
-      const id = `${file.type}:${file.id}`;
-      next = patchFileTab(next, id, {
+      next = patchFileTab(next, tabId, {
         baselineContent: options.baselineContent,
         currentFile: { ...file, content: options.baselineContent },
         editorContent: content,
@@ -801,15 +811,19 @@ function MainApp() {
     }
     // Legacy mode: one file slot only (drop other file tabs + chat tab).
     if (!workspaceTabsEnabledRef.current) {
-      next = retainOnlyFileTab(next, `${file.type}:${file.id}`);
+      next = retainOnlyFileTab(next, tabId);
     }
     workspaceTabsRef.current = next;
     setWorkspaceTabs(next);
-    setCurrentFile(file);
-    currentFileRef.current = file;
-    setEditorContent(content);
-    editorContentRef.current = content;
-    setEditedFileName(file.name || '');
+    // Only sync editor mirrors when this tab is (or became) active.
+    if (next.activeId === tabId) {
+      setCurrentFile(file);
+      currentFileRef.current = file;
+      setEditorContent(content);
+      editorContentRef.current = content;
+      setEditedFileName(file.name || '');
+      editedFileNameRef.current = file.name || '';
+    }
     return true;
   }, []);
 
@@ -3113,7 +3127,12 @@ function MainApp() {
   // 5. File Read & Save
   const selectFileRaw = useCallback(async (type, node, options = {}) => {
     if (node.type === 'folder') return;
-    const attemptId = ++openFileRequestSeqRef.current;
+    const requestKey = `${type}:${node.path}`;
+    const prevAttempt = openFileRequestSeqByKeyRef.current.get(requestKey) || 0;
+    const attemptId = prevAttempt + 1;
+    openFileRequestSeqByKeyRef.current.set(requestKey, attemptId);
+    const isCurrentAttempt = () =>
+      openFileRequestSeqByKeyRef.current.get(requestKey) === attemptId;
     const skipNavigate = options.skipNavigate === true;
     const goToViewPath = () => {
       if (!skipNavigate) navigate(`/view/${node.path}`);
@@ -3133,14 +3152,39 @@ function MainApp() {
     }
 
     const commit = (file, content = '', commitOpts = {}) => {
-      if (openFileRequestSeqRef.current !== attemptId) return false;
-      const ok = commitOpenFile(file, content, commitOpts);
-      if (ok && !skipNavigate && !didNavigateEarly) goToViewPath();
-      return ok;
+      if (!isCurrentAttempt()) {
+        if (typeof file?.objectUrl === 'string' && file.objectUrl) {
+          try {
+            URL.revokeObjectURL(file.objectUrl);
+          } catch {
+            /* ignore */
+          }
+        }
+        return false;
+      }
+      const tabId = `${type}:${node.path}`;
+      const wasActive = workspaceTabsRef.current.activeId === tabId;
+      // Never steal focus when fetch finishes — activate only via markAsLoading / existing activate.
+      const ok = commitOpenFile(file, content, { ...commitOpts, activate: false });
+      if (!ok) {
+        if (typeof file?.objectUrl === 'string' && file.objectUrl) {
+          try {
+            URL.revokeObjectURL(file.objectUrl);
+          } catch {
+            /* ignore */
+          }
+        }
+        return false;
+      }
+      if (!wasActive) {
+        const label = String(node.name || file?.name || node.path || '파일');
+        showToast({ message: `「${label}」 로딩 완료`, durationMs: 2200 });
+      }
+      return true;
     };
 
     const markAsLoading = () => {
-      if (openFileRequestSeqRef.current !== attemptId) return false;
+      if (!isCurrentAttempt()) return false;
 
       if (existingBefore) {
         const live = findFileTab(workspaceTabsRef.current, type, node.path);
@@ -3171,7 +3215,7 @@ function MainApp() {
         viewer: 'loading',
       };
 
-      const ok = commitOpenFile(placeholder, '');
+      const ok = commitOpenFile(placeholder, '', { activate: true });
       if (ok && !skipNavigate && !didNavigateEarly) {
         goToViewPath();
         didNavigateEarly = true;
@@ -3531,24 +3575,20 @@ function MainApp() {
     }
     } finally {
       try {
-        if (
-          openFileRequestSeqRef.current === attemptId &&
-          currentFileRef.current?.type === type &&
-          currentFileRef.current?.id === node.path &&
-          currentFileRef.current?.viewer === 'loading'
-        ) {
-          const ok = commitOpenFile(
-            {
-              type,
-              id: node.path,
-              name: node.name,
-              viewer: 'unsupported',
-              lastModified: node.lastModified,
-            },
-            '',
-          );
-          if (ok && !skipNavigate && !didNavigateEarly) goToViewPath();
-        }
+        if (!isCurrentAttempt()) return;
+        const live = findFileTab(workspaceTabsRef.current, type, node.path);
+        if (!live || live.currentFile?.viewer !== 'loading') return;
+        commitOpenFile(
+          {
+            type,
+            id: node.path,
+            name: node.name,
+            viewer: 'unsupported',
+            lastModified: node.lastModified,
+          },
+          '',
+          { activate: false },
+        );
       } catch (e) {
         console.error('Failed to settle loading viewer:', e);
       }
@@ -3563,6 +3603,7 @@ function MainApp() {
     applySessionFileToEditor,
     commitOpenFile,
     activateWorkspaceTab,
+    showToast,
   ]);
 
   const toSelectKey = (storageType, path) => `${storageType}:${path}`;
@@ -8807,6 +8848,7 @@ function MainApp() {
           >
             <Sidebar
               isMobileLayout={isMobile}
+              fileTabContextMenuRef={fileTabContextMenuRef}
               appName={appName}
               onBrandClick={handleBrandClick}
               onStorageModeChange={setStorageMode}
@@ -8983,11 +9025,23 @@ function MainApp() {
                   savingTabIds={savingTabIds}
                   tabsEnabled={workspaceTabsEnabled}
                   isChatRoute={isChatRoute}
+                  isMobileLayout={isMobile}
                   onActivateTab={(id) => activateWorkspaceTab(id)}
                   onCloseTab={(id) => {
                     closeWorkspaceTabById(id);
                   }}
                   onReorderTabs={reorderWorkspaceTabs}
+                  onFileTabContextMenu={(tab, point) => {
+                    fileTabContextMenuRef.current?.open?.({
+                      storageType: tab.storageType,
+                      path: tab.path,
+                      name: tab.editedFileName || tab.currentFile?.name,
+                      currentFile: tab.currentFile,
+                      clientX: point.clientX,
+                      clientY: point.clientY,
+                      onCloseTab: () => closeWorkspaceTabById(tab.id),
+                    });
+                  }}
                   mirrors={{
                     currentFile,
                     editorContent,

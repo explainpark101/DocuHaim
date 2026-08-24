@@ -29,6 +29,7 @@ import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
 import { ChatUiPrefsProvider } from '@/components/chatWithMyself/ChatUiPrefsContext';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import PromptModal from '@/components/modals/PromptModal';
 import { useChatActivityStatus } from '@/components/chatWithMyself/useChatActivityStatus';
 import {
   useChatRemoteSync,
@@ -98,6 +99,11 @@ import {
   reactionKey,
   normalizeReaction,
   normalizeStoragePath,
+  isChatMessageEncrypted,
+  ENCRYPTED_MESSAGE_LABEL,
+  encryptChatMessageBody,
+  decryptChatMessageBody,
+  parseEncryptedChatPayload,
   buildTreeShareItems,
   listFilesUnderFolderPath,
 } from '@/utils/chatWithMyself';
@@ -405,6 +411,10 @@ export default function ChatWithMyselfPane({
   const [historyMessage, setHistoryMessage] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingCount, setDeletingCount] = useState(0);
+  /** @type {[Record<string, string>, Function]} session-only decrypted plaintext by message id */
+  const [decryptedById, setDecryptedById] = useState({});
+  const [decryptTarget, setDecryptTarget] = useState(null);
+  const [decryptError, setDecryptError] = useState('');
   const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
   const [composerSeed, setComposerSeed] = useState(null);
   const [shareGroupModal, setShareGroupModal] = useState(null);
@@ -1160,11 +1170,24 @@ export default function ChatWithMyselfPane({
               });
             }
             const attachMd = chatAttachmentsToMarkdown(uploaded);
-            const finalBody = [attachMd, item.text].filter(Boolean).join('\n\n');
+            let finalBody = [attachMd, item.text].filter(Boolean).join('\n\n');
+            let encrypted = Boolean(item.encrypted);
+            if (item.encryptPassword) {
+              finalBody = await encryptChatMessageBody(
+                finalBody,
+                item.encryptPassword,
+              );
+              encrypted = true;
+            }
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === item.clientId
-                  ? { ...m, body: finalBody, pendingSync: 'send' }
+                  ? {
+                      ...m,
+                      body: finalBody,
+                      encrypted,
+                      pendingSync: 'send',
+                    }
                   : m,
               ),
             );
@@ -1176,6 +1199,7 @@ export default function ChatWithMyselfPane({
               group: item.group,
               source: 'compose',
               markdown: Boolean(item.markdown),
+              encrypted,
               replyTo: item.replyTarget?.id || '',
               replySnippet: item.replyTarget
                 ? makeReplySnippet(
@@ -1217,17 +1241,24 @@ export default function ChatWithMyselfPane({
         options.markdown === true ||
         options.markdown === '1' ||
         options.markdown === 'true';
+      const encryptPassword =
+        typeof options.encryptPassword === 'string'
+          ? options.encryptPassword.trim()
+          : '';
+      const encrypted = Boolean(encryptPassword);
 
       const tz = detectTimeZone();
       const at = new Date().toISOString();
       const dateStr = localDateString(new Date(at), tz);
       const clientId = createMessageId();
-      const optimisticBody = [
-        files.length > 0 ? `(첨부 ${files.length}개 업로드 중…)` : '',
-        text,
-      ]
-        .filter(Boolean)
-        .join('\n\n');
+      const optimisticBody = encrypted
+        ? ENCRYPTED_MESSAGE_LABEL
+        : [
+            files.length > 0 ? `(첨부 ${files.length}개 업로드 중…)` : '',
+            text,
+          ]
+            .filter(Boolean)
+            .join('\n\n');
       const optimistic = {
         id: clientId,
         at,
@@ -1235,10 +1266,15 @@ export default function ChatWithMyselfPane({
         source: 'compose',
         group: group || SELF_GROUP,
         body: optimisticBody,
-        markdown,
+        markdown: encrypted ? false : markdown,
+        encrypted,
         replyTo: replyTarget?.id || '',
         replySnippet: replyTarget
-          ? makeReplySnippet(replyTarget.snippet || replyTarget.body)
+          ? makeReplySnippet(
+              isChatMessageEncrypted(replyTarget)
+                ? ENCRYPTED_MESSAGE_LABEL
+                : replyTarget.snippet || replyTarget.body,
+            )
           : '',
         replyGroup: replyTarget?.group || '',
         dateStr,
@@ -1263,6 +1299,8 @@ export default function ChatWithMyselfPane({
         replyTarget: replyTarget || null,
         files,
         markdown,
+        encrypted,
+        encryptPassword: encryptPassword || '',
       });
       void flushSendQueue();
     },
@@ -1271,24 +1309,66 @@ export default function ChatWithMyselfPane({
 
   const handleReply = useCallback((message) => {
     setEditTarget(null);
+    const locked =
+      isChatMessageEncrypted(message) && !decryptedById[message.id];
     setReplyTo({
       id: message.id,
       group: message.group || SELF_GROUP,
-      body: message.body,
-      snippet: makeReplySnippet(message.body),
+      body: locked ? ENCRYPTED_MESSAGE_LABEL : message.body,
+      snippet: makeReplySnippet(
+        locked ? ENCRYPTED_MESSAGE_LABEL : message.body,
+      ),
       dateStr: message.dateStr,
       at: message.at,
     });
-  }, []);
+  }, [decryptedById]);
 
   const handleEdit = useCallback(
     (message) => {
       if (!message?.id) return;
+      if (isChatMessageEncrypted(message)) {
+        const plain = decryptedById[message.id];
+        if (!plain) return;
+        setReplyTo(null);
+        setEditTarget({
+          ...message,
+          body: plain,
+          encrypted: false,
+        });
+        setSelectedGroup(resolveGroupId(groups, message.group || SELF_GROUP));
+        return;
+      }
       setReplyTo(null);
       setEditTarget(message);
       setSelectedGroup(resolveGroupId(groups, message.group || SELF_GROUP));
     },
-    [groups],
+    [groups, decryptedById],
+  );
+
+  const handleRequestDecrypt = useCallback((message) => {
+    if (!message?.id || !isChatMessageEncrypted(message)) return;
+    if (decryptedById[message.id]) return;
+    if (!parseEncryptedChatPayload(message.body)) return;
+    setDecryptError('');
+    setDecryptTarget(message);
+  }, [decryptedById]);
+
+  const handleConfirmDecrypt = useCallback(
+    async (password) => {
+      if (!decryptTarget?.id) return;
+      try {
+        const plain = await decryptChatMessageBody(decryptTarget.body, password);
+        setDecryptedById((prev) => ({
+          ...prev,
+          [decryptTarget.id]: plain,
+        }));
+        setDecryptTarget(null);
+        setDecryptError('');
+      } catch {
+        setDecryptError('비밀번호가 올바르지 않거나 메시지를 열 수 없습니다.');
+      }
+    },
+    [decryptTarget],
   );
 
   const handleSaveEdit = useCallback(
@@ -1326,6 +1406,7 @@ export default function ChatWithMyselfPane({
                 body: optimisticBody,
                 group: group || SELF_GROUP,
                 markdown,
+                encrypted: false,
                 editedAt,
                 pendingSync: 'edit',
               }
@@ -1350,7 +1431,7 @@ export default function ChatWithMyselfPane({
           setMessages((prev) =>
             prev.map((m) =>
               m.id === target.id
-                ? { ...m, body: finalBody, pendingSync: 'edit' }
+                ? { ...m, body: finalBody, encrypted: false, pendingSync: 'edit' }
                 : m,
             ),
           );
@@ -1360,6 +1441,7 @@ export default function ChatWithMyselfPane({
           body: finalBody,
           group,
           markdown,
+          encrypted: false,
         });
         if (!updated) {
           setMessages((prev) =>
@@ -1368,6 +1450,12 @@ export default function ChatWithMyselfPane({
           setError('메시지를 찾지 못했습니다.');
           return;
         }
+        setDecryptedById((prev) => {
+          if (!(target.id in prev)) return prev;
+          const next = { ...prev };
+          delete next[target.id];
+          return next;
+        });
         setMessages((prev) =>
           prev.map((m) => {
             if (m.id !== target.id) return m;
@@ -2474,6 +2562,8 @@ export default function ChatWithMyselfPane({
               onToggleReaction={handleToggleReaction}
               onOpenNote={onOpenNote}
               onOpenReplyTarget={handleOpenReplyTarget}
+              onRequestDecrypt={handleRequestDecrypt}
+              decryptedById={decryptedById}
               getPresignedUrl={getPresignedUrlForPath}
               noteExists={noteExists}
               folderExists={folderExists}
@@ -2771,10 +2861,14 @@ export default function ChatWithMyselfPane({
         title="메시지 삭제"
         message={
           deleteTarget
-            ? `이 메시지를 삭제할까요?\n\n${(deleteTarget.body || '')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .slice(0, 120) || '(빈 메시지)'}`
+            ? `이 메시지를 삭제할까요?\n\n${
+                isChatMessageEncrypted(deleteTarget)
+                  ? ENCRYPTED_MESSAGE_LABEL
+                  : (deleteTarget.body || '')
+                      .replace(/\s+/g, ' ')
+                      .trim()
+                      .slice(0, 120) || '(빈 메시지)'
+              }`
             : ''
         }
         variant="danger"
@@ -2785,6 +2879,23 @@ export default function ChatWithMyselfPane({
         }}
         onCancel={() => {
           setDeleteTarget(null);
+        }}
+      />
+      <PromptModal
+        isOpen={Boolean(decryptTarget)}
+        title="메시지 잠금 해제"
+        message="암호화할 때 사용한 비밀번호를 입력하세요."
+        placeholder="비밀번호"
+        confirmLabel="잠금 해제"
+        cancelLabel="취소"
+        inputType="password"
+        error={decryptError}
+        onCancel={() => {
+          setDecryptTarget(null);
+          setDecryptError('');
+        }}
+        onConfirm={(password) => {
+          void handleConfirmDecrypt(password);
         }}
       />
     </ChatFileDropOverlay>

@@ -52,6 +52,8 @@ import {
   formatMessageTime,
   isSelfGroup,
   isChatMessageMarkdown,
+  isChatMessageEncrypted,
+  ENCRYPTED_MESSAGE_LABEL,
   detectTimeZone,
   localDateString,
   SELF_GROUP,
@@ -61,6 +63,7 @@ import {
   canOfferWebShare,
   shareChatMessage,
 } from '@/utils/chatWithMyself';
+import { IconLock } from '@/components/icons';
 import {
   CHAT_MESSAGE_SCROLL_MARGIN,
 } from '@/utils/chatWithMyself/scrollToMessage';
@@ -157,12 +160,21 @@ function MessageActionItems({
   shiftHeldRef,
   getPresignedUrl,
   linkHref = null,
+  /** When set, encrypted message is unlocked in this session. */
+  decryptedBody = null,
   _Item,
 }) {
   const pinned = Boolean(msg?.pinnedAt);
   const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
+  const encryptedLocked =
+    isChatMessageEncrypted(msg) && decryptedBody == null;
   const shareAvailable = canOfferWebShare();
-  const hasLinks = extractUrls(msg?.body || '').length > 0;
+  const bodyForLinks = encryptedLocked
+    ? ''
+    : decryptedBody != null
+      ? decryptedBody
+      : msg?.body || '';
+  const hasLinks = extractUrls(bodyForLinks).length > 0;
   const copyLinkHref = String(linkHref || '').trim() || null;
   return (
     <>
@@ -180,13 +192,15 @@ function MessageActionItems({
         <SmilePlus size={16} className="shrink-0 text-gray-500" />
         반응 추가
       </_Item>
-      <_Item
-        className={chatMenuItemClass}
-        onSelect={() => onEdit?.(msg)}
-      >
-        <Pencil size={16} className="shrink-0 text-gray-500" />
-        수정
-      </_Item>
+      {!encryptedLocked ? (
+        <_Item
+          className={chatMenuItemClass}
+          onSelect={() => onEdit?.(msg)}
+        >
+          <Pencil size={16} className="shrink-0 text-gray-500" />
+          수정
+        </_Item>
+      ) : null}
       {hasMessageEditHistory(msg) ? (
         <_Item
           className={chatMenuItemClass}
@@ -231,7 +245,11 @@ function MessageActionItems({
       <_Item
         className={chatMenuItemClass}
         onSelect={() => {
-          void copyText(formatChatMessagePlainText(msg));
+          const copyMsg =
+            decryptedBody != null
+              ? { ...msg, body: decryptedBody, encrypted: false }
+              : msg;
+          void copyText(formatChatMessagePlainText(copyMsg));
         }}
       >
         <Copy size={16} className="shrink-0 text-gray-500" />
@@ -239,7 +257,13 @@ function MessageActionItems({
       </_Item>
       <_Item
         className={chatMenuItemClass}
-        onSelect={() => onSelectCopy?.(msg)}
+        onSelect={() => {
+          const copyMsg =
+            decryptedBody != null
+              ? { ...msg, body: decryptedBody, encrypted: false }
+              : msg;
+          onSelectCopy?.(copyMsg);
+        }}
       >
         <TextSelect size={16} className="shrink-0 text-gray-500" />
         내용 선택 복사
@@ -247,7 +271,11 @@ function MessageActionItems({
       <_Item
         className={chatMenuItemClass}
         onSelect={() => {
-          void copyText(formatChatMessageMarkdownCopy(msg));
+          const copyMsg =
+            decryptedBody != null
+              ? { ...msg, body: decryptedBody, encrypted: false }
+              : msg;
+          void copyText(formatChatMessageMarkdownCopy(copyMsg));
         }}
       >
         <FileText size={16} className="shrink-0 text-gray-500" />
@@ -262,24 +290,36 @@ function MessageActionItems({
           OpenGraph 캐시 재로딩
         </_Item>
       ) : null}
-      {shareAvailable ? (
+      {shareAvailable && !encryptedLocked ? (
         <_Item
           className={chatMenuItemClass}
           onSelect={() => {
-            void shareChatMessage(msg, { getPresignedUrl });
+            const shareMsg =
+              decryptedBody != null
+                ? { ...msg, body: decryptedBody, encrypted: false }
+                : msg;
+            void shareChatMessage(shareMsg, { getPresignedUrl });
           }}
         >
           <Share2 size={16} className="shrink-0 text-gray-500" />
           공유
         </_Item>
       ) : null}
-      <_Item
-        className={chatMenuItemClass}
-        onSelect={() => onAddToNote?.(msg)}
-      >
-        <FilePlus2 size={16} className="shrink-0 text-gray-500" />
-        노트로 추가
-      </_Item>
+      {!encryptedLocked ? (
+        <_Item
+          className={chatMenuItemClass}
+          onSelect={() => {
+            const noteMsg =
+              decryptedBody != null
+                ? { ...msg, body: decryptedBody, encrypted: false }
+                : msg;
+            onAddToNote?.(noteMsg);
+          }}
+        >
+          <FilePlus2 size={16} className="shrink-0 text-gray-500" />
+          노트로 추가
+        </_Item>
+      ) : null}
       <_Item
         className={chatMenuDangerItemClass}
         onPointerDown={(e) => {
@@ -355,6 +395,7 @@ function MessageMoreButton({
   shiftHeldRef,
   coarse,
   getPresignedUrl,
+  decryptedBody = null,
 }) {
   if (coarse) {
     return (
@@ -366,7 +407,6 @@ function MessageMoreButton({
           onOpenMobileSheet?.(msg);
         }}
         className={iconBtnClass}
-        title="메시지 옵션"
         aria-label="메시지 옵션"
       >
         <MoreHorizontal size={16} />
@@ -380,7 +420,6 @@ function MessageMoreButton({
         <button
           type="button"
           className={iconBtnClass}
-          title="메시지 옵션"
           aria-label="메시지 옵션"
           onClick={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.stopPropagation()}
@@ -390,7 +429,7 @@ function MessageMoreButton({
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className={chatMenuContentClass}
+          className={`${chatMenuContentClass} z-100010`}
           sideOffset={4}
           align="end"
           onCloseAutoFocus={(e) => e.preventDefault()}
@@ -409,6 +448,7 @@ function MessageMoreButton({
             onSelectCopy={onSelectCopy}
             shiftHeldRef={shiftHeldRef}
             getPresignedUrl={getPresignedUrl}
+            decryptedBody={decryptedBody}
             _Item={DropdownMenu.Item}
           />
         </DropdownMenu.Content>
@@ -434,6 +474,7 @@ function MessageSideActions({
   coarse,
   time,
   getPresignedUrl,
+  decryptedBody = null,
 }) {
   const syncing =
     msg?.pendingSync === 'send' || msg?.pendingSync === 'edit';
@@ -466,6 +507,7 @@ function MessageSideActions({
         shiftHeldRef={shiftHeldRef}
         coarse={coarse}
         getPresignedUrl={getPresignedUrl}
+        decryptedBody={decryptedBody}
       />
     </>
   );
@@ -518,6 +560,9 @@ const MessageBubble = memo(function MessageBubble({
   onSelectCopy,
   onReloadOg,
   onBubbleActivate,
+  onRequestDecrypt,
+  /** Session plaintext when message is encrypted. */
+  decryptedBody = null,
   /** Session-only expand for a persisted-collapsed message (not saved). */
   peeked = false,
   ogReloadKey = 0,
@@ -543,8 +588,18 @@ const MessageBubble = memo(function MessageBubble({
 }) {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
-  const urls = useMemo(() => extractUrls(msg.body), [msg.body]);
-  const isMarkdown = isChatMessageMarkdown(msg);
+  const encrypted = isChatMessageEncrypted(msg);
+  const encryptedLocked = encrypted && decryptedBody == null;
+  const displayBody = encryptedLocked
+    ? ENCRYPTED_MESSAGE_LABEL
+    : decryptedBody != null
+      ? decryptedBody
+      : msg.body;
+  const urls = useMemo(
+    () => (encryptedLocked ? [] : extractUrls(displayBody)),
+    [encryptedLocked, displayBody],
+  );
+  const isMarkdown = !encryptedLocked && isChatMessageMarkdown(msg);
   const time = formatMessageTime(msg.at, timeZone || detectTimeZone());
   const longPressThresholdTimer = useRef(null);
   const longPressMenuTimer = useRef(null);
@@ -798,6 +853,9 @@ const MessageBubble = memo(function MessageBubble({
           return;
         }
         onBubbleActivate?.(msg);
+        if (encryptedLocked) {
+          onRequestDecrypt?.(msg);
+        }
       }}
       onContextMenu={(e) => {
         captureContextLink(e.target);
@@ -867,6 +925,7 @@ const MessageBubble = memo(function MessageBubble({
                 coarse={coarse}
                 time={time}
                 getPresignedUrl={getPresignedUrl}
+                decryptedBody={decryptedBody}
               />
             ) : self && isDeleting ? (
               deletingStatus
@@ -881,7 +940,9 @@ const MessageBubble = memo(function MessageBubble({
                     ? 'bg-sky-500/25 text-gray-900 border border-sky-400/60 shadow dark:bg-sky-400/25 dark:text-odp-fgStrong dark:border-sky-400/50'
                     : collapsed
                       ? 'bg-black/[0.06] text-gray-500 border border-black/5 shadow-none dark:bg-white/[0.04] dark:text-gray-400 dark:border-white/5'
-                      : self
+                      : encryptedLocked
+                        ? 'bg-violet-100 text-gray-900 dark:bg-[#1e1830] dark:text-odp-fgStrong border border-violet-200/80 dark:border-violet-800/50 shadow cursor-pointer'
+                        : self
                         ? 'bg-sky-100 text-gray-900 dark:bg-[#1a2740] dark:text-odp-fgStrong border border-sky-200/80 dark:border-sky-800/50 shadow'
                         : 'bg-white text-gray-900 dark:bg-[#243044] dark:text-odp-fgStrong border border-white/60 dark:border-white/10 shadow'
               }`}
@@ -924,26 +985,43 @@ const MessageBubble = memo(function MessageBubble({
                   접힘
                 </div>
               ) : null}
-              <ChatMessageBody
-                message={msg}
-                text={msg.body}
-                collapsed={collapsed}
-                className={`min-w-0 max-w-full overflow-hidden ${
-                  collapsed
-                    ? 'whitespace-nowrap'
-                    : isMarkdown
-                      ? 'wrap-anywhere'
-                      : 'whitespace-pre-wrap wrap-anywhere'
-                } ${isDeleting ? 'select-none' : 'select-text'}`}
-                getPresignedUrl={getPresignedUrl}
-                noteExists={noteExists}
-                folderExists={folderExists}
-                listFolderFiles={listFolderFiles}
-                onOpenViewPath={
-                  onOpenNote ? (path) => onOpenNote(path, msg) : undefined
-                }
-              />
+              {encryptedLocked ? (
+                <div
+                  className={`inline-flex min-w-0 max-w-full items-center gap-1.5 text-sm ${
+                    collapsed ? 'whitespace-nowrap' : ''
+                  } ${isDeleting ? 'select-none' : 'select-none'}`}
+                >
+                  <IconLock size={14} className="shrink-0 opacity-70" />
+                  <span>{ENCRYPTED_MESSAGE_LABEL}</span>
+                  {!collapsed && !msg.pendingSync ? (
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                      · 클릭하여 잠금 해제
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <ChatMessageBody
+                  message={msg}
+                  text={displayBody}
+                  collapsed={collapsed}
+                  className={`min-w-0 max-w-full overflow-hidden ${
+                    collapsed
+                      ? 'whitespace-nowrap'
+                      : isMarkdown
+                        ? 'wrap-anywhere'
+                        : 'whitespace-pre-wrap wrap-anywhere'
+                  } ${isDeleting ? 'select-none' : 'select-text'}`}
+                  getPresignedUrl={getPresignedUrl}
+                  noteExists={noteExists}
+                  folderExists={folderExists}
+                  listFolderFiles={listFolderFiles}
+                  onOpenViewPath={
+                    onOpenNote ? (path) => onOpenNote(path, msg) : undefined
+                  }
+                />
+              )}
               {!collapsed &&
+              !encryptedLocked &&
               msg.notePath &&
               !isDeleting &&
               (typeof noteExists !== 'function' || noteExists(msg.notePath)) ? (
@@ -1001,6 +1079,7 @@ const MessageBubble = memo(function MessageBubble({
                 coarse={coarse}
                 time={time}
                 getPresignedUrl={getPresignedUrl}
+                decryptedBody={decryptedBody}
               />
             ) : !self && isDeleting ? (
               deletingStatus
@@ -1068,6 +1147,7 @@ const MessageBubble = memo(function MessageBubble({
             shiftHeldRef={shiftHeldRef}
             getPresignedUrl={getPresignedUrl}
             linkHref={contextLinkHref}
+            decryptedBody={decryptedBody}
             _Item={ContextMenu.Item}
           />
         </ContextMenu.Content>
@@ -1098,6 +1178,9 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     onToggleReaction,
     onOpenNote,
     onOpenReplyTarget,
+    onRequestDecrypt,
+    /** @type {Record<string, string>} */
+    decryptedById = {},
     emptyHint,
     getPresignedUrl,
     /** @type {Map<string, string>|Record<string, string>|null} */
@@ -1618,6 +1701,12 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             onSelectCopy={handleSelectCopy}
             onReloadOg={handleReloadOg}
             onBubbleActivate={handleBubbleActivate}
+            onRequestDecrypt={onRequestDecrypt}
+            decryptedBody={
+              decryptedById[row.msg.id] != null
+                ? decryptedById[row.msg.id]
+                : null
+            }
             peeked={peekedCollapsedId === row.msg.id}
             ogReloadKey={ogReloadById[row.msg.id] || 0}
             shiftHeldRef={shiftHeldRef}
@@ -1668,6 +1757,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       onToggleReaction,
       onOpenNote,
       onOpenReplyTarget,
+      onRequestDecrypt,
+      decryptedById,
       shiftHeldRef,
       coarse,
       sheetMessage?.id,
@@ -1726,6 +1817,11 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         open={Boolean(sheetMessage)}
         message={sheetMessage}
         linkHref={sheetLinkHref}
+        decryptedBody={
+          sheetMessage?.id != null && decryptedById[sheetMessage.id] != null
+            ? decryptedById[sheetMessage.id]
+            : null
+        }
         onOpenChange={(next) => {
           if (!next) closeMobileSheet();
         }}

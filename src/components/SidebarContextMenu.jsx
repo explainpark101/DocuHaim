@@ -11,6 +11,7 @@ import {
   IconDownload,
   IconMessage,
   IconTrash,
+  IconX,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucide-react';
 
@@ -29,6 +30,7 @@ function SidebarContextMenuItems({
   isTrashRoot,
   deleteCount,
   onClose,
+  onCloseTab,
   onCreateFile,
   onCreateFolder,
   onDownload,
@@ -48,6 +50,25 @@ function SidebarContextMenuItems({
 
   return (
     <>
+      {onCloseTab ? (
+        <>
+          <button
+            type="button"
+            className={itemClass}
+            onClick={() => {
+              onCloseTab();
+              onClose();
+            }}
+          >
+            <IconX className={iconClass} size={14} />
+            탭 닫기
+          </button>
+          <div
+            role="separator"
+            className="my-0.5 h-px bg-gray-200 dark:bg-odp-borderSoft"
+          />
+        </>
+      ) : null}
       {canAdd && onCreateFile && (
         <button
           type="button"
@@ -194,6 +215,7 @@ export default function SidebarContextMenu({
   isTrashRoot,
   mobileDialog = false,
   onClose,
+  onCloseTab,
   onCreateFile,
   onCreateFolder,
   onDownload,
@@ -224,6 +246,7 @@ export default function SidebarContextMenu({
     isTrashRoot,
     deleteCount,
     onClose,
+    onCloseTab,
     onCreateFile,
     onCreateFolder,
     onDownload,

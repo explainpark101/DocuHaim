@@ -39,11 +39,19 @@ Regex: `/<!--\s*chat-msg\s+([^>]*?)-->\s*/g`
 
 **Required attrs:** `id`, `at` (ISO UTC).  
 **Common attrs:** `tz`, `source`, `group`.  
-**Optional:** `replyTo`, `replySnippet`, `replyGroup`, `editedAt`, `pinnedAt`, `notePath`, `collapsed` (`"1"`), `markdown` (`"1"`), `reactions`, `reactionsAt`.
+**Optional:** `replyTo`, `replySnippet`, `replyGroup`, `editedAt`, `pinnedAt`, `notePath`, `collapsed` (`"1"`), `markdown` (`"1"`), `encrypted` (`"1"`), `reactions`, `reactionsAt`.
 
 **Body region:** from end of start marker to the next `chat-msg` start (or EOF). Strip leading single `\n`, trailing newlines. Strip interleaved `chat-msg-deleted` markers found inside the slice from the body text (tombstones are global, not part of body).
 
 `markdown` truthy values on read: `true` | `"1"` | `"true"`; missing → false.
+
+`encrypted` truthy values on read: `true` | `"1"` | `"true"`; missing → false. When set, **body** is a JSON object from password-based AES-GCM (`encryptData`):
+
+```json
+{ "ciphertext": "<base64>", "iv": "<base64>", "salt": "<base64>" }
+```
+
+Plaintext is not stored. UI shows a lock placeholder until the user unlocks with the send-time password (session-only plaintext cache).
 
 ### 3. Deletion tombstone
 
@@ -84,5 +92,6 @@ Messages and tombstones may be interleaved. Parser collects all tombstones into 
 | 역할 | 경로 |
 |------|------|
 | 직렬화·파싱 | `src/utils/chatWithMyself/format.js` |
+| 암호화·복호화 | `src/utils/chatWithMyself/encryptedMessage.ts` (+ `src/utils/crypto.js`) |
 | reactions attr | `src/utils/chatWithMyself/reactions.js` |
 | 일별 경로 | `src/utils/chatWithMyself/paths.js` |

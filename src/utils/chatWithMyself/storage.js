@@ -564,6 +564,10 @@ export async function appendChatMessages(ctx, items = []) {
     group: item.group || SELF_GROUP,
     body: String(item.body ?? ''),
     markdown: item.markdown === true || item.markdown === '1' || item.markdown === 'true',
+    encrypted:
+      item.encrypted === true ||
+      item.encrypted === '1' ||
+      item.encrypted === 'true',
     replyTo: item.replyTo || '',
     replySnippet: item.replySnippet || '',
     replyGroup: item.replyGroup || '',
@@ -712,6 +716,14 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
         : prev.markdown === true ||
           prev.markdown === '1' ||
           prev.markdown === 'true';
+    const nextEncrypted =
+      patch.encrypted !== undefined
+        ? patch.encrypted === true ||
+          patch.encrypted === '1' ||
+          patch.encrypted === 'true'
+        : prev.encrypted === true ||
+          prev.encrypted === '1' ||
+          prev.encrypted === 'true';
     const bodyChanged = nextBody !== prev.body;
     const groupChanged = nextGroup !== (prev.group || SELF_GROUP);
     const prevMarkdown =
@@ -719,7 +731,12 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
       prev.markdown === '1' ||
       prev.markdown === 'true';
     const markdownChanged = nextMarkdown !== prevMarkdown;
-    if (bodyChanged || groupChanged || markdownChanged) {
+    const prevEncrypted =
+      prev.encrypted === true ||
+      prev.encrypted === '1' ||
+      prev.encrypted === 'true';
+    const encryptedChanged = nextEncrypted !== prevEncrypted;
+    if (bodyChanged || groupChanged || markdownChanged || encryptedChanged) {
       archived = {
         at: prev.editedAt || prev.at,
         body: prev.body,
@@ -731,6 +748,7 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
       body: nextBody,
       group: nextGroup,
       markdown: nextMarkdown,
+      encrypted: nextEncrypted,
       editedAt: new Date().toISOString(),
       // Stop embedding history in the day file; keep empty for serializers.
       editHistory: [],

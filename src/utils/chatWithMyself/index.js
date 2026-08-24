@@ -27,6 +27,7 @@ export {
   createMessageId,
   isSelfGroup,
   isChatMessageMarkdown,
+  isChatMessageEncrypted,
   makeReplySnippet,
   formatChatMessageAsNoteMarkdown,
   formatChatMessagePlainText,
@@ -136,6 +137,12 @@ export {
   createChatBackend,
 } from './storage.js';
 export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from './format.js';
+export {
+  ENCRYPTED_MESSAGE_LABEL,
+  parseEncryptedChatPayload,
+  encryptChatMessageBody,
+  decryptChatMessageBody,
+} from './encryptedMessage.js';
 export {
   parseReactionsAttr,
   serializeReactionsAttr,
