@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer, type ViteDevServer } from 'vite';
+import { createServer, optimizeDeps, type ViteDevServer } from 'vite';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const harnessEntry = path.resolve(rootDir, 'src/test/puppeteer/printPagedHarness.ts');
@@ -45,6 +45,7 @@ export async function startViteTestServer(): Promise<string> {
     },
   });
   await server.listen();
+  await optimizeDeps(server.config, true);
 
   const addr = server.httpServer?.address();
   const port = typeof addr === 'object' && addr ? addr.port : 5173;

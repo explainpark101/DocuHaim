@@ -256,7 +256,7 @@ export async function releasePrintPagingSourceDom(
 
   detachPrintFlowFromPagesHost(pagesHost);
   prePagedStyle?.remove();
-  for (const el of pagesHost.querySelectorAll('[data-export-pdf-paged-source-styles]')) {
+  for (const el of document.querySelectorAll('[data-export-pdf-paged-source-styles]')) {
     el.remove();
   }
   pagesHost.style.width = '';

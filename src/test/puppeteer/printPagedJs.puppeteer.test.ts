@@ -40,7 +40,7 @@ async function openHarnessPage(): Promise<Page> {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.goto(`${baseUrl}${HARNESS_PATH}`, {
-    waitUntil: 'networkidle0',
+    waitUntil: 'domcontentloaded',
     timeout: HOOK_TIMEOUT_MS,
   });
   await page.waitForFunction(

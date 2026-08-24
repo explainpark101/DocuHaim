@@ -402,14 +402,15 @@ export function buildPagedJsStylesheet(
 }
 
 export function injectPrintPreviewStylesForPaging(
-  anchor: ParentNode,
+  _anchor: ParentNode,
   pageSizeId: PrintPageSizeId,
   contentStyles: string,
 ): HTMLStyleElement {
   const style = document.createElement('style');
   style.setAttribute('data-export-pdf-paged-source-styles', '1');
   style.textContent = buildPrePagedLayoutCss(pageSizeId, contentStyles);
-  anchor.insertBefore(style, anchor.firstChild);
+  // Keep pre-pagination CSS out of pagesHost — Paged.js treats host children as flow content.
+  document.head.appendChild(style);
   return style;
 }
 
