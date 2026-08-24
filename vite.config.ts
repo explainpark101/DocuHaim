@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
@@ -125,6 +127,8 @@ const plugins: PluginOption[] = [
   tailwindcss(),
   emitBuildIdPlugin(),
   docsTrailingSlashPlugin(),
+  wasm(),
+  topLevelAwait(),
 ];
 
 if (!isElectron) {
