@@ -23,6 +23,7 @@ import {
   type PrintSpreadPair,
 } from '@/utils/printPreviewView';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
+import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagePack';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 
 type Props = {
@@ -32,18 +33,16 @@ type Props = {
   zoomPercent: number;
   onZoomChange: (next: number) => void;
   pageSizeId: PrintPageSizeId;
-  pageStarts: number[];
-  contentHeight: number;
-  pageInnerHeightPx: number;
+  /** Number of packed body pages (not including cover). */
+  bodyPageCount: number;
+  /** Host of `.export-pdf-page` nodes produced by packPrintPages. */
+  pagesHostRef: RefObject<HTMLElement | null>;
+  /** Bumps when packed pages are rebuilt. */
+  packLayoutKey: string;
   hasCover: boolean;
   coverNode: ReactNode;
-  /** Live MdPreview root (`#export-pdf-preview`) lives under this ref. */
-  sourceContentRef: RefObject<HTMLElement | null>;
-  layoutKey: string;
-  /** 0-based spread index (flip mode). */
   flipIndex: number;
   onFlipIndexChange: (next: number) => void;
-  /** 1-based logical page numbers currently visible. */
   onVisibleLogicalPagesChange?: (pages: number[]) => void;
 };
 
@@ -81,37 +80,37 @@ function CoverPageSlot({
 function BodyPageSlot({
   widthPx,
   heightPx,
-  pageInnerHeightPx,
-  pageStart,
-  pageEnd,
-  previewHtml,
-  layoutKey,
+  bodyIndex,
+  pagesHostRef,
+  packLayoutKey,
 }: {
   widthPx: number;
   heightPx: number;
-  pageInnerHeightPx: number;
-  pageStart: number;
-  pageEnd: number;
-  previewHtml: string;
-  layoutKey: string;
+  bodyIndex: number;
+  pagesHostRef: RefObject<HTMLElement | null>;
+  packLayoutKey: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const host = hostRef.current;
+    const pagesHost = pagesHostRef.current;
     if (!host) return;
-    host.innerHTML = previewHtml;
-    for (const el of host.querySelectorAll('[id]')) {
+    host.replaceChildren();
+    if (!pagesHost) return;
+    const source = pagesHost.querySelector<HTMLElement>(
+      `[${PRINT_BODY_PAGE_ATTR}="${bodyIndex}"]`,
+    );
+    if (!source) return;
+    const clone = source.cloneNode(true) as HTMLElement;
+    for (const el of clone.querySelectorAll('[id]')) {
       el.removeAttribute('id');
     }
-    const root = host.firstElementChild;
-    if (root instanceof HTMLElement) {
-      root.setAttribute('data-export-pdf-preview', '1');
-    }
-  }, [layoutKey, previewHtml, pageStart]);
-
-  const innerH = Math.max(1, pageInnerHeightPx);
-  const sliceHeight = Math.max(1, pageEnd - pageStart);
+    clone.removeAttribute('id');
+    clone.style.boxShadow = 'none';
+    clone.style.margin = '0';
+    host.appendChild(clone);
+  }, [bodyIndex, packLayoutKey, pagesHostRef]);
 
   return (
     <div
@@ -120,19 +119,10 @@ function BodyPageSlot({
       style={{
         width: widthPx,
         height: heightPx,
-        padding: 'var(--print-page-margin)',
         boxSizing: 'border-box',
       }}
     >
-      <div className="relative overflow-hidden" style={{ height: innerH }}>
-        <div className="relative overflow-hidden" style={{ height: sliceHeight }}>
-          <div
-            ref={hostRef}
-            className="export-pdf-page-slot-clone origin-top-left"
-            style={{ transform: `translateY(-${pageStart}px)` }}
-          />
-        </div>
-      </div>
+      <div ref={hostRef} className="export-pdf-page-slot-clone h-full w-full origin-top-left" />
     </div>
   );
 }
@@ -141,26 +131,21 @@ function LogicalPageSlot({
   logicalIndex,
   hasCover,
   coverNode,
-  pageStarts,
-  contentHeight,
-  pageInnerHeightPx,
+  bodyPageCount,
+  pagesHostRef,
+  packLayoutKey,
   widthPx,
   heightPx,
-  previewHtml,
-  layoutKey,
   allowBlank = true,
 }: {
   logicalIndex: number | null;
   hasCover: boolean;
   coverNode: ReactNode;
-  pageStarts: number[];
-  contentHeight: number;
-  pageInnerHeightPx: number;
+  bodyPageCount: number;
+  pagesHostRef: RefObject<HTMLElement | null>;
+  packLayoutKey: string;
   widthPx: number;
   heightPx: number;
-  previewHtml: string;
-  layoutKey: string;
-  /** When false, null index renders nothing (used for centered first page). */
   allowBlank?: boolean;
 }) {
   if (logicalIndex == null) {
@@ -174,17 +159,16 @@ function LogicalPageSlot({
     );
   }
   const bodyIndex = logicalIndex - (hasCover ? 1 : 0);
-  const pageStart = pageStarts[bodyIndex] ?? 0;
-  const pageEnd = pageStarts[bodyIndex + 1] ?? contentHeight;
+  if (bodyIndex < 0 || bodyIndex >= Math.max(1, bodyPageCount)) {
+    return <BlankPage widthPx={widthPx} heightPx={heightPx} />;
+  }
   return (
     <BodyPageSlot
       widthPx={widthPx}
       heightPx={heightPx}
-      pageInnerHeightPx={pageInnerHeightPx}
-      pageStart={pageStart}
-      pageEnd={pageEnd}
-      previewHtml={previewHtml}
-      layoutKey={`${layoutKey}:${bodyIndex}`}
+      bodyIndex={bodyIndex}
+      pagesHostRef={pagesHostRef}
+      packLayoutKey={packLayoutKey}
     />
   );
 }
@@ -193,30 +177,25 @@ function SpreadView({
   pair,
   hasCover,
   coverNode,
-  pageStarts,
-  contentHeight,
-  pageInnerHeightPx,
+  bodyPageCount,
+  pagesHostRef,
+  packLayoutKey,
   widthPx,
   heightPx,
-  previewHtml,
-  layoutKey,
   gapPx,
 }: {
   pair: PrintSpreadPair;
   hasCover: boolean;
   coverNode: ReactNode;
-  pageStarts: number[];
-  contentHeight: number;
-  pageInnerHeightPx: number;
+  bodyPageCount: number;
+  pagesHostRef: RefObject<HTMLElement | null>;
+  packLayoutKey: string;
   widthPx: number;
   heightPx: number;
-  previewHtml: string;
-  layoutKey: string;
   gapPx: number;
 }) {
   const soloIndex = pair.left ?? pair.right;
   if (pair.centerSingle && soloIndex != null) {
-    // Reserve spread width so zoom/fit stays stable vs 2-up rows; center the solo page.
     return (
       <div
         className="flex flex-row items-start justify-center"
@@ -226,13 +205,11 @@ function SpreadView({
           logicalIndex={soloIndex}
           hasCover={hasCover}
           coverNode={coverNode}
-          pageStarts={pageStarts}
-          contentHeight={contentHeight}
-          pageInnerHeightPx={pageInnerHeightPx}
+          bodyPageCount={bodyPageCount}
+          pagesHostRef={pagesHostRef}
+          packLayoutKey={packLayoutKey}
           widthPx={widthPx}
           heightPx={heightPx}
-          previewHtml={previewHtml}
-          layoutKey={layoutKey}
           allowBlank={false}
         />
       </div>
@@ -245,25 +222,21 @@ function SpreadView({
         logicalIndex={pair.left}
         hasCover={hasCover}
         coverNode={coverNode}
-        pageStarts={pageStarts}
-        contentHeight={contentHeight}
-        pageInnerHeightPx={pageInnerHeightPx}
+        bodyPageCount={bodyPageCount}
+        pagesHostRef={pagesHostRef}
+        packLayoutKey={packLayoutKey}
         widthPx={widthPx}
         heightPx={heightPx}
-        previewHtml={previewHtml}
-        layoutKey={layoutKey}
       />
       <LogicalPageSlot
         logicalIndex={pair.right}
         hasCover={hasCover}
         coverNode={coverNode}
-        pageStarts={pageStarts}
-        contentHeight={contentHeight}
-        pageInnerHeightPx={pageInnerHeightPx}
+        bodyPageCount={bodyPageCount}
+        pagesHostRef={pagesHostRef}
+        packLayoutKey={packLayoutKey}
         widthPx={widthPx}
         heightPx={heightPx}
-        previewHtml={previewHtml}
-        layoutKey={layoutKey}
       />
     </div>
   );
@@ -273,37 +246,31 @@ function SinglePageView({
   logicalIndex,
   hasCover,
   coverNode,
-  pageStarts,
-  contentHeight,
-  pageInnerHeightPx,
+  bodyPageCount,
+  pagesHostRef,
+  packLayoutKey,
   widthPx,
   heightPx,
-  previewHtml,
-  layoutKey,
 }: {
   logicalIndex: number;
   hasCover: boolean;
   coverNode: ReactNode;
-  pageStarts: number[];
-  contentHeight: number;
-  pageInnerHeightPx: number;
+  bodyPageCount: number;
+  pagesHostRef: RefObject<HTMLElement | null>;
+  packLayoutKey: string;
   widthPx: number;
   heightPx: number;
-  previewHtml: string;
-  layoutKey: string;
 }) {
   return (
     <LogicalPageSlot
       logicalIndex={logicalIndex}
       hasCover={hasCover}
       coverNode={coverNode}
-      pageStarts={pageStarts}
-      contentHeight={contentHeight}
-      pageInnerHeightPx={pageInnerHeightPx}
+      bodyPageCount={bodyPageCount}
+      pagesHostRef={pagesHostRef}
+      packLayoutKey={packLayoutKey}
       widthPx={widthPx}
       heightPx={heightPx}
-      previewHtml={previewHtml}
-      layoutKey={layoutKey}
     />
   );
 }
@@ -315,13 +282,11 @@ export default function PrintPreviewStage({
   zoomPercent,
   onZoomChange,
   pageSizeId,
-  pageStarts,
-  contentHeight,
-  pageInnerHeightPx,
+  bodyPageCount,
+  pagesHostRef,
+  packLayoutKey,
   hasCover,
   coverNode,
-  sourceContentRef,
-  layoutKey,
   flipIndex,
   onFlipIndexChange,
   onVisibleLogicalPagesChange,
@@ -333,7 +298,6 @@ export default function PrintPreviewStage({
     scrollListRef.current = node;
     setScrollPanRoot(node);
   }, []);
-  const [previewHtml, setPreviewHtml] = useState('');
 
   useScrollPointerPan(scrollPanRoot, navigation === 'scroll' && pages === 2);
 
@@ -342,8 +306,7 @@ export default function PrintPreviewStage({
     [pageSizeId],
   );
 
-  const bodyPageCount = Math.max(1, pageStarts.length);
-  const totalLogicalPages = (hasCover ? 1 : 0) + bodyPageCount;
+  const totalLogicalPages = (hasCover ? 1 : 0) + Math.max(1, bodyPageCount);
 
   const pairs = useMemo(() => {
     if (pages === 1) {
@@ -357,17 +320,6 @@ export default function PrintPreviewStage({
 
   const safeFlipIndex = Math.min(Math.max(0, flipIndex), Math.max(0, pairs.length - 1));
 
-  useLayoutEffect(() => {
-    const source = sourceContentRef.current;
-    if (!source) {
-      setPreviewHtml('');
-      return;
-    }
-    const preview = source.querySelector('#export-pdf-preview');
-    setPreviewHtml(preview ? preview.outerHTML : source.innerHTML);
-  }, [layoutKey, sourceContentRef, pageStarts, pageInnerHeightPx]);
-
-  // Auto-fit zoom in flip mode when viewport or page geometry changes.
   const onZoomChangeRef = useRef(onZoomChange);
   onZoomChangeRef.current = onZoomChange;
 
@@ -423,7 +375,6 @@ export default function PrintPreviewStage({
     }
   }, [navigation, pages, pairs, reportVisible, safeFlipIndex]);
 
-  // Scroll 2-up: track visible spreads from scroll position.
   useEffect(() => {
     if (navigation !== 'scroll' || pages !== 2) return undefined;
     const root = scrollListRef.current;
@@ -458,10 +409,6 @@ export default function PrintPreviewStage({
     onFlipIndexChange(Math.min(pairs.length - 1, safeFlipIndex + 1));
   }, [onFlipIndexChange, pairs.length, safeFlipIndex]);
 
-  const goPrevRef = useRef(goPrev);
-  const goNextRef = useRef(goNext);
-  goPrevRef.current = goPrev;
-  goNextRef.current = goNext;
   const canPrev = safeFlipIndex > 0;
   const canNext = safeFlipIndex < pairs.length - 1;
 
@@ -489,7 +436,6 @@ export default function PrintPreviewStage({
     return () => window.removeEventListener('keydown', onKey);
   }, [goNext, goPrev, navigation]);
 
-  // Touch swipe + trackpad horizontal pan (two-finger) for flip.
   useEffect(() => {
     if (navigation !== 'flip') return undefined;
     const root = viewportRef.current;
@@ -499,82 +445,52 @@ export default function PrintPreviewStage({
     const WHEEL_ACCUM = 60;
     let touchStartX = 0;
     let touchStartY = 0;
-    let tracking = false;
-    let wheelAccumX = 0;
+    let wheelAccum = 0;
 
     const onTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) return;
-      const t = event.touches[0];
-      if (!t) return;
-      tracking = true;
-      touchStartX = t.clientX;
-      touchStartY = t.clientY;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
     };
     const onTouchEnd = (event: TouchEvent) => {
-      if (!tracking) return;
-      tracking = false;
-      const t = event.changedTouches[0];
-      if (!t) return;
-      const dx = t.clientX - touchStartX;
-      const dy = t.clientY - touchStartY;
-      if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-      if (dx < 0) goNextRef.current();
-      else goPrevRef.current();
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+      if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) goNext();
+      else goPrev();
     };
-    const onTouchCancel = () => {
-      tracking = false;
-    };
-
     const onWheel = (event: WheelEvent) => {
-      // Trackpad two-finger horizontal pan / shift+wheel.
-      const dominantX =
-        Math.abs(event.deltaX) > Math.abs(event.deltaY) * 1.1
-        || (event.shiftKey && Math.abs(event.deltaY) > 0);
-      if (!dominantX) {
-        wheelAccumX = 0;
-        return;
-      }
-      event.preventDefault();
-      const delta = event.shiftKey && Math.abs(event.deltaX) < 1 ? event.deltaY : event.deltaX;
-      wheelAccumX += delta;
-      if (Math.abs(wheelAccumX) < WHEEL_ACCUM) return;
-      if (wheelAccumX > 0) goNextRef.current();
-      else goPrevRef.current();
-      wheelAccumX = 0;
+      if (event.ctrlKey || event.metaKey) return;
+      if (Math.abs(event.deltaX) < Math.abs(event.deltaY)) return;
+      wheelAccum += event.deltaX;
+      if (Math.abs(wheelAccum) < WHEEL_ACCUM) return;
+      if (wheelAccum > 0) goNext();
+      else goPrev();
+      wheelAccum = 0;
     };
 
     root.addEventListener('touchstart', onTouchStart, { passive: true });
     root.addEventListener('touchend', onTouchEnd, { passive: true });
-    root.addEventListener('touchcancel', onTouchCancel, { passive: true });
-    root.addEventListener('wheel', onWheel, { passive: false });
+    root.addEventListener('wheel', onWheel, { passive: true });
     return () => {
       root.removeEventListener('touchstart', onTouchStart);
       root.removeEventListener('touchend', onTouchEnd);
-      root.removeEventListener('touchcancel', onTouchCancel);
       root.removeEventListener('wheel', onWheel);
     };
-  }, [navigation]);
+  }, [goNext, goPrev, navigation]);
 
-  const zoomStyle = { zoom: zoomPercent / 100 } as CSSProperties;
+  const zoomStyle: CSSProperties = {
+    zoom: zoomPercent / 100,
+  };
 
-  // Click left/right margin (outside page box) to flip.
   const onMarginPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+    (event: ReactPointerEvent) => {
       if (event.button !== 0) return;
       const root = viewportRef.current;
       if (!root) return;
-      const pageEls = root.querySelectorAll<HTMLElement>('[data-print-page-slot="1"]');
-      for (const el of pageEls) {
-        const r = el.getBoundingClientRect();
-        if (
-          event.clientX >= r.left
-          && event.clientX <= r.right
-          && event.clientY >= r.top
-          && event.clientY <= r.bottom
-        ) {
-          return; // click landed on a page — ignore
-        }
-      }
       const rect = root.getBoundingClientRect();
       const midX = rect.left + rect.width / 2;
       if (event.clientX < midX) {
@@ -586,7 +502,6 @@ export default function PrintPreviewStage({
     [canNext, canPrev, goNext, goPrev],
   );
 
-  // Scroll 2-page virtualized list
   if (navigation === 'scroll' && pages === 2) {
     const rowH = heightPx + PRINT_SPREAD_GAP_PX;
     const overscan = 1;
@@ -612,13 +527,11 @@ export default function PrintPreviewStage({
               overscan={overscan}
               hasCover={hasCover}
               coverNode={coverNode}
-              pageStarts={pageStarts}
-              contentHeight={contentHeight}
-              pageInnerHeightPx={pageInnerHeightPx}
+              bodyPageCount={bodyPageCount}
+              pagesHostRef={pagesHostRef}
+              packLayoutKey={packLayoutKey}
               widthPx={widthPx}
               heightPx={heightPx}
-              previewHtml={previewHtml}
-              layoutKey={layoutKey}
             />
           </div>
         </div>
@@ -626,7 +539,6 @@ export default function PrintPreviewStage({
     );
   }
 
-  // Flip modes
   const pair = pairs[safeFlipIndex] ?? { left: 0, right: null };
 
   return (
@@ -642,32 +554,27 @@ export default function PrintPreviewStage({
               logicalIndex={pair.left ?? 0}
               hasCover={hasCover}
               coverNode={coverNode}
-              pageStarts={pageStarts}
-              contentHeight={contentHeight}
-              pageInnerHeightPx={pageInnerHeightPx}
+              bodyPageCount={bodyPageCount}
+              pagesHostRef={pagesHostRef}
+              packLayoutKey={packLayoutKey}
               widthPx={widthPx}
               heightPx={heightPx}
-              previewHtml={previewHtml}
-              layoutKey={layoutKey}
             />
           ) : (
             <SpreadView
               pair={pair}
               hasCover={hasCover}
               coverNode={coverNode}
-              pageStarts={pageStarts}
-              contentHeight={contentHeight}
-              pageInnerHeightPx={pageInnerHeightPx}
+              bodyPageCount={bodyPageCount}
+              pagesHostRef={pagesHostRef}
+              packLayoutKey={packLayoutKey}
               widthPx={widthPx}
               heightPx={heightPx}
-              previewHtml={previewHtml}
-              layoutKey={layoutKey}
               gapPx={PRINT_SPREAD_GAP_PX}
             />
           )}
         </div>
       </div>
-      {/* Full-height margin hit affordance (visual chevrons); clicks handled on viewport. */}
       <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-2 print:hidden">
         <button
           type="button"
@@ -708,13 +615,11 @@ function ScrollSpreadWindow({
   overscan,
   hasCover,
   coverNode,
-  pageStarts,
-  contentHeight,
-  pageInnerHeightPx,
+  bodyPageCount,
+  pagesHostRef,
+  packLayoutKey,
   widthPx,
   heightPx,
-  previewHtml,
-  layoutKey,
 }: {
   pairs: PrintSpreadPair[];
   rowH: number;
@@ -723,13 +628,11 @@ function ScrollSpreadWindow({
   overscan: number;
   hasCover: boolean;
   coverNode: ReactNode;
-  pageStarts: number[];
-  contentHeight: number;
-  pageInnerHeightPx: number;
+  bodyPageCount: number;
+  pagesHostRef: RefObject<HTMLElement | null>;
+  packLayoutKey: string;
   widthPx: number;
   heightPx: number;
-  previewHtml: string;
-  layoutKey: string;
 }) {
   const [range, setRange] = useState({ first: 0, last: 2 });
 
@@ -743,18 +646,13 @@ function ScrollSpreadWindow({
       const first = Math.max(0, Math.floor(top / scaledRowH) - overscan);
       const last = Math.min(
         pairs.length - 1,
-        Math.ceil((top + viewH) / scaledRowH) + overscan,
+        Math.floor((top + viewH) / scaledRowH) + overscan,
       );
       setRange((prev) => (prev.first === first && prev.last === last ? prev : { first, last }));
     };
     update();
     root.addEventListener('scroll', update, { passive: true });
-    const ro = new ResizeObserver(update);
-    ro.observe(root);
-    return () => {
-      root.removeEventListener('scroll', update);
-      ro.disconnect();
-    };
+    return () => root.removeEventListener('scroll', update);
   }, [overscan, pairs.length, rowH, scale, scrollRef]);
 
   const items: ReactNode[] = [];
@@ -764,20 +662,18 @@ function ScrollSpreadWindow({
     items.push(
       <div
         key={`spread-${i}`}
-        className="absolute left-0 right-0"
-        style={{ top: i * rowH, height: heightPx }}
+        className="absolute left-0"
+        style={{ top: i * rowH, height: rowH }}
       >
         <SpreadView
           pair={pair}
           hasCover={hasCover}
           coverNode={coverNode}
-          pageStarts={pageStarts}
-          contentHeight={contentHeight}
-          pageInnerHeightPx={pageInnerHeightPx}
+          bodyPageCount={bodyPageCount}
+          pagesHostRef={pagesHostRef}
+          packLayoutKey={packLayoutKey}
           widthPx={widthPx}
           heightPx={heightPx}
-          previewHtml={previewHtml}
-          layoutKey={layoutKey}
           gapPx={PRINT_SPREAD_GAP_PX}
         />
       </div>,
@@ -786,27 +682,25 @@ function ScrollSpreadWindow({
   return <>{items}</>;
 }
 
-/** Resolve 0-based logical page index for a body heading element. */
+/** Resolve 0-based logical page index for a heading inside a packed body page. */
 export function logicalPageIndexForHeading(
   headingEl: HTMLElement,
-  paperContentEl: HTMLElement,
-  pageStarts: number[],
+  pagesHostEl: HTMLElement,
   hasCover: boolean,
 ): number {
-  const headingRect = headingEl.getBoundingClientRect();
-  const paperRect = paperContentEl.getBoundingClientRect();
-  const top = headingRect.top - paperRect.top + paperContentEl.scrollTop;
-  let bodyIndex = 0;
-  for (let i = 0; i < pageStarts.length; i += 1) {
-    const start = pageStarts[i] ?? 0;
-    const next = pageStarts[i + 1] ?? Number.POSITIVE_INFINITY;
-    if (top >= start && top < next) {
-      bodyIndex = i;
-      break;
-    }
-    if (top >= start) bodyIndex = i;
+  const page = headingEl.closest<HTMLElement>(`[${PRINT_BODY_PAGE_ATTR}]`);
+  if (page && pagesHostEl.contains(page)) {
+    const bodyIndex = Number(page.getAttribute(PRINT_BODY_PAGE_ATTR) ?? '0');
+    return (hasCover ? 1 : 0) + (Number.isFinite(bodyIndex) ? bodyIndex : 0);
   }
-  return (hasCover ? 1 : 0) + bodyIndex;
+  const pages = [...pagesHostEl.querySelectorAll<HTMLElement>(`[${PRINT_BODY_PAGE_ATTR}]`)];
+  for (let i = 0; i < pages.length; i += 1) {
+    const candidate = pages[i];
+    if (candidate?.contains(headingEl)) {
+      return (hasCover ? 1 : 0) + i;
+    }
+  }
+  return hasCover ? 1 : 0;
 }
 
 export function spreadIndexForLogicalPage(

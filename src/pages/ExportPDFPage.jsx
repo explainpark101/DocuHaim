@@ -8,7 +8,6 @@ import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lu
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintCoverPageChrome from '@/components/print/PrintCoverPageChrome';
-import PrintPageBreakOverlay from '@/components/print/PrintPageBreakOverlay';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import PrintPreviewFirstPageSingleSwitch from '@/components/print/PrintPreviewFirstPageSingleSwitch';
 import PrintPreviewNavSelect from '@/components/print/PrintPreviewNavSelect';
@@ -67,7 +66,7 @@ import { usePrintTableFit } from '@/hooks/usePrintTableFit';
 import { usePrintMermaidFit } from '@/hooks/usePrintMermaidFit';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
-import { usePrintPageStarts } from '@/hooks/usePrintPageStarts';
+import { usePrintPackedPages } from '@/hooks/usePrintPackedPages';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { parseExportPdfPathFromAppPathname } from '@/utils/appHref';
@@ -298,6 +297,18 @@ const printFontStyles = `
       #f3f4f6 12px
     );
   }
+  .export-pdf-pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .export-pdf-pages .export-pdf-page {
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+  }
+  .export-pdf-pages .print-pack-line {
+    display: block;
+  }
   .export-pdf-paper-metric {
     height: var(--print-page-inner-height);
   }
@@ -367,10 +378,31 @@ const printFontStyles = `
       z-index: auto !important;
       width: auto !important;
     }
-    .export-pdf-page {
+    .export-pdf-staging {
+      display: none !important;
+    }
+    .export-pdf-pages {
+      gap: 0 !important;
+      align-items: stretch !important;
+      zoom: 1 !important;
+    }
+    .export-pdf-pages .export-pdf-page {
       display: block !important;
-      overflow: visible !important;
+      width: var(--print-page-width) !important;
+      height: var(--print-page-height) !important;
+      min-height: var(--print-page-height) !important;
+      max-height: var(--print-page-height) !important;
+      margin: 0 !important;
+      padding: var(--print-page-margin) !important;
+      box-shadow: none !important;
+      overflow: hidden !important;
       background: #ffffff !important;
+      break-after: page !important;
+      page-break-after: always !important;
+    }
+    .export-pdf-pages .export-pdf-page:last-child {
+      break-after: auto !important;
+      page-break-after: auto !important;
     }
     .export-pdf-cover-stack {
       gap: 0 !important;
@@ -396,23 +428,10 @@ const printFontStyles = `
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .export-pdf-paper {
-      width: auto !important;
-      max-width: none !important;
-      min-height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      box-shadow: none !important;
-      background: #ffffff !important;
-    }
     .export-pdf-paper .md-pgbr {
       background: transparent !important;
       background-image: none !important;
       border: none !important;
-    }
-    :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview-wrapper {
-      overflow: visible !important;
-      max-height: none !important;
     }
   }
 `;
@@ -497,6 +516,7 @@ export default function ExportPDFPage({
     setPreviewPanRoot(node);
   }, []);
   const paperContentRef = useRef(null);
+  const pagesHostRef = useRef(null);
   const coverPageRef = useRef(null);
   const imageMaxProbeRef = useRef(null);
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
@@ -512,10 +532,12 @@ export default function ExportPDFPage({
   /** Measured inner height; until layout, fall back to A4 + Chrome default margin (10 mm). */
   const effectivePageInnerHeightPx =
     pageInnerHeightPx > 1 ? pageInnerHeightPx : printPageInnerPx.heightPx;
-  const { pageStarts, contentHeight } = usePrintPageStarts(
+  const packLayoutKey = `${printLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}`;
+  const { pageCount: bodyPageCount } = usePrintPackedPages(
     paperContentRef,
+    pagesHostRef,
     effectivePageInnerHeightPx,
-    `${printLayoutKey}|${previewValue}`,
+    packLayoutKey,
   );
   const tocListRef = useRef(null);
   const tocProgrammaticScrollRef = useRef(false);
@@ -597,8 +619,6 @@ export default function ExportPDFPage({
   const parsedCover = parsedCoverResult.cover;
   const activeCover = parsedCover;
   const hasEnabledCover = Boolean(activeCover?.enabled);
-  /** Cover always consumes logical page 1; body pageStarts continue from page 2. */
-  const bodyFirstPageNumber = hasEnabledCover ? 2 : 1;
   const effectiveNavigation = coverEditMode ? 'scroll' : previewView.navigation;
   const effectivePages = coverEditMode ? 1 : previewView.pages;
   const isLiveScroll1 = effectiveNavigation === 'scroll' && effectivePages === 1;
@@ -629,19 +649,18 @@ export default function ExportPDFPage({
       return;
     }
 
-    const paper = paperContentRef.current;
-    if (!paper) {
+    const pagesHost = pagesHostRef.current;
+    if (!pagesHost) {
       el.scrollIntoView({ block: 'start', behavior: 'smooth' });
       return;
     }
     const logical = logicalPageIndexForHeading(
       el,
-      paper,
-      pageStarts,
+      pagesHost,
       Boolean(activeCover?.enabled),
     );
     const totalLogical =
-      (activeCover?.enabled ? 1 : 0) + Math.max(1, pageStarts.length);
+      (activeCover?.enabled ? 1 : 0) + Math.max(1, bodyPageCount);
     const nextFlip = spreadIndexForLogicalPage(
       logical,
       totalLogical,
@@ -651,9 +670,9 @@ export default function ExportPDFPage({
     setFlipIndex(nextFlip);
   }, [
     activeCover?.enabled,
+    bodyPageCount,
     effectivePages,
     isLiveScroll1,
-    pageStarts,
     previewView.firstPageSingle,
   ]);
 
@@ -844,12 +863,37 @@ export default function ExportPDFPage({
     const root = previewContainerRef.current;
     if (!root) return undefined;
     const collectItems = () => {
-      const headings = [...root.querySelectorAll('#export-pdf-preview .md-editor-preview h1, #export-pdf-preview .md-editor-preview h2, #export-pdf-preview .md-editor-preview h3, #export-pdf-preview .md-editor-preview h4, #export-pdf-preview .md-editor-preview h5, #export-pdf-preview .md-editor-preview h6')];
-      const next = headings.map((el, index) => ({
-        id: el.id || headingId({ index }),
-        level: Number(el.tagName?.slice?.(1)) || 1,
-        text: (el.textContent || '').trim() || '(빈 제목)',
-      }));
+      const pagesHost = pagesHostRef.current;
+      const headingSelector = [
+        `[data-export-pdf-pages] h1`,
+        `[data-export-pdf-pages] h2`,
+        `[data-export-pdf-pages] h3`,
+        `[data-export-pdf-pages] h4`,
+        `[data-export-pdf-pages] h5`,
+        `[data-export-pdf-pages] h6`,
+        `[data-export-pdf-pages] .print-pack-line[id]`,
+      ].join(', ');
+      const stagingSelector = '#export-pdf-preview .md-editor-preview h1, #export-pdf-preview .md-editor-preview h2, #export-pdf-preview .md-editor-preview h3, #export-pdf-preview .md-editor-preview h4, #export-pdf-preview .md-editor-preview h5, #export-pdf-preview .md-editor-preview h6';
+      const packed = pagesHost
+        ? [...pagesHost.querySelectorAll(headingSelector)]
+        : [];
+      const headings = packed.length
+        ? packed
+        : [...root.querySelectorAll(stagingSelector)];
+      const seen = new Set();
+      const next = [];
+      headings.forEach((el, index) => {
+        const id = el.id || headingId({ index });
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        const sourceTag = (el.dataset.printPackSource || el.tagName || 'h1').toUpperCase();
+        const level = Number(sourceTag.replace(/^H/, '')) || 1;
+        next.push({
+          id,
+          level,
+          text: (el.textContent || '').trim() || '(빈 제목)',
+        });
+      });
       setTocItems(next);
     };
     const timers = [60, 180, 420].map((delay) => setTimeout(collectItems, delay));
@@ -859,7 +903,7 @@ export default function ExportPDFPage({
       timers.forEach((t) => clearTimeout(t));
       observer.disconnect();
     };
-  }, [bodyMarkdown]);
+  }, [bodyMarkdown, bodyPageCount]);
 
   useEffect(() => {
     if (!tocItems.length) {
@@ -974,8 +1018,8 @@ export default function ExportPDFPage({
   }, []);
 
   const handleExport = useCallback(() => {
-    const target = document.querySelector(`#${EDITOR_ID}`);
-    if (!target) return;
+    const pages = document.querySelector('[data-export-pdf-pages]');
+    if (!pages || pages.children.length === 0) return;
     window.print();
   }, []);
 
@@ -1087,7 +1131,11 @@ export default function ExportPDFPage({
       if (isCoverContextMenu(event)) return;
       if (event.ctrlKey) return;
 
-      const contentRoot = paperContentRef.current;
+      const contentRoot =
+        pagesHostRef.current
+        && event.target?.closest?.('[data-export-pdf-pages]')
+          ? pagesHostRef.current
+          : paperContentRef.current;
       if (!contentRoot) return;
 
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
@@ -1847,9 +1895,9 @@ export default function ExportPDFPage({
                 zoomPercent={previewView.zoomPercent}
                 onZoomChange={handleStageZoomChange}
                 pageSizeId={printLayout.pageSizeId}
-                pageStarts={pageStarts}
-                contentHeight={contentHeight}
-                pageInnerHeightPx={effectivePageInnerHeightPx}
+                bodyPageCount={bodyPageCount}
+                pagesHostRef={pagesHostRef}
+                packLayoutKey={packLayoutKey}
                 hasCover={Boolean(activeCover?.enabled)}
                 coverNode={
                   activeCover?.enabled ? (
@@ -1860,8 +1908,6 @@ export default function ExportPDFPage({
                     />
                   ) : null
                 }
-                sourceContentRef={paperContentRef}
-                layoutKey={`${printLayoutKey}|${bodyMarkdown}|${effectivePageInnerHeightPx}`}
                 flipIndex={flipIndex}
                 onFlipIndexChange={setFlipIndex}
                 onVisibleLogicalPagesChange={setStageVisiblePages}
@@ -1932,32 +1978,40 @@ export default function ExportPDFPage({
               ) : null
             ) : null}
             <div
-              className="export-pdf-paper relative mx-auto bg-white text-gray-900 shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
+              ref={pagesHostRef}
+              data-export-pdf-pages="1"
+              className="export-pdf-pages w-full"
+            />
+            {/* Staging: continuous MdPreview for measure/fit; never printed. */}
+            <div
+              className="export-pdf-paper export-pdf-staging relative mx-auto bg-white text-gray-900 print:hidden"
               style={{
                 width: 'var(--print-page-width)',
                 minHeight: 'var(--print-page-height)',
                 padding: 'var(--print-page-margin)',
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                visibility: 'hidden',
+                pointerEvents: 'none',
+                zIndex: -1,
               }}
+              aria-hidden
             >
               <div
                 ref={metricRef}
-                className="export-pdf-paper-metric pointer-events-none absolute top-0 left-0 -z-10 w-px opacity-0 print:hidden"
+                className="export-pdf-paper-metric pointer-events-none absolute top-0 left-0 -z-10 w-px opacity-0"
                 aria-hidden
               />
               <div ref={paperContentRef} className="export-pdf-paper-content relative">
                 <div
                   ref={imageMaxProbeRef}
-                  className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0 print:hidden"
+                  className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
                   style={{
                     width: 'var(--print-img-max-width)',
                     height: 'var(--print-img-max-height)',
                   }}
                   aria-hidden
-                />
-                <PrintPageBreakOverlay
-                  pageStarts={pageStarts}
-                  contentHeight={contentHeight}
-                  firstPageNumber={bodyFirstPageNumber}
                 />
                 <MdPreview
                   key={`footnotes-${previewFootnotesRenderKey}`}
@@ -1977,12 +2031,11 @@ export default function ExportPDFPage({
           </div>
         </div>
         <PrintVisiblePageBadge
-          pageStarts={pageStarts}
-          contentHeight={contentHeight}
-          paperRef={paperContentRef}
+          pagesHostRef={pagesHostRef}
           scrollRef={previewContainerRef}
           coverRef={coverPageRef}
           hasCover={hasEnabledCover}
+          bodyPageCount={bodyPageCount}
           overridePages={isLiveScroll1 ? null : stageVisiblePages}
         />
         {coverEditMode && activeCover ? (

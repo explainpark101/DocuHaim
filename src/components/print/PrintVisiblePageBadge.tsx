@@ -1,14 +1,14 @@
 import { useEffect, useState, type RefObject } from 'react';
+import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagePack';
 
 type Props = {
-  pageStarts: number[];
-  contentHeight: number;
-  paperRef: RefObject<HTMLElement | null>;
+  pagesHostRef: RefObject<HTMLElement | null>;
   scrollRef: RefObject<HTMLElement | null>;
   /** Cover surface; when intersecting the viewport, logical page 1 is included. */
   coverRef?: RefObject<HTMLElement | null>;
-  /** When true, body pageStarts map to logical pages 2, 3, … */
+  /** When true, body pages map to logical pages 2, 3, … */
   hasCover?: boolean;
+  bodyPageCount: number;
   /** When set, show these 1-based pages instead of scroll-intersection detection. */
   overridePages?: number[] | null;
 };
@@ -36,9 +36,7 @@ function overlapsViewport(
 }
 
 function visiblePageNumbers(
-  pageStarts: number[],
-  contentHeight: number,
-  paperEl: HTMLElement,
+  pagesHostEl: HTMLElement,
   scrollEl: HTMLElement,
   coverEl: HTMLElement | null,
   hasCover: boolean,
@@ -47,37 +45,30 @@ function visiblePageNumbers(
   const view = visualViewportBand();
   const visTopPx = Math.max(scrollRect.top, view.top);
   const visBottomPx = Math.min(scrollRect.bottom, view.bottom);
-  if (visBottomPx - visTopPx <= 8) return [hasCover ? 1 : 1];
+  if (visBottomPx - visTopPx <= 8) return [1];
 
   const pages: number[] = [];
   if (hasCover && coverEl && overlapsViewport(coverEl, visTopPx, visBottomPx, 24)) {
     pages.push(1);
   }
 
-  if (!pageStarts.length) {
-    return pages.length ? pages : [hasCover ? 1 : 1];
+  const bodyOffset = hasCover ? 1 : 0;
+  const bodyPages = [...pagesHostEl.querySelectorAll<HTMLElement>(`[${PRINT_BODY_PAGE_ATTR}]`)];
+  for (const pageEl of bodyPages) {
+    if (!overlapsViewport(pageEl, visTopPx, visBottomPx, 24)) continue;
+    const bodyIndex = Number(pageEl.getAttribute(PRINT_BODY_PAGE_ATTR) ?? '0');
+    pages.push(bodyIndex + 1 + bodyOffset);
   }
 
-  const paperRect = paperEl.getBoundingClientRect();
-  const visTop = visTopPx - paperRect.top;
-  const visBottom = visBottomPx - paperRect.top;
-  const bodyOffset = hasCover ? 1 : 0;
-  for (let i = 0; i < pageStarts.length; i += 1) {
-    const top = pageStarts[i] ?? 0;
-    const bottom = pageStarts[i + 1] ?? Math.max(contentHeight, top + 1);
-    const overlap = Math.min(bottom, visBottom) - Math.max(top, visTop);
-    if (overlap > 24) pages.push(i + 1 + bodyOffset);
-  }
   return pages.length ? pages : [hasCover ? 1 : 1];
 }
 
 export default function PrintVisiblePageBadge({
-  pageStarts,
-  contentHeight,
-  paperRef,
+  pagesHostRef,
   scrollRef,
   coverRef,
   hasCover = false,
+  bodyPageCount,
   overridePages = null,
 }: Props) {
   const [pages, setPages] = useState<number[]>([1]);
@@ -88,16 +79,14 @@ export default function PrintVisiblePageBadge({
       return undefined;
     }
 
-    const paperEl = paperRef.current;
+    const pagesHostEl = pagesHostRef.current;
     const scrollEl = scrollRef.current;
-    if (!paperEl || !scrollEl) return undefined;
+    if (!pagesHostEl || !scrollEl) return undefined;
 
     let rafId = 0;
     const update = () => {
       const next = visiblePageNumbers(
-        pageStarts,
-        contentHeight,
-        paperEl,
+        pagesHostEl,
         scrollEl,
         coverRef?.current ?? null,
         hasCover,
@@ -130,7 +119,7 @@ export default function PrintVisiblePageBadge({
       window.visualViewport?.removeEventListener('resize', schedule);
       window.visualViewport?.removeEventListener('scroll', schedule);
     };
-  }, [contentHeight, coverRef, hasCover, overridePages, pageStarts, paperRef, scrollRef]);
+  }, [bodyPageCount, coverRef, hasCover, overridePages, pagesHostRef, scrollRef]);
 
   const first = pages[0] ?? 1;
   const last = pages[pages.length - 1] ?? first;

@@ -3989,7 +3989,18 @@ svg.md-editor-icon {
     page-break-inside: avoid;
   }
 
-  /* break-after: following content starts on a new sheet */
+  /* Packed fixed pages are the print source for Export PDF; avoid CSS fragmentation
+     fighting overflow packing. Staging `#export-pdf-preview` is print:hidden. */
+  .export-pdf-pages .export-pdf-page {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+  .export-pdf-pages .export-pdf-page:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  /* break-after: following content starts on a new sheet (legacy continuous preview) */
   .md-editor-preview .md-pgbr {
     border: none !important;
     background: transparent !important;

@@ -198,6 +198,8 @@ export function PrintPgbrContextMenu({
           : (event.target as Node | null)?.parentElement;
       const contentRoot: HTMLElement | null = (() => {
         if (paper && eventEl && paper.contains(eventEl)) return paper;
+        const pagesHost = eventEl?.closest?.('[data-export-pdf-pages]');
+        if (pagesHost instanceof HTMLElement) return pagesHost;
         const preview =
           eventEl?.closest?.('.md-editor-preview')
           ?? eventEl?.closest?.('[data-export-pdf-preview]');

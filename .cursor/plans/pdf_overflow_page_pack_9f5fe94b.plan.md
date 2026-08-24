@@ -4,19 +4,19 @@ overview: PDF Export의 연속 문서 + pageStarts 스냅 방식을 버리고, �
 todos:
   - id: packer-core
     content: extractPrintPackUnits + packPrintPages (append/overflow) in printPageBreaks or new printPagePack.ts
-    status: pending
+    status: completed
   - id: hook-wire
     content: Replace usePrintPageStarts with packing hook; rerun after fit/load/layoutKey
-    status: pending
+    status: completed
   - id: export-dom
     content: "ExportPDFPage: staging MdPreview + visible fixed .export-pdf-page stack; print those pages"
-    status: pending
+    status: completed
   - id: stage-simplify
     content: "PrintPreviewStage/badge/TOC: page index over real pages, drop translateY clip"
-    status: pending
+    status: completed
   - id: css-docs
     content: Print CSS cleanup + page-break.md host behavior update
-    status: pending
+    status: completed
 isProject: false
 ---
 
