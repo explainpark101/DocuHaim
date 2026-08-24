@@ -178,6 +178,38 @@ function coiHtmlPlugin(): Plugin {
   };
 }
 
+/**
+ * Tauri/desktop builds skip VitePWA, so `virtual:pwa-register/react` does not
+ * exist. Provide a no-op hook with the same shape as the PWA virtual module.
+ */
+function stubPwaRegisterForDesktopPlugin(): Plugin {
+  const virtualId = 'virtual:pwa-register/react';
+  const resolvedId = `\0${virtualId}`;
+  return {
+    name: 'stub-pwa-register-for-desktop',
+    resolveId(id) {
+      if (id === virtualId) return resolvedId;
+      return undefined;
+    },
+    load(id) {
+      if (id !== resolvedId) return undefined;
+      return `
+import { useState } from 'react';
+
+export function useRegisterSW(_options) {
+  const needRefresh = useState(false);
+  const offlineReady = useState(false);
+  return {
+    needRefresh,
+    offlineReady,
+    updateServiceWorker: async () => {},
+  };
+}
+`;
+    },
+  };
+}
+
 const plugins: PluginOption[] = [
   fixMermaidKatexNewlinesPlugin(),
   react({
@@ -194,7 +226,9 @@ const plugins: PluginOption[] = [
   topLevelAwait(),
 ];
 
-if (!isElectron) {
+if (isElectron) {
+  plugins.push(stubPwaRegisterForDesktopPlugin());
+} else {
   plugins.push(
     VitePWA({
       disable: false,
