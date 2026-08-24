@@ -1,5 +1,106 @@
 import { debugExportPdf } from '@/utils/printExportDebug';
 
+export type PrintMermaidReadyMode = 'svg' | 'print-img';
+
+/** Blockers for Mermaid hosts under a print root (staging or Paged.js clone). */
+export function describePrintMermaidBlockers(
+  root: ParentNode,
+  mode: PrintMermaidReadyMode = 'svg',
+): string[] {
+  const blockers: string[] = [];
+  let mermaidIndex = 0;
+
+  if (mode === 'svg') {
+    for (const block of root.querySelectorAll('.md-editor-mermaid')) {
+      if (block.querySelector('svg')) {
+        mermaidIndex += 1;
+        continue;
+      }
+      if (block.getAttribute('data-haim-mermaid-error') === '1') {
+        mermaidIndex += 1;
+        continue;
+      }
+      blockers.push(`mermaid #${mermaidIndex} pending (no svg)`);
+      mermaidIndex += 1;
+    }
+    return blockers;
+  }
+
+  for (const block of root.querySelectorAll('.md-editor-mermaid')) {
+    const state = block.getAttribute('data-print-mermaid-canvas-state');
+    if (state === 'img' || state === 'error') {
+      mermaidIndex += 1;
+      continue;
+    }
+    if (block.querySelector('img[data-print-mermaid-img]')) {
+      mermaidIndex += 1;
+      continue;
+    }
+    blockers.push(`mermaid #${mermaidIndex} not print-ready (state=${state ?? 'none'})`);
+    mermaidIndex += 1;
+  }
+
+  let imgIndex = 0;
+  for (const img of root.querySelectorAll('img[data-print-mermaid-img]')) {
+    if (!(img instanceof HTMLElement)) continue;
+    const box = img.getBoundingClientRect();
+    if (box.width >= 1 && box.height >= 1) {
+      imgIndex += 1;
+      continue;
+    }
+    blockers.push(`mermaid img #${imgIndex} zero layout box`);
+    imgIndex += 1;
+  }
+
+  return blockers;
+}
+
+/** Let the browser finish SVG/img layout before getBoundingClientRect-heavy work (Paged.js). */
+export function waitForBrowserLayoutSettle(delayMs = 50): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.setTimeout(resolve, delayMs);
+      });
+    });
+  });
+}
+
+/** Poll until Mermaid is SVG-ready or print-img-ready inside root. */
+export function waitForPrintMermaidReady(
+  root: HTMLElement,
+  mode: PrintMermaidReadyMode = 'svg',
+  maxAttempts = 24,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    let attempt = 0;
+
+    const tick = () => {
+      attempt += 1;
+      const blockers = describePrintMermaidBlockers(root, mode);
+      const ready = blockers.length === 0;
+      if (!ready && (attempt === 1 || attempt % 6 === 0 || attempt >= maxAttempts)) {
+        debugExportPdf('staging-ready', `mermaid ${mode} attempt ${attempt}/${maxAttempts}`, {
+          ready,
+          blockers,
+        });
+      }
+      if (ready) {
+        void waitForBrowserLayoutSettle().then(() => resolve(true));
+        return;
+      }
+      if (attempt >= maxAttempts) {
+        debugExportPdf('staging-ready', `mermaid ${mode} timeout`, { blockers });
+        resolve(false);
+        return;
+      }
+      window.requestAnimationFrame(tick);
+    };
+
+    tick();
+  });
+}
+
 /** Blockers keeping staging from print layout (for debug). */
 export function describePrintStagingBlockers(stagingRoot: HTMLElement): string[] {
   const blockers: string[] = [];
@@ -10,20 +111,7 @@ export function describePrintStagingBlockers(stagingRoot: HTMLElement): string[]
     if (!img.complete) blockers.push(`img loading: ${img.getAttribute('src')?.slice(0, 60) ?? '(no src)'}`);
   }
 
-  let mermaidIndex = 0;
-  for (const block of stagingRoot.querySelectorAll('.md-editor-mermaid')) {
-    if (block.querySelector('svg')) {
-      mermaidIndex += 1;
-      continue;
-    }
-    if (block.getAttribute('data-processed') === 'true') {
-      mermaidIndex += 1;
-      continue;
-    }
-    blockers.push(`mermaid #${mermaidIndex} pending (no svg)`);
-    mermaidIndex += 1;
-  }
-
+  blockers.push(...describePrintMermaidBlockers(stagingRoot, 'svg'));
   return blockers;
 }
 
@@ -57,9 +145,7 @@ export function waitForPrintStagingReady(
       }
       if (ready) {
         debugExportPdf('staging-ready', 'ready', { attempt });
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => resolve(true));
-        });
+        void waitForBrowserLayoutSettle().then(() => resolve(true));
         return;
       }
       if (attempt >= maxAttempts) {

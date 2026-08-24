@@ -337,20 +337,54 @@ export function copyPrintMermaidCanvases(sourceRoot: ParentNode, targetRoot: Par
   }
 }
 
-/** Attach clone off-screen at page width so SVG layout + drawImage work. */
+/** Hidden source slot inside pagesHost — avoid body fixed root (Paged.js needs offsetParent). */
+export function attachPrintPreviewSourceSlot(
+  pagesHost: HTMLElement,
+  content: HTMLElement,
+  widthPx: number,
+): HTMLElement {
+  const slot = document.createElement('div');
+  slot.className = 'export-pdf-paged-source-slot';
+  slot.setAttribute('aria-hidden', 'true');
+  slot.style.cssText = [
+    'position:absolute',
+    'left:0',
+    'top:0',
+    'width:100%',
+    'max-width:' + Math.max(1, Math.round(widthPx)) + 'px',
+    'visibility:hidden',
+    'pointer-events:none',
+    'overflow:hidden',
+    'height:auto',
+    'z-index:0',
+  ].join(';');
+  slot.appendChild(content);
+  pagesHost.appendChild(slot);
+  debugExportPdf('mermaid-canvas', 'source slot attached in pagesHost', {
+    widthPx,
+    connected: content.isConnected,
+    pagesHostW: Math.round(pagesHost.getBoundingClientRect().width),
+  });
+  return slot;
+}
+
+/** @deprecated Use attachPrintPreviewSourceSlot — kept for callers that measure off-host. */
 export function attachPrintPreviewMeasureRoot(
   content: HTMLElement,
   widthPx: number,
 ): HTMLElement {
   const measureRoot = document.createElement('div');
+  measureRoot.className = 'export-pdf-paged-source-slot';
   measureRoot.setAttribute('aria-hidden', 'true');
   measureRoot.style.cssText = [
-    'position:fixed',
-    'left:-10000px',
+    'position:absolute',
+    'left:0',
     'top:0',
     'pointer-events:none',
     'z-index:-1',
     `width:${Math.max(1, Math.round(widthPx))}px`,
+    'visibility:hidden',
+    'overflow:hidden',
   ].join(';');
   measureRoot.appendChild(content);
   document.body.appendChild(measureRoot);

@@ -66,7 +66,7 @@ import { usePrintTableFit } from '@/hooks/usePrintTableFit';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
 import { usePagedJsPreview } from '@/hooks/usePagedJsPreview';
-import { scopeExportPdfPreviewStyles } from '@/utils/printPagedJs';
+import { buildPrintPreviewThemeVarsCss, scopeExportPdfPreviewStyles } from '@/utils/printPagedJs';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { parseExportPdfPathFromAppPathname } from '@/utils/appHref';
@@ -547,7 +547,9 @@ const printFontStylesRaw = `
   }
 `;
 
-const printFontStyles = scopeExportPdfPreviewStyles(printFontStylesRaw);
+const printFontStyles = scopeExportPdfPreviewStyles(
+  `${buildPrintPreviewThemeVarsCss()}\n${printFontStylesRaw}`,
+);
 
 export default function ExportPDFPage({
   documentValue = '',

@@ -8,8 +8,9 @@ declare module 'pagedjs' {
 
   export class Previewer {
     constructor(options?: Record<string, unknown>);
+    /** Pass a live HTMLElement (not innerHTML). Often the same node for content and renderTo. */
     preview(
-      content?: HTMLElement | DocumentFragment,
+      content: HTMLElement,
       stylesheets?: unknown[],
       renderTo?: HTMLElement,
     ): Promise<PagedJsFlow>;
