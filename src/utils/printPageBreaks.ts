@@ -142,7 +142,11 @@ function mergeOverlappingBands(blocks: PrintUnbreakableBlock[]): PrintUnbreakabl
 function isSkippableTextContext(node: Node): boolean {
   const parent = node.parentElement;
   if (!parent) return true;
-  if (parent.closest('[aria-hidden="true"], .md-pgbr, .md-editor-code-head, .md-editor-code, pre, code')) {
+  if (
+    parent.closest(
+      '[aria-hidden="true"], .md-pgbr, .md-editor-code-head, .md-editor-code, pre, code, .md-editor-mermaid',
+    )
+  ) {
     return true;
   }
   const figure = parent.closest('figure');
@@ -155,6 +159,19 @@ export function collectPrintImageBlocks(root: HTMLElement): PrintUnbreakableBloc
     const host = (img.closest('figure') ?? img) as HTMLElement;
     const top = getOffsetTopInRoot(host, root);
     return { top, bottom: top + getElementHeight(host) };
+  });
+  return mergeOverlappingBands(blocks);
+}
+
+/** Mermaid charts as atomic bands (skip SVG text line solids separately). */
+export function collectPrintMermaidBlocks(root: HTMLElement): PrintUnbreakableBlock[] {
+  const blocks = [...root.querySelectorAll<HTMLElement>('.md-editor-mermaid')].map((host) => {
+    const svg = host.querySelector('svg');
+    const top = getOffsetTopInRoot(host, root);
+    const hostH = getElementHeight(host);
+    const svgH = svg ? svg.getBoundingClientRect().height : 0;
+    const height = Math.max(hostH, svgH);
+    return { top, bottom: top + height };
   });
   return mergeOverlappingBands(blocks);
 }
@@ -322,6 +339,7 @@ export function collectPrintSolidBlocks(
 
   return mergeOverlappingBands([
     ...collectPrintImageBlocks(root),
+    ...collectPrintMermaidBlocks(root),
     ...collectPrintTextLineBlocks(root),
     ...collectPrintCodeBlocks(root, pageInnerHeightPx),
     ...flowBlocks,

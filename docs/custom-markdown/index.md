@@ -11,6 +11,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | 문서 | 문법 | 영역 |
 |------|------|------|
 | [wiki-image.md](./wiki-image.md) | `![[path\|opts]]` + 캡션 | 에디터 / 미리보기 / 채팅 / 인쇄 |
+| [remote-image.md](./remote-image.md) | `<!-- remote-image … -->` sidecar | 서식 유지 복사 / ImgBB |
 | [markdown-image-attrs.md](./markdown-image-attrs.md) | `![alt](src){attrs}` | 에디터 / 미리보기 / 인쇄 |
 | [page-break.md](./page-break.md) | `<pgbr/>` | 에디터 / 인쇄·PDF |
 | [heading-levels.md](./heading-levels.md) | `#######` … `##########` (h7–h10) | 에디터 / Novel / 인쇄 |

@@ -65,6 +65,7 @@ import {
 } from '@/utils/convertMarkdownImagesToWiki';
 import { isDataImageUri } from '@/utils/markdownImageExport';
 import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
+import { upsertRemoteImageComment } from '@/utils/remoteImageComment';
 import '@/styles/novel-editor.css';
 
 const DEBUG_WIKI_IMAGE = false;
@@ -826,40 +827,31 @@ export default function NovelMarkdownEditor({
         image: fetchSrc,
         name: isDataImageUri(modal.path) ? 'image' : undefined,
       });
-      const nextPath = uploaded.url;
-
-      const ed = editorRef.current;
-      const view = ed?.view;
-      const pos = modal.nodePos;
-      if (view && Number.isInteger(pos)) {
-        const node = view.state.doc.nodeAt(pos);
-        if (node?.type?.name === 'wikiImage') {
-          view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
-            ...node.attrs,
-            path: nextPath,
-            width: width || null,
-            height: height || null,
-          }, node.marks));
-          setHydrateTick((t) => t + 1);
-          flushPendingMarkdown();
-          return;
-        }
-      }
+      const nextUrl = uploaded.url;
+      const occurrence = modal.occurrence ?? 0;
 
       if (typeof onChange !== 'function') {
         throw new Error('문서를 수정할 수 없습니다.');
       }
-      const next = updateWikiImagePathInMarkdown(value, {
+      let nextMarkdown = value;
+      const sized = updateWikiImageSizeInMarkdown(nextMarkdown, {
         path: modal.path,
-        occurrence: modal.occurrence ?? 0,
-        nextPath,
+        occurrence,
         width,
         height,
       });
-      if (!next.updated || next.markdown === value) {
+      if (sized.updated) nextMarkdown = sized.markdown;
+      const sidecar = await upsertRemoteImageComment(
+        nextMarkdown,
+        { kind: 'wiki', key: modal.path, occurrence },
+        nextUrl,
+      );
+      if (!sidecar.updated && nextMarkdown === value) {
         throw new Error('마크다운에서 해당 이미지를 찾지 못했습니다.');
       }
-      onChange(next.markdown);
+      onChange(sidecar.markdown);
+      setHydrateTick((t) => t + 1);
+      flushPendingMarkdown();
     },
     [flushPendingMarkdown, getImgbbApiKey, onChange, value, wikiImageModalState],
   );

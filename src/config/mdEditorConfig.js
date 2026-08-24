@@ -1,19 +1,16 @@
 /**
- * md-editor-rt global config.
- * Loaded at app entry (main.jsx) so Export PDF and other MdPreview-only pages
- * share the same markdown-it 15.0.0 plugin stack.
+ * Global md-editor-rt config.
+ * Mermaid is loaded on demand via useLazyMermaidRender (noMermaid on surfaces).
  */
 import { config } from 'md-editor-rt';
 import { EditorView } from '@codemirror/view';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
-import mermaid from 'mermaid';
 import {
   applyAppMarkdownItConfig,
   applyAppMarkdownItPluginsFromList,
 } from '@/utils/appMarkdownItPlugins';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { HLJS_ATOM_ONE_DARK_CSS } from '@/utils/mdEditorCodeTheme';
-import { patchMermaidRender } from '@/utils/mermaidFixLabelNewlines';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import '@/styles/md-editor-rt/plan-frontmatter.css';
@@ -21,8 +18,6 @@ import '@/styles/md-editor-rt/preview-heading-fold.css';
 import '@/styles/md-editor-rt/footnotes.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';
-
-patchMermaidRender(mermaid);
 
 config({
   editorExtensions: {
@@ -37,14 +32,12 @@ config({
     cropper: {
       instance: {},
     },
-    mermaid: {
-      instance: mermaid,
-    },
   },
-  mermaidConfig(config) {
+  mermaidConfig(base) {
     return {
-      ...config,
+      ...base,
       securityLevel: 'loose',
+      startOnLoad: false,
     };
   },
   markdownItConfig(md) {

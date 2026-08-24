@@ -4,6 +4,7 @@ import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
+import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import LlmProviderSelect from '@/components/LlmProviderSelect';
@@ -53,10 +54,15 @@ export default function LlmAssistPanel({
 }) {
   const resultReadOnly = remoteMode ? false : !result;
   const panelRef = useRef(null);
+  const resultPreviewRef = useRef(null);
   const fileInputRef = useRef(null);
   const attachedCountRef = useRef(attachedImages.length);
   const [imageError, setImageError] = useState('');
   const [addingImages, setAddingImages] = useState(false);
+
+  useLazyMermaidRender(resultPreviewRef, {
+    layoutKey: `${theme}|${result || ''}|${resultViewMode}`,
+  });
 
   useEffect(() => {
     attachedCountRef.current = attachedImages.length;
@@ -352,7 +358,10 @@ export default function LlmAssistPanel({
         </div>
 
         {resultViewMode === 'preview' ? (
-          <div className="min-h-32 max-h-64 overflow-auto rounded border border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
+          <div
+            ref={resultPreviewRef}
+            className="min-h-32 max-h-64 overflow-auto rounded border border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+          >
             {result ? (
               <MdPreview
                 id={RESULT_PREVIEW_ID}
@@ -361,6 +370,7 @@ export default function LlmAssistPanel({
                 codeTheme={MD_EDITOR_CODE_THEME}
                 customIcon={MD_EDITOR_CUSTOM_ICONS}
                 value={result}
+                noMermaid
                 codeFoldable={false}
                 showCodeRowNumber={false}
               />

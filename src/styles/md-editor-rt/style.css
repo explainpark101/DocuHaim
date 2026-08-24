@@ -3965,6 +3965,11 @@ svg.md-editor-icon {
     break-inside: avoid !important;
   }
 
+  .md-editor-preview .md-editor-mermaid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   .md-editor-preview p,
   .md-editor-preview li,
   .md-editor-preview blockquote {

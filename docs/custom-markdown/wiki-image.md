@@ -191,6 +191,8 @@ Bulk convert (`convertAllMarkdownImagesToWiki`):
 - Non-hex CSS colors (`rgb()`, named colors)
 - Bare `320` / `320x200` on **standard** `![]()` images (see [markdown-image-attrs.md](./markdown-image-attrs.md))
 
+Public ImgBB cache without replacing the vault path: [remote-image.md](./remote-image.md) (`<!-- remote-image … -->` sidecar).
+
 ## 구현
 
 | 역할 | 경로 |

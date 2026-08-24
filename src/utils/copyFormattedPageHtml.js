@@ -157,6 +157,19 @@ function applyImageSrcReplacements(root, replacements) {
     img.removeAttribute('data-storage-hydrating');
     img.removeAttribute('data-storage-hydrated');
   });
+
+  [...root.querySelectorAll('.md-editor-mermaid')].forEach((host) => {
+    const replaceKey = host.getAttribute('data-haim-imgbb-replace-key') || '';
+    const content = host.getAttribute('data-content') || '';
+    const next = lookup(replaceKey) || (content ? lookup(`mermaid:${content}`) : undefined);
+    if (!next) return;
+    const img = root.ownerDocument.createElement('img');
+    img.setAttribute('src', next);
+    img.setAttribute('alt', 'Mermaid chart');
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    host.replaceWith(img);
+  });
 }
 
 async function inlineImages(root, skipKeys) {

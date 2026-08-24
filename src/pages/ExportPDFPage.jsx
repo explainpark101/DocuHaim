@@ -64,6 +64,8 @@ import {
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
 import { usePrintTableFit } from '@/hooks/usePrintTableFit';
+import { usePrintMermaidFit } from '@/hooks/usePrintMermaidFit';
+import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
 import { usePrintPageStarts } from '@/hooks/usePrintPageStarts';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
@@ -107,12 +109,12 @@ import {
   getWikiImageOccurrenceInContainer,
   replaceMarkdownImageWithWikiPath,
   updateMarkdownImageSizeInMarkdown,
-  updateMarkdownImageSrcInMarkdown,
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 import { isDataImageUri, prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
 import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
+import { upsertRemoteImageComment } from '@/utils/remoteImageComment';
 import { useAuth } from '@/contexts/AuthContext';
 import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
 import { FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT } from '@/utils/previewFootnotesSettings';
@@ -501,6 +503,11 @@ export default function ExportPDFPage({
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
   usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
   usePrintTableFit(paperContentRef, `${printLayoutKey}|${previewValue}`);
+  useLazyMermaidRender(paperContentRef, {
+    eager: true,
+    layoutKey: `${printLayoutKey}|${previewValue}`,
+  });
+  usePrintMermaidFit(paperContentRef, imageMaxProbeRef, `${printLayoutKey}|${previewValue}`);
   const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
   /** Measured inner height; until layout, fall back to A4 + Chrome default margin (10 mm). */
   const effectivePageInnerHeightPx =
@@ -1225,29 +1232,39 @@ export default function ExportPDFPage({
         name: isDataImageUri(modal.key) ? 'image' : undefined,
       });
       const nextUrl = uploaded.url;
-      const next =
+      const occurrence = modal.occurrence ?? 0;
+      let nextMarkdown = previewValue;
+      const sized =
         modal.kind === 'wiki'
-          ? updateWikiImagePathInMarkdown(previewValue, {
+          ? updateWikiImageSizeInMarkdown(nextMarkdown, {
               path: modal.key,
-              occurrence: modal.occurrence ?? 0,
-              nextPath: nextUrl,
+              occurrence,
               width,
               height,
             })
-          : updateMarkdownImageSrcInMarkdown(previewValue, {
+          : updateMarkdownImageSizeInMarkdown(nextMarkdown, {
               src: modal.key,
-              occurrence: modal.occurrence ?? 0,
-              nextSrc: nextUrl,
+              occurrence,
               width,
               height,
             });
-      if (!next.updated || next.markdown === previewValue) {
+      if (sized.updated) nextMarkdown = sized.markdown;
+      const sidecar = await upsertRemoteImageComment(
+        nextMarkdown,
+        {
+          kind: modal.kind === 'wiki' ? 'wiki' : 'markdown',
+          key: modal.key,
+          occurrence,
+        },
+        nextUrl,
+      );
+      if (!sidecar.updated && nextMarkdown === previewValue) {
         throw new Error('마크다운에서 해당 이미지를 찾지 못했습니다.');
       }
-      setPreviewValue(next.markdown);
+      setPreviewValue(sidecar.markdown);
       setPendingPrintReturnState({
         currentFile,
-        editorContent: next.markdown,
+        editorContent: sidecar.markdown,
       });
     },
     [currentFile, getImgbbApiKey, previewValue, wikiImageModalState],
@@ -1951,6 +1968,7 @@ export default function ExportPDFPage({
                   customIcon={MD_EDITOR_CUSTOM_ICONS}
                   value={bodyMarkdown}
                   mdHeadingId={headingId}
+                  noMermaid
                   codeFoldable={false}
                   showCodeRowNumber={false}
                 />

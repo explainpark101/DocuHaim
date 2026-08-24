@@ -52,6 +52,7 @@ export default defineConfig({
           items: [
             { text: '개요', link: '/custom-markdown/' },
             { text: 'Wiki image', link: '/custom-markdown/wiki-image' },
+            { text: 'Remote image', link: '/custom-markdown/remote-image' },
             { text: 'Image attrs', link: '/custom-markdown/markdown-image-attrs' },
             { text: 'Page break', link: '/custom-markdown/page-break' },
             { text: 'Heading levels', link: '/custom-markdown/heading-levels' },

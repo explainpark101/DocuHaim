@@ -1,5 +1,11 @@
 import { isDataImageUri } from '@/utils/markdownImageExport';
 import { isPublicHttpImageUrl } from '@/utils/imgbbUpload';
+import {
+  getMermaidSourceFromElement,
+  isLazyMermaidPlaceholder,
+  renderLazyMermaidElement,
+} from '@/utils/lazyMermaid';
+import type { RemoteImageKind } from '@/utils/remoteImageComment';
 
 const COPY_ROOT_SELECTORS = [
   '.novel-editor-surface',
@@ -8,12 +14,16 @@ const COPY_ROOT_SELECTORS = [
 
 export type ImgbbCopyCandidate = {
   id: string;
-  kind: 'wiki' | 'base64';
-  /** Key used to remap the cloned <img> after upload (wiki path or data URI). */
+  kind: 'wiki' | 'base64' | 'markdown' | 'mermaid';
+  /** Key used to remap the cloned <img> / mermaid host after upload. */
   replaceKey: string;
   label: string;
   previewSrc: string;
   fetchSrc: string;
+  /** Target for remote-image sidecar upsert / lookup. */
+  remoteKind: RemoteImageKind;
+  remoteKey: string;
+  occurrence: number;
 };
 
 function findCopyRoot(scope: ParentNode = document): Element | null {
@@ -29,21 +39,33 @@ function findCopyRoot(scope: ParentNode = document): Element | null {
   return null;
 }
 
+function occurrenceForKey(
+  counts: Map<string, number>,
+  key: string,
+): number {
+  const n = counts.get(key) ?? 0;
+  counts.set(key, n + 1);
+  return n;
+}
+
 /**
- * Collect wiki images that are not already public https paths, and base64 images,
- * from the same preview root used by formatted HTML copy.
+ * Collect wiki / markdown / base64 images and Mermaid charts that need a public
+ * HTTPS URL for formatted HTML copy (skip already-https wiki/md paths).
  */
 export function collectImgbbCopyCandidates(scope: ParentNode = document): ImgbbCopyCandidate[] {
   const root = findCopyRoot(scope);
   if (!root) return [];
 
   const out: ImgbbCopyCandidate[] = [];
-  const seen = new Set<string>();
+  const seenReplace = new Set<string>();
+  const wikiOcc = new Map<string, number>();
+  const mdOcc = new Map<string, number>();
+  const mermaidOcc = new Map<string, number>();
 
   const push = (candidate: Omit<ImgbbCopyCandidate, 'id'>) => {
     if (!candidate.replaceKey || !candidate.fetchSrc) return;
-    if (seen.has(candidate.replaceKey)) return;
-    seen.add(candidate.replaceKey);
+    if (seenReplace.has(candidate.replaceKey)) return;
+    seenReplace.add(candidate.replaceKey);
     out.push({
       ...candidate,
       id: `${candidate.kind}:${out.length}:${candidate.replaceKey.slice(0, 48)}`,
@@ -59,38 +81,126 @@ export function collectImgbbCopyCandidates(scope: ParentNode = document): ImgbbC
 
     if (wikiPath) {
       if (isDataImageUri(wikiPath)) {
+        const occurrence = occurrenceForKey(wikiOcc, wikiPath);
         push({
           kind: 'base64',
           replaceKey: wikiPath,
           label: 'base64 (wiki)',
           previewSrc: previewSrc || wikiPath,
           fetchSrc: wikiPath,
+          remoteKind: 'wiki',
+          remoteKey: wikiPath,
+          occurrence,
         });
         continue;
       }
       if (!isPublicHttpImageUrl(wikiPath)) {
+        const occurrence = occurrenceForKey(wikiOcc, wikiPath);
         push({
           kind: 'wiki',
           replaceKey: wikiPath,
           label: wikiPath,
           previewSrc,
           fetchSrc: previewSrc || wikiPath,
+          remoteKind: 'wiki',
+          remoteKey: wikiPath,
+          occurrence,
         });
       }
       continue;
     }
 
-    const dataSrc = isDataImageUri(mdSrc) ? mdSrc : isDataImageUri(src) ? src : '';
+    if (mdSrc) {
+      if (isDataImageUri(mdSrc)) {
+        const occurrence = occurrenceForKey(mdOcc, mdSrc);
+        push({
+          kind: 'base64',
+          replaceKey: mdSrc,
+          label: 'base64',
+          previewSrc: previewSrc || mdSrc,
+          fetchSrc: mdSrc,
+          remoteKind: 'markdown',
+          remoteKey: mdSrc,
+          occurrence,
+        });
+        continue;
+      }
+      if (!isPublicHttpImageUrl(mdSrc)) {
+        const occurrence = occurrenceForKey(mdOcc, mdSrc);
+        push({
+          kind: 'markdown',
+          replaceKey: mdSrc,
+          label: mdSrc.slice(0, 64),
+          previewSrc,
+          fetchSrc: previewSrc || mdSrc,
+          remoteKind: 'markdown',
+          remoteKey: mdSrc,
+          occurrence,
+        });
+      }
+      continue;
+    }
+
+    const dataSrc = isDataImageUri(src) ? src : '';
     if (dataSrc) {
+      const occurrence = occurrenceForKey(mdOcc, dataSrc);
       push({
         kind: 'base64',
         replaceKey: dataSrc,
         label: 'base64',
         previewSrc: previewSrc || dataSrc,
         fetchSrc: dataSrc,
+        remoteKind: 'markdown',
+        remoteKey: dataSrc,
+        occurrence,
       });
     }
   }
 
+  for (const node of root.querySelectorAll('.md-editor-mermaid')) {
+    if (!(node instanceof HTMLElement)) continue;
+    const source = (
+      (node.getAttribute('data-content') || '').trim()
+      || getMermaidSourceFromElement(node)
+    ).replace(/\s+$/, '');
+    if (!source) continue;
+    const occurrence = occurrenceForKey(mermaidOcc, source);
+    const replaceKey = `mermaid:${occurrence}:${source.slice(0, 80)}`;
+    push({
+      kind: 'mermaid',
+      replaceKey,
+      label: `Mermaid #${occurrence + 1}`,
+      previewSrc: '',
+      fetchSrc: source,
+      remoteKind: 'mermaid',
+      remoteKey: source,
+      occurrence,
+    });
+    node.setAttribute('data-haim-imgbb-replace-key', replaceKey);
+  }
+
   return out;
+}
+
+/** Ensure a mermaid host is rendered to SVG, then return outer SVG markup. */
+export async function ensureMermaidSvgMarkup(host: HTMLElement): Promise<string> {
+  let el = host;
+  if (isLazyMermaidPlaceholder(el)) {
+    const rendered = await renderLazyMermaidElement(el);
+    if (rendered) el = rendered;
+  }
+  const svg = el.querySelector('svg');
+  if (!svg) throw new Error('Mermaid SVG를 찾지 못했습니다.');
+  return new XMLSerializer().serializeToString(svg);
+}
+
+export function findMermaidHostByReplaceKey(
+  scope: ParentNode,
+  replaceKey: string,
+): HTMLElement | null {
+  for (const el of scope.querySelectorAll('.md-editor-mermaid')) {
+    if (!(el instanceof HTMLElement)) continue;
+    if (el.getAttribute('data-haim-imgbb-replace-key') === replaceKey) return el;
+  }
+  return null;
 }

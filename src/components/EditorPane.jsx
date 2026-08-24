@@ -34,8 +34,15 @@ import {
 import { copyCurrentPageAsFormattedHtml } from '@/utils/copyFormattedPageHtml';
 import {
   collectImgbbCopyCandidates,
+  ensureMermaidSvgMarkup,
+  findMermaidHostByReplaceKey,
 } from '@/utils/imgbbCopyCandidates';
 import { uploadImageToImgbb } from '@/utils/imgbbUpload';
+import {
+  batchUpsertRemoteImageComments,
+  lookupRemoteImageUrl,
+} from '@/utils/remoteImageComment';
+import { convertSvgToPngFile } from '@/utils/svgToPng';
 import {
   DEFAULT_DOCUMENT_SETTINGS_META,
   parseDocumentSettingsMeta,
@@ -165,7 +172,7 @@ export default function EditorPane({
     showAlert({
       title: '서식 유지 복사',
       message: imageSrcReplacements?.size
-        ? 'ImgBB 업로드 후 현재 페이지를 HTML 서식과 이미지 포함 형태로 복사했습니다.'
+        ? 'ImgBB 업로드 후 원본에 원격 링크를 저장하고, 페이지를 HTML 서식으로 복사했습니다.'
         : '현재 페이지를 HTML 서식과 이미지 포함 형태로 복사했습니다.',
     });
   }, [showAlert]);
@@ -204,15 +211,57 @@ export default function EditorPane({
       if (!apiKey) {
         throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
       }
+      const markdown = String(editorContent ?? '');
       const replacements = new Map();
+      /** @type {Array<{ kind: import('@/utils/remoteImageComment').RemoteImageKind, key: string, occurrence: number, url: string }>} */
+      const sidecarItems = [];
+
       for (const candidate of imgbbCopyCandidates) {
+        const cached = await lookupRemoteImageUrl(markdown, {
+          kind: candidate.remoteKind,
+          key: candidate.remoteKey,
+          occurrence: candidate.occurrence,
+        });
+        if (cached) {
+          replacements.set(candidate.replaceKey, cached);
+          continue;
+        }
+
+        let uploadImage = candidate.fetchSrc;
+        if (candidate.kind === 'mermaid') {
+          const host = findMermaidHostByReplaceKey(document, candidate.replaceKey);
+          if (!host) {
+            throw new Error(`Mermaid 차트를 찾지 못했습니다: ${candidate.label}`);
+          }
+          const svgMarkup = await ensureMermaidSvgMarkup(host);
+          const pngFile = await convertSvgToPngFile(svgMarkup, 'mermaid.png');
+          uploadImage = pngFile;
+        }
+
         const uploaded = await uploadImageToImgbb({
           apiKey,
-          image: candidate.fetchSrc,
-          name: candidate.kind === 'base64' ? 'image' : undefined,
+          image: uploadImage,
+          name:
+            candidate.kind === 'base64' || candidate.kind === 'mermaid'
+              ? 'image'
+              : undefined,
         });
         replacements.set(candidate.replaceKey, uploaded.url);
+        sidecarItems.push({
+          kind: candidate.remoteKind,
+          key: candidate.remoteKey,
+          occurrence: candidate.occurrence,
+          url: uploaded.url,
+        });
       }
+
+      if (sidecarItems.length > 0 && typeof onChangeEditor === 'function') {
+        const patched = await batchUpsertRemoteImageComments(markdown, sidecarItems);
+        if (patched.updated) {
+          onChangeEditor(patched.markdown);
+        }
+      }
+
       setImgbbCopyConfirmOpen(false);
       setImgbbCopyCandidates([]);
       await finishCopyFormattedHtml(replacements);
@@ -225,7 +274,15 @@ export default function EditorPane({
     } finally {
       setImgbbCopyUploading(false);
     }
-  }, [finishCopyFormattedHtml, getImgbbApiKey, imgbbCopyCandidates, imgbbCopyUploading, showAlert]);
+  }, [
+    editorContent,
+    finishCopyFormattedHtml,
+    getImgbbApiKey,
+    imgbbCopyCandidates,
+    imgbbCopyUploading,
+    onChangeEditor,
+    showAlert,
+  ]);
 
   const handleSkipImgbbCopyUpload = useCallback(async () => {
     if (imgbbCopyUploading) return;
@@ -1106,7 +1163,7 @@ export default function EditorPane({
         message={
           imgbbCopyUploading
             ? '이미지를 ImgBB에 업로드하는 중입니다…'
-            : `외부 https가 아닌 wiki·base64 이미지 ${imgbbCopyCandidates.length}개를 ImgBB에 올린 뒤 복사할 수 있습니다.`
+            : `wiki·base64·이미지·Mermaid ${imgbbCopyCandidates.length}개를 ImgBB에 올린 뒤 원본에 링크를 저장하고 복사할 수 있습니다.`
         }
         confirmLabel={imgbbCopyUploading ? '업로드 중…' : '업로드 후 복사'}
         cancelLabel="취소"
@@ -1139,7 +1196,7 @@ export default function EditorPane({
                   )}
                 </div>
                 <p className="truncate text-[10px] text-gray-600 dark:text-odp-muted" title={item.label}>
-                  {item.kind === 'wiki' ? 'wiki' : 'base64'} · {item.label}
+                  {item.kind} · {item.label}
                 </p>
               </li>
             ))}

@@ -8,6 +8,7 @@ import {
 } from '@/utils/chatWithMyself';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/preview.css';
@@ -75,6 +76,9 @@ export default function ChatMessageMarkdown({
   const previewId = `chat-msg-md-${messageId}`;
 
   useWikiImageHydration(rootRef, mdText, getPresignedUrl, null);
+  useLazyMermaidRender(rootRef, {
+    layoutKey: `${resolvedTheme}|${mdText}`,
+  });
 
   if (collapsed) {
     return (
@@ -112,6 +116,7 @@ export default function ChatMessageMarkdown({
             language="ko-KR"
             codeTheme={MD_EDITOR_CODE_THEME}
             customIcon={MD_EDITOR_CUSTOM_ICONS}
+            noMermaid
             codeFoldable={false}
             showCodeRowNumber={false}
           />

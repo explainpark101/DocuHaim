@@ -4,19 +4,19 @@ overview: Mermaid는 viewport에서만 렌더하고, Export PDF는 차트 높이
 todos:
   - id: lazy-mermaid
     content: noMermaid + fence plugin + useLazyMermaidRender (IO); dynamic import mermaid; Export PDF eager
-    status: pending
+    status: completed
   - id: pdf-mermaid
     content: collectPrintMermaidBlocks + text skip + print break-inside avoid + usePrintMermaidFit
-    status: pending
+    status: completed
   - id: remote-image-grammar
     content: remoteImageComment.ts + docs/custom-markdown/remote-image.md + index + VitePress
-    status: pending
+    status: completed
   - id: imgbb-sidecar
     content: ImgBB convert writes sidecar comment; keep vault/md src
-    status: pending
+    status: completed
   - id: blog-copy-mermaid
     content: "서식 유지 복사: wiki/base64/md/mermaid ImgBB 후 원본 MD에 sidecar 일괄 기록 + hash 재사용 + clipboard"
-    status: pending
+    status: completed
 isProject: false
 ---
 

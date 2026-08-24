@@ -143,12 +143,12 @@ import {
   getWikiImageOccurrenceInContainer,
   replaceMarkdownImageWithWikiPath,
   updateMarkdownImageSizeInMarkdown,
-  updateMarkdownImageSrcInMarkdown,
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 import { isDataImageUri, prepareMarkdownImageForWikiConvert } from '@/utils/markdownImageExport';
 import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
+import { upsertRemoteImageComment } from '@/utils/remoteImageComment';
 import {
   convertAllMarkdownImagesToWiki,
   hasStandardMarkdownImages,
@@ -163,6 +163,7 @@ import {
   syncPreviewSelectionToEditor,
 } from '@/utils/previewSelectionSync';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import {
   attachPreviewMirrorEdit,
   abandonDetachedPreviewMirrorEdit,
@@ -1055,6 +1056,7 @@ export default function MarkdownEditor({
     onResolveWikiImageUrl,
     currentFile?.id ?? null,
   );
+  useLazyMermaidRender(containerRef, { layoutKey: `${theme}|${value}` });
 
   // Auto-mount note-cover CoverSlide in preview; re-run when preview DOM settles/recreates.
   useEffect(() => {
@@ -2013,26 +2015,36 @@ export default function MarkdownEditor({
         name: isDataImageUri(modal.key) ? 'image' : undefined,
       });
       const nextUrl = uploaded.url;
-      const next =
+      const occurrence = modal.occurrence ?? 0;
+      let nextMarkdown = value;
+      const sized =
         modal.kind === 'wiki'
-          ? updateWikiImagePathInMarkdown(value, {
+          ? updateWikiImageSizeInMarkdown(nextMarkdown, {
               path: modal.key,
-              occurrence: modal.occurrence ?? 0,
-              nextPath: nextUrl,
+              occurrence,
               width,
               height,
             })
-          : updateMarkdownImageSrcInMarkdown(value, {
+          : updateMarkdownImageSizeInMarkdown(nextMarkdown, {
               src: modal.key,
-              occurrence: modal.occurrence ?? 0,
-              nextSrc: nextUrl,
+              occurrence,
               width,
               height,
             });
-      if (!next.updated || next.markdown === value) {
+      if (sized.updated) nextMarkdown = sized.markdown;
+      const sidecar = await upsertRemoteImageComment(
+        nextMarkdown,
+        {
+          kind: modal.kind === 'wiki' ? 'wiki' : 'markdown',
+          key: modal.key,
+          occurrence,
+        },
+        nextUrl,
+      );
+      if (!sidecar.updated && nextMarkdown === value) {
         throw new Error('ImgBB upload succeeded but markdown could not be updated.');
       }
-      onChangeWithUndoHistory(next.markdown);
+      onChangeWithUndoHistory(sidecar.markdown);
     },
     [getImgbbApiKey, onChangeWithUndoHistory, value, wikiImageModalState],
   );
@@ -2478,6 +2490,7 @@ export default function MarkdownEditor({
         codeTheme={MD_EDITOR_CODE_THEME}
         customIcon={MD_EDITOR_CUSTOM_ICONS}
         previewOnly={previewOnly}
+        noMermaid
         autoDetectCode={true}
         // Built-in scrollAuto uses stale data-line maps + height ratios; images break it.
         // previewScrollFollow: image-aware bidirectional scroll + caret follow.
