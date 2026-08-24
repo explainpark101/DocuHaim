@@ -1,3 +1,5 @@
+import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
+
 const COPY_SUFFIX = ' (복사본)';
 
 export function isTreeCopyModifierHeld(
@@ -30,16 +32,19 @@ export function allocateUniqueCopyName(
   existingNames: Iterable<string>,
   options?: { forceSuffix?: boolean; isFolder?: boolean },
 ): string {
+  const name = normalizeUnicodeNfc(originalName);
   const existing = new Set(
-    Array.from(existingNames, (entry) => String(entry || '').toLowerCase()).filter(Boolean),
+    Array.from(existingNames, (entry) =>
+      normalizeUnicodeNfc(String(entry || '')).toLowerCase(),
+    ).filter(Boolean),
   );
   const forceSuffix = options?.forceSuffix === true;
   const isFolder = options?.isFolder === true;
-  if (!forceSuffix && originalName && !existing.has(originalName.toLowerCase())) {
-    return originalName;
+  if (!forceSuffix && name && !existing.has(name.toLowerCase())) {
+    return name;
   }
 
-  const { baseName, ext } = splitCopyBaseName(originalName, isFolder);
+  const { baseName, ext } = splitCopyBaseName(name, isFolder);
   let candidate = `${baseName}${COPY_SUFFIX}${ext}`;
   let counter = 1;
   while (existing.has(candidate.toLowerCase())) {
@@ -58,16 +63,19 @@ export function allocateUniqueNumberedName(
   existingNames: Iterable<string>,
   options?: { forceSuffix?: boolean; isFolder?: boolean },
 ): string {
+  const name = normalizeUnicodeNfc(originalName);
   const existing = new Set(
-    Array.from(existingNames, (entry) => String(entry || '').toLowerCase()).filter(Boolean),
+    Array.from(existingNames, (entry) =>
+      normalizeUnicodeNfc(String(entry || '')).toLowerCase(),
+    ).filter(Boolean),
   );
   const forceSuffix = options?.forceSuffix === true;
   const isFolder = options?.isFolder === true;
-  if (!forceSuffix && originalName && !existing.has(originalName.toLowerCase())) {
-    return originalName;
+  if (!forceSuffix && name && !existing.has(name.toLowerCase())) {
+    return name;
   }
 
-  const { baseName, ext } = splitCopyBaseName(originalName, isFolder);
+  const { baseName, ext } = splitCopyBaseName(name, isFolder);
   let counter = 1;
   let candidate = `${baseName} (${counter})${ext}`;
   while (existing.has(candidate.toLowerCase())) {
@@ -101,20 +109,20 @@ export async function allocateUniqueFileSystemName(
   options?: { isFolder?: boolean },
 ): Promise<string> {
   const existing = await listFileSystemDirectoryNames(dirHandle);
-  return allocateUniqueNumberedName(originalName, existing, {
+  return allocateUniqueNumberedName(normalizeUnicodeNfc(originalName), existing, {
     isFolder: options?.isFolder === true,
   });
 }
 
-/** Case-insensitive name presence check for sibling entries. */
+/** Case-insensitive name presence check for sibling entries (NFC-aware). */
 export function treeChildNameTaken(
   existingNames: Iterable<string>,
   name: string,
 ): boolean {
-  const lower = String(name || '').toLowerCase();
+  const lower = normalizeUnicodeNfc(String(name || '')).toLowerCase();
   if (!lower) return false;
   for (const entry of existingNames) {
-    if (String(entry || '').toLowerCase() === lower) return true;
+    if (normalizeUnicodeNfc(String(entry || '')).toLowerCase() === lower) return true;
   }
   return false;
 }

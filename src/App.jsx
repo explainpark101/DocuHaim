@@ -20,6 +20,7 @@ import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/treeMove';
 import { resolveNewFileDefaultParentPath } from '@/utils/newFileDefaultParentPath';
 import { allocateUniqueCopyName, allocateUniqueFileSystemName, getTreeChildNames, treeChildNameTaken } from '@/utils/treeCopy';
 import { resolveUploadDestFileName } from '@/utils/uploadNameConflict';
+import { normalizePathToNfc, normalizeUnicodeNfc } from '@/utils/unicodeNfc';
 import { resolveTreeDestName } from '@/utils/treeNameConflict';
 import { buildFileComparePayload } from '@/utils/buildFileComparePayload';
 import {
@@ -516,12 +517,13 @@ function MainApp() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = fileName;
+    a.download = normalizeUnicodeNfc(String(fileName || 'download'));
     a.click();
     URL.revokeObjectURL(url);
   }, []);
   const downloadFolderAsZip = useCallback(async (storageType, node, folderName, indicatorId) => {
     const entries = [];
+    const nfcFolderName = normalizeUnicodeNfc(String(folderName || 'folder'));
 
     if (storageType === 's3') {
       const client = createS3Client(s3Creds);
@@ -537,7 +539,7 @@ function MainApp() {
         if (!relativeKey) continue;
         const { body } = await getObjectBody(client, bucket, Key);
         entries.push({
-          path: `${folderName}/${relativeKey}`.replace(/\\/g, '/'),
+          path: normalizePathToNfc(`${nfcFolderName}/${relativeKey}`.replace(/\\/g, '/')),
           data: body,
         });
         completed += 1;
@@ -554,11 +556,16 @@ function MainApp() {
           if (entry.kind === 'file') {
             const file = await entry.getFile();
             entries.push({
-              path: `${folderName}/${basePath}${entry.name}`.replace(/\\/g, '/'),
+              path: normalizePathToNfc(
+                `${nfcFolderName}/${basePath}${entry.name}`.replace(/\\/g, '/'),
+              ),
               data: new Uint8Array(await file.arrayBuffer()),
             });
           } else if (entry.kind === 'directory') {
-            await collectLocalFiles(entry, `${basePath}${entry.name}/`);
+            await collectLocalFiles(
+              entry,
+              `${basePath}${normalizeUnicodeNfc(entry.name)}/`,
+            );
           }
         }
       };
@@ -567,7 +574,7 @@ function MainApp() {
     }
 
     const zipBlob = await buildZipBlob(entries);
-    triggerBlobDownload(zipBlob, `${folderName}.zip`);
+    triggerBlobDownload(zipBlob, `${nfcFolderName}.zip`);
   }, [localRootHandle, s3Creds, triggerBlobDownload, updateIndicator]);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const lastSelectedIdRef = useRef(null);
@@ -5585,8 +5592,9 @@ function MainApp() {
   };
 
   const handleDownloadNode = async (storageType, node) => {
-    const downloadedName =
-      node?.name || node?.path?.split('/').filter(Boolean).pop() || (node?.type === 'folder' ? '폴더' : '파일');
+    const downloadedName = normalizeUnicodeNfc(
+      node?.name || node?.path?.split('/').filter(Boolean).pop() || (node?.type === 'folder' ? '폴더' : '파일'),
+    );
     const showDownloadCompleteModal = (title, message) => {
       setDownloadResultModal({
         isOpen: true,
@@ -5605,7 +5613,7 @@ function MainApp() {
       };
       try {
         const fallbackRootName = storageType === 's3' ? 's3-root' : 'local-root';
-        const folderName = (node.name || '').trim() || fallbackRootName;
+        const folderName = normalizeUnicodeNfc((node.name || '').trim() || fallbackRootName);
         const indicatorId = addIndicator({
           type: ActivityTypes.DOWNLOAD,
           label: `폴더 다운로드 중: ${folderName}`,
@@ -5639,7 +5647,7 @@ function MainApp() {
                 const relativeKey = prefix ? Key.slice(prefix.length) : Key;
                 if (!relativeKey) continue;
 
-                const segments = relativeKey.split('/').filter(Boolean);
+                const segments = normalizePathToNfc(relativeKey).split('/').filter(Boolean);
                 if (segments.length === 0) continue;
 
                 const fileName = segments.pop();
@@ -5666,14 +5674,15 @@ function MainApp() {
 
               const copyLocalDirRecursive = async (srcDirHandle, destDirHandle) => {
                 for await (const entry of srcDirHandle.values()) {
+                  const nfcName = normalizeUnicodeNfc(entry.name);
                   if (entry.kind === 'file') {
                     const file = await entry.getFile();
-                    const destFileHandle = await destDirHandle.getFileHandle(entry.name, { create: true });
+                    const destFileHandle = await destDirHandle.getFileHandle(nfcName, { create: true });
                     const writable = await destFileHandle.createWritable();
                     await writable.write(await file.arrayBuffer());
                     await writable.close();
                   } else if (entry.kind === 'directory') {
-                    const childDestDir = await destDirHandle.getDirectoryHandle(entry.name, { create: true });
+                    const childDestDir = await destDirHandle.getDirectoryHandle(nfcName, { create: true });
                     await copyLocalDirRecursive(entry, childDestDir);
                   }
                 }
@@ -5698,7 +5707,7 @@ function MainApp() {
         if (message.toLowerCase().includes('state chached') || message.toLowerCase().includes('state cached')) {
           try {
             const fallbackRootName = storageType === 's3' ? 's3-root' : 'local-root';
-            const folderName = (node.name || '').trim() || fallbackRootName;
+            const folderName = normalizeUnicodeNfc((node.name || '').trim() || fallbackRootName);
             const indicatorId = addIndicator({
               type: ActivityTypes.DOWNLOAD,
               label: `폴더 다운로드 중: ${folderName}`,
@@ -5724,7 +5733,9 @@ function MainApp() {
       }
       return;
     }
-    const fileName = node.name || node.path?.split('/').filter(Boolean).pop() || 'download';
+    const fileName = normalizeUnicodeNfc(
+      node.name || node.path?.split('/').filter(Boolean).pop() || 'download',
+    );
     try {
       if (isMarkdownFileName(fileName)) {
         const backend = getBackendForType(storageType);
@@ -5751,7 +5762,7 @@ function MainApp() {
       }
       if (storageType === 'local' && node.handle) {
         const file = await node.handle.getFile();
-        triggerBlobDownload(file, node.name || file.name);
+        triggerBlobDownload(file, normalizeUnicodeNfc(node.name || file.name));
         setOperationStatus(`다운로드: ${downloadedName}`);
         showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
         return;
@@ -6972,7 +6983,7 @@ function MainApp() {
         }
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const relPath = file.webkitRelativePath || file.name;
+          const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
           const key = parentPath + relPath;
           const body = await file.arrayBuffer();
           await putObject(client, {
@@ -6988,7 +6999,7 @@ function MainApp() {
         if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const relPath = file.webkitRelativePath || file.name;
+          const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
           const parts = relPath.replace(/\/$/, '').split('/');
           let dir = targetDirHandle;
           for (let j = 0; j < parts.length - 1; j++) {
@@ -7005,7 +7016,7 @@ function MainApp() {
         const backend = createWebdavBackend(webdavConfig);
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const relPath = file.webkitRelativePath || file.name;
+          const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
           const key = parentPath + relPath;
           const body = new Uint8Array(await file.arrayBuffer());
           await backend.writeBytes(key, body, file.type || 'application/octet-stream');
@@ -8109,8 +8120,8 @@ function MainApp() {
         if (targetStorageType === 's3') {
           const client = getS3Client();
           if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-          const uploadFile = async (file, prefix, destName = file.name) => {
-            const key = prefix + destName;
+          const uploadFile = async (file, prefix, destName = normalizeUnicodeNfc(file.name)) => {
+            const key = prefix + normalizeUnicodeNfc(destName);
             const body = await file.arrayBuffer();
             await putObject(client, {
               Bucket: s3Creds.bucket,
@@ -8121,11 +8132,12 @@ function MainApp() {
           };
           const uploadDir = async (dirHandle, prefix) => {
             for await (const entry of dirHandle.values()) {
+              const nfcName = normalizeUnicodeNfc(entry.name);
               if (entry.kind === 'file') {
                 const file = await entry.getFile();
-                await uploadFile(file, prefix);
+                await uploadFile(file, prefix, nfcName);
               } else if (entry.kind === 'directory') {
-                await uploadDir(entry, prefix + entry.name + '/');
+                await uploadDir(entry, `${prefix}${nfcName}/`);
               }
             }
           };
@@ -8145,7 +8157,8 @@ function MainApp() {
             await reloadOpenFileIfPath(targetStorageType, `${destPath || ''}${destName}`);
           }
           for (const handle of dirHandles) {
-            await uploadDir(handle, destPath + (handle.name || '') + '/');
+            const nfcDirName = normalizeUnicodeNfc(handle.name || '');
+            await uploadDir(handle, `${destPath}${nfcDirName}/`);
             uploadedCount += 1;
           }
           loadS3Files();
@@ -8153,18 +8166,19 @@ function MainApp() {
           expandPathsRef.current?.(targetStorageType, parentPaths);
         } else if (targetStorageType === 'webdav') {
           const backend = createWebdavBackend(webdavConfig);
-          const uploadFile = async (file, prefix, destName = file.name) => {
-            const key = prefix + destName;
+          const uploadFile = async (file, prefix, destName = normalizeUnicodeNfc(file.name)) => {
+            const key = prefix + normalizeUnicodeNfc(destName);
             const body = new Uint8Array(await file.arrayBuffer());
             await backend.writeBytes(key, body, file.type || 'application/octet-stream');
           };
           const uploadDir = async (dirHandle, prefix) => {
             for await (const entry of dirHandle.values()) {
+              const nfcName = normalizeUnicodeNfc(entry.name);
               if (entry.kind === 'file') {
                 const file = await entry.getFile();
-                await uploadFile(file, prefix);
+                await uploadFile(file, prefix, nfcName);
               } else if (entry.kind === 'directory') {
-                await uploadDir(entry, prefix + entry.name + '/');
+                await uploadDir(entry, `${prefix}${nfcName}/`);
               }
             }
           };
@@ -8184,7 +8198,8 @@ function MainApp() {
             await reloadOpenFileIfPath(targetStorageType, `${destPath || ''}${destName}`);
           }
           for (const handle of dirHandles) {
-            await uploadDir(handle, destPath + (handle.name || '') + '/');
+            const nfcDirName = normalizeUnicodeNfc(handle.name || '');
+            await uploadDir(handle, `${destPath}${nfcDirName}/`);
             uploadedCount += 1;
           }
           await refreshWebdavTree();
@@ -8193,23 +8208,26 @@ function MainApp() {
         } else {
           const targetDirHandle = destHandle || localRootHandle;
           if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
-          const copyFile = async (file, dirHandle, destName = file.name) => {
-            const newFileHandle = await dirHandle.getFileHandle(destName, { create: true });
+          const copyFile = async (file, dirHandle, destName = normalizeUnicodeNfc(file.name)) => {
+            const nfcName = normalizeUnicodeNfc(destName);
+            const newFileHandle = await dirHandle.getFileHandle(nfcName, { create: true });
             const writable = await newFileHandle.createWritable();
             await writable.write(await file.arrayBuffer());
             await writable.close();
           };
           const copyDir = async (dirHandle, destDirHandle) => {
-            const newDir = await destDirHandle.getDirectoryHandle(dirHandle.name, { create: true });
+            const nfcDirName = normalizeUnicodeNfc(dirHandle.name);
+            const newDir = await destDirHandle.getDirectoryHandle(nfcDirName, { create: true });
             for await (const entry of dirHandle.values()) {
+              const nfcName = normalizeUnicodeNfc(entry.name);
               if (entry.kind === 'file') {
                 const file = await entry.getFile();
-                const fh = await newDir.getFileHandle(entry.name, { create: true });
+                const fh = await newDir.getFileHandle(nfcName, { create: true });
                 const w = await fh.createWritable();
                 await w.write(await file.arrayBuffer());
                 await w.close();
               } else if (entry.kind === 'directory') {
-                await copyDir(entry, await newDir.getDirectoryHandle(entry.name, { create: true }));
+                await copyDir(entry, newDir);
               }
             }
           };
@@ -8229,8 +8247,7 @@ function MainApp() {
             await reloadOpenFileIfPath(targetStorageType, `${destPath || ''}${destName}`);
           }
           for (const handle of dirHandles) {
-            const subDir = await targetDirHandle.getDirectoryHandle(handle.name, { create: true });
-            await copyDir(handle, subDir);
+            await copyDir(handle, targetDirHandle);
             uploadedCount += 1;
           }
           refreshLocalTree();

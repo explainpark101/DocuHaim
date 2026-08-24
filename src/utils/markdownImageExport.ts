@@ -13,6 +13,7 @@ import {
   resolveStorageImagePath,
 } from '@/utils/storageImagePath';
 import type { DownloadImageSyntax } from '@/utils/downloadImageSyntaxSettings';
+import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
 import {
   ensureNoteCoverWebfontsInMarkdown,
   parseNoteCover,
@@ -110,7 +111,7 @@ export function markdownExportBundleDirectoryName(fileName: string): string {
 }
 
 function sanitizeExportFileName(name: string): string {
-  const cleaned = String(name || '')
+  const cleaned = normalizeUnicodeNfc(String(name || ''))
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
     .replace(/\s+/g, '_')
     .replace(/^\.+$/, '')

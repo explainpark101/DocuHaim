@@ -9,6 +9,7 @@ import {
   CopyObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { normalizePathToNfc } from '@/utils/unicodeNfc';
 
 /**
  * Create an S3 client from credentials.
@@ -68,7 +69,9 @@ export function collectS3DirectoryMarkersFromUpload(parentPath, files) {
   const dirs = new Set();
   const fileList = Array.from(files);
   for (const file of fileList) {
-    const relPath = (file.webkitRelativePath || file.name).replace(/\\/g, '/');
+    const relPath = normalizePathToNfc(
+      (file.webkitRelativePath || file.name).replace(/\\/g, '/'),
+    );
     const parts = relPath.replace(/\/$/, '').split('/').filter(Boolean);
     for (let j = 1; j < parts.length; j++) {
       dirs.add(`${parentPath}${parts.slice(0, j).join('/')}/`);

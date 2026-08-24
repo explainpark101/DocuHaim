@@ -1,4 +1,5 @@
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
+import { normalizePathToNfc } from '@/utils/unicodeNfc';
 
 /**
  * 파일 앞부분 바이트로 image/* MIME 추정 (클립보드 File.type 비어 있을 때 사용)
@@ -55,8 +56,9 @@ export async function isFileProbablyImage(file) {
  */
 export function buildEditorImagePathPrefix(mdPath) {
   if (!mdPath) return '.images/note';
-  const mdDir = mdPath.includes('/') ? mdPath.replace(/\/[^/]+$/, '/') : '';
-  const mdNameNoExt = mdPath.replace(/^.*\//, '').replace(/\.[^.]+$/, '') || 'note';
+  const nfcPath = normalizePathToNfc(mdPath);
+  const mdDir = nfcPath.includes('/') ? nfcPath.replace(/\/[^/]+$/, '/') : '';
+  const mdNameNoExt = nfcPath.replace(/^.*\//, '').replace(/\.[^.]+$/, '') || 'note';
   return `.images/${mdDir}${mdNameNoExt}`;
 }
 
@@ -123,9 +125,11 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
 }
 
 export function normalizeEditorImagePathPrefix(imagePathPrefix) {
-  return typeof imagePathPrefix === 'string' && imagePathPrefix
-    ? imagePathPrefix.replace(/\/+$/, '') + '/'
-    : '.images/note/';
+  const raw =
+    typeof imagePathPrefix === 'string' && imagePathPrefix
+      ? imagePathPrefix.replace(/\/+$/, '') + '/'
+      : '.images/note/';
+  return normalizePathToNfc(raw);
 }
 
 export function getExtensionFromMime(mime) {

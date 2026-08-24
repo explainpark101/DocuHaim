@@ -2,6 +2,7 @@ import {
   allocateUniqueNumberedName,
   treeChildNameTaken,
 } from '@/utils/treeCopy';
+import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
 
 export type TreeNameConflictChoice = 'replace' | 'rename' | 'cancel';
 
@@ -32,6 +33,7 @@ export type TreeNameConflictPrompt = (
 /**
  * Resolve destination name when a sibling may already exist.
  * Returns `null` when the user cancels.
+ * Destination names are always NFC (macOS File.name is often NFD).
  */
 export async function resolveTreeDestName(options: {
   name: string;
@@ -42,7 +44,7 @@ export async function resolveTreeDestName(options: {
   /** Load compare payloads only when a conflict exists (files). */
   loadCompare?: () => Promise<TreeNameConflictCompare | null | undefined>;
 }): Promise<string | null> {
-  const name = String(options.name || '');
+  const name = normalizeUnicodeNfc(String(options.name || ''));
   if (!name) return null;
   if (!treeChildNameTaken(options.usedNames, name)) {
     return name;

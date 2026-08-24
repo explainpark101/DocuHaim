@@ -1,6 +1,7 @@
 import { BlobReader, Uint8ArrayWriter, ZipReader } from '@zip.js/zip.js';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
+import { normalizePathToNfc } from '@/utils/unicodeNfc';
 
 export const SESSION_STORAGE_TYPE = 'session' as const;
 
@@ -82,10 +83,12 @@ export function basenameOfPath(path: string): string {
 }
 
 export function normalizeSessionPath(path: string): string {
-  return String(path || '')
-    .replace(/\\/g, '/')
-    .replace(/^\/+/, '')
-    .replace(/\/{2,}/g, '/');
+  return normalizePathToNfc(
+    String(path || '')
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
+      .replace(/\/{2,}/g, '/'),
+  );
 }
 
 function shouldSkipArchivePath(path: string): boolean {

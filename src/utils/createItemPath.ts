@@ -3,6 +3,7 @@ import {
   normalizeDirPath,
   type BrowseTreeNode,
 } from '@/utils/advancedSearch/browseDirectory';
+import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
 
 export type CreateItemType = 'file' | 'folder';
 
@@ -75,7 +76,7 @@ export function resolveCreateItemDirectory(
       stack.pop();
       continue;
     }
-    stack.push(part);
+    stack.push(normalizeUnicodeNfc(part));
   }
 
   return {
@@ -112,7 +113,7 @@ export function resolveCreateItemPath(
       stack.pop();
       continue;
     }
-    stack.push(part);
+    stack.push(normalizeUnicodeNfc(part));
   }
 
   if (stack.length === 0) return { ok: false, reason: 'empty' };
