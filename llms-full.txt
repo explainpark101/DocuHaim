@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-08-24T14:55:37.041Z
+Generated: 2026-08-24T15:41:01.847Z
 
 ============================================================
 Advanced Search
@@ -1879,10 +1879,10 @@ Do not leave the literal `<pgbr/>` in HTML output after transform (XSS / printer
 
 | Context | Expected presentation |
 |---------|----------------------|
-| Preview | Visible rule (CSS on `.md-pgbr`) |
-| Print / PDF | Invisible forced page break (`break-before` / `page-break-before` on block `.md-pgbr`) |
+| Preview (editor) | Visible rule (CSS on `.md-pgbr`) |
+| Print / PDF Export | Host packs fixed page boxes; `<pgbr/>` forces a **new page** in the packer (`printPagePack.ts`). Markers are not printed as a visual rule. |
 
-CSS details are host-specific; class + `data-md-pgbr="1"` are the contract.
+CSS `break-after` on `.md-pgbr` may still apply in legacy continuous print hosts; Export PDF uses overflow packing into `.export-pdf-page` nodes instead.
 
 ### 5. Non-goals
 
@@ -1895,7 +1895,7 @@ CSS details are host-specific; class + `data-md-pgbr="1"` are the contract.
 | 역할 | 경로 |
 |------|------|
 | markdown-it | `src/utils/pageBreakMarkdownIt.js` |
-| 인쇄 보조 | `printVisualLinePgbr.ts`, `printPageBreaks.ts`, `usePrintPageStarts.ts` |
+| 인쇄 패킹 | `printPagePack.ts`, `usePrintPackedPages.ts` |
 | XSS whitelist | `src/config/mdEditorConfig.js` |
 | AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx` |
 
