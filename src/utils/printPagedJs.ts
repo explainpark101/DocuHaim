@@ -4,9 +4,11 @@
 
 import { buildPrintPageAtRule, getPrintPageInnerSizePx, type PrintPageSizeId } from '@/utils/printPageLayout';
 import {
+  attachPrintPreviewMeasureRoot,
   copyPrintMermaidCanvases,
   rasterizeAllPrintMermaidsToCanvas,
 } from '@/utils/printMermaidCanvas';
+import { debugExportPdf, debugExportPdfError, capturePagedJsWarnings, pagedOutputStats, previewContentStats } from '@/utils/printExportDebug';
 
 export const PRINT_PAGES_HOST_ATTR = 'data-export-pdf-pages';
 export const PRINT_BODY_PAGE_ATTR = 'data-print-body-page';
@@ -26,6 +28,7 @@ export function scopeExportPdfPreviewStyles(css: string): string {
 }
 
 export function getPrintPreviewRoot(stagingRoot: HTMLElement): HTMLElement {
+  if (stagingRoot.classList.contains('md-editor-preview')) return stagingRoot;
   return (
     stagingRoot.querySelector<HTMLElement>('.md-editor-preview')
     ?? stagingRoot.querySelector<HTMLElement>('[id$="-preview"]')
@@ -112,16 +115,18 @@ export function buildPagedJsFragmentationCss(pageSizeId: PrintPageSizeId): strin
       min-height: 0 !important;
     }
 
+    img[data-print-mermaid-img],
+    .pagedjs_page_content img[data-print-mermaid-img],
     .md-editor-mermaid[data-print-mermaid-canvas="1"],
     .pagedjs_page_content .md-editor-mermaid[data-print-mermaid-canvas="1"] {
       display: block !important;
+      position: static !important;
       line-height: 0 !important;
       overflow: hidden;
       break-inside: avoid;
       page-break-inside: avoid;
       max-width: 100% !important;
-      width: auto !important;
-      height: auto !important;
+      box-sizing: content-box;
     }
 
     .md-editor-mermaid[data-print-mermaid-canvas-state="loading"] {
@@ -265,14 +270,20 @@ export function transferHeadingIdsToPagedPages(
   }
 }
 
+/** Flat clone for Paged.js — block-level children only; no md-editor-preview wrapper class. */
 export function clonePrintPreviewForPagedJs(stagingRoot: HTMLElement): HTMLElement {
   const preview = getPrintPreviewRoot(stagingRoot);
-  const shell = document.createElement('div');
-  shell.className = preview.className;
-  shell.setAttribute('data-export-pdf-preview', '1');
+  const root = document.createElement('div');
+  root.setAttribute('data-export-pdf-preview', '1');
+  const themeClass = [...preview.classList].filter((c) => c !== 'md-editor-preview').join(' ');
+  if (themeClass) root.className = themeClass;
+  if (preview.id) root.id = preview.id;
+
   const clone = preview.cloneNode(true) as HTMLElement;
-  shell.appendChild(clone);
-  return shell;
+  while (clone.firstChild) {
+    root.appendChild(clone.firstChild);
+  }
+  return root;
 }
 
 function resolvePrintMermaidMaxWidth(
@@ -294,34 +305,100 @@ export async function renderPagedJsPreview(options: {
   imageMaxProbe?: HTMLElement | null;
 }): Promise<{ pageCount: number }> {
   const { stagingRoot, pagesHost, pageSizeId, contentStyles, imageMaxProbe } = options;
+  const t0 = performance.now();
+  debugExportPdf('pagedjs', 'render start', { pageSizeId });
+
   const { Previewer } = await import('pagedjs');
 
   pagesHost.replaceChildren();
 
-  const stagingPreview = getPrintPreviewRoot(stagingRoot);
-  if (!stagingPreview) {
-    return { pageCount: 1 };
-  }
-
-  rewriteMermaidIdsInClone(stagingPreview);
-
   const maxWidth = resolvePrintMermaidMaxWidth(pageSizeId, imageMaxProbe);
   const maxHeight = getPrintPageInnerSizePx(pageSizeId).heightPx;
+  debugExportPdf('pagedjs', 'mermaid max box', {
+    maxWidth,
+    maxHeight,
+    probeW: imageMaxProbe?.getBoundingClientRect().width,
+  });
 
-  await rasterizeAllPrintMermaidsToCanvas(stagingPreview, maxWidth, maxHeight);
+  const stagingPreview = getPrintPreviewRoot(stagingRoot);
+  const stagingMermaidCount = stagingPreview?.querySelectorAll('.md-editor-mermaid').length ?? 0;
+  const stagingSvgCount = stagingPreview?.querySelectorAll('.md-editor-mermaid svg').length ?? 0;
+  debugExportPdf('pagedjs', 'staging before clone', {
+    stagingMermaidCount,
+    stagingSvgCount,
+    staging: previewContentStats(stagingPreview),
+  });
 
   const content = clonePrintPreviewForPagedJs(stagingRoot);
   const clonePreview = getPrintPreviewRoot(content);
+  const cloneMermaidBefore = clonePreview?.querySelectorAll('.md-editor-mermaid').length ?? 0;
+  const cloneSvgBefore = clonePreview?.querySelectorAll('.md-editor-mermaid svg').length ?? 0;
+  debugExportPdf('pagedjs', 'clone created', {
+    cloneMermaidBefore,
+    cloneSvgBefore,
+    clone: previewContentStats(clonePreview),
+  });
+
   if (clonePreview) {
-    copyPrintMermaidCanvases(stagingPreview, clonePreview);
+    rewriteMermaidIdsInClone(clonePreview);
+    debugExportPdf('pagedjs', 'mermaid ids remapped on clone');
   }
 
-  const stylesheet = buildPagedJsStylesheet(pageSizeId, contentStyles);
-  const previewer = new Previewer();
-  const flow = await previewer.preview(content, [stylesheet], pagesHost);
+  const measureRoot = attachPrintPreviewMeasureRoot(content, maxWidth);
+  try {
+    if (clonePreview) {
+      await rasterizeAllPrintMermaidsToCanvas(clonePreview, maxWidth, maxHeight);
+      const states = [...clonePreview.querySelectorAll('.md-editor-mermaid')].map((el, i) => ({
+        i,
+        state: el.getAttribute('data-print-mermaid-canvas-state'),
+        hasCanvas: Boolean(el.querySelector('canvas')),
+        hasSvg: Boolean(el.querySelector('svg')),
+        h: Math.round((el as HTMLElement).getBoundingClientRect().height),
+      }));
+      debugExportPdf('pagedjs', 'after rasterize', { states, clone: previewContentStats(clonePreview) });
+    } else {
+      debugExportPdf('pagedjs', 'no clone preview — skip rasterize');
+    }
 
-  stampPagedJsBodyPages(pagesHost);
-  transferHeadingIdsToPagedPages(stagingRoot, pagesHost);
+    const stylesheet = buildPagedJsStylesheet(pageSizeId, contentStyles);
+    const previewer = new Previewer();
+    debugExportPdf('pagedjs', 'Previewer.preview() start', {
+      contentChildCount: content.childElementCount,
+      contentConnected: content.isConnected,
+    });
 
-  return { pageCount: Math.max(1, flow.total) };
+    let flow;
+    try {
+      flow = await capturePagedJsWarnings(() => previewer.preview(content, [stylesheet], pagesHost));
+    } catch (err) {
+      debugExportPdfError('pagedjs', 'Previewer.preview() threw', err, {
+        elapsedMs: Math.round(performance.now() - t0),
+      });
+      throw err;
+    }
+
+    const pageCount = Math.max(1, flow.total);
+
+    // Paged.js cloneNode() page fragments often drop/break sized SVG; re-copy from prepared source.
+    if (clonePreview) {
+      copyPrintMermaidCanvases(clonePreview, pagesHost);
+      debugExportPdf('pagedjs', 'mermaid synced source→pages', pagedOutputStats(pagesHost));
+    }
+
+    debugExportPdf('pagedjs', 'Previewer.preview() done', {
+      pageCount,
+      elapsedMs: Math.round(performance.now() - t0),
+      pagesInHost: pagesHost.querySelectorAll('.pagedjs_page').length,
+      mermaidInOutput: pagesHost.querySelectorAll('img[data-print-mermaid-img], .md-editor-mermaid').length,
+      ...pagedOutputStats(pagesHost),
+    });
+
+    stampPagedJsBodyPages(pagesHost);
+    transferHeadingIdsToPagedPages(stagingRoot, pagesHost);
+
+    return { pageCount };
+  } finally {
+    measureRoot.remove();
+    debugExportPdf('pagedjs', 'measure root detached', { contentConnected: content.isConnected });
+  }
 }

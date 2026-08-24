@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { renderAllLazyMermaidsInRoot } from '@/utils/lazyMermaid';
 import { renderPagedJsPreview } from '@/utils/printPagedJs';
 import { waitForPrintStagingReady } from '@/utils/printStagingReady';
+import { debugExportPdf, debugExportPdfError, pagedOutputStats, previewContentStats } from '@/utils/printExportDebug';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
 
 export function usePagedJsPreview(
@@ -35,12 +36,29 @@ export function usePagedJsPreview(
     const generation = (packGenerationRef.current += 1);
 
     void (async () => {
+      debugExportPdf('paged-preview', 'layout start', { layoutKey, generation });
+      const t0 = performance.now();
+
       await renderAllLazyMermaidsInRoot(staging);
       if (cancelled || generation !== packGenerationRef.current) return;
-      await waitForPrintStagingReady(staging);
+      const afterLazy = [...staging.querySelectorAll('.md-editor-mermaid')].map((el, i) => ({
+        i,
+        hasSvg: Boolean(el.querySelector('svg')),
+        error: el.getAttribute('data-haim-mermaid-error'),
+      }));
+      debugExportPdf('lazy-mermaid', 'renderAllLazyMermaidsInRoot done', {
+        count: afterLazy.length,
+        hosts: afterLazy,
+        elapsedMs: Math.round(performance.now() - t0),
+      });
+
+      const stagingReady = await waitForPrintStagingReady(staging);
       if (cancelled || generation !== packGenerationRef.current) return;
+      debugExportPdf('paged-preview', 'staging ready', { stagingReady, elapsedMs: Math.round(performance.now() - t0) });
+
       const preview = staging.querySelector('.md-editor-preview');
       if (!preview) {
+        debugExportPdf('paged-preview', 'abort — no .md-editor-preview');
         setPageCount(1);
         pagesHost.replaceChildren();
         return;
@@ -57,8 +75,17 @@ export function usePagedJsPreview(
         if (cancelled || generation !== packGenerationRef.current) return;
         renderedLayoutKeyRef.current = layoutKey;
         setPageCount(count);
+        debugExportPdf('paged-preview', 'complete', {
+          pageCount: count,
+          elapsedMs: Math.round(performance.now() - t0),
+          staging: previewContentStats(preview),
+          output: pagedOutputStats(pagesHost),
+        });
       } catch (err) {
-        console.error('[usePagedJsPreview] render failed', err);
+        debugExportPdfError('paged-preview', 'renderPagedJsPreview failed', err, {
+          layoutKey,
+          elapsedMs: Math.round(performance.now() - t0),
+        });
         if (!cancelled) setPageCount(1);
       }
     })();

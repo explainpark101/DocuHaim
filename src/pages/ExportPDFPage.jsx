@@ -359,15 +359,22 @@ const printFontStylesRaw = `
     height: auto !important;
     min-height: 0 !important;
   }
-  .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas="1"] {
+  .export-pdf-pages img[data-print-mermaid-img],
+  .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas="1"],
+  .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas-state="svg"] {
     display: block !important;
+    position: static !important;
     line-height: 0 !important;
     overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
     max-width: 100% !important;
-    width: auto !important;
-    height: auto !important;
+    box-sizing: content-box;
+  }
+  .export-pdf-pages img[data-print-mermaid-img] {
+    vertical-align: top;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas-state="loading"] {
     min-height: 48px;
@@ -389,6 +396,14 @@ const printFontStylesRaw = `
     display: block !important;
     max-width: 100% !important;
     vertical-align: top;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .export-pdf-preview-stage .export-pdf-page-slot-clone img[data-print-mermaid-img],
+  .export-pdf-preview-stage .pagedjs_page_content img[data-print-mermaid-img] {
+    display: block !important;
+    position: static !important;
+    max-width: 100% !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

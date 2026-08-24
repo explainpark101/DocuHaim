@@ -3,6 +3,7 @@
  * Used when MdEditor/MdPreview has noMermaid so built-in useMermaid does not
  * render every diagram at once.
  */
+import { debugExportPdf, debugExportPdfError } from '@/utils/printExportDebug';
 import { patchMermaidRender } from '@/utils/mermaidFixLabelNewlines';
 import { resolveMermaidThemeForHost, type MermaidThemeName } from '@/utils/mermaidTheme';
 
@@ -81,7 +82,16 @@ export async function renderLazyMermaidElement(
 ): Promise<HTMLElement | null> {
   if (!isLazyMermaidPlaceholder(el)) return null;
   const source = getMermaidSourceFromElement(el);
-  if (!source) return null;
+  if (!source) {
+    debugExportPdf('lazy-mermaid', 'skip empty source', { line: el.getAttribute('data-line') });
+    return null;
+  }
+
+  debugExportPdf('lazy-mermaid', 'render start', {
+    line: el.getAttribute('data-line'),
+    sourceLen: source.length,
+    preview: source.slice(0, 80),
+  });
 
   const theme = resolveTheme(el);
   const mermaid = await ensureInitialized(theme);
@@ -94,7 +104,7 @@ export async function renderLazyMermaidElement(
 
   try {
     const { svg, bindFunctions } = await mermaid.render(nextRenderId(), source, offscreen);
-    const host = document.createElement('p');
+    const host = document.createElement('div');
     host.className = 'md-editor-mermaid';
     host.setAttribute('data-processed', '');
     host.setAttribute('data-content', source);
@@ -108,9 +118,16 @@ export async function renderLazyMermaidElement(
     host.children[0]?.removeAttribute('height');
     el.replaceWith(host);
     bindFunctions?.(host);
+    debugExportPdf('lazy-mermaid', 'render ok', {
+      line: host.getAttribute('data-line'),
+      hasSvg: Boolean(host.querySelector('svg')),
+    });
     return host;
   } catch (err) {
-    console.warn('[lazyMermaid] render failed', err);
+    debugExportPdfError('lazy-mermaid', 'render failed', err, {
+      line: el.getAttribute('data-line'),
+      sourceLen: source.length,
+    });
     el.setAttribute('data-haim-mermaid-error', '1');
     return null;
   } finally {
