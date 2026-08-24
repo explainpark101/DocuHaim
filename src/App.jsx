@@ -663,6 +663,7 @@ function MainApp() {
   const prevEditorContentRef = useRef('');
 
   const hasSeededTabsRestoreQueueRef = useRef(false);
+  const hasRestoredPersistedWorkspaceTabsRef = useRef(false);
 
   const loadLastOpenedFile = useCallback(() => {
     const persisted = loadPersistedWorkspaceTabs();
@@ -2110,6 +2111,58 @@ function MainApp() {
       }
     }
   }, [openChatWorkspaceTab, resolveClosedFileNode]);
+
+  const restorePersistedWorkspaceTabs = useCallback(
+    async (persisted, options = {}) => {
+      const { activeId: explicitActiveId = null, navigateActiveUrl = false } = options;
+      if (!workspaceTabsEnabledRef.current || !persisted?.tabs?.length) return false;
+
+      let restoredAny = false;
+      for (const tab of persisted.tabs) {
+        if (tab.kind === 'chat') {
+          openChatWorkspaceTab({ navigateUrl: false });
+          restoredAny = true;
+          continue;
+        }
+
+        if (findFileTab(workspaceTabsRef.current, tab.type, tab.path)) {
+          restoredAny = true;
+          continue;
+        }
+
+        try {
+          const node = await resolveClosedFileNode({
+            kind: 'file',
+            storageType: tab.type,
+            path: tab.path,
+          });
+          if (node?.type !== 'file') continue;
+          await selectFileRawRef.current?.(tab.type, node, { skipNavigate: true });
+          restoredAny = true;
+        } catch (err) {
+          console.warn('Failed to restore workspace tab:', tab.path, err);
+        }
+      }
+
+      const targetActiveId = explicitActiveId ?? persisted.activeId;
+      if (targetActiveId === CHAT_TAB_ID) {
+        if (workspaceTabsRef.current.tabs.some((tab) => tab.id === CHAT_TAB_ID)) {
+          activateWorkspaceTab(CHAT_TAB_ID, { navigateUrl: navigateActiveUrl });
+        }
+        return restoredAny;
+      }
+
+      if (typeof targetActiveId === 'string' && targetActiveId) {
+        const activeExists = workspaceTabsRef.current.tabs.some((tab) => tab.id === targetActiveId);
+        if (activeExists) {
+          activateWorkspaceTab(targetActiveId, { navigateUrl: navigateActiveUrl });
+        }
+      }
+
+      return restoredAny;
+    },
+    [activateWorkspaceTab, openChatWorkspaceTab, resolveClosedFileNode],
+  );
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -4128,6 +4181,58 @@ function MainApp() {
   ]);
 
   selectFileRawRef.current = selectFileRaw;
+
+  useEffect(() => {
+    if (!isUnlocked || !workspaceTabsEnabled || !hasProcessedOpenFromUrlRef.current) return;
+    if (hasRestoredPersistedWorkspaceTabsRef.current) return;
+
+    const persisted = loadPersistedWorkspaceTabs();
+    if (!persisted?.tabs?.length) {
+      hasRestoredPersistedWorkspaceTabsRef.current = true;
+      return;
+    }
+
+    const needsLocal = persisted.tabs.some((tab) => tab.kind === 'file' && tab.type === 'local');
+    if (needsLocal && !localRootHandle) {
+      if (localFolderRestoreSettled) {
+        hasRestoredPersistedWorkspaceTabsRef.current = true;
+      }
+      return;
+    }
+
+    const needsWebdav = persisted.tabs.some((tab) => tab.kind === 'file' && tab.type === 'webdav');
+    if (needsWebdav && !webdavReady) return;
+
+    const routeNotePath = parseOpenNotePathFromAppPathname(location.pathname);
+    const routeStorageType = routeNotePath
+      ? storageMode === STORAGE_MODE_LOCAL
+        ? 'local'
+        : storageMode === STORAGE_MODE_WEBDAV
+          ? 'webdav'
+          : 's3'
+      : null;
+    const explicitActiveId = isChatAppPathname(location.pathname)
+      ? CHAT_TAB_ID
+      : routeNotePath && routeStorageType
+        ? `${routeStorageType}:${routeNotePath}`
+        : null;
+    const navigateActiveUrl = explicitActiveId == null && !isExportPdfAppPathname(location.pathname);
+
+    hasRestoredPersistedWorkspaceTabsRef.current = true;
+    void restorePersistedWorkspaceTabs(persisted, {
+      activeId: explicitActiveId,
+      navigateActiveUrl,
+    });
+  }, [
+    isUnlocked,
+    workspaceTabsEnabled,
+    localRootHandle,
+    localFolderRestoreSettled,
+    webdavReady,
+    location.pathname,
+    storageMode,
+    restorePersistedWorkspaceTabs,
+  ]);
 
   const beginTreeTransferBusy = useCallback((entry) => {
     setTreeTransferBusy((prev) => upsertTreeTransferBusy(prev, entry));
