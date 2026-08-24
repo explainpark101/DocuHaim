@@ -27,18 +27,31 @@ export type HeadingEntry = {
 
 export type HeadingRemapRow = {
   text: string;
+  /** Title after remap (includes new outline prefix when renumbering). */
+  nextText: string;
   from: number;
   to: number;
+};
+
+export type OutlineNumberStyle = 'flat' | 'nested';
+export type OutlineStartNumber = 1 | 2;
+
+export type HeadingOutlineOptions = {
+  renumberOutline?: boolean;
+  outlineStyle?: OutlineNumberStyle;
+  outlineStart?: OutlineStartNumber;
 };
 
 export type HeadingRemapOptions = {
   sourceMax?: number | null;
   maxLevel?: number;
-};
+} & HeadingOutlineOptions;
 
 const FENCED_BLOCK_RE = /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g;
 const ATX_HEADING_LINE_RE = /^(#{1,10})([ \t]+)(.*)$/gm;
 const ATX_HEADING_DETECT_RE = /^(#{1,10})(?:[ \t]+|[ \t]*$)/gm;
+/** Leading outline like `1.` / `2.1.` / `10.2.3.` (one or more digit-dot groups). */
+const OUTLINE_PREFIX_RE = /^(?:\d+\.)+\s*/;
 
 function mapOutsideFences(source: string, transform: (chunk: string) => string): string {
   return source
@@ -61,6 +74,81 @@ function normalizeTargetMax(targetMax: number, maxLevel: number): number {
 
 function headingTextFromRest(rest: string): string {
   return String(rest ?? '').replace(/[ \t]+#+\s*$/, '').trim();
+}
+
+function splitClosingHashes(rest: string): { content: string; closing: string } {
+  const raw = String(rest ?? '');
+  const match = raw.match(/^(.*?)([ \t]+#+)[ \t]*$/);
+  if (!match) return { content: raw, closing: '' };
+  return { content: match[1] ?? '', closing: match[2] ?? '' };
+}
+
+export function stripHeadingOutlinePrefix(text: string): string {
+  return String(text ?? '').replace(OUTLINE_PREFIX_RE, '');
+}
+
+export function formatHeadingOutline(parts: readonly number[]): string {
+  if (!parts.length) return '';
+  return `${parts.join('.')}. `;
+}
+
+/**
+ * Assign outline prefixes for remapped heading levels (document order).
+ * - flat: max heading is one segment (`1.` / `2.`); deeper levels add segments
+ * - nested: segment count equals heading level (h2 → `2.1.`, h3 → `2.1.1.`, …)
+ */
+export function assignHeadingOutlineNumbers(
+  levels: readonly number[],
+  options: {
+    style: OutlineNumberStyle;
+    startNumber: OutlineStartNumber;
+    targetMax: number;
+  },
+): string[] {
+  const style = options.style === 'nested' ? 'nested' : 'flat';
+  const startNumber: OutlineStartNumber = options.startNumber === 2 ? 2 : 1;
+  const targetMax = Math.max(1, Math.round(Number(options.targetMax) || 1));
+  const extraPrefix = style === 'nested' ? Math.max(0, targetMax - 1) : 0;
+
+  const counters: number[] = [];
+  if (extraPrefix === 0) {
+    counters.push(startNumber - 1);
+  } else {
+    counters.push(startNumber);
+    for (let i = 1; i < extraPrefix; i += 1) counters.push(1);
+    counters.push(0);
+  }
+
+  return levels.map((level) => {
+    const L = Math.max(1, Math.round(Number(level) || 1));
+    const idx = Math.max(0, extraPrefix + (L - targetMax));
+    while (counters.length <= idx) counters.push(0);
+    counters.length = idx + 1;
+    const current = counters[idx] ?? 0;
+    counters[idx] = current + 1;
+    return formatHeadingOutline(counters.slice(0, idx + 1));
+  });
+}
+
+function resolveOutlineOptions(options?: HeadingOutlineOptions): {
+  renumber: boolean;
+  style: OutlineNumberStyle;
+  start: OutlineStartNumber;
+} {
+  return {
+    renumber: Boolean(options?.renumberOutline),
+    style: options?.outlineStyle === 'flat' ? 'flat' : 'nested',
+    start: options?.outlineStart === 2 ? 2 : 1,
+  };
+}
+
+function buildNextHeadingText(
+  text: string,
+  outlinePrefix: string | null,
+): string {
+  if (outlinePrefix === null) return text;
+  const body = stripHeadingOutlinePrefix(text).trim();
+  return `${outlinePrefix}${body}`;
 }
 
 export function isExportHeadingLevel(value: unknown): value is ExportHeadingLevel {
@@ -144,13 +232,14 @@ export function planHeadingRemap(
 export function planHeadingRemapRows(
   markdown: string,
   targetMax: number,
-  options?: { maxLevel?: number },
+  options?: { maxLevel?: number } & HeadingOutlineOptions,
 ): {
   sourceMax: number | null;
   rows: HeadingRemapRow[];
   shift: number;
 } {
   const maxLevel = resolveMaxLevel(options?.maxLevel);
+  const outline = resolveOutlineOptions(options);
   const entries = detectHeadingEntries(markdown);
   const sourceMax = entries.reduce<number | null>((min, entry) => (
     min === null || entry.level < min ? entry.level : min
@@ -161,14 +250,24 @@ export function planHeadingRemapRows(
 
   const target = normalizeTargetMax(targetMax, maxLevel);
   const shift = target - sourceMax;
+  const toLevels = entries.map((entry) => clampInt(entry.level + shift, 1, maxLevel));
+  const prefixes = outline.renumber
+    ? assignHeadingOutlineNumbers(toLevels, {
+      style: outline.style,
+      startNumber: outline.start,
+      targetMax: target,
+    })
+    : null;
+
   return {
     sourceMax,
     shift,
-    rows: entries.map((entry) => ({
-      text: entry.text,
-      from: entry.level,
-      to: clampInt(entry.level + shift, 1, maxLevel),
-    })),
+    rows: entries.map((entry, index) => {
+      const to = toLevels[index] ?? entry.level;
+      const text = entry.text;
+      const nextText = buildNextHeadingText(text, prefixes?.[index] ?? null);
+      return { text, nextText, from: entry.level, to };
+    }),
   };
 }
 
@@ -179,6 +278,7 @@ export function remapMarkdownHeadingLevels(
 ): string {
   const source = String(markdown ?? '');
   const maxLevel = resolveMaxLevel(options?.maxLevel);
+  const outline = resolveOutlineOptions(options);
   const sourceMax = options && 'sourceMax' in options
     ? options.sourceMax ?? null
     : detectMaxHeadingLevel(source);
@@ -186,16 +286,45 @@ export function remapMarkdownHeadingLevels(
   if (!sourceMax) return source;
 
   const shift = target - sourceMax;
-  if (shift === 0 && sourceMax <= maxLevel) {
+  if (!outline.renumber && shift === 0 && sourceMax <= maxLevel) {
     const hasDeeper = detectHeadingLevels(source).some((level) => level > maxLevel);
     if (!hasDeeper) return source;
   }
 
+  const toLevels: number[] = [];
+  mapOutsideFences(source, (chunk) => {
+    ATX_HEADING_LINE_RE.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = ATX_HEADING_LINE_RE.exec(chunk)) !== null) {
+      const level = match[1]?.length ?? 0;
+      if (level < 1) continue;
+      toLevels.push(clampInt(level + shift, 1, maxLevel));
+    }
+    return chunk;
+  });
+
+  const prefixes = outline.renumber
+    ? assignHeadingOutlineNumbers(toLevels, {
+      style: outline.style,
+      startNumber: outline.start,
+      targetMax: target,
+    })
+    : null;
+
+  let headingIndex = 0;
   return mapOutsideFences(source, (chunk) => {
     ATX_HEADING_LINE_RE.lastIndex = 0;
     return chunk.replace(ATX_HEADING_LINE_RE, (_full, hashes: string, space: string, rest: string) => {
       const next = clampInt(hashes.length + shift, 1, maxLevel);
-      return `${'#'.repeat(next)}${space}${rest}`;
+      const index = headingIndex;
+      headingIndex += 1;
+      if (!prefixes) {
+        return `${'#'.repeat(next)}${space}${rest}`;
+      }
+      const { content, closing } = splitClosingHashes(rest);
+      const display = headingTextFromRest(content);
+      const nextText = buildNextHeadingText(display, prefixes[index] ?? null);
+      return `${'#'.repeat(next)}${space}${nextText}${closing}`;
     });
   });
 }

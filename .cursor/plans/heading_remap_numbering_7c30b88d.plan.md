@@ -4,13 +4,13 @@ overview: 최대 heading 변경 모달(`HeadingRemapModal`)에 outline 번호 �
 todos:
   - id: util-outline
     content: "markdownHeadings.ts: outline strip/format/assign + remap/preview options"
-    status: pending
+    status: completed
   - id: modal-ui
     content: "HeadingRemapModal: Switch, style/start radios, nextText preview, Tooltip, Button icons"
-    status: pending
+    status: completed
   - id: browser-verify
     content: "Browser: flat/nested × start 1/2, all-headings renumber, shift=0, z-index"
-    status: pending
+    status: completed
 isProject: false
 ---
 
