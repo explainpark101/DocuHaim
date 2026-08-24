@@ -16,6 +16,8 @@ export default defineConfig([
     '.vitepress/**',
     'docs/.vitepress/**',
     'docs/node_modules/**',
+    // Cargo/Tauri build output (hashed assets are not app source)
+    'src-tauri/target/**',
   ]),
   {
     files: ['electron/**/*.js'],
