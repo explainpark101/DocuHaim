@@ -4,6 +4,9 @@
  *
  * Safari: startRegistration/startAuthentication must be invoked from a native click with no async work
  * (no await, no fetch) before the call. See https://simplewebauthn.dev/docs/advanced/browser-quirks
+ *
+ * Tauri desktop: WebView WebAuthn is unreliable — route through native biometry
+ * (Touch ID / Windows Hello) via desktopBiometricUnlock.
  */
 
 import {
@@ -15,6 +18,17 @@ import {
 
 export { browserSupportsWebAuthn } from '@simplewebauthn/browser';
 import { encryptWithEntropy, decryptWithEntropy } from '@/utils/crypto';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import {
+  disableDesktopBiometricUnlock,
+  enableDesktopBiometricUnlock,
+  getDesktopBiometryMarker,
+  isDesktopBiometricAvailable,
+  loadCredsWithDesktopBiometric,
+  saveCredsWithDesktopBiometric,
+  unlockWithDesktopBiometric,
+  updateDesktopBiometricWrappedPassword,
+} from '@/utils/desktopBiometricUnlock';
 
 const S3HAIM_PRF_INFO = new TextEncoder().encode('S3 Haim Master Password Wrap V1');
 const S3HAIM_CREDS_INFO = new TextEncoder().encode('S3 Haim Creds Encryption V1');
@@ -60,6 +74,7 @@ function challengeBase64URL() {
 }
 
 export async function isWebAuthnPRFSupported() {
+  if (isDesktopApp() && (await isDesktopBiometricAvailable())) return true;
   if (!(await browserSupportsWebAuthn())) return false;
   if (!window.PublicKeyCredential || typeof PublicKeyCredential.getClientCapabilities !== 'function') return false;
   try {
@@ -75,8 +90,10 @@ export async function isWebAuthnPRFSupported() {
  * Uses PRF when detectable; falls back to basic WebAuthn so browsers that support passkeys
  * but lack getClientCapabilities() (or don't list 'prf') still show the option. Actual save
  * will fail with a clear error if PRF is not supported.
+ * On Tauri desktop, native biometry (Touch ID / Windows Hello) counts as available.
  */
 export async function isWebAuthnAvailableForSave() {
+  if (isDesktopApp() && (await isDesktopBiometricAvailable())) return true;
   if (await isWebAuthnPRFSupported()) return true;
   return browserSupportsWebAuthn();
 }
@@ -262,6 +279,9 @@ export function getStoredWebAuthn() {
     const raw = localStorage.getItem(WEB_AUTHN_STORAGE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
+    if (data?.desktopBiometry === true && (data.mode === 'password' || data.mode === 'creds')) {
+      return data;
+    }
     if (!data?.credentialId || !data?.salt) return null;
     return data;
   } catch {
@@ -279,8 +299,13 @@ export function setStoredWebAuthn(data) {
 
 /**
  * Enable WebAuthn: create passkey, get PRF key, wrap current master password, store.
+ * On Tauri desktop, stores the master password in OS biometry-protected storage instead.
  */
 export async function enableWebAuthnUnlock(masterPassword) {
+  if (isDesktopApp() && (await isDesktopBiometricAvailable())) {
+    await enableDesktopBiometricUnlock(masterPassword);
+    return;
+  }
   const { credentialId, salt } = await createPasskeyWithPRF();
   const prfKey = await getPasskeyPRFKey(credentialId, salt);
   const encryptedPassword = await wrapPasswordWithPRFKey(prfKey, masterPassword);
@@ -289,8 +314,12 @@ export async function enableWebAuthnUnlock(masterPassword) {
 
 /**
  * Unlock using WebAuthn: get assertion with PRF, derive key, unwrap password, return it.
+ * On Tauri desktop, prompts Touch ID / Windows Hello and returns the stored password.
  */
 export async function unlockWithWebAuthn() {
+  if (getDesktopBiometryMarker()?.mode === 'password') {
+    return unlockWithDesktopBiometric();
+  }
   const stored = getStoredWebAuthn();
   if (!stored) throw new Error('등록된 보안 키가 없습니다.');
   const prfKey = await getPasskeyPRFKey(stored.credentialId, stored.salt);
@@ -298,6 +327,10 @@ export async function unlockWithWebAuthn() {
 }
 
 export function disableWebAuthnUnlock() {
+  if (getDesktopBiometryMarker()) {
+    void disableDesktopBiometricUnlock();
+    return;
+  }
   setStoredWebAuthn(null);
 }
 
@@ -305,6 +338,10 @@ export function disableWebAuthnUnlock() {
  * When user changes master password, update the wrapped password so WebAuthn still works.
  */
 export async function updateWebAuthnWrappedPassword(newMasterPassword) {
+  if (getDesktopBiometryMarker()?.mode === 'password') {
+    await updateDesktopBiometricWrappedPassword(newMasterPassword);
+    return;
+  }
   const stored = getStoredWebAuthn();
   if (!stored) return;
   const prfKey = await getPasskeyPRFKey(stored.credentialId, stored.salt);
@@ -328,8 +365,13 @@ export function isStoredWithWebAuthn() {
 
 /**
  * Save S3 creds using WebAuthn: create passkey if needed, encrypt with PRF entropy (local-entropy-encryption), store.
+ * On Tauri desktop, encrypts with biometry-protected entropy instead of WebView PRF.
  */
 export async function saveCredsWithWebAuthn(creds) {
+  if (isDesktopApp() && (await isDesktopBiometricAvailable())) {
+    await saveCredsWithDesktopBiometric(creds);
+    return;
+  }
   let stored = getStoredWebAuthn();
   if (!stored?.credentialId || !stored.salt) {
     const created = await createPasskeyWithPRF();
@@ -348,6 +390,9 @@ export async function saveCredsWithWebAuthn(creds) {
  * Load S3 creds using WebAuthn (PRF assertion). Returns decrypted creds object.
  */
 export async function loadCredsWithWebAuthn() {
+  if (getDesktopBiometryMarker()?.mode === 'creds') {
+    return loadCredsWithDesktopBiometric();
+  }
   const stored = getStoredWebAuthn();
   if (!stored) throw new Error('등록된 보안 키가 없습니다.');
   const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(ENCRYPTED_STORAGE_KEY) : null;

@@ -12,12 +12,13 @@ Desktop app version is owned by root [`package.json`](../../package.json) `versi
 |----------|-----------------|
 | `src-tauri/tauri.conf.json` | `"version": "../package.json"` |
 | `src-tauri/Cargo.toml` | `bun run sync:tauri-version` (before `tauri:dev` / `tauri:build`) |
+| GitHub Release tag / name | `release-tauri.yml` reads `package.json` into `VERSION` |
 
-Release workflow bumps **only** `package.json`, then runs `sync:tauri-version`.
+Bump `package.json` version in the repo before running the release workflow. The workflow does **not** take a version input.
 
 ## Trigger
 
-GitHub → Actions → **Release Tauri** → Run workflow → enter semver (`1.2.3`).
+GitHub → Actions → **Release Tauri** → Run workflow (optional: mark prerelease).
 
 ## Optional secrets (1:1 with the workflow)
 
@@ -82,3 +83,4 @@ Artifacts appear under `src-tauri/target/release/bundle/` (`dmg/`, `nsis/`).
 - Web (GitHub Pages) deploy is unchanged (`deploy.yml`).
 - Desktop builds use `VITE_ELECTRON=true` / `build:tauri` (HashRouter, no PWA) so the same SPA ships in the shell.
 - `.md` / `.markdown` file associations are registered in `src-tauri/tauri.conf.json`. Composite `.enc.md` opens as markdown via the same association on most OSes.
+- **Touch ID / Windows Hello unlock** uses `tauri-plugin-biometry` (not WebView WebAuthn). On macOS, keychain-backed storage needs a properly signed app (Developer ID); unsigned local builds may fail to persist biometric secrets.

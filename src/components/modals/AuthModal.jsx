@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { IconLock, IconFingerprint } from '@/components/icons';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 import Modal from '@/components/modals/Modal';
 
 export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, fileInputRef }) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const webauthnLabel = getWebAuthnEncryptLabel();
 
-  // Android 등에서 사용자 탭 없이 생체인증 창을 바로 띄울 수 있으면, 모달이 열릴 때 자동으로 잠금 해제 시도
+  // Auto-prompt on open. Desktop uses native biometry (no WebAuthn user-gesture requirement).
+  // On web, some platforms (Android) allow this; Safari-like browsers may cancel — user can tap the button.
   useEffect(() => {
     if (!isOpen || !canUnlockWithWebAuthn || !onUnlockWithWebAuthn) return;
     const timer = setTimeout(() => {
@@ -29,7 +31,7 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
           }
         })
         .finally(() => setWebauthnLoading(false));
-    }, 300);
+    }, isDesktopApp() ? 400 : 300);
     return () => clearTimeout(timer);
   }, [isOpen, canUnlockWithWebAuthn, onUnlockWithWebAuthn, webauthnLabel]);
 
