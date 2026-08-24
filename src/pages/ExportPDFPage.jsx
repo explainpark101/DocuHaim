@@ -188,9 +188,6 @@ const printFontStyles = `
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr {
     background-color: #ffffff !important;
   }
-  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr:nth-child(2n) {
-    background-color: #f9fafb !important;
-  }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table thead,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table thead tr,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview table tr th {

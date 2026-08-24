@@ -30,7 +30,7 @@ export {
   setCellStyle,
 } from '@/utils/haimTable/parse';
 export { resolveHaimTableBlockFromPreview } from '@/utils/haimTable/previewResolve';
-export { sectionForRow } from '@/utils/haimTable/sections';
+export { sectionForRow, effectiveHeaderRows } from '@/utils/haimTable/sections';
 export {
   tableLayoutCss,
   normalizeHaimTableWidth,

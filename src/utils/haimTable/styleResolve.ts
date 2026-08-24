@@ -8,7 +8,7 @@ import type {
 } from '@/utils/haimTable/types';
 import { cellKey } from '@/utils/haimTable/types';
 import { matchesNth } from '@/utils/haimTable/nthMatch';
-import { sectionForRow } from '@/utils/haimTable/sections';
+import { sectionForRow, effectiveHeaderRows } from '@/utils/haimTable/sections';
 import {
   mergeStyleOverwrite,
   mergeStylePreferExisting,
@@ -47,7 +47,7 @@ export function resolveCellStyle(opts: {
   const section: HaimTableSectionKey = sectionForRow(
     row,
     rowCount,
-    meta.headerRows,
+    effectiveHeaderRows(meta, rowCount),
     meta.footerRows,
   );
 

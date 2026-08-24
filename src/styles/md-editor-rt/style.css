@@ -1050,10 +1050,6 @@ h5 + :is(h6, ul, ol) {
   border-block-end: 1px solid var(--md-theme-table-td-border-color-horizontal)
 }
 
-.md-editor-preview table tr:nth-child(2n) {
-  background-color: var(--md-theme-table-stripe-color)
-}
-
 /* haim-table layout: full page vs fit + left/right */
 .md-editor-preview table[data-haim-table][data-haim-width="full"]:not([data-haim-box-w]) {
   width: 100%
@@ -1888,10 +1884,6 @@ div.cyanosis-theme table thead {
   color: var(--color-slate-900);
   text-align: left;
   background: var(--color-slate-100)
-}
-
-div.cyanosis-theme table tr:nth-child(2n) {
-  background-color: var(--md-theme-table-tr-nc-color)
 }
 
 div.cyanosis-theme table tr:hover {

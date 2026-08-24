@@ -13,7 +13,19 @@ GFM pipe table 바로 위에 HTML 주석으로 셀 병합·구역/셀 스타일 
 | 1 | 2 |
 ```
 
+헤더 없이 모두 body 셀로:
+
+```markdown
+<!-- haim-table
+{"v":1,"headerRows":1,"footerRows":0,"noHeader":true,"width":"full","align":"left","merges":[],"sections":{},"cells":{}}
+-->
+| A | B |
+| --- | --- |
+| 1 | 2 |
+```
+
 - 주석이 없으면 일반 GFM 표로 렌더된다.
+- `noHeader: true`이면 `<thead>` / `<th>`를 쓰지 않고, 헤더로 쓰이던 행도 `<tbody>` / `<td>`로 렌더한다 (`headerRows` 값은 저장만 해 두고 토글 해제 시 복원).
 - 병합에 가려진 셀은 GFM에 빈 칸으로 두고, 렌더러가 생략한다.
 - `style.fontFamily` 등 표 전체 기본 폰트는 셀(`cells`)·구역(`sections`)에 같은 속성이 있으면 **셀 → 구역 → 표** 순으로 셀 값이 이긴다.
 - Preview / Export PDF에서 표 모서리를 드래그하면 `boxWidth` / `boxHeight`가 저장된다 (`width`는 `fit`으로 맞춰짐).
@@ -69,8 +81,9 @@ type HaimTableStyle = {
 
 type HaimTableMeta = {
   v: 1;
-  headerRows: number;    // default 1; first N rows → thead
+  headerRows: number;    // default 1; first N rows → thead (ignored when noHeader)
   footerRows: number;    // default 0; last N rows → tfoot
+  noHeader?: boolean;    // default false; when true → no thead/th, all non-footer rows → tbody/td
   width: 'full' | 'fit'; // default 'full'; page width vs shrink-to-content
   align: 'left' | 'right'; // default 'left'; only applies when width === 'fit' (or box size set)
   /** Explicit box size from preview corner-drag (e.g. "420px"). Overrides full/fit width CSS. */
@@ -92,6 +105,7 @@ type HaimTableMeta = {
 - `r`/`c` are 0-based indices into the GFM data rows (header row is row 0).
 - Merges with `colspan===1 && rowspan===1` are dropped on normalize.
 - Covered cells (non-origin cells under a merge) must not be rendered.
+- `noHeader`: omit or `false` → use `headerRows` as usual. `true` → effective header row count is 0 for section split and cell tags (`<td>` only in body); stored `headerRows` is kept for editor restore. Alias `no_header` on read. Serialize only when `true`.
 - `width` aliases on read: `min`/`auto` → `fit`; `100%`/`page` → `full`. Alias `layout` is accepted as `width`.
 - When `width` is `full`, `align` is stored but has no visual effect (unless `boxWidth` is set).
 - Alias `tableStyle` is accepted as `style` on read.
@@ -124,14 +138,22 @@ Nth formulas (`rows` / `cols`): `odd`, `even`, integer `N` (1-based), or `An+B` 
 ### 6. Canonical HTML
 
 ```html
+<!-- default (headerRows > 0) -->
 <table data-haim-table="1" data-haim-width="fit" data-haim-align="right" style="width:auto;max-width:100%;margin-left:auto;margin-right:0;">
   <thead style="…">…<th colspan rowspan style data-haim-r data-haim-c>…</th>…</thead>
   <tbody style="…">…<td …>…</td>…</tbody>
   <tfoot style="…">…</tfoot>
 </table>
+
+<!-- noHeader: true -->
+<table data-haim-table="1" data-haim-no-header="1" …>
+  <tbody>…<td …>…</td>…</tbody>
+  <tfoot>…</tfoot>  <!-- only if footerRows > 0 -->
+</table>
 ```
 
 - `headerRows` / `footerRows` split rows into thead / tbody / tfoot.
+- When `noHeader` is true: no `<thead>`; all non-footer rows use `<td>` inside `<tbody>`; set `data-haim-no-header="1"` on `<table>`. Footer still uses `<tfoot>` / `<td>` when `footerRows > 0`.
 - `data-haim-width="full"` → `width:100%`; `"fit"` → `width:auto` + `data-haim-align` left/right margins.
 - Cell `style` may include `background-color`, `color`, `font-family`, `font-size`, `font-weight`, `border-*`.
 - Covered cells are omitted (not empty placeholders).

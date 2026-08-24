@@ -33,6 +33,12 @@ export type HaimTableMeta = {
   v: 1;
   headerRows: number;
   footerRows: number;
+  /**
+   * When true, skip `<thead>` / `<th>` and render every non-footer row as
+   * `<tbody>` / `<td>` (effective headerRows = 0 for section split & tags).
+   * Stored `headerRows` is kept so toggling off restores the prior split.
+   */
+  noHeader?: boolean;
   /** `full` = 100% page width; `fit` = shrink to content. Default `full`. */
   width: HaimTableWidth;
   /** Horizontal align for `fit` / boxed tables. Default `left`. */

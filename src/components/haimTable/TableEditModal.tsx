@@ -32,7 +32,7 @@ import {
   Undo2,
   X,
 } from 'lucide-react';
-import { ContextMenu, Tooltip, Form } from 'radix-ui';
+import { ContextMenu, Tooltip, Form, Switch } from 'radix-ui';
 import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
@@ -116,6 +116,15 @@ const EDGE_HIT_THICKNESS = 14;
 const ICON_SM = 'h-3.5 w-3.5 shrink-0';
 const ICON_XS = 'h-3 w-3 shrink-0';
 const TEMPLATE_NONE = '__none__';
+const noHeaderSwitchRootClass = (checked: boolean) =>
+  [
+    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400',
+    checked
+      ? 'border-blue-500 bg-blue-500 shadow-sm dark:border-blue-500 dark:bg-blue-500'
+      : 'border-transparent bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong',
+  ].join(' ');
+const noHeaderSwitchThumbClass =
+  'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
 /** Default / clamp for landscape sidebar panels (px). */
 const SIDEBAR_DEFAULT_W = 288;
 const SIDEBAR_MIN_W = 200;
@@ -1727,7 +1736,41 @@ export function TableEditModal({
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <Form.Field name="headerRows" className="flex flex-col gap-0.5 text-[10px] text-gray-500 dark:text-odp-muted">
+                <Form.Field
+                  name="noHeader"
+                  className="col-span-2 flex flex-col gap-0.5 text-[10px] text-gray-500 dark:text-odp-muted"
+                >
+                  <Form.Label asChild>
+                    <span>
+                      <FieldLabel icon={<PanelTop className={ICON_XS} />}>noHeader</FieldLabel>
+                    </span>
+                  </Form.Label>
+                  <label className="flex cursor-pointer items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2 py-1.5 dark:border-odp-borderSoft dark:bg-odp-surface">
+                    <span className="min-w-0 text-[11px] leading-snug text-gray-600 dark:text-odp-muted">
+                      thead/th 없이 모두 tbody/td
+                    </span>
+                    <Switch.Root
+                      className={noHeaderSwitchRootClass(Boolean(meta.noHeader))}
+                      checked={Boolean(meta.noHeader)}
+                      onCheckedChange={(next) =>
+                        setMeta((p) => {
+                          if (next) return { ...p, noHeader: true };
+                          const { noHeader: _omit, ...rest } = p;
+                          return rest;
+                        })
+                      }
+                      aria-label="noHeader"
+                    >
+                      <Switch.Thumb className={noHeaderSwitchThumbClass} />
+                    </Switch.Root>
+                  </label>
+                </Form.Field>
+                <Form.Field
+                  name="headerRows"
+                  className={`flex flex-col gap-0.5 text-[10px] text-gray-500 dark:text-odp-muted ${
+                    meta.noHeader ? 'opacity-40' : ''
+                  }`}
+                >
                   <Form.Label asChild>
                     <span>
                       <FieldLabel icon={<PanelTop className={ICON_XS} />}>headerRows</FieldLabel>
@@ -1739,6 +1782,7 @@ export function TableEditModal({
                       min={0}
                       max={rowCount}
                       value={meta.headerRows}
+                      disabled={Boolean(meta.noHeader)}
                       onChange={(e) =>
                         setMeta((p) => ({
                           ...p,

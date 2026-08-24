@@ -203,6 +203,8 @@ export function normalizeHaimTableMeta(raw: unknown): HaimTableMeta | null {
   if (typeof o.footerRows === 'number' && Number.isInteger(o.footerRows) && o.footerRows >= 0) {
     footerRows = o.footerRows;
   }
+  const noHeaderRaw = o.noHeader ?? o.no_header;
+  const noHeader = noHeaderRaw === true || noHeaderRaw === 1 || noHeaderRaw === 'true';
   const meta: HaimTableMeta = {
     v: 1,
     headerRows,
@@ -214,6 +216,7 @@ export function normalizeHaimTableMeta(raw: unknown): HaimTableMeta | null {
     sections: normalizeSections(o.sections),
     cells: normalizeCells(o.cells),
   };
+  if (noHeader) meta.noHeader = true;
   const boxWidth = normalizeHaimTableBoxSize(o.boxWidth ?? o.box_width);
   const boxHeight = normalizeHaimTableBoxSize(o.boxHeight ?? o.box_height);
   if (boxWidth) meta.boxWidth = boxWidth;
@@ -238,6 +241,7 @@ export function normalizeHaimTableMeta(raw: unknown): HaimTableMeta | null {
         sections: ov.sections,
         cells: ov.cells,
       };
+      if (ov.noHeader) partial.noHeader = true;
       if (ov.boxWidth) partial.boxWidth = ov.boxWidth;
       if (ov.boxHeight) partial.boxHeight = ov.boxHeight;
       if (ov.colWidths) partial.colWidths = ov.colWidths;
@@ -265,6 +269,7 @@ export function serializeHaimTableComment(meta: HaimTableMeta): string {
     width: meta.width,
     align: meta.align,
   };
+  if (meta.noHeader) payload.noHeader = true;
   if (meta.merges.length) payload.merges = meta.merges;
   if (meta.boxWidth) payload.boxWidth = meta.boxWidth;
   if (meta.boxHeight) payload.boxHeight = meta.boxHeight;
@@ -449,7 +454,7 @@ export function deleteHaimTableBlock(markdown: string, block: HaimTableBlock): s
   return `${text.slice(0, start)}${text.slice(end)}`;
 }
 
-export { sectionForRow } from '@/utils/haimTable/sections';
+export { sectionForRow, effectiveHeaderRows } from '@/utils/haimTable/sections';
 
 export function setCellStyle(
   meta: HaimTableMeta,

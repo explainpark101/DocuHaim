@@ -1,4 +1,13 @@
-import type { HaimTableSectionKey } from '@/utils/haimTable/types';
+import type { HaimTableMeta, HaimTableSectionKey } from '@/utils/haimTable/types';
+
+/** Header row count used for thead/tbody split (0 when `noHeader`). */
+export function effectiveHeaderRows(
+  meta: Pick<HaimTableMeta, 'headerRows' | 'noHeader'>,
+  rowCount: number,
+): number {
+  if (meta.noHeader) return 0;
+  return Math.min(Math.max(0, meta.headerRows), rowCount);
+}
 
 export function sectionForRow(
   rowIndex: number,

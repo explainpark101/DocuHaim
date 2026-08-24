@@ -9,6 +9,7 @@ import { resolveCellStyle } from '@/utils/haimTable/styleResolve';
 import { styleToCss } from '@/utils/haimTable/styleNormalize';
 import { applyTableLayoutAttrs } from '@/utils/haimTable/layout';
 import { appendGridSizeCss, sizeAt } from '@/utils/haimTable/gridSize';
+import { effectiveHeaderRows } from '@/utils/haimTable/sections';
 import { getCachedTableStyleTemplate } from '@/utils/tableStyleSettingsStore';
 
 const COMMENT_OPEN_RE = /^<!--\s*haim-table\b/;
@@ -151,10 +152,11 @@ function applyOneTable(
   const rowCount = rows.length;
   const colCount = Math.max(1, ...rows.map((r) => r.cells.length));
   const covered = coveredCellSet(meta.merges);
-  const headerRows = Math.min(Math.max(0, meta.headerRows), rowCount);
+  const headerRows = effectiveHeaderRows(meta, rowCount);
   const footerRows = Math.min(Math.max(0, meta.footerRows), Math.max(0, rowCount - headerRows));
 
   tokens[tableStart]?.attrSet('data-haim-table', '1');
+  if (meta.noHeader) tokens[tableStart]?.attrSet('data-haim-no-header', '1');
   if (tokens[tableStart]) {
     applyTableLayoutAttrs(
       (name, value) => tokens[tableStart]!.attrSet(name, value),

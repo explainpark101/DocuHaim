@@ -909,9 +909,6 @@
 .md-editor-preview table tr td {
   border: 1px solid var(--md-theme-table-td-border-color);
 }
-.md-editor-preview table tr:nth-child(2n) {
-  background-color: var(--md-theme-table-stripe-color);
-}
 .md-editor-preview {
   color: var(--md-theme-color);
 }
@@ -1613,9 +1610,6 @@ div.cyanosis-theme table thead {
   color: var(--color-black);
   text-align: left;
   background: var(--color-gray-100);
-}
-div.cyanosis-theme table tr:nth-child(2n) {
-  background-color: var(--md-theme-table-tr-nc-color);
 }
 div.cyanosis-theme table tr:hover {
   background-color: var(--md-theme-table-trh-color);

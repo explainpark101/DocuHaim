@@ -5,6 +5,7 @@ import { resolveCellStyle } from '@/utils/haimTable/styleResolve';
 import { styleToCss } from '@/utils/haimTable/styleNormalize';
 import { tableLayoutCss } from '@/utils/haimTable/layout';
 import { appendGridSizeCss, sizeAt } from '@/utils/haimTable/gridSize';
+import { effectiveHeaderRows } from '@/utils/haimTable/sections';
 
 function escapeHtml(s: string): string {
   return s
@@ -30,7 +31,7 @@ export function haimTableToHtml(
   const rowCount = grid.rows.length;
   const colCount = Math.max(1, ...grid.rows.map((r) => r.length), grid.aligns.length);
   const covered = coveredCellSet(meta.merges);
-  const headerRows = Math.min(Math.max(0, meta.headerRows), rowCount);
+  const headerRows = effectiveHeaderRows(meta, rowCount);
   const footerRows = Math.min(Math.max(0, meta.footerRows), Math.max(0, rowCount - headerRows));
   const bodyStart = headerRows;
   const bodyEnd = rowCount - footerRows;
@@ -84,6 +85,7 @@ export function haimTableToHtml(
   const layoutCss = tableLayoutCss(meta);
   const tableAttrs = [
     ' data-haim-table="1"',
+    meta.noHeader ? ' data-haim-no-header="1"' : '',
     ` data-haim-width="${meta.width}"`,
     meta.width === 'fit' || meta.boxWidth ? ` data-haim-align="${meta.align}"` : '',
     meta.boxWidth ? ` data-haim-box-w="${escapeHtml(meta.boxWidth)}"` : '',
