@@ -59,6 +59,7 @@ import {
 } from '@/utils/treeHoverExpandSettings';
 import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfilesSettings';
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
+import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -118,6 +119,9 @@ export default function SettingsPage({
   onScanStorageUsage,
   canScanStorageUsage = false,
   onOpenStorageUsageFile,
+  onReadUnusedImageText,
+  onReadUnusedImageBytes,
+  onDeleteUnusedImagePaths,
 }) {
   const [formCreds, setFormCreds] = useState(s3Creds);
   const [imgbbKeyInput, setImgbbKeyInput] = useState('');
@@ -373,6 +377,15 @@ export default function SettingsPage({
             />
           </div>
         )}
+
+        <UnusedImageCleanup
+          storageMode={storageMode}
+          canScan={canScanStorageUsage}
+          onScanTree={onScanStorageUsage}
+          onReadText={onReadUnusedImageText}
+          onReadBytes={onReadUnusedImageBytes}
+          onDeletePaths={onDeleteUnusedImagePaths}
+        />
 
         {/* S3 Form */}
         <form

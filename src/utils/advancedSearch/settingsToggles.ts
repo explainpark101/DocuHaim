@@ -55,6 +55,10 @@ import {
   loadNewFileAsTempEnabled,
   saveNewFileAsTempEnabled,
 } from '@/utils/newFileTempSettings';
+import {
+  loadOrphanImageAutoDeleteEnabled,
+  saveOrphanImageAutoDeleteEnabled,
+} from '@/utils/orphanImageCleanupSettings';
 import { advancedSearchEngine } from './engine';
 
 export type SettingsToggleId =
@@ -72,7 +76,8 @@ export type SettingsToggleId =
   | 'settings-cover-center-snap'
   | 'settings-cover-object-snap'
   | 'settings-cover-text-outline'
-  | 'settings-cover-place-preview';
+  | 'settings-cover-place-preview'
+  | 'settings-orphan-image-auto';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -178,6 +183,15 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['recording', '녹음', '필기', '동반', '숨기기', 'companion'],
     load: loadHideRecordingCompanions,
     save: saveHideRecordingCompanions,
+  },
+  {
+    id: 'settings-orphan-image-auto',
+    enableTitle: '노트 삭제 시 이미지 자동 정리 켜기',
+    disableTitle: '노트 삭제 시 이미지 자동 정리 끄기',
+    description: '노트/폴더 삭제 시 companion .images 동반 trash',
+    keywords: ['orphan', '이미지', '자동', '정리', '삭제', 'companion', '.images'],
+    load: loadOrphanImageAutoDeleteEnabled,
+    save: saveOrphanImageAutoDeleteEnabled,
   },
   {
     id: 'settings-tree-sticky',

@@ -39,6 +39,7 @@ export type AppCommandId =
   | 'settings'
   | 'settings-storage'
   | 'settings-storage-usage'
+  | 'settings-unused-images'
   | 'settings-s3'
   | 'settings-local'
   | 'settings-backup'
@@ -185,6 +186,13 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '저장소 용량·역색인 생성',
     path: '/settings#settings-storage-usage',
     keywords: ['용량', 'usage', '분석', '역색인 생성', 'storage usage'],
+  },
+  {
+    id: 'settings-unused-images',
+    title: '설정 · 미사용 / 중복 이미지',
+    description: 'orphan·중복 이미지 스캔 및 삭제',
+    path: '/settings#settings-unused-images',
+    keywords: ['미사용', 'orphan', '중복', '이미지', '정리', 'unused', 'duplicate', 'cleanup'],
   },
   {
     id: 'settings-s3',

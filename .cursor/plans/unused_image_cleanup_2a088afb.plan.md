@@ -1,25 +1,25 @@
 ---
 name: Unused Image Cleanup
-overview: "노트/폴더 삭제 시 orphan 이미지를 바로 trash할지(자동) 아니면 남겨 두고 설정에서 스캔해 삭제할지(수동)를 설정으로 고릅니다. 정책 기본값은 수동(auto OFF). 수동 정리는 Settings 용량 분석 아래 UnusedImageCleanup UI로 하고, Advanced Search에서 해당 섹션·토글을 검색할 수 있게 합니다."
+overview: 노트/폴더 삭제 시 orphan 이미지를 바로 trash할지(자동) 아니면 남겨 두고 설정에서 스캔해 삭제할지(수동)를 설정으로 고릅니다. 정책 기본값은 수동(auto OFF). 수동 정리는 Settings 용량 분석 아래 UnusedImageCleanup UI로 하고, Advanced Search에서 해당 섹션·토글을 검색할 수 있게 합니다.
 todos:
   - id: util-unused-dupes
     content: "Add unusedImageCleanup.ts: collect images/md, extract wiki refs, unused set, SHA-256 duplicate groups"
-    status: pending
+    status: completed
   - id: util-orphan-companions
-    content: "Add companion image key helpers (md/folder → .images/… prefixes) for auto-delete on trash"
-    status: pending
+    content: Add companion image key helpers (md/folder → .images/… prefixes) for auto-delete on trash
+    status: completed
   - id: settings-orphan-policy
-    content: "Wire orphanImageCleanupSettings Switch (default manual/OFF) in UnusedImageCleanup + sync with setSettingsToggle"
-    status: pending
+    content: Wire orphanImageCleanupSettings Switch (default manual/OFF) in UnusedImageCleanup + sync with setSettingsToggle
+    status: completed
   - id: ui-cleanup
     content: "Add UnusedImageCleanup.tsx (id=settings-unused-images): policy, scope/delete radios, unused+duplicate lists, confirm delete"
-    status: pending
+    status: completed
   - id: wire-settings-app
-    content: "Wire SettingsPage below StorageUsageAnalysis; App backend read/delete; auto companion trash on note/folder delete when enabled"
-    status: pending
+    content: Wire SettingsPage below StorageUsageAnalysis; App backend read/delete; auto companion trash on note/folder delete when enabled
+    status: completed
   - id: advanced-search
-    content: "APP_COMMAND settings-unused-images + SETTINGS_TOGGLE settings-orphan-image-auto (켜기/끄기)"
-    status: pending
+    content: APP_COMMAND settings-unused-images + SETTINGS_TOGGLE settings-orphan-image-auto (켜기/끄기)
+    status: completed
 isProject: false
 ---
 

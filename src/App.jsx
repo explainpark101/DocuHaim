@@ -217,8 +217,11 @@ import {
   createStorageBackendForType,
   createWebdavBackend,
   createLocalBackend,
+  createStorageBackend,
 } from '@/utils/storage';
 import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
+import { collectCompanionImageKeysForDelete } from '@/utils/unusedImageCleanup';
+import { loadOrphanImageAutoDeleteEnabled } from '@/utils/orphanImageCleanupSettings';
 import { patchWebdavTreeChildren } from '@/utils/webdavTree.js';
 import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
 import {
@@ -3223,6 +3226,65 @@ function MainApp() {
       setIsLocalTreeLoading(false);
     }
   };
+
+  const getActiveStorageBackend = useCallback(() => {
+    return createStorageBackend({
+      mode:
+        storageMode === STORAGE_MODE_LOCAL
+          ? 'local'
+          : storageMode === STORAGE_MODE_WEBDAV
+            ? 'webdav'
+            : 's3',
+      getS3Client,
+      s3Creds,
+      localRootHandle,
+      webdavConfig,
+    });
+  }, [storageMode, getS3Client, s3Creds, localRootHandle, webdavConfig]);
+
+  const handleReadUnusedImageText = useCallback(
+    async (path) => {
+      const backend = getActiveStorageBackend();
+      const { text } = await backend.readText(path);
+      return text;
+    },
+    [getActiveStorageBackend],
+  );
+
+  const handleReadUnusedImageBytes = useCallback(
+    async (path) => {
+      const backend = getActiveStorageBackend();
+      const { body } = await backend.readBytes(path);
+      return body instanceof Uint8Array ? body : new Uint8Array(body);
+    },
+    [getActiveStorageBackend],
+  );
+
+  const handleDeleteUnusedImagePaths = useCallback(
+    async (paths, mode) => {
+      const list = (Array.isArray(paths) ? paths : []).filter(Boolean);
+      if (!list.length) return;
+      const backend = getActiveStorageBackend();
+      for (const path of list) {
+        try {
+          if (mode === 'hard') {
+            await backend.delete(path);
+          } else {
+            await backend.trash(path);
+          }
+        } catch (e) {
+          if (e?.$metadata?.httpStatusCode === 404) continue;
+          throw e;
+        }
+      }
+      if (storageMode === STORAGE_MODE_LOCAL) await refreshLocalTree();
+      else if (storageMode === STORAGE_MODE_WEBDAV) await refreshWebdavTree();
+      else loadS3Files();
+    },
+    // refreshLocalTree is a stable-enough function declaration in this component body
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshLocalTree recreated each render
+    [getActiveStorageBackend, storageMode, refreshWebdavTree, loadS3Files, localRootHandle],
+  );
 
   useEffect(() => {
     if (storageMode !== STORAGE_MODE_WEBDAV || !webdavReady || !isUnlocked) return;
@@ -7564,13 +7626,29 @@ function MainApp() {
       });
     };
 
+    const companionKeysForNode = (node, type) => {
+      if (!loadOrphanImageAutoDeleteEnabled()) return [];
+      return collectCompanionImageKeysForDelete(node, treeFor(type));
+    };
+
+    const mergeAdditionalKeys = (node, type) => {
+      const seen = new Set();
+      const out = [];
+      for (const key of [...recordingKeysForNode(node, type), ...companionKeysForNode(node, type)]) {
+        if (!key || seen.has(key) || key === node.path) continue;
+        seen.add(key);
+        out.push(key);
+      }
+      return out;
+    };
+
     try {
       const storagesTouched = new Set();
 
       for (const { node, type } of workTargets) {
         const isInTrash = node.path.startsWith('.trash/');
         const isFolder = node.type === 'folder';
-        const recordingKeysToMove = recordingKeysForNode(node, type);
+        const additionalKeys = mergeAdditionalKeys(node, type);
 
         if (isFolder) {
           anyFolder = true;
@@ -7589,18 +7667,22 @@ function MainApp() {
             if (isInTrash) {
               if (node.type === 'folder') {
                 const contents = await listObjectsV2(client, s3Creds.bucket, node.path);
-                if (contents.length > 0) {
-                  await deleteObjects(client, s3Creds.bucket, contents.map(({ Key }) => ({ Key })));
+                const keys = [
+                  ...contents.map(({ Key }) => Key),
+                  ...additionalKeys,
+                ].filter(Boolean);
+                if (keys.length > 0) {
+                  await deleteObjects(client, s3Creds.bucket, keys.map((Key) => ({ Key })));
                 }
               } else {
                 const keysToDelete =
-                  recordingKeysToMove.length > 0
-                    ? [node.path, ...recordingKeysToMove]
+                  additionalKeys.length > 0
+                    ? [node.path, ...additionalKeys]
                     : [node.path];
                 await deleteObjects(client, s3Creds.bucket, keysToDelete.map((Key) => ({ Key })));
               }
             } else {
-              await moveS3EntryToTrash(node, recordingKeysToMove);
+              await moveS3EntryToTrash(node, additionalKeys);
             }
             storagesTouched.add('s3');
           } else if (type === 'local') {
@@ -7609,6 +7691,23 @@ function MainApp() {
             if (isInTrash) {
               const pHandle = node.parentHandle || localRootHandle;
               await pHandle.removeEntry(node.name, { recursive: true });
+              if (additionalKeys.length > 0) {
+                const backend = createLocalBackend(localRootHandle);
+                for (const key of additionalKeys) {
+                  try {
+                    await backend.delete(key);
+                  } catch {
+                    /* missing companion ok */
+                  }
+                }
+              }
+            } else if (additionalKeys.length > 0) {
+              const backend = createLocalBackend(localRootHandle);
+              const trashPath =
+                node.type === 'folder'
+                  ? `${String(node.path || '').replace(/\/+$/, '')}/`
+                  : node.path;
+              await backend.trash(trashPath, { additionalKeys });
             } else {
               await moveLocalEntryToTrash(node);
             }
@@ -7618,10 +7717,17 @@ function MainApp() {
             if (isInTrash) {
               if (node.type === 'folder') {
                 await backend.deletePrefix(node.path);
+                for (const key of additionalKeys) {
+                  try {
+                    await backend.delete(key);
+                  } catch (e) {
+                    if (e?.$metadata?.httpStatusCode !== 404) throw e;
+                  }
+                }
               } else {
                 const keysToDelete =
-                  recordingKeysToMove.length > 0
-                    ? [node.path, ...recordingKeysToMove]
+                  additionalKeys.length > 0
+                    ? [node.path, ...additionalKeys]
                     : [node.path];
                 for (const key of keysToDelete) {
                   try {
@@ -7632,7 +7738,7 @@ function MainApp() {
                 }
               }
             } else {
-              await backend.trash(node.path, { additionalKeys: recordingKeysToMove });
+              await backend.trash(node.path, { additionalKeys });
             }
             storagesTouched.add('webdav');
           }
@@ -9418,6 +9524,9 @@ function MainApp() {
                     onScanStorageUsage: scanActiveStorageUsageTree,
                     canScanStorageUsage,
                     onOpenStorageUsageFile: handleOpenStorageUsageFile,
+                    onReadUnusedImageText: handleReadUnusedImageText,
+                    onReadUnusedImageBytes: handleReadUnusedImageBytes,
+                    onDeleteUnusedImagePaths: handleDeleteUnusedImagePaths,
                   }}
                   editorPaneProps={({
                     currentFile: paneFile,
