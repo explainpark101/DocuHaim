@@ -1,5 +1,5 @@
 import { r as p, j as d } from "./vendor-react-SY5QCjFA.js";
-import { g0 as q, g1 as X, g2 as H, e0 as V, eW as Z, g3 as L, eU as Q, eV as Y } from "./index-BDGl3GOe.js";
+import { g2 as X, g3 as q, g4 as H, e0 as Y, eY as Z, g5 as L, eW as Q, eX as V } from "./index-C8citHM6.js";
 import { v as O, ao as $ } from "./vendor-lucide-DyPOSMSJ.js";
 import { a0 as ee, a1 as te, a2 as re, a3 as ne, a4 as R } from "./vendor-radix-BgY9OwZN.js";
 const se = /* @__PURE__ */ new Set(["gemini-2.0-flash-lite"]);
@@ -91,7 +91,7 @@ async function de(e, r, t) {
   }
 }
 async function je({ apiKey: e, model: r, instruction: t, selectedText: n, images: s }) {
-  const o = (r || q()).trim() || X, a = (t || "").trim(), i = (n || "").trim(), c = Array.isArray(s) ? s.filter((m) => (m == null ? void 0 : m.mimeType) && (m == null ? void 0 : m.dataBase64)) : [];
+  const o = (r || X()).trim() || q, a = (t || "").trim(), i = (n || "").trim(), c = Array.isArray(s) ? s.filter((m) => (m == null ? void 0 : m.mimeType) && (m == null ? void 0 : m.dataBase64)) : [];
   if (c.length > 0, !a) throw new Error("\uC9C0\uC2DC\uC0AC\uD56D\uC744 \uC785\uB825\uD558\uC138\uC694.");
   const l = le({ instruction: a, selectedText: i, images: c });
   return de(e, o, l);
@@ -131,7 +131,7 @@ function z(e) {
   return t && (r.Authorization = `Bearer ${t}`), r;
 }
 function K(e) {
-  const r = V(e);
+  const r = Y(e);
   if (!r) throw new Error("OpenAI \uD638\uD658 Endpoint\uB97C \uC785\uB825\uD558\uC138\uC694. \uC608: https://api.openai.com/v1 \uB610\uB294 http://localhost:11434/v1");
   return r;
 }
@@ -333,7 +333,7 @@ function Le({ getBaseUrl: e, getApiKey: r, value: t, onChange: n, autoLoad: s = 
     s && f();
   }, [s, f]);
   const w = (u) => {
-    Y(u), n == null ? void 0 : n(u);
+    V(u), n == null ? void 0 : n(u);
   };
   return d.jsxs("div", { className: o, children: [d.jsxs("div", { className: "flex items-center gap-2", children: [d.jsx(Ae, { value: t, onChange: w, options: c, loading: m, placeholder: "\uBAA8\uB378 ID \uC9C1\uC811 \uC785\uB825 (\uC608: gpt-4o-mini)" }), d.jsxs("button", { type: "button", onClick: () => {
     f();
