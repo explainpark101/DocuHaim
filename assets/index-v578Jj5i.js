@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-CqGm-VUe.js","assets/vendor-md-editor-D4hOzNKK.js","assets/lucivyBackend-5WPmUiwe.js","assets/vendor-aws-bxAUTq4h.js","assets/vendor-lucide-DyPOSMSJ.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix-BgY9OwZN.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-mermaid-Csq-pXKK.js","assets/MarkdownEditor-RtfsZuyt.js","assets/previewFootnoteScroll-CRNg0sGT.js","assets/OpenAiCompatibleModelSelect-DAH6a3pb.js","assets/LlmAssistPanel-C_VlaH7k.js","assets/useLazyMermaidRender-DrgxprJq.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BG3jnywq.css","assets/MdEditorToolbarTooltips-BIS5YQnD.js","assets/useTocTitleWrap-BlP7RRTw.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-BwmDZkPQ.js","assets/TableStyleTemplateEditor-Bnq5Know.js","assets/index-CG4BSG42.js","assets/turndown.browser.es-DXFlQqPd.js","assets/useWikiImageHydration-Cz0bWRNv.js","assets/NovelMarkdownEditor-jxeOFRS7.js","assets/vendor-novel--XzpAKjd.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-mPEJsVtE.js","assets/ChatWithMyselfPane-edIvz-6B.js","assets/ChatImageBackgroundPicker-DtP6eKmV.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-DWwUs5Wa.js","assets/ChatWithMyselfPane-CM8foxSE.css","assets/SettingsPage-DQynt5Ut.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/core-DhEqZVGG.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-CvAeHXcy.js","assets/LlmAssistPopoutPage-GQJfxB8C.js","assets/toHtml-DzKdJ6gf.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-D1QYVGAQ.js","assets/core-DhEqZVGG.js","assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-CqGm-VUe.js","assets/vendor-md-editor-D4hOzNKK.js","assets/lucivyBackend-rbdVkQCh.js","assets/vendor-aws-bxAUTq4h.js","assets/vendor-lucide-DyPOSMSJ.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix-BgY9OwZN.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-mermaid-CYE2GzEP.js","assets/MarkdownEditor-Z03fj4xe.js","assets/previewFootnoteScroll-DiGwdYYo.js","assets/OpenAiCompatibleModelSelect-pwjqd6SR.js","assets/LlmAssistPanel-Ccv-JPFj.js","assets/useLazyMermaidRender-BGp92vuq.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BG3jnywq.css","assets/MdEditorToolbarTooltips-BIS5YQnD.js","assets/useTocTitleWrap-Cn7giNnJ.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-DtojcXLc.js","assets/TableStyleTemplateEditor-By68cXEI.js","assets/index-CG4BSG42.js","assets/turndown.browser.es-BfW4rjIk.js","assets/useWikiImageHydration-BLKJU46M.js","assets/NovelMarkdownEditor-B7n44g0w.js","assets/vendor-novel-npDyPatP.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-DQ5vznpp.js","assets/ChatWithMyselfPane-BrXganlD.js","assets/ChatImageBackgroundPicker-Bp1YJK4Q.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-CnNEElmQ.js","assets/ChatWithMyselfPane-CM8foxSE.css","assets/SettingsPage-BsQR4OM0.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-CoUzzpBs.js","assets/LlmAssistPopoutPage-C7bM_qRW.js","assets/toHtml-lAmsVen8.js"])))=>i.map(i=>d[i]);
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key2, value) => key2 in obj ? __defProp(obj, key2, { enumerable: true, configurable: true, writable: true, value }) : obj[key2] = value;
 var __publicField = (obj, key2, value) => __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value);
@@ -475,13 +475,13 @@ ${be}` : fe;
           var Te, Ce = se.indexOf(".");
           return Ce === -1 || (Te = ne[se.substr(0, Ce)]) == null ? void 0 : ke(Te, se.substr(Ce + 1));
         }
-        function Oe(ne, se, ce) {
+        function Pe(ne, se, ce) {
           if (ne && se !== void 0 && !("isFrozen" in Object && Object.isFrozen(ne))) if (typeof se != "string" && "length" in se) {
             Ee(typeof ce != "string" && "length" in ce);
-            for (var me = 0, ye = se.length; me < ye; ++me) Oe(ne, se[me], ce[me]);
+            for (var me = 0, ye = se.length; me < ye; ++me) Pe(ne, se[me], ce[me]);
           } else {
             var ve, Te, Ce = se.indexOf(".");
-            Ce !== -1 ? (ve = se.substr(0, Ce), (Ce = se.substr(Ce + 1)) === "" ? ce === void 0 ? c(ne) && !isNaN(parseInt(ve)) ? ne.splice(ve, 1) : delete ne[ve] : ne[ve] = ce : Oe(Te = (Te = ne[ve]) && V(ne, ve) ? Te : ne[ve] = {}, Ce, ce)) : ce === void 0 ? c(ne) && !isNaN(parseInt(se)) ? ne.splice(se, 1) : delete ne[se] : ne[se] = ce;
+            Ce !== -1 ? (ve = se.substr(0, Ce), (Ce = se.substr(Ce + 1)) === "" ? ce === void 0 ? c(ne) && !isNaN(parseInt(ve)) ? ne.splice(ve, 1) : delete ne[ve] : ne[ve] = ce : Pe(Te = (Te = ne[ve]) && V(ne, ve) ? Te : ne[ve] = {}, Ce, ce)) : ce === void 0 ? c(ne) && !isNaN(parseInt(se)) ? ne.splice(se, 1) : delete ne[se] : ne[se] = ce;
           }
         }
         function Le(ne) {
@@ -511,7 +511,7 @@ ${be}` : fe;
         }), Me = new Set(jt.map(function(ne) {
           return s[ne];
         })), dt = null;
-        function Fe(ne) {
+        function De(ne) {
           return dt = /* @__PURE__ */ new WeakMap(), ne = (function se(ce) {
             if (!ce || typeof ce != "object") return ce;
             var me = dt.get(ce);
@@ -743,7 +743,7 @@ ${be}` : fe;
                   var Te = me._lib && mr();
                   ve && typeof ve.then == "function" ? ce(me, function(Ce, qe) {
                     ve instanceof Tt ? ve._then(Ce, qe) : ve.then(Ce, qe);
-                  }) : (me._state = true, me._value = ve, Or(me)), Te && mn();
+                  }) : (me._state = true, me._value = ve, Pr(me)), Te && mn();
                 }
               }, $r.bind(null, me));
             } catch (ve) {
@@ -751,7 +751,7 @@ ${be}` : fe;
             }
           })(this, ne);
         }
-        var Pr = {
+        var Or = {
           get: function() {
             var ne = Qe, se = _n;
             function ce(me, ye) {
@@ -763,11 +763,11 @@ ${be}` : fe;
             return ce.prototype = fr, ce;
           },
           set: function(ne) {
-            oe(this, "then", ne && ne.prototype === fr ? Pr : {
+            oe(this, "then", ne && ne.prototype === fr ? Or : {
               get: function() {
                 return ne;
               },
-              set: Pr.set
+              set: Or.set
             });
           }
         };
@@ -778,9 +778,9 @@ ${be}` : fe;
           var ce, me;
           Mr.push(se), ne._state === null && (ce = ne._lib && mr(), se = yt(se), ne._state = false, ne._value = se, me = ne, Ir.some(function(ye) {
             return ye._value === me._value;
-          }) || Ir.push(me), Or(ne), ce) && mn();
+          }) || Ir.push(me), Pr(ne), ce) && mn();
         }
-        function Or(ne) {
+        function Pr(ne) {
           var se = ne._listeners;
           ne._listeners = [];
           for (var ce = 0, me = se.length; ce < me; ++ce) rn(ne, se[ce]);
@@ -856,7 +856,7 @@ ${be}` : fe;
           };
         }
         re(Tt.prototype, {
-          then: Pr,
+          then: Or,
           _then: function(ne, se) {
             rn(this, new Qt(null, null, ne, se, Qe));
           },
@@ -888,7 +888,7 @@ ${be}` : fe;
               ce.then(me, ye).finally(clearTimeout.bind(null, ve));
             }) : this;
           }
-        }), typeof Symbol < "u" && Symbol.toStringTag && oe(Tt.prototype, Symbol.toStringTag, "Dexie.Promise"), ht.env = Fr(), re(Tt, {
+        }), typeof Symbol < "u" && Symbol.toStringTag && oe(Tt.prototype, Symbol.toStringTag, "Dexie.Promise"), ht.env = Dr(), re(Tt, {
           all: function() {
             var ne = vt.apply(null, arguments).map(In);
             return new Tt(function(se, ce) {
@@ -1002,7 +1002,7 @@ ${be}` : fe;
           awaits: 0,
           echoes: 0,
           id: 0
-        }, en = 0, Fn = [], pn = 0, _n = 0, xt = 0;
+        }, en = 0, Dn = [], pn = 0, _n = 0, xt = 0;
         function Sn(ne, Te, ce, me) {
           var ye = Qe, ve = Object.create(ye), Te = (ve.parent = ye, ve.ref = 0, ve.global = false, ve.id = ++xt, ht.env, ve.env = _r ? {
             Promise: Tt,
@@ -1036,16 +1036,16 @@ ${be}` : fe;
           })) : ne;
         }
         function fa() {
-          var ne = Fn[Fn.length - 1];
-          Fn.pop(), Nn(ne, false);
+          var ne = Dn[Dn.length - 1];
+          Dn.pop(), Nn(ne, false);
         }
         function Nn(ne, se) {
           var ce, me, ye = Qe;
           (se ? !Er.echoes || pn++ && ne === Qe : !pn || --pn && ne === Qe) || queueMicrotask(se ? (function(ve) {
-            ++_n, Er.echoes && --Er.echoes != 0 || (Er.echoes = Er.awaits = Er.id = 0), Fn.push(Qe), Nn(ve, true);
-          }).bind(null, ne) : fa), ne !== Qe && (Qe = ne, ye === ht && (ht.env = Fr()), _r) && (ce = ht.env.Promise, me = ne.env, ye.global || ne.global) && (Object.defineProperty(s, "Promise", me.PromiseProp), ce.all = me.all, ce.race = me.race, ce.resolve = me.resolve, ce.reject = me.reject, me.allSettled && (ce.allSettled = me.allSettled), me.any) && (ce.any = me.any);
+            ++_n, Er.echoes && --Er.echoes != 0 || (Er.echoes = Er.awaits = Er.id = 0), Dn.push(Qe), Nn(ve, true);
+          }).bind(null, ne) : fa), ne !== Qe && (Qe = ne, ye === ht && (ht.env = Dr()), _r) && (ce = ht.env.Promise, me = ne.env, ye.global || ne.global) && (Object.defineProperty(s, "Promise", me.PromiseProp), ce.all = me.all, ce.race = me.race, ce.resolve = me.resolve, ce.reject = me.reject, me.allSettled && (ce.allSettled = me.allSettled), me.any) && (ce.any = me.any);
         }
-        function Fr() {
+        function Dr() {
           var ne = s.Promise;
           return _r ? {
             Promise: ne,
@@ -1081,7 +1081,7 @@ ${be}` : fe;
           Promise === Rt && Er.echoes === 0 ? pn === 0 ? ne() : enqueueNativeMicroTask(ne) : setTimeout(ne, 0);
         }
         ("" + Na).indexOf("[native code]") === -1 && (Vt = kn = qt);
-        var Wr = Tt.reject, cn = "\uFFFF", Dn = "Invalid key provided. Keys must be of type string, number, Date or Array<string | number | Date>.", zt = "String expected.", bt = [], Et = "__dbnames", br = "readonly", Vr = "readwrite";
+        var Wr = Tt.reject, cn = "\uFFFF", Fn = "Invalid key provided. Keys must be of type string, number, Date or Array<string | number | Date>.", zt = "String expected.", bt = [], Et = "__dbnames", br = "readonly", Vr = "readwrite";
         function kr(ne, se) {
           return ne ? se ? function() {
             return ne.apply(this, arguments) && se.apply(this, arguments);
@@ -1100,7 +1100,7 @@ ${be}` : fe;
           return typeof ne != "string" || /\./.test(ne) ? function(se) {
             return se;
           } : function(se) {
-            return se[ne] === void 0 && ne in se && delete (se = Fe(se))[ne], se;
+            return se[ne] === void 0 && ne in se && delete (se = De(se))[ne], se;
           };
         }
         function on() {
@@ -1174,14 +1174,14 @@ ${be}` : fe;
           }
           return ce = (ce = se.replacePrefix) == null ? void 0 : ce[0], ce && typeof ne == "string" && ne.startsWith(ce) ? se.replacePrefix[1] + ne.substring(ce.length) : ne;
         };
-        var Pa = ga;
+        var Oa = ga;
         function ga(ne) {
           this["@@propmod"] = ne;
         }
         function wn(ne, se) {
           for (var ce = l(se), me = ce.length, ye = false, ve = 0; ve < me; ++ve) {
             var Te = ce[ve], Ce = se[Te], qe = ke(ne, Te);
-            Ce instanceof Pa ? (Oe(ne, Te, Ce.execute(qe)), ye = true) : qe !== Ce && (Oe(ne, Te, Ce), ye = true);
+            Ce instanceof Oa ? (Pe(ne, Te, Ce.execute(qe)), ye = true) : qe !== Ce && (Pe(ne, Te, Ce), ye = true);
           }
           return ye;
         }
@@ -1363,7 +1363,7 @@ ${be}` : fe;
             return Ce.numFailures ? Tt.reject(Ce.failures[0]) : Ce.lastResult;
           }).then(function(Ce) {
             if (ve) try {
-              Oe(ne, ve, Ce);
+              Pe(ne, ve, Ce);
             } catch {
             }
             return Ce;
@@ -1376,7 +1376,7 @@ ${be}` : fe;
               key: ne
             }).then(function(ve) {
               var Te = ve ?? {};
-              return wn(Te, se), me && Oe(Te, me, ne), ce.core.mutate({
+              return wn(Te, se), me && Pe(Te, me, ne), ce.core.mutate({
                 trans: ye,
                 type: "put",
                 values: [
@@ -1418,7 +1418,7 @@ ${be}` : fe;
             return Ce.numFailures ? Tt.reject(Ce.failures[0]) : Ce.lastResult;
           }).then(function(Ce) {
             if (ve) try {
-              Oe(ne, ve, Ce);
+              Pe(ne, ve, Ce);
             } catch {
             }
             return Ce;
@@ -1522,7 +1522,7 @@ ${be}` : fe;
                     var nt = ft[st], kt = He[nt];
                     if (nt === se.schema.primKey.keyPath) {
                       if (hr(kt, Xe) !== 0) throw new at.Constraint("Cannot update primary key in bulkUpdate()");
-                    } else Oe(Ue, nt, kt);
+                    } else Pe(Ue, nt, kt);
                   }
                   ve.push(We), qe.push(Xe), tt.push(Ue);
                 }
@@ -1680,28 +1680,28 @@ ${be}` : fe;
             });
           });
         }
-        Dr.prototype._read = function(ne, se) {
+        Fr.prototype._read = function(ne, se) {
           var ce = this._ctx;
           return ce.error ? ce.table._trans(null, Wr.bind(null, ce.error)) : ce.table._trans("readonly", ne).then(se);
-        }, Dr.prototype._write = function(ne) {
+        }, Fr.prototype._write = function(ne) {
           var se = this._ctx;
           return se.error ? se.table._trans(null, Wr.bind(null, se.error)) : se.table._trans("readwrite", ne, "locked");
-        }, Dr.prototype._addAlgorithm = function(ne) {
+        }, Fr.prototype._addAlgorithm = function(ne) {
           var se = this._ctx;
           se.algorithm = kr(se.algorithm, ne);
-        }, Dr.prototype._iterate = function(ne, se) {
+        }, Fr.prototype._iterate = function(ne, se) {
           return Aa(this._ctx, ne, se, this._ctx.table.core);
-        }, Dr.prototype.clone = function(ne) {
+        }, Fr.prototype.clone = function(ne) {
           var se = Object.create(this.constructor.prototype), ce = Object.create(this._ctx);
           return ne && f(ce, ne), se._ctx = ce, se;
-        }, Dr.prototype.raw = function() {
+        }, Fr.prototype.raw = function() {
           return this._ctx.valueMapper = null, this;
-        }, Dr.prototype.each = function(ne) {
+        }, Fr.prototype.each = function(ne) {
           var se = this._ctx;
           return this._read(function(ce) {
             return Aa(se, ne, ce, se.table.core);
           });
-        }, Dr.prototype.count = function(ne) {
+        }, Fr.prototype.count = function(ne) {
           var se = this;
           return this._read(function(ce) {
             var me, ye = se._ctx, ve = ye.table.core;
@@ -1719,7 +1719,7 @@ ${be}` : fe;
               return me;
             }));
           }).then(ne);
-        }, Dr.prototype.sortBy = function(ne, se) {
+        }, Fr.prototype.sortBy = function(ne, se) {
           var ce = ne.split(".").reverse(), me = ce[0], ye = ce.length - 1;
           function ve(qe, tt) {
             return tt ? ve(qe[ce[tt]], tt - 1) : qe[me];
@@ -1731,7 +1731,7 @@ ${be}` : fe;
           return this.toArray(function(qe) {
             return qe.sort(Ce);
           }).then(se);
-        }, Dr.prototype.toArray = function(ne) {
+        }, Fr.prototype.toArray = function(ne) {
           var se = this;
           return this._read(function(ce) {
             var me, ye, ve, Te = se._ctx;
@@ -1751,7 +1751,7 @@ ${be}` : fe;
               return ve;
             }));
           }, ne);
-        }, Dr.prototype.offset = function(ne) {
+        }, Fr.prototype.offset = function(ne) {
           var se = this._ctx;
           return ne <= 0 || (se.offset += ne, Mn(se) ? xa(se, function() {
             var ce = ne;
@@ -1766,56 +1766,56 @@ ${be}` : fe;
               return --ce < 0;
             };
           })), this;
-        }, Dr.prototype.limit = function(ne) {
+        }, Fr.prototype.limit = function(ne) {
           return this._ctx.limit = Math.min(this._ctx.limit, ne), xa(this._ctx, function() {
             var se = ne;
             return function(ce, me, ye) {
               return --se <= 0 && me(ye), 0 <= se;
             };
           }, true), this;
-        }, Dr.prototype.until = function(ne, se) {
+        }, Fr.prototype.until = function(ne, se) {
           return Ga(this._ctx, function(ce, me, ye) {
             return !ne(ce.value) || (me(ye), se);
           }), this;
-        }, Dr.prototype.first = function(ne) {
+        }, Fr.prototype.first = function(ne) {
           return this.limit(1).toArray(function(se) {
             return se[0];
           }).then(ne);
-        }, Dr.prototype.last = function(ne) {
+        }, Fr.prototype.last = function(ne) {
           return this.reverse().first(ne);
-        }, Dr.prototype.filter = function(ne) {
+        }, Fr.prototype.filter = function(ne) {
           var se;
           return Ga(this._ctx, function(ce) {
             return ne(ce.value);
           }), (se = this._ctx).isMatch = kr(se.isMatch, ne), this;
-        }, Dr.prototype.and = function(ne) {
+        }, Fr.prototype.and = function(ne) {
           return this.filter(ne);
-        }, Dr.prototype.or = function(ne) {
+        }, Fr.prototype.or = function(ne) {
           return new this.db.WhereClause(this._ctx.table, ne, this);
-        }, Dr.prototype.reverse = function() {
+        }, Fr.prototype.reverse = function() {
           return this._ctx.dir = this._ctx.dir === "prev" ? "next" : "prev", this._ondirectionchange && this._ondirectionchange(this._ctx.dir), this;
-        }, Dr.prototype.desc = function() {
+        }, Fr.prototype.desc = function() {
           return this.reverse();
-        }, Dr.prototype.eachKey = function(ne) {
+        }, Fr.prototype.eachKey = function(ne) {
           var se = this._ctx;
           return se.keysOnly = !se.isMatch, this.each(function(ce, me) {
             ne(me.key, me);
           });
-        }, Dr.prototype.eachUniqueKey = function(ne) {
+        }, Fr.prototype.eachUniqueKey = function(ne) {
           return this._ctx.unique = "unique", this.eachKey(ne);
-        }, Dr.prototype.eachPrimaryKey = function(ne) {
+        }, Fr.prototype.eachPrimaryKey = function(ne) {
           var se = this._ctx;
           return se.keysOnly = !se.isMatch, this.each(function(ce, me) {
             ne(me.primaryKey, me);
           });
-        }, Dr.prototype.keys = function(ne) {
+        }, Fr.prototype.keys = function(ne) {
           var se = this._ctx, ce = (se.keysOnly = !se.isMatch, []);
           return this.each(function(me, ye) {
             ce.push(ye.key);
           }).then(function() {
             return ce;
           }).then(ne);
-        }, Dr.prototype.primaryKeys = function(ne) {
+        }, Fr.prototype.primaryKeys = function(ne) {
           var se = this._ctx;
           if (se.dir === "next" && Mn(se, true) && 0 < se.limit) return this._read(function(me) {
             var ye = ia(se, se.table.core.schema);
@@ -1838,29 +1838,29 @@ ${be}` : fe;
           }).then(function() {
             return ce;
           }).then(ne);
-        }, Dr.prototype.uniqueKeys = function(ne) {
+        }, Fr.prototype.uniqueKeys = function(ne) {
           return this._ctx.unique = "unique", this.keys(ne);
-        }, Dr.prototype.firstKey = function(ne) {
+        }, Fr.prototype.firstKey = function(ne) {
           return this.limit(1).keys(function(se) {
             return se[0];
           }).then(ne);
-        }, Dr.prototype.lastKey = function(ne) {
+        }, Fr.prototype.lastKey = function(ne) {
           return this.reverse().firstKey(ne);
-        }, Dr.prototype.distinct = function() {
+        }, Fr.prototype.distinct = function() {
           var ne, se = this._ctx, se = se.index && se.table.schema.idxByName[se.index];
           return se && se.multi && (ne = {}, Ga(this._ctx, function(me) {
             var me = me.primaryKey.toString(), ye = V(ne, me);
             return ne[me] = true, !ye;
           })), this;
-        }, Dr.prototype.modify = function(ne) {
+        }, Fr.prototype.modify = function(ne) {
           var se = this, ce = this._ctx;
           return this._write(function(me) {
             function ye(Ue, st) {
               var ft = st.failures;
               We += Ue - st.numFailures;
               for (var nt = 0, kt = l(ft); nt < kt.length; nt++) {
-                var Pt = kt[nt];
-                $e.push(ft[Pt]);
+                var Ot = kt[nt];
+                $e.push(ft[Ot]);
               }
             }
             var ve = typeof ne == "function" ? ne : function(Ue) {
@@ -1868,19 +1868,19 @@ ${be}` : fe;
             }, Te = ce.table.core, Ve = Te.schema.primaryKey, Ce = Ve.outbound, qe = Ve.extractKey, tt = 200, Ve = se.db._options.modifyChunkSize, $e = (Ve && (tt = typeof Ve == "object" ? Ve[Te.name] || Ve["*"] || 200 : Ve), []), We = 0, Xe = [], He = ne === yi;
             return se.clone().primaryKeys().then(function(Ue) {
               function st(nt) {
-                var kt = Math.min(tt, Ue.length - nt), Pt = Ue.slice(nt, nt + kt);
+                var kt = Math.min(tt, Ue.length - nt), Ot = Ue.slice(nt, nt + kt);
                 return (He ? Promise.resolve([]) : Te.getMany({
                   trans: me,
-                  keys: Pt,
+                  keys: Ot,
                   cache: "immutable"
                 })).then(function(Kt) {
-                  var Ut = [], Ft = [], er = Ce ? [] : null, Jt = He ? Pt : [];
+                  var Ut = [], Dt = [], er = Ce ? [] : null, Jt = He ? Ot : [];
                   if (!He) for (var $t = 0; $t < kt; ++$t) {
                     var rr = Kt[$t], Br = {
-                      value: Fe(rr),
+                      value: De(rr),
                       primKey: Ue[nt + $t]
                     };
-                    ve.call(Br, Br.value, Br) !== false && (Br.value == null ? Jt.push(Ue[nt + $t]) : Ce || hr(qe(rr), qe(Br.value)) === 0 ? (Ft.push(Br.value), Ce && er.push(Ue[nt + $t])) : (Jt.push(Ue[nt + $t]), Ut.push(Br.value)));
+                    ve.call(Br, Br.value, Br) !== false && (Br.value == null ? Jt.push(Ue[nt + $t]) : Ce || hr(qe(rr), qe(Br.value)) === 0 ? (Dt.push(Br.value), Ce && er.push(Ue[nt + $t])) : (Jt.push(Ue[nt + $t]), Ut.push(Br.value)));
                   }
                   return Promise.resolve(0 < Ut.length && Te.mutate({
                     trans: me,
@@ -1890,16 +1890,16 @@ ${be}` : fe;
                     for (var ur in Hr.failures) Jt.splice(parseInt(ur), 1);
                     ye(Ut.length, Hr);
                   })).then(function() {
-                    return (0 < Ft.length || ft && typeof ne == "object") && Te.mutate({
+                    return (0 < Dt.length || ft && typeof ne == "object") && Te.mutate({
                       trans: me,
                       type: "put",
                       keys: er,
-                      values: Ft,
+                      values: Dt,
                       criteria: ft,
                       changeSpec: typeof ne != "function" && ne,
                       isAdditionalChunk: 0 < nt
                     }).then(function(Hr) {
-                      return ye(Ft.length, Hr);
+                      return ye(Dt.length, Hr);
                     });
                   }).then(function() {
                     return (0 < Jt.length || ft && He) && Te.mutate({
@@ -1928,7 +1928,7 @@ ${be}` : fe;
               });
             });
           });
-        }, Dr.prototype.delete = function() {
+        }, Fr.prototype.delete = function() {
           var ne = this._ctx, se = ne.range;
           return !Mn(ne) || ne.table.schema.yProps || !ne.isPrimKey && se.type !== 3 ? this.modify(yi) : this._write(function(ce) {
             var me = ne.table.core.schema.primaryKey, ye = se;
@@ -1953,8 +1953,8 @@ ${be}` : fe;
             });
           });
         };
-        var ji = Dr;
-        function Dr() {
+        var ji = Fr;
+        function Fr() {
         }
         var yi = function(ne, se) {
           return se.value = null;
@@ -2013,19 +2013,19 @@ ${be}` : fe;
             if (typeof nt == "string") {
               var kt = ve(nt);
               if (se(kt, qe, He)) return true;
-              for (var Pt = null, Kt = He; Kt < $e; ++Kt) {
-                var Ut = ((Ft, er, Jt, $t, rr, Br) => {
-                  for (var Hr = Math.min(Ft.length, $t.length), ur = -1, vr = 0; vr < Hr; ++vr) {
+              for (var Ot = null, Kt = He; Kt < $e; ++Kt) {
+                var Ut = ((Dt, er, Jt, $t, rr, Br) => {
+                  for (var Hr = Math.min(Dt.length, $t.length), ur = -1, vr = 0; vr < Hr; ++vr) {
                     var sn = er[vr];
-                    if (sn !== $t[vr]) return rr(Ft[vr], Jt[vr]) < 0 ? Ft.substr(0, vr) + Jt[vr] + Jt.substr(vr + 1) : rr(Ft[vr], $t[vr]) < 0 ? Ft.substr(0, vr) + $t[vr] + Jt.substr(vr + 1) : 0 <= ur ? Ft.substr(0, ur) + er[ur] + Jt.substr(ur + 1) : null;
-                    rr(Ft[vr], sn) < 0 && (ur = vr);
+                    if (sn !== $t[vr]) return rr(Dt[vr], Jt[vr]) < 0 ? Dt.substr(0, vr) + Jt[vr] + Jt.substr(vr + 1) : rr(Dt[vr], $t[vr]) < 0 ? Dt.substr(0, vr) + $t[vr] + Jt.substr(vr + 1) : 0 <= ur ? Dt.substr(0, ur) + er[ur] + Jt.substr(ur + 1) : null;
+                    rr(Dt[vr], sn) < 0 && (ur = vr);
                   }
-                  return Hr < $t.length && Br === "next" ? Ft + Jt.substr(Ft.length) : Hr < Ft.length && Br === "prev" ? Ft.substr(0, Jt.length) : ur < 0 ? null : Ft.substr(0, ur) + $t[ur] + Jt.substr(ur + 1);
+                  return Hr < $t.length && Br === "next" ? Dt + Jt.substr(Dt.length) : Hr < Dt.length && Br === "prev" ? Dt.substr(0, Jt.length) : ur < 0 ? null : Dt.substr(0, ur) + $t[ur] + Jt.substr(ur + 1);
                 })(nt, kt, Ce[Kt], qe[Kt], Te, tt);
-                Ut === null && Pt === null ? He = Kt + 1 : (Pt === null || 0 < Te(Pt, Ut)) && (Pt = Ut);
+                Ut === null && Ot === null ? He = Kt + 1 : (Ot === null || 0 < Te(Ot, Ut)) && (Ot = Ut);
               }
-              st(Pt !== null ? function() {
-                Ue.continue(Pt + Ve);
+              st(Ot !== null ? function() {
+                Ue.continue(Ot + Ve);
               } : ft);
             }
             return false;
@@ -2060,26 +2060,26 @@ ${be}` : fe;
               return Un(ne, se, !ce, !me);
             });
           } catch {
-            return Xr(this, Dn);
+            return Xr(this, Fn);
           }
         }, jr.prototype.equals = function(ne) {
-          return ne == null ? Xr(this, Dn) : new this.Collection(this, function() {
+          return ne == null ? Xr(this, Fn) : new this.Collection(this, function() {
             return oa(ne);
           });
         }, jr.prototype.above = function(ne) {
-          return ne == null ? Xr(this, Dn) : new this.Collection(this, function() {
+          return ne == null ? Xr(this, Fn) : new this.Collection(this, function() {
             return Un(ne, void 0, true);
           });
         }, jr.prototype.aboveOrEqual = function(ne) {
-          return ne == null ? Xr(this, Dn) : new this.Collection(this, function() {
+          return ne == null ? Xr(this, Fn) : new this.Collection(this, function() {
             return Un(ne, void 0, false);
           });
         }, jr.prototype.below = function(ne) {
-          return ne == null ? Xr(this, Dn) : new this.Collection(this, function() {
+          return ne == null ? Xr(this, Fn) : new this.Collection(this, function() {
             return Un(void 0, ne, false, true);
           });
         }, jr.prototype.belowOrEqual = function(ne) {
-          return ne == null ? Xr(this, Dn) : new this.Collection(this, function() {
+          return ne == null ? Xr(this, Fn) : new this.Collection(this, function() {
             return Un(void 0, ne);
           });
         }, jr.prototype.startsWith = function(ne) {
@@ -2113,7 +2113,7 @@ ${be}` : fe;
           try {
             me.sort(ye);
           } catch {
-            return Xr(this, Dn);
+            return Xr(this, Fn);
           }
           return me.length === 0 ? Tn(this) : ((ne = new this.Collection(this, function() {
             return Un(me[0], me[me.length - 1]);
@@ -2145,7 +2145,7 @@ ${be}` : fe;
           try {
             ne.sort(this._ascending);
           } catch {
-            return Xr(this, Dn);
+            return Xr(this, Fn);
           }
           var se = ne.reduce(function(ce, me) {
             return ce ? ce.concat([
@@ -2179,17 +2179,17 @@ ${be}` : fe;
           }
           try {
             (Ve = ne.reduce(function(nt, kt) {
-              for (var Pt = 0, Kt = nt.length; Pt < Kt; ++Pt) {
-                var Ut = nt[Pt];
+              for (var Ot = 0, Kt = nt.length; Ot < Kt; ++Ot) {
+                var Ut = nt[Ot];
                 if (me(kt[0], Ut[1]) < 0 && 0 < me(kt[1], Ut[0])) {
                   Ut[0] = Te(Ut[0], kt[0]), Ut[1] = Ce(Ut[1], kt[1]);
                   break;
                 }
               }
-              return Pt === Kt && nt.push(kt), nt;
+              return Ot === Kt && nt.push(kt), nt;
             }, [])).sort(We);
           } catch {
-            return Xr(this, Dn);
+            return Xr(this, Fn);
           }
           var Xe = 0, He = tt ? function(nt) {
             return 0 < ye(nt, Ve[Xe][1]);
@@ -2204,8 +2204,8 @@ ${be}` : fe;
           });
           return ft._ondirectionchange = function(nt) {
             $e = nt === "next" ? (st = He, ye) : (st = Ue, ve), Ve.sort(We);
-          }, ft._addAlgorithm(function(nt, kt, Pt) {
-            for (var Kt, Ut = nt.key; st(Ut); ) if (++Xe === Ve.length) return kt(Pt), false;
+          }, ft._addAlgorithm(function(nt, kt, Ot) {
+            for (var Kt, Ut = nt.key; st(Ut); ) if (++Xe === Ve.length) return kt(Ot), false;
             return !He(Kt = Ut) && !Ue(Kt) || (ce._cmp(Ut, Ve[Xe][1]) === 0 || ce._cmp(Ut, Ve[Xe][0]) === 0 || kt(function() {
               $e === ye ? nt.continue(Ve[Xe][0]) : nt.continue(Ve[Xe][1]);
             }), false);
@@ -2352,11 +2352,11 @@ ${be}` : fe;
           };
           var me;
         }
-        var Oa = function(ne) {
+        var Pa = function(ne) {
           try {
             return ne.only([
               []
-            ]), Oa = function() {
+            ]), Pa = function() {
               return [
                 []
               ];
@@ -2364,12 +2364,12 @@ ${be}` : fe;
               []
             ];
           } catch {
-            return Oa = function() {
+            return Pa = function() {
               return cn;
             }, cn;
           }
         };
-        function Fa(ne) {
+        function Da(ne) {
           return ne == null ? function() {
           } : typeof ne == "string" ? (se = ne).split(".").length === 1 ? function(ce) {
             return ce[se];
@@ -2380,7 +2380,7 @@ ${be}` : fe;
           };
           var se;
         }
-        function Da(ne) {
+        function Fa(ne) {
           return [].slice.call(ne);
         }
         var Li = 0;
@@ -2401,10 +2401,10 @@ ${be}` : fe;
               schema: Ve,
               mutate: function(Xe) {
                 var He = Xe.trans, Ue = Xe.type, st = Xe.keys, ft = Xe.values, nt = Xe.range;
-                return new Promise(function(kt, Pt) {
+                return new Promise(function(kt, Ot) {
                   kt = wr(kt);
-                  var Kt = He.objectStore(We), Ut = Kt.keyPath == null, Ft = Ue === "put" || Ue === "add";
-                  if (!Ft && Ue !== "delete" && Ue !== "deleteRange") throw new Error("Invalid operation type: " + Ue);
+                  var Kt = He.objectStore(We), Ut = Kt.keyPath == null, Dt = Ue === "put" || Ue === "add";
+                  if (!Dt && Ue !== "delete" && Ue !== "deleteRange") throw new Error("Invalid operation type: " + Ue);
                   var er, Jt = (st || ft || {
                     length: 1
                   }).length;
@@ -2428,7 +2428,7 @@ ${be}` : fe;
                     });
                     nt.type === 3 ? rr.push(er = Kt.clear()) : rr.push(er = Kt.delete(me(nt)));
                   } else {
-                    var Ut = Ft ? Ut ? [
+                    var Ut = Dt ? Ut ? [
                       ft,
                       st
                     ] : [
@@ -2438,17 +2438,17 @@ ${be}` : fe;
                       st,
                       null
                     ], ur = Ut[0], vr = Ut[1];
-                    if (Ft) for (var sn = 0; sn < Jt; ++sn) rr.push(er = vr && vr[sn] !== void 0 ? Kt[Ue](ur[sn], vr[sn]) : Kt[Ue](ur[sn])), er.onerror = $t;
+                    if (Dt) for (var sn = 0; sn < Jt; ++sn) rr.push(er = vr && vr[sn] !== void 0 ? Kt[Ue](ur[sn], vr[sn]) : Kt[Ue](ur[sn])), er.onerror = $t;
                     else for (sn = 0; sn < Jt; ++sn) rr.push(er = Kt[Ue](ur[sn])), er.onerror = $t;
                   }
                   function Zn(gn) {
-                    gn = gn.target.result, rr.forEach(function(Dt, ei) {
-                      return Dt.error != null && (Br[ei] = Dt.error);
+                    gn = gn.target.result, rr.forEach(function(Ft, ei) {
+                      return Ft.error != null && (Br[ei] = Ft.error);
                     }), kt({
                       numFailures: Hr,
                       failures: Br,
-                      results: Ue === "delete" ? st : rr.map(function(Dt) {
-                        return Dt.result;
+                      results: Ue === "delete" ? st : rr.map(function(Ft) {
+                        return Ft.result;
                       }),
                       lastResult: gn
                     });
@@ -2462,9 +2462,9 @@ ${be}` : fe;
                 var He = Xe.trans, Ue = Xe.keys;
                 return new Promise(function(st, ft) {
                   st = wr(st);
-                  for (var nt, kt = He.objectStore(We), Pt = Ue.length, Kt = new Array(Pt), Ut = 0, Ft = 0, er = function(rr) {
-                    rr = rr.target, Kt[rr._pos] = rr.result, ++Ft === Ut && st(Kt);
-                  }, Jt = Kn(ft), $t = 0; $t < Pt; ++$t) Ue[$t] != null && ((nt = kt.get(Ue[$t]))._pos = $t, nt.onsuccess = er, nt.onerror = Jt, ++Ut);
+                  for (var nt, kt = He.objectStore(We), Ot = Ue.length, Kt = new Array(Ot), Ut = 0, Dt = 0, er = function(rr) {
+                    rr = rr.target, Kt[rr._pos] = rr.result, ++Dt === Ut && st(Kt);
+                  }, Jt = Kn(ft), $t = 0; $t < Ot; ++$t) Ue[$t] != null && ((nt = kt.get(Ue[$t]))._pos = $t, nt.onsuccess = er, nt.onerror = Jt, ++Ut);
                   Ut === 0 && st(Kt);
                 });
               },
@@ -2481,17 +2481,17 @@ ${be}` : fe;
               query: ($e = Ce, function(Xe) {
                 return new Promise(function(He, Ue) {
                   He = wr(He);
-                  var st, ft, nt, Ft = Xe.trans, kt = Xe.values, Pt = Xe.limit, Ut = Xe.query, Kt = Pt === 1 / 0 ? void 0 : Pt, er = Ut.index, Ut = Ut.range, Ft = Ft.objectStore(We), Ft = er.isPrimaryKey ? Ft : Ft.index(er.name), er = me(Ut);
-                  if (Pt === 0) return He({
+                  var st, ft, nt, Dt = Xe.trans, kt = Xe.values, Ot = Xe.limit, Ut = Xe.query, Kt = Ot === 1 / 0 ? void 0 : Ot, er = Ut.index, Ut = Ut.range, Dt = Dt.objectStore(We), Dt = er.isPrimaryKey ? Dt : Dt.index(er.name), er = me(Ut);
+                  if (Ot === 0) return He({
                     result: []
                   });
-                  $e ? ((Ut = kt ? Ft.getAll(er, Kt) : Ft.getAllKeys(er, Kt)).onsuccess = function(Jt) {
+                  $e ? ((Ut = kt ? Dt.getAll(er, Kt) : Dt.getAllKeys(er, Kt)).onsuccess = function(Jt) {
                     return He({
                       result: Jt.target.result
                     });
-                  }, Ut.onerror = Kn(Ue)) : (st = 0, ft = !kt && "openKeyCursor" in Ft ? Ft.openKeyCursor(er) : Ft.openCursor(er), nt = [], ft.onsuccess = function(Jt) {
+                  }, Ut.onerror = Kn(Ue)) : (st = 0, ft = !kt && "openKeyCursor" in Dt ? Dt.openKeyCursor(er) : Dt.openCursor(er), nt = [], ft.onsuccess = function(Jt) {
                     var $t = ft.result;
-                    return !$t || (nt.push(kt ? $t.value : $t.primaryKey), ++st === Pt) ? He({
+                    return !$t || (nt.push(kt ? $t.value : $t.primaryKey), ++st === Ot) ? He({
                       result: nt
                     }) : void $t.continue();
                   }, ft.onerror = Kn(Ue));
@@ -2499,16 +2499,16 @@ ${be}` : fe;
               }),
               openCursor: function(Xe) {
                 var He = Xe.trans, Ue = Xe.values, st = Xe.query, ft = Xe.reverse, nt = Xe.unique;
-                return new Promise(function(kt, Pt) {
+                return new Promise(function(kt, Ot) {
                   kt = wr(kt);
-                  var Ft = st.index, Kt = st.range, Ut = He.objectStore(We), Ut = Ft.isPrimaryKey ? Ut : Ut.index(Ft.name), Ft = ft ? nt ? "prevunique" : "prev" : nt ? "nextunique" : "next", er = !Ue && "openKeyCursor" in Ut ? Ut.openKeyCursor(me(Kt), Ft) : Ut.openCursor(me(Kt), Ft);
-                  er.onerror = Kn(Pt), er.onsuccess = wr(function(Jt) {
+                  var Dt = st.index, Kt = st.range, Ut = He.objectStore(We), Ut = Dt.isPrimaryKey ? Ut : Ut.index(Dt.name), Dt = ft ? nt ? "prevunique" : "prev" : nt ? "nextunique" : "next", er = !Ue && "openKeyCursor" in Ut ? Ut.openKeyCursor(me(Kt), Dt) : Ut.openCursor(me(Kt), Dt);
+                  er.onerror = Kn(Ot), er.onsuccess = wr(function(Jt) {
                     var $t, rr, Br, Hr, ur = er.result;
                     ur ? (ur.___id = ++Li, ur.done = false, $t = ur.continue.bind(ur), rr = (rr = ur.continuePrimaryKey) && rr.bind(ur), Br = ur.advance.bind(ur), Hr = function() {
                       throw new Error("Cursor not stopped");
                     }, ur.trans = He, ur.stop = ur.continue = ur.continuePrimaryKey = ur.advance = function() {
                       throw new Error("Cursor not started");
-                    }, ur.fail = wr(Pt), ur.next = function() {
+                    }, ur.fail = wr(Ot), ur.next = function() {
                       var vr = this, sn = 1;
                       return this.start(function() {
                         return sn-- ? vr.continue() : vr.stop();
@@ -2526,8 +2526,8 @@ ${be}` : fe;
                           throw new Error("Cursor behind last entry");
                         }, ur.stop();
                       }
-                      var Zn = new Promise(function(gn, Dt) {
-                        gn = wr(gn), er.onerror = Kn(Dt), ur.fail = Dt, ur.stop = function(ei) {
+                      var Zn = new Promise(function(gn, Ft) {
+                        gn = wr(gn), er.onerror = Kn(Ft), ur.fail = Ft, ur.stop = function(ei) {
                           ur.stop = ur.continue = ur.continuePrimaryKey = ur.advance = Hr, gn(ei);
                         };
                       });
@@ -2535,13 +2535,13 @@ ${be}` : fe;
                         er.onsuccess = sn, sn();
                       }), ur.continue = $t, ur.continuePrimaryKey = rr, ur.advance = Br, sn(), Zn;
                     }, kt(ur)) : kt(null);
-                  }, Pt);
+                  }, Ot);
                 });
               },
               count: function(Xe) {
                 var He = Xe.query, Ue = Xe.trans, st = He.index, ft = He.range;
                 return new Promise(function(nt, kt) {
-                  var Pt = Ue.objectStore(We), Pt = st.isPrimaryKey ? Pt : Pt.index(st.name), Kt = me(ft), Kt = Kt ? Pt.count(Kt) : Pt.count();
+                  var Ot = Ue.objectStore(We), Ot = st.isPrimaryKey ? Ot : Ot.index(st.name), Kt = me(ft), Kt = Kt ? Ot.count(Kt) : Ot.count();
                   Kt.onsuccess = wr(function(Ut) {
                     return nt(Ut.target.result);
                   }), Kt.onerror = Kn(kt);
@@ -2549,7 +2549,7 @@ ${be}` : fe;
               }
             };
           }
-          ve = qe, Te = Da((qe = ne).objectStoreNames);
+          ve = qe, Te = Fa((qe = ne).objectStoreNames);
           var ve, qe = {
             schema: {
               name: qe.name,
@@ -2566,9 +2566,9 @@ ${be}` : fe;
                     keyPath: $e,
                     autoIncrement: We,
                     unique: true,
-                    extractKey: Fa($e)
+                    extractKey: Da($e)
                   },
-                  indexes: Da(Ve.indexNames).map(function(Ue) {
+                  indexes: Fa(Ve.indexNames).map(function(Ue) {
                     return Ve.index(Ue);
                   }).map(function(nt) {
                     var kt = nt.name, st = nt.unique, ft = nt.multiEntry, nt = nt.keyPath, kt = {
@@ -2577,7 +2577,7 @@ ${be}` : fe;
                       keyPath: nt,
                       unique: st,
                       multiEntry: ft,
-                      extractKey: Fa(nt)
+                      extractKey: Da(nt)
                     };
                     return Xe[ja(nt)] = kt;
                   }),
@@ -2600,7 +2600,7 @@ ${be}` : fe;
               throw new Error("Table '".concat(Ve, "' not found"));
             },
             MIN_KEY: -1 / 0,
-            MAX_KEY: Oa(se),
+            MAX_KEY: Pa(se),
             schema: Te
           };
         }
@@ -2662,7 +2662,7 @@ ${be}` : fe;
                 return nt._cfg.version >= We;
               })).length === 0 ? Tt.resolve() : (st.forEach(function(nt) {
                 Ue.push(function() {
-                  var kt, Pt, Kt, Ut = ft, Ft = nt._cfg.dbschema, er = (ta($e, Ut, He), ta($e, Ft, He), ft = $e._dbSchema = Ft, $a(Ut, Ft)), Jt = (er.add.forEach(function($t) {
+                  var kt, Ot, Kt, Ut = ft, Dt = nt._cfg.dbschema, er = (ta($e, Ut, He), ta($e, Dt, He), ft = $e._dbSchema = Dt, $a(Ut, Dt)), Jt = (er.add.forEach(function($t) {
                     Cn(He, $t[0], $t[1].primKey, $t[1].indexes);
                   }), er.change.forEach(function($t) {
                     if ($t.recreate) throw new at.Upgrade("Not yet support for changing primary key");
@@ -2675,30 +2675,30 @@ ${be}` : fe;
                       return rr.deleteIndex(Br);
                     });
                   }), nt._cfg.contentUpgrade);
-                  if (Jt && nt._cfg.version > We) return ii($e, He), Xe._memoizedTables = {}, kt = Le(Ft), er.del.forEach(function($t) {
+                  if (Jt && nt._cfg.version > We) return ii($e, He), Xe._memoizedTables = {}, kt = Le(Dt), er.del.forEach(function($t) {
                     kt[$t] = Ut[$t];
                   }), Jn($e, [
                     $e.Transaction.prototype
                   ]), La($e, [
                     $e.Transaction.prototype
-                  ], l(kt), kt), Xe.schema = kt, (Pt = Wt(Jt)) && Vt(), Ft = Tt.follow(function() {
+                  ], l(kt), kt), Xe.schema = kt, (Ot = Wt(Jt)) && Vt(), Dt = Tt.follow(function() {
                     var $t;
-                    (Kt = Jt(Xe)) && Pt && ($t = kn.bind(null, null), Kt.then($t, $t));
-                  }), Kt && typeof Kt.then == "function" ? Tt.resolve(Kt) : Ft.then(function() {
+                    (Kt = Jt(Xe)) && Ot && ($t = kn.bind(null, null), Kt.then($t, $t));
+                  }), Kt && typeof Kt.then == "function" ? Tt.resolve(Kt) : Dt.then(function() {
                     return Kt;
                   });
                 }), Ue.push(function(kt) {
-                  var Pt, Kt, Ut = nt._cfg.dbschema;
-                  Pt = Ut, Kt = kt, [].slice.call(Kt.db.objectStoreNames).forEach(function(Ft) {
-                    return Pt[Ft] == null && Kt.db.deleteObjectStore(Ft);
+                  var Ot, Kt, Ut = nt._cfg.dbschema;
+                  Ot = Ut, Kt = kt, [].slice.call(Kt.db.objectStoreNames).forEach(function(Dt) {
+                    return Ot[Dt] == null && Kt.db.deleteObjectStore(Dt);
                   }), Jn($e, [
                     $e.Transaction.prototype
                   ]), La($e, [
                     $e.Transaction.prototype
                   ], $e._storeNames, $e._dbSchema), Xe.schema = $e._dbSchema;
                 }), Ue.push(function(kt) {
-                  $e.idbdb.objectStoreNames.contains("$meta") && (Math.ceil($e.idbdb.version / 10) === nt._cfg.version ? ($e.idbdb.deleteObjectStore("$meta"), delete $e._dbSchema.$meta, $e._storeNames = $e._storeNames.filter(function(Pt) {
-                    return Pt !== "$meta";
+                  $e.idbdb.objectStoreNames.contains("$meta") && (Math.ceil($e.idbdb.version / 10) === nt._cfg.version ? ($e.idbdb.deleteObjectStore("$meta"), delete $e._dbSchema.$meta, $e._storeNames = $e._storeNames.filter(function(Ot) {
+                    return Ot !== "$meta";
                   })) : kt.objectStore("$meta").put(nt._cfg.version, "version"));
                 });
               }), (function nt() {
@@ -2981,7 +2981,7 @@ ${be}` : fe;
             })(se[ce]);
           }), ne;
         }
-        function Pn(ne, se) {
+        function On(ne, se) {
           return ne.all || se.all || Object.keys(ne).some(function(ce) {
             return se[ce] && vi(se[ce], ne[ce]);
           });
@@ -3028,7 +3028,7 @@ ${be}` : fe;
           for (var ye = [], ve = 0, Te = Object.entries(ne.queries.query); ve < Te.length; ve++) {
             for (var Ce = Te[ve], qe = Ce[0], tt = [], Ve = 0, $e = Ce[1]; Ve < $e.length; Ve++) {
               var We = $e[Ve];
-              Pn(se, We.obsSet) ? We.subscribers.forEach(function(st) {
+              On(se, We.obsSet) ? We.subscribers.forEach(function(st) {
                 return ce.add(st);
               }) : me && tt.push(We);
             }
@@ -3064,9 +3064,9 @@ ${be}` : fe;
                 })) : (Ve.onerror = Kn(Xe), ft = st.oldVersion > Math.pow(2, 62) ? 0 : st.oldVersion, $e = ft < 1, ne.idbdb = Ue.result, ve && oo(ne, Ve), Ro(ne, ft / 10, Ve, Xe));
               }, Xe), Ue.onsuccess = wr(function() {
                 Ve = null;
-                var st, ft, nt, kt, Pt, Kt, Ut = ne.idbdb = Ue.result, Ft = fe(Ut.objectStoreNames);
-                if (0 < Ft.length) try {
-                  var er = Ut.transaction((Pt = Ft).length === 1 ? Pt[0] : Pt, "readonly");
+                var st, ft, nt, kt, Ot, Kt, Ut = ne.idbdb = Ue.result, Dt = fe(Ut.objectStoreNames);
+                if (0 < Dt.length) try {
+                  var er = Ut.transaction((Ot = Dt).length === 1 ? Ot[0] : Ot, "readonly");
                   if (se.autoSchema) Kt = Ut, kt = er, (nt = ne).verno = Kt.version / 10, kt = nt._dbSchema = Ca(0, Kt, kt), nt._storeNames = fe(Kt.objectStoreNames, 0), La(nt, [
                     nt._allTables
                   ], l(kt), kt);
@@ -3082,8 +3082,8 @@ ${be}` : fe;
                   ne.close({
                     disableAutoOpen: false
                   });
-                }), $e && (Ft = ne._deps, Pt = He, zi(Kt = Ft.indexedDB) || Pt === Et || xi(Kt, Ft.IDBKeyRange).put({
-                  name: Pt
+                }), $e && (Dt = ne._deps, Ot = He, zi(Kt = Dt.indexedDB) || Ot === Et || xi(Kt, Dt.IDBKeyRange).put({
+                  name: Ot
                 }).catch(qt)), We();
               }, Xe);
             }).catch(function(We) {
@@ -3181,11 +3181,11 @@ ${be}` : fe;
                     isVirtual: ft,
                     keyTail: Xe,
                     keyLength: st,
-                    extractKey: Fa(We),
+                    extractKey: Da(We),
                     unique: !ft && He.unique
                   });
-                  return Ue.push(nt), nt.isPrimaryKey || ve.push(nt), 1 < st && Te(st === 2 ? We[0] : We.slice(0, st - 1), Xe + 1, He), Ue.sort(function(kt, Pt) {
-                    return kt.keyTail - Pt.keyTail;
+                  return Ue.push(nt), nt.isPrimaryKey || ve.push(nt), 1 < st && Te(st === 2 ? We[0] : We.slice(0, st - 1), Xe + 1, He), Ue.sort(function(kt, Ot) {
+                    return kt.keyTail - Ot.keyTail;
                   }), nt;
                 }
                 var Ce = Te(me.primaryKey.keyPath, 0, me.primaryKey);
@@ -3346,29 +3346,29 @@ ${be}` : fe;
                         keys: He,
                         cache: "immutable"
                       })).then(function(ft) {
-                        var nt = st.map(function(kt, Pt) {
-                          var Kt, Ut, Ft, er = ft[Pt], Jt = {
+                        var nt = st.map(function(kt, Ot) {
+                          var Kt, Ut, Dt, er = ft[Ot], Jt = {
                             onerror: null,
                             onsuccess: null
                           };
-                          return $e.type === "delete" ? Ce.fire.call(Jt, kt, er, Ue) : $e.type === "add" || er === void 0 ? (Kt = qe.fire.call(Jt, kt, $e.values[Pt], Ue), kt == null && Kt != null && ($e.keys[Pt] = kt = Kt, me.outbound || Oe($e.values[Pt], me.keyPath, kt))) : (Kt = ci(er, $e.values[Pt]), (Ut = tt.fire.call(Jt, Kt, kt, er, Ue)) && (Ft = $e.values[Pt], Object.keys(Ut).forEach(function($t) {
-                            V(Ft, $t) ? Ft[$t] = Ut[$t] : Oe(Ft, $t, Ut[$t]);
+                          return $e.type === "delete" ? Ce.fire.call(Jt, kt, er, Ue) : $e.type === "add" || er === void 0 ? (Kt = qe.fire.call(Jt, kt, $e.values[Ot], Ue), kt == null && Kt != null && ($e.keys[Ot] = kt = Kt, me.outbound || Pe($e.values[Ot], me.keyPath, kt))) : (Kt = ci(er, $e.values[Ot]), (Ut = tt.fire.call(Jt, Kt, kt, er, Ue)) && (Dt = $e.values[Ot], Object.keys(Ut).forEach(function($t) {
+                            V(Dt, $t) ? Dt[$t] = Ut[$t] : Pe(Dt, $t, Ut[$t]);
                           }))), Jt;
                         });
                         return ce.mutate($e).then(function(kt) {
-                          for (var Pt = kt.failures, Kt = kt.results, Ut = kt.numFailures, kt = kt.lastResult, Ft = 0; Ft < st.length; ++Ft) {
-                            var er = (Kt || st)[Ft], Jt = nt[Ft];
-                            er == null ? Jt.onerror && Jt.onerror(Pt[Ft]) : Jt.onsuccess && Jt.onsuccess($e.type === "put" && ft[Ft] ? $e.values[Ft] : er);
+                          for (var Ot = kt.failures, Kt = kt.results, Ut = kt.numFailures, kt = kt.lastResult, Dt = 0; Dt < st.length; ++Dt) {
+                            var er = (Kt || st)[Dt], Jt = nt[Dt];
+                            er == null ? Jt.onerror && Jt.onerror(Ot[Dt]) : Jt.onsuccess && Jt.onsuccess($e.type === "put" && ft[Dt] ? $e.values[Dt] : er);
                           }
                           return {
-                            failures: Pt,
+                            failures: Ot,
                             results: Kt,
                             numFailures: Ut,
                             lastResult: kt
                           };
                         }).catch(function(kt) {
-                          return nt.forEach(function(Pt) {
-                            return Pt.onerror && Pt.onerror(kt);
+                          return nt.forEach(function(Ot) {
+                            return Ot.onerror && Ot.onerror(kt);
                           }), Promise.reject(kt);
                         });
                       });
@@ -3383,7 +3383,7 @@ ${be}` : fe;
         function Ki(ne, se, ce) {
           try {
             if (!se || se.keys.length < ne.length) return null;
-            for (var me = [], ye = 0, ve = 0; ye < se.keys.length && ve < ne.length; ++ye) hr(se.keys[ye], ne[ve]) === 0 && (me.push(ce ? Fe(se.values[ye]) : se.values[ye]), ++ve);
+            for (var me = [], ye = 0, ve = 0; ye < se.keys.length && ve < ne.length; ++ye) hr(se.keys[ye], ne[ve]) === 0 && (me.push(ce ? De(se.values[ye]) : se.values[ye]), ++ve);
             return me.length === ne.length ? me : null;
           } catch {
             return null;
@@ -3402,7 +3402,7 @@ ${be}` : fe;
                     return me.cache ? (ye = Ki(me.keys, me.trans._cache, me.cache === "clone")) ? Tt.resolve(ye) : ce.getMany(me).then(function(ve) {
                       return me.trans._cache = {
                         keys: me.keys,
-                        values: me.cache === "clone" ? Fe(ve) : ve
+                        values: me.cache === "clone" ? De(ve) : ve
                       }, ve;
                     }) : ce.getMany(me);
                   },
@@ -3452,9 +3452,9 @@ ${be}` : fe;
                 }), We = n(n({}, ve), {
                   mutate: function(He) {
                     function Ue(rr) {
-                      return rr = "idb://".concat(se, "/").concat(me, "/").concat(rr), Pt[rr] || (Pt[rr] = new Jr());
+                      return rr = "idb://".concat(se, "/").concat(me, "/").concat(rr), Ot[rr] || (Ot[rr] = new Jr());
                     }
-                    var st, ft, nt, kt = He.trans, Pt = He.mutatedParts || (He.mutatedParts = {}), Kt = Ue(""), Ut = Ue(":dels"), Ft = He.type, Jt = He.type === "deleteRange" ? [
+                    var st, ft, nt, kt = He.trans, Ot = He.mutatedParts || (He.mutatedParts = {}), Kt = Ue(""), Ut = Ue(":dels"), Dt = He.type, Jt = He.type === "deleteRange" ? [
                       He.range
                     ] : He.type === "delete" ? [
                       He.keys
@@ -3464,7 +3464,7 @@ ${be}` : fe;
                       }),
                       He.values
                     ] : [], er = Jt[0], Jt = Jt[1], $t = He.trans._cache;
-                    return c(er) ? (Kt.addKeys(er), (Ft = Ft === "delete" || er.length === Jt.length ? Ki(er, $t) : null) || Ut.addKeys(er), (Ft || Jt) && (st = Ue, ft = Ft, nt = Jt, Te.indexes.forEach(function(rr) {
+                    return c(er) ? (Kt.addKeys(er), (Dt = Dt === "delete" || er.length === Jt.length ? Ki(er, $t) : null) || Ut.addKeys(er), (Dt || Jt) && (st = Ue, ft = Dt, nt = Jt, Te.indexes.forEach(function(rr) {
                       var Br = st(rr.name || "");
                       function Hr(vr) {
                         return vr != null ? rr.extractKey(vr) : null;
@@ -3480,7 +3480,7 @@ ${be}` : fe;
                       });
                     }))) : er ? (Jt = {
                       from: ($t = er.lower) != null ? $t : ne.MIN_KEY,
-                      to: (Ft = er.upper) != null ? Ft : ne.MAX_KEY
+                      to: (Dt = er.upper) != null ? Dt : ne.MAX_KEY
                     }, Ut.add(Jt), Kt.add(Jt)) : (Kt.add(ce), Ut.add(ce), Te.indexes.forEach(function(rr) {
                       return Ue(rr.name).add(ce);
                     })), ve.mutate(He).then(function(rr) {
@@ -3491,7 +3491,7 @@ ${be}` : fe;
                           return Zn === Ce.keyPath;
                         }), vr = 0, sn = rr.results.length; vr < sn; ++vr) Hr[vr][ur] = rr.results[vr];
                         Ue(Br.name).addKeys(Hr);
-                      })), kt.mutatedParts = Si(kt.mutatedParts || {}, Pt), rr;
+                      })), kt.mutatedParts = Si(kt.mutatedParts || {}, Ot), rr;
                     });
                   }
                 }), Xe = {
@@ -3517,17 +3517,17 @@ ${be}` : fe;
                     if (ft) {
                       var kt, st = function(Jt) {
                         return Jt = "idb://".concat(se, "/").concat(me, "/").concat(Jt), nt[Jt] || (nt[Jt] = new Jr());
-                      }, Pt = st(""), Kt = st(":dels"), ft = Xe[He](Ue), Ut = ft[0], ft = ft[1];
+                      }, Ot = st(""), Kt = st(":dels"), ft = Xe[He](Ue), Ut = ft[0], ft = ft[1];
                       if ((He === "query" && Ut.isPrimaryKey && !Ue.values ? Kt : st(Ut.name || "")).add(ft), !Ut.isPrimaryKey) {
                         if (He !== "count") return kt = He === "query" && Ve && Ue.values && ve.query(n(n({}, Ue), {
                           values: false
                         })), ve[He].apply(this, arguments).then(function(Jt) {
                           if (He === "query") {
                             if (Ve && Ue.values) return kt.then(function(Hr) {
-                              return Hr = Hr.result, Pt.addKeys(Hr), Jt;
+                              return Hr = Hr.result, Ot.addKeys(Hr), Jt;
                             });
                             var $t = Ue.values ? Jt.result.map(tt) : Jt.result;
-                            (Ue.values ? Pt : Kt).addKeys($t);
+                            (Ue.values ? Ot : Kt).addKeys($t);
                           } else {
                             var rr, Br;
                             if (He === "openCursor") return Br = Ue.values, (rr = Jt) && Object.create(rr, {
@@ -3544,7 +3544,7 @@ ${be}` : fe;
                               },
                               value: {
                                 get: function() {
-                                  return Br && Pt.addKey(rr.primaryKey), rr.value;
+                                  return Br && Ot.addKey(rr.primaryKey), rr.value;
                                 }
                               }
                             });
@@ -3578,10 +3578,10 @@ ${be}` : fe;
           return !ce || ce.length === 0 || (Te = se.query.index, Ce = Te.multiEntry, qe = se.query.range, tt = me.schema.primaryKey.extractKey, Ve = Te.extractKey, $e = (Te.lowLevelIndex || Te).extractKey, (me = ce.reduce(function(We, Xe) {
             var He = We, Ue = [];
             if (Xe.type === "add" || Xe.type === "put") for (var st = new Jr(), ft = Xe.values.length - 1; 0 <= ft; --ft) {
-              var nt, kt = Xe.values[ft], Pt = tt(kt);
-              !st.hasKey(Pt) && (nt = Ve(kt), Ce && c(nt) ? nt.some(function(Jt) {
+              var nt, kt = Xe.values[ft], Ot = tt(kt);
+              !st.hasKey(Ot) && (nt = Ve(kt), Ce && c(nt) ? nt.some(function(Jt) {
                 return qi(Jt, qe);
-              }) : qi(nt, qe)) && (st.addKey(Pt), Ue.push(kt));
+              }) : qi(nt, qe)) && (st.addKey(Ot), Ue.push(kt));
             }
             switch (Xe.type) {
               case "add":
@@ -3606,9 +3606,9 @@ ${be}` : fe;
                 }));
                 break;
               case "delete":
-                var Ft = new Jr().addKeys(Xe.keys);
+                var Dt = new Jr().addKeys(Xe.keys);
                 He = We.filter(function($t) {
-                  return !Ft.hasKey(se.values ? tt($t) : $t);
+                  return !Dt.hasKey(se.values ? tt($t) : $t);
                 });
                 break;
               case "deleteRange":
@@ -3672,18 +3672,18 @@ ${be}` : fe;
                           var He = ne.table(We), Ue = Xe.optimisticOps.filter(function(rr) {
                             return rr.trans === Ce;
                           });
-                          if (Ce._explicit && qe && Ce.mutatedParts) for (var st = 0, ft = Object.values(Xe.queries.query); st < ft.length; st++) for (var nt = 0, kt = (Ut = ft[st]).slice(); nt < kt.length; nt++) Pn((Ft = kt[nt]).obsSet, Ce.mutatedParts) && (mt(Ut, Ft), Ft.subscribers.forEach(function(rr) {
+                          if (Ce._explicit && qe && Ce.mutatedParts) for (var st = 0, ft = Object.values(Xe.queries.query); st < ft.length; st++) for (var nt = 0, kt = (Ut = ft[st]).slice(); nt < kt.length; nt++) On((Dt = kt[nt]).obsSet, Ce.mutatedParts) && (mt(Ut, Dt), Dt.subscribers.forEach(function(rr) {
                             return tt.add(rr);
                           }));
                           else if (0 < Ue.length) {
                             Xe.optimisticOps = Xe.optimisticOps.filter(function(rr) {
                               return rr.trans !== Ce;
                             });
-                            for (var Pt = 0, Kt = Object.values(Xe.queries.query); Pt < Kt.length; Pt++) for (var Ut, Ft, er, Jt = 0, $t = (Ut = Kt[Pt]).slice(); Jt < $t.length; Jt++) (Ft = $t[Jt]).res != null && Ce.mutatedParts && (qe && !Ft.dirty ? (er = Object.isFrozen(Ft.res), er = Ha(Ft.res, Ft.req, Ue, He, Ft, er), Ft.dirty ? (mt(Ut, Ft), Ft.subscribers.forEach(function(rr) {
+                            for (var Ot = 0, Kt = Object.values(Xe.queries.query); Ot < Kt.length; Ot++) for (var Ut, Dt, er, Jt = 0, $t = (Ut = Kt[Ot]).slice(); Jt < $t.length; Jt++) (Dt = $t[Jt]).res != null && Ce.mutatedParts && (qe && !Dt.dirty ? (er = Object.isFrozen(Dt.res), er = Ha(Dt.res, Dt.req, Ue, He, Dt, er), Dt.dirty ? (mt(Ut, Dt), Dt.subscribers.forEach(function(rr) {
                               return tt.add(rr);
-                            })) : er !== Ft.res && (Ft.res = er, Ft.promise = Tt.resolve({
+                            })) : er !== Dt.res && (Dt.res = er, Dt.promise = Tt.resolve({
                               result: er
-                            }))) : (Ft.dirty && mt(Ut, Ft), Ft.subscribers.forEach(function(rr) {
+                            }))) : (Dt.dirty && mt(Ut, Dt), Dt.subscribers.forEach(function(rr) {
                               return tt.add(rr);
                             })));
                           }
@@ -3717,7 +3717,7 @@ ${be}` : fe;
                       var tt = ki(0, n(n({}, ve), {
                         values: ve.values.map(function(Ve, $e) {
                           var We;
-                          return qe.failures[$e] ? Ve : (Oe(We = (We = ye.keyPath) != null && We.includes(".") ? Fe(Ve) : n({}, Ve), ye.keyPath, qe.results[$e]), We);
+                          return qe.failures[$e] ? Ve : (Pe(We = (We = ye.keyPath) != null && We.includes(".") ? De(Ve) : n({}, Ve), ye.keyPath, qe.results[$e]), We);
                         })
                       }), qe);
                       Te.optimisticOps.push(tt), queueMicrotask(function() {
@@ -3745,8 +3745,8 @@ ${be}` : fe;
                       ];
                       switch (Ue) {
                         case "query":
-                          var kt = nt.find(function(Pt) {
-                            return Pt.req.limit === st.limit && Pt.req.values === st.values && Ti(Pt.req.query.range, st.query.range);
+                          var kt = nt.find(function(Ot) {
+                            return Ot.req.limit === st.limit && Ot.req.values === st.values && Ti(Ot.req.query.range, st.query.range);
                           });
                           return kt ? [
                             kt,
@@ -3754,16 +3754,16 @@ ${be}` : fe;
                             ft,
                             nt
                           ] : [
-                            nt.find(function(Pt) {
-                              return ("limit" in Pt.req ? Pt.req.limit : 1 / 0) >= st.limit && (!st.values || Pt.req.values) && Ja(Pt.req.query.range, st.query.range);
+                            nt.find(function(Ot) {
+                              return ("limit" in Ot.req ? Ot.req.limit : 1 / 0) >= st.limit && (!st.values || Ot.req.values) && Ja(Ot.req.query.range, st.query.range);
                             }),
                             false,
                             ft,
                             nt
                           ];
                         case "count":
-                          return kt = nt.find(function(Pt) {
-                            return Ti(Pt.req.query.range, st.query.range);
+                          return kt = nt.find(function(Ot) {
+                            return Ti(Ot.req.query.range, st.query.range);
                           }), [
                             kt,
                             !!kt,
@@ -3776,7 +3776,7 @@ ${be}` : fe;
                       if (We && (We.res = He), Te) {
                         for (var Ue = 0, st = He.length; Ue < st; ++Ue) Object.freeze(He[Ue]);
                         Object.freeze(He);
-                      } else Xe.result = Fe(He);
+                      } else Xe.result = De(He);
                       return Xe;
                     }).catch(function(Xe) {
                       return Ve && We && mt(Ve, We), Promise.reject(Xe);
@@ -4127,7 +4127,7 @@ ${be}` : fe;
             });
           }), this.on("blocked", function($e) {
             !$e.newVersion || $e.newVersion < $e.oldVersion ? console.warn("Dexie.delete('".concat(Ce.name, "') was blocked")) : console.warn("Upgrade '".concat(Ce.name, "' blocked by other connection holding version ").concat($e.oldVersion / 10));
-          }), this._maxKey = Oa(se.IDBKeyRange), this._createTransaction = function($e, We, Xe, He) {
+          }), this._maxKey = Pa(se.IDBKeyRange), this._createTransaction = function($e, We, Xe, He) {
             return new Ce.Transaction($e, We, Xe, Ce._options.chromeTransactionDurability, He);
           }, this._fireOnBlocked = function($e) {
             Ce.on("blocked").fire($e), bt.filter(function(We) {
@@ -4186,15 +4186,15 @@ ${be}` : fe;
             }, $e = (ye.start && ye.start(Ve), false), We = function() {
               return hn(He);
             }, Xe = function(Ue) {
-              Si(qe, Ue), Pn(tt, qe) && We();
+              Si(qe, Ue), On(tt, qe) && We();
             }, He = function() {
               var Ue, st, ft;
               !Ce && Ai.indexedDB && (qe = {}, Ue = {}, Te && Te.abort(), Te = new AbortController(), ft = ((nt) => {
                 var kt = mr();
                 try {
                   ve && Vt();
-                  var Pt = Sn(ne, nt);
-                  return Pt = ve ? Pt.finally(kn) : Pt;
+                  var Ot = Sn(ne, nt);
+                  return Ot = ve ? Ot.finally(kn) : Ot;
                 } finally {
                   kt && mn();
                 }
@@ -4206,7 +4206,7 @@ ${be}` : fe;
                 trans: null
               }), Promise.resolve(ft).then(function(nt) {
                 ce = true, se = nt, Ce || st.signal.aborted || (qe = {}, ((kt) => {
-                  for (var Pt in kt) if (V(kt, Pt)) return;
+                  for (var Ot in kt) if (V(kt, Ot)) return;
                   return 1;
                 })(tt = Ue) || $e || (Ht(ut, Xe), $e = true), hn(function() {
                   return !Ce && ye.next && ye.next(nt);
@@ -4319,14 +4319,14 @@ ${be}` : fe;
           liveQuery: fo,
           extendObservabilitySet: Si,
           getByKeyPath: ke,
-          setByKeyPath: Oe,
+          setByKeyPath: Pe,
           delByKeyPath: function(ne, se) {
-            typeof se == "string" ? Oe(ne, se, void 0) : "length" in se && [].map.call(se, function(ce) {
-              Oe(ne, ce, void 0);
+            typeof se == "string" ? Pe(ne, se, void 0) : "length" in se && [].map.call(se, function(ce) {
+              Pe(ne, ce, void 0);
             });
           },
           shallowClone: Le,
-          deepClone: Fe,
+          deepClone: De,
           getObjectDiff: ci,
           cmp: hr,
           asap: Ae,
@@ -4342,7 +4342,7 @@ ${be}` : fe;
           }).reduce(function(ne, se, ce) {
             return ne + se / Math.pow(10, 2 * ce);
           })
-        })), Sa.maxKey = Oa(Sa.dependencies.IDBKeyRange), typeof dispatchEvent < "u" && typeof addEventListener < "u" && (Ht(ut, function(ne) {
+        })), Sa.maxKey = Pa(Sa.dependencies.IDBKeyRange), typeof dispatchEvent < "u" && typeof addEventListener < "u" && (Ht(ut, function(ne) {
           Ma || (ne = new CustomEvent(Mt, {
             detail: ne
           }), Ma = true, dispatchEvent(ne), Ma = false);
@@ -4380,10 +4380,10 @@ ${be}` : fe;
           __proto__: null,
           Dexie: ra,
           Entity: on,
-          PropModification: Pa,
+          PropModification: Oa,
           RangeSet: Jr,
           add: function(ne) {
-            return new Pa({
+            return new Oa({
               add: ne
             });
           },
@@ -4393,12 +4393,12 @@ ${be}` : fe;
           mergeRanges: Gn,
           rangesOverlap: vi,
           remove: function(ne) {
-            return new Pa({
+            return new Oa({
               remove: ne
             });
           },
           replacePrefix: function(ne, se) {
-            return new Pa({
+            return new Oa({
               replacePrefix: [
                 ne,
                 se
@@ -5260,8 +5260,8 @@ ${be}` : fe;
 `;
   }
   function serializeMessage(e) {
-    const t = escapeAttr$3(e.id), r = escapeAttr$3(e.at), n = escapeAttr$3(e.tz || ""), o = escapeAttr$3(e.source || "compose"), s = escapeAttr$3(e.group || SELF_GROUP), l = escapeAttr$3(e.replyTo || ""), c = escapeAttr$3(String(e.replySnippet || "")), f = escapeAttr$3(e.replyGroup || ""), A = escapeAttr$3(e.editedAt || ""), L = escapeAttr$3(e.pinnedAt || ""), V = escapeAttr$3(e.notePath || ""), re = e.collapsed === "1" || e.collapsed === true || e.collapsed === "true" ? "1" : "", ee = isChatMessageMarkdown(e) ? "1" : "", oe = isChatMessageEncrypted(e) ? "1" : "", le = serializeReactionsAttr(e.reactions), pe = escapeAttr$3(le), ue = escapeAttr$3(e.reactionsAt || ""), fe = String(e.body ?? "").replace(/\n+$/, ""), be = l ? ` replyTo="${l}" replySnippet="${c}" replyGroup="${f}"` : "", Ee = A ? ` editedAt="${A}"` : "", Ae = L ? ` pinnedAt="${L}"` : "", ke = V ? ` notePath="${V}"` : "", Oe = re ? ` collapsed="${re}"` : "", Le = ee ? ` markdown="${ee}"` : "", Re = oe ? ` encrypted="${oe}"` : "", Je = pe ? ` reactions="${pe}"` : "", Me = pe && ue ? ` reactionsAt="${ue}"` : "";
-    return `<!-- chat-msg id="${t}" at="${r}" tz="${n}" source="${o}" group="${s}"${be}${Ee}${Ae}${ke}${Oe}${Le}${Re}${Je}${Me} -->
+    const t = escapeAttr$3(e.id), r = escapeAttr$3(e.at), n = escapeAttr$3(e.tz || ""), o = escapeAttr$3(e.source || "compose"), s = escapeAttr$3(e.group || SELF_GROUP), l = escapeAttr$3(e.replyTo || ""), c = escapeAttr$3(String(e.replySnippet || "")), f = escapeAttr$3(e.replyGroup || ""), A = escapeAttr$3(e.editedAt || ""), L = escapeAttr$3(e.pinnedAt || ""), V = escapeAttr$3(e.notePath || ""), re = e.collapsed === "1" || e.collapsed === true || e.collapsed === "true" ? "1" : "", ee = isChatMessageMarkdown(e) ? "1" : "", oe = isChatMessageEncrypted(e) ? "1" : "", le = serializeReactionsAttr(e.reactions), pe = escapeAttr$3(le), ue = escapeAttr$3(e.reactionsAt || ""), fe = String(e.body ?? "").replace(/\n+$/, ""), be = l ? ` replyTo="${l}" replySnippet="${c}" replyGroup="${f}"` : "", Ee = A ? ` editedAt="${A}"` : "", Ae = L ? ` pinnedAt="${L}"` : "", ke = V ? ` notePath="${V}"` : "", Pe = re ? ` collapsed="${re}"` : "", Le = ee ? ` markdown="${ee}"` : "", Re = oe ? ` encrypted="${oe}"` : "", Je = pe ? ` reactions="${pe}"` : "", Me = pe && ue ? ` reactionsAt="${ue}"` : "";
+    return `<!-- chat-msg id="${t}" at="${r}" tz="${n}" source="${o}" group="${s}"${be}${Ee}${Ae}${ke}${Pe}${Le}${Re}${Je}${Me} -->
 ${fe}
 
 `;
@@ -8954,7 +8954,7 @@ ${e.slice(l + 1)}` : f += e.slice(o), f.slice(1);
       let oe = ee;
       const le = A ? `${f}/${A}/` : `${f}/`;
       oe.startsWith(le) ? oe = oe.slice(le.length) : oe.startsWith(f + "/") && (oe = oe.slice(f.length + 1), A && oe.startsWith(A + "/") ? oe = oe.slice(A.length + 1) : A && oe === A && (oe = "")), oe = oe.replace(/^\/+/, "");
-      const pe = !!(L.getElementsByTagNameNS("DAV:", "collection").length || L.getElementsByTagName("d:collection").length || L.getElementsByTagName("D:collection").length || L.getElementsByTagName("collection").length), ue = L.getElementsByTagNameNS("DAV:", "getetag")[0] || L.getElementsByTagName("d:getetag")[0] || L.getElementsByTagName("D:getetag")[0] || L.getElementsByTagName("getetag")[0], fe = L.getElementsByTagNameNS("DAV:", "getlastmodified")[0] || L.getElementsByTagName("d:getlastmodified")[0] || L.getElementsByTagName("D:getlastmodified")[0] || L.getElementsByTagName("getlastmodified")[0], be = L.getElementsByTagNameNS("DAV:", "getcontentlength")[0] || L.getElementsByTagName("d:getcontentlength")[0] || L.getElementsByTagName("D:getcontentlength")[0] || L.getElementsByTagName("getcontentlength")[0], Ee = ((_a2 = ue == null ? void 0 : ue.textContent) == null ? void 0 : _a2.trim()) || null, Ae = (_b2 = fe == null ? void 0 : fe.textContent) == null ? void 0 : _b2.trim(), ke = Ae && Date.parse(Ae) || null, Oe = (_c = be == null ? void 0 : be.textContent) == null ? void 0 : _c.trim(), Le = Oe != null && Oe !== "" ? Number(Oe) : NaN, Re = Number.isFinite(Le) ? Le : void 0, Je = String(r || "").replace(/^\/+/, "").replace(/\/?$/, "");
+      const pe = !!(L.getElementsByTagNameNS("DAV:", "collection").length || L.getElementsByTagName("d:collection").length || L.getElementsByTagName("D:collection").length || L.getElementsByTagName("collection").length), ue = L.getElementsByTagNameNS("DAV:", "getetag")[0] || L.getElementsByTagName("d:getetag")[0] || L.getElementsByTagName("D:getetag")[0] || L.getElementsByTagName("getetag")[0], fe = L.getElementsByTagNameNS("DAV:", "getlastmodified")[0] || L.getElementsByTagName("d:getlastmodified")[0] || L.getElementsByTagName("D:getlastmodified")[0] || L.getElementsByTagName("getlastmodified")[0], be = L.getElementsByTagNameNS("DAV:", "getcontentlength")[0] || L.getElementsByTagName("d:getcontentlength")[0] || L.getElementsByTagName("D:getcontentlength")[0] || L.getElementsByTagName("getcontentlength")[0], Ee = ((_a2 = ue == null ? void 0 : ue.textContent) == null ? void 0 : _a2.trim()) || null, Ae = (_b2 = fe == null ? void 0 : fe.textContent) == null ? void 0 : _b2.trim(), ke = Ae && Date.parse(Ae) || null, Pe = (_c = be == null ? void 0 : be.textContent) == null ? void 0 : _c.trim(), Le = Pe != null && Pe !== "" ? Number(Pe) : NaN, Re = Number.isFinite(Le) ? Le : void 0, Je = String(r || "").replace(/^\/+/, "").replace(/\/?$/, "");
       oe.replace(/\/?$/, "") !== Je && n.push({
         key: oe,
         etag: Ee,
@@ -9663,10 +9663,10 @@ ${e.slice(l + 1)}` : f += e.slice(o), f.slice(1);
     for (let be = 0; be < c.length; be += 1) {
       const Ee = c[be];
       for (let ke = 0; ke < Ee.cells.length; ke += 1) {
-        const Oe = Ee.cells[ke], Le = l[Oe.openIdx];
+        const Pe = Ee.cells[ke], Le = l[Pe.openIdx];
         if (!Le) continue;
         if (L.has(`${be},${ke}`)) {
-          Le.hidden = true, Oe.inlineIdx >= 0 && l[Oe.inlineIdx] && (l[Oe.inlineIdx].hidden = true), l[Oe.closeIdx] && (l[Oe.closeIdx].hidden = true);
+          Le.hidden = true, Pe.inlineIdx >= 0 && l[Pe.inlineIdx] && (l[Pe.inlineIdx].hidden = true), l[Pe.closeIdx] && (l[Pe.closeIdx].hidden = true);
           continue;
         }
         const Re = mergeAt(o.merges, be, ke);
@@ -9682,8 +9682,8 @@ ${e.slice(l + 1)}` : f += e.slice(o), f.slice(1);
         let Me = styleToCss(Je);
         const dt = sizeAt(o.colWidths, ke);
         dt && (Me = appendGridSizeCss(Me, `width:${dt}`));
-        const Fe = sizeAt(o.rowHeights, be);
-        Fe && (Me = appendGridSizeCss(Me, `height:${Fe}`)), Me && Le.attrSet("style", Me), Le.attrSet("data-haim-r", String(be)), Le.attrSet("data-haim-c", String(ke));
+        const De = sizeAt(o.rowHeights, be);
+        De && (Me = appendGridSizeCss(Me, `height:${De}`)), Me && Le.attrSet("style", Me), Le.attrSet("data-haim-r", String(be)), Le.attrSet("data-haim-c", String(ke));
       }
       const Ae = sizeAt(o.rowHeights, be);
       if (Ae && l[Ee.openIdx]) {
@@ -9709,7 +9709,7 @@ ${e.slice(l + 1)}` : f += e.slice(o), f.slice(1);
         includeOuterBorder: true
       });
       ke && Ae.attrSet("style", ke), Ae.attrSet("data-haim-section", be), pe.push(Ae);
-      for (const Oe of Ee) for (let Le = Oe.openIdx; Le <= Oe.closeIdx; Le += 1) {
+      for (const Pe of Ee) for (let Le = Pe.openIdx; Le <= Pe.closeIdx; Le += 1) {
         const Re = l[Le];
         Re && pe.push(Re);
       }
@@ -10681,6 +10681,25 @@ ${L}`;
   betterMdMarkdownItPlugin = function(e) {
     e.inline.ruler.before("emphasis", "better_strong", betterStrong), e.renderer.rules.strong_open = () => "<b>", e.renderer.rules.strong_close = () => "</b>";
   };
+  const PREFIX = "md-editor";
+  function resolveMermaidTheme() {
+    return typeof document < "u" && document.documentElement.classList.contains("dark") ? "dark" : "default";
+  }
+  function isFenceClosed(e, t) {
+    var _a2, _b2, _c;
+    if (!e.map || e.level !== 0) return true;
+    const r = e.map[1] - 1;
+    return !!((_c = (_b2 = (_a2 = t == null ? void 0 : t.srcLines) == null ? void 0 : _a2[r]) == null ? void 0 : _b2.trim()) == null ? void 0 : _c.startsWith("```"));
+  }
+  function mermaidFenceMarkdownItPlugin(e) {
+    const t = e.renderer.rules.fence;
+    e.renderer.rules.fence = (r, n, o, s, l) => {
+      const c = r[n];
+      if (!c || c.info.trim().split(/\s+/)[0] !== "mermaid") return t ? t(r, n, o, s, l) : l.renderToken(r, n, o);
+      const f = c.content.trim(), A = s;
+      return c.attrSet("class", `${PREFIX}-mermaid`), c.attrSet("data-mermaid-theme", resolveMermaidTheme()), c.attrSet("data-haim-mermaid-lazy", "1"), c.map && c.level === 0 && (c.attrSet("data-closed", String(isFenceClosed(c, A))), c.attrSet("data-line", String(c.map[0]))), `<div ${l.renderAttrs(c)}>${e.utils.escapeHtml(f)}</div>`;
+    };
+  }
   const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     br: [],
     pgbr: [],
@@ -10692,6 +10711,14 @@ ${L}`;
       "data-note-cover-mount",
       "data-note-cover-preview",
       "data-color-mode",
+      "data-mermaid-theme",
+      "data-closed",
+      "data-line",
+      "data-content",
+      "data-processed",
+      "data-haim-mermaid-lazy",
+      "data-haim-mermaid-error",
+      "data-haim-imgbb-replace-key",
       "role",
       "tabindex",
       "aria-label",
@@ -10706,7 +10733,15 @@ ${L}`;
       "data-note-cover-fallback"
     ],
     p: [
-      "class"
+      "class",
+      "data-mermaid-theme",
+      "data-closed",
+      "data-line",
+      "data-content",
+      "data-processed",
+      "data-haim-mermaid-lazy",
+      "data-haim-mermaid-error",
+      "data-haim-imgbb-replace-key"
     ],
     ul: [
       "class"
@@ -10944,6 +10979,11 @@ ${L}`;
       type: "plan_frontmatter",
       plugin: planFrontmatterMarkdownItPlugin,
       options: {}
+    },
+    {
+      type: "mermaid",
+      plugin: mermaidFenceMarkdownItPlugin,
+      options: {}
     }
   ];
   function applyAppMarkdownItBaseOptions(e) {
@@ -11070,7 +11110,7 @@ ${L}`;
       ];
     }
   });
-  let IconCloud, IconFile, IconSave, IconTrash, IconChevronRight, IconChevronDown, IconFilePlus, IconKey, IconFingerprint, IconSun, IconMoon, IconImage, IconImageFolder, IconVideo, IconFileCode, IconFileJson, IconMusic, IconX, IconMic, IconPlay, IconPause, IconEye, IconLoader, IconPenLine, IconMessage, IconSearch, IconAlert, bufToBase64$1, base64ToBuf$1, generateKey;
+  let IconCloud, IconFile, IconSave, IconTrash, IconChevronRight, IconChevronDown, IconFilePlus, IconKey, IconFingerprint, IconSun, IconMoon, IconImage, IconImageFolder, IconVideo, IconFileCode, IconFileJson, IconMusic, IconX, IconMic, IconPlay, IconPause, IconEye, IconLoader, IconPenLine, IconMessage, IconSearch, IconAlert, bufToBase64$2, base64ToBuf$1, generateKey;
   IconFolder = ({ size: e = 16, ...t }) => jsxRuntimeExports.jsx(Folder, {
     size: e,
     ...t
@@ -11223,7 +11263,7 @@ ${L}`;
     size: e,
     ...t
   });
-  bufToBase64$1 = (e) => btoa(Array.from(new Uint8Array(e)).map((t) => String.fromCharCode(t)).join(""));
+  bufToBase64$2 = (e) => btoa(Array.from(new Uint8Array(e)).map((t) => String.fromCharCode(t)).join(""));
   base64ToBuf$1 = (e) => new Uint8Array(atob(e).split("").map((t) => t.charCodeAt(0)));
   generateKey = async (e, t) => {
     const r = new TextEncoder(), n = await window.crypto.subtle.importKey("raw", r.encode(e), {
@@ -11292,15 +11332,16 @@ ${L}`;
     }, r, 256);
     return new Uint8Array(o);
   }
+  let crypto$1;
   encryptData = async (e, t) => {
     const r = window.crypto.getRandomValues(new Uint8Array(16)), n = window.crypto.getRandomValues(new Uint8Array(12)), o = await generateKey(e, r), s = new TextEncoder(), l = await window.crypto.subtle.encrypt({
       name: "AES-GCM",
       iv: n
     }, o, s.encode(t));
     return {
-      ciphertext: bufToBase64$1(l),
-      iv: bufToBase64$1(n),
-      salt: bufToBase64$1(r)
+      ciphertext: bufToBase64$2(l),
+      iv: bufToBase64$2(n),
+      salt: bufToBase64$2(r)
     };
   };
   decryptData = async (e, t) => {
@@ -11310,6 +11351,17 @@ ${L}`;
     }, s, o);
     return new TextDecoder().decode(l);
   };
+  crypto$1 = Object.freeze(Object.defineProperty({
+    __proto__: null,
+    decryptData,
+    decryptWithEntropy,
+    deriveEntropyFromPassword,
+    deriveKey,
+    encryptData,
+    encryptWithEntropy
+  }, Symbol.toStringTag, {
+    value: "Module"
+  }));
   function bufferToBase64URLString(e) {
     const t = new Uint8Array(e);
     let r = "";
@@ -11523,6 +11575,154 @@ ${L}`;
     console.warn(`The browser extension that intercepted this WebAuthn API call incorrectly implemented ${e}. You should report this error to them.
 `, t);
   }
+  isDesktopApp = function() {
+    return typeof window > "u" ? false : "__TAURI_INTERNALS__" in window || "__TAURI__" in window;
+  };
+  const BIOMETRY_DOMAIN = "com.docuhaim.app", NAME_UNLOCK_PASSWORD = "unlock-password", NAME_CREDS_ENTROPY = "creds-entropy", MARKER_KEY = "s3NotesWebAuthn";
+  async function loadBiometryApi() {
+    return __vitePreload(() => import("./index-D1QYVGAQ.js"), __vite__mapDeps([0,1]));
+  }
+  function isDesktopBiometryMarker(e) {
+    return !!e && typeof e == "object" && e.desktopBiometry === true && (e.mode === "password" || e.mode === "creds");
+  }
+  function getDesktopBiometryMarker() {
+    try {
+      const e = typeof localStorage < "u" ? localStorage.getItem(MARKER_KEY) : null;
+      if (!e) return null;
+      const t = JSON.parse(e);
+      return isDesktopBiometryMarker(t) ? t : null;
+    } catch {
+      return null;
+    }
+  }
+  function setDesktopBiometryMarker(e) {
+    if (!e) {
+      localStorage.removeItem(MARKER_KEY);
+      return;
+    }
+    localStorage.setItem(MARKER_KEY, JSON.stringify(e));
+  }
+  async function isDesktopBiometricAvailable() {
+    if (!isDesktopApp()) return false;
+    try {
+      const { checkStatus: e } = await loadBiometryApi();
+      return (await e()).isAvailable === true;
+    } catch {
+      return false;
+    }
+  }
+  async function enableDesktopBiometricUnlock(e) {
+    const { setData: t, removeData: r } = await loadBiometryApi();
+    await t({
+      domain: BIOMETRY_DOMAIN,
+      name: NAME_UNLOCK_PASSWORD,
+      data: e
+    });
+    try {
+      await r({
+        domain: BIOMETRY_DOMAIN,
+        name: NAME_CREDS_ENTROPY
+      });
+    } catch {
+    }
+    setDesktopBiometryMarker({
+      desktopBiometry: true,
+      mode: "password",
+      encryptedPassword: true
+    });
+  }
+  async function unlockWithDesktopBiometric() {
+    const e = getDesktopBiometryMarker();
+    if (!e || e.mode !== "password") throw new Error("\uB4F1\uB85D\uB41C \uC0DD\uCCB4 \uC778\uC99D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    const { getData: t } = await loadBiometryApi(), r = await t({
+      domain: BIOMETRY_DOMAIN,
+      name: NAME_UNLOCK_PASSWORD,
+      reason: "Unlock DocuHaim vault",
+      cancelTitle: "Cancel"
+    });
+    if (!(r == null ? void 0 : r.data)) throw new Error("\uC0DD\uCCB4 \uC778\uC99D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    return r.data;
+  }
+  async function updateDesktopBiometricWrappedPassword(e) {
+    const t = getDesktopBiometryMarker();
+    if (!t || t.mode !== "password") return;
+    const { setData: r } = await loadBiometryApi();
+    await r({
+      domain: BIOMETRY_DOMAIN,
+      name: NAME_UNLOCK_PASSWORD,
+      data: e
+    });
+  }
+  async function disableDesktopBiometricUnlock() {
+    setDesktopBiometryMarker(null);
+    try {
+      const { removeData: e } = await loadBiometryApi();
+      await e({
+        domain: BIOMETRY_DOMAIN,
+        name: NAME_UNLOCK_PASSWORD
+      }), await e({
+        domain: BIOMETRY_DOMAIN,
+        name: NAME_CREDS_ENTROPY
+      });
+    } catch {
+    }
+  }
+  function bufToBase64$1(e) {
+    const t = e instanceof Uint8Array ? e : new Uint8Array(e);
+    return btoa(String.fromCharCode(...t));
+  }
+  function base64ToBytes(e) {
+    return Uint8Array.from(atob(e), (t) => t.charCodeAt(0));
+  }
+  async function saveCredsWithDesktopBiometric(e) {
+    const { setData: t, removeData: r } = await loadBiometryApi(), { encryptWithEntropy: n } = await __vitePreload(async () => {
+      const { encryptWithEntropy: l } = await Promise.resolve().then(() => crypto$1);
+      return {
+        encryptWithEntropy: l
+      };
+    }, void 0), o = crypto.getRandomValues(new Uint8Array(32)), s = await n(JSON.stringify(e), o);
+    await t({
+      domain: BIOMETRY_DOMAIN,
+      name: NAME_CREDS_ENTROPY,
+      data: bufToBase64$1(o)
+    });
+    try {
+      await r({
+        domain: BIOMETRY_DOMAIN,
+        name: NAME_UNLOCK_PASSWORD
+      });
+    } catch {
+    }
+    localStorage.setItem("s3NotesEncrypted", JSON.stringify({
+      ...s,
+      webauthn: true
+    })), setDesktopBiometryMarker({
+      desktopBiometry: true,
+      mode: "creds"
+    });
+  }
+  async function loadCredsWithDesktopBiometric() {
+    const e = getDesktopBiometryMarker();
+    if (!e || e.mode !== "creds") throw new Error("\uB4F1\uB85D\uB41C \uC0DD\uCCB4 \uC778\uC99D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    const t = localStorage.getItem("s3NotesEncrypted");
+    if (!t) throw new Error("\uC800\uC7A5\uB41C \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    const r = JSON.parse(t);
+    if ((r == null ? void 0 : r.webauthn) !== true) throw new Error("\uBCF4\uC548 \uD0A4\uB85C \uC800\uC7A5\uB41C \uB370\uC774\uD130\uAC00 \uC544\uB2D9\uB2C8\uB2E4.");
+    const { getData: n } = await loadBiometryApi(), { decryptWithEntropy: o } = await __vitePreload(async () => {
+      const { decryptWithEntropy: f } = await Promise.resolve().then(() => crypto$1);
+      return {
+        decryptWithEntropy: f
+      };
+    }, void 0), s = await n({
+      domain: BIOMETRY_DOMAIN,
+      name: NAME_CREDS_ENTROPY,
+      reason: "Unlock DocuHaim vault",
+      cancelTitle: "Cancel"
+    });
+    if (!(s == null ? void 0 : s.data)) throw new Error("\uC0DD\uCCB4 \uC778\uC99D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    const l = base64ToBytes(s.data), c = await o(r, l);
+    return JSON.parse(c);
+  }
   const S3HAIM_PRF_INFO = new TextEncoder().encode("S3 Haim Master Password Wrap V1"), S3HAIM_CREDS_INFO = new TextEncoder().encode("S3 Haim Creds Encryption V1"), WEB_AUTHN_STORAGE_KEY = "s3NotesWebAuthn", ENCRYPTED_STORAGE_KEY = "s3NotesEncrypted";
   function bufToBase64(e) {
     return btoa(String.fromCharCode(...new Uint8Array(e)));
@@ -11550,6 +11750,7 @@ ${L}`;
   }
   async function isWebAuthnPRFSupported() {
     var _a2, _b2, _c;
+    if (isDesktopApp() && await isDesktopBiometricAvailable()) return true;
     if (!await browserSupportsWebAuthn() || !window.PublicKeyCredential || typeof PublicKeyCredential.getClientCapabilities != "function") return false;
     try {
       return ((_c = (_b2 = (_a2 = await PublicKeyCredential.getClientCapabilities("public-key")) == null ? void 0 : _a2.extensions) == null ? void 0 : _b2.includes) == null ? void 0 : _c.call(_b2, "prf")) === true;
@@ -11558,7 +11759,7 @@ ${L}`;
     }
   }
   isWebAuthnAvailableForSave = async function() {
-    return await isWebAuthnPRFSupported() ? true : browserSupportsWebAuthn();
+    return isDesktopApp() && await isDesktopBiometricAvailable() || await isWebAuthnPRFSupported() ? true : browserSupportsWebAuthn();
   };
   async function deriveWrapKey(e) {
     const t = await crypto.subtle.importKey("raw", e, "HKDF", false, [
@@ -11691,7 +11892,7 @@ ${L}`;
       const e = localStorage.getItem(WEB_AUTHN_STORAGE_KEY);
       if (!e) return null;
       const t = JSON.parse(e);
-      return !(t == null ? void 0 : t.credentialId) || !(t == null ? void 0 : t.salt) ? null : t;
+      return (t == null ? void 0 : t.desktopBiometry) === true && (t.mode === "password" || t.mode === "creds") ? t : !(t == null ? void 0 : t.credentialId) || !(t == null ? void 0 : t.salt) ? null : t;
     } catch {
       return null;
     }
@@ -11704,6 +11905,10 @@ ${L}`;
     localStorage.setItem(WEB_AUTHN_STORAGE_KEY, JSON.stringify(e));
   }
   async function enableWebAuthnUnlock(e) {
+    if (isDesktopApp() && await isDesktopBiometricAvailable()) {
+      await enableDesktopBiometricUnlock(e);
+      return;
+    }
     const { credentialId: t, salt: r } = await createPasskeyWithPRF(), n = await getPasskeyPRFKey(t, r), o = await wrapPasswordWithPRFKey(n, e);
     setStoredWebAuthn({
       credentialId: t,
@@ -11712,15 +11917,26 @@ ${L}`;
     });
   }
   async function unlockWithWebAuthn() {
+    var _a2;
+    if (((_a2 = getDesktopBiometryMarker()) == null ? void 0 : _a2.mode) === "password") return unlockWithDesktopBiometric();
     const e = getStoredWebAuthn();
     if (!e) throw new Error("\uB4F1\uB85D\uB41C \uBCF4\uC548 \uD0A4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
     const t = await getPasskeyPRFKey(e.credentialId, e.salt);
     return unwrapPasswordWithPRFKey(t, e.encryptedPassword);
   }
   function disableWebAuthnUnlock() {
+    if (getDesktopBiometryMarker()) {
+      disableDesktopBiometricUnlock();
+      return;
+    }
     setStoredWebAuthn(null);
   }
   async function updateWebAuthnWrappedPassword(e) {
+    var _a2;
+    if (((_a2 = getDesktopBiometryMarker()) == null ? void 0 : _a2.mode) === "password") {
+      await updateDesktopBiometricWrappedPassword(e);
+      return;
+    }
     const t = getStoredWebAuthn();
     if (!t) return;
     const r = await getPasskeyPRFKey(t.credentialId, t.salt), n = await wrapPasswordWithPRFKey(r, e);
@@ -11739,6 +11955,10 @@ ${L}`;
     }
   }
   async function saveCredsWithWebAuthn(e) {
+    if (isDesktopApp() && await isDesktopBiometricAvailable()) {
+      await saveCredsWithDesktopBiometric(e);
+      return;
+    }
     let t = getStoredWebAuthn();
     if (!(t == null ? void 0 : t.credentialId) || !t.salt) {
       const s = await createPasskeyWithPRF();
@@ -11754,6 +11974,8 @@ ${L}`;
     }));
   }
   async function loadCredsWithWebAuthn() {
+    var _a2;
+    if (((_a2 = getDesktopBiometryMarker()) == null ? void 0 : _a2.mode) === "creds") return loadCredsWithDesktopBiometric();
     const e = getStoredWebAuthn();
     if (!e) throw new Error("\uB4F1\uB85D\uB41C \uBCF4\uC548 \uD0A4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
     const t = typeof localStorage < "u" ? localStorage.getItem(ENCRYPTED_STORAGE_KEY) : null;
@@ -12905,11 +13127,11 @@ ${L}`;
         return () => cancelAnimationFrame(ke);
       }
       if (V) {
-        const ke = requestAnimationFrame(() => oe(false)), Oe = setTimeout(() => {
+        const ke = requestAnimationFrame(() => oe(false)), Pe = setTimeout(() => {
           re(false), ue();
         }, ANIMATION_DURATION_MS);
         return () => {
-          cancelAnimationFrame(ke), clearTimeout(Oe);
+          cancelAnimationFrame(ke), clearTimeout(Pe);
         };
       }
     }, [
@@ -12978,11 +13200,11 @@ ${L}`;
       let Je = false;
       return fe(true), pe(""), oe(null), (async () => {
         try {
-          await __vitePreload(() => import("./vendor-git-diff-view-CtfFh0fN.js").then((vt) => vt.d), __vite__mapDeps([0,1,2]));
-          const [{ DiffView: Me, DiffModeEnum: dt, getLang: Fe }, { generateDiffFile: je }] = await Promise.all([
-            __vitePreload(() => import("./vendor-git-diff-view-CtfFh0fN.js").then((vt) => vt.i), __vite__mapDeps([0,1,2])),
-            __vitePreload(() => import("./vendor-git-diff-view-CtfFh0fN.js").then((vt) => vt.a), __vite__mapDeps([0,1,2]))
-          ]), Ge = Fe(t) || "plaintext", mt = je(c || t || "existing", Ee, f || t || "incoming", Ae, Ge, Ge), Ze = V === "dark" ? "dark" : "light";
+          await __vitePreload(() => import("./vendor-git-diff-view-CtfFh0fN.js").then((vt) => vt.d), __vite__mapDeps([2,3,4]));
+          const [{ DiffView: Me, DiffModeEnum: dt, getLang: De }, { generateDiffFile: je }] = await Promise.all([
+            __vitePreload(() => import("./vendor-git-diff-view-CtfFh0fN.js").then((vt) => vt.i), __vite__mapDeps([2,3,4])),
+            __vitePreload(() => import("./vendor-git-diff-view-CtfFh0fN.js").then((vt) => vt.a), __vite__mapDeps([2,3,4]))
+          ]), Ge = De(t) || "plaintext", mt = je(c || t || "existing", Ee, f || t || "incoming", Ae, Ge, Ge), Ze = V === "dark" ? "dark" : "light";
           if (mt.initTheme(Ze), mt.init(), mt.buildSplitDiffLines(), Je) return;
           oe({
             DiffView: Me,
@@ -13007,7 +13229,7 @@ ${L}`;
       t,
       V
     ]);
-    const Oe = actionVerb(o), Le = n === "folder" ? "\uD3F4\uB354" : "\uD30C\uC77C", Re = ee == null ? void 0 : ee.DiffView;
+    const Pe = actionVerb(o), Le = n === "folder" ? "\uD3F4\uB354" : "\uD30C\uC77C", Re = ee == null ? void 0 : ee.DiffView;
     return jsxRuntimeExports.jsx(Modal, {
       isOpen: e,
       onClose: () => re("cancel"),
@@ -13042,7 +13264,7 @@ ${L}`;
                   r,
                   '"(\uC73C)\uB85C \uC774\uB984\uC744 \uBC14\uAFD4',
                   " ",
-                  Oe,
+                  Pe,
                   "\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
                 ]
               })
@@ -13105,7 +13327,7 @@ ${L}`;
                 className: "rounded bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/40",
                 children: [
                   "\uC774\uB984 \uBC14\uAFD4 ",
-                  Oe
+                  Pe
                 ]
               }),
               jsxRuntimeExports.jsx("button", {
@@ -13985,9 +14207,9 @@ ${L}`;
             y: 0
           }, { scrollableAncestors: oe } = n.current;
           for (const le of oe) {
-            const pe = t.code, { isTop: ue, isRight: fe, isLeft: be, isBottom: Ee, maxScroll: Ae, minScroll: ke } = getScrollPosition(le), Oe = getScrollElementRect(le), Le = {
-              x: Math.min(pe === KeyboardCode.Right ? Oe.right - Oe.width / 2 : Oe.right, Math.max(pe === KeyboardCode.Right ? Oe.left : Oe.left + Oe.width / 2, V.x)),
-              y: Math.min(pe === KeyboardCode.Down ? Oe.bottom - Oe.height / 2 : Oe.bottom, Math.max(pe === KeyboardCode.Down ? Oe.top : Oe.top + Oe.height / 2, V.y))
+            const pe = t.code, { isTop: ue, isRight: fe, isLeft: be, isBottom: Ee, maxScroll: Ae, minScroll: ke } = getScrollPosition(le), Pe = getScrollElementRect(le), Le = {
+              x: Math.min(pe === KeyboardCode.Right ? Pe.right - Pe.width / 2 : Pe.right, Math.max(pe === KeyboardCode.Right ? Pe.left : Pe.left + Pe.width / 2, V.x)),
+              y: Math.min(pe === KeyboardCode.Down ? Pe.bottom - Pe.height / 2 : Pe.bottom, Math.max(pe === KeyboardCode.Down ? Pe.top : Pe.top + Pe.height / 2, V.y))
             }, Re = pe === KeyboardCode.Right && !fe || pe === KeyboardCode.Left && !be, Je = pe === KeyboardCode.Down && !Ee || pe === KeyboardCode.Up && !ue;
             if (Re && Le.x !== V.x) {
               const Me = le.scrollLeft + re.x, dt = pe === KeyboardCode.Right && Me <= Ae.x || pe === KeyboardCode.Left && Me >= ke.x;
@@ -14266,8 +14488,8 @@ ${L}`;
     ]), be = reactExports.useRef(null), Ee = reactExports.useCallback(() => {
       const ke = be.current;
       if (!ke) return;
-      const Oe = pe.current.x * ue.current.x, Le = pe.current.y * ue.current.y;
-      ke.scrollBy(Oe, Le);
+      const Pe = pe.current.x * ue.current.x, Le = pe.current.y * ue.current.y;
+      ke.scrollBy(Pe, Le);
     }, []), Ae = reactExports.useMemo(() => c === TraversalOrder.TreeOrder ? [
       ...A
     ].reverse() : A, [
@@ -14281,7 +14503,7 @@ ${L}`;
       }
       for (const ke of Ae) {
         if ((n == null ? void 0 : n(ke)) === false) continue;
-        const Oe = A.indexOf(ke), Le = L[Oe];
+        const Pe = A.indexOf(ke), Le = L[Pe];
         if (!Le) continue;
         const { direction: Re, speed: Je } = getScrollDirectionAndSpeed(ke, Le, fe, t, re);
         for (const Me of [
@@ -14960,18 +15182,18 @@ ${L}`;
   DndContext = reactExports.memo(function(t) {
     var r, n, o, s;
     let { id: l, accessibility: c, autoScroll: f = true, children: A, sensors: L = defaultSensors, collisionDetection: V = rectIntersection, measuring: re, modifiers: ee, ...oe } = t;
-    const le = reactExports.useReducer(reducer$1, void 0, getInitialState), [pe, ue] = le, [fe, be] = useDndMonitorProvider(), [Ee, Ae] = reactExports.useState(Status$1.Uninitialized), ke = Ee === Status$1.Initialized, { draggable: { active: Oe, nodes: Le, translate: Re }, droppable: { containers: Je } } = pe, Me = Oe != null ? Le.get(Oe) : null, dt = reactExports.useRef({
+    const le = reactExports.useReducer(reducer$1, void 0, getInitialState), [pe, ue] = le, [fe, be] = useDndMonitorProvider(), [Ee, Ae] = reactExports.useState(Status$1.Uninitialized), ke = Ee === Status$1.Initialized, { draggable: { active: Pe, nodes: Le, translate: Re }, droppable: { containers: Je } } = pe, Me = Pe != null ? Le.get(Pe) : null, dt = reactExports.useRef({
       initial: null,
       translated: null
-    }), Fe = reactExports.useMemo(() => {
+    }), De = reactExports.useMemo(() => {
       var Qt;
-      return Oe != null ? {
-        id: Oe,
+      return Pe != null ? {
+        id: Pe,
         data: (Qt = Me == null ? void 0 : Me.data) != null ? Qt : defaultData,
         rect: dt
       } : null;
     }, [
-      Oe,
+      Pe,
       Me
     ]), je = reactExports.useRef(null), [Ge, lt] = reactExports.useState(null), [ze, mt] = reactExports.useState(null), Ze = useLatestValue(oe, Object.values(oe)), vt = useUniqueId("DndDescribedBy", l), Wt = reactExports.useMemo(() => Je.getEnabled(), [
       Je
@@ -14982,11 +15204,11 @@ ${L}`;
         Re.y
       ],
       config: jt.droppable
-    }), _t = useCachedNode(Le, Oe), rt = reactExports.useMemo(() => ze ? getEventCoordinates(ze) : null, [
+    }), _t = useCachedNode(Le, Pe), rt = reactExports.useMemo(() => ze ? getEventCoordinates(ze) : null, [
       ze
-    ]), gr = Pr(), Xt = useInitialRect(_t, jt.draggable.measure);
+    ]), gr = Or(), Xt = useInitialRect(_t, jt.draggable.measure);
     useLayoutShiftScrollCompensation({
-      activeNode: Oe != null ? Le.get(Oe) : null,
+      activeNode: Pe != null ? Le.get(Pe) : null,
       config: gr.layoutShiftCompensation,
       initialRect: Xt,
       measure: jt.draggable.measure
@@ -15015,7 +15237,7 @@ ${L}`;
         scaleY: 1
       },
       activatorEvent: ze,
-      active: Fe,
+      active: De,
       activeNodeRect: at,
       containerNodeRect: pr,
       draggingNodeRect: tn,
@@ -15026,18 +15248,18 @@ ${L}`;
       windowRect: Tr
     }), fr = rt ? add(rt, Re) : null, tr = useScrollOffsets(Ie), xr = useScrollOffsetsDelta(tr), lr = useScrollOffsetsDelta(tr, [
       at
-    ]), Rt = add(yr, xr), _r = tn ? getAdjustedRect(tn, yr) : null, qr = Fe && _r ? V({
-      active: Fe,
+    ]), Rt = add(yr, xr), _r = tn ? getAdjustedRect(tn, yr) : null, qr = De && _r ? V({
+      active: De,
       collisionRect: _r,
       droppableRects: ct,
       droppableContainers: Wt,
       pointerCoordinates: fr
     }) : null, Rr = getFirstCollision(qr, "id"), [Ur, Ir] = reactExports.useState(null), Mr = Kr ? yr : add(yr, lr), yt = adjustScale(Mr, (s = Ur == null ? void 0 : Ur.rect) != null ? s : null, at), ht = reactExports.useRef(null), Qe = reactExports.useCallback((Qt, $r) => {
-      let { sensor: Or, options: rn } = $r;
+      let { sensor: Pr, options: rn } = $r;
       if (je.current == null) return;
       const zr = Le.get(je.current);
       if (!zr) return;
-      const Qr = Qt.nativeEvent, mr = new Or({
+      const Qr = Qt.nativeEvent, mr = new Pr({
         active: je.current,
         activeNode: zr,
         event: Qr,
@@ -15055,13 +15277,13 @@ ${L}`;
         },
         onPending(Nr, yn, wr, Er) {
           if (!Le.get(Nr)) return;
-          const { onDragPending: Fn } = Ze.current, pn = {
+          const { onDragPending: Dn } = Ze.current, pn = {
             id: Nr,
             constraint: yn,
             initialCoordinates: wr,
             offset: Er
           };
-          Fn == null ? void 0 : Fn(pn), fe({
+          Dn == null ? void 0 : Dn(pn), fe({
             type: "onDragPending",
             event: pn
           });
@@ -15102,15 +15324,15 @@ ${L}`;
       ht.current = mr;
       function mn(Nr) {
         return async function() {
-          const { active: wr, collisions: Er, over: en, scrollAdjustedTranslate: Fn } = qt.current;
+          const { active: wr, collisions: Er, over: en, scrollAdjustedTranslate: Dn } = qt.current;
           let pn = null;
-          if (wr && Fn) {
+          if (wr && Dn) {
             const { cancelDrop: _n } = Ze.current;
             pn = {
               activatorEvent: Qr,
               active: wr,
               collisions: Er,
-              delta: Fn,
+              delta: Dn,
               over: en
             }, Nr === Action.DragEnd && typeof _n == "function" && await Promise.resolve(_n(pn)) && (Nr = Action.DragCancel);
           }
@@ -15131,15 +15353,15 @@ ${L}`;
       }
     }, [
       Le
-    ]), It = reactExports.useCallback((Qt, $r) => (Or, rn) => {
-      const zr = Or.nativeEvent, Qr = Le.get(rn);
+    ]), It = reactExports.useCallback((Qt, $r) => (Pr, rn) => {
+      const zr = Pr.nativeEvent, Qr = Le.get(rn);
       if (je.current !== null || !Qr || zr.dndKit || zr.defaultPrevented) return;
       const mr = {
         active: Qr
       };
-      Qt(Or, $r.options, mr) === true && (zr.dndKit = {
+      Qt(Pr, $r.options, mr) === true && (zr.dndKit = {
         capturedBy: $r.sensor
-      }, je.current = rn, Qe(Or, $r));
+      }, je.current = rn, Qe(Pr, $r));
     }, [
       Le,
       Qe
@@ -15150,11 +15372,11 @@ ${L}`;
       at,
       Ee
     ]), reactExports.useEffect(() => {
-      const { onDragMove: Qt } = Ze.current, { active: $r, activatorEvent: Or, collisions: rn, over: zr } = qt.current;
-      if (!$r || !Or) return;
+      const { onDragMove: Qt } = Ze.current, { active: $r, activatorEvent: Pr, collisions: rn, over: zr } = qt.current;
+      if (!$r || !Pr) return;
       const Qr = {
         active: $r,
-        activatorEvent: Or,
+        activatorEvent: Pr,
         collisions: rn,
         delta: {
           x: Rt.x,
@@ -15172,7 +15394,7 @@ ${L}`;
       Rt.x,
       Rt.y
     ]), reactExports.useEffect(() => {
-      const { active: Qt, activatorEvent: $r, collisions: Or, droppableContainers: rn, scrollAdjustedTranslate: zr } = qt.current;
+      const { active: Qt, activatorEvent: $r, collisions: Pr, droppableContainers: rn, scrollAdjustedTranslate: zr } = qt.current;
       if (!Qt || je.current == null || !$r || !zr) return;
       const { onDragOver: Qr } = Ze.current, mr = rn.get(Rr), mn = mr && mr.rect.current ? {
         id: mr.id,
@@ -15182,7 +15404,7 @@ ${L}`;
       } : null, Nr = {
         active: Qt,
         activatorEvent: $r,
-        collisions: Or,
+        collisions: Pr,
         delta: {
           x: zr.x,
           y: zr.y
@@ -15200,7 +15422,7 @@ ${L}`;
     ]), useIsomorphicLayoutEffect(() => {
       qt.current = {
         activatorEvent: ze,
-        active: Fe,
+        active: De,
         activeNode: _t,
         collisionRect: _r,
         collisions: qr,
@@ -15217,7 +15439,7 @@ ${L}`;
         translated: _r
       };
     }, [
-      Fe,
+      De,
       _t,
       qr,
       _r,
@@ -15238,7 +15460,7 @@ ${L}`;
       scrollableAncestorRects: Zt
     });
     const ir = reactExports.useMemo(() => ({
-      active: Fe,
+      active: De,
       activeNode: _t,
       activeNodeRect: at,
       activatorEvent: ze,
@@ -15256,7 +15478,7 @@ ${L}`;
       measuringScheduled: Bt,
       windowRect: Tr
     }), [
-      Fe,
+      De,
       _t,
       at,
       ze,
@@ -15276,7 +15498,7 @@ ${L}`;
     ]), Tt = reactExports.useMemo(() => ({
       activatorEvent: ze,
       activators: Gt,
-      active: Fe,
+      active: De,
       activeNodeRect: at,
       ariaDescribedById: {
         draggable: vt
@@ -15288,7 +15510,7 @@ ${L}`;
     }), [
       ze,
       Gt,
-      Fe,
+      De,
       at,
       ue,
       vt,
@@ -15310,13 +15532,13 @@ ${L}`;
       ...c,
       hiddenTextDescribedById: vt
     }));
-    function Pr() {
-      const Qt = (Ge == null ? void 0 : Ge.autoScrollEnabled) === false, $r = typeof f == "object" ? f.enabled === false : f === false, Or = ke && !Qt && !$r;
+    function Or() {
+      const Qt = (Ge == null ? void 0 : Ge.autoScrollEnabled) === false, $r = typeof f == "object" ? f.enabled === false : f === false, Pr = ke && !Qt && !$r;
       return typeof f == "object" ? {
         ...f,
-        enabled: Or
+        enabled: Pr
       } : {
-        enabled: Or
+        enabled: Pr
       };
     }
   });
@@ -15325,13 +15547,13 @@ ${L}`;
   ID_PREFIX$1 = "Draggable";
   function useDraggable(e) {
     let { id: t, data: r, disabled: n = false, attributes: o } = e;
-    const s = useUniqueId(ID_PREFIX$1), { activators: l, activatorEvent: c, active: f, activeNodeRect: A, ariaDescribedById: L, draggableNodes: V, over: re } = reactExports.useContext(InternalContext), { role: ee = defaultRole, roleDescription: oe = "draggable", tabIndex: le = 0 } = o ?? {}, pe = (f == null ? void 0 : f.id) === t, ue = reactExports.useContext(pe ? ActiveDraggableContext : NullContext), [fe, be] = useNodeRef(), [Ee, Ae] = useNodeRef(), ke = useSyntheticListeners(l, t), Oe = useLatestValue(r);
+    const s = useUniqueId(ID_PREFIX$1), { activators: l, activatorEvent: c, active: f, activeNodeRect: A, ariaDescribedById: L, draggableNodes: V, over: re } = reactExports.useContext(InternalContext), { role: ee = defaultRole, roleDescription: oe = "draggable", tabIndex: le = 0 } = o ?? {}, pe = (f == null ? void 0 : f.id) === t, ue = reactExports.useContext(pe ? ActiveDraggableContext : NullContext), [fe, be] = useNodeRef(), [Ee, Ae] = useNodeRef(), ke = useSyntheticListeners(l, t), Pe = useLatestValue(r);
     useIsomorphicLayoutEffect(() => (V.set(t, {
       id: t,
       key: s,
       node: fe,
       activatorNode: Ee,
-      data: Oe
+      data: Pe
     }), () => {
       const Re = V.get(t);
       Re && Re.key === s && V.delete(t);
@@ -15400,7 +15622,7 @@ ${L}`;
       be && (Re && (be.unobserve(Re), V.current = false), Le && be.observe(Le));
     }, [
       be
-    ]), [Ae, ke] = useNodeRef(Ee), Oe = useLatestValue(t);
+    ]), [Ae, ke] = useNodeRef(Ee), Pe = useLatestValue(t);
     return reactExports.useEffect(() => {
       !be || !Ae.current || (be.disconnect(), V.current = false, be.observe(Ae.current));
     }, [
@@ -15414,7 +15636,7 @@ ${L}`;
         disabled: r,
         node: Ae,
         rect: re,
-        data: Oe
+        data: Pe
       }
     }), () => c({
       type: Action.UnregisterDroppable,
@@ -15620,7 +15842,7 @@ ${L}`;
   }
   DragOverlay = $bliEe$react.memo((e) => {
     let { adjustScale: t = false, children: r, dropAnimation: n, style: o, transition: s, modifiers: l, wrapperElement: c = "div", className: f, zIndex: A = 999 } = e;
-    const { activatorEvent: L, active: V, activeNodeRect: re, containerNodeRect: ee, draggableNodes: oe, droppableContainers: le, dragOverlay: pe, over: ue, measuringConfiguration: fe, scrollableAncestors: be, scrollableAncestorRects: Ee, windowRect: Ae } = useDndContext(), ke = reactExports.useContext(ActiveDraggableContext), Oe = useKey(V == null ? void 0 : V.id), Le = applyModifiers(l, {
+    const { activatorEvent: L, active: V, activeNodeRect: re, containerNodeRect: ee, draggableNodes: oe, droppableContainers: le, dragOverlay: pe, over: ue, measuringConfiguration: fe, scrollableAncestors: be, scrollableAncestorRects: Ee, windowRect: Ae } = useDndContext(), ke = reactExports.useContext(ActiveDraggableContext), Pe = useKey(V == null ? void 0 : V.id), Le = applyModifiers(l, {
       activatorEvent: L,
       active: V,
       activeNodeRect: re,
@@ -15640,8 +15862,8 @@ ${L}`;
     }), Me = Re ? pe.setRef : void 0;
     return $bliEe$react.createElement(NullifiedContextProvider, null, $bliEe$react.createElement(AnimationManager, {
       animation: Je
-    }, V && Oe ? $bliEe$react.createElement(PositionedOverlay, {
-      key: Oe,
+    }, V && Pe ? $bliEe$react.createElement(PositionedOverlay, {
+      key: Pe,
       id: V.id,
       ref: Me,
       as: c,
@@ -15853,13 +16075,13 @@ ${L}`;
       })
     });
   }
-  TreeNode = function({ node: e, level: t, onSelect: r, onCreateFile: n, onCreateFolder: o, onRequestMoveFolder: s, onDelete: l, selectedIds: c, storageType: f, currentFile: A = null, onRename: L, deletingFolderPath: V, isDeletingFolder: re, isSearching: ee = false, onFolderFocus: oe, focusedFolderPath: le, expandedPaths: pe, onExpandedChange: ue, onDropOnFolder: fe, dropTarget: be, rootDropNode: Ee, onOpenContextMenu: Ae, onActivate: ke, renameTarget: Oe, onClearRenameTarget: Le, recordingBasePathSet: Re = null, stickyFoldersEnabled: Je = true, stickyTopOffset: Me = 0, isFolderLoading: dt = null, activeDragItemIds: Fe = null, isCopyDrag: je = false, foldersOnly: Ge = false, folderSelectMode: lt = false, disableDrag: ze = false, mobileTree: mt = false, transferBusyItems: Ze = null }) {
+  TreeNode = function({ node: e, level: t, onSelect: r, onCreateFile: n, onCreateFolder: o, onRequestMoveFolder: s, onDelete: l, selectedIds: c, storageType: f, currentFile: A = null, onRename: L, deletingFolderPath: V, isDeletingFolder: re, isSearching: ee = false, onFolderFocus: oe, focusedFolderPath: le, expandedPaths: pe, onExpandedChange: ue, onDropOnFolder: fe, dropTarget: be, rootDropNode: Ee, onOpenContextMenu: Ae, onActivate: ke, renameTarget: Pe, onClearRenameTarget: Le, recordingBasePathSet: Re = null, stickyFoldersEnabled: Je = true, stickyTopOffset: Me = 0, isFolderLoading: dt = null, activeDragItemIds: De = null, isCopyDrag: je = false, foldersOnly: Ge = false, folderSelectMode: lt = false, disableDrag: ze = false, mobileTree: mt = false, transferBusyItems: Ze = null }) {
     var _a2, _b2;
     reactExports.useEffect(() => {
       var _a3, _b3;
-      Oe && Le && Oe.storageType === f && ((_a3 = Oe.node) == null ? void 0 : _a3.path) === e.path && (jt(true), St(e.type === "file" && ((_b3 = e.name) == null ? void 0 : _b3.includes(".")) ? e.name.slice(0, e.name.lastIndexOf(".")) : e.name), Le());
+      Pe && Le && Pe.storageType === f && ((_a3 = Pe.node) == null ? void 0 : _a3.path) === e.path && (jt(true), St(e.type === "file" && ((_b3 = e.name) == null ? void 0 : _b3.includes(".")) ? e.name.slice(0, e.name.lastIndexOf(".")) : e.name), Le());
     }, [
-      Oe,
+      Pe,
       f,
       e.path,
       e.type,
@@ -15873,7 +16095,7 @@ ${L}`;
       type: "folder",
       name: Mr === "" ? "root" : (Mr || "").replace(/\/$/, "").split("/").pop() || "folder",
       handle: null
-    } : e, ht = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) === yt.path, Qe = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) && e.path.startsWith(be.folderPath), It = !Lt && !tr && (ht || Qe), Gt = !Lt && !tr, ir = !Lt && !tr, Tt = toDraggableId(f, e.path), Pr = toDroppableId(f, e.path), Qt = reactExports.useCallback(() => {
+    } : e, ht = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) === yt.path, Qe = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) && e.path.startsWith(be.folderPath), It = !Lt && !tr && (ht || Qe), Gt = !Lt && !tr, ir = !Lt && !tr, Tt = toDraggableId(f, e.path), Or = toDroppableId(f, e.path), Qt = reactExports.useCallback(() => {
       !Ae || lr || Ae({
         preventDefault: () => {
         },
@@ -15884,7 +16106,7 @@ ${L}`;
       Ae,
       lr,
       e
-    ]), { contextMenuOpenedRef: $r, bindTouchGesture: Or } = useTreeNodeTouchGesture({
+    ]), { contextMenuOpenedRef: $r, bindTouchGesture: Pr } = useTreeNodeTouchGesture({
       enabled: mt && !!Ae && !lr,
       onContextMenu: Qt
     }), { attributes: rn, listeners: zr, setNodeRef: Qr, isDragging: mr } = useDraggable({
@@ -15897,7 +16119,7 @@ ${L}`;
       },
       disabled: !Ir || Wt
     }), { setNodeRef: mn } = useDroppable({
-      id: Pr,
+      id: Or,
       data: {
         storageType: f,
         path: e.path,
@@ -15910,23 +16132,23 @@ ${L}`;
     }, [
       Qr,
       mn
-    ]), yn = !je && (mr || (((_a2 = Fe == null ? void 0 : Fe.has) == null ? void 0 : _a2.call(Fe, rt)) ?? false)), wr = (zt, bt) => (Et) => {
+    ]), yn = !je && (mr || (((_a2 = De == null ? void 0 : De.has) == null ? void 0 : _a2.call(De, rt)) ?? false)), wr = (zt, bt) => (Et) => {
       zt == null ? void 0 : zt(Et), bt == null ? void 0 : bt(Et);
     }, Er = Ir && !Wt, en = zr ? {
       onPointerDown: zr.onPointerDown,
       onPointerMove: zr.onPointerMove,
       onPointerUp: zr.onPointerUp,
       onPointerCancel: zr.onPointerCancel
-    } : {}, Fn = (zr == null ? void 0 : zr.onKeyDown) ? {
+    } : {}, Dn = (zr == null ? void 0 : zr.onKeyDown) ? {
       onKeyDown: zr.onKeyDown
     } : {}, pn = mt && Ae ? {
-      onPointerDown: wr(Or.onPointerDown, Er ? en.onPointerDown : void 0),
-      onPointerMove: wr(Or.onPointerMove, Er ? en.onPointerMove : void 0),
-      onPointerUp: wr(Or.onPointerUp, Er ? en.onPointerUp : void 0),
-      onPointerCancel: wr(Or.onPointerCancel, Er ? en.onPointerCancel : void 0)
+      onPointerDown: wr(Pr.onPointerDown, Er ? en.onPointerDown : void 0),
+      onPointerMove: wr(Pr.onPointerMove, Er ? en.onPointerMove : void 0),
+      onPointerUp: wr(Pr.onPointerUp, Er ? en.onPointerUp : void 0),
+      onPointerCancel: wr(Pr.onPointerCancel, Er ? en.onPointerCancel : void 0)
     } : {}, _n = Ir && !Wt ? mt && Ae ? {
       ...rn,
-      ...Fn,
+      ...Dn,
       ...pn
     } : {
       ...zr,
@@ -16015,7 +16237,7 @@ ${L}`;
       if (!Gt) return;
       const bt = zt.dataTransfer;
       (((_b3 = (_a3 = bt.types) == null ? void 0 : _a3.includes) == null ? void 0 : _b3.call(_a3, "Files")) || ((_c = bt.files) == null ? void 0 : _c.length) > 0 || ((_d = bt.items) == null ? void 0 : _d.length) > 0) && (zt.preventDefault(), zt.stopPropagation(), bt.dropEffect = "copy", fe && fe(yt, f, "dragOver"));
-    }, Fr = async (zt) => {
+    }, Dr = async (zt) => {
       var _a3, _b3, _c, _d;
       if (!Gt) return;
       zt.preventDefault(), zt.stopPropagation();
@@ -16087,7 +16309,7 @@ ${L}`;
       jt(false);
     }, Wr = (zt) => {
       zt.key === "Enter" ? (zt.preventDefault(), zt.stopPropagation(), hn()) : zt.key === "Escape" && (zt.preventDefault(), zt.stopPropagation(), St(e.type === "file" ? sr : e.name), jt(false));
-    }, cn = Je && e.type === "folder" && vt && !ee && Array.isArray(e.children) && e.children.length > 0, Dn = cn ? {
+    }, cn = Je && e.type === "folder" && vt && !ee && Array.isArray(e.children) && e.children.length > 0, Fn = cn ? {
       paddingLeft: pr,
       top: `${Me + t * 30}px`,
       zIndex: 1e3 - t
@@ -16148,9 +16370,9 @@ ${L}`;
           },
           ..._n,
           onDragOver: Gt ? Nn : void 0,
-          onDrop: Gt ? Fr : void 0,
+          onDrop: Gt ? Dr : void 0,
           className: `group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${gr ? "bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg"} ${lr ? "opacity-60 cursor-not-allowed pointer-events-auto" : "cursor-pointer"} ${Rt ? "ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter" : ""} ${It ? "bg-blue-100 dark:bg-blue-900/40" : ""} ${mt ? "touch-pan-y" : ""} ${cn ? "sticky bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-[1px] border-b border-gray-200/80 dark:border-odp-borderSoft" : ""} ${cn && Bt && !gr && !It ? "bg-gray-50 dark:bg-odp-surface" : ""}`,
-          style: Dn,
+          style: Fn,
           onClick: bn,
           onContextMenu: Ae ? (zt) => {
             if (mt) {
@@ -16317,13 +16539,13 @@ ${L}`;
           rootDropNode: Ee,
           onOpenContextMenu: Ae,
           onActivate: ke,
-          renameTarget: Oe,
+          renameTarget: Pe,
           onClearRenameTarget: Le,
           recordingBasePathSet: Re,
           stickyFoldersEnabled: Je,
           stickyTopOffset: Me,
           isFolderLoading: dt,
-          activeDragItemIds: Fe,
+          activeDragItemIds: De,
           isCopyDrag: je,
           foldersOnly: Ge,
           folderSelectMode: lt,
@@ -16386,20 +16608,20 @@ ${L}`;
       Ee.preventDefault(), Ee.stopPropagation();
       const Ae = Ee.dataTransfer;
       if (((_a2 = Ae.items) == null ? void 0 : _a2.length) > 0 || ((_b2 = Ae.files) == null ? void 0 : _b2.length) > 0) {
-        const ke = [], Oe = [];
+        const ke = [], Pe = [];
         if (((_c = Ae.items) == null ? void 0 : _c.length) > 0) {
           for (const Le of Ae.items) if (Le.kind === "file") {
             const Re = (_d = Le.getAsFileSystemHandle) == null ? void 0 : _d.call(Le);
-            if ((Re == null ? void 0 : Re.kind) === "directory") Oe.push(Re);
+            if ((Re == null ? void 0 : Re.kind) === "directory") Pe.push(Re);
             else {
               const Je = Le.getAsFile();
               Je && ke.push(Je);
             }
           }
         } else ke.push(...Array.from(Ae.files || []));
-        (ke.length > 0 || Oe.length > 0) && r && r(A, e, "drop", {
+        (ke.length > 0 || Pe.length > 0) && r && r(A, e, "drop", {
           files: ke,
-          dirHandles: Oe
+          dirHandles: Pe
         });
       }
     };
@@ -20396,10 +20618,10 @@ ${r.replace(/^\uFEFF/, "")}` : `${n}
         if (!be) return ee;
         const Ee = f(be);
         if (n === "wiki") {
-          const Oe = parseMarkdownImageAttrsBlock(pe);
+          const Pe = parseMarkdownImageAttrsBlock(pe);
           return wikiImageMarkupFromAttrs({
             path: Ee,
-            ...Oe
+            ...Pe
           });
         }
         const Ae = ue.indexOf(fe), ke = Ae >= 0 ? ue.slice(Ae + fe.length) : "";
@@ -22328,7 +22550,7 @@ ${t}${r}`;
   async function ensureGaru() {
     return (garuInstance == null ? void 0 : garuInstance.isLoaded()) ? garuInstance : garuPromise || (garuPromise = (async () => {
       try {
-        const t = await (await __vitePreload(() => import("./vendor-garu-ko-CqGm-VUe.js"), __vite__mapDeps([3,4,1]))).Garu.load();
+        const t = await (await __vitePreload(() => import("./vendor-garu-ko-CqGm-VUe.js"), __vite__mapDeps([5,6,3]))).Garu.load();
         return garuInstance = t, t;
       } catch (e) {
         return console.warn("[advancedSearch] garu-ko load failed; using fallback tokenizer", e), garuInstance = null, null;
@@ -22431,10 +22653,10 @@ ${t}${r}`;
     };
   }
   async function lucivyApi() {
-    return __vitePreload(() => import("./lucivyBackend-5WPmUiwe.js").then(async (m2) => {
+    return __vitePreload(() => import("./lucivyBackend-rbdVkQCh.js").then(async (m2) => {
       await m2.__tla;
       return m2;
-    }), __vite__mapDeps([5,4,1,6,7,8,9,10]));
+    }), __vite__mapDeps([7,6,3,8,9,10,11,12]));
   }
   async function removeLucivyNumericId(e) {
     const { lucivyRemove: t } = await lucivyApi();
@@ -22709,12 +22931,12 @@ ${le}`, fe = await hashText(ue), be = e.docs.get(oe);
         var fe = bits(e, V + 1, 3);
         if (V += 3, fe) if (fe == 1) ee = flrm, oe = fdrm, le = 9, pe = 5;
         else if (fe == 2) {
-          var ke = bits(e, V, 31) + 257, Oe = bits(e, V + 10, 15) + 4, Le = ke + bits(e, V + 5, 31) + 1;
+          var ke = bits(e, V, 31) + 257, Pe = bits(e, V + 10, 15) + 4, Le = ke + bits(e, V + 5, 31) + 1;
           V += 14;
-          for (var Re = new u8(Le), Je = new u8(19), Me = 0; Me < Oe; ++Me) Je[clim[Me]] = bits(e, V + Me * 3, 7);
-          V += Oe * 3;
-          for (var dt = max(Je), Fe = (1 << dt) - 1, je = hMap(Je, dt, 1), Me = 0; Me < Le; ) {
-            var Ge = je[bits(e, V, Fe)];
+          for (var Re = new u8(Le), Je = new u8(19), Me = 0; Me < Pe; ++Me) Je[clim[Me]] = bits(e, V + Me * 3, 7);
+          V += Pe * 3;
+          for (var dt = max(Je), De = (1 << dt) - 1, je = hMap(Je, dt, 1), Me = 0; Me < Le; ) {
+            var Ge = je[bits(e, V, De)];
             V += Ge & 15;
             var be = Ge >> 4;
             if (be < 16) Re[Me++] = be;
@@ -22827,8 +23049,8 @@ ${le}`, fe = await hashText(ue), be = e.docs.get(oe);
     var ee = new u16(re + 1), oe = ln(r[L - 1], ee, 0);
     if (oe > t) {
       var n = 0, le = 0, pe = oe - t, ue = 1 << pe;
-      for (s.sort(function(ke, Oe) {
-        return ee[Oe.s] - ee[ke.s] || ke.f - Oe.f;
+      for (s.sort(function(ke, Pe) {
+        return ee[Pe.s] - ee[ke.s] || ke.f - Pe.f;
       }); n < o; ++n) {
         var fe = s[n].s;
         if (ee[fe] > t) le += ue - (1 << oe - ee[fe]), ee[fe] = t;
@@ -22880,11 +23102,11 @@ ${le}`, fe = await hashText(ue), be = e.docs.get(oe);
     return (o + 4 + n) * 8;
   }, wblk = function(e, t, r, n, o, s, l, c, f, A, L) {
     wbits(t, L++, r), ++o[256];
-    for (var V = hTree(o, 15), re = V.t, ee = V.l, oe = hTree(s, 15), le = oe.t, pe = oe.l, ue = lc(re), fe = ue.c, be = ue.n, Ee = lc(le), Ae = Ee.c, ke = Ee.n, Oe = new u16(19), Le = 0; Le < fe.length; ++Le) ++Oe[fe[Le] & 31];
-    for (var Le = 0; Le < Ae.length; ++Le) ++Oe[Ae[Le] & 31];
-    for (var Re = hTree(Oe, 7), Je = Re.t, Me = Re.l, dt = 19; dt > 4 && !Je[clim[dt - 1]]; --dt) ;
-    var Fe = A + 5 << 3, je = clen(o, flt) + clen(s, fdt) + l, Ge = clen(o, re) + clen(s, le) + l + 14 + 3 * dt + clen(Oe, Je) + 2 * Oe[16] + 3 * Oe[17] + 7 * Oe[18];
-    if (f >= 0 && Fe <= je && Fe <= Ge) return wfblk(t, L, e.subarray(f, f + A));
+    for (var V = hTree(o, 15), re = V.t, ee = V.l, oe = hTree(s, 15), le = oe.t, pe = oe.l, ue = lc(re), fe = ue.c, be = ue.n, Ee = lc(le), Ae = Ee.c, ke = Ee.n, Pe = new u16(19), Le = 0; Le < fe.length; ++Le) ++Pe[fe[Le] & 31];
+    for (var Le = 0; Le < Ae.length; ++Le) ++Pe[Ae[Le] & 31];
+    for (var Re = hTree(Pe, 7), Je = Re.t, Me = Re.l, dt = 19; dt > 4 && !Je[clim[dt - 1]]; --dt) ;
+    var De = A + 5 << 3, je = clen(o, flt) + clen(s, fdt) + l, Ge = clen(o, re) + clen(s, le) + l + 14 + 3 * dt + clen(Pe, Je) + 2 * Pe[16] + 3 * Pe[17] + 7 * Pe[18];
+    if (f >= 0 && De <= je && De <= Ge) return wfblk(t, L, e.subarray(f, f + A));
     var lt, ze, mt, Ze;
     if (wbits(t, L, 1 + (Ge < je)), L += 2, Ge < je) {
       lt = hMap(re, ee, 0), ze = re, mt = hMap(le, pe, 0), Ze = le;
@@ -22926,17 +23148,17 @@ ${le}`, fe = await hashText(ue), be = e.docs.get(oe);
       L && (f[0] = s.r >> 3);
       for (var V = deo[t - 1], re = V >> 13, ee = V & 8191, oe = (1 << r) - 1, le = s.p || new u16(32768), pe = s.h || new u16(oe + 1), ue = Math.ceil(r / 3), fe = 2 * ue, be = function(nr) {
         return (e[nr] ^ e[nr + 1] << ue ^ e[nr + 2] << fe) & oe;
-      }, Ee = new i32(25e3), Ae = new u16(288), ke = new u16(32), Oe = 0, Le = 0, Re = s.i || 0, Je = 0, Me = s.w || 0, dt = 0; Re + 2 < l; ++Re) {
-        var Fe = be(Re), je = Re & 32767, Ge = pe[Fe];
-        if (le[je] = Ge, pe[Fe] = je, Me <= Re) {
+      }, Ee = new i32(25e3), Ae = new u16(288), ke = new u16(32), Pe = 0, Le = 0, Re = s.i || 0, Je = 0, Me = s.w || 0, dt = 0; Re + 2 < l; ++Re) {
+        var De = be(Re), je = Re & 32767, Ge = pe[De];
+        if (le[je] = Ge, pe[De] = je, Me <= Re) {
           var lt = l - Re;
-          if ((Oe > 7e3 || Je > 24576) && (lt > 423 || !A)) {
-            L = wblk(e, f, 0, Ee, Ae, ke, Le, Je, dt, Re - dt, L), Je = Oe = Le = 0, dt = Re;
+          if ((Pe > 7e3 || Je > 24576) && (lt > 423 || !A)) {
+            L = wblk(e, f, 0, Ee, Ae, ke, Le, Je, dt, Re - dt, L), Je = Pe = Le = 0, dt = Re;
             for (var ze = 0; ze < 286; ++ze) Ae[ze] = 0;
             for (var ze = 0; ze < 30; ++ze) ke[ze] = 0;
           }
           var mt = 2, Ze = 0, vt = ee, Wt = je - Ge & 32767;
-          if (lt > 2 && Fe == be(Re - Wt)) for (var jt = Math.min(re, lt) - 1, ct = Math.min(32767, Re), St = Math.min(258, lt); Wt <= ct && --vt && je != Ge; ) {
+          if (lt > 2 && De == be(Re - Wt)) for (var jt = Math.min(re, lt) - 1, ct = Math.min(32767, Re), St = Math.min(258, lt); Wt <= ct && --vt && je != Ge; ) {
             if (e[Re + mt] == e[Re + mt - Wt]) {
               for (var Bt = 0; Bt < St && e[Re + Bt] == e[Re + Bt - Wt]; ++Bt) ;
               if (Bt > mt) {
@@ -22952,7 +23174,7 @@ ${le}`, fe = await hashText(ue), be = e.docs.get(oe);
           if (Ze) {
             Ee[Je++] = 268435456 | revfl[mt] << 18 | revfd[Ze];
             var pr = revfl[mt] & 31, qt = revfd[Ze] & 31;
-            Le += fleb[pr] + fdeb[qt], ++Ae[257 + pr], ++ke[qt], Me = Re + mt, ++Oe;
+            Le += fleb[pr] + fdeb[qt], ++Ae[257 + pr], ++ke[qt], Me = Re + mt, ++Pe;
           } else Ee[Je++] = e[Re], ++Ae[e[Re]];
         }
       }
@@ -26474,10 +26696,10 @@ ${t}
       this.backend = t.backend, t.getTree && (this.getTree = t.getTree), typeof t.storageKey == "string" && (this.storageKey = t.storageKey, this.refreshCheckpointStatus());
     }
     async loadLucivyApi() {
-      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-5WPmUiwe.js").then(async (m2) => {
+      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-rbdVkQCh.js").then(async (m2) => {
         await m2.__tla;
         return m2;
-      }), __vite__mapDeps([5,4,1,6,7,8,9,10])), this.lucivyApi);
+      }), __vite__mapDeps([7,6,3,8,9,10,11,12])), this.lucivyApi);
     }
     assertIsolation() {
       if (!isSearchIsolationReady()) throw new Error(searchIsolationBlockedReason() || "Cross-origin isolation required for Lucivy search index");
@@ -27489,7 +27711,7 @@ ${t}
     const be = reactExports.useRef(null), [Ee, Ae] = reactExports.useState({
       left: e,
       top: t
-    }), ke = !!r, Oe = o ? "\uC4F0\uB808\uAE30\uD1B5" : r == null ? void 0 : r.name, Le = formatTreeNodePath(r), Me = {
+    }), ke = !!r, Pe = o ? "\uC4F0\uB808\uAE30\uD1B5" : r == null ? void 0 : r.name, Le = formatTreeNodePath(r), Me = {
       node: r,
       storageType: n,
       isTrashRoot: o,
@@ -27513,11 +27735,11 @@ ${t}
       if (!ke || s) return;
       const dt = (je) => {
         be.current && !be.current.contains(je.target) && l();
-      }, Fe = (je) => {
+      }, De = (je) => {
         je.key === "Escape" && l();
       };
-      return document.addEventListener("mousedown", dt), document.addEventListener("keydown", Fe), () => {
-        document.removeEventListener("mousedown", dt), document.removeEventListener("keydown", Fe);
+      return document.addEventListener("mousedown", dt), document.addEventListener("keydown", De), () => {
+        document.removeEventListener("mousedown", dt), document.removeEventListener("keydown", De);
       };
     }, [
       ke,
@@ -27527,9 +27749,9 @@ ${t}
       if (s || e == null || t == null || !r) return;
       const dt = be.current;
       if (!dt) return;
-      const { width: Fe, height: je } = dt.getBoundingClientRect(), Ge = window.innerWidth, lt = window.innerHeight, ze = VIEWPORT_PADDING;
+      const { width: De, height: je } = dt.getBoundingClientRect(), Ge = window.innerWidth, lt = window.innerHeight, ze = VIEWPORT_PADDING;
       let mt = e, Ze = t;
-      Ze + je > lt - ze && (Ze = t - je), Ze < ze && (Ze = ze), Ze + je > lt - ze && (Ze = Math.max(ze, lt - ze - je)), mt + Fe > Ge - ze && (mt = Math.max(ze, Ge - ze - Fe)), mt < ze && (mt = ze), Ae({
+      Ze + je > lt - ze && (Ze = t - je), Ze < ze && (Ze = ze), Ze + je > lt - ze && (Ze = Math.max(ze, lt - ze - je)), mt + De > Ge - ze && (mt = Math.max(ze, Ge - ze - De)), mt < ze && (mt = ze), Ae({
         left: mt,
         top: Ze
       });
@@ -27545,7 +27767,7 @@ ${t}
         dt || l();
       },
       title: Le,
-      subtitle: `${Oe} \xB7 ${r.type === "folder" ? "\uD3F4\uB354" : "\uD30C\uC77C"}`,
+      subtitle: `${Pe} \xB7 ${r.type === "folder" ? "\uD3F4\uB354" : "\uD30C\uC77C"}`,
       children: jsxRuntimeExports.jsx(SidebarContextMenuItems, {
         ...Me
       })
@@ -27880,15 +28102,15 @@ ${t}
   function expandedSetForStorageType(e, t) {
     return t === "s3" ? e.s3 : t === "webdav" ? e.webdav : e.local;
   }
-  function Sidebar({ appName: e = "Docu Haim", storageMode: t = "s3", s3Tree: r, s3Bucket: n, localTree: o, localRootHandle: s, isLocalTreeLoading: l = false, localFolderLoadingPath: c = null, onLoadLocalFolderChildren: f, onRefreshLocal: A, webdavTree: L = [], webdavReady: V = false, isWebdavTreeLoading: re = false, webdavFolderLoadingPath: ee = null, onRefreshWebdav: oe, onLoadWebdavFolderChildren: le, currentFile: pe, selectedIds: ue, onSelectFile: fe, onClearSelection: be, onCreateItem: Ee, onRequestUploadFile: Ae, onRequestUploadFolder: ke, onRequestMoveFolder: Oe, onOpenLocalFolder: Le, onSetDeleteTarget: Re, onRequestEmptyTrash: Je, onOpenSettings: Me, theme: dt, onToggleTheme: Fe, onRenameItem: je, showHiddenFolders: Ge, showTrashFolder: lt = false, hideRecordingCompanions: ze = false, treeStickyFolderPathEnabled: mt = true, hoverExpandDelayMs: Ze = 2e3, onRequestCollapseSidebar: vt, deletingFolderPath: Wt, isDeletingFolder: jt, onDropOnFolder: ct, onDragEndNode: St, dropTarget: Bt, transferBusyItems: _t = null, expandPathsRef: rt, onRefreshS3: gr, onDownloadNode: Xt, onDuplicateNode: at, onRequestMoveFile: pr, onOpenInNewWindow: qt, onShareToChatWithMyself: Lt, onOpenChatWithMyself: nr, chatWithMyselfActive: sr = false, chatAttachDropHost: tn = null, onDropToChatAttach: Kr, onBrandClick: fn, onStorageModeChange: Tr, sessionWorkspace: Ie = null, sessionTree: Zt = [], onCloseSessionWorkspace: yr, isMobileLayout: fr = false, fileTabContextMenuRef: tr = null }) {
+  function Sidebar({ appName: e = "Docu Haim", storageMode: t = "s3", s3Tree: r, s3Bucket: n, localTree: o, localRootHandle: s, isLocalTreeLoading: l = false, localFolderLoadingPath: c = null, onLoadLocalFolderChildren: f, onRefreshLocal: A, webdavTree: L = [], webdavReady: V = false, isWebdavTreeLoading: re = false, webdavFolderLoadingPath: ee = null, onRefreshWebdav: oe, onLoadWebdavFolderChildren: le, currentFile: pe, selectedIds: ue, onSelectFile: fe, onClearSelection: be, onCreateItem: Ee, onRequestUploadFile: Ae, onRequestUploadFolder: ke, onRequestMoveFolder: Pe, onOpenLocalFolder: Le, onSetDeleteTarget: Re, onRequestEmptyTrash: Je, onOpenSettings: Me, theme: dt, onToggleTheme: De, onRenameItem: je, showHiddenFolders: Ge, showTrashFolder: lt = false, hideRecordingCompanions: ze = false, treeStickyFolderPathEnabled: mt = true, hoverExpandDelayMs: Ze = 2e3, onRequestCollapseSidebar: vt, deletingFolderPath: Wt, isDeletingFolder: jt, onDropOnFolder: ct, onDragEndNode: St, dropTarget: Bt, transferBusyItems: _t = null, expandPathsRef: rt, onRefreshS3: gr, onDownloadNode: Xt, onDuplicateNode: at, onRequestMoveFile: pr, onOpenInNewWindow: qt, onShareToChatWithMyself: Lt, onOpenChatWithMyself: nr, chatWithMyselfActive: sr = false, chatAttachDropHost: tn = null, onDropToChatAttach: Kr, onBrandClick: fn, onStorageModeChange: Tr, sessionWorkspace: Ie = null, sessionTree: Zt = [], onCloseSessionWorkspace: yr, isMobileLayout: fr = false, fileTabContextMenuRef: tr = null }) {
     const lr = useIsCoarsePointer(), Rt = fr || lr, _r = useMobileContextMenuMode(fr), [qr, Rr] = reactExports.useState(false), Ur = reactExports.useRef(null), Ir = reactExports.useRef(false), Mr = reactExports.useRef(null), yt = reactExports.useCallback(() => {
       Ur.current && (clearTimeout(Ur.current), Ur.current = null), Mr.current = null;
     }, []);
     reactExports.useEffect(() => () => yt(), [
       yt
     ]);
-    const [ht, Qe] = reactExports.useState(""), [It, Gt] = reactExports.useState(""), ir = ht !== It, [Tt, Pr] = reactExports.useState(null), [Qt, $r] = reactExports.useState(null), [Or, rn] = reactExports.useState(null), zr = sr ? EMPTY_SELECTED_IDS : ue, Qr = sr ? null : pe, [mr, mn] = reactExports.useState(loadExpandedFolderPaths), [Nr, yn] = reactExports.useState(null), [wr, Er] = reactExports.useState(null), [en, Fn] = reactExports.useState(null), [pn, _n] = reactExports.useState(false), [xt, Sn] = reactExports.useState(false), [Vt, kn] = reactExports.useState(null), { isCopyDrag: In, isCopyDragRef: fa, syncFromEvent: Nn } = useTreeCopyDragModifier(!!(Vt == null ? void 0 : Vt.length)), Fr = reactExports.useRef(null), bn = reactExports.useRef(false), $n = reactExports.useRef(null), hn = reactExports.useRef(null), Wr = reactExports.useRef(null), cn = reactExports.useRef(null), Dn = reactExports.useRef(Ze), zt = reactExports.useRef(mr), bt = reactExports.useRef(It), Et = reactExports.useRef(null);
-    zt.current = mr, bt.current = It, Dn.current = Ze;
+    const [ht, Qe] = reactExports.useState(""), [It, Gt] = reactExports.useState(""), ir = ht !== It, [Tt, Or] = reactExports.useState(null), [Qt, $r] = reactExports.useState(null), [Pr, rn] = reactExports.useState(null), zr = sr ? EMPTY_SELECTED_IDS : ue, Qr = sr ? null : pe, [mr, mn] = reactExports.useState(loadExpandedFolderPaths), [Nr, yn] = reactExports.useState(null), [wr, Er] = reactExports.useState(null), [en, Dn] = reactExports.useState(null), [pn, _n] = reactExports.useState(false), [xt, Sn] = reactExports.useState(false), [Vt, kn] = reactExports.useState(null), { isCopyDrag: In, isCopyDragRef: fa, syncFromEvent: Nn } = useTreeCopyDragModifier(!!(Vt == null ? void 0 : Vt.length)), Dr = reactExports.useRef(null), bn = reactExports.useRef(false), $n = reactExports.useRef(null), hn = reactExports.useRef(null), Wr = reactExports.useRef(null), cn = reactExports.useRef(null), Fn = reactExports.useRef(Ze), zt = reactExports.useRef(mr), bt = reactExports.useRef(It), Et = reactExports.useRef(null);
+    zt.current = mr, bt.current = It, Fn.current = Ze;
     const br = reactExports.useCallback(() => {
       Wr.current != null && (clearTimeout(Wr.current), Wr.current = null), cn.current = null;
     }, []);
@@ -27912,7 +28134,7 @@ ${t}
       const Ht = `${pt}:${ut}`;
       if (cn.current === Ht) return;
       br(), cn.current = Ht;
-      const Sr = Math.max(0, Number(Dn.current) || 0);
+      const Sr = Math.max(0, Number(Fn.current) || 0);
       Wr.current = setTimeout(() => {
         var _a3;
         Wr.current = null, cn.current = null, (_a3 = Et.current) == null ? void 0 : _a3.call(Et, pt, ut, true);
@@ -27980,7 +28202,7 @@ ${t}
     }, [
       br,
       St
-    ]), Pa = reactExports.useCallback((pt) => {
+    ]), Oa = reactExports.useCallback((pt) => {
       const ut = String(pt.active.id), Mt = resolveDragItems(ut, ue, on);
       $n.current = Mt, kn(Mt), Nn(pt.activatorEvent), Bn();
     }, [
@@ -28061,7 +28283,7 @@ ${t}
     }, [
       ht
     ]), reactExports.useEffect(() => {
-      const pt = Fr.current;
+      const pt = Dr.current;
       if (!pt) return;
       const ut = (Mt) => {
         if (!bn.current) return;
@@ -28084,7 +28306,7 @@ ${t}
       ((_c = (_b2 = (_a2 = pt.dataTransfer) == null ? void 0 : _a2.types) == null ? void 0 : _b2.includes) == null ? void 0 : _c.call(_b2, "Files")) && (bn.current = true);
     }, []), Xn = reactExports.useCallback((pt) => {
       var _a2, _b2, _c, _d, _e;
-      const ut = Fr.current, Mt = ((_c = (_b2 = (_a2 = pt.dataTransfer) == null ? void 0 : _a2.types) == null ? void 0 : _b2.includes) == null ? void 0 : _c.call(_b2, "Files")) && ((_e = (_d = pt.dataTransfer) == null ? void 0 : _d.items) == null ? void 0 : _e.length) > 0;
+      const ut = Dr.current, Mt = ((_c = (_b2 = (_a2 = pt.dataTransfer) == null ? void 0 : _a2.types) == null ? void 0 : _b2.includes) == null ? void 0 : _c.call(_b2, "Files")) && ((_e = (_d = pt.dataTransfer) == null ? void 0 : _d.items) == null ? void 0 : _e.length) > 0;
       if (!ut || !Mt) return;
       const Ht = ut.getBoundingClientRect(), Sr = pt.clientY - Ht.top, Ar = kr;
       if (ut.scrollHeight - ut.clientHeight <= 0) return;
@@ -28212,7 +28434,7 @@ ${t}
       It,
       xa,
       mr.s3
-    ]), Dr = reactExports.useMemo(() => It ? va(ia) : mr.local, [
+    ]), Fr = reactExports.useMemo(() => It ? va(ia) : mr.local, [
       It,
       ia,
       mr.local
@@ -28229,8 +28451,8 @@ ${t}
     } : {
       parentPath: "",
       parentDirHandle: null
-    } : pt === "webdav" ? Or !== null ? {
-      parentPath: Or,
+    } : pt === "webdav" ? Pr !== null ? {
+      parentPath: Pr,
       parentDirHandle: null
     } : (pe == null ? void 0 : pe.type) === "webdav" && pe.id ? {
       parentPath: getParentPathFromFilePath(pe.id),
@@ -28251,10 +28473,10 @@ ${t}
       pe,
       Qt,
       Tt,
-      Or,
+      Pr,
       s
     ]), Hn = t === "s3", Un = t === "local", oa = t === "webdav", Wn = reactExports.useCallback((pt, ut) => {
-      Fn({
+      Dn({
         storageType: pt,
         node: ut
       });
@@ -28275,11 +28497,11 @@ ${t}
       if (!pt || !ut) return;
       let jn = on(pt, ut);
       if (!jn || jn.type !== "file") {
-        const Oa = Mt || (typeof (Ht == null ? void 0 : Ht.name) == "string" ? Ht.name : "") || String(ut).split("/").filter(Boolean).pop() || ut;
+        const Pa = Mt || (typeof (Ht == null ? void 0 : Ht.name) == "string" ? Ht.name : "") || String(ut).split("/").filter(Boolean).pop() || ut;
         jn = {
           type: "file",
           path: ut,
-          name: Oa,
+          name: Pa,
           ...(Ht == null ? void 0 : Ht.handle) ? {
             handle: Ht.handle
           } : {},
@@ -28342,7 +28564,7 @@ ${t}
                 Ar = on(Sr, ma);
               }
             }
-            if (!Ar && en && (Sr = en.storageType, Ar = en.node), (!Ar || !Sr) && (Hn && Tt != null && Tt !== "" ? (Sr = "s3", Ar = on("s3", Tt)) : Un && (Qt == null ? void 0 : Qt.path) != null && Qt.path !== "" ? (Sr = "local", Ar = on("local", Qt.path)) : oa && Or != null && Or !== "" && (Sr = "webdav", Ar = on("webdav", Or))), !Ar || !Sr || Hn && Sr !== "s3" || Un && Sr !== "local" || oa && Sr !== "webdav" || Ar.path === ".trash/" || Ar.path === "" || findApplicableTransferBusy(_t, Sr, Ar.path)) return;
+            if (!Ar && en && (Sr = en.storageType, Ar = en.node), (!Ar || !Sr) && (Hn && Tt != null && Tt !== "" ? (Sr = "s3", Ar = on("s3", Tt)) : Un && (Qt == null ? void 0 : Qt.path) != null && Qt.path !== "" ? (Sr = "local", Ar = on("local", Qt.path)) : oa && Pr != null && Pr !== "" && (Sr = "webdav", Ar = on("webdav", Pr))), !Ar || !Sr || Hn && Sr !== "s3" || Un && Sr !== "local" || oa && Sr !== "webdav" || Ar.path === ".trash/" || Ar.path === "" || findApplicableTransferBusy(_t, Sr, Ar.path)) return;
             ut.preventDefault(), ut.stopPropagation(), zn(Ar, Sr);
           }
         }
@@ -28356,7 +28578,7 @@ ${t}
       en,
       Qt,
       Tt,
-      Or,
+      Pr,
       zn,
       ue,
       _t
@@ -28388,7 +28610,7 @@ ${t}
           onEmptyTrash: Je ? () => Je(vn, Xr) : void 0,
           onDuplicate: at ? () => at(Xr, vn) : void 0,
           onMove: () => {
-            vn.type === "folder" ? Oe == null ? void 0 : Oe(vn, Xr) : pr == null ? void 0 : pr(vn, Xr);
+            vn.type === "folder" ? Pe == null ? void 0 : Pe(vn, Xr) : pr == null ? void 0 : pr(vn, Xr);
           },
           onOpenInNewWindow: qt,
           onShareToChatWithMyself: Lt && vn.type === "file" ? Lt : void 0
@@ -28493,7 +28715,7 @@ ${t}
                       "data-sidebar-header-right": true,
                       children: [
                         jsxRuntimeExports.jsx("button", {
-                          onClick: Fe,
+                          onClick: De,
                           className: "p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition",
                           title: dt === "dark" ? "\uB77C\uC774\uD2B8 \uBAA8\uB4DC" : "\uB2E4\uD06C \uBAA8\uB4DC",
                           children: dt !== "dark" ? jsxRuntimeExports.jsx(IconSun, {
@@ -28511,7 +28733,7 @@ ${t}
                     })
                   ]
                 }),
-                Ra && Oe && jsxRuntimeExports.jsxs("div", {
+                Ra && Pe && jsxRuntimeExports.jsxs("div", {
                   className: "flex items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-1.5 text-xs",
                   children: [
                     jsxRuntimeExports.jsxs("span", {
@@ -28523,7 +28745,7 @@ ${t}
                     }),
                     jsxRuntimeExports.jsxs("button", {
                       type: "button",
-                      onClick: () => Oe(Ra.node, Ra.storageType),
+                      onClick: () => Pe(Ra.node, Ra.storageType),
                       className: "flex items-center gap-1 px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shrink-0",
                       title: "\uD3F4\uB354 \uC774\uB3D9",
                       children: [
@@ -28572,14 +28794,14 @@ ${t}
         jsxRuntimeExports.jsxs(DndContext, {
           sensors: En,
           collisionDetection: treeCollisionDetection,
-          onDragStart: Pa,
+          onDragStart: Oa,
           onDragOver: ga,
           onDragEnd: wn,
           onDragCancel: ya,
           autoScroll: true,
           children: [
             jsxRuntimeExports.jsxs("div", {
-              ref: Fr,
+              ref: Dr,
               "data-sidebar-tree-scroll": true,
               tabIndex: -1,
               className: "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-4 space-y-6 outline-none",
@@ -28587,12 +28809,12 @@ ${t}
               onDragOver: Xn,
               onPointerDownCapture: () => {
                 var _a2;
-                (_a2 = Fr.current) == null ? void 0 : _a2.focus({
+                (_a2 = Dr.current) == null ? void 0 : _a2.focus({
                   preventScroll: true
                 });
               },
               onClick: (pt) => {
-                !pt.target.closest("[data-tree-node-row]") && !pt.target.closest("[data-tree-root-drop-zone]") && !pt.target.closest("button") && !pt.target.closest("input") && (Pr(null), $r(null), rn(null), be == null ? void 0 : be());
+                !pt.target.closest("[data-tree-node-row]") && !pt.target.closest("[data-tree-root-drop-zone]") && !pt.target.closest("button") && !pt.target.closest("input") && (Or(null), $r(null), rn(null), be == null ? void 0 : be());
               },
               role: "tree",
               "aria-label": "\uD30C\uC77C \uD2B8\uB9AC",
@@ -28737,9 +28959,9 @@ ${t}
                           onDropOnFolder: ct,
                           dropTarget: Bt,
                           isFocused: !sr && Tt === "",
-                          onFocusRoot: () => Pr(""),
+                          onFocusRoot: () => Or(""),
                           onContextMenu: (pt, ut) => {
-                            Pr(""), jr("s3", ut, pt);
+                            Or(""), jr("s3", ut, pt);
                           },
                           mobileTree: Rt
                         }),
@@ -28757,7 +28979,7 @@ ${t}
                           currentFile: Qr,
                           onCreateFile: (ut) => Ee("s3", ut, null, "file"),
                           onCreateFolder: (ut) => Ee("s3", ut, null, "folder"),
-                          onRequestMoveFolder: Oe,
+                          onRequestMoveFolder: Pe,
                           onDelete: (ut, Mt) => zn(ut, Mt),
                           onRename: je,
                           deletingFolderPath: Wt,
@@ -28766,7 +28988,7 @@ ${t}
                           isSearching: !!It,
                           expandedPaths: ji,
                           onExpandedChange: Mn,
-                          onFolderFocus: (ut) => Pr(ut ? ut.path || "" : null),
+                          onFolderFocus: (ut) => Or(ut ? ut.path || "" : null),
                           focusedFolderPath: sr ? void 0 : Tt ?? void 0,
                           onDropOnFolder: ct,
                           dropTarget: Bt,
@@ -28925,14 +29147,14 @@ ${t}
                           currentFile: Qr,
                           onCreateFile: (ut, Mt) => Ee("local", ut, Mt, "file"),
                           onCreateFolder: (ut, Mt) => Ee("local", ut, Mt, "folder"),
-                          onRequestMoveFolder: Oe,
+                          onRequestMoveFolder: Pe,
                           onDelete: (ut, Mt) => zn(ut, Mt),
                           onRename: je,
                           deletingFolderPath: Wt,
                           isDeletingFolder: jt,
                           transferBusyItems: _t,
                           isSearching: !!It,
-                          expandedPaths: Dr,
+                          expandedPaths: Fr,
                           onExpandedChange: Mn,
                           onFolderFocus: (ut) => $r(ut ? {
                             path: ut.path || "",
@@ -29052,7 +29274,7 @@ ${t}
                           localRootHandle: null,
                           onDropOnFolder: ct,
                           dropTarget: Bt,
-                          isFocused: !sr && Or === "",
+                          isFocused: !sr && Pr === "",
                           onFocusRoot: () => rn(""),
                           onContextMenu: (pt, ut) => {
                             rn(""), jr("webdav", ut, pt);
@@ -29077,7 +29299,7 @@ ${t}
                           currentFile: Qr,
                           onCreateFile: (ut) => Ee("webdav", ut, null, "file"),
                           onCreateFolder: (ut) => Ee("webdav", ut, null, "folder"),
-                          onRequestMoveFolder: Oe,
+                          onRequestMoveFolder: Pe,
                           onDelete: (ut, Mt) => zn(ut, Mt),
                           onRename: je,
                           deletingFolderPath: Wt,
@@ -29087,7 +29309,7 @@ ${t}
                           expandedPaths: yi,
                           onExpandedChange: Mn,
                           onFolderFocus: (ut) => rn(ut ? ut.path || "" : null),
-                          focusedFolderPath: sr ? void 0 : Or ?? void 0,
+                          focusedFolderPath: sr ? void 0 : Pr ?? void 0,
                           onDropOnFolder: ct,
                           dropTarget: Bt,
                           activeDragItemIds: Yr,
@@ -29167,8 +29389,8 @@ ${t}
     const A = o ?? r, L = r, V = versionedStorageKey(e), [re, ee] = reactExports.useState(() => {
       if (!V || typeof window > "u") return t;
       try {
-        const dt = window.localStorage.getItem(V), Fe = Number(dt);
-        if (Number.isFinite(Fe)) return Math.min(n, Math.max(L, Fe));
+        const dt = window.localStorage.getItem(V), De = Number(dt);
+        if (Number.isFinite(De)) return Math.min(n, Math.max(L, De));
       } catch {
       }
       return t;
@@ -29176,7 +29398,7 @@ ${t}
       isResizing: false,
       startX: 0,
       startWidth: t
-    }), ue = reactExports.useRef(re), fe = reactExports.useRef(null), be = reactExports.useRef(c), Ee = reactExports.useRef(f), Ae = reactExports.useRef(l), ke = reactExports.useRef(A), Oe = reactExports.useRef(L), Le = reactExports.useRef(n), Re = reactExports.useRef(s);
+    }), ue = reactExports.useRef(re), fe = reactExports.useRef(null), be = reactExports.useRef(c), Ee = reactExports.useRef(f), Ae = reactExports.useRef(l), ke = reactExports.useRef(A), Pe = reactExports.useRef(L), Le = reactExports.useRef(n), Re = reactExports.useRef(s);
     reactExports.useEffect(() => {
       ue.current = re;
     }, [
@@ -29199,7 +29421,7 @@ ${t}
       o,
       r
     ]), reactExports.useEffect(() => {
-      Oe.current = r;
+      Pe.current = r;
     }, [
       r
     ]), reactExports.useEffect(() => {
@@ -29213,9 +29435,9 @@ ${t}
     ]), reactExports.useEffect(() => {
       if (oe) return;
       const dt = Math.min(r, n);
-      ee((Fe) => {
-        const je = Math.min(n, Math.max(dt, Fe));
-        return je === Fe ? Fe : je;
+      ee((De) => {
+        const je = Math.min(n, Math.max(dt, De));
+        return je === De ? De : je;
       });
     }, [
       r,
@@ -29230,10 +29452,10 @@ ${t}
     }, []), Me = reactExports.useCallback((dt) => {
       var _a2, _b2, _c;
       dt.preventDefault(), dt.stopPropagation();
-      const Fe = ((_b2 = (_a2 = dt.touches) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.clientX) ?? dt.clientX, je = ue.current;
+      const De = ((_b2 = (_a2 = dt.touches) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.clientX) ?? dt.clientX, je = ue.current;
       pe.current = {
         isResizing: true,
-        startX: Fe,
+        startX: De,
         startWidth: je
       }, fe.current = je, (_c = be.current) == null ? void 0 : _c.call(be, je), le(true);
     }, []);
@@ -29244,24 +29466,24 @@ ${t}
         if (!ze.isResizing) return;
         const mt = lt - ze.startX, Ze = Re.current === "right" ? -mt : mt, vt = ze.startWidth + Ze, Wt = ke.current, jt = Le.current, St = typeof Ee.current == "function" ? Math.min(jt, Math.max(0, vt)) : Math.min(jt, Math.max(Wt, vt));
         fe.current = St, (_a2 = be.current) == null ? void 0 : _a2.call(be, St), Ae.current || ee(St);
-      }, Fe = (lt) => dt(lt.clientX), je = (lt) => {
+      }, De = (lt) => dt(lt.clientX), je = (lt) => {
         var _a2;
         pe.current.isResizing && ((_a2 = lt.touches) == null ? void 0 : _a2[0]) && (lt.preventDefault(), dt(lt.touches[0].clientX));
       }, Ge = (lt) => {
         var _a2, _b2;
         if (!pe.current.isResizing) return;
         ((_a2 = lt == null ? void 0 : lt.type) == null ? void 0 : _a2.startsWith("touch")) && ((_b2 = lt.stopPropagation) == null ? void 0 : _b2.call(lt));
-        const ze = fe.current, mt = pe.current.startWidth, Ze = ke.current, vt = Oe.current, Wt = Le.current, jt = Ee.current;
+        const ze = fe.current, mt = pe.current.startWidth, Ze = ke.current, vt = Pe.current, Wt = Le.current, jt = Ee.current;
         if (Je(), typeof jt == "function" && ze != null && ze < Ze) {
           ee(mt), jt();
           return;
         }
         ze != null && ee(Math.min(Wt, Math.max(vt, ze)));
       };
-      return window.addEventListener("mousemove", Fe), window.addEventListener("mouseup", Ge), window.addEventListener("touchmove", je, {
+      return window.addEventListener("mousemove", De), window.addEventListener("mouseup", Ge), window.addEventListener("touchmove", je, {
         passive: false
       }), window.addEventListener("touchend", Ge), window.addEventListener("touchcancel", Ge), () => {
-        window.removeEventListener("mousemove", Fe), window.removeEventListener("mouseup", Ge), window.removeEventListener("touchmove", je), window.removeEventListener("touchend", Ge), window.removeEventListener("touchcancel", Ge);
+        window.removeEventListener("mousemove", De), window.removeEventListener("mouseup", Ge), window.removeEventListener("touchmove", je), window.removeEventListener("touchend", Ge), window.removeEventListener("touchcancel", Ge);
       };
     }, [
       Je
@@ -29276,9 +29498,9 @@ ${t}
       oe
     ]), reactExports.useEffect(() => {
       if (!oe) return;
-      const dt = document.body.style.cursor, Fe = document.body.style.userSelect;
+      const dt = document.body.style.cursor, De = document.body.style.userSelect;
       return document.body.style.cursor = "col-resize", document.body.style.userSelect = "none", () => {
-        document.body.style.cursor = dt, document.body.style.userSelect = Fe;
+        document.body.style.cursor = dt, document.body.style.userSelect = De;
       };
     }, [
       oe
@@ -29374,18 +29596,18 @@ ${t}
       t
     ]), reactExports.useEffect(() => {
       ee(), window.addEventListener("resize", ee);
-      const Oe = l.current, Le = [];
-      if (Oe && typeof ResizeObserver < "u") {
+      const Pe = l.current, Le = [];
+      if (Pe && typeof ResizeObserver < "u") {
         const Re = new ResizeObserver(() => {
           f.current || ee();
         });
-        Re.observe(Oe), Le.push(() => Re.disconnect());
+        Re.observe(Pe), Le.push(() => Re.disconnect());
       }
-      if (Oe && typeof MutationObserver < "u") {
+      if (Pe && typeof MutationObserver < "u") {
         const Re = new MutationObserver(() => {
           f.current || ee();
         });
-        Re.observe(Oe, {
+        Re.observe(Pe, {
           childList: true,
           subtree: true,
           characterData: true
@@ -29397,18 +29619,18 @@ ${t}
     }, [
       ee
     ]);
-    const oe = reactExports.useCallback((Oe) => {
-      c.current = Oe;
+    const oe = reactExports.useCallback((Pe) => {
+      c.current = Pe;
       const Le = l.current;
-      !Le || e || t || A || (Le.style.width = `${Oe}px`);
+      !Le || e || t || A || (Le.style.width = `${Pe}px`);
     }, [
       t,
       e,
       A
     ]), le = reactExports.useCallback(() => {
       L(true);
-      const Oe = l.current;
-      Oe && !e && (Oe.style.width = "0px"), n == null ? void 0 : n();
+      const Pe = l.current;
+      Pe && !e && (Pe.style.width = "0px"), n == null ? void 0 : n();
     }, [
       e,
       n
@@ -29430,8 +29652,8 @@ ${t}
     ]);
     const Ee = reactExports.useRef(t);
     reactExports.useEffect(() => {
-      const Oe = Ee.current;
-      if (Ee.current = t, e || t || !Oe) return;
+      const Pe = Ee.current;
+      if (Ee.current = t, e || t || !Pe) return;
       const Le = () => {
         const Je = measureBrandExpandWidth(l.current);
         ue((Me) => Math.max(Me, Je)), ee();
@@ -29443,7 +29665,7 @@ ${t}
       ue,
       ee
     ]), reactExports.useEffect(() => {
-      t || e || fe || ue((Oe) => Math.min(Oe, V.max));
+      t || e || fe || ue((Pe) => Math.min(Pe, V.max));
     }, [
       V.max,
       t,
@@ -29616,7 +29838,7 @@ ${t}
       f.current = null, ((_b2 = c.current) == null ? void 0 : _b2.state) !== "closed" && ((_c = c.current) == null ? void 0 : _c.close()), c.current = null, l.current && (l.current.getTracks().forEach((Ae) => Ae.stop()), l.current = null);
     }, []), pe = reactExports.useCallback(async (Ae) => {
       var _a2, _b2;
-      const { noteKey: ke = "", markdown: Oe = "" } = Ae ?? {};
+      const { noteKey: ke = "", markdown: Pe = "" } = Ae ?? {};
       if (!e && !A.current) return null;
       V.current != null && (clearInterval(V.current), V.current = null), n(0);
       const Le = A.current;
@@ -29638,20 +29860,20 @@ ${t}
         ...oe.current
       ];
       if (oe.current = [], Je.length === 0) return t(false), null;
-      const dt = Le.mimeType || "audio/webm", Fe = new Blob(Je, {
+      const dt = Le.mimeType || "audio/webm", De = new Blob(Je, {
         type: dt
       });
       let je = null;
       return ke && (je = await saveRecording({
         noteKey: ke,
-        audioBlob: Fe,
-        markdown: Oe,
+        audioBlob: De,
+        markdown: Pe,
         syncData: Me
       })), t(false), {
         id: je,
         noteKey: ke,
-        audioBlob: Fe,
-        markdown: Oe,
+        audioBlob: De,
+        markdown: Pe,
         syncData: Me
       };
     }, []), ue = reactExports.useCallback(async () => {
@@ -29663,11 +29885,11 @@ ${t}
         l.current = Ae;
         const ke = new (window.AudioContext || window.webkitAudioContext)();
         c.current = ke;
-        const Oe = ke.createAnalyser();
-        Oe.fftSize = FFT_SIZE, Oe.smoothingTimeConstant = SMOOTHING, f.current = Oe;
+        const Pe = ke.createAnalyser();
+        Pe.fftSize = FFT_SIZE, Pe.smoothingTimeConstant = SMOOTHING, f.current = Pe;
         const Le = ke.createMediaStreamSource(Ae);
-        Le.connect(Oe), L.current = Le;
-        const Re = new Uint8Array(Oe.frequencyBinCount);
+        Le.connect(Pe), L.current = Le;
+        const Re = new Uint8Array(Pe.frequencyBinCount);
         re.current = [], ee.current = Date.now();
         const Je = new MediaRecorder(Ae);
         Je.ondataavailable = (Me) => {
@@ -29675,8 +29897,8 @@ ${t}
         }, Je.start(100), A.current = Je, V.current = setInterval(() => {
           if (!f.current) return;
           f.current.getByteFrequencyData(Re);
-          const dt = Re.reduce((je, Ge) => je + Ge, 0) / Re.length, Fe = Math.min(1, dt / 128);
-          n(Fe);
+          const dt = Re.reduce((je, Ge) => je + Ge, 0) / Re.length, De = Math.min(1, dt / 128);
+          n(De);
         }, LEVEL_POLL_INTERVAL_MS), t(true);
       } catch (Ae) {
         s((Ae == null ? void 0 : Ae.message) || "\uB9C8\uC774\uD06C \uC811\uADFC \uC2E4\uD328"), le(), t(false);
@@ -29689,14 +29911,14 @@ ${t}
       e,
       ue,
       pe
-    ]), be = reactExports.useCallback(() => ee.current ? (Date.now() - ee.current) / 1e3 : 0, []), Ee = reactExports.useCallback((Ae, ke, Oe = {}) => {
+    ]), be = reactExports.useCallback(() => ee.current ? (Date.now() - ee.current) / 1e3 : 0, []), Ee = reactExports.useCallback((Ae, ke, Pe = {}) => {
       if (!e) return;
       const Le = (Date.now() - ee.current) / 1e3;
       oe.current.push({
         time: Le,
         line: Ae,
         text: ke,
-        insert: Oe.insert ?? false
+        insert: Pe.insert ?? false
       });
     }, [
       e
@@ -31093,7 +31315,7 @@ ${t}
       window.setTimeout(() => A(false), 150);
     }, ke = () => {
       A(true);
-    }, Oe = (Re) => {
+    }, Pe = (Re) => {
       const Je = Re.target.value;
       V(Je), t(Je), A(true);
     }, Le = (Re) => {
@@ -31121,7 +31343,7 @@ ${t}
                 type: "text",
                 id: o,
                 value: L,
-                onChange: Oe,
+                onChange: Pe,
                 onFocus: ke,
                 onBlur: Ae,
                 placeholder: n,
@@ -48310,8 +48532,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         var ke = retrieveTextFontName("amsrm", A, L);
         return makeSymbol(s, ke, o, r, l.concat("amsrm", A, L));
       } else if (Ae === "main" || !Ae) {
-        var Oe = retrieveTextFontName("textrm", A, L);
-        return makeSymbol(s, Oe, o, r, l.concat(A, L));
+        var Pe = retrieveTextFontName("textrm", A, L);
+        return makeSymbol(s, Pe, o, r, l.concat(A, L));
       } else {
         var Le = retrieveTextFontName(Ae, A, L);
         return makeSymbol(s, Le, o, r, l.concat(Le, A, L));
@@ -48422,12 +48644,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     Ee.style.height = makeEm(re);
     var Ae;
     if (V < 0) {
-      var ke = makeSpan([], []), Oe = makeSpan([
+      var ke = makeSpan([], []), Pe = makeSpan([
         "vlist"
       ], [
         ke
       ]);
-      Oe.style.height = makeEm(-V);
+      Pe.style.height = makeEm(-V);
       var Le = makeSpan([
         "vlist-s"
       ], [
@@ -48443,7 +48665,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         makeSpan([
           "vlist-r"
         ], [
-          Oe
+          Pe
         ])
       ];
     } else Ae = [
@@ -49716,22 +49938,22 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } else {
         var pe = [], ue = katexImagesData[f];
         if (!ue) throw new Error('No SVG data for "' + f + '".');
-        var [fe, be, Ee] = ue, Ae = Ee / 1e3, ke = fe.length, Oe, Le;
+        var [fe, be, Ee] = ue, Ae = Ee / 1e3, ke = fe.length, Pe, Le;
         if (ke === 1) {
           if (ue.length !== 4) throw new Error('Expected 4-tuple for single-path SVG data "' + f + '".');
-          Oe = [
+          Pe = [
             "hide-tail"
           ], Le = [
             ue[3]
           ];
-        } else if (ke === 2) Oe = [
+        } else if (ke === 2) Pe = [
           "halfarrow-left",
           "halfarrow-right"
         ], Le = [
           "xMinYMin",
           "xMaxYMin"
         ];
-        else if (ke === 3) Oe = [
+        else if (ke === 3) Pe = [
           "brace-left",
           "brace-center",
           "brace-right"
@@ -49751,7 +49973,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             viewBox: "0 0 " + c + " " + Ee,
             preserveAspectRatio: Le[Re] + " slice"
           }), dt = makeSvgSpan([
-            Oe[Re]
+            Pe[Re]
           ], [
             Me
           ], r);
@@ -50857,11 +51079,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       var ke = getMetrics(f, ee, s);
       Ee = ke.height + ke.depth, Ae = 2;
     }
-    var Oe = le + be + Ee, Le = Math.max(0, Math.ceil((r - Oe) / (Ae * ue))), Re = Oe + Le * Ae * ue, Je = o.fontMetrics().axisHeight;
+    var Pe = le + be + Ee, Le = Math.max(0, Math.ceil((r - Pe) / (Ae * ue))), Re = Pe + Le * Ae * ue, Je = o.fontMetrics().axisHeight;
     n && (Je *= o.sizeMultiplier);
     var Me = Re / 2 - Je, dt = [];
     if (V.length > 0) {
-      var Fe = Re - le - be, je = Math.round(Re * 1e3), Ge = tallDelim(V, Math.round(Fe * 1e3)), lt = new PathNode(V, Ge), ze = makeEm(re / 1e3), mt = makeEm(je / 1e3), Ze = new SvgNode([
+      var De = Re - le - be, je = Math.round(Re * 1e3), Ge = tallDelim(V, Math.round(De * 1e3)), lt = new PathNode(V, Ge), ze = makeEm(re / 1e3), mt = makeEm(je / 1e3), Ze = new SvgNode([
         lt
       ], {
         width: ze,
@@ -51741,17 +51963,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           ke
         ]
       }), oe.push(ke);
-      var Oe = e.fetch().text;
-      if (Oe === "&") {
+      var Pe = e.fetch().text;
+      if (Pe === "&") {
         if (V && oe.length === V) {
           if (A || c) throw new ParseError("Too many tab characters: &", e.nextToken);
           e.settings.reportNonstrict("textEnv", "Too few columns specified in the {array} column argument.");
         }
         e.consume();
-      } else if (Oe === "\\end") {
+      } else if (Pe === "\\end") {
         Ee(), oe.length === 1 && ke.type === "styling" && ke.body.length === 1 && ke.body[0].type === "ordgroup" && ke.body[0].body.length === 0 && (le.length > 1 || !L) && le.pop(), ue.length < le.length + 1 && ue.push([]);
         break;
-      } else if (Oe === "\\\\") {
+      } else if (Pe === "\\\\") {
         e.consume();
         var Le = void 0;
         e.gullet.future().text !== " " && (Le = e.parseSizeGroup(true)), pe.push(Le ? Le.value : null), Ee(), ue.push(getHLines(e)), oe = [], le.push(oe), be();
@@ -51792,7 +52014,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
     }
     for (Ee(l[0]), n = 0; n < t.body.length; ++n) {
-      var Ae = t.body[n], ke = ue, Oe = fe;
+      var Ae = t.body[n], ke = ue, Pe = fe;
       c < Ae.length && (c = Ae.length);
       var Le = {
         cells: new Array(Ae.length),
@@ -51802,12 +52024,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
       for (o = 0; o < Ae.length; ++o) {
         var Re = buildGroup$1(Ae[o], r);
-        Oe < Re.depth && (Oe = Re.depth), ke < Re.height && (ke = Re.height), Le.cells[o] = Re;
+        Pe < Re.depth && (Pe = Re.depth), ke < Re.height && (ke = Re.height), Le.cells[o] = Re;
       }
       var Je = t.rowGaps[n], Me = 0;
-      Je && (Me = calculateSize(Je, r), Me > 0 && (Me += fe, Oe < Me && (Oe = Me), Me = 0)), t.addJot && n < t.body.length - 1 && (Oe += le), Le.height = ke, Le.depth = Oe, be += ke, Le.pos = be, be += Oe + Me, f[n] = Le, Ee(l[n + 1]);
+      Je && (Me = calculateSize(Je, r), Me > 0 && (Me += fe, Pe < Me && (Pe = Me), Me = 0)), t.addJot && n < t.body.length - 1 && (Pe += le), Le.height = ke, Le.depth = Pe, be += ke, Le.pos = be, be += Pe + Me, f[n] = Le, Ee(l[n + 1]);
     }
-    var dt = be / 2 + r.fontMetrics().axisHeight, Fe = t.cols || [], je = [], Ge, lt, ze = [];
+    var dt = be / 2 + r.fontMetrics().axisHeight, De = t.cols || [], je = [], Ge, lt, ze = [];
     if (t.tags && t.tags.some((_r) => _r)) for (n = 0; n < s; ++n) {
       var mt = f[n], Ze = mt.pos - dt, vt = t.tags[n], Wt = void 0;
       vt === true ? Wt = makeSpan([
@@ -51818,8 +52040,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         shift: Ze
       });
     }
-    for (o = 0, lt = 0; o < c || lt < Fe.length; ++o, ++lt) {
-      for (var jt, ct = Fe[lt], St = true; ((Bt = ct) == null ? void 0 : Bt.type) === "separator"; ) {
+    for (o = 0, lt = 0; o < c || lt < De.length; ++o, ++lt) {
+      for (var jt, ct = De[lt], St = true; ((Bt = ct) == null ? void 0 : Bt.type) === "separator"; ) {
         var Bt;
         if (St || (Ge = makeSpan([
           "arraycolsep"
@@ -51831,7 +52053,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           var gr = be - dt;
           gr && (rt.style.verticalAlign = makeEm(-gr)), je.push(rt);
         } else throw new ParseError("Invalid separator type: " + ct.separator);
-        lt++, ct = Fe[lt], St = false;
+        lt++, ct = De[lt], St = false;
       }
       if (!(o >= c)) {
         var Xt = void 0;
@@ -51941,7 +52163,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       L.setAttribute("columnalign", ee.trim()), /[sd]/.test(le) && L.setAttribute("columnlines", le.trim());
     }
     if (t.colSeparationType === "align") {
-      for (var Ae = t.cols || [], ke = "", Oe = 1; Oe < Ae.length; Oe++) ke += Oe % 2 ? "0em " : "1em ";
+      for (var Ae = t.cols || [], ke = "", Pe = 1; Pe < Ae.length; Pe++) ke += Pe % 2 ? "0em " : "1em ";
       L.setAttribute("columnspacing", ke.trim());
     } else t.colSeparationType === "alignat" || t.colSeparationType === "gather" ? L.setAttribute("columnspacing", "0em") : t.colSeparationType === "small" ? L.setAttribute("columnspacing", "0.2778em") : t.colSeparationType === "CD" ? L.setAttribute("columnspacing", "0.5em") : L.setAttribute("columnspacing", "1em");
     var Le = "", Re = t.hLinesBeforeRow;
@@ -54413,9 +54635,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       var Ae;
       if (c && f) {
         L = Math.max(L, le, c.depth + 0.25 * A.xHeight), V = Math.max(V, A.sub2);
-        var ke = A.defaultRuleThickness, Oe = 4 * ke;
-        if (L - c.depth - (f.height - V) < Oe) {
-          V = Oe - (L - c.depth) + f.height;
+        var ke = A.defaultRuleThickness, Pe = 4 * ke;
+        if (L - c.depth - (f.height - V) < Pe) {
+          V = Pe - (L - c.depth) + f.height;
           var Le = 0.8 * A.xHeight - (L - c.depth);
           Le > 0 && (L += Le, V -= Le);
         }
@@ -56669,10 +56891,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return renderSeq += 1, `haim-mermaid-${Date.now().toString(36)}-${renderSeq}`;
   }
   async function getMermaidInstance() {
-    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-Csq-pXKK.js").then(async (m2) => {
+    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-CYE2GzEP.js").then(async (m2) => {
       await m2.__tla;
       return m2;
-    }), __vite__mapDeps([11,4,1])).then((e) => {
+    }), __vite__mapDeps([13,6,3])).then((e) => {
       const t = e.default ?? e;
       return patchMermaidRender(t), t;
     })), mermaidPromise;
@@ -57118,17 +57340,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const r = await e.text(), n = t || (e.name ? e.name.replace(/\.svg$/i, ".png") : `clipboard-${Date.now()}.png`);
     return rasterizeSvgTextToPngFile(r, n);
   };
-  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-RtfsZuyt.js"), __vite__mapDeps([12,1,4,13,8,9,6,14,7,15,16,17,18,19,20,21,22,23,24,25,26,10]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-jxeOFRS7.js"), __vite__mapDeps([27,1,28,4,0,2,9,6,29,25,7,30,20,21,22,8,10,31]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([32,1,33]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-mPEJsVtE.js"), __vite__mapDeps([34,1,32,33,7,4,6,8,9,10])));
+  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-Z03fj4xe.js"), __vite__mapDeps([14,3,6,15,10,11,8,16,9,17,18,19,20,21,22,23,24,25,26,27,28,12]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-B7n44g0w.js"), __vite__mapDeps([29,3,30,6,2,4,11,8,31,27,9,32,22,23,24,10,12,33]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([34,3,35]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-DQ5vznpp.js"), __vite__mapDeps([36,3,34,35,9,6,8,10,11,12])));
   function EditorPaneSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted",
       children: "\uC5D0\uB514\uD130 \uB85C\uB529 \uC911\u2026"
     });
   }
-  function EditorPane({ currentFile: e, editorContent: t, onChangeEditor: r, onSave: n, isSaving: o, onRefreshFromDisk: s, isRefreshingFromDisk: l = false, onRequestDelete: c, editedFileName: f = "", setEditedFileName: A, onRenameFullName: L, onRequestSuffixChangeConfirmForBlur: V, onRequestClose: re, onRequestMove: ee, onViewUnsupportedAsText: oe, onRequestDownload: le, onShareToChatWithMyself: pe, theme: ue = "light", previewOnly: fe = false, isMobileLayout: be = false, sidebarOpen: Ee = true, sidebarCollapsed: Ae = false, onOpenSidebar: ke, onRequestCreateFile: Oe, onOpenChatWithMyself: Le, onOpenSessionFiles: Re, onOpenSessionDirectory: Je, onDropSessionTransfer: Me, isOpeningSession: dt = false, onSaveSessionToNote: Fe, onRequestSessionTransformDownload: je, isRecording: Ge = false, audioLevel: lt = 0, onToggleRecording: ze, recordingPipelineStatus: mt = "", recordingsList: Ze = [], selectedRecordingKey: vt = null, onSelectRecording: Wt, recordingAudioUrl: jt = "", recordingSyncData: ct = [], onUploadImage: St, isUploadingEditorImage: Bt = false, uploadImagePercent: _t = 0, onCancelUploadImage: rt, onResolveWikiImageUrl: gr, onOpenViewPath: Xt, snippetConfig: at = {
+  function EditorPane({ currentFile: e, editorContent: t, onChangeEditor: r, onSave: n, isSaving: o, onRefreshFromDisk: s, isRefreshingFromDisk: l = false, onRequestDelete: c, editedFileName: f = "", setEditedFileName: A, onRenameFullName: L, onRequestSuffixChangeConfirmForBlur: V, onRequestClose: re, onRequestMove: ee, onViewUnsupportedAsText: oe, onRequestDownload: le, onShareToChatWithMyself: pe, theme: ue = "light", previewOnly: fe = false, isMobileLayout: be = false, sidebarOpen: Ee = true, sidebarCollapsed: Ae = false, onOpenSidebar: ke, onRequestCreateFile: Pe, onOpenChatWithMyself: Le, onOpenSessionFiles: Re, onOpenSessionDirectory: Je, onDropSessionTransfer: Me, isOpeningSession: dt = false, onSaveSessionToNote: De, onRequestSessionTransformDownload: je, isRecording: Ge = false, audioLevel: lt = 0, onToggleRecording: ze, recordingPipelineStatus: mt = "", recordingsList: Ze = [], selectedRecordingKey: vt = null, onSelectRecording: Wt, recordingAudioUrl: jt = "", recordingSyncData: ct = [], onUploadImage: St, isUploadingEditorImage: Bt = false, uploadImagePercent: _t = 0, onCancelUploadImage: rt, onResolveWikiImageUrl: gr, onOpenViewPath: Xt, snippetConfig: at = {
     snippets: []
   }, editorType: pr, hideRecordingCompanions: qt = false, llmProviderProfiles: Lt = [], getImgbbApiKey: nr }) {
-    const sr = pr ?? loadEditorType(), [tn, Kr] = reactExports.useState(0), fn = reactExports.useRef(null), [Tr, Ie] = reactExports.useState(false), [Zt, yr] = reactExports.useState(false), fr = reactExports.useRef(null), [tr, xr] = reactExports.useState(false), lr = reactExports.useRef(null), [Rt, _r] = reactExports.useState(true), qr = reactExports.useRef(null), Rr = reactExports.useRef(null), Ur = reactExports.useRef(null), [Ir, Mr] = reactExports.useState(false), [yt, ht] = reactExports.useState(false), [Qe, It] = reactExports.useState(false), [Gt, ir] = reactExports.useState(false), [Tt, Pr] = reactExports.useState([]), [Qt, $r] = reactExports.useState(false), [Or, rn] = reactExports.useState(null), [zr, Qr] = reactExports.useState(false), { showAlert: mr } = useAlertModal(), mn = reactExports.useMemo(() => {
+    const sr = pr ?? loadEditorType(), [tn, Kr] = reactExports.useState(0), fn = reactExports.useRef(null), [Tr, Ie] = reactExports.useState(false), [Zt, yr] = reactExports.useState(false), fr = reactExports.useRef(null), [tr, xr] = reactExports.useState(false), lr = reactExports.useRef(null), [Rt, _r] = reactExports.useState(true), qr = reactExports.useRef(null), Rr = reactExports.useRef(null), Ur = reactExports.useRef(null), [Ir, Mr] = reactExports.useState(false), [yt, ht] = reactExports.useState(false), [Qe, It] = reactExports.useState(false), [Gt, ir] = reactExports.useState(false), [Tt, Or] = reactExports.useState([]), [Qt, $r] = reactExports.useState(false), [Pr, rn] = reactExports.useState(null), [zr, Qr] = reactExports.useState(false), { showAlert: mr } = useAlertModal(), mn = reactExports.useMemo(() => {
       const { meta: bt } = parseDocumentSettingsMeta(t ?? "");
       return bt ?? DEFAULT_DOCUMENT_SETTINGS_META;
     }, [
@@ -57166,7 +57388,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           (_a2 = Rr.current) == null ? void 0 : _a2.call(Rr);
           const bt = collectImgbbCopyCandidates();
           if (bt.length > 0) {
-            Pr(bt), ir(true);
+            Or(bt), ir(true);
             return;
           }
           await Er();
@@ -57185,7 +57407,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Er,
       Qt,
       mr
-    ]), Fn = reactExports.useCallback(async () => {
+    ]), Dn = reactExports.useCallback(async () => {
       if (!Qt) {
         $r(true);
         try {
@@ -57225,7 +57447,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             const kr = await batchUpsertRemoteImageComments(Et, Vr);
             kr.updated && r(kr.markdown);
           }
-          ir(false), Pr([]), await Er(br);
+          ir(false), Or([]), await Er(br);
         } catch (bt) {
           const Et = bt instanceof Error && bt.message ? bt.message : "ImgBB \uC5C5\uB85C\uB4DC \uD6C4 \uBCF5\uC0AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.";
           mr({
@@ -57246,7 +57468,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       mr
     ]), pn = reactExports.useCallback(async () => {
       if (!Qt) {
-        ir(false), Pr([]), It(true);
+        ir(false), Or([]), It(true);
         try {
           await Er();
         } catch (bt) {
@@ -57264,7 +57486,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Qt,
       mr
     ]), _n = reactExports.useCallback(() => {
-      Qt || (ir(false), Pr([]));
+      Qt || (ir(false), Or([]));
     }, [
       Qt
     ]), xt = reactExports.useCallback(() => {
@@ -57415,7 +57637,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 onOpenFiles: Re,
                 onOpenDirectoryHandle: Je,
                 onDropTransfer: Me,
-                onRequestCreateFile: Oe,
+                onRequestCreateFile: Pe,
                 onOpenSidebar: ke,
                 onOpenChatWithMyself: Le,
                 isBusy: dt
@@ -57423,14 +57645,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 className: "mx-auto flex w-full max-w-xs flex-col gap-2",
                 variants: emptyHomeMenuContainerVariants,
                 children: [
-                  typeof Oe == "function" ? jsxRuntimeExports.jsx(motion.div, {
+                  typeof Pe == "function" ? jsxRuntimeExports.jsx(motion.div, {
                     variants: emptyHomeItemVariants,
                     children: jsxRuntimeExports.jsxs(Button, {
                       type: "button",
                       variant: "primary",
                       size: "md",
                       className: "w-full",
-                      onClick: Oe,
+                      onClick: Pe,
                       children: [
                         jsxRuntimeExports.jsx(IconFilePlus, {
                           size: 16
@@ -57478,7 +57700,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         })
       ]
     });
-    const Fr = e.viewer || "markdown", bn = e.type === "session" && (Fr === "markdown" || /\.(md|markdown)$/i.test(e.name || e.id || "")), $n = Fr === "markdown" || Fr === "json" || Fr === "raw" || Fr === "html" || Fr === "svg", hn = $n && e.content !== t, Wr = Fr === "markdown" && !fe && hasStandardMarkdownImages(t), cn = e.name || "", Dn = () => {
+    const Dr = e.viewer || "markdown", bn = e.type === "session" && (Dr === "markdown" || /\.(md|markdown)$/i.test(e.name || e.id || "")), $n = Dr === "markdown" || Dr === "json" || Dr === "raw" || Dr === "html" || Dr === "svg", hn = $n && e.content !== t, Wr = Dr === "markdown" && !fe && hasStandardMarkdownImages(t), cn = e.name || "", Fn = () => {
       if (!e || typeof A != "function") return;
       const bt = (f ?? "").trim();
       if (!bt) {
@@ -57541,7 +57763,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                           className: "min-w-[3em] w-full border-none bg-transparent text-sm font-medium outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500 md:text-base",
                           value: f ?? "",
                           onChange: (bt) => A == null ? void 0 : A(bt.target.value),
-                          onBlur: Dn,
+                          onBlur: Fn,
                           onKeyDown: (bt) => {
                             (bt.ctrlKey || bt.metaKey) && !bt.altKey && bt.key.toLowerCase() === "s" && (bt.preventDefault(), Nr());
                           },
@@ -57563,7 +57785,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                       onStopRecording: ze,
                       onShowToolbar: () => yr(true)
                     }),
-                    Fr === "pdf" && jsxRuntimeExports.jsxs(Button, {
+                    Dr === "pdf" && jsxRuntimeExports.jsxs(Button, {
                       type: "button",
                       variant: "secondary",
                       size: "sm",
@@ -57629,11 +57851,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                           className: "absolute right-0 top-full z-100 mt-1 min-w-[200px] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface",
                           role: "menu",
                           children: [
-                            e.type === "session" && $n && typeof Fe == "function" ? jsxRuntimeExports.jsxs("button", {
+                            e.type === "session" && $n && typeof De == "function" ? jsxRuntimeExports.jsxs("button", {
                               type: "button",
                               className: "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft",
                               onClick: () => {
-                                Fe(), xr(false);
+                                De(), xr(false);
                               },
                               children: [
                                 jsxRuntimeExports.jsx(IconSave, {
@@ -57694,7 +57916,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                                 "\uB2E4\uC6B4\uB85C\uB4DC"
                               ]
                             }),
-                            Fr === "markdown" ? jsxRuntimeExports.jsxs("button", {
+                            Dr === "markdown" ? jsxRuntimeExports.jsxs("button", {
                               type: "button",
                               className: "w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2",
                               onClick: () => {
@@ -57803,7 +58025,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 })
               ]
             }),
-            Fr === "markdown" && Zt && Ze.length > 0 && jsxRuntimeExports.jsxs("div", {
+            Dr === "markdown" && Zt && Ze.length > 0 && jsxRuntimeExports.jsxs("div", {
               className: "shrink-0 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50 dark:bg-odp-bgSoft flex flex-wrap items-center gap-2 w-full",
               children: [
                 jsxRuntimeExports.jsx("button", {
@@ -57850,7 +58072,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 })
               ]
             }),
-            Fr === "markdown" && sr === EDITOR_TYPE_NOVEL && !Tr && jsxRuntimeExports.jsxs("div", {
+            Dr === "markdown" && sr === EDITOR_TYPE_NOVEL && !Tr && jsxRuntimeExports.jsxs("div", {
               className: "shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50/90 dark:bg-odp-bgSoft/90",
               role: "toolbar",
               "aria-label": "Markdown \uD3B8\uC9D1\uAE30",
@@ -57902,7 +58124,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }),
         jsxRuntimeExports.jsx("div", {
           className: "flex-1 flex flex-col overflow-hidden bg-white dark:bg-odp-surface h-full",
-          children: Fr === "loading" ? jsxRuntimeExports.jsxs("div", {
+          children: Dr === "loading" ? jsxRuntimeExports.jsxs("div", {
             className: "flex-1 min-h-0 flex flex-col items-center justify-center gap-3",
             children: [
               jsxRuntimeExports.jsx(LoaderCircle, {
@@ -57915,7 +58137,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 children: "\uD30C\uC77C \uBD88\uB7EC\uC624\uB294 \uC911\u2026"
               })
             ]
-          }) : Fr === "markdown" ? jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, {
+          }) : Dr === "markdown" ? jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, {
             children: jsxRuntimeExports.jsx("div", {
               className: "flex-1 min-h-0",
               children: Tr && jt ? jsxRuntimeExports.jsx(RecordingSyncView, {
@@ -57935,7 +58157,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   previewOnly: fe,
                   tocVisible: Rt,
                   onTocRequestClose: () => _r(false),
-                  mobileTocOverlayTopPx: be ? Or : null,
+                  mobileTocOverlayTopPx: be ? Pr : null,
                   onRegisterFlushBeforeSave: (bt) => {
                     Rr.current = bt;
                   },
@@ -57972,14 +58194,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 })
               })
             })
-          }) : Fr === "image" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
+          }) : Dr === "image" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
             className: "flex-1 flex items-center justify-center overflow-auto p-4",
             children: jsxRuntimeExports.jsx("img", {
               src: e.objectUrl,
               alt: e.name,
               className: "max-w-full max-h-full object-contain rounded border border-gray-200 dark:border-odp-borderSoft bg-black/5 dark:bg-black/20"
             })
-          }) : Fr === "pdf" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
+          }) : Dr === "pdf" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
             className: "flex-1 overflow-hidden",
             children: jsxRuntimeExports.jsx("iframe", {
               ref: fn,
@@ -57987,7 +58209,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               title: e.name,
               className: "w-full h-full border-0 bg-white dark:bg-black"
             }, tn)
-          }) : Fr === "json" ? jsxRuntimeExports.jsx("div", {
+          }) : Dr === "json" ? jsxRuntimeExports.jsx("div", {
             className: "flex-1 flex flex-col overflow-hidden min-h-0 p-4",
             children: jsxRuntimeExports.jsx(reactExports.Suspense, {
               fallback: jsxRuntimeExports.jsx(EditorPaneSuspenseFallback, {}),
@@ -58000,34 +58222,34 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 onSave: n
               })
             })
-          }) : Fr === "html" || Fr === "svg" ? jsxRuntimeExports.jsx("div", {
+          }) : Dr === "html" || Dr === "svg" ? jsxRuntimeExports.jsx("div", {
             className: "flex-1 flex flex-col overflow-hidden min-h-0",
             children: jsxRuntimeExports.jsx(reactExports.Suspense, {
               fallback: jsxRuntimeExports.jsx(EditorPaneSuspenseFallback, {}),
               children: jsxRuntimeExports.jsx(HtmlSvgPreviewEditor, {
                 value: t,
-                mode: Fr === "svg" ? "svg" : "html",
+                mode: Dr === "svg" ? "svg" : "html",
                 theme: ue,
                 readOnly: fe,
                 onChange: r,
                 onSave: n
               }, (e == null ? void 0 : e.id) ?? "html-svg")
             })
-          }) : Fr === "audio" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
+          }) : Dr === "audio" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
             className: "flex-1 flex items-center justify-center overflow-auto p-4",
             children: jsxRuntimeExports.jsx("audio", {
               src: e.objectUrl,
               controls: true,
               className: "w-full max-w-lg"
             })
-          }) : Fr === "video" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
+          }) : Dr === "video" && e.objectUrl ? jsxRuntimeExports.jsx("div", {
             className: "flex-1 flex items-center justify-center overflow-auto p-4",
             children: jsxRuntimeExports.jsx("video", {
               src: e.objectUrl,
               controls: true,
               className: "max-w-full max-h-full rounded border border-gray-200 dark:border-odp-borderSoft"
             })
-          }) : Fr === "raw" ? jsxRuntimeExports.jsx("div", {
+          }) : Dr === "raw" ? jsxRuntimeExports.jsx("div", {
             className: "flex-1 flex flex-col overflow-hidden min-h-0 p-4",
             children: jsxRuntimeExports.jsx(reactExports.Suspense, {
               fallback: jsxRuntimeExports.jsx(EditorPaneSuspenseFallback, {}),
@@ -58040,7 +58262,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 onSave: n
               })
             })
-          }) : Fr === "unsupported" ? jsxRuntimeExports.jsxs("div", {
+          }) : Dr === "unsupported" ? jsxRuntimeExports.jsxs("div", {
             className: "flex-1 flex flex-col items-center justify-center gap-4 p-6",
             children: [
               jsxRuntimeExports.jsx("p", {
@@ -58111,7 +58333,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           discardLabel: "\uC5C5\uB85C\uB4DC \uC5C6\uC774 \uBCF5\uC0AC",
           confirmDisabled: Qt || Tt.length === 0,
           onConfirm: () => {
-            Fn();
+            Dn();
           },
           onCancel: _n,
           onDiscard: () => {
@@ -58379,7 +58601,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]), ke = reactExports.useMemo(() => L.slice(L.indexOf(l)), [
       L,
       l
-    ]), { rect: Oe, node: Le, isOver: Re, setNodeRef: Je } = useDroppable({
+    ]), { rect: Pe, node: Le, isOver: Re, setNodeRef: Je } = useDroppable({
       id: l,
       data: Ae,
       disabled: be.droppable,
@@ -58387,7 +58609,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         updateMeasurementsFor: ke,
         ...f
       }
-    }), { active: Me, activatorEvent: dt, activeNodeRect: Fe, attributes: je, setNodeRef: Ge, listeners: lt, isDragging: ze, over: mt, setActivatorNodeRef: Ze, transform: vt } = useDraggable({
+    }), { active: Me, activatorEvent: dt, activeNodeRect: De, attributes: je, setNodeRef: Ge, listeners: lt, isDragging: ze, over: mt, setActivatorNodeRef: Ze, transform: vt } = useDraggable({
       id: l,
       data: Ae,
       attributes: {
@@ -58397,7 +58619,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       disabled: be.draggable
     }), Wt = useCombinedRefs(Je, Ge), jt = !!Me, ct = jt && !oe && isValidIndex(re) && isValidIndex(pe), St = !ue && ze, Bt = St && ct ? vt : null, rt = ct ? Bt ?? (c ?? fe)({
       rects: le,
-      activeNodeRect: Fe,
+      activeNodeRect: De,
       activeIndex: re,
       overIndex: pe,
       index: Ee
@@ -58428,7 +58650,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       disabled: !qt,
       index: Ee,
       node: Le,
-      rect: Oe
+      rect: Pe
     });
     return reactExports.useEffect(() => {
       jt && at.current.newIndex !== gr && (at.current.newIndex = gr), V !== at.current.containerId && (at.current.containerId = V), L !== at.current.items && (at.current.items = L);
@@ -58454,7 +58676,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       activeIndex: re,
       attributes: je,
       data: Ae,
-      rect: Oe,
+      rect: Pe,
       index: Ee,
       newIndex: gr,
       items: L,
@@ -58535,8 +58757,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       V,
       ee
     ]), le = reactExports.useCallback((ke) => {
-      const Oe = A.current;
-      !Oe || !l.current && !c.current || (Math.abs(ke.clientX - Oe.x) > 10 || Math.abs(ke.clientY - Oe.y) > 10) && (V(), re());
+      const Pe = A.current;
+      !Pe || !l.current && !c.current || (Math.abs(ke.clientX - Pe.x) > 10 || Math.abs(ke.clientY - Pe.y) > 10) && (V(), re());
     }, [
       V,
       re
@@ -58621,7 +58843,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       zIndex: Ee ? 2 : void 0
     }, ke = reactExports.useCallback(() => {
       re.current && (clearTimeout(re.current), re.current = null), oe.current = null;
-    }, []), Oe = reactExports.useCallback((je, Ge) => {
+    }, []), Pe = reactExports.useCallback((je, Ge) => {
       !isFileTab(e) || !s || s(e, {
         clientX: je,
         clientY: Ge
@@ -58632,7 +58854,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]), Le = (je) => {
       je.button === 1 && (je.preventDefault(), je.stopPropagation(), o(e.id));
     }, Re = (je) => {
-      je.preventDefault(), je.stopPropagation(), !(!isFileTab(e) || !s) && Oe(je.clientX, je.clientY);
+      je.preventDefault(), je.stopPropagation(), !(!isFileTab(e) || !s) && Pe(je.clientX, je.clientY);
     }, Je = (je) => {
       !l || !isFileTab(e) || !s || je.pointerType !== "mouse" && je.button === 0 && (ee.current = false, oe.current = {
         x: je.clientX,
@@ -58640,7 +58862,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }, ke(), re.current = setTimeout(() => {
         re.current = null, ee.current = true, vibrateLongPressAction();
         const Ge = oe.current;
-        Oe((Ge == null ? void 0 : Ge.x) ?? je.clientX, (Ge == null ? void 0 : Ge.y) ?? je.clientY);
+        Pe((Ge == null ? void 0 : Ge.x) ?? je.clientX, (Ge == null ? void 0 : Ge.y) ?? je.clientY);
       }, PRESSABLE_CARD_MENU_MS));
     }, Me = (je) => {
       if (!oe.current || !re.current) return;
@@ -58648,7 +58870,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ge * Ge + lt * lt > 64 && ke();
     }, dt = () => {
       ke();
-    }, Fe = jsxRuntimeExports.jsxs("button", {
+    }, De = jsxRuntimeExports.jsxs("button", {
       type: "button",
       className: "flex min-w-0 flex-1 cursor-grab items-center gap-1.5 py-1.5 text-left active:cursor-grabbing",
       onClick: () => {
@@ -58708,7 +58930,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           children: [
             jsxRuntimeExports.jsx(Trigger, {
               asChild: true,
-              children: Fe
+              children: De
             }),
             jsxRuntimeExports.jsx(Portal, {
               children: jsxRuntimeExports.jsxs(Content2, {
@@ -58724,7 +58946,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               })
             })
           ]
-        }) : Fe,
+        }) : De,
         jsxRuntimeExports.jsxs(Root3, {
           children: [
             jsxRuntimeExports.jsx(Trigger, {
@@ -58824,13 +59046,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       children: t
     });
   }
-  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-edIvz-6B.js").then(async (m2) => {
+  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-BrXganlD.js").then(async (m2) => {
     await m2.__tla;
     return m2;
-  }), __vite__mapDeps([35,1,4,36,24,9,6,7,8,21,22,26,16,37,38,0,2,28,29,10,39]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-DQynt5Ut.js").then(async (m2) => {
+  }), __vite__mapDeps([37,3,6,38,26,11,8,9,10,23,24,28,18,39,40,2,4,30,31,12,41]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-BsQR4OM0.js").then(async (m2) => {
     await m2.__tla;
     return m2;
-  }), __vite__mapDeps([40,4,1,7,23,24,9,6,41,14,8,10])));
+  }), __vite__mapDeps([42,6,3,9,25,26,11,8,43,16,10,12])));
   function RouteSuspenseFallback$1() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted",
@@ -58838,7 +59060,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     });
   }
   function WorkspaceMainPanels({ tabs: e, activeId: t, savingTabIds: r, onActivateTab: n, onCloseTab: o, onReorderTabs: s, onFileTabContextMenu: l, isMobileLayout: c = false, editorPaneProps: f, chatPaneProps: A, settingsPaneProps: L, mirrors: V, tabsEnabled: re = true, isChatRoute: ee = false, isSettingsRoute: oe = false }) {
-    const le = e.filter(isFileTab), pe = e.some((Oe) => Oe.kind === "chat"), ue = e.some((Oe) => Oe.kind === "settings"), fe = re ? t === CHAT_TAB_ID : ee, be = re ? t === SETTINGS_TAB_ID : oe, Ee = re ? pe : ee, Ae = re ? ue : oe, ke = re ? e.length === 0 || t == null : !ee && !oe && !(V == null ? void 0 : V.currentFile) && le.length === 0;
+    const le = e.filter(isFileTab), pe = e.some((Pe) => Pe.kind === "chat"), ue = e.some((Pe) => Pe.kind === "settings"), fe = re ? t === CHAT_TAB_ID : ee, be = re ? t === SETTINGS_TAB_ID : oe, Ee = re ? pe : ee, Ae = re ? ue : oe, ke = re ? e.length === 0 || t == null : !ee && !oe && !(V == null ? void 0 : V.currentFile) && le.length === 0;
     return re ? jsxRuntimeExports.jsxs("div", {
       className: "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
       children: [
@@ -58854,8 +59076,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }),
         jsxRuntimeExports.jsxs(WorkspaceTabHost, {
           children: [
-            le.map((Oe) => {
-              const Le = Oe.id === t, Re = Le && (V == null ? void 0 : V.currentFile) && V.currentFile.type === Oe.storageType && V.currentFile.id === Oe.path, Je = Re ? V.currentFile : Oe.currentFile, Me = Re ? V.editorContent : Oe.editorContent, dt = Re ? V.editedFileName : Oe.editedFileName;
+            le.map((Pe) => {
+              const Le = Pe.id === t, Re = Le && (V == null ? void 0 : V.currentFile) && V.currentFile.type === Pe.storageType && V.currentFile.id === Pe.path, Je = Re ? V.currentFile : Pe.currentFile, Me = Re ? V.editorContent : Pe.editorContent, dt = Re ? V.editedFileName : Pe.editedFileName;
               return jsxRuntimeExports.jsx(WorkspaceKeepAlivePanel, {
                 active: Le,
                 children: jsxRuntimeExports.jsx(EditorPane, {
@@ -58863,18 +59085,18 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                     currentFile: Je,
                     editorContent: Me,
                     editedFileName: dt,
-                    setEditedFileName: Re ? V.setEditedFileName : (Fe) => {
+                    setEditedFileName: Re ? V.setEditedFileName : (De) => {
                       var _a2;
-                      return (_a2 = V == null ? void 0 : V.onInactiveEditedFileName) == null ? void 0 : _a2.call(V, Oe.id, Fe);
+                      return (_a2 = V == null ? void 0 : V.onInactiveEditedFileName) == null ? void 0 : _a2.call(V, Pe.id, De);
                     },
-                    onChangeEditor: Re ? V.onChangeEditor : (Fe) => {
+                    onChangeEditor: Re ? V.onChangeEditor : (De) => {
                       var _a2;
-                      return (_a2 = V == null ? void 0 : V.onInactiveEditorChange) == null ? void 0 : _a2.call(V, Oe.id, Fe);
+                      return (_a2 = V == null ? void 0 : V.onInactiveEditorChange) == null ? void 0 : _a2.call(V, Pe.id, De);
                     },
                     isActiveFile: Le
                   })
                 })
-              }, Oe.id);
+              }, Pe.id);
             }),
             Ee ? jsxRuntimeExports.jsx(WorkspaceKeepAlivePanel, {
               active: fe,
@@ -59109,7 +59331,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]), reactExports.useLayoutEffect(() => {
       if (le.current || !hasShareSearchParams(l.search)) return;
       le.current = true;
-      const Fe = l.search, je = shareBodyFromSearch(Fe) || "";
+      const De = l.search, je = shareBodyFromSearch(De) || "";
       c({
         pathname: l.pathname,
         search: "",
@@ -59136,26 +59358,26 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       c
     ]), reactExports.useEffect(() => {
       if (V) return;
-      let Fe = false;
+      let De = false;
       return (async () => {
         try {
           if (!sharePromptHasContent(A)) {
             const je = await peekChoosePendingShare(), Ge = pendingChooseToPrompt(je);
-            !Fe && Ge && L(Ge);
+            !De && Ge && L(Ge);
           }
         } finally {
-          Fe || re(true);
+          De || re(true);
         }
       })(), () => {
-        Fe = true;
+        De = true;
       };
     }, [
       V,
       A
     ]);
-    const Ee = reactExports.useCallback(async (Fe) => {
-      if ((Fe == null ? void 0 : Fe.id) != null) try {
-        await removePendingShare(Fe.id);
+    const Ee = reactExports.useCallback(async (De) => {
+      if ((De == null ? void 0 : De.id) != null) try {
+        await removePendingShare(De.id);
       } catch {
       }
     }, []), Ae = reactExports.useCallback(() => {
@@ -59171,11 +59393,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       ke
     ]);
-    const Oe = reactExports.useCallback(async () => {
-      const Fe = A;
-      if (!sharePromptHasContent(Fe) || pe.current) return;
+    const Pe = reactExports.useCallback(async () => {
+      const De = A;
+      if (!sharePromptHasContent(De) || pe.current) return;
       pe.current = true;
-      const je = String(Fe.body || "").trim(), Ge = normalizeShareFiles(Fe.files);
+      const je = String(De.body || "").trim(), Ge = normalizeShareFiles(De.files);
       let lt = false;
       try {
         if (e && t && r) {
@@ -59188,15 +59410,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             dateStr: ze
           }), postChatLocalSyncEvent("day", {
             dateStr: ze
-          })), await Ee(Fe);
-        } else await Ee(Fe), await enqueuePendingShare({
+          })), await Ee(De);
+        } else await Ee(De), await enqueuePendingShare({
           body: je,
           files: Ge,
           intent: "sendSelf"
         });
       } catch {
         if (!lt) try {
-          await Ee(Fe), await enqueuePendingShare({
+          await Ee(De), await enqueuePendingShare({
             body: je,
             files: Ge,
             intent: "sendSelf"
@@ -59215,12 +59437,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ae,
       ke
     ]), Le = reactExports.useCallback(async () => {
-      const Fe = A;
-      if (!sharePromptHasContent(Fe) || pe.current) return;
+      const De = A;
+      if (!sharePromptHasContent(De) || pe.current) return;
       pe.current = true;
-      const je = String(Fe.body || "").trim(), Ge = normalizeShareFiles(Fe.files);
+      const je = String(De.body || "").trim(), Ge = normalizeShareFiles(De.files);
       try {
-        await Ee(Fe);
+        await Ee(De);
         const lt = {
           id: `share-group-send-${Date.now()}`,
           body: je,
@@ -59250,14 +59472,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ee,
       Ae
     ]), Je = reactExports.useCallback(async () => {
-      const Fe = A;
-      if (!sharePromptHasContent(Fe) || pe.current || typeof s != "function") return false;
-      const je = filesForShareTargetSession(normalizeShareFiles(Fe.files));
+      const De = A;
+      if (!sharePromptHasContent(De) || pe.current || typeof s != "function") return false;
+      const je = filesForShareTargetSession(normalizeShareFiles(De.files));
       if (!je.length) return false;
       pe.current = true;
       try {
         const Ge = sessionOriginForShareTargetFiles(je);
-        return await s(je, Ge) === false ? (pe.current = false, false) : (await Ee(Fe), Ae(), true);
+        return await s(je, Ge) === false ? (pe.current = false, false) : (await Ee(De), Ae(), true);
       } catch {
         return pe.current = false, false;
       }
@@ -59269,12 +59491,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]);
     reactExports.useEffect(() => {
       if (!e || !t || !r) return;
-      let Fe = false;
+      let De = false;
       return (async () => {
         const { flushed: je } = await flushSendSelfPendingShares(r);
-        !Fe && je > 0 && ue.current();
+        !De && je > 0 && ue.current();
       })(), () => {
-        Fe = true;
+        De = true;
       };
     }, [
       e,
@@ -59283,11 +59505,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]), reactExports.useEffect(() => {
       !e || !t || !V || sharePromptHasContent(A) || (async () => {
         var _a2;
-        const Fe = await claimComposePendingShares();
-        if (!Fe.length) return;
-        const je = Fe.map((lt) => String(lt.body || "").trim()).filter(Boolean).join(`
+        const De = await claimComposePendingShares();
+        if (!De.length) return;
+        const je = De.map((lt) => String(lt.body || "").trim()).filter(Boolean).join(`
 
-`), Ge = Fe.flatMap((lt) => normalizeShareFiles(lt.files));
+`), Ge = De.flatMap((lt) => normalizeShareFiles(lt.files));
         !je && !Ge.length || (ue.current(), (_a2 = fe.current) == null ? void 0 : _a2.call(fe, {
           id: `share-group-send-${Date.now()}`,
           body: je,
@@ -59308,7 +59530,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       canSendAsSelf: true,
       canOpenAsSession: dt,
       onSendAsSelf: () => {
-        Oe();
+        Pe();
       },
       onComposeWithGroup: () => {
         Le();
@@ -59669,7 +59891,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         Promise.resolve(re).catch((ee) => {
           (ee == null ? void 0 : ee.message) && !/cancel|abort|user|denied|dismissed/i.test(String(ee.message)) && alert((ee == null ? void 0 : ee.message) || `${A} \uC778\uC99D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.`);
         }).finally(() => f(false));
-      }, 300);
+      }, isDesktopApp() ? 400 : 300);
       return () => clearTimeout(V);
     }, [
       e,
@@ -60632,7 +60854,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   function MoveFileModal({ isOpen: e, storageType: t, s3Tree: r, localTree: n, webdavTree: o = [], localRootHandle: s, currentFile: l, fileToMove: c, onClose: f, onConfirm: A, onRequestCreateFolder: L, selectPathAfterCreate: V, onSelectPathAfterCreateApplied: re }) {
     const ee = c || l;
     if (!ee) return null;
-    const oe = t === "s3", le = t === "webdav", pe = oe ? r : le ? o : n, [ue, fe] = reactExports.useState(null), [be, Ee] = reactExports.useState(true), Ae = reactExports.useRef(false), ke = reactExports.useRef(null), Oe = reactExports.useRef(null);
+    const oe = t === "s3", le = t === "webdav", pe = oe ? r : le ? o : n, [ue, fe] = reactExports.useState(null), [be, Ee] = reactExports.useState(true), Ae = reactExports.useRef(false), ke = reactExports.useRef(null), Pe = reactExports.useRef(null);
     reactExports.useEffect(() => {
       Ae.current = false;
     }, [
@@ -60660,7 +60882,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]);
     const Le = V || (ue == null ? void 0 : ue.path), Re = Le ? new Set(getAncestorPathsToExpand(Le)) : null;
     reactExports.useEffect(() => {
-      if (!ue || !Oe.current) return;
+      if (!ue || !Pe.current) return;
       const Ze = setTimeout(() => {
         requestAnimationFrame(() => {
           const vt = ke.current;
@@ -60679,8 +60901,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ee(true), fe(null);
     }, Me = (mt) => {
       Ee(false), fe(mt);
-    }, dt = be ? "" : (ue == null ? void 0 : ue.path) || "", Fe = be ? s : ue == null ? void 0 : ue.handle, je = oe || le || Fe != null, Ge = () => {
-      !je || !L || L(dt, Fe);
+    }, dt = be ? "" : (ue == null ? void 0 : ue.path) || "", De = be ? s : ue == null ? void 0 : ue.handle, je = oe || le || De != null, Ge = () => {
+      !je || !L || L(dt, De);
     }, lt = () => {
       if (A) if (oe || le) {
         const mt = be ? "" : (ue == null ? void 0 : ue.path) || "";
@@ -60750,7 +60972,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 ]
               }),
               jsxRuntimeExports.jsx("div", {
-                ref: Oe,
+                ref: Pe,
                 className: "flex-1 overflow-auto py-1",
                 children: pe && pe.length > 0 ? pe.filter((mt) => mt.type === "folder").map((mt) => jsxRuntimeExports.jsx(FolderNode$2, {
                   node: mt,
@@ -61150,15 +61372,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     0
   ];
   function CreateItemModal({ isOpen: e, type: t, parentLabel: r, parentPath: n = "", storageType: o, tree: s = null, ensureFolderLoaded: l, onClose: c, onSubmit: f, isSubmitting: A = false }) {
-    const L = reactExports.useId(), [V, re] = reactExports.useState(""), [ee, oe] = reactExports.useState(() => defaultCreateFileFormat().id), [le, pe] = reactExports.useState(false), [ue, fe] = reactExports.useState(0), [be, Ee] = reactExports.useState(0), Ae = reactExports.useRef(false), ke = reactExports.useRef(null), Oe = useAnimationControls();
+    const L = reactExports.useId(), [V, re] = reactExports.useState(""), [ee, oe] = reactExports.useState(() => defaultCreateFileFormat().id), [le, pe] = reactExports.useState(false), [ue, fe] = reactExports.useState(0), [be, Ee] = reactExports.useState(0), Ae = reactExports.useRef(false), ke = reactExports.useRef(null), Pe = useAnimationControls();
     reactExports.useEffect(() => {
-      e && (re(""), oe(defaultCreateFileFormat().id), pe(false), fe(0), Ae.current = false, Oe.set({
+      e && (re(""), oe(defaultCreateFileFormat().id), pe(false), fe(0), Ae.current = false, Pe.set({
         x: 0
       }));
     }, [
       e,
       t,
-      Oe
+      Pe
     ]);
     const Le = t === "folder" ? "folder" : "file", Re = reactExports.useMemo(() => [
       s
@@ -61185,7 +61407,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Me,
       ee
     ]);
-    const dt = (Me == null ? void 0 : Me.ok) === false && Me.reason === "outside-root", Fe = !!(Me == null ? void 0 : Me.ok) && isCreateItemPathTaken(Re, Me, Le), je = dt || Fe, Ge = reactExports.useMemo(() => resolveCreateItemAutocompleteContext(n, V), [
+    const dt = (Me == null ? void 0 : Me.ok) === false && Me.reason === "outside-root", De = !!(Me == null ? void 0 : Me.ok) && isCreateItemPathTaken(Re, Me, Le), je = dt || De, Ge = reactExports.useMemo(() => resolveCreateItemAutocompleteContext(n, V), [
       n,
       V
     ]);
@@ -61221,7 +61443,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       lt.length
     ]);
     const ze = () => {
-      vibrateErrorFeedback(), Oe.start({
+      vibrateErrorFeedback(), Pe.start({
         x: SHAKE_X,
         transition: {
           duration: 0.4
@@ -61319,7 +61541,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 className: "relative",
                 children: [
                   jsxRuntimeExports.jsx(motion.div, {
-                    animate: Oe,
+                    animate: Pe,
                     children: jsxRuntimeExports.jsx("input", {
                       type: "text",
                       value: V,
@@ -61434,7 +61656,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 role: "alert",
                 children: "\uB8E8\uD2B8 \uBC16\uC73C\uB85C \uB098\uAC08 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
               }),
-              Fe && jsxRuntimeExports.jsx("p", {
+              De && jsxRuntimeExports.jsx("p", {
                 className: "mt-2 text-xs text-red-600 dark:text-red-400",
                 role: "alert",
                 children: ct ? "\uAC19\uC740 \uC774\uB984\uC758 \uD3F4\uB354\uAC00 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4." : "\uAC19\uC740 \uC774\uB984\uC758 \uD30C\uC77C\uC774 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4."
@@ -61694,7 +61916,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     });
   }
   function DownloadMethodModal({ isOpen: e, title: t = "\uB2E4\uC6B4\uB85C\uB4DC \uBC29\uC2DD \uC120\uD0DD", fileName: r, markdownText: n = "", showImageHandling: o = false, showDeliveryMethods: s = true, confirmLabel: l = "\uB2E4\uC6B4\uB85C\uB4DC", onSelectLegacy: c, onSelectStorageApi: f, onSelectHaim: A, onSelectClipboard: L, onCancel: V, isDownloading: re, downloadProgress: ee = 0, downloadComplete: oe, onCloseComplete: le }) {
-    const pe = !!(re || oe), [ue, fe] = reactExports.useState(() => loadDownloadImageMode()), [be, Ee] = reactExports.useState(() => loadDownloadImageSyntax()), [Ae, ke] = reactExports.useState(1), [Oe, Le] = reactExports.useState(() => loadDownloadTableFormat()), Re = o && ue === "base64" && typeof L == "function", Je = reactExports.useMemo(() => o ? detectHeadingLevels(n) : [], [
+    const pe = !!(re || oe), [ue, fe] = reactExports.useState(() => loadDownloadImageMode()), [be, Ee] = reactExports.useState(() => loadDownloadImageSyntax()), [Ae, ke] = reactExports.useState(1), [Pe, Le] = reactExports.useState(() => loadDownloadTableFormat()), Re = o && ue === "base64" && typeof L == "function", Je = reactExports.useMemo(() => o ? detectHeadingLevels(n) : [], [
       n,
       o
     ]), Me = reactExports.useMemo(() => findHaimTableBlocks(n, {
@@ -61709,7 +61931,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       n,
       o
     ]);
-    const Fe = (Ze) => {
+    const De = (Ze) => {
       isDownloadImageMode(Ze) && (fe(Ze), saveDownloadImageMode(Ze));
     }, je = (Ze) => {
       isDownloadImageSyntax(Ze) && (Ee(Ze), saveDownloadImageSyntax(Ze));
@@ -61719,7 +61941,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       imageMode: ue,
       imageSyntax: dt,
       headingMax: Ae,
-      tableFormat: Oe
+      tableFormat: Pe
     }, ze = o ? planHeadingRemap(Je, Ae) : null, mt = (() => {
       if (pe) return oe ? le : void 0;
       if (!s) return re ? void 0 : () => c(lt);
@@ -61805,7 +62027,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   jsxRuntimeExports.jsx(RadioGroup, {
                     className: "flex items-center gap-2",
                     value: ue,
-                    onValueChange: Fe,
+                    onValueChange: De,
                     "aria-label": "\uC774\uBBF8\uC9C0 \uD30C\uC77C \uCC98\uB9AC \uBC29\uC2DD",
                     children: IMAGE_MODE_OPTIONS.map((Ze) => {
                       const vt = ue === Ze.value;
@@ -61886,11 +62108,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   }),
                   jsxRuntimeExports.jsx(RadioGroup, {
                     className: "flex items-center gap-2",
-                    value: Oe,
+                    value: Pe,
                     onValueChange: Ge,
                     "aria-label": "\uD45C \uB2E4\uC6B4\uB85C\uB4DC \uD615\uC2DD",
                     children: TABLE_FORMAT_OPTIONS.map((Ze) => {
-                      const vt = Oe === Ze.value;
+                      const vt = Pe === Ze.value;
                       return jsxRuntimeExports.jsx(RadioGroupItem, {
                         value: Ze.value,
                         className: [
@@ -63717,8 +63939,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       for (var Ae = Object.keys(be.fields), ke = 0; ke < Ae.length; ++ke) Ee.add((typeof be.fields[Ae[ke]].keyType < "u" ? o.fromJSON : n.fromJSON)(Ae[ke], be.fields[Ae[ke]]));
       if (be.oneofs) for (Ae = Object.keys(be.oneofs), ke = 0; ke < Ae.length; ++ke) Ee.add(r.fromJSON(Ae[ke], be.oneofs[Ae[ke]]));
       if (be.nested) for (Ae = Object.keys(be.nested), ke = 0; ke < Ae.length; ++ke) {
-        var Oe = be.nested[Ae[ke]];
-        Ee.add((Oe.id !== void 0 ? n.fromJSON : Oe.fields !== void 0 ? le.fromJSON : Oe.values !== void 0 ? t.fromJSON : Oe.methods !== void 0 ? s.fromJSON : e.fromJSON)(Ae[ke], Oe));
+        var Pe = be.nested[Ae[ke]];
+        Ee.add((Pe.id !== void 0 ? n.fromJSON : Pe.fields !== void 0 ? le.fromJSON : Pe.values !== void 0 ? t.fromJSON : Pe.methods !== void 0 ? s.fromJSON : e.fromJSON)(Ae[ke], Pe));
       }
       return be.extensions && be.extensions.length && (Ee.extensions = be.extensions), be.reserved && be.reserved.length && (Ee.reserved = be.reserved), be.group && (Ee.group = true), be.comment && (Ee.comment = be.comment), be.edition && (Ee._edition = be.edition), Ee._defaultEdition = "proto3", Ee;
     }, le.prototype.toJSON = function(fe) {
@@ -63872,9 +64094,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           if (o.isString(Je) && Je.charAt(0) === "{" && (Je = JSON.parse(Je)), !o.isString(Je)) pe.setOptions(Je.options).addJSON(Je.nested);
           else {
             l.filename = Re;
-            var Me = l(Je, pe, oe), dt, Fe = 0;
-            if (Me.imports) for (; Fe < Me.imports.length; ++Fe) (dt = be(Me.imports[Fe]) || pe.resolvePath(Re, Me.imports[Fe])) && Ae(dt);
-            if (Me.weakImports) for (Fe = 0; Fe < Me.weakImports.length; ++Fe) (dt = be(Me.weakImports[Fe]) || pe.resolvePath(Re, Me.weakImports[Fe])) && Ae(dt, true);
+            var Me = l(Je, pe, oe), dt, De = 0;
+            if (Me.imports) for (; De < Me.imports.length; ++De) (dt = be(Me.imports[De]) || pe.resolvePath(Re, Me.imports[De])) && Ae(dt);
+            if (Me.weakImports) for (De = 0; De < Me.weakImports.length; ++De) (dt = be(Me.weakImports[De]) || pe.resolvePath(Re, Me.weakImports[De])) && Ae(dt, true);
           }
         } catch (je) {
           fe(je);
@@ -63898,13 +64120,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               return;
             }
             Ee(Re, Me);
-          } else ++ke, pe.fetch(Re, function(dt, Fe) {
+          } else ++ke, pe.fetch(Re, function(dt, De) {
             if (--ke, !!le) {
               if (dt) {
                 Je ? ke || fe(null, pe) : fe(dt);
                 return;
               }
-              Ee(Re, Fe);
+              Ee(Re, De);
             }
           });
         }
@@ -63913,7 +64135,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       o.isString(ee) && (ee = [
         ee
       ]);
-      for (var Oe = 0, Le; Oe < ee.length; ++Oe) (Le = pe.resolvePath("", ee[Oe])) && Ae(Le);
+      for (var Pe = 0, Le; Pe < ee.length; ++Pe) (Le = pe.resolvePath("", ee[Pe])) && Ae(Le);
       return ue ? (pe.resolveAll(), pe) : (ke || fe(null, pe), pe);
     }, f.prototype.loadSync = function(ee, oe) {
       if (!o.isNode) throw Error("not supported");
@@ -64541,7 +64763,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       function ke(Ge) {
         return V.charAt(Ge);
       }
-      function Oe(Ge, lt, ze) {
+      function Pe(Ge, lt, ze) {
         var mt = {
           type: V.charAt(Ge++),
           lineEmpty: false,
@@ -64586,11 +64808,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   if (ee = Re(ee), ee === oe || (ee++, !vt)) break;
                 while (Le(ee));
               } else ee = Math.min(oe, Re(ee) + 1);
-              Ze && (Oe(mt, ee, vt), vt = true), le++, Ge = true;
+              Ze && (Pe(mt, ee, vt), vt = true), le++, Ge = true;
             } else {
               for (Ze = ke(mt = ee + 1) === "/"; ke(++ee) !== `
 `; ) if (ee === oe) return null;
-              ++ee, Ze && (Oe(mt, ee - 1, vt), vt = true), ++le, Ge = true;
+              ++ee, Ze && (Pe(mt, ee - 1, vt), vt = true), ++le, Ge = true;
             }
             else if ((ze = ke(ee)) === "*") {
               mt = ee + 1, Ze = re || ke(mt) === "*";
@@ -64599,7 +64821,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
 ` && ++le, ++ee === oe) throw Ee("comment");
                 lt = ze, ze = ke(ee);
               } while (lt !== "*" || ze !== "/");
-              ++ee, Ze && (Oe(mt, ee - 2, vt), vt = true), Ge = true;
+              ++ee, Ze && (Pe(mt, ee - 2, vt), vt = true), Ge = true;
             } else return "/";
           }
         } while (Ge);
@@ -64621,7 +64843,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         return fe[0];
       }
-      function Fe(Ge, lt) {
+      function De(Ge, lt) {
         var ze = dt(), mt = ze === Ge;
         if (mt) return Je(), true;
         if (!lt) throw Ee("token '" + ze + "', '" + Ge + "' expected");
@@ -64635,7 +64857,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         next: Je,
         peek: dt,
         push: Me,
-        skip: Fe,
+        skip: De,
         cmnt: je
       }, "line", {
         get: function() {
@@ -64652,9 +64874,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       keepCase: false
     };
     var e = requireTokenize(), t = requireRoot(), r = requireType(), n = requireField(), o = requireMapfield(), s = requireOneof(), l = require_enum(), c = requireService(), f = requireMethod(), A = requireObject(), L = requireTypes(), V = requireUtil(), re = /^[1-9][0-9]*$/, ee = /^-?[1-9][0-9]*$/, oe = /^0[x][0-9a-fA-F]+$/, le = /^-?0[x][0-9a-fA-F]+$/, pe = /^0[0-7]+$/, ue = /^-?0[0-7]+$/, fe = /^(?![eE])[0-9]*(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?$/, be = /^[a-zA-Z_][a-zA-Z_0-9]*$/, Ee = /^(?:\.?[a-zA-Z_][a-zA-Z_0-9]*)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)*$/;
-    function Ae(ke, Oe, Le) {
-      Oe instanceof t || (Le = Oe, Oe = new t()), Le || (Le = Ae.defaults);
-      var Re = Le.preferTrailingComment || false, Je = e(ke, Le.alternateCommentMode || false), Me = Je.next, dt = Je.push, Fe = Je.peek, je = Je.skip, Ge = Je.cmnt, lt = true, ze, mt, Ze, vt = "proto2", Wt = Oe, jt = [], ct = {}, St = Le.keepCase ? function(yt) {
+    function Ae(ke, Pe, Le) {
+      Pe instanceof t || (Le = Pe, Pe = new t()), Le || (Le = Ae.defaults);
+      var Re = Le.preferTrailingComment || false, Je = e(ke, Le.alternateCommentMode || false), Me = Je.next, dt = Je.push, De = Je.peek, je = Je.skip, Ge = Je.cmnt, lt = true, ze, mt, Ze, vt = "proto2", Wt = Pe, jt = [], ct = {}, St = Le.keepCase ? function(yt) {
         return yt;
       } : V.camelCase;
       function Bt() {
@@ -64672,7 +64894,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         var yt = [], ht;
         do {
           if ((ht = Me()) !== '"' && ht !== "'") throw _t(ht);
-          yt.push(Me()), je(ht), ht = Fe();
+          yt.push(Me()), je(ht), ht = De();
         } while (ht === '"' || ht === "'");
         return yt.join("");
       }
@@ -64699,7 +64921,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       function Xt(yt, ht) {
         var Qe, It;
         do
-          if (ht && ((Qe = Fe()) === '"' || Qe === "'")) {
+          if (ht && ((Qe = De()) === '"' || Qe === "'")) {
             var Gt = rt();
             if (yt.push(Gt), vt >= 2023) throw _t(Gt, "id");
           } else try {
@@ -64715,11 +64937,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         var ir = {
           options: void 0
         };
-        ir.setOption = function(Tt, Pr) {
-          this.options === void 0 && (this.options = {}), this.options[Tt] = Pr;
-        }, Kr(ir, function(Pr) {
-          if (Pr === "option") xr(ir, Pr), je(";");
-          else throw _t(Pr);
+        ir.setOption = function(Tt, Or) {
+          this.options === void 0 && (this.options = {}), this.options[Tt] = Or;
+        }, Kr(ir, function(Or) {
+          if (Or === "option") xr(ir, Or), je(";");
+          else throw _t(Or);
         }, function() {
           qr(ir);
         });
@@ -64766,7 +64988,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         Wt = Wt.define(ze), je(";");
       }
       function Lt() {
-        var yt = Fe(), ht;
+        var yt = De(), ht;
         switch (yt) {
           case "option":
             if (vt < "2024") throw _t("option");
@@ -64861,7 +65083,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           Ie(yt, ht);
           return;
         }
-        for (; It.endsWith(".") || Fe().startsWith("."); ) It += Me();
+        for (; It.endsWith(".") || De().startsWith("."); ) It += Me();
         if (!Ee.test(It)) throw _t(It, "type");
         var Gt = Me();
         if (!be.test(Gt)) throw _t(Gt, "name");
@@ -65004,7 +65226,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           } else It = It ? It += ht : ht;
           ht = Me();
         }
-        var Pr = It ? Qe.concat(It) : Qe, Qt = lr(yt, Pr);
+        var Or = It ? Qe.concat(It) : Qe, Qt = lr(yt, Or);
         It = It && It[0] === "." ? It.slice(1) : It, Qe = Qe && Qe[Qe.length - 1] === "." ? Qe.slice(0, -1) : Qe, _r(yt, Qe, Qt, It);
       }
       function lr(yt, ht) {
@@ -65013,8 +65235,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             if (!be.test(Mr = Me())) throw _t(Mr, "name");
             if (Mr === null) throw _t(Mr, "end of input");
             var It, Gt = Mr;
-            if (je(":", true), Fe() === "{") It = lr(yt, ht + "." + Mr);
-            else if (Fe() === "[") {
+            if (je(":", true), De() === "{") It = lr(yt, ht + "." + Mr);
+            else if (De() === "[") {
               It = [];
               var ir;
               if (je("[", true)) {
@@ -65029,8 +65251,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           return Qe;
         }
-        var Pr = gr();
-        return Rt(yt, ht, Pr), Pr;
+        var Or = gr();
+        return Rt(yt, ht, Or), Or;
       }
       function Rt(yt, ht, Qe) {
         if (Wt === yt && /^features\./.test(ht)) {
@@ -65062,10 +65284,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       function Ur(yt, ht) {
         var Qe = Ge(), It = ht;
         if (!be.test(ht = Me())) throw _t(ht, "name");
-        var Gt = ht, ir, Tt, Pr, Qt;
+        var Gt = ht, ir, Tt, Or, Qt;
         if (je("("), je("stream", true) && (Tt = true), !Ee.test(ht = Me()) || (ir = ht, je(")"), je("returns"), je("("), je("stream", true) && (Qt = true), !Ee.test(ht = Me()))) throw _t(ht);
-        Pr = ht, je(")");
-        var $r = new f(Gt, It, ir, Pr, Tt, Qt);
+        Or = ht, je(")");
+        var $r = new f(Gt, It, ir, Or, Tt, Qt);
         $r.comment = Qe, Kr($r, function(rn) {
           if (rn === "option") xr($r, rn), je(";");
           else throw _t(rn);
@@ -65121,7 +65343,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         package: ze,
         imports: mt,
         weakImports: Ze,
-        root: Oe
+        root: Pe
       };
     }
     return parse_1;
@@ -66032,7 +66254,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
   }
   async function fsApi() {
-    return __vitePreload(() => import("./index-DlvtXhSC.js"), __vite__mapDeps([42,43]));
+    return __vitePreload(() => import("./index-DlvtXhSC.js"), __vite__mapDeps([44,1]));
   }
   function createTauriLocalBackend(e) {
     const t = String(e || "").trim();
@@ -66189,7 +66411,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return {
         open: r
       };
-    }, __vite__mapDeps([44,43])), t = await e({
+    }, __vite__mapDeps([45,1])), t = await e({
       directory: true,
       multiple: false,
       title: "Open Local Haim folder"
@@ -66904,13 +67126,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       0,
       s ? d(r - 1, 0) : -1
     ], ue = 0, fe = false;
-    const be = ((Fe, je, Ge) => ({
+    const be = ((De, je, Ge) => ({
       o: je,
-      t: Ge ? w(Ge.slice(0, u(Fe, Ge.length)), d(0, Fe - Ge.length)) : w([], Fe),
-      l: Fe,
+      t: Ge ? w(Ge.slice(0, u(De, Ge.length)), d(0, De - Ge.length)) : w([], De),
+      l: De,
       i: -1,
-      u: w([], Fe + 1)
-    }))(e, n ? n[1] : t, n && n[0]), Ee = /* @__PURE__ */ new Set(), Ae = () => A - f, ke = () => Ae() + V + L, Oe = (Fe, je) => ((Ge, lt, ze, mt) => {
+      u: w([], De + 1)
+    }))(e, n ? n[1] : t, n && n[0]), Ee = /* @__PURE__ */ new Set(), Ae = () => A - f, ke = () => Ae() + V + L, Pe = (De, je) => ((Ge, lt, ze, mt) => {
       if (mt = u(mt, Ge.l - 1), z(Ge, mt) <= lt) {
         const Ze = b(Ge, ze, mt);
         return [
@@ -66925,35 +67147,35 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           b(Ge, ze, Ze)
         ];
       }
-    })(be, Fe, je, pe[0]), Le = () => z(be, be.l), Re = (Fe, je) => {
-      const Ge = z(be, Fe) - V;
-      return je ? Le() - Ge - Je(Fe) : Ge;
-    }, Je = (Fe) => S(be, Fe), Me = (Fe, je = -1) => be.t[Fe] === je, dt = (Fe) => {
-      Fe && (T() && ee !== 0 || le && oe === 1 ? V += Fe : L += Fe);
+    })(be, De, je, pe[0]), Le = () => z(be, be.l), Re = (De, je) => {
+      const Ge = z(be, De) - V;
+      return je ? Le() - Ge - Je(De) : Ge;
+    }, Je = (De) => S(be, De), Me = (De, je = -1) => be.t[De] === je, dt = (De) => {
+      De && (T() && ee !== 0 || le && oe === 1 ? V += De : L += De);
     };
     return {
       v: () => {
         Ee.clear();
       },
       m: () => l,
-      _: () => ((Fe) => [
-        Fe.t.slice(),
-        Fe.o
+      _: () => ((De) => [
+        De.t.slice(),
+        De.o
       ])(be),
-      S: (Fe = 200) => {
+      S: (De = 200) => {
         if (!fe || s) return pe;
         let je, Ge;
         if (re) [je, Ge] = pe;
         else {
           let lt = d(0, ke()), ze = lt + c;
-          o || (Fe = d(0, Fe), ee !== 1 && (lt -= Fe), ee !== 2 && (ze += Fe)), [je, Ge] = pe = Oe(d(0, lt), d(0, ze)), le && (je = u(je, le[0]), Ge = d(Ge, le[1]));
+          o || (De = d(0, De), ee !== 1 && (lt -= De), ee !== 2 && (ze += De)), [je, Ge] = pe = Pe(d(0, lt), d(0, ze)), le && (je = u(je, le[0]), Ge = d(Ge, le[1]));
         }
         return [
           d(je, 0),
           u(Ge, be.l - 1)
         ];
       },
-      $: (Fe) => b(be, Fe - f),
+      $: (De) => b(be, De - f),
       I: Me,
       k: Re,
       R: Je,
@@ -66967,18 +67189,18 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         re,
         oe === 2
       ]),
-      W: (Fe, je) => {
+      W: (De, je) => {
         const Ge = [
-          Fe,
+          De,
           je
         ];
         return Ee.add(Ge), () => {
           Ee.delete(Ge);
         };
       },
-      B: (Fe, je) => {
+      B: (De, je) => {
         let Ge, lt, ze = 0;
-        switch (Fe) {
+        switch (De) {
           case 1: {
             if (je === A && oe === 0) break;
             const mt = re;
@@ -67033,7 +67255,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             oe = 1;
             break;
           case 8:
-            le = Oe(je, je + c), ze = 1;
+            le = Pe(je, je + c), ze = 1;
         }
         ze && (l = 1 + (2147483647 & l), Ge && V && (L += V, V = 0), Ee.forEach(([mt, Ze]) => {
           ze & mt && Ze(lt);
@@ -67290,7 +67512,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     t
   ]);
   Q = reactExports.forwardRef(({ children: e, data: t, bufferSize: r, itemSize: n, shift: o, horizontal: s, keepMounted: l, cache: c, startMargin: f = 0, ssrCount: A, as: L = "div", item: V = "div", scrollRef: re, onScroll: ee, onScrollEnd: oe }, le) => {
-    const [pe, ue] = K(e, t), fe = reactExports.useRef(null), be = reactExports.useRef(!!A), Ee = U(ee), Ae = U(oe), [ke, Oe, Le, Re] = G(() => {
+    const [pe, ue] = K(e, t), fe = reactExports.useRef(null), be = reactExports.useRef(!!A), Ee = U(ee), Ae = U(oe), [ke, Pe, Le, Re] = G(() => {
       const ze = !!s, mt = O(ue, n, A, c, !n);
       return [
         mt,
@@ -67303,10 +67525,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ue,
       o
     ]), f !== ke.O() && ke.B(6, f);
-    const [Je, Me] = reactExports.useReducer(ke.m, void 0, ke.m), dt = ke.M(), Fe = ke.h(), je = Le.P(), Ge = [], lt = (ze) => {
+    const [Je, Me] = reactExports.useReducer(ke.m, void 0, ke.m), dt = ke.M(), De = ke.h(), je = Le.P(), Ge = [], lt = (ze) => {
       const mt = pe(ze);
       return jsxRuntimeExports.jsx(F, {
-        ee: Oe.U,
+        ee: Pe.U,
         te: ze,
         oe: ke.k(ze, je),
         ne: ke.I(ze),
@@ -67325,12 +67547,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         Ae.current && Ae.current();
       });
       const ze = fe[q], mt = (Ze) => {
-        Oe.G(Ze), Le.N(ze, Ze);
+        Pe.G(Ze), Le.N(ze, Ze);
       };
       return re ? v(() => {
         re.current && mt(re[q]);
       }) : mt(ze.parentElement), () => {
-        ke.v(), Oe.v(), Le.v();
+        ke.v(), Pe.v(), Le.v();
       };
     }, []), Y(() => {
       Le.q();
@@ -67371,8 +67593,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         overflowAnchor: "none",
         flex: "none",
         position: "relative",
-        width: Re ? Fe : "100%",
-        height: Re ? "100%" : Fe,
+        width: Re ? De : "100%",
+        height: Re ? "100%" : De,
         pointerEvents: dt ? "none" : void 0
       },
       children: Ge
@@ -67421,10 +67643,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     reactExports.useEffect(() => {
       if (o || !n || !l || V) return;
       let ke = false;
-      return Promise.resolve(l(n)).then((Oe) => {
+      return Promise.resolve(l(n)).then((Pe) => {
         ke || pe({
           path: n,
-          url: Oe || null
+          url: Pe || null
         });
       }).catch(() => {
         ke || pe({
@@ -67591,10 +67813,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return r === "j" ? 1 : r === "k" ? -1 : r === "h" || r === "l" ? 0 : null;
   }
   function AdvancedSearchModal({ open: e, onOpenChange: t, onSearch: r, onSelectHit: n, indexEnabled: o = true, hasIndex: s = false, isolationReady: l = true, building: c = false, editorActionsAvailable: f = false, printActionsAvailable: A = false, chatActionsAvailable: L = false, preferPrintActions: V = false, printPaperPickerMode: re = false, browseDirectoryMode: ee = false, browsePath: oe = "", chatGroupsPickerMode: le = false, footnoteInsertPickerMode: pe = false, footnoteExistingPickerMode: ue = false, getPresignedUrl: fe = void 0 }) {
-    const be = reactExports.useId(), Ee = reactExports.useId(), Ae = reactExports.useId(), ke = reactExports.useRef(null), Oe = reactExports.useRef(null), [Le, Re] = reactExports.useState(""), [Je, Me] = reactExports.useState([]), [dt, Fe] = reactExports.useState(0), [je, Ge] = reactExports.useState(false), [lt, ze] = reactExports.useState(() => loadAltVimNavigationEnabled()), [mt, Ze] = reactExports.useState(() => loadAdvancedSearchUiAnimationEnabled()), vt = reactExports.useRef(0);
+    const be = reactExports.useId(), Ee = reactExports.useId(), Ae = reactExports.useId(), ke = reactExports.useRef(null), Pe = reactExports.useRef(null), [Le, Re] = reactExports.useState(""), [Je, Me] = reactExports.useState([]), [dt, De] = reactExports.useState(0), [je, Ge] = reactExports.useState(false), [lt, ze] = reactExports.useState(() => loadAltVimNavigationEnabled()), [mt, Ze] = reactExports.useState(() => loadAdvancedSearchUiAnimationEnabled()), vt = reactExports.useRef(0);
     reactExports.useEffect(() => {
       if (!e) return;
-      Re(""), Me([]), Fe(0), ze(loadAltVimNavigationEnabled()), Ze(loadAdvancedSearchUiAnimationEnabled());
+      Re(""), Me([]), De(0), ze(loadAltVimNavigationEnabled()), Ze(loadAdvancedSearchUiAnimationEnabled());
       const at = window.setTimeout(() => {
         var _a2;
         return (_a2 = ke.current) == null ? void 0 : _a2.focus();
@@ -67603,28 +67825,28 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       e
     ]), reactExports.useEffect(() => {
-      !e || !ee || (Re(""), Fe(0));
+      !e || !ee || (Re(""), De(0));
     }, [
       oe,
       ee,
       e
     ]), reactExports.useEffect(() => {
-      !e || !le || (Re(""), Fe(0));
+      !e || !le || (Re(""), De(0));
     }, [
       le,
       e
     ]), reactExports.useEffect(() => {
-      !e || !pe || (Re(""), Fe(0));
+      !e || !pe || (Re(""), De(0));
     }, [
       pe,
       e
     ]), reactExports.useEffect(() => {
-      !e || !ue || (Re(""), Fe(0));
+      !e || !ue || (Re(""), De(0));
     }, [
       ue,
       e
     ]), reactExports.useEffect(() => {
-      e && Fe(0);
+      e && De(0);
     }, [
       Le,
       e
@@ -67637,7 +67859,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           try {
             const Lt = await r(Le);
             if (at !== vt.current) return;
-            Me(Lt), Fe(0);
+            Me(Lt), De(0);
           } finally {
             at === vt.current && Ge(false);
           }
@@ -67652,7 +67874,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       var _a2;
       if (!e || Je.length === 0) return;
       const at = Math.min(Math.max(dt, 0), Je.length - 1);
-      (_a2 = Oe.current) == null ? void 0 : _a2.scrollToIndex(at, {
+      (_a2 = Pe.current) == null ? void 0 : _a2.scrollToIndex(at, {
         align: at === 0 ? "start" : "nearest"
       });
     }, [
@@ -67684,7 +67906,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!at) return;
       n(at) === false || t(false);
     }, Bt = (at) => {
-      at === 0 || Je.length === 0 || Fe((pr) => {
+      at === 0 || Je.length === 0 || De((pr) => {
         const qt = pr + at;
         return Math.min(Math.max(qt, 0), Je.length - 1);
       });
@@ -67807,7 +68029,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             className: "px-4 py-6 text-center text-sm text-gray-500 dark:text-odp-muted",
             children: Wt
           }) : jsxRuntimeExports.jsx(Z, {
-            ref: Oe,
+            ref: Pe,
             className: "h-full overscroll-contain",
             data: Je,
             style: {
@@ -67822,7 +68044,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 "aria-selected": qt,
                 tabIndex: -1,
                 className: `flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors ${qt ? "bg-blue-50 dark:bg-odp-focusBg" : "hover:bg-gray-50 dark:hover:bg-odp-bg"}`,
-                onMouseEnter: () => Fe(pr),
+                onMouseEnter: () => De(pr),
                 onClick: () => {
                   n(at) === false || t(false);
                 },
@@ -68158,7 +68380,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return r < 0 ? "" : t.slice(0, r + 1);
   }
   function AdvancedSearchHost({ getTrees: e, onOpenFile: t, ensureBrowseFolderLoaded: r, onRequestCreateItem: n, getChatGroups: o, getPresignedUrl: s, currentFile: l = null, defaultCreateParentPath: c, editorContent: f = "", snippetConfig: A, theme: L = "light", preferPrintActions: V = false }) {
-    const re = useNavigate(), [ee, oe] = reactExports.useState(false), [le, pe] = reactExports.useState("default"), [ue, fe] = reactExports.useState(""), [be, Ee] = reactExports.useState(() => advancedSearchEngine.getStatus()), [Ae, ke] = reactExports.useState(() => hasEditorActions()), [Oe, Le] = reactExports.useState(() => hasPrintActions()), [Re, Je] = reactExports.useState(() => hasChatActions()), [Me, dt] = reactExports.useState(() => loadEditorAutocompleteEnabled()), [Fe, je] = reactExports.useState(() => loadMirrorEditEnabled()), [Ge, lt] = reactExports.useState(0);
+    const re = useNavigate(), [ee, oe] = reactExports.useState(false), [le, pe] = reactExports.useState("default"), [ue, fe] = reactExports.useState(""), [be, Ee] = reactExports.useState(() => advancedSearchEngine.getStatus()), [Ae, ke] = reactExports.useState(() => hasEditorActions()), [Pe, Le] = reactExports.useState(() => hasPrintActions()), [Re, Je] = reactExports.useState(() => hasChatActions()), [Me, dt] = reactExports.useState(() => loadEditorAutocompleteEnabled()), [De, je] = reactExports.useState(() => loadMirrorEditEnabled()), [Ge, lt] = reactExports.useState(0);
     useAdvancedSearchActivityStatus(), reactExports.useEffect(() => advancedSearchEngine.subscribe(() => {
       Ee(advancedSearchEngine.getStatus());
     }), []), reactExports.useEffect(() => subscribeEditorActions(() => {
@@ -68225,15 +68447,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const St = await advancedSearchEngine.search(ct, e(), 50, {
         currentFile: l,
         editorActionsAvailable: Ae,
-        printActionsAvailable: Oe,
+        printActionsAvailable: Pe,
         chatActionsAvailable: Re,
         editorAutocompleteEnabled: Me,
-        editorMirrorEditEnabled: Fe,
+        editorMirrorEditEnabled: De,
         ...A ? {
           snippetConfig: A
         } : {}
       });
-      if (!Oe) return St;
+      if (!Pe) return St;
       const Bt = ct.trim().toLowerCase(), _t = matchPrintTocEntries(ct, 40).map((Xt, at) => {
         const pr = Xt.text, qt = Bt ? scoreFuzzyRelevance(pr, Bt) || 400 - at : 150 - at;
         return {
@@ -68258,10 +68480,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       e,
       l,
       Ae,
-      Oe,
+      Pe,
       Re,
       Me,
-      Fe,
+      De,
       A,
       le,
       ue,
@@ -68446,7 +68668,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       isolationReady: be.isolationReady,
       building: be.building,
       editorActionsAvailable: Ae,
-      printActionsAvailable: Oe,
+      printActionsAvailable: Pe,
       chatActionsAvailable: Re,
       preferPrintActions: V,
       printPaperPickerMode: le === "print-paper",
@@ -68529,9 +68751,6 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return null;
     }
   }
-  isDesktopApp = function() {
-    return typeof window > "u" ? false : "__TAURI_INTERNALS__" in window || "__TAURI__" in window;
-  };
   const PATH_KEY = "s3haim_local_vault_fs_path", NAME_KEY = "s3haim_lastLocalFolderName";
   function loadLocalVaultFsPath() {
     if (typeof window > "u") return "";
@@ -69018,7 +69237,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return {
             listen: t
           };
-        }, __vite__mapDeps([45,43]));
+        }, __vite__mapDeps([46,1]));
         unlisten = await e(DESKTOP_OPEN_FILES_EVENT, (t) => {
           enqueue(t.payload || []);
         });
@@ -69036,7 +69255,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return {
         readFile: o
       };
-    }, __vite__mapDeps([42,43])), r = loadLocalVaultFsPath(), n = [];
+    }, __vite__mapDeps([44,1])), r = loadLocalVaultFsPath(), n = [];
     for (const o of e) {
       const s = r ? relativePathUnderVault(o, r) : null;
       if (s) {
@@ -69449,9 +69668,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]), reactExports.useEffect(() => {
       if (!e || !V) return;
       const Je = (dt) => {
-        for (const Fe of dt) {
-          if (Fe.path === V) return Fe;
-          const je = Fe.children ? Je(Fe.children) : null;
+        for (const De of dt) {
+          if (De.path === V) return De;
+          const je = De.children ? Je(De.children) : null;
           if (je) return je;
         }
         return null;
@@ -69463,13 +69682,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       le,
       re
     ]), !e) return null;
-    const Oe = pe ? "" : (fe == null ? void 0 : fe.path) || "", Le = pe ? s : (fe == null ? void 0 : fe.handle) || null, Re = ee || oe ? true : !!(pe ? s : fe == null ? void 0 : fe.handle);
+    const Pe = pe ? "" : (fe == null ? void 0 : fe.path) || "", Le = pe ? s : (fe == null ? void 0 : fe.handle) || null, Re = ee || oe ? true : !!(pe ? s : fe == null ? void 0 : fe.handle);
     return jsxRuntimeExports.jsxs(Modal, {
       isOpen: e,
       onClose: c ? void 0 : f,
       onConfirm: Re && !c ? () => {
         A({
-          path: Oe,
+          path: Pe,
           fileName: Ee,
           ...Le ? {
             handle: Le
@@ -69508,7 +69727,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   className: "flex justify-end border-b border-gray-100 bg-gray-50 px-3 py-2 dark:border-odp-borderSoft dark:bg-odp-bgSoft",
                   children: jsxRuntimeExports.jsxs("button", {
                     type: "button",
-                    onClick: () => L(Oe, Le),
+                    onClick: () => L(Pe, Le),
                     className: "flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20",
                     children: [
                       jsxRuntimeExports.jsx(IconFolderPlus, {
@@ -69562,7 +69781,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   disabled: !Re || c,
                   onClick: () => {
                     A({
-                      path: Oe,
+                      path: Pe,
                       fileName: Ee,
                       ...Le ? {
                         handle: Le
@@ -70234,7 +70453,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
   getLocalAppBuildId = function() {
-    return "e5ef66ba5301fd3527167c86b3612dda71236a86".trim();
+    return "8635a23777fea122cdb370a3c2b506c658bb61cc".trim();
   };
   function buildIdRequestUrl() {
     return `/DocuHaim/build-id.json?t=${Date.now()}`;
@@ -70373,11 +70592,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       updateServiceWorker: re
     };
   }
-  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-edIvz-6B.js").then(async (m2) => {
+  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-BrXganlD.js").then(async (m2) => {
     await m2.__tla;
     return m2;
-  }), __vite__mapDeps([35,1,4,36,24,9,6,7,8,21,22,26,16,37,38,0,2,28,29,10,39])));
-  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-CvAeHXcy.js"), __vite__mapDeps([46,1,4,16,7,9,6,13,8,36,24,41,20,21,22,17,30,26,10,18]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-GQJfxB8C.js"), __vite__mapDeps([47,1,15,4,16,14,7,9,6,17,18,8,10])));
+  }), __vite__mapDeps([37,3,6,38,26,11,8,9,10,23,24,28,18,39,40,2,4,30,31,12,41])));
+  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-CoUzzpBs.js"), __vite__mapDeps([47,3,6,18,9,11,8,15,10,38,26,43,22,23,24,19,32,28,12,20]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-C7bM_qRW.js"), __vite__mapDeps([48,3,17,6,18,16,9,11,8,19,20,10,12])));
   function RouteSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted",
@@ -70429,13 +70648,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (typeof window > "u") return "light";
       const ae = window.localStorage.getItem("theme");
       return ae === "light" || ae === "dark" ? ae : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    }), [Oe, Le] = reactExports.useState(false), [Re, Je] = reactExports.useState([]), [Me, dt] = reactExports.useState([]), [Fe, je] = reactExports.useState([]), [Ge, lt] = reactExports.useState(null), ze = reactExports.useRef(null), mt = reactExports.useRef(/* @__PURE__ */ new Map()), Ze = reactExports.useRef(/* @__PURE__ */ Object.create(null)), vt = reactExports.useRef(null), [Wt, jt] = reactExports.useState(false), [ct, St] = reactExports.useState(false), [Bt, _t] = reactExports.useState(null), [rt, gr] = reactExports.useState(null), [Xt, at] = reactExports.useState(() => isDesktopApp() ? loadLocalVaultFsPath() : ""), [pr, qt] = reactExports.useState(false), [Lt, nr] = reactExports.useState(null), sr = reactExports.useRef(/* @__PURE__ */ new Set()), [tn, Kr] = reactExports.useState(false), [fn, Tr] = reactExports.useState(""), [Ie, Zt] = reactExports.useState(null), [yr, fr] = reactExports.useState(""), tr = reactExports.useRef(""), [xr, lr] = reactExports.useState(() => emptyWorkspaceTabsState()), Rt = reactExports.useRef(xr);
+    }), [Pe, Le] = reactExports.useState(false), [Re, Je] = reactExports.useState([]), [Me, dt] = reactExports.useState([]), [De, je] = reactExports.useState([]), [Ge, lt] = reactExports.useState(null), ze = reactExports.useRef(null), mt = reactExports.useRef(/* @__PURE__ */ new Map()), Ze = reactExports.useRef(/* @__PURE__ */ Object.create(null)), vt = reactExports.useRef(null), [Wt, jt] = reactExports.useState(false), [ct, St] = reactExports.useState(false), [Bt, _t] = reactExports.useState(null), [rt, gr] = reactExports.useState(null), [Xt, at] = reactExports.useState(() => isDesktopApp() ? loadLocalVaultFsPath() : ""), [pr, qt] = reactExports.useState(false), [Lt, nr] = reactExports.useState(null), sr = reactExports.useRef(/* @__PURE__ */ new Set()), [tn, Kr] = reactExports.useState(false), [fn, Tr] = reactExports.useState(""), [Ie, Zt] = reactExports.useState(null), [yr, fr] = reactExports.useState(""), tr = reactExports.useRef(""), [xr, lr] = reactExports.useState(() => emptyWorkspaceTabsState()), Rt = reactExports.useRef(xr);
     Rt.current = xr;
     const [_r, qr] = reactExports.useState(() => loadWorkspaceTabsEnabled()), Rr = reactExports.useRef(_r);
     Rr.current = _r;
-    const Ur = reactExports.useRef(loadWorkspaceTabsAutoSaveMode()), Ir = reactExports.useRef(""), [Mr, yt] = reactExports.useState(false), [ht, Qe] = reactExports.useState(() => []), It = reactExports.useRef(/* @__PURE__ */ new Set()), [Gt, ir] = reactExports.useState(false), [Tt, Pr] = reactExports.useState(null), [Qt, $r] = reactExports.useState(null), [Or, rn] = reactExports.useState(false), [zr, Qr] = reactExports.useState(null), [mr, mn] = reactExports.useState(null), [Nr, yn] = reactExports.useState(null), [wr, Er] = reactExports.useState(() => loadShowHiddenFolders()), [en, Fn] = reactExports.useState(() => loadShowTrashFolder()), [pn, _n] = reactExports.useState(() => loadEditorType()), [xt, Sn] = reactExports.useState(() => loadStorageMode()), [Vt, kn] = reactExports.useState(() => loadWebdavConfig()), In = reactExports.useRef(null), fa = reactExports.useRef(null), Nn = reactExports.useRef(null), [Fr, bn] = reactExports.useState(null), [$n, hn] = reactExports.useState(null), [Wr, cn] = reactExports.useState(false), [Dn, zt] = reactExports.useState(false), [bt, Et] = reactExports.useState(""), [br, Vr] = reactExports.useState(false), [kr, xn] = reactExports.useState(false), [En, on] = reactExports.useState(false), [hr, zn] = reactExports.useState(null), [Bn, ea] = reactExports.useState(null), [Pa, ga] = reactExports.useState(false), [wn, ya] = reactExports.useState(null), [Yr, ba] = reactExports.useState(null), [Xn, Mn] = reactExports.useState(null), [Ga, xa] = reactExports.useState(null), [ia, wa] = reactExports.useState(false), [Aa, va] = reactExports.useState(false), [ji, Dr] = reactExports.useState(false), [yi, Ra] = reactExports.useState(null), [vn, Xr] = reactExports.useState(false), [Tn, Hn] = reactExports.useState(null), [Un, oa] = reactExports.useState(false), [Wn, jr] = reactExports.useState("");
+    const Ur = reactExports.useRef(loadWorkspaceTabsAutoSaveMode()), Ir = reactExports.useRef(""), [Mr, yt] = reactExports.useState(false), [ht, Qe] = reactExports.useState(() => []), It = reactExports.useRef(/* @__PURE__ */ new Set()), [Gt, ir] = reactExports.useState(false), [Tt, Or] = reactExports.useState(null), [Qt, $r] = reactExports.useState(null), [Pr, rn] = reactExports.useState(false), [zr, Qr] = reactExports.useState(null), [mr, mn] = reactExports.useState(null), [Nr, yn] = reactExports.useState(null), [wr, Er] = reactExports.useState(() => loadShowHiddenFolders()), [en, Dn] = reactExports.useState(() => loadShowTrashFolder()), [pn, _n] = reactExports.useState(() => loadEditorType()), [xt, Sn] = reactExports.useState(() => loadStorageMode()), [Vt, kn] = reactExports.useState(() => loadWebdavConfig()), In = reactExports.useRef(null), fa = reactExports.useRef(null), Nn = reactExports.useRef(null), [Dr, bn] = reactExports.useState(null), [$n, hn] = reactExports.useState(null), [Wr, cn] = reactExports.useState(false), [Fn, zt] = reactExports.useState(false), [bt, Et] = reactExports.useState(""), [br, Vr] = reactExports.useState(false), [kr, xn] = reactExports.useState(false), [En, on] = reactExports.useState(false), [hr, zn] = reactExports.useState(null), [Bn, ea] = reactExports.useState(null), [Oa, ga] = reactExports.useState(false), [wn, ya] = reactExports.useState(null), [Yr, ba] = reactExports.useState(null), [Xn, Mn] = reactExports.useState(null), [Ga, xa] = reactExports.useState(null), [ia, wa] = reactExports.useState(false), [Aa, va] = reactExports.useState(false), [ji, Fr] = reactExports.useState(false), [yi, Ra] = reactExports.useState(null), [vn, Xr] = reactExports.useState(false), [Tn, Hn] = reactExports.useState(null), [Un, oa] = reactExports.useState(false), [Wn, jr] = reactExports.useState("");
     Ir.current = Wn;
-    const [Kn, pt] = reactExports.useState(false), [ut, Mt] = reactExports.useState("renameOnly"), [Ht, Sr] = reactExports.useState(false), [Ar, An] = reactExports.useState(null), [jn, ma] = reactExports.useState(false), [Oa, Fa] = reactExports.useState(false), Da = reactExports.useRef(null), [Li, ja] = reactExports.useState(null), [bi, $i] = reactExports.useState(null), [ii, La] = reactExports.useState(null), [Jn, io] = reactExports.useState(null), [Ro, oo] = reactExports.useState([]), $a = reactExports.useRef(null), Cn = reactExports.useRef(null), [so, Ln] = reactExports.useState(false), [Ca, ta] = reactExports.useState("default"), [lo, Bi] = reactExports.useState(false), [qa, xi] = reactExports.useState(null), [zi, wi] = reactExports.useState(false), [oi, Jr] = reactExports.useState(0), [Va, Gn] = reactExports.useState(false), [vi, Ya] = reactExports.useState({
+    const [Kn, pt] = reactExports.useState(false), [ut, Mt] = reactExports.useState("renameOnly"), [Ht, Sr] = reactExports.useState(false), [Ar, An] = reactExports.useState(null), [jn, ma] = reactExports.useState(false), [Pa, Da] = reactExports.useState(false), Fa = reactExports.useRef(null), [Li, ja] = reactExports.useState(null), [bi, $i] = reactExports.useState(null), [ii, La] = reactExports.useState(null), [Jn, io] = reactExports.useState(null), [Ro, oo] = reactExports.useState([]), $a = reactExports.useRef(null), Cn = reactExports.useRef(null), [so, Ln] = reactExports.useState(false), [Ca, ta] = reactExports.useState("default"), [lo, Bi] = reactExports.useState(false), [qa, xi] = reactExports.useState(null), [zi, wi] = reactExports.useState(false), [oi, Jr] = reactExports.useState(0), [Va, Gn] = reactExports.useState(false), [vi, Ya] = reactExports.useState({
       isOpen: false,
       title: "",
       message: ""
@@ -70451,7 +70670,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         title: "\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC",
         message: "\uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC\uB294 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4"
       });
-    }, []), Si = reactExports.useCallback(() => typeof navigator > "u" ? false : /Android/i.test(navigator.userAgent || ""), []), Pn = reactExports.useCallback((ae, ie) => {
+    }, []), Si = reactExports.useCallback(() => typeof navigator > "u" ? false : /Android/i.test(navigator.userAgent || ""), []), On = reactExports.useCallback((ae, ie) => {
       const de = URL.createObjectURL(ae), ge = document.createElement("a");
       ge.href = de, ge.download = normalizeUnicodeNfc(String(ie || "download")), ge.click(), URL.revokeObjectURL(de);
     }, []), Ia = reactExports.useCallback(async (ae, ie, de, ge) => {
@@ -70459,25 +70678,25 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (ae === "s3") {
         const we = createS3Client(ee);
         if (!we) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
-        const _e2 = ee.bucket, Pe = ie.path || "", Ye = (await listObjectsV2(we, _e2, Pe) || []).filter((ot) => ot.Key && !ot.Key.endsWith("/")), Ke = Ye.length;
-        let De = 0;
+        const _e2 = ee.bucket, Oe = ie.path || "", Ye = (await listObjectsV2(we, _e2, Oe) || []).filter((ot) => ot.Key && !ot.Key.endsWith("/")), Ke = Ye.length;
+        let Fe = 0;
         for (const { Key: ot } of Ye) {
-          const it = Pe ? ot.slice(Pe.length) : ot;
+          const it = Oe ? ot.slice(Oe.length) : ot;
           if (!it) continue;
           const { body: Ct } = await getObjectBody(we, _e2, ot);
           he.push({
             path: normalizePathToNfc(`${xe}/${it}`.replace(/\\/g, "/")),
             data: Ct
-          }), De += 1, r(ge, {
-            progress: Ke ? Math.min(100, Math.round(De / Ke * 100)) : 100,
-            detail: `${De}/${Ke}`
+          }), Fe += 1, r(ge, {
+            progress: Ke ? Math.min(100, Math.round(Fe / Ke * 100)) : 100,
+            detail: `${Fe}/${Ke}`
           });
         }
       } else if (ae === "local") {
         const we = ie.handle || (ie.path === "" ? rt : null);
         if (!we) throw new Error("\uC6D0\uBCF8 \uD3F4\uB354 \uD578\uB4E4\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
-        const _e2 = async (Pe, Be = "") => {
-          for await (const Ye of Pe.values()) if (Ye.kind === "file") {
+        const _e2 = async (Oe, Be = "") => {
+          for await (const Ye of Oe.values()) if (Ye.kind === "file") {
             const Ke = await Ye.getFile();
             he.push({
               path: normalizePathToNfc(`${xe}/${Be}${Ye.name}`.replace(/\\/g, "/")),
@@ -70490,11 +70709,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
       }
       const Se = await buildZipBlob(he);
-      Pn(Se, `${xe}.zip`);
+      On(Se, `${xe}.zip`);
     }, [
       rt,
       ee,
-      Pn,
+      On,
       r
     ]), [Ui, pa] = reactExports.useState(() => /* @__PURE__ */ new Set()), Ea = reactExports.useRef(null), [Ba, si] = reactExports.useState({
       snippets: []
@@ -70512,7 +70731,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       pending: 0,
       uploading: 0,
       failed: 0
-    }), [ye, ve] = reactExports.useState([]), [Te, Ce] = reactExports.useState(null), [qe, tt] = reactExports.useState(""), [Ve, $e] = reactExports.useState([]), [We, Xe] = reactExports.useState(null), [He, Ue] = reactExports.useState(false), [st, ft] = reactExports.useState(false), [nt, kt] = reactExports.useState(false), [Pt, Kt] = reactExports.useState(false), [Ut, Ft] = reactExports.useState(false), [er, Jt] = reactExports.useState(() => getLocalAppBuildId()), [$t, rr] = reactExports.useState(""), [Br, Hr] = reactExports.useState(""), ur = getAppNameByStorageMode(xt || DEFAULT_STORAGE_MODE), { needRefresh: [vr], updateServiceWorker: sn } = useRegisterSW({
+    }), [ye, ve] = reactExports.useState([]), [Te, Ce] = reactExports.useState(null), [qe, tt] = reactExports.useState(""), [Ve, $e] = reactExports.useState([]), [We, Xe] = reactExports.useState(null), [He, Ue] = reactExports.useState(false), [st, ft] = reactExports.useState(false), [nt, kt] = reactExports.useState(false), [Ot, Kt] = reactExports.useState(false), [Ut, Dt] = reactExports.useState(false), [er, Jt] = reactExports.useState(() => getLocalAppBuildId()), [$t, rr] = reactExports.useState(""), [Br, Hr] = reactExports.useState(""), ur = getAppNameByStorageMode(xt || DEFAULT_STORAGE_MODE), { needRefresh: [vr], updateServiceWorker: sn } = useRegisterSW({
       immediate: true,
       onRegisteredSW(ae, ie) {
         ie && Xe(ie);
@@ -70520,7 +70739,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       onRegisterError(ae) {
         console.error("PWA service worker registration error:", ae);
       }
-    }), Zn = reactExports.useRef([]), gn = reactExports.useRef([]), Dt = reactExports.useRef(null), ei = reactExports.useRef(void 0), No = reactExports.useRef(false), ka = reactExports.useRef(false), na = reactExports.useRef(false), ns = reactExports.useRef(false), as = reactExports.useRef(false), [po, ho] = reactExports.useState(false), Yi = reactExports.useRef(null), Ri = reactExports.useRef(null), Mo = reactExports.useRef(/* @__PURE__ */ new Map()), is = reactExports.useRef(null), Xi = reactExports.useRef(""), os = reactExports.useRef(false), go = reactExports.useRef(false), ss = reactExports.useCallback(() => {
+    }), Zn = reactExports.useRef([]), gn = reactExports.useRef([]), Ft = reactExports.useRef(null), ei = reactExports.useRef(void 0), No = reactExports.useRef(false), ka = reactExports.useRef(false), na = reactExports.useRef(false), ns = reactExports.useRef(false), as = reactExports.useRef(false), [po, ho] = reactExports.useState(false), Yi = reactExports.useRef(null), Ri = reactExports.useRef(null), Mo = reactExports.useRef(/* @__PURE__ */ new Map()), is = reactExports.useRef(null), Xi = reactExports.useRef(""), os = reactExports.useRef(false), go = reactExports.useRef(false), ss = reactExports.useCallback(() => {
       var _a3;
       const ae = loadPersistedWorkspaceTabs();
       if ((_a3 = ae == null ? void 0 : ae.tabs) == null ? void 0 : _a3.length) {
@@ -70591,8 +70810,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             contentOverride: ge,
             background: true
           }));
-        } catch (Pe) {
-          console.error("Background tab save failed:", Pe);
+        } catch (Oe) {
+          console.error("Background tab save failed:", Oe);
         } finally {
           It.current.delete(Se), Qe([
             ...It.current
@@ -70607,7 +70826,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!Rr.current || Ur.current !== "onWindowChange") return;
       const ae = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       });
       Rt.current = ae, lr(ae);
@@ -70619,7 +70838,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!(ae == null ? void 0 : ae.type) || !(ae == null ? void 0 : ae.id)) return false;
       const ge = de.activate !== false, he = `${ae.type}:${ae.id}`, xe = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       });
       if (!findFileTab(xe, ae.type, ae.id) && !ge) return false;
@@ -70634,11 +70853,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           content: de.baselineContent
         },
         editorContent: ie
-      })), Rr.current || (we = retainOnlyFileTab(we, he)), Rt.current = we, lr(we), we.activeId === he && (Zt(ae), Dt.current = ae, fr(ie), tr.current = ie, jr(ae.name || ""), Ir.current = ae.name || ""), true);
+      })), Rr.current || (we = retainOnlyFileTab(we, he)), Rt.current = we, lr(we), we.activeId === he && (Zt(ae), Ft.current = ae, fr(ie), tr.current = ie, jr(ae.name || ""), Ir.current = ae.name || ""), true);
     }, []), Wa = reactExports.useCallback((ae, ie = {}) => {
       const { navigateUrl: de = true } = ie, ge = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       }), he = getActiveTab(ge);
       isFileTab(he) && he.id !== ae && isFileTabDirty(he) && he.storageType !== SESSION_STORAGE_TYPE && Ta(he.currentFile, he.editorContent);
@@ -70647,11 +70866,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const Se = getActiveTab(xe);
       if (isFileTab(Se)) {
         const we = Se.currentFile;
-        if (Zt(we), Dt.current = we, fr(Se.editorContent), tr.current = Se.editorContent, jr(Se.editedFileName || String((we == null ? void 0 : we.name) || "")), de) {
+        if (Zt(we), Ft.current = we, fr(Se.editorContent), tr.current = Se.editorContent, jr(Se.editedFileName || String((we == null ? void 0 : we.name) || "")), de) {
           const _e2 = typeof (we == null ? void 0 : we.id) == "string" && we.id || Se.path;
           ue(`/view/${_e2}`);
         }
-      } else isChatTab(Se) ? (Zt(null), Dt.current = null, de && ue("/chat")) : isSettingsTab(Se) ? (Zt(null), Dt.current = null, de && ue("/settings")) : de && ue("/");
+      } else isChatTab(Se) ? (Zt(null), Ft.current = null, de && ue("/chat")) : isSettingsTab(Se) ? (Zt(null), Ft.current = null, de && ue("/settings")) : de && ue("/");
     }, [
       ue,
       Ta
@@ -70660,22 +70879,22 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!Rr.current) {
         const xe = flushEditorIntoActiveFileTab(Rt.current, {
           editorContent: tr.current ?? "",
-          currentFile: Dt.current,
+          currentFile: Ft.current,
           editedFileName: Ir.current ?? ""
         }), Se = getActiveFileTab(xe);
         Se && isFileTabDirty(Se) && Se.storageType !== SESSION_STORAGE_TYPE && Ta(Se.currentFile, Se.editorContent);
         const we = stripChatTab(xe);
-        Rt.current = we, lr(we), Zt(null), Dt.current = null, ie && ue("/chat");
+        Rt.current = we, lr(we), Zt(null), Ft.current = null, ie && ue("/chat");
         return;
       }
       const de = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       }), ge = getActiveFileTab(de);
       ge && isFileTabDirty(ge) && ge.storageType !== SESSION_STORAGE_TYPE && Ta(ge.currentFile, ge.editorContent);
       const he = openOrActivateChat(de);
-      Rt.current = he, lr(he), Zt(null), Dt.current = null, ie && ue("/chat");
+      Rt.current = he, lr(he), Zt(null), Ft.current = null, ie && ue("/chat");
     }, [
       ue,
       Ta
@@ -70684,40 +70903,40 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!Rr.current) {
         const we = flushEditorIntoActiveFileTab(Rt.current, {
           editorContent: tr.current ?? "",
-          currentFile: Dt.current,
+          currentFile: Ft.current,
           editedFileName: Ir.current ?? ""
         }), _e2 = getActiveFileTab(we);
         _e2 && isFileTabDirty(_e2) && _e2.storageType !== SESSION_STORAGE_TYPE && Ta(_e2.currentFile, _e2.editorContent);
-        const Pe = stripSettingsTab(we);
-        Rt.current = Pe, lr(Pe), Zt(null), Dt.current = null, ie && ue(ge);
+        const Oe = stripSettingsTab(we);
+        Rt.current = Oe, lr(Oe), Zt(null), Ft.current = null, ie && ue(ge);
         return;
       }
       const he = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       }), xe = getActiveFileTab(he);
       xe && isFileTabDirty(xe) && xe.storageType !== SESSION_STORAGE_TYPE && Ta(xe.currentFile, xe.editorContent);
       const Se = openOrActivateSettings(he);
-      Rt.current = Se, lr(Se), Zt(null), Dt.current = null, ie && ue(ge);
+      Rt.current = Se, lr(Se), Zt(null), Ft.current = null, ie && ue(ge);
     }, [
       ue,
       Ta
     ]), us = reactExports.useCallback(() => {
       const ae = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       }), ie = za, de = collapseWorkspaceToLegacy(ae);
       Rt.current = de, lr(de);
       const ge = getActiveTab(de);
       if (ie) {
-        Zt(null), Dt.current = null;
+        Zt(null), Ft.current = null;
         return;
       }
       if (isFileTab(ge)) {
         const he = ge.currentFile;
-        Zt(he), Dt.current = he, fr(ge.editorContent), tr.current = ge.editorContent, jr(ge.editedFileName || String((he == null ? void 0 : he.name) || ""));
+        Zt(he), Ft.current = he, fr(ge.editorContent), tr.current = ge.editorContent, jr(ge.editedFileName || String((he == null ? void 0 : he.name) || ""));
       }
     }, [
       za
@@ -70737,8 +70956,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const Se = getActiveTab(xe);
       if (isFileTab(Se)) {
         const we = Se.currentFile;
-        Zt(we), Dt.current = we, fr(Se.editorContent), tr.current = Se.editorContent, jr(Se.editedFileName || String((we == null ? void 0 : we.name) || "")), ue(`/view/${typeof (we == null ? void 0 : we.id) == "string" && we.id || Se.path}`);
-      } else isChatTab(Se) ? (Zt(null), Dt.current = null, ue("/chat")) : isSettingsTab(Se) ? (Zt(null), Dt.current = null, ue("/settings")) : (Zt(null), Dt.current = null, fr(""), tr.current = "", jr(""), ue("/"));
+        Zt(we), Ft.current = we, fr(Se.editorContent), tr.current = Se.editorContent, jr(Se.editedFileName || String((we == null ? void 0 : we.name) || "")), ue(`/view/${typeof (we == null ? void 0 : we.id) == "string" && we.id || Se.path}`);
+      } else isChatTab(Se) ? (Zt(null), Ft.current = null, ue("/chat")) : isSettingsTab(Se) ? (Zt(null), Ft.current = null, ue("/settings")) : (Zt(null), Ft.current = null, fr(""), tr.current = "", jr(""), ue("/"));
     }, [
       ue
     ]), Qs = reactExports.useCallback((ae, ie) => {
@@ -70762,15 +70981,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       Re
     ]), reactExports.useEffect(() => {
-      gn.current = Fe;
+      gn.current = De;
     }, [
-      Fe
+      De
     ]), reactExports.useEffect(() => {
       ze.current = Ge;
     }, [
       Ge
     ]), reactExports.useEffect(() => {
-      Dt.current = Ie;
+      Ft.current = Ie;
     }, [
       Ie
     ]), reactExports.useEffect(() => {
@@ -70794,7 +71013,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ie,
       fe.pathname
     ]), reactExports.useEffect(() => {
-      saveStorageMode(xt), pa(/* @__PURE__ */ new Set()), Zt(null), Dt.current = null, fr(""), tr.current = "";
+      saveStorageMode(xt), pa(/* @__PURE__ */ new Set()), Zt(null), Ft.current = null, fr(""), tr.current = "";
       let ae = Rt.current;
       for (const ie of [
         ...ae.tabs
@@ -70840,10 +71059,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       vr
     ]), reactExports.useEffect(() => {
-      Pt && vr && Ft(true);
+      Ot && vr && Dt(true);
     }, [
       vr,
-      Pt
+      Ot
     ]);
     const tl = reactExports.useCallback(async () => {
       try {
@@ -70865,9 +71084,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           console.warn("Service worker update check failed:", ge);
         }
         const de = !!(vr || (We == null ? void 0 : We.waiting) || ie);
-        ae.ok ? (rr(ae.remoteId), Hr(""), Ft(!!(ae.updateAvailable || de))) : (rr(ae.remoteId || ""), Hr(ae.error || "unknown"), Ft(de), console.warn("App update check failed:", ae.error));
+        ae.ok ? (rr(ae.remoteId), Hr(""), Dt(!!(ae.updateAvailable || de))) : (rr(ae.remoteId || ""), Hr(ae.error || "unknown"), Dt(de), console.warn("App update check failed:", ae.error));
       } catch (ae) {
-        console.warn("App update check failed:", ae), Jt(getLocalAppBuildId()), rr(""), Hr((ae == null ? void 0 : ae.message) || String(ae) || "unknown"), Ft(!!(vr || (We == null ? void 0 : We.waiting)));
+        console.warn("App update check failed:", ae), Jt(getLocalAppBuildId()), rr(""), Hr((ae == null ? void 0 : ae.message) || String(ae) || "unknown"), Dt(!!(vr || (We == null ? void 0 : We.waiting)));
       } finally {
         kt(false), Kt(true);
       }
@@ -70910,7 +71129,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       Za
     ]), reactExports.useEffect(() => subscribeSettingsToggles((ae, ie) => {
-      ae === "settings-show-trash" ? Fn(ie) : ae === "settings-show-hidden" ? Er(ie) : ae === "settings-hide-recording" ? Ai(ie) : ae === "settings-tree-sticky" ? Io(ie) : ae === "settings-workspace-tabs" && (Rr.current = ie, qr(ie), ie ? za ? aa({
+      ae === "settings-show-trash" ? Dn(ie) : ae === "settings-show-hidden" ? Er(ie) : ae === "settings-hide-recording" ? Ai(ie) : ae === "settings-tree-sticky" ? Io(ie) : ae === "settings-workspace-tabs" && (Rr.current = ie, qr(ie), ie ? za ? aa({
         navigateUrl: false
       }) : Gi && Vn({
         navigateUrl: false
@@ -70988,7 +71207,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         xn(ae), on(ae || ie);
       });
     }, []);
-    const Po = async (ae) => {
+    const Oo = async (ae) => {
       try {
         const ie = localStorage.getItem("s3NotesEncrypted");
         if (!ie) throw new Error("\uC800\uC7A5\uB41C \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
@@ -71016,9 +71235,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         le(ae, ""), Gr(ae), ue("/");
       } else {
         const ae = await unlockWithWebAuthn();
-        ae && await Po(ae);
+        ae && await Oo(ae);
       }
-    }, Oo = async (ae, ie, de = {}) => {
+    }, Po = async (ae, ie, de = {}) => {
       const { stayOnSettings: ge = false } = de;
       try {
         const he = window.crypto.getRandomValues(new Uint8Array(16)), xe = await deriveEntropyFromPassword(ie, he), Se = await encryptWithEntropy(JSON.stringify(ae), xe), we = {
@@ -71079,13 +71298,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }), ma(true);
         return;
       }
-      Oo(ae, ie, de);
+      Po(ae, ie, de);
     }, bl = async () => {
       try {
         Li ? (await saveCredsWithWebAuthn(Li), Gr(Li), Xr(false), Hn(null), ja(null), n({
           title: "\uC5F0\uACB0 \uC815\uBCF4",
           message: "\uC5F0\uACB0 \uC815\uBCF4 \uC5C5\uB370\uC774\uD2B8\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
-        })) : bi && (await Oo(bi.creds, bi.password, bi.options), $i(null));
+        })) : bi && (await Po(bi.creds, bi.password, bi.options), $i(null));
       } finally {
         ma(false);
       }
@@ -71120,7 +71339,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             alert("\uC798\uBABB\uB41C \uBC31\uC5C5 \uD30C\uC77C \uD615\uC2DD\uC785\uB2C8\uB2E4. \uBE44\uBC00\uBC88\uD638\uB85C \uC554\uD638\uD654\uB41C JSON \uD30C\uC77C\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.");
             return;
           }
-          Ra(he), Dr(true);
+          Ra(he), Fr(true);
         } catch {
           alert("\uC798\uBABB\uB41C \uD30C\uC77C \uD615\uC2DD\uC785\uB2C8\uB2E4.");
         }
@@ -71128,7 +71347,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, El = async (ae) => {
       try {
         const ie = JSON.parse(yi), de = await decryptData(ae, ie), ge = JSON.parse(de);
-        Ra(null), Dr(false), kr ? (await saveCredsWithWebAuthn(ge), oe(ge), re(""), Gr(ge), ue("/"), alert("\uBCF5\uC6D0\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774 \uAE30\uAE30\uC5D0\uC11C\uB294 \uBCF4\uC548 \uD0A4\uB85C \uC7A0\uAE08 \uD574\uC81C\uB429\uB2C8\uB2E4.")) : await Oo(ge, ae);
+        Ra(null), Fr(false), kr ? (await saveCredsWithWebAuthn(ge), oe(ge), re(""), Gr(ge), ue("/"), alert("\uBCF5\uC6D0\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774 \uAE30\uAE30\uC5D0\uC11C\uB294 \uBCF4\uC548 \uD0A4\uB85C \uC7A0\uAE08 \uD574\uC81C\uB429\uB2C8\uB2E4.")) : await Po(ge, ae);
       } catch {
         alert("\uBE44\uBC00\uBC88\uD638\uAC00 \uD2C0\uB838\uAC70\uB098 \uD30C\uC77C\uC774 \uC190\uC0C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
       }
@@ -71173,11 +71392,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (No.current) return false;
       const ae = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       });
       if (anyFileTabDirty(ae.tabs)) return true;
-      const ie = Dt.current;
+      const ie = Ft.current;
       return ie ? [
         "markdown",
         "json",
@@ -71197,7 +71416,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       shouldAllowNavigation: Rl
     }), xs = (ae) => {
       ae && (ae.viewer === "image" || ae.viewer === "pdf" || ae.viewer === "audio" || ae.viewer === "video") && ae.objectUrl && URL.revokeObjectURL(ae.objectUrl);
-    }, Fo = reactExports.useCallback(() => {
+    }, Do = reactExports.useCallback(() => {
       const ae = getActiveFileTab(Rt.current);
       if (ae) {
         la(ae.id, {
@@ -71205,7 +71424,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
         return;
       }
-      Zt((ie) => (xs(ie), null)), Dt.current = null, fr(""), tr.current = "", ls();
+      Zt((ie) => (xs(ie), null)), Ft.current = null, fr(""), tr.current = "", ls();
     }, [
       ls,
       la
@@ -71222,7 +71441,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }));
       return mt.current.set(ae, he), he;
     }, []), Yn = reactExports.useCallback(() => {
-      const ae = Dt.current, ie = ze.current;
+      const ae = Ft.current, ie = ze.current;
       if (!ae || ae.type !== SESSION_STORAGE_TYPE || !ae.id || !ie || ![
         "markdown",
         "json",
@@ -71234,9 +71453,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return ze.current = ge, lt(ge), ge;
     }, []), Cl = reactExports.useCallback(() => {
       var _a3, _b3;
-      ((_a3 = Dt.current) == null ? void 0 : _a3.type) === SESSION_STORAGE_TYPE && xo() && !window.confirm("\uC800\uC7A5\uD558\uC9C0 \uC54A\uC740 \uBCC0\uACBD\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uC138\uC158\uC744 \uB2EB\uC73C\uBA74 \uC0AC\uB77C\uC9D1\uB2C8\uB2E4. \uB2EB\uC744\uAE4C\uC694?") || (Ci(), Ze.current = /* @__PURE__ */ Object.create(null), ze.current = null, lt(null), ((_b3 = Dt.current) == null ? void 0 : _b3.type) === SESSION_STORAGE_TYPE && (Fo(), ue("/")));
+      ((_a3 = Ft.current) == null ? void 0 : _a3.type) === SESSION_STORAGE_TYPE && xo() && !window.confirm("\uC800\uC7A5\uD558\uC9C0 \uC54A\uC740 \uBCC0\uACBD\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uC138\uC158\uC744 \uB2EB\uC73C\uBA74 \uC0AC\uB77C\uC9D1\uB2C8\uB2E4. \uB2EB\uC744\uAE4C\uC694?") || (Ci(), Ze.current = /* @__PURE__ */ Object.create(null), ze.current = null, lt(null), ((_b3 = Ft.current) == null ? void 0 : _b3.type) === SESSION_STORAGE_TYPE && (Do(), ue("/")));
     }, [
-      Fo,
+      Do,
       xo,
       ue,
       Ci
@@ -71266,7 +71485,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         };
         return Ua(Be, ""), he || ue(`/view/${ae}`), true;
       }
-      const _e2 = decodeSessionText(ge.bytes), Pe = {
+      const _e2 = decodeSessionText(ge.bytes), Oe = {
         type: SESSION_STORAGE_TYPE,
         id: ae,
         name: ge.name,
@@ -71274,7 +71493,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         viewer: xe,
         size: Se
       };
-      return Ua(Pe, _e2), he || ue(`/view/${ae}`), true;
+      return Ua(Oe, _e2), he || ue(`/view/${ae}`), true;
     }, [
       vo,
       ue,
@@ -71333,8 +71552,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ae = Yn() ?? ze.current;
       if (!ae) return;
       const { blob: ie, fileName: de } = await buildSessionDownload(ae);
-      Pn(ie, de), mn(Date.now());
-      const ge = Dt.current;
+      On(ie, de), mn(Date.now());
+      const ge = Ft.current;
       if ((ge == null ? void 0 : ge.type) === SESSION_STORAGE_TYPE && ge.id) {
         const he = ae.files[ge.id], xe = tr.current ?? "";
         Zt((Se) => {
@@ -71350,14 +71569,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             ].includes(Se.viewer || "") ? xe : Se.content,
             size: (he == null ? void 0 : he.bytes.byteLength) ?? Se.size
           };
-          return Dt.current = we, we;
+          return Ft.current = we, we;
         });
       }
       Et(`\uB2E4\uC6B4\uB85C\uB4DC: ${de}`);
     }, [
       Yn,
-      Pn
-    ]), Do = () => {
+      On
+    ]), Fo = () => {
       const ae = getActiveTab(Rt.current);
       if (ae) {
         la(ae.id, {
@@ -71365,18 +71584,18 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
         return;
       }
-      Zt((ie) => (xs(ie), null)), Dt.current = null, fr(""), tr.current = "", ue("/");
+      Zt((ie) => (xs(ie), null)), Ft.current = null, fr(""), tr.current = "", ue("/");
     }, Nl = () => {
       const ae = getActiveTab(Rt.current);
       if (ae) {
         la(ae.id);
         return;
       }
-      xo() ? (An(null), Sr(true)) : Do();
+      xo() ? (An(null), Sr(true)) : Fo();
     }, Ml = async () => {
       const ae = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       }), ie = getActiveFileTab(ae);
       ie && isFileTabDirty(ie) && ie.storageType !== SESSION_STORAGE_TYPE ? Ta(ie.currentFile, ie.editorContent) : (ie == null ? void 0 : ie.storageType) === SESSION_STORAGE_TYPE && Yn();
@@ -71384,15 +71603,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...ae,
         activeId: null
       };
-      Rt.current = de, lr(de), Zt(null), Dt.current = null, fr(""), tr.current = "", ue("/");
-    }, Pl = async () => {
+      Rt.current = de, lr(de), Zt(null), Ft.current = null, fr(""), tr.current = "", ue("/");
+    }, Ol = async () => {
       var _a3, _b3, _c3;
       Sr(false);
       const ae = Ar || ((_a3 = getActiveFileTab(Rt.current)) == null ? void 0 : _a3.id) || null;
       if (An(null), !ae) {
         await mi(null, {
           skipSuffixCheck: true
-        }), Do();
+        }), Fo();
         return;
       }
       const ie = Rt.current.tabs.find((de) => de.id === ae);
@@ -71405,7 +71624,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }))), la(ae, {
         skipDirtyConfirm: true
       });
-    }, Ol = () => {
+    }, Pl = () => {
       var _a3;
       Sr(false);
       const ae = Ar || ((_a3 = getActiveTab(Rt.current)) == null ? void 0 : _a3.id) || null;
@@ -71415,17 +71634,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
         return;
       }
-      Do();
-    }, Fl = async () => {
+      Fo();
+    }, Dl = async () => {
       var _a3;
       await ((_a3 = Yi.current) == null ? void 0 : _a3.call(Yi, null, {
         skipSuffixCheck: true
       })), wo.proceed();
-    }, Dl = () => {
+    }, Fl = () => {
       wo.proceed();
     }, or = reactExports.useCallback((ae = ee) => createS3Client(ae), [
       ee
-    ]), On = reactExports.useCallback((ae) => createStorageBackendForType(ae, {
+    ]), Pn = reactExports.useCallback((ae) => createStorageBackendForType(ae, {
       getS3Client: or,
       s3Creds: ee,
       localRootHandle: rt,
@@ -71441,17 +71660,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       storageMode: xt,
       s3Tree: Re,
       localTree: Me,
-      webdavTree: Fe,
+      webdavTree: De,
       sessionWorkspace: Ge
     });
     jo.current = {
       storageMode: xt,
       s3Tree: Re,
       localTree: Me,
-      webdavTree: Fe,
+      webdavTree: De,
       sessionWorkspace: Ge
     }, reactExports.useEffect(() => {
-      const ae = On(xt), ie = xt === STORAGE_MODE_LOCAL ? `local:${Xt || (rt == null ? void 0 : rt.name) || "default"}` : xt === STORAGE_MODE_WEBDAV ? `webdav:${(Vt == null ? void 0 : Vt.endpoint) || ""}:${(Vt == null ? void 0 : Vt.basePath) || ""}` : `s3:${(ee == null ? void 0 : ee.bucket) || ""}`;
+      const ae = Pn(xt), ie = xt === STORAGE_MODE_LOCAL ? `local:${Xt || (rt == null ? void 0 : rt.name) || "default"}` : xt === STORAGE_MODE_WEBDAV ? `webdav:${(Vt == null ? void 0 : Vt.endpoint) || ""}:${(Vt == null ? void 0 : Vt.basePath) || ""}` : `s3:${(ee == null ? void 0 : ee.bucket) || ""}`;
       advancedSearchEngine.configure({
         backend: ae,
         storageKey: ie,
@@ -71462,13 +71681,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
     }, [
       xt,
-      On,
+      Pn,
       rt,
       ee.bucket,
       Vt
     ]), reactExports.useEffect(() => {
       var _a3, _b3;
-      if (!l || !((_b3 = (_a3 = On(xt)) == null ? void 0 : _a3.isReady) == null ? void 0 : _b3.call(_a3))) return;
+      if (!l || !((_b3 = (_a3 = Pn(xt)) == null ? void 0 : _a3.isReady) == null ? void 0 : _b3.call(_a3))) return;
       let ie = false;
       return (async () => (await advancedSearchEngine.ensureLoaded(), !ie && await advancedSearchEngine.refreshCheckpointStatus()))(), () => {
         ie = true;
@@ -71476,7 +71695,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       l,
       xt,
-      On,
+      Pn,
       rt,
       ee.bucket,
       Vt
@@ -71502,7 +71721,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       if (ie === "webdav") {
         if (!Cr || !Vt) throw new Error("WebDAV not ready");
-        const we = findFileNodeByPath(Fe, de) || findNodeByPath(Fe, de);
+        const we = findFileNodeByPath(De, de) || findNodeByPath(De, de);
         return (we == null ? void 0 : we.type) === "file" ? we : await webdavHead(Vt, de) ? {
           path: de,
           id: de,
@@ -71526,7 +71745,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Me,
       Cr,
       Vt,
-      Fe,
+      De,
       Re,
       or,
       ee == null ? void 0 : ee.bucket
@@ -71738,7 +71957,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (xt === "webdav" && Cr) {
           const xe = createWebdavBackend$1(Vt);
           return drainRecordingUploadQueue({
-            writeObject: ({ key: we, body: _e2, contentType: Pe }) => xe.writeBytes(we, _e2, Pe)
+            writeObject: ({ key: we, body: _e2, contentType: Oe }) => xe.writeBytes(we, _e2, Oe)
           }).then((we) => {
             ae(), (we == null ? void 0 : we.processed) > 0 && nn();
           }).catch(() => {
@@ -71762,7 +71981,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           } else if (xt === "webdav" && Cr) {
             const xe = createWebdavBackend$1(Vt);
             drainRecordingUploadQueue({
-              writeObject: ({ key: we, body: _e2, contentType: Pe }) => xe.writeBytes(we, _e2, Pe)
+              writeObject: ({ key: we, body: _e2, contentType: Oe }) => xe.writeBytes(we, _e2, Oe)
             }).catch(() => {
             });
           }
@@ -71891,9 +72110,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Cr
     ]);
     reactExports.useEffect(() => {
-      !Oe || !l || (xt === "local" && rt && !Xa ? As() : xt === "webdav" && Cr && !ci ? Rs() : xt === "s3" && ee.bucket && !Wi && Ts());
+      !Pe || !l || (xt === "local" && rt && !Xa ? As() : xt === "webdav" && Cr && !ci ? Rs() : xt === "s3" && ee.bucket && !Wi && Ts());
     }, [
-      Oe,
+      Pe,
       l,
       xt,
       ee.bucket,
@@ -71923,13 +72142,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (ie && !rt) return dbgClipboard("app:upload:abort", {
         reason: "no local root handle"
       }), Et("\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC\uB294 \uB85C\uCEEC \uD3F4\uB354\uB97C \uC5F0 \uB4A4 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4."), [];
-      const xe = Array.from(ae).filter((De) => De && De.size > 0), Se = [];
-      for (const De of xe) {
-        if ((_a3 = De.type) == null ? void 0 : _a3.startsWith("image/")) {
-          Se.push(De);
+      const xe = Array.from(ae).filter((Fe) => Fe && Fe.size > 0), Se = [];
+      for (const Fe of xe) {
+        if ((_a3 = Fe.type) == null ? void 0 : _a3.startsWith("image/")) {
+          Se.push(Fe);
           continue;
         }
-        (!De.type || De.type === "application/octet-stream") && await isFileProbablyImage(De) && Se.push(De);
+        (!Fe.type || Fe.type === "application/octet-stream") && await isFileProbablyImage(Fe) && Se.push(Fe);
       }
       if (dbgClipboard("app:upload:afterFilter", {
         candidates: fileSummaries(xe),
@@ -71945,88 +72164,88 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         id: "editor-image-upload",
         type: ActivityTypes.FILE_UPLOAD,
         label: "\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC911"
-      }), _e2 = ((Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "local" || (Ie == null ? void 0 : Ie.type) === "webdav" || (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE) && (Ie == null ? void 0 : Ie.id) ? buildEditorImagePathPrefix(Ie.id) : ".images/note", Pe = [], Be = Se.reduce((De, ot) => De + (ot.size || 0), 0);
+      }), _e2 = ((Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "local" || (Ie == null ? void 0 : Ie.type) === "webdav" || (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE) && (Ie == null ? void 0 : Ie.id) ? buildEditorImagePathPrefix(Ie.id) : ".images/note", Oe = [], Be = Se.reduce((Fe, ot) => Fe + (ot.size || 0), 0);
       let Ye = 0;
-      const Ke = (De, ot) => {
-        const it = (De.size || 0) * (Math.max(0, Math.min(100, ot)) / 100), Ct = Be > 0 ? (Ye + it) / Be * 100 : ot, Nt = Math.max(0, Math.min(100, Math.round(Ct)));
+      const Ke = (Fe, ot) => {
+        const it = (Fe.size || 0) * (Math.max(0, Math.min(100, ot)) / 100), Ct = Be > 0 ? (Ye + it) / Be * 100 : ot, Nt = Math.max(0, Math.min(100, Math.round(Ct)));
         ko(Nt), r(we, {
           progress: Nt,
           detail: `${Nt}%`
         });
       };
       try {
-        for (const De of Se) {
+        for (const Fe of Se) {
           if (So.current) break;
           const ot = new AbortController();
           Qi.current = ot;
           let it;
-          if (ie) it = await uploadLocalEditorImage(rt, De, {
+          if (ie) it = await uploadLocalEditorImage(rt, Fe, {
             imagePathPrefix: _e2,
             signal: ot.signal,
-            onProgress: (Nt) => Ke(De, Nt)
+            onProgress: (Nt) => Ke(Fe, Nt)
           });
           else if (de) {
-            const Nt = On("webdav"), gt = normalizeEditorImagePathPrefix(_e2), wt = typeof crypto < "u" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-            let At = De.type;
-            (!At || At === "application/octet-stream") && (At = await sniffImageMimeFromFile(De) || At);
-            const Ot = getExtensionFromMime(At);
-            it = `${gt}${wt}${Ot}`.replace(/\/+/g, "/").replace(/^\//, ""), Ke(De, 0);
-            const ar = new Uint8Array(await De.arrayBuffer());
+            const Nt = Pn("webdav"), gt = normalizeEditorImagePathPrefix(_e2), wt = typeof crypto < "u" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            let At = Fe.type;
+            (!At || At === "application/octet-stream") && (At = await sniffImageMimeFromFile(Fe) || At);
+            const Pt = getExtensionFromMime(At);
+            it = `${gt}${wt}${Pt}`.replace(/\/+/g, "/").replace(/^\//, ""), Ke(Fe, 0);
+            const ar = new Uint8Array(await Fe.arrayBuffer());
             if (ot.signal.aborted) throw new DOMException("Aborted", "AbortError");
-            await Nt.writeBytes(it, ar, At || "application/octet-stream"), Ke(De, 100);
+            await Nt.writeBytes(it, ar, At || "application/octet-stream"), Ke(Fe, 100);
           } else if (ge) {
             const Nt = normalizeEditorImagePathPrefix(_e2), gt = typeof crypto < "u" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-            let wt = De.type;
-            (!wt || wt === "application/octet-stream") && (wt = await sniffImageMimeFromFile(De) || wt);
+            let wt = Fe.type;
+            (!wt || wt === "application/octet-stream") && (wt = await sniffImageMimeFromFile(Fe) || wt);
             const At = getExtensionFromMime(wt);
-            it = `${Nt}${gt}${At}`.replace(/\/+/g, "/").replace(/^\//, ""), Ke(De, 0);
-            const Ot = new Uint8Array(await De.arrayBuffer());
+            it = `${Nt}${gt}${At}`.replace(/\/+/g, "/").replace(/^\//, ""), Ke(Fe, 0);
+            const Pt = new Uint8Array(await Fe.arrayBuffer());
             if (ot.signal.aborted) throw new DOMException("Aborted", "AbortError");
             const ar = putSessionFileBytes(Yn() ?? ze.current ?? {
               origin: "md",
               originName: "untitled",
               files: {}
-            }, it, Ot);
-            ze.current = ar, lt(ar), mt.current.delete(it), Ke(De, 100);
-          } else it = await uploadEditorImage(he, ee.bucket, De, {
+            }, it, Pt);
+            ze.current = ar, lt(ar), mt.current.delete(it), Ke(Fe, 100);
+          } else it = await uploadEditorImage(he, ee.bucket, Fe, {
             imagePathPrefix: _e2,
             signal: ot.signal,
-            onProgress: (Nt) => Ke(De, Nt)
+            onProgress: (Nt) => Ke(Fe, Nt)
           });
-          Ye += De.size || 0, Qi.current = null;
+          Ye += Fe.size || 0, Qi.current = null;
           const Ct = Be > 0 ? Math.round(Ye / Be * 100) : 100;
-          ko(Math.max(0, Math.min(100, Ct))), Pe.push(it);
+          ko(Math.max(0, Math.min(100, Ct))), Oe.push(it);
         }
-        if (ie && Pe.length > 0 && rt) {
+        if (ie && Oe.length > 0 && rt) {
           qt(true);
           try {
-            const De = await readLocalDirectoryTree(rt, "", rt);
-            dt(De);
+            const Fe = await readLocalDirectoryTree(rt, "", rt);
+            dt(Fe);
           } finally {
             qt(false);
           }
         }
-        de && Pe.length > 0 && await nn();
-      } catch (De) {
-        (De == null ? void 0 : De.name) === "AbortError" ? (dbgClipboard("app:upload:cancelled", {
-          message: (De == null ? void 0 : De.message) ?? "aborted"
+        de && Oe.length > 0 && await nn();
+      } catch (Fe) {
+        (Fe == null ? void 0 : Fe.name) === "AbortError" ? (dbgClipboard("app:upload:cancelled", {
+          message: (Fe == null ? void 0 : Fe.message) ?? "aborted"
         }), Et("\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC\uAC00 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")) : (dbgClipboard("app:upload:error", {
-          message: (De == null ? void 0 : De.message) ?? String(De)
-        }), Et("\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC2E4\uD328: " + (De.message || String(De))));
+          message: (Fe == null ? void 0 : Fe.message) ?? String(Fe)
+        }), Et("\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC2E4\uD328: " + (Fe.message || String(Fe))));
       } finally {
         Qi.current = null, Zi.current = false, So.current = false, Cs(false), ko(0), t(we);
       }
       return dbgClipboard("app:upload:return", {
-        paths: Pe,
-        pathCount: Pe.length
-      }), Pe;
+        paths: Oe,
+        pathCount: Oe.length
+      }), Oe;
     }, [
       or,
       ee,
       Ie,
       rt,
       Cr,
-      On,
+      Pn,
       nn,
       e,
       t,
@@ -72061,7 +72280,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }), null);
       }
       if ((Ie == null ? void 0 : Ie.type) === "webdav" && Cr) try {
-        return await On("webdav").getObjectUrl(ie);
+        return await Pn("webdav").getObjectUrl(ie);
       } catch (ge) {
         return console.warn("[wiki-image] getPresignedUrlForPath: webdav failed", {
           path: ie,
@@ -72090,7 +72309,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ie,
       rt,
       Cr,
-      On,
+      Pn,
       vo
     ]), _s = reactExports.useCallback(async (ae) => {
       if (xt === "local" && rt) return getLocalWikiImageObjectUrl(rt, ae);
@@ -72117,7 +72336,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Vt
     ]);
     reactExports.useEffect(() => {
-      if (!Oe || !l || xt !== "s3" || !ee.bucket) return;
+      if (!Pe || !l || xt !== "s3" || !ee.bucket) return;
       (async () => {
         const ie = or();
         if (!ie) return;
@@ -72137,7 +72356,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         Gr();
       })();
     }, [
-      Oe,
+      Pe,
       l,
       xt,
       ee.bucket,
@@ -72157,7 +72376,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ve([]), Ce(null), tt(""), $e([]);
         return;
       }
-      const ge = getRecordingKeysFromTree(fi === "s3" ? Re : fi === "webdav" ? Fe : Me, $o);
+      const ge = getRecordingKeysFromTree(fi === "s3" ? Re : fi === "webdav" ? De : Me, $o);
       ve(ge), Ce(ge.length > 0 ? ge[0].key : null);
     }, [
       $o,
@@ -72165,7 +72384,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Is,
       Re,
       Me,
-      Fe
+      De
     ]), reactExports.useEffect(() => {
       if (!Te || !fi) {
         tt(""), $e([]);
@@ -72180,7 +72399,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         tt(""), $e([]);
         return;
       }
-      const ie = On(ae);
+      const ie = Pn(ae);
       if (!ie) return;
       let de = false;
       (async () => {
@@ -72210,7 +72429,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       Te,
       fi,
-      On
+      Pn
     ]), reactExports.useEffect(() => {
       if (!Zr || !ee.bucket || !l) return;
       const ae = or();
@@ -72224,10 +72443,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             (!Ct || it.getTime() > Ct.getTime()) && we.add(ot);
           }
           Je(he);
-          const _e2 = Dt.current;
+          const _e2 = Ft.current;
           if ((_e2 == null ? void 0 : _e2.type) !== "s3" || !we.has(_e2.id)) return;
-          const Pe = findFileNodeByPath(he, _e2.id), Be = (Pe == null ? void 0 : Pe.lastModified) ? Pe.lastModified instanceof Date ? Pe.lastModified : new Date(Pe.lastModified) : null, { body: Ye, ContentType: Ke } = await getObjectBody(ae, ee.bucket, _e2.id), De = (((_a3 = _e2.name) == null ? void 0 : _a3.split(".").pop()) || "").toLowerCase();
-          if (_e2.viewer === "markdown" || De === "md" || De === "markdown" || De === "") {
+          const Oe = findFileNodeByPath(he, _e2.id), Be = (Oe == null ? void 0 : Oe.lastModified) ? Oe.lastModified instanceof Date ? Oe.lastModified : new Date(Oe.lastModified) : null, { body: Ye, ContentType: Ke } = await getObjectBody(ae, ee.bucket, _e2.id), Fe = (((_a3 = _e2.name) == null ? void 0 : _a3.split(".").pop()) || "").toLowerCase();
+          if (_e2.viewer === "markdown" || Fe === "md" || Fe === "markdown" || Fe === "") {
             const ot = new TextDecoder("utf-8").decode(Ye);
             Zt((it) => (it == null ? void 0 : it.id) === _e2.id ? {
               ...it,
@@ -72235,9 +72454,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               lastModified: Be
             } : it), fr((it) => {
               var _a4;
-              return ((_a4 = Dt.current) == null ? void 0 : _a4.id) === _e2.id ? ot : it;
+              return ((_a4 = Ft.current) == null ? void 0 : _a4.id) === _e2.id ? ot : it;
             });
-          } else if (_e2.viewer === "json" || De === "json") {
+          } else if (_e2.viewer === "json" || Fe === "json") {
             const ot = new TextDecoder("utf-8").decode(Ye);
             let it = ot;
             try {
@@ -72251,9 +72470,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               lastModified: Be
             } : Ct), fr((Ct) => {
               var _a4;
-              return ((_a4 = Dt.current) == null ? void 0 : _a4.id) === _e2.id ? it : Ct;
+              return ((_a4 = Ft.current) == null ? void 0 : _a4.id) === _e2.id ? it : Ct;
             });
-          } else if (_e2.viewer === "html" || _e2.viewer === "svg" || De === "html" || De === "htm" || De === "svg") {
+          } else if (_e2.viewer === "html" || _e2.viewer === "svg" || Fe === "html" || Fe === "htm" || Fe === "svg") {
             const ot = new TextDecoder("utf-8").decode(Ye);
             Zt((it) => (it == null ? void 0 : it.id) === _e2.id ? {
               ...it,
@@ -72261,7 +72480,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               lastModified: Be
             } : it), fr((it) => {
               var _a4;
-              return ((_a4 = Dt.current) == null ? void 0 : _a4.id) === _e2.id ? ot : it;
+              return ((_a4 = Ft.current) == null ? void 0 : _a4.id) === _e2.id ? ot : it;
             });
           } else if (_e2.viewer === "image" || _e2.viewer === "pdf" || _e2.viewer === "audio" || _e2.viewer === "video") {
             const ot = Ke || (_e2.viewer === "pdf" ? "application/pdf" : ""), it = new Blob([
@@ -72290,21 +72509,21 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         var _a3;
         try {
           const de = createWebdavBackend$1(Vt), ge = await de.listAll(), he = getFileLastModifiedMap(gn.current), xe = getFileLastModifiedMap(ge), Se = /* @__PURE__ */ new Set();
-          for (const [Ke, De] of xe) {
+          for (const [Ke, Fe] of xe) {
             const ot = he.get(Ke);
-            (!ot || De.getTime() > ot.getTime()) && Se.add(Ke);
+            (!ot || Fe.getTime() > ot.getTime()) && Se.add(Ke);
           }
           je(ge);
-          const we = Dt.current;
+          const we = Ft.current;
           if ((we == null ? void 0 : we.type) !== "webdav" || !Se.has(we.id)) return;
-          const _e2 = findFileNodeByPath(ge, we.id), Pe = (_e2 == null ? void 0 : _e2.lastModified) ? _e2.lastModified instanceof Date ? _e2.lastModified : new Date(_e2.lastModified) : null, { text: Be } = await de.readText(we.id), Ye = (((_a3 = we.name) == null ? void 0 : _a3.split(".").pop()) || "").toLowerCase();
+          const _e2 = findFileNodeByPath(ge, we.id), Oe = (_e2 == null ? void 0 : _e2.lastModified) ? _e2.lastModified instanceof Date ? _e2.lastModified : new Date(_e2.lastModified) : null, { text: Be } = await de.readText(we.id), Ye = (((_a3 = we.name) == null ? void 0 : _a3.split(".").pop()) || "").toLowerCase();
           if (we.viewer === "markdown" || Ye === "md" || Ye === "markdown" || Ye === "") Zt((Ke) => (Ke == null ? void 0 : Ke.id) === we.id ? {
             ...Ke,
             content: Be,
-            lastModified: Pe
+            lastModified: Oe
           } : Ke), fr((Ke) => {
             var _a4;
-            return ((_a4 = Dt.current) == null ? void 0 : _a4.id) === we.id ? Be : Ke;
+            return ((_a4 = Ft.current) == null ? void 0 : _a4.id) === we.id ? Be : Ke;
           });
           else if (we.viewer === "json" || Ye === "json") {
             let Ke = Be;
@@ -72312,21 +72531,21 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               Ke = JSON.stringify(JSON.parse(Be), null, 2);
             } catch {
             }
-            Zt((De) => (De == null ? void 0 : De.id) === we.id ? {
-              ...De,
+            Zt((Fe) => (Fe == null ? void 0 : Fe.id) === we.id ? {
+              ...Fe,
               content: Ke,
-              lastModified: Pe
-            } : De), fr((De) => {
+              lastModified: Oe
+            } : Fe), fr((Fe) => {
               var _a4;
-              return ((_a4 = Dt.current) == null ? void 0 : _a4.id) === we.id ? Ke : De;
+              return ((_a4 = Ft.current) == null ? void 0 : _a4.id) === we.id ? Ke : Fe;
             });
           } else (we.viewer === "html" || we.viewer === "svg" || Ye === "html" || Ye === "htm" || Ye === "svg") && (Zt((Ke) => (Ke == null ? void 0 : Ke.id) === we.id ? {
             ...Ke,
             content: Be,
-            lastModified: Pe
+            lastModified: Oe
           } : Ke), fr((Ke) => {
             var _a4;
-            return ((_a4 = Dt.current) == null ? void 0 : _a4.id) === we.id ? Be : Ke;
+            return ((_a4 = Ft.current) == null ? void 0 : _a4.id) === we.id ? Be : Ke;
           }));
         } catch {
         }
@@ -72471,35 +72690,35 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Mo.current.set(ge, xe);
       const Se = () => Mo.current.get(ge) === xe, we = de.skipNavigate === true, _e2 = () => {
         we || ue(`/view/${ie.path}`);
-      }, Pe = findFileTab(Rt.current, ae, ie.path);
+      }, Oe = findFileTab(Rt.current, ae, ie.path);
       let Be = false;
-      if (Pe) {
-        const De = getActiveFileTab(Rt.current);
-        (!De || De.id !== Pe.id) && (Wa(Pe.id, {
+      if (Oe) {
+        const Fe = getActiveFileTab(Rt.current);
+        (!Fe || Fe.id !== Oe.id) && (Wa(Oe.id, {
           navigateUrl: !we
         }), we || (Be = true));
       }
-      const Ye = (De, ot = "", it = {}) => {
+      const Ye = (Fe, ot = "", it = {}) => {
         if (!Se()) {
-          if (typeof (De == null ? void 0 : De.objectUrl) == "string" && De.objectUrl) try {
-            URL.revokeObjectURL(De.objectUrl);
+          if (typeof (Fe == null ? void 0 : Fe.objectUrl) == "string" && Fe.objectUrl) try {
+            URL.revokeObjectURL(Fe.objectUrl);
           } catch {
           }
           return false;
         }
         const Ct = `${ae}:${ie.path}`, Nt = Rt.current.activeId === Ct;
-        if (!Ua(De, ot, {
+        if (!Ua(Fe, ot, {
           ...it,
           activate: false
         })) {
-          if (typeof (De == null ? void 0 : De.objectUrl) == "string" && De.objectUrl) try {
-            URL.revokeObjectURL(De.objectUrl);
+          if (typeof (Fe == null ? void 0 : Fe.objectUrl) == "string" && Fe.objectUrl) try {
+            URL.revokeObjectURL(Fe.objectUrl);
           } catch {
           }
           return false;
         }
         if (!Nt) {
-          const wt = String(ie.name || (De == null ? void 0 : De.name) || ie.path || "\uD30C\uC77C");
+          const wt = String(ie.name || (Fe == null ? void 0 : Fe.name) || ie.path || "\uD30C\uC77C");
           o({
             message: `\u300C${wt}\u300D \uB85C\uB529 \uC644\uB8CC`,
             durationMs: 2200
@@ -72509,7 +72728,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }, Ke = () => {
         var _a4, _b4;
         if (!Se()) return false;
-        if (Pe) {
+        if (Oe) {
           const it = findFileTab(Rt.current, ae, ie.path);
           if (!it) return true;
           const Ct = patchFileTab(Rt.current, it.id, {
@@ -72520,14 +72739,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           });
           Rt.current = Ct, lr(Ct);
           const Nt = getActiveFileTab(Ct);
-          return Nt && Nt.id === it.id && (Zt(Nt.currentFile), Dt.current = Nt.currentFile, fr(Nt.editorContent), tr.current = Nt.editorContent, jr(Nt.editedFileName || String(((_a4 = Nt.currentFile) == null ? void 0 : _a4.name) || "")), Ir.current = Nt.editedFileName || String(((_b4 = Nt.currentFile) == null ? void 0 : _b4.name) || "")), true;
+          return Nt && Nt.id === it.id && (Zt(Nt.currentFile), Ft.current = Nt.currentFile, fr(Nt.editorContent), tr.current = Nt.editorContent, jr(Nt.editedFileName || String(((_a4 = Nt.currentFile) == null ? void 0 : _a4.name) || "")), Ir.current = Nt.editedFileName || String(((_b4 = Nt.currentFile) == null ? void 0 : _b4.name) || "")), true;
         }
-        const De = {
+        const Fe = {
           type: ae,
           id: ie.path,
           name: ie.name,
           viewer: "loading"
-        }, ot = Ua(De, "", {
+        }, ot = Ua(Fe, "", {
           activate: true
         });
         return ot && !we && !Be && (_e2(), Be = true), ot;
@@ -72559,7 +72778,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           return;
         }
-        const De = (ie.name.split(".").pop() || "").toLowerCase();
+        const Fe = (ie.name.split(".").pop() || "").toLowerCase();
         if (ae === "s3") {
           const ot = or();
           if (!ot || !Ke()) return;
@@ -72569,10 +72788,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             "jpeg",
             "gif",
             "webp"
-          ].includes(De)) {
+          ].includes(Fe)) {
             try {
-              const { body: Ot, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = `image/${De === "jpg" ? "jpeg" : De}`, cr = new Blob([
-                Ot
+              const { body: Pt, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = `image/${Fe === "jpg" ? "jpeg" : Fe}`, cr = new Blob([
+                Pt
               ], {
                 type: Yt
               }), dr = URL.createObjectURL(cr);
@@ -72585,15 +72804,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 size: typeof ar == "number" ? ar : null,
                 lastModified: ie.lastModified
               }, "");
-            } catch (Ot) {
-              console.error("S3 Read Error:", Ot);
+            } catch (Pt) {
+              console.error("S3 Read Error:", Pt);
             }
             return;
           }
-          if (De === "pdf") {
+          if (Fe === "pdf") {
             try {
-              const { body: Ot, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = new Blob([
-                Ot
+              const { body: Pt, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = new Blob([
+                Pt
               ], {
                 type: "application/pdf"
               }), cr = URL.createObjectURL(Yt);
@@ -72606,14 +72825,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 size: typeof ar == "number" ? ar : null,
                 lastModified: ie.lastModified
               }, "");
-            } catch (Ot) {
-              console.error("S3 Read Error:", Ot);
+            } catch (Pt) {
+              console.error("S3 Read Error:", Pt);
             }
             return;
           }
-          if (De === "md" || De === "markdown" || De === "") {
+          if (Fe === "md" || Fe === "markdown" || Fe === "") {
             try {
-              const { body: Ot, ContentLength: ar, LastModified: Yt } = await getObjectBody(ot, ee.bucket, ie.path), cr = new TextDecoder("utf-8").decode(Ot), dr = Yt ?? ie.lastModified, Lr = dr instanceof Date ? dr.getTime() : dr ? new Date(dr).getTime() : 0, dn = getDraftKey("s3", ie.path);
+              const { body: Pt, ContentLength: ar, LastModified: Yt } = await getObjectBody(ot, ee.bucket, ie.path), cr = new TextDecoder("utf-8").decode(Pt), dr = Yt ?? ie.lastModified, Lr = dr instanceof Date ? dr.getTime() : dr ? new Date(dr).getTime() : 0, dn = getDraftKey("s3", ie.path);
               isEncMdPath(ie.path) && await deleteMemoDraft(dn);
               const an = isEncMdPath(ie.path) ? null : await getMemoDraft(dn), ha = findFileTab(Rt.current, "s3", ie.path), da = await resolveOpenTextContent({
                 serverText: cr,
@@ -72643,14 +72862,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               }, hi, {
                 baselineContent: gi
               });
-            } catch (Ot) {
-              console.error("S3 Read Error:", Ot);
+            } catch (Pt) {
+              console.error("S3 Read Error:", Pt);
             }
             return;
           }
-          if (De === "json") {
+          if (Fe === "json") {
             try {
-              const { body: Ot, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = new TextDecoder("utf-8").decode(Ot), cr = 1e5;
+              const { body: Pt, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = new TextDecoder("utf-8").decode(Pt), cr = 1e5;
               let dr = Yt;
               if (Yt.length <= cr) try {
                 const Lr = JSON.parse(Yt);
@@ -72667,14 +72886,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 size: typeof ar == "number" ? ar : null,
                 lastModified: ie.lastModified
               }, dr);
-            } catch (Ot) {
-              console.error("S3 Read Error:", Ot);
+            } catch (Pt) {
+              console.error("S3 Read Error:", Pt);
             }
             return;
           }
-          if (De === "html" || De === "htm" || De === "svg") {
+          if (Fe === "html" || Fe === "htm" || Fe === "svg") {
             try {
-              const { body: Ot, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = new TextDecoder("utf-8").decode(Ot), cr = De === "svg" ? "svg" : "html";
+              const { body: Pt, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = new TextDecoder("utf-8").decode(Pt), cr = Fe === "svg" ? "svg" : "html";
               Ye({
                 type: "s3",
                 id: ie.path,
@@ -72684,8 +72903,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 size: typeof ar == "number" ? ar : null,
                 lastModified: ie.lastModified
               }, Yt);
-            } catch (Ot) {
-              console.error("S3 Read Error:", Ot);
+            } catch (Pt) {
+              console.error("S3 Read Error:", Pt);
             }
             return;
           }
@@ -72702,11 +72921,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             "webm",
             "ogv",
             "mov"
-          ], wt = Nt.includes(De), At = gt.includes(De);
+          ], wt = Nt.includes(Fe), At = gt.includes(Fe);
           if (wt) {
             try {
-              const { body: Ot, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = De === "m4a" || De === "mp4" ? "audio/mp4" : De === "mp3" ? "audio/mpeg" : De === "ogg" || De === "ogv" ? "audio/ogg" : De === "weba" ? "audio/webm" : `audio/${De}`, cr = new Blob([
-                Ot
+              const { body: Pt, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = Fe === "m4a" || Fe === "mp4" ? "audio/mp4" : Fe === "mp3" ? "audio/mpeg" : Fe === "ogg" || Fe === "ogv" ? "audio/ogg" : Fe === "weba" ? "audio/webm" : `audio/${Fe}`, cr = new Blob([
+                Pt
               ], {
                 type: Yt
               }), dr = URL.createObjectURL(cr);
@@ -72719,15 +72938,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 size: typeof ar == "number" ? ar : null,
                 lastModified: ie.lastModified
               }, "");
-            } catch (Ot) {
-              console.error("S3 Read Error:", Ot);
+            } catch (Pt) {
+              console.error("S3 Read Error:", Pt);
             }
             return;
           }
           if (At) {
             try {
-              const { body: Ot, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = De === "mp4" || De === "mov" ? "video/mp4" : De === "webm" ? "video/webm" : "video/ogg", cr = new Blob([
-                Ot
+              const { body: Pt, ContentLength: ar } = await getObjectBody(ot, ee.bucket, ie.path), Yt = Fe === "mp4" || Fe === "mov" ? "video/mp4" : Fe === "webm" ? "video/webm" : "video/ogg", cr = new Blob([
+                Pt
               ], {
                 type: Yt
               }), dr = URL.createObjectURL(cr);
@@ -72740,8 +72959,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 size: typeof ar == "number" ? ar : null,
                 lastModified: ie.lastModified
               }, "");
-            } catch (Ot) {
-              console.error("S3 Read Error:", Ot);
+            } catch (Pt) {
+              console.error("S3 Read Error:", Pt);
             }
             return;
           }
@@ -72756,7 +72975,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         } else if (ae === "local") {
           if (!Ke()) return;
           if ((Xt || isDesktopApp()) && !ie.handle) {
-            const an = On("local");
+            const an = Pn("local");
             if (!((_a3 = an == null ? void 0 : an.isReady) == null ? void 0 : _a3.call(an))) {
               alert("\uB85C\uCEEC \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
               return;
@@ -72817,25 +73036,25 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               lastModified: it.lastModified
             }, "");
           };
-          if (Nt.includes(De)) {
-            const an = `image/${De === "jpg" ? "jpeg" : De}`;
+          if (Nt.includes(Fe)) {
+            const an = `image/${Fe === "jpg" ? "jpeg" : Fe}`;
             At("image", an);
             return;
           }
-          if (De === "pdf") {
+          if (Fe === "pdf") {
             At("pdf", "application/pdf");
             return;
           }
-          if (gt.includes(De)) {
-            const an = De === "m4a" || De === "mp4" ? "audio/mp4" : De === "mp3" ? "audio/mpeg" : De === "ogg" ? "audio/ogg" : De === "weba" ? "audio/webm" : `audio/${De}`;
+          if (gt.includes(Fe)) {
+            const an = Fe === "m4a" || Fe === "mp4" ? "audio/mp4" : Fe === "mp3" ? "audio/mpeg" : Fe === "ogg" ? "audio/ogg" : Fe === "weba" ? "audio/webm" : `audio/${Fe}`;
             At("audio", an);
             return;
           }
-          if (wt.includes(De)) {
-            At("video", De === "mp4" || De === "mov" ? "video/mp4" : De === "webm" ? "video/webm" : "video/ogg");
+          if (wt.includes(Fe)) {
+            At("video", Fe === "mp4" || Fe === "mov" ? "video/mp4" : Fe === "webm" ? "video/webm" : "video/ogg");
             return;
           }
-          if (De === "json") {
+          if (Fe === "json") {
             const an = await it.text(), ha = 1e5;
             let da = an;
             if (an.length <= ha) try {
@@ -72856,8 +73075,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }, da);
             return;
           }
-          if (De === "html" || De === "htm" || De === "svg") {
-            const an = await it.text(), ha = De === "svg" ? "svg" : "html";
+          if (Fe === "html" || Fe === "htm" || Fe === "svg") {
+            const an = await it.text(), ha = Fe === "svg" ? "svg" : "html";
             Ye({
               type: "local",
               id: ie.path,
@@ -72871,7 +73090,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }, an);
             return;
           }
-          if (De !== "md" && De !== "markdown" && De !== "") {
+          if (Fe !== "md" && Fe !== "markdown" && Fe !== "") {
             Ye({
               type: "local",
               id: ie.path,
@@ -72884,10 +73103,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             }, "");
             return;
           }
-          const Ot = await it.text(), ar = getDraftKey("local", ie.path);
+          const Pt = await it.text(), ar = getDraftKey("local", ie.path);
           isEncMdPath(ie.path) && await deleteMemoDraft(ar);
           const Yt = isEncMdPath(ie.path) ? null : await getMemoDraft(ar), cr = findFileTab(Rt.current, "local", ie.path), dr = await resolveOpenTextContent({
-            serverText: Ot,
+            serverText: Pt,
             serverLastModTs: Ct,
             existingTab: cr,
             draft: Yt,
@@ -72896,7 +73115,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           });
           let Lr = dr.contentToUse, dn = dr.baselineContent;
           if (isEncMdPath(ie.path)) {
-            const an = await Ao(ie.path, Ot);
+            const an = await Ao(ie.path, Pt);
             if (an == null) return;
             Lr = an, dn = an;
           }
@@ -72927,8 +73146,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } finally {
         try {
           if (Se()) {
-            const De = findFileTab(Rt.current, ae, ie.path);
-            De && ((_b3 = De.currentFile) == null ? void 0 : _b3.viewer) === "loading" && Ua({
+            const Fe = findFileTab(Rt.current, ae, ie.path);
+            Fe && ((_b3 = Fe.currentFile) == null ? void 0 : _b3.viewer) === "loading" && Ua({
               type: ae,
               id: ie.path,
               name: ie.name,
@@ -72938,8 +73157,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               activate: false
             });
           }
-        } catch (De) {
-          console.error("Failed to settle loading viewer:", De);
+        } catch (Fe) {
+          console.error("Failed to settle loading viewer:", Fe);
         }
       }
     }, [
@@ -72954,9 +73173,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Wa,
       o,
       Xt,
-      On
+      Pn
     ]), To = (ae, ie) => `${ae}:${ie}`, to = reactExports.useCallback((ae, ie) => {
-      const de = Dt.current;
+      const de = Ft.current;
       if (!(de == null ? void 0 : de.id) || de.type === ae && de.id === ie.path) return;
       const ge = de.viewer || "markdown";
       if (![
@@ -72972,7 +73191,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       const he = flushEditorIntoActiveFileTab(Rt.current, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       });
       Rt.current = he, lr(he);
@@ -72982,11 +73201,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Yn,
       Ta
     ]), Bo = reactExports.useCallback(async (ae, ie, de = {}) => {
-      const { ctrlKey: ge = false, metaKey: he = false, shiftKey: xe = false } = de, Se = xe, we = ae === "s3" ? Re : ae === "webdav" ? Fe : ae === SESSION_STORAGE_TYPE ? Ge ? buildSessionTree(Ge) : [] : Me, _e2 = flattenTreeToPaths(we), Pe = ie.path, Be = To(ae, Pe);
+      const { ctrlKey: ge = false, metaKey: he = false, shiftKey: xe = false } = de, Se = xe, we = ae === "s3" ? Re : ae === "webdav" ? De : ae === SESSION_STORAGE_TYPE ? Ge ? buildSessionTree(Ge) : [] : Me, _e2 = flattenTreeToPaths(we), Oe = ie.path, Be = To(ae, Oe);
       if (Se && Ea.current != null) {
-        const Ye = Ea.current, Ke = Ye.indexOf(":"), De = Ke >= 0 ? Ye.slice(0, Ke) : ae, ot = Ke >= 0 ? Ye.slice(Ke + 1) : Ye;
-        if (De === ae) {
-          const it = _e2.indexOf(ot), Ct = _e2.indexOf(Pe);
+        const Ye = Ea.current, Ke = Ye.indexOf(":"), Fe = Ke >= 0 ? Ye.slice(0, Ke) : ae, ot = Ke >= 0 ? Ye.slice(Ke + 1) : Ye;
+        if (Fe === ae) {
+          const it = _e2.indexOf(ot), Ct = _e2.indexOf(Oe);
           if (it >= 0 && Ct >= 0) {
             if (pa((Nt) => {
               const gt = new Set(Nt), [wt, At] = it <= Ct ? [
@@ -72996,7 +73215,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 Ct,
                 it
               ];
-              for (let Ot = wt; Ot <= At; Ot++) gt.add(To(ae, _e2[Ot]));
+              for (let Pt = wt; Pt <= At; Pt++) gt.add(To(ae, _e2[Pt]));
               return gt;
             }), Ea.current = Be, ie.type === "file") {
               if (!eo()) return;
@@ -73019,29 +73238,29 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Zr,
       Re,
       Me,
-      Fe,
+      De,
       Ge,
       ri,
       to,
       eo
-    ]), Pi = reactExports.useCallback((ae, ie) => {
+    ]), Oi = reactExports.useCallback((ae, ie) => {
       Bo(ae, ie, {});
     }, [
       Bo
-    ]), Ps = reactExports.useCallback(async (ae) => {
+    ]), Os = reactExports.useCallback(async (ae) => {
       var _a3;
       if (!ae) return;
       const ie = xt, de = ae.lastIndexOf("/"), ge = de >= 0 ? ae.slice(0, de + 1) : "", he = getParentPathsToExpand(ge);
       he.length && ((_a3 = Cn.current) == null ? void 0 : _a3.call(Cn, ie, he));
       let xe = null;
-      ie === STORAGE_MODE_LOCAL ? xe = findFileNodeByPath(Me, ae) || findNodeByPath(Me, ae) || (rt ? await resolveLocalFileNode(rt, ae) : null) : ie === STORAGE_MODE_WEBDAV ? xe = findFileNodeByPath(Fe, ae) || findNodeByPath(Fe, ae) : ie === STORAGE_MODE_S3 && (xe = findFileNodeByPath(Re, ae) || findNodeByPath(Re, ae)), (xe == null ? void 0 : xe.type) === "file" ? Pi(ie, xe) : ue(`/view/${ae}`);
+      ie === STORAGE_MODE_LOCAL ? xe = findFileNodeByPath(Me, ae) || findNodeByPath(Me, ae) || (rt ? await resolveLocalFileNode(rt, ae) : null) : ie === STORAGE_MODE_WEBDAV ? xe = findFileNodeByPath(De, ae) || findNodeByPath(De, ae) : ie === STORAGE_MODE_S3 && (xe = findFileNodeByPath(Re, ae) || findNodeByPath(Re, ae)), (xe == null ? void 0 : xe.type) === "file" ? Oi(ie, xe) : ue(`/view/${ae}`);
     }, [
       xt,
       Me,
-      Fe,
+      De,
       Re,
       rt,
-      Pi,
+      Oi,
       ue
     ]), Jl = reactExports.useCallback(async (ae) => {
       if (ae) {
@@ -73051,14 +73270,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         if (xt === STORAGE_MODE_WEBDAV) {
-          const ie = findNodeByPath(Fe, ae) || findNodeByPath(Fe, ae.replace(/\/$/, "")) || findNodeByPath(Fe, `${ae.replace(/\/$/, "")}/`);
+          const ie = findNodeByPath(De, ae) || findNodeByPath(De, ae.replace(/\/$/, "")) || findNodeByPath(De, `${ae.replace(/\/$/, "")}/`);
           (ie == null ? void 0 : ie.type) === "folder" && await Ji(ie);
         }
       }
     }, [
       xt,
       Me,
-      Fe,
+      De,
       Ni,
       Ji
     ]), Zl = reactExports.useCallback(async (ae) => {
@@ -73070,23 +73289,23 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         if (ie === "webdav") {
-          const de = findNodeByPath(Fe, ae) || findNodeByPath(Fe, ae.replace(/\/$/, "")) || findNodeByPath(Fe, `${ae.replace(/\/$/, "")}/`);
+          const de = findNodeByPath(De, ae) || findNodeByPath(De, ae.replace(/\/$/, "")) || findNodeByPath(De, `${ae.replace(/\/$/, "")}/`);
           (de == null ? void 0 : de.type) === "folder" && await Ji(de);
         }
       }
     }, [
       wn == null ? void 0 : wn.storageType,
       Me,
-      Fe,
+      De,
       Ni,
       Ji
     ]), Ql = reactExports.useMemo(() => {
       const ae = wn == null ? void 0 : wn.storageType;
-      return ae === "local" ? Me : ae === "webdav" ? Fe : ae === "s3" ? Re : null;
+      return ae === "local" ? Me : ae === "webdav" ? De : ae === "s3" ? Re : null;
     }, [
       wn == null ? void 0 : wn.storageType,
       Me,
-      Fe,
+      De,
       Re
     ]), tc = reactExports.useCallback(async (ae, ie) => {
       if ((ie == null ? void 0 : ie.type) !== "file" || !(ie == null ? void 0 : ie.path)) return;
@@ -73122,14 +73341,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         try {
           if (ae === "s3") {
-            const Ke = or(), De = ee.bucket;
-            if (!Ke || !De) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8 \uB610\uB294 \uBC84\uD0B7\uC774 \uCD08\uAE30\uD654\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
-            const ot = await getSignedGetUrl(Ke, De, de, 3600);
+            const Ke = or(), Fe = ee.bucket;
+            if (!Ke || !Fe) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8 \uB610\uB294 \uBC84\uD0B7\uC774 \uCD08\uAE30\uD654\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
+            const ot = await getSignedGetUrl(Ke, Fe, de, 3600);
             Ye.location.href = ot.toString();
           } else {
-            const De = await createWebdavBackend$1(Vt).getObjectUrl(de);
-            if (!De) throw new Error("WebDAV URL\uC744 \uB9CC\uB4E4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
-            Ye.location.href = De;
+            const Fe = await createWebdavBackend$1(Vt).getObjectUrl(de);
+            if (!Fe) throw new Error("WebDAV URL\uC744 \uB9CC\uB4E4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+            Ye.location.href = Fe;
           }
         } catch (Ke) {
           console.error("Open media URL failed:", Ke), alert("\uBBF8\uB514\uC5B4 \uC5F4\uAE30\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
@@ -73143,15 +73362,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         try {
-          const Ke = await ie.handle.getFile(), De = URL.createObjectURL(Ke);
-          Ye.location.href = De;
+          const Ke = await ie.handle.getFile(), Fe = URL.createObjectURL(Ke);
+          Ye.location.href = Fe;
         } catch (Ke) {
           console.error("Open local media failed:", Ke), alert("\uBBF8\uB514\uC5B4 \uC5F4\uAE30\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
         return;
       }
-      const _e2 = new URL(window.location.href), Pe = "/DocuHaim/".replace(/\/$/, ""), Be = String(de).split("/").filter(Boolean).map((Ye) => encodeURIComponent(Ye)).join("/");
-      isDesktopApp() ? _e2.hash = `/view/${Be}` : _e2.pathname = `${Pe && Pe !== "/" ? Pe : ""}/view/${Be}`, _e2.searchParams.set("open", `${ae}:${de}`), window.open(_e2.toString(), "_blank");
+      const _e2 = new URL(window.location.href), Oe = "/DocuHaim/".replace(/\/$/, ""), Be = String(de).split("/").filter(Boolean).map((Ye) => encodeURIComponent(Ye)).join("/");
+      isDesktopApp() ? _e2.hash = `/view/${Be}` : _e2.pathname = `${Oe && Oe !== "/" ? Oe : ""}/view/${Be}`, _e2.searchParams.set("open", `${ae}:${de}`), window.open(_e2.toString(), "_blank");
     }, [
       or,
       ee.bucket,
@@ -73167,10 +73386,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       l
     ]);
-    const Os = reactExports.useRef(isExportPdfAppPathname(fe.pathname));
+    const Ps = reactExports.useRef(isExportPdfAppPathname(fe.pathname));
     reactExports.useLayoutEffect(() => {
-      const ae = isExportPdfAppPathname(fe.pathname), ie = Os.current && !ae;
-      if (Os.current = ae, !ie || !l) return;
+      const ae = isExportPdfAppPathname(fe.pathname), ie = Ps.current && !ae;
+      if (Ps.current = ae, !ie || !l) return;
       const de = consumePendingPrintReturnState();
       if (!de) return;
       const ge = typeof de.editorContent == "string" ? de.editorContent : "";
@@ -73191,7 +73410,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!l) return;
       const ae = flushEditorIntoActiveFileTab(xr, {
         editorContent: tr.current ?? "",
-        currentFile: Dt.current,
+        currentFile: Ft.current,
         editedFileName: Ir.current ?? ""
       }), ie = toPersistedWorkspaceTabs(ae.tabs.map((ge) => ge.kind === "chat" ? {
         kind: "chat"
@@ -73220,7 +73439,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (!Rr.current) return;
         const ie = flushEditorIntoActiveFileTab(Rt.current, {
           editorContent: tr.current ?? "",
-          currentFile: Dt.current,
+          currentFile: Ft.current,
           editedFileName: Ir.current ?? ""
         }), de = toPersistedWorkspaceTabs(ie.tabs.map((ge) => ge.kind === "chat" ? {
           kind: "chat"
@@ -73264,12 +73483,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         for (const we of Se) {
           if (ae) return;
           if (we.kind === "vault") {
-            const _e2 = we.relativePath.split("/").filter(Boolean).pop() || "note.md", Pe = {
+            const _e2 = we.relativePath.split("/").filter(Boolean).pop() || "note.md", Oe = {
               type: "file",
               path: we.relativePath,
               name: _e2
             };
-            await ri("local", Pe);
+            await ri("local", Oe);
           } else we.kind === "session" && await ti(we.workspace);
         }
       }, de = () => {
@@ -73291,7 +73510,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ae = fe.pathname === "/chat" || fe.pathname.endsWith("/chat"), ie = isSettingsAppPathname(fe.pathname), de = typeof window < "u" ? new URLSearchParams(window.location.search).get("open") : null, ge = parseExportPdfPathFromAppPathname(fe.pathname), he = parseViewPathFromAppPathname(fe.pathname), xe = ge || he;
       let Se = null, we = null;
       if (de) {
-        const Pe = de.indexOf(":"), Be = Pe >= 0 ? de.slice(0, Pe) : null, Ye = Pe >= 0 ? de.slice(Pe + 1) : null;
+        const Oe = de.indexOf(":"), Be = Oe >= 0 ? de.slice(0, Oe) : null, Ye = Oe >= 0 ? de.slice(Oe + 1) : null;
         if (Be !== "s3" && Be !== "local" && Be !== "webdav" || !Ye) {
           na.current = true;
           return;
@@ -73313,19 +73532,19 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       } else {
         if (ka.current) return;
-        const Pe = loadPersistedWorkspaceTabs();
-        if ((_a3 = Pe == null ? void 0 : Pe.tabs) == null ? void 0 : _a3.length) {
-          ka.current = true, Rr.current && (Pe.tabs.some((Ke) => Ke.kind === "chat") && aa({
+        const Oe = loadPersistedWorkspaceTabs();
+        if ((_a3 = Oe == null ? void 0 : Oe.tabs) == null ? void 0 : _a3.length) {
+          ka.current = true, Rr.current && (Oe.tabs.some((Ke) => Ke.kind === "chat") && aa({
             navigateUrl: false
-          }), Pe.tabs.some((Ke) => Ke.kind === "settings") && Vn({
+          }), Oe.tabs.some((Ke) => Ke.kind === "settings") && Vn({
             navigateUrl: false
           }));
-          const Be = Pe.tabs.filter((Ke) => Ke.kind === "file"), Ye = Be.find((Ke) => Pe.activeId === `${Ke.type}:${Ke.path}`) || (Pe.activeId === CHAT_TAB_ID || Pe.activeId === SETTINGS_TAB_ID ? null : Be[0]);
-          if (Pe.activeId === CHAT_TAB_ID) {
+          const Be = Oe.tabs.filter((Ke) => Ke.kind === "file"), Ye = Be.find((Ke) => Oe.activeId === `${Ke.type}:${Ke.path}`) || (Oe.activeId === CHAT_TAB_ID || Oe.activeId === SETTINGS_TAB_ID ? null : Be[0]);
+          if (Oe.activeId === CHAT_TAB_ID) {
             na.current = true, ue("/chat");
             return;
           }
-          if (Pe.activeId === SETTINGS_TAB_ID) {
+          if (Oe.activeId === SETTINGS_TAB_ID) {
             na.current = true, ue("/settings");
             return;
           }
@@ -73358,13 +73577,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
       } else if (Se === "webdav") {
-        if (!Cr || !(Fe == null ? void 0 : Fe.length)) return;
+        if (!Cr || !(De == null ? void 0 : De.length)) return;
       } else if (!(Re == null ? void 0 : Re.length)) return;
       let _e2 = false;
       return (async () => {
         var _a4;
-        let Pe = null;
-        if (Se === "local" ? Pe = findFileNodeByPath(Me, we) || findNodeByPath(Me, we) || await resolveLocalFileNode(rt, we) : Se === "webdav" ? Pe = findFileNodeByPath(Fe, we) || findNodeByPath(Fe, we) : Pe = findFileNodeByPath(Re, we) || findNodeByPath(Re, we), !_e2) {
+        let Oe = null;
+        if (Se === "local" ? Oe = findFileNodeByPath(Me, we) || findNodeByPath(Me, we) || await resolveLocalFileNode(rt, we) : Se === "webdav" ? Oe = findFileNodeByPath(De, we) || findNodeByPath(De, we) : Oe = findFileNodeByPath(Re, we) || findNodeByPath(Re, we), !_e2) {
           if (na.current = true, ka.current = true, de) {
             const Be = new URLSearchParams(fe.search);
             Be.delete("open");
@@ -73376,9 +73595,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               replace: true
             });
           }
-          (Pe == null ? void 0 : Pe.type) === "file" && (ge || isExportPdfAppPathname(fe.pathname) ? await ((_a4 = Ri.current) == null ? void 0 : _a4.call(Ri, Se, Pe, {
+          (Oe == null ? void 0 : Oe.type) === "file" && (ge || isExportPdfAppPathname(fe.pathname) ? await ((_a4 = Ri.current) == null ? void 0 : _a4.call(Ri, Se, Oe, {
             skipNavigate: true
-          })) : Pi(Se, Pe));
+          })) : Oi(Se, Oe));
         }
       })(), () => {
         _e2 = true;
@@ -73389,12 +73608,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       po,
       Me,
       Cr,
-      Fe,
+      De,
       Re,
       xt,
       fe.pathname,
       fe.search,
-      Pi,
+      Oi,
       ss,
       ue,
       aa,
@@ -73433,9 +73652,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       oo((de) => removeTreeTransferBusy(de, ae, ie));
     }, []), ua = reactExports.useCallback(async (ae, ie) => {
       var _a3;
-      const de = Dt.current;
+      const de = Ft.current;
       if (!de || !ie || de.type !== ae || de.id !== ie) return;
-      const ge = ae === "s3" ? Re : ae === "webdav" ? Fe : Me;
+      const ge = ae === "s3" ? Re : ae === "webdav" ? De : Me;
       let he = findNodeByPath(ge, ie) || findFileNodeByPath(ge, ie);
       (!he || he.type !== "file") && ae === "local" && (he = await resolveLocalFileNode(rt, ie)), (!he || he.type !== "file") && (he = {
         path: ie,
@@ -73447,7 +73666,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }));
     }, [
       Re,
-      Fe,
+      De,
       Me,
       rt
     ]);
@@ -73475,7 +73694,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ei.current = null;
         return;
       }
-      if (((_a3 = Dt.current) == null ? void 0 : _a3.id) === ae) {
+      if (((_a3 = Ft.current) == null ? void 0 : _a3.id) === ae) {
         ei.current = ae;
         return;
       }
@@ -73483,7 +73702,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (ie === "local") {
         if (!rt) return;
       } else if (ie === "webdav") {
-        if (!Cr || !(Fe == null ? void 0 : Fe.length)) return;
+        if (!Cr || !(De == null ? void 0 : De.length)) return;
       } else if (!(Re == null ? void 0 : Re.length)) return;
       const de = ei.current !== ae;
       ei.current = ae;
@@ -73491,14 +73710,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return (async () => {
         var _a4;
         let he = null;
-        if (ie === "local" ? he = findFileNodeByPath(Me, ae) || findNodeByPath(Me, ae) || await resolveLocalFileNode(rt, ae) : ie === "webdav" ? he = findFileNodeByPath(Fe, ae) || findNodeByPath(Fe, ae) : he = findFileNodeByPath(Re, ae) || findNodeByPath(Re, ae), !ge) {
+        if (ie === "local" ? he = findFileNodeByPath(Me, ae) || findNodeByPath(Me, ae) || await resolveLocalFileNode(rt, ae) : ie === "webdav" ? he = findFileNodeByPath(De, ae) || findNodeByPath(De, ae) : he = findFileNodeByPath(Re, ae) || findNodeByPath(Re, ae), !ge) {
           if ((he == null ? void 0 : he.type) === "file") {
             await ((_a4 = Ri.current) == null ? void 0 : _a4.call(Ri, ie, he, {
               skipNavigate: true
             }));
             return;
           }
-          de && Dt.current && Fo();
+          de && Ft.current && Do();
         }
       })(), () => {
         ge = true;
@@ -73510,7 +73729,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       rt,
       Me,
       Cr,
-      Fe,
+      De,
       Re,
       aa,
       Vn
@@ -73573,9 +73792,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const xe = ge || ae.name, Se = ae.id ?? ae.path, we = `${de || ""}${xe}`;
       if (!Se) throw new Error("\uC6D0\uBCF8 \uD30C\uC77C \uACBD\uB85C\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       if (we === Se) return ae;
-      const _e2 = await ae.handle.getFile(), Pe = await ie.getFileHandle(xe, {
+      const _e2 = await ae.handle.getFile(), Oe = await ie.getFileHandle(xe, {
         create: true
-      }), Be = await Pe.createWritable();
+      }), Be = await Oe.createWritable();
       await Be.write(await _e2.arrayBuffer()), await Be.close();
       const Ye = ae.name || String(Se).split("/").filter(Boolean).pop();
       return Ye && (getParentFolderPath$1(Se) !== (de || "") || Ye !== xe) && await he.removeEntry(Ye, {
@@ -73584,7 +73803,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...ae,
         id: we,
         name: xe,
-        handle: Pe,
+        handle: Oe,
         parentHandle: ie,
         size: typeof _e2.size == "number" ? _e2.size : ae.size ?? null
       };
@@ -73596,12 +73815,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const Se = de ?? ae.name, _e2 = `${ie || ""}${Se}/`;
       if (_e2 === xe) return;
       if (_e2.startsWith(xe) || xe.startsWith(_e2)) throw new Error("\uD3F4\uB354\uB97C \uC790\uAE30 \uC790\uC2E0 \uB610\uB294 \uD558\uC704 \uD3F4\uB354 \uC548\uC73C\uB85C \uC774\uB3D9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
-      const Pe = await listObjectsV2(ge, he, xe);
-      if (Pe.length === 0) return;
+      const Oe = await listObjectsV2(ge, he, xe);
+      if (Oe.length === 0) return;
       const Be = [];
-      for (const { Key: Ye } of Pe) {
-        const Ke = Ye.slice(xe.length), De = _e2 + Ke;
-        De !== Ye && (await copyObject(ge, he, Ye, De), Be.push({
+      for (const { Key: Ye } of Oe) {
+        const Ke = Ye.slice(xe.length), Fe = _e2 + Ke;
+        Fe !== Ye && (await copyObject(ge, he, Ye, Fe), Be.push({
           Key: Ye
         }));
       }
@@ -73615,8 +73834,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (ae.path && (Se.startsWith(ae.path) || ae.path.startsWith(Se))) throw new Error("\uD3F4\uB354\uB97C \uC790\uAE30 \uC790\uC2E0 \uB610\uB294 \uD558\uC704 \uD3F4\uB354 \uC548\uC73C\uB85C \uC774\uB3D9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       const we = await ie.getDirectoryHandle(xe, {
         create: true
-      }), _e2 = async (Pe, Be) => {
-        for await (const Ye of Pe.values()) if (Ye.kind === "file") {
+      }), _e2 = async (Oe, Be) => {
+        for await (const Ye of Oe.values()) if (Ye.kind === "file") {
           const Ke = await Ye.getFile(), ot = await (await Be.getFileHandle(Ye.name, {
             create: true
           })).createWritable();
@@ -73644,10 +73863,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const xe = de ?? ae.name, Se = `${ie || ""}${xe}/`;
       if (Se === he) return;
       if (Se.startsWith(he) || he.startsWith(Se)) throw new Error("\uD3F4\uB354\uB97C \uC790\uAE30 \uC790\uC2E0 \uB610\uB294 \uD558\uC704 \uD3F4\uB354 \uC548\uC73C\uB85C \uC774\uB3D9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
-      const _e2 = (await webdavPropfindDeep(Vt, he)).filter((Pe) => Pe.key && !Pe.isCollection && Pe.key !== he).map((Pe) => Pe.key).sort((Pe, Be) => Be.length - Pe.length);
-      for (const Pe of _e2) {
-        const Be = Pe.startsWith(he) ? Pe.slice(he.length) : Pe;
-        await ge.move(Pe, Se + Be);
+      const _e2 = (await webdavPropfindDeep(Vt, he)).filter((Oe) => Oe.key && !Oe.isCollection && Oe.key !== he).map((Oe) => Oe.key).sort((Oe, Be) => Be.length - Oe.length);
+      for (const Oe of _e2) {
+        const Be = Oe.startsWith(he) ? Oe.slice(he.length) : Oe;
+        await ge.move(Oe, Se + Be);
       }
       try {
         await ge.deletePrefix(he);
@@ -73670,8 +73889,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (Se === xe) return ae;
       const we = await ae.handle.getFile(), _e2 = await ie.getFileHandle(he, {
         create: true
-      }), Pe = await _e2.createWritable();
-      return await Pe.write(await we.arrayBuffer()), await Pe.close(), await Rn(), {
+      }), Oe = await _e2.createWritable();
+      return await Oe.write(await we.arrayBuffer()), await Oe.close(), await Rn(), {
         ...ae,
         id: Se,
         handle: _e2,
@@ -73692,9 +73911,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         Body: ""
       });
       const _e2 = await listObjectsV2(ge, he, xe);
-      for (const { Key: Pe } of _e2) {
-        const Be = Pe.slice(xe.length), Ye = we + Be;
-        !Be || Ye === Pe || await copyObject(ge, he, Pe, Ye);
+      for (const { Key: Oe } of _e2) {
+        const Be = Oe.slice(xe.length), Ye = we + Be;
+        !Be || Ye === Oe || await copyObject(ge, he, Oe, Ye);
       }
       await Gr();
     }, ic = async (ae, ie, de, ge) => {
@@ -73705,14 +73924,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (ae.path && (xe.startsWith(ae.path) || ae.path.startsWith(xe))) throw new Error("\uD3F4\uB354\uB97C \uC790\uAE30 \uC790\uC2E0 \uB610\uB294 \uD558\uC704 \uD3F4\uB354 \uC548\uC73C\uB85C \uBCF5\uC81C\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       const Se = await ie.getDirectoryHandle(he, {
         create: true
-      }), we = async (_e2, Pe) => {
+      }), we = async (_e2, Oe) => {
         for await (const Be of _e2.values()) if (Be.kind === "file") {
-          const Ye = await Be.getFile(), De = await (await Pe.getFileHandle(Be.name, {
+          const Ye = await Be.getFile(), Fe = await (await Oe.getFileHandle(Be.name, {
             create: true
           })).createWritable();
-          await De.write(await Ye.arrayBuffer()), await De.close();
+          await Fe.write(await Ye.arrayBuffer()), await Fe.close();
         } else if (Be.kind === "directory") {
-          const Ye = await Pe.getDirectoryHandle(Be.name, {
+          const Ye = await Oe.getDirectoryHandle(Be.name, {
             create: true
           });
           await we(Be, Ye);
@@ -73735,10 +73954,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         await ge.mkdir(Se);
       } catch {
       }
-      const _e2 = (await webdavPropfindDeep(Vt, he)).filter((Pe) => Pe.key && !Pe.isCollection && Pe.key !== he).map((Pe) => Pe.key).sort((Pe, Be) => Pe.length - Be.length);
-      for (const Pe of _e2) {
-        const Be = Pe.startsWith(he) ? Pe.slice(he.length) : Pe;
-        await ge.copy(Pe, Se + Be);
+      const _e2 = (await webdavPropfindDeep(Vt, he)).filter((Oe) => Oe.key && !Oe.isCollection && Oe.key !== he).map((Oe) => Oe.key).sort((Oe, Be) => Oe.length - Be.length);
+      for (const Oe of _e2) {
+        const Be = Oe.startsWith(he) ? Oe.slice(he.length) : Oe;
+        await ge.copy(Oe, Se + Be);
       }
       await nn();
     }, cc = async () => {
@@ -73801,7 +74020,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ta("session-transform"), Ln(true), Jr(0), Gn(false);
     }, qo = async (ae) => {
       var _a3;
-      const ie = ze.current, de = Dt.current, ge = [
+      const ie = ze.current, de = Ft.current, ge = [
         ae,
         String(ae || "").replace(/^\/+/, ""),
         (de == null ? void 0 : de.id) ? resolveStorageImagePath(ae, de.id) : null
@@ -73811,22 +74030,22 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (xe) return xe.bytes;
       }
       throw new Error(`\uC774\uBBF8\uC9C0\uB97C \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${ae}`);
-    }, Vo = () => xt === "local" ? "local" : xt === "webdav" ? "webdav" : "s3", Fs = () => xt === "s3" ? !!ee.bucket : xt === "local" ? !!rt : xt === "webdav" ? !!Cr : false, Ds = async ({ destPath: ae, sessionFile: ie = null, content: de = null, confirmOverwrite: ge = false }) => {
+    }, Vo = () => xt === "local" ? "local" : xt === "webdav" ? "webdav" : "s3", Ds = () => xt === "s3" ? !!ee.bucket : xt === "local" ? !!rt : xt === "webdav" ? !!Cr : false, Fs = async ({ destPath: ae, sessionFile: ie = null, content: de = null, confirmOverwrite: ge = false }) => {
       var _a3, _b3, _c3;
-      const he = Vo(), xe = ie || Dt.current;
+      const he = Vo(), xe = ie || Ft.current;
       if (!xe || xe.type !== SESSION_STORAGE_TYPE) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uC138\uC158 \uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
-      const Se = de != null ? String(de) : tr.current ?? "", we = ((_a3 = Dt.current) == null ? void 0 : _a3.type) === SESSION_STORAGE_TYPE && ((_b3 = Dt.current) == null ? void 0 : _b3.id) === xe.id;
+      const Se = de != null ? String(de) : tr.current ?? "", we = ((_a3 = Ft.current) == null ? void 0 : _a3.type) === SESSION_STORAGE_TYPE && ((_b3 = Ft.current) == null ? void 0 : _b3.id) === xe.id;
       if (we) Yn();
       else if (ze.current) {
         const it = updateSessionFileText(ze.current, xe.id, Se);
         ze.current = it, lt(it);
       }
-      const _e2 = On(he);
+      const _e2 = Pn(he);
       if (ge && await ((_c3 = _e2.head) == null ? void 0 : _c3.call(_e2, ae)) && !window.confirm(`\uC774\uBBF8 \uC788\uB294 \uD30C\uC77C\uC785\uB2C8\uB2E4. \uB36E\uC5B4\uC4F8\uAE4C\uC694?
 ${ae}`)) return {
         cancelled: true
       };
-      const Pe = xe.viewer || "markdown", Be = String(ae || "").split("/").filter(Boolean).pop() || xe.name || "untitled.md", Ye = isMarkdownFileName$1(Be) || isMarkdownFileName$1(xe.name) || Pe === "markdown";
+      const Oe = xe.viewer || "markdown", Be = String(ae || "").split("/").filter(Boolean).pop() || xe.name || "untitled.md", Ye = isMarkdownFileName$1(Be) || isMarkdownFileName$1(xe.name) || Oe === "markdown";
       let Ke = Se;
       if (Ye) {
         const it = await prepareSessionMarkdownForVault({
@@ -73839,22 +74058,22 @@ ${ae}`)) return {
         for (const Ct of it.images) await _e2.writeBytes(Ct.path, Ct.data, mimeForSessionFileName(Ct.path));
         it.missing.length && alert(formatMissingExportImagesMessage(it.missing));
       } else {
-        const it = Pe === "json" ? "application/json" : Pe === "raw" ? "text/plain" : Pe === "html" ? "text/html" : Pe === "svg" ? "image/svg+xml" : "text/plain";
+        const it = Oe === "json" ? "application/json" : Oe === "raw" ? "text/plain" : Oe === "html" ? "text/html" : Oe === "svg" ? "image/svg+xml" : "text/plain";
         await _e2.writeText(ae, Se, it);
       }
       he === "s3" ? Gr() : he === "local" ? await Rn() : await nn(), xe.id && (Ze.current[xe.id] = {
         destPath: ae,
         storageType: he
       });
-      const De = new TextEncoder().encode(Se).length;
+      const Fe = new TextEncoder().encode(Se).length;
       we && (Zt((it) => {
         if (!it || it.type !== SESSION_STORAGE_TYPE || it.id !== xe.id) return it;
         const Ct = {
           ...it,
           content: Se,
-          size: De
+          size: Fe
         };
-        return Dt.current = Ct, Ct;
+        return Ft.current = Ct, Ct;
       }), mn(Date.now()));
       const ot = findFileTab(Rt.current, SESSION_STORAGE_TYPE, xe.id);
       if (ot) {
@@ -73862,7 +74081,7 @@ ${ae}`)) return {
           currentFile: {
             ...ot.currentFile,
             content: Se,
-            size: De
+            size: Fe
           },
           baselineContent: Se
         };
@@ -73879,10 +74098,10 @@ ${ae}`)) return {
         destPath: ae
       };
     };
-    vt.current = Ds;
+    vt.current = Fs;
     const js = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
       Yn();
-      const he = Dt.current;
+      const he = Ft.current;
       if (!he || he.type !== SESSION_STORAGE_TYPE) return null;
       const xe = he.name || "untitled.md";
       if (!isMarkdownFileName$1(xe)) return {
@@ -73892,13 +74111,13 @@ ${ae}`)) return {
       };
       let Se = remapMarkdownHeadingLevels(tr.current ?? "", de);
       if (ge === "html") {
-        const { convertHaimTablesToHtmlInMarkdown: Pe } = await __vitePreload(async () => {
-          const { convertHaimTablesToHtmlInMarkdown: Be } = await import("./toHtml-DzKdJ6gf.js");
+        const { convertHaimTablesToHtmlInMarkdown: Oe } = await __vitePreload(async () => {
+          const { convertHaimTablesToHtmlInMarkdown: Be } = await import("./toHtml-lAmsVen8.js");
           return {
             convertHaimTablesToHtmlInMarkdown: Be
           };
-        }, __vite__mapDeps([48,1,4,6,7,8,9,10]));
-        Se = Pe(Se, (Be) => getCachedTableStyleTemplate(Be));
+        }, __vite__mapDeps([49,3,6,8,9,10,11,12]));
+        Se = Oe(Se, (Be) => getCachedTableStyleTemplate(Be));
       }
       const we = ae === "base64" ? "markdown" : ie, _e2 = await bundleSessionMarkdownImages({
         markdown: Se,
@@ -73926,15 +74145,15 @@ ${ae}`)) return {
       }
       if (ae === "base64") {
         const _e2 = Se.images.length ? embedMarkdownImagesAsDataUris(Se.markdown, Se.images) : Se.markdown;
-        Pn(new Blob([
+        On(new Blob([
           _e2
         ], {
           type: "text/markdown;charset=utf-8"
         }), xe);
       } else if (Se.images.length) {
         const _e2 = await buildZipBlob(buildMarkdownImageZipEntries(xe, Se.markdown, Se.images));
-        Pn(_e2, zipFileNameForMarkdown(xe));
-      } else Pn(new Blob([
+        On(_e2, zipFileNameForMarkdown(xe));
+      } else On(new Blob([
         Se.markdown
       ], {
         type: "text/markdown;charset=utf-8"
@@ -73947,11 +74166,11 @@ ${ae}`)) return {
       for (const Se of ge) {
         if (!Se) continue;
         const we = String(Se.path || Se.name || "file").replace(/\\/g, "/").split("/").filter(Boolean), _e2 = we.pop() || "file";
-        let Pe = ae;
-        for (const De of we) Pe = await Pe.getDirectoryHandle(De, {
+        let Oe = ae;
+        for (const Fe of we) Oe = await Oe.getDirectoryHandle(Fe, {
           create: true
         });
-        const Be = await allocateUniqueFileSystemName(Pe, _e2), Ke = await (await Pe.getFileHandle(Be, {
+        const Be = await allocateUniqueFileSystemName(Oe, _e2), Ke = await (await Oe.getFileHandle(Be, {
           create: true
         })).createWritable();
         try {
@@ -73962,17 +74181,17 @@ ${ae}`)) return {
         xe += 1, de == null ? void 0 : de(Math.min(100, Math.round(xe / he * 100)));
       }
     }, $s = () => {
-      if (!Fs()) {
+      if (!Ds()) {
         alert(xt === "local" ? "\uB85C\uCEEC \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4 \uC8FC\uC138\uC694." : "\uC800\uC7A5\uC18C\uB97C \uBA3C\uC800 \uC5F0\uACB0\uD574 \uC8FC\uC138\uC694.");
         return;
       }
       Bi(true);
     }, pc = () => {
       Ln(false), ta("default");
-      const ae = Dt.current;
+      const ae = Ft.current;
       if (!ae || ae.type !== SESSION_STORAGE_TYPE) return;
       const ie = Ze.current[ae.id];
-      if ((ie == null ? void 0 : ie.destPath) && ie.storageType === Vo() && Fs()) {
+      if ((ie == null ? void 0 : ie.destPath) && ie.storageType === Vo() && Ds()) {
         (async () => {
           var _a3;
           try {
@@ -73997,7 +74216,7 @@ ${ae}`)) return {
       const ge = `${ae || ""}${de}`;
       wi(true);
       try {
-        if ((_a3 = await Ds({
+        if ((_a3 = await Fs({
           destPath: ge,
           confirmOverwrite: true
         })) == null ? void 0 : _a3.cancelled) return;
@@ -74012,7 +74231,7 @@ ${ae}`)) return {
         wi(false);
       }
     }, ni = async (ae, ie) => {
-      const de = On(ae), { body: ge } = await de.readBytes(ie);
+      const de = Pn(ae), { body: ge } = await de.readBytes(ie);
       return ge instanceof Uint8Array ? ge : new Uint8Array(ge);
     }, Bs = async (ae, ie, de, ge, he = "markdown") => {
       const xe = planMarkdownImageExport(ge, ie, {
@@ -74020,13 +74239,13 @@ ${ae}`)) return {
       });
       if (!xe.images.length) return false;
       const { entries: Se, missing: we } = await collectMarkdownExportImageBytes(xe.images, (Be) => ni(ae, Be)), _e2 = await buildZipBlob(buildMarkdownImageZipEntries(de, xe.markdown, Se));
-      Pn(_e2, zipFileNameForMarkdown(de));
-      const Pe = formatMissingExportImagesMessage(we);
-      return Pe && alert(Pe), true;
+      On(_e2, zipFileNameForMarkdown(de));
+      const Oe = formatMissingExportImagesMessage(we);
+      return Oe && alert(Oe), true;
     }, gc = async (ae, ie, de, ge) => {
       const he = await zs(ae, ie, ge);
       if (!he) return false;
-      Pn(new Blob([
+      On(new Blob([
         he.markdown
       ], {
         type: "text/markdown;charset=utf-8"
@@ -74056,34 +74275,34 @@ ${ae}`)) return {
       if (isMarkdownFileName$1(he)) try {
         if (ge === SESSION_STORAGE_TYPE) {
           Yn();
-          const Ke = Dt.current;
+          const Ke = Ft.current;
           if (!Ke || Ke.type !== SESSION_STORAGE_TYPE) return;
-          const De = await bundleSessionMarkdownImages({
+          const Fe = await bundleSessionMarkdownImages({
             markdown: remapMarkdownHeadingLevels(tr.current ?? "", ie),
             notePath: Ke.id,
             readBytes: qo,
             imageSyntax: "markdown"
-          }), ot = De.images.length ? embedMarkdownImagesAsDataUris(De.markdown, De.images) : De.markdown;
+          }), ot = Fe.images.length ? embedMarkdownImagesAsDataUris(Fe.markdown, Fe.images) : Fe.markdown;
           if (!await Hs(ot)) return;
-          const Ct = formatMissingExportImagesMessage(De.missing);
+          const Ct = formatMissingExportImagesMessage(Fe.missing);
           Ct && alert(Ct), Et("\uD074\uB9BD\uBCF4\uB4DC\uC5D0 \uBCF5\uC0AC \uC644\uB8CC"), Ln(false), ta("default");
           return;
         }
         if (ge !== "s3" && ge !== "local" && ge !== "webdav") return;
-        const xe = Ie.id || "", Se = On(ge), { text: we } = await Se.readText(xe);
+        const xe = Ie.id || "", Se = Pn(ge), { text: we } = await Se.readText(xe);
         let _e2 = remapMarkdownHeadingLevels(we, ie);
         if (de === "html") {
           const { convertHaimTablesToHtmlInMarkdown: Ke } = await __vitePreload(async () => {
-            const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-DzKdJ6gf.js");
+            const { convertHaimTablesToHtmlInMarkdown: Fe } = await import("./toHtml-lAmsVen8.js");
             return {
-              convertHaimTablesToHtmlInMarkdown: De
+              convertHaimTablesToHtmlInMarkdown: Fe
             };
-          }, __vite__mapDeps([48,1,4,6,7,8,9,10]));
-          _e2 = Ke(_e2, (De) => getCachedTableStyleTemplate(De));
+          }, __vite__mapDeps([49,3,6,8,9,10,11,12]));
+          _e2 = Ke(_e2, (Fe) => getCachedTableStyleTemplate(Fe));
         }
-        const Pe = await zs(ge, xe, _e2);
-        if (!await Hs(Pe.markdown)) return;
-        const Ye = formatMissingExportImagesMessage(Pe.missing);
+        const Oe = await zs(ge, xe, _e2);
+        if (!await Hs(Oe.markdown)) return;
+        const Ye = formatMissingExportImagesMessage(Oe.missing);
         Ye && alert(Ye), Ln(false), ta("default");
       } catch (xe) {
         console.error("\uD074\uB9BD\uBCF4\uB4DC \uBCF5\uC0AC \uC2E4\uD328:", xe), alert("\uD074\uB9BD\uBCF4\uB4DC \uBCF5\uC0AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((xe == null ? void 0 : xe.message) || xe));
@@ -74115,25 +74334,25 @@ ${ae}`)) return {
       const xe = Ie.name || ((_a3 = Ie.id) == null ? void 0 : _a3.split("/").filter(Boolean).pop()) || "download", Se = Ie.id || "";
       try {
         if (isMarkdownFileName$1(xe)) {
-          const we = On(he), { text: _e2 } = await we.readText(Se);
-          let Pe = remapMarkdownHeadingLevels(_e2, de);
+          const we = Pn(he), { text: _e2 } = await we.readText(Se);
+          let Oe = remapMarkdownHeadingLevels(_e2, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: Ke } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-DzKdJ6gf.js");
+              const { convertHaimTablesToHtmlInMarkdown: Fe } = await import("./toHtml-lAmsVen8.js");
               return {
-                convertHaimTablesToHtmlInMarkdown: De
+                convertHaimTablesToHtmlInMarkdown: Fe
               };
-            }, __vite__mapDeps([48,1,4,6,7,8,9,10]));
-            Pe = Ke(Pe, (De) => getCachedTableStyleTemplate(De));
+            }, __vite__mapDeps([49,3,6,8,9,10,11,12]));
+            Oe = Ke(Oe, (Fe) => getCachedTableStyleTemplate(Fe));
           }
-          (ae === "base64" ? await gc(he, Se, xe, Pe) : await Bs(he, Se, xe, Pe, ae === "base64" ? "markdown" : ie)) || Pn(new Blob([
-            Pe
+          (ae === "base64" ? await gc(he, Se, xe, Oe) : await Bs(he, Se, xe, Oe, ae === "base64" ? "markdown" : ie)) || On(new Blob([
+            Oe
           ], {
             type: "text/markdown;charset=utf-8"
           }), xe);
         } else {
           const we = await ni(he, Se);
-          Pn(new Blob([
+          On(new Blob([
             we
           ]), xe);
         }
@@ -74223,13 +74442,13 @@ ${ae}`)) return {
             })) == null ? void 0 : _b3.bundled;
             if (!it) throw new Error("\uC138\uC158 \uBB38\uC11C\uB97C \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
             const Ct = async (gt) => {
-              const wt = await allocateUniqueFileSystemName(xe, Ke), Ot = await (await xe.getFileHandle(wt, {
+              const wt = await allocateUniqueFileSystemName(xe, Ke), Pt = await (await xe.getFileHandle(wt, {
                 create: true
               })).createWritable();
               try {
-                await Ot.write(gt);
+                await Pt.write(gt);
               } finally {
-                await Ot.close();
+                await Pt.close();
               }
             };
             if (ae === "base64" || !it.images.length) {
@@ -74247,22 +74466,22 @@ ${ae}`)) return {
             Nt && alert(Nt);
             return;
           }
-          const De = Yn() ?? ze.current;
-          if (!De) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uC138\uC158\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
-          await mc(xe, De, (ot) => Jr(ot)), Gn(true);
+          const Fe = Yn() ?? ze.current;
+          if (!Fe) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uC138\uC158\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+          await mc(xe, Fe, (ot) => Jr(ot)), Gn(true);
           return;
         }
         const we = Ie.name || ((_c3 = Ie.id) == null ? void 0 : _c3.split("/").filter(Boolean).pop()) || "download", _e2 = Ie.id || "";
         if (isMarkdownFileName$1(we)) {
-          const Ke = On(he), { text: De } = await Ke.readText(_e2);
-          let ot = remapMarkdownHeadingLevels(De, de);
+          const Ke = Pn(he), { text: Fe } = await Ke.readText(_e2);
+          let ot = remapMarkdownHeadingLevels(Fe, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: Yt } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: cr } = await import("./toHtml-DzKdJ6gf.js");
+              const { convertHaimTablesToHtmlInMarkdown: cr } = await import("./toHtml-lAmsVen8.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: cr
               };
-            }, __vite__mapDeps([48,1,4,6,7,8,9,10]));
+            }, __vite__mapDeps([49,3,6,8,9,10,11,12]));
             ot = Yt(ot, (cr) => getCachedTableStyleTemplate(cr));
           }
           const Ct = planMarkdownImageExport(ot, _e2, {
@@ -74293,28 +74512,28 @@ ${ae}`)) return {
             isFolder: true
           }), wt = await xe.getDirectoryHandle(gt, {
             create: true
-          }), { entries: At, missing: Ot } = await collectMarkdownExportImageBytes(Ct.images, (Yt) => ni(he, Yt), (Yt, cr) => {
+          }), { entries: At, missing: Pt } = await collectMarkdownExportImageBytes(Ct.images, (Yt) => ni(he, Yt), (Yt, cr) => {
             Jr(Math.min(90, Math.round(Yt / Math.max(cr, 1) * 90)));
           });
           await writeMarkdownImageBundleToDirectory(wt, we, Ct.markdown, At, (Yt) => Jr(90 + Math.round(Yt * 0.1)));
-          const ar = formatMissingExportImagesMessage(Ot);
+          const ar = formatMissingExportImagesMessage(Pt);
           ar && alert(ar), Gn(true);
           return;
         }
-        const Pe = await allocateUniqueFileSystemName(xe, we), Ye = await (await xe.getFileHandle(Pe, {
+        const Oe = await allocateUniqueFileSystemName(xe, we), Ye = await (await xe.getFileHandle(Oe, {
           create: true
         })).createWritable();
         if (he === "s3") {
           const Ke = or();
           if (!Ke) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
-          await streamS3ObjectToWritable(Ke, ee.bucket, _e2, Ye, (De) => Jr(De));
+          await streamS3ObjectToWritable(Ke, ee.bucket, _e2, Ye, (Fe) => Jr(Fe));
         } else if (he === "local" && Ie.handle) {
-          const Ke = await Ie.handle.getFile(), De = Ke.size, ot = Ke.stream().getReader();
+          const Ke = await Ie.handle.getFile(), Fe = Ke.size, ot = Ke.stream().getReader();
           let it = 0;
           for (; ; ) {
             const { done: Ct, value: Nt } = await ot.read();
             if (Ct) break;
-            await Ye.write(Nt), it += Nt.length, De && Jr(Math.min(100, it / De * 100));
+            await Ye.write(Nt), it += Nt.length, Fe && Jr(Math.min(100, it / Fe * 100));
           }
           await Ye.close();
         } else {
@@ -74343,12 +74562,12 @@ ${ae}`)) return {
           if (!await ensureDirectoryReadWritePermission(we)) throw new Error("\uC120\uD0DD\uD55C \uD3F4\uB354\uC5D0 \uC4F0\uAE30 \uAD8C\uD55C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         };
         try {
-          const we = ae === "s3" ? "s3-root" : "local-root", _e2 = normalizeUnicodeNfc((ie.name || "").trim() || we), Pe = e({
+          const we = ae === "s3" ? "s3-root" : "local-root", _e2 = normalizeUnicodeNfc((ie.name || "").trim() || we), Oe = e({
             type: ActivityTypes.DOWNLOAD,
             label: `\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC \uC911: ${_e2}`
           });
           try {
-            if (xe) await Ia(ae, ie, _e2, Pe);
+            if (xe) await Ia(ae, ie, _e2, Oe);
             else {
               const Ye = await window.showDirectoryPicker({
                 mode: "readwrite"
@@ -74358,9 +74577,9 @@ ${ae}`)) return {
                 create: true
               });
               if (await Se(Ke), ae === "s3") {
-                const De = or();
-                if (!De) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
-                const ot = ee.bucket, it = ie.path || "", Nt = (await listObjectsV2(De, ot, it) || []).filter((At) => At.Key && !At.Key.endsWith("/")), gt = Nt.length;
+                const Fe = or();
+                if (!Fe) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
+                const ot = ee.bucket, it = ie.path || "", Nt = (await listObjectsV2(Fe, ot, it) || []).filter((At) => At.Key && !At.Key.endsWith("/")), gt = Nt.length;
                 if (gt === 0) {
                   Et(`\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC: ${_e2} (\uBE48 \uD3F4\uB354)`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uB300\uC0C1: ${_e2}`);
@@ -74368,34 +74587,34 @@ ${ae}`)) return {
                 }
                 let wt = 0;
                 for (const { Key: At } of Nt) {
-                  const Ot = it ? At.slice(it.length) : At;
-                  if (!Ot) continue;
-                  const ar = normalizePathToNfc(Ot).split("/").filter(Boolean);
+                  const Pt = it ? At.slice(it.length) : At;
+                  if (!Pt) continue;
+                  const ar = normalizePathToNfc(Pt).split("/").filter(Boolean);
                   if (ar.length === 0) continue;
                   const Yt = ar.pop();
                   let cr = Ke;
                   for (const an of ar) cr = await cr.getDirectoryHandle(an, {
                     create: true
                   });
-                  const { body: dr } = await getObjectBody(De, ot, At), dn = await (await cr.getFileHandle(Yt, {
+                  const { body: dr } = await getObjectBody(Fe, ot, At), dn = await (await cr.getFileHandle(Yt, {
                     create: true
                   })).createWritable();
-                  await dn.write(dr), await dn.close(), wt += 1, r(Pe, {
+                  await dn.write(dr), await dn.close(), wt += 1, r(Oe, {
                     progress: Math.min(100, Math.round(wt / gt * 100)),
                     detail: `${wt}/${gt}`
                   });
                 }
               } else if (ae === "local") {
-                const De = ie.handle || (ie.path === "" ? rt : null);
-                if (!De) throw new Error("\uC6D0\uBCF8 \uD3F4\uB354 \uD578\uB4E4\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+                const Fe = ie.handle || (ie.path === "" ? rt : null);
+                if (!Fe) throw new Error("\uC6D0\uBCF8 \uD3F4\uB354 \uD578\uB4E4\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
                 const ot = async (it, Ct) => {
                   for await (const Nt of it.values()) {
                     const gt = normalizeUnicodeNfc(Nt.name);
                     if (Nt.kind === "file") {
-                      const wt = await Nt.getFile(), Ot = await (await Ct.getFileHandle(gt, {
+                      const wt = await Nt.getFile(), Pt = await (await Ct.getFileHandle(gt, {
                         create: true
                       })).createWritable();
-                      await Ot.write(await wt.arrayBuffer()), await Ot.close();
+                      await Pt.write(await wt.arrayBuffer()), await Pt.close();
                     } else if (Nt.kind === "directory") {
                       const wt = await Ct.getDirectoryHandle(gt, {
                         create: true
@@ -74404,7 +74623,7 @@ ${ae}`)) return {
                     }
                   }
                 };
-                await ot(De, Ke), r(Pe, {
+                await ot(Fe, Ke), r(Oe, {
                   progress: 100
                 });
               }
@@ -74414,13 +74633,13 @@ ${ae}`)) return {
 
 \uBE0C\uB77C\uC6B0\uC800 \uC81C\uD55C\uC73C\uB85C \uD3F4\uB354\uB97C ZIP \uD30C\uC77C\uB85C \uB300\uCCB4 \uB2E4\uC6B4\uB85C\uB4DC\uD588\uC2B5\uB2C8\uB2E4.` : ""}`);
           } finally {
-            t(Pe);
+            t(Oe);
           }
         } catch (we) {
           if ((we == null ? void 0 : we.name) === "AbortError") return;
           const _e2 = String((we == null ? void 0 : we.message) || we || "");
           if (_e2.toLowerCase().includes("state chached") || _e2.toLowerCase().includes("state cached")) try {
-            const Pe = ae === "s3" ? "s3-root" : "local-root", Be = normalizeUnicodeNfc((ie.name || "").trim() || Pe), Ye = e({
+            const Oe = ae === "s3" ? "s3-root" : "local-root", Be = normalizeUnicodeNfc((ie.name || "").trim() || Oe), Ye = e({
               type: ActivityTypes.DOWNLOAD,
               label: `\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC \uC911: ${Be}`
             });
@@ -74444,14 +74663,14 @@ ${ae}`)) return {
       const he = normalizeUnicodeNfc(ie.name || ((_b3 = ie.path) == null ? void 0 : _b3.split("/").filter(Boolean).pop()) || "download");
       try {
         if (isMarkdownFileName$1(he)) {
-          const xe = On(ae), { text: Se } = await xe.readText(ie.path);
+          const xe = Pn(ae), { text: Se } = await xe.readText(ie.path);
           if (await Bs(ae, ie.path, he, Se)) {
             const _e2 = zipFileNameForMarkdown(he);
             Et(`\uB2E4\uC6B4\uB85C\uB4DC: ${_e2}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uB300\uC0C1: ${_e2}`);
             return;
           }
-          Pn(new Blob([
+          On(new Blob([
             Se
           ], {
             type: "text/markdown;charset=utf-8"
@@ -74461,7 +74680,7 @@ ${ae}`)) return {
         }
         if (ae === "s3") {
           const xe = await ni(ae, ie.path);
-          Pn(new Blob([
+          On(new Blob([
             xe
           ]), he), Et(`\uB2E4\uC6B4\uB85C\uB4DC: ${de}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uB300\uC0C1: ${de}`);
@@ -74469,13 +74688,13 @@ ${ae}`)) return {
         }
         if (ae === "local" && ie.handle) {
           const xe = await ie.handle.getFile();
-          Pn(xe, normalizeUnicodeNfc(ie.name || xe.name)), Et(`\uB2E4\uC6B4\uB85C\uB4DC: ${de}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
+          On(xe, normalizeUnicodeNfc(ie.name || xe.name)), Et(`\uB2E4\uC6B4\uB85C\uB4DC: ${de}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uB300\uC0C1: ${de}`);
           return;
         }
         if (ae === "webdav") {
           const xe = await ni(ae, ie.path);
-          Pn(new Blob([
+          On(new Blob([
             xe
           ]), he), Et(`\uB2E4\uC6B4\uB85C\uB4DC: ${de}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uB300\uC0C1: ${de}`);
@@ -74502,17 +74721,17 @@ ${ae}`)) return {
             const he = or();
             if (!he) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
             const xe = (ie.name || "").lastIndexOf("."), Se = xe > 0 ? ie.name.slice(0, xe) : ie.name || "file", we = xe > 0 ? ie.name.slice(xe) : ".md";
-            let _e2 = Se + ge + we, Pe = de + _e2;
+            let _e2 = Se + ge + we, Oe = de + _e2;
             const Be = ee.bucket, Ye = await listObjectsV2(he, Be, de), Ke = new Set((Ye || []).map((Ct) => {
               var _a4;
               return (_a4 = Ct.Key) == null ? void 0 : _a4.replace(de, "").replace(/\/$/, "");
             }).filter(Boolean));
-            let De = 1;
-            for (; Ke.has(_e2); ) _e2 = Se + ge + ` (${De})` + we, Pe = de + _e2, De++;
+            let Fe = 1;
+            for (; Ke.has(_e2); ) _e2 = Se + ge + ` (${Fe})` + we, Oe = de + _e2, Fe++;
             const { body: ot } = await getObjectBody(he, Be, ie.path);
             await putObject(he, {
               Bucket: Be,
-              Key: Pe,
+              Key: Oe,
               Body: ot
             }), Gr();
             const it = de ? [
@@ -74537,10 +74756,10 @@ ${ae}`)) return {
               }
             } catch {
             }
-            const Pe = await ie.handle.getFile(), Ye = await (await he.getFileHandle(_e2, {
+            const Oe = await ie.handle.getFile(), Ye = await (await he.getFileHandle(_e2, {
               create: true
             })).createWritable();
-            await Ye.write(await Pe.arrayBuffer()), await Ye.close(), await Rn(), Et(`\uBCF5\uC81C \uC644\uB8CC: ${_e2}`);
+            await Ye.write(await Oe.arrayBuffer()), await Ye.close(), await Rn(), Et(`\uBCF5\uC81C \uC644\uB8CC: ${_e2}`);
           }
         } else if (ie.type === "folder") {
           if (ae === "s3") {
@@ -74548,7 +74767,7 @@ ${ae}`)) return {
             if (!he) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
             const xe = ee.bucket, Se = ie.path, we = (ie.name || "").replace(/\/$/, "");
             let _e2 = we + ge;
-            const Pe = await listObjectsV2(he, xe, de), Be = new Set((Pe || []).filter((ot) => {
+            const Oe = await listObjectsV2(he, xe, de), Be = new Set((Oe || []).filter((ot) => {
               var _a4;
               return (_a4 = ot.Key) == null ? void 0 : _a4.endsWith("/");
             }).map((ot) => {
@@ -74563,8 +74782,8 @@ ${ae}`)) return {
               Key: Ke,
               Body: ""
             });
-            const De = await listObjectsV2(he, xe, Se);
-            for (const { Key: ot } of De) {
+            const Fe = await listObjectsV2(he, xe, Se);
+            for (const { Key: ot } of Fe) {
               const it = ot.slice(Se.length), Ct = Ke + it;
               await copyObject(he, xe, ot, Ct);
             }
@@ -74578,11 +74797,11 @@ ${ae}`)) return {
             let Se = xe + ge;
             try {
               await he.getDirectoryHandle(Se);
-              let Pe = 1;
+              let Oe = 1;
               for (; ; ) {
-                Se = xe + ge + ` (${Pe})`;
+                Se = xe + ge + ` (${Oe})`;
                 try {
-                  await he.getDirectoryHandle(Se), Pe++;
+                  await he.getDirectoryHandle(Se), Oe++;
                 } catch {
                   break;
                 }
@@ -74591,8 +74810,8 @@ ${ae}`)) return {
             }
             const we = await he.getDirectoryHandle(Se, {
               create: true
-            }), _e2 = async (Pe, Be) => {
-              for await (const Ye of Pe.values()) if (Ye.kind === "file") {
+            }), _e2 = async (Oe, Be) => {
+              for await (const Ye of Oe.values()) if (Ye.kind === "file") {
                 const Ke = await Ye.getFile(), ot = await (await Be.getFileHandle(Ye.name, {
                   create: true
                 })).createWritable();
@@ -74628,12 +74847,12 @@ ${ae}`)) return {
       let we = ie.name;
       try {
         if (treeChildNameTaken(xe, ie.name)) {
-          const Pe = await resolveTreeDestName({
+          const Oe = await resolveTreeDestName({
             name: ie.name,
             usedNames: xe,
             kind: "file",
             action: "move",
-            askConflict: Oi,
+            askConflict: Pi,
             loadCompare: () => es({
               storageType: de,
               destFolderPath: ge,
@@ -74644,8 +74863,8 @@ ${ae}`)) return {
               incomingLabel: `\uC774\uB3D9\uD560 "${ie.name}"`
             })
           });
-          if (!Pe) return;
-          we = Pe;
+          if (!Oe) return;
+          we = Oe;
         }
         const _e2 = `${ge}${we}`;
         ro({
@@ -74656,7 +74875,7 @@ ${ae}`)) return {
           action: "move"
         });
         try {
-          const Pe = de === "s3" ? {
+          const Oe = de === "s3" ? {
             id: ie.path,
             name: ie.name
           } : de === "webdav" ? {
@@ -74667,17 +74886,17 @@ ${ae}`)) return {
             handle: ie.handle,
             parentHandle: ie.parentHandle || rt
           };
-          if (de === "s3") await zo(Pe, ge, we), ((_a3 = Dt.current) == null ? void 0 : _a3.type) === "s3" && Dt.current.id === ie.path ? Zt((Be) => Be && Be.id === ie.path ? {
+          if (de === "s3") await zo(Oe, ge, we), ((_a3 = Ft.current) == null ? void 0 : _a3.type) === "s3" && Ft.current.id === ie.path ? Zt((Be) => Be && Be.id === ie.path ? {
             ...Be,
             id: _e2,
             name: we
           } : Be) : await ua(de, _e2);
           else if (de === "webdav") {
-            const Be = await Ko(Pe, ge, we);
-            ((_b3 = Dt.current) == null ? void 0 : _b3.type) === "webdav" && Dt.current.id === ie.path ? Zt(Be) : await ua(de, _e2);
+            const Be = await Ko(Oe, ge, we);
+            ((_b3 = Ft.current) == null ? void 0 : _b3.type) === "webdav" && Ft.current.id === ie.path ? Zt(Be) : await ua(de, _e2);
           } else {
-            const Be = await Ho(Pe, ae.handle || rt, ge, we);
-            ((_c3 = Dt.current) == null ? void 0 : _c3.type) === "local" && Dt.current.id === ie.path ? Zt(Be) : await ua(de, _e2);
+            const Be = await Ho(Oe, ae.handle || rt, ge, we);
+            ((_c3 = Ft.current) == null ? void 0 : _c3.type) === "local" && Ft.current.id === ie.path ? Zt(Be) : await ua(de, _e2);
           }
           ea(null), Vr(false), Et(`\uD30C\uC77C \uC774\uB3D9 \uC644\uB8CC: ${we}`);
         } finally {
@@ -74747,10 +74966,10 @@ ${ae}`)) return {
       ].includes(_e2)) return;
       const Be = xe != null ? String(xe) : tr.current;
       if (!ge && _e2 === "markdown" && noteCoverCommentChanged(String(we.content ?? ""), String(Be ?? ""))) {
-        Da.current = {
+        Fa.current = {
           fileOverride: ae,
           options: ie
-        }, Fa(true);
+        }, Da(true);
         return;
       }
       if (we.type === SESSION_STORAGE_TYPE) {
@@ -74761,10 +74980,10 @@ ${ae}`)) return {
           return;
         }
       }
-      const Ye = !Se && ((_a3 = Dt.current) == null ? void 0 : _a3.id) === we.id && ((_b3 = Dt.current) == null ? void 0 : _b3.type) === we.type;
+      const Ye = !Se && ((_a3 = Ft.current) == null ? void 0 : _a3.id) === we.id && ((_b3 = Ft.current) == null ? void 0 : _b3.type) === we.type;
       Ye && yt(true);
-      const Ke = we.type && we.id ? `${we.type}:${we.id}` : null, De = !!Ke && !It.current.has(Ke);
-      Ke && De && (It.current.add(Ke), Qe([
+      const Ke = we.type && we.id ? `${we.type}:${we.id}` : null, Fe = !!Ke && !It.current.has(Ke);
+      Ke && Fe && (It.current.add(Ke), Qe([
         ...It.current
       ]));
       const ot = e({
@@ -74782,7 +75001,7 @@ ${ae}`)) return {
           confirmLabel: "\uC554\uD638\uD654 \uC800\uC7A5"
         })), Ct = await prepareEncMdVaultBody(we.id, Be, gt);
       } catch (gt) {
-        t(ot), Ye && yt(false), Ke && De && (It.current.delete(Ke), Qe([
+        t(ot), Ye && yt(false), Ke && Fe && (It.current.delete(Ke), Qe([
           ...It.current
         ])), (gt == null ? void 0 : gt.message) !== "cancelled" && alert((gt == null ? void 0 : gt.message) || "\uC554\uD638\uD654 \uC800\uC7A5 \uC2E4\uD328");
         return;
@@ -74790,7 +75009,7 @@ ${ae}`)) return {
       const Nt = (gt = {}) => {
         const wt = findFileTab(Rt.current, we.type, we.id);
         if (!wt) return;
-        const At = `${we.type}:${we.id}`, Ot = {
+        const At = `${we.type}:${we.id}`, Pt = {
           currentFile: {
             ...wt.currentFile,
             content: Be,
@@ -74798,8 +75017,8 @@ ${ae}`)) return {
           },
           baselineContent: Be
         };
-        wt.editorContent === Be && (Ot.editorContent = Be);
-        const ar = patchFileTab(Rt.current, At, Ot);
+        wt.editorContent === Be && (Pt.editorContent = Be);
+        const ar = patchFileTab(Rt.current, At, Pt);
         Rt.current = ar, lr(ar);
       };
       try {
@@ -74815,12 +75034,12 @@ ${ae}`)) return {
           const wt = new TextEncoder().encode(Ct).length;
           Zt((At) => {
             if ((At == null ? void 0 : At.id) !== we.id || (At == null ? void 0 : At.type) !== we.type) return At;
-            const Ot = {
+            const Pt = {
               ...At,
               content: Be,
               size: wt
             };
-            return Dt.current = Ot, Ot;
+            return Ft.current = Pt, Pt;
           }), Nt({
             size: wt
           }), notifyAdvancedSearchChange({
@@ -74834,13 +75053,13 @@ ${ae}`)) return {
           const wt = await we.handle.getFile();
           Zt((At) => {
             if ((At == null ? void 0 : At.id) !== we.id || (At == null ? void 0 : At.type) !== we.type) return At;
-            const Ot = {
+            const Pt = {
               ...At,
               content: Be,
               size: typeof wt.size == "number" ? wt.size : (At == null ? void 0 : At.size) ?? null,
               lastModified: wt.lastModified
             };
-            return Dt.current = Ot, Ot;
+            return Ft.current = Pt, Pt;
           }), Nt({
             ...typeof wt.size == "number" ? {
               size: wt.size
@@ -74864,12 +75083,12 @@ ${ae}`)) return {
           const wt = new TextEncoder().encode(Ct).length;
           Zt((At) => {
             if ((At == null ? void 0 : At.id) !== we.id || (At == null ? void 0 : At.type) !== we.type) return At;
-            const Ot = {
+            const Pt = {
               ...At,
               content: Be,
               size: wt
             };
-            return Dt.current = Ot, Ot;
+            return Ft.current = Pt, Pt;
           }), Nt({
             size: wt
           }), notifyAdvancedSearchChange({
@@ -74910,7 +75129,7 @@ ${ae}`)) return {
         }
         else alert("\uC800\uC7A5 \uC2E4\uD328: " + gt.message);
       } finally {
-        t(ot), Ye && yt(false), Ke && De && (It.current.delete(Ke), Qe([
+        t(ot), Ye && yt(false), Ke && Fe && (It.current.delete(Ke), Qe([
           ...It.current
         ]));
       }
@@ -74932,7 +75151,7 @@ ${ae}`)) return {
       mi
     ]);
     const Mc = async () => {
-      const ae = Dt.current;
+      const ae = Ft.current;
       if (!ae || ae.type !== "local" || !ae.handle) return;
       const ie = ae.viewer || "markdown";
       if (![
@@ -74957,14 +75176,14 @@ ${ae}`)) return {
         } catch {
         }
         const Se = typeof ae.content == "string" ? ae.content : "", we = tr.current ?? "", _e2 = rebaseMergeTexts(Se, we, xe);
-        let Pe = xe, Be = null;
+        let Oe = xe, Be = null;
         if (_e2.status === "conflict") {
           if (!rt) throw new Error("\uB85C\uCEEC \uD3F4\uB354\uAC00 \uC5F4\uB824 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
-          const Ye = createLocalBackend(rt), Ke = String(ae.id || ""), De = Ke.lastIndexOf("/"), ot = De >= 0 ? Ke.slice(0, De + 1) : "", it = /* @__PURE__ */ new Date();
+          const Ye = createLocalBackend(rt), Ke = String(ae.id || ""), Fe = Ke.lastIndexOf("/"), ot = Fe >= 0 ? Ke.slice(0, Fe + 1) : "", it = /* @__PURE__ */ new Date();
           let Ct = 1, Nt = buildTimestampedCopyName(ae.name || "note", it, Ct);
           for (; await Ye.head(`${ot}${Nt}`); ) Ct += 1, Nt = buildTimestampedCopyName(ae.name || "note", it, Ct);
           await Ye.writeText(`${ot}${Nt}`, we), Be = Nt, await Rn();
-        } else Pe = _e2.text;
+        } else Oe = _e2.text;
         Zt((Ye) => {
           if ((Ye == null ? void 0 : Ye.id) !== ae.id) return Ye;
           const Ke = {
@@ -74973,12 +75192,12 @@ ${ae}`)) return {
             size: typeof he.size == "number" ? he.size : (Ye == null ? void 0 : Ye.size) ?? null,
             lastModified: he.lastModified
           };
-          return Dt.current = Ke, Ke;
-        }), fr(Pe), tr.current = Pe, await deleteMemoDraft(getDraftKey("local", ae.id)), Be ? (Et(`\uCDA9\uB3CC: \uD604\uC7AC \uBB38\uC11C\uB97C ${Be}\uC73C\uB85C \uC800\uC7A5\uD558\uACE0 \uB514\uC2A4\uD06C \uB0B4\uC6A9\uC73C\uB85C \uAD50\uCCB4\uD588\uC2B5\uB2C8\uB2E4`), n({
+          return Ft.current = Ke, Ke;
+        }), fr(Oe), tr.current = Oe, await deleteMemoDraft(getDraftKey("local", ae.id)), Be ? (Et(`\uCDA9\uB3CC: \uD604\uC7AC \uBB38\uC11C\uB97C ${Be}\uC73C\uB85C \uC800\uC7A5\uD558\uACE0 \uB514\uC2A4\uD06C \uB0B4\uC6A9\uC73C\uB85C \uAD50\uCCB4\uD588\uC2B5\uB2C8\uB2E4`), n({
           title: "\uC0C8\uB85C\uACE0\uCE68 \uCDA9\uB3CC",
           message: "\uB514\uC2A4\uD06C \uB0B4\uC6A9\uACFC \uD604\uC7AC \uBB38\uC11C\uAC00 \uCDA9\uB3CC\uD558\uC5EC, \uD604\uC7AC \uBB38\uC11C\uB97C \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uD55C \uB4A4 \uB514\uC2A4\uD06C \uB0B4\uC6A9\uC73C\uB85C \uAD50\uCCB4\uD588\uC2B5\uB2C8\uB2E4.",
           detail: Be
-        })) : Et(Pe === xe && we === xe ? "\uB514\uC2A4\uD06C \uB0B4\uC6A9\uACFC \uB3D9\uC77C\uD569\uB2C8\uB2E4" : Pe === xe ? "\uB514\uC2A4\uD06C \uB0B4\uC6A9\uC73C\uB85C \uC0C8\uB85C\uACE0\uCE68\uD588\uC2B5\uB2C8\uB2E4" : "\uB514\uC2A4\uD06C \uBCC0\uACBD \uC704\uC5D0 \uB85C\uCEEC \uC218\uC815\uC744 \uC801\uC6A9\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uD558\uBA74 \uBC18\uC601\uB429\uB2C8\uB2E4.");
+        })) : Et(Oe === xe && we === xe ? "\uB514\uC2A4\uD06C \uB0B4\uC6A9\uACFC \uB3D9\uC77C\uD569\uB2C8\uB2E4" : Oe === xe ? "\uB514\uC2A4\uD06C \uB0B4\uC6A9\uC73C\uB85C \uC0C8\uB85C\uACE0\uCE68\uD588\uC2B5\uB2C8\uB2E4" : "\uB514\uC2A4\uD06C \uBCC0\uACBD \uC704\uC5D0 \uB85C\uCEEC \uC218\uC815\uC744 \uC801\uC6A9\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uD558\uBA74 \uBC18\uC601\uB429\uB2C8\uB2E4.");
       } catch (he) {
         console.error("Local refresh failed:", he), n({
           title: "\uC0C8\uB85C\uACE0\uCE68 \uC2E4\uD328",
@@ -74993,7 +75212,7 @@ ${ae}`)) return {
       const he = ae.id, xe = he.lastIndexOf("/"), we = (xe >= 0 ? he.slice(0, xe + 1) : "") + ie;
       if (we === he) return ae;
       if (de != null && typeof de == "string") {
-        const Pe = ae.viewer || "markdown", Be = Pe === "json" ? "application/json" : Pe === "raw" ? "text/plain" : Pe === "html" ? "text/html" : Pe === "svg" ? "image/svg+xml" : "text/markdown";
+        const Oe = ae.viewer || "markdown", Be = Oe === "json" ? "application/json" : Oe === "raw" ? "text/plain" : Oe === "html" ? "text/html" : Oe === "svg" ? "image/svg+xml" : "text/markdown";
         await putObject(ge, {
           Bucket: ee.bucket,
           Key: we,
@@ -75008,7 +75227,7 @@ ${ae}`)) return {
         name: ie
       };
       return de != null && (_e2.content = de), _e2;
-    }, Pc = async (ae, ie) => {
+    }, Oc = async (ae, ie) => {
       const de = ae.parentHandle || rt;
       if (!de) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
       const ge = ae.id, he = ge.lastIndexOf("/"), Se = (he >= 0 ? ge.slice(0, he + 1) : "") + ie;
@@ -75041,8 +75260,8 @@ ${ae}`)) return {
       xe !== Rt.current && (Rt.current = xe, lr(xe));
     }, Qn = (ae, ie = {}) => {
       if (!ae) return null;
-      const { oldPath: de = null, retargetTabs: ge = true } = ie, he = Dt.current, xe = typeof de == "string" && de ? de : typeof (he == null ? void 0 : he.id) == "string" ? he.id : null, Se = ae.type || (he == null ? void 0 : he.type), we = ae.id;
-      if (ge && Rr.current && Se && xe && typeof we == "string" && we && pi(Se, xe, we, ae), Dt.current = ae, Zt(ae), typeof ae.name == "string" && ae.name && jr(ae.name), typeof we != "string" || !we || parseOpenNotePathFromAppPathname(fe.pathname) === we) return ae;
+      const { oldPath: de = null, retargetTabs: ge = true } = ie, he = Ft.current, xe = typeof de == "string" && de ? de : typeof (he == null ? void 0 : he.id) == "string" ? he.id : null, Se = ae.type || (he == null ? void 0 : he.type), we = ae.id;
+      if (ge && Rr.current && Se && xe && typeof we == "string" && we && pi(Se, xe, we, ae), Ft.current = ae, Zt(ae), typeof ae.name == "string" && ae.name && jr(ae.name), typeof we != "string" || !we || parseOpenNotePathFromAppPathname(fe.pathname) === we) return ae;
       No.current = true;
       try {
         const _e2 = isExportPdfAppPathname(fe.pathname);
@@ -75062,7 +75281,7 @@ ${ae}`)) return {
         if (Ie.type === "s3") {
           const he = Ie.content !== yr ? yr : null;
           de = await Ws(Ie, ie, he);
-        } else if (Ie.type === "local") de = await Pc(Ie, ie);
+        } else if (Ie.type === "local") de = await Oc(Ie, ie);
         else if (Ie.type === SESSION_STORAGE_TYPE) {
           const ge = Yn() ?? ze.current;
           if (!ge) return null;
@@ -75070,10 +75289,10 @@ ${ae}`)) return {
           ze.current = he, lt(he);
           const xe = String(Ie.id || "").lastIndexOf("/"), we = (xe >= 0 ? Ie.id.slice(0, xe + 1) : "") + ie, _e2 = Ze.current[Ie.id];
           if (_e2 && we !== Ie.id) {
-            const Pe = {
+            const Oe = {
               ...Ze.current
             };
-            delete Pe[Ie.id], Pe[we] = _e2, Ze.current = Pe;
+            delete Oe[Ie.id], Oe[we] = _e2, Ze.current = Oe;
           }
           de = {
             ...Ie,
@@ -75099,14 +75318,14 @@ ${ae}`)) return {
       } catch (de) {
         return alert("\uC774\uB984 \uBCC0\uACBD \uC2E4\uD328: " + de.message), null;
       }
-    }, Oc = async (ae, ie, de, ge, he) => {
+    }, Pc = async (ae, ie, de, ge, he) => {
       var _a3, _b3, _c3, _d2, _e3, _f;
       const xe = resolveCreateItemPath(ie, he, ge === "folder" ? "folder" : "file");
       if (!xe.ok) {
         if (xe.reason === "outside-root") throw new Error("\uB8E8\uD2B8 \uBC16\uC73C\uB85C \uB098\uAC08 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
         return;
       }
-      const { path: Se, parentDirPath: we, baseName: _e2 } = xe, Pe = we || ie || "";
+      const { path: Se, parentDirPath: we, baseName: _e2 } = xe, Oe = we || ie || "";
       let Be = "", Ye = "";
       if (ge !== "folder" && isEncMdPath(Se)) {
         let ot;
@@ -75130,7 +75349,7 @@ ${ae}`)) return {
             encMd: true
           } : {}
         }, it) && ue(`/view/${ot.id}`);
-      }, De = async (ot) => {
+      }, Fe = async (ot) => {
         if (!rt) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
         const it = String(ot || "").replace(/\/$/, "").split("/").filter(Boolean);
         let Ct = rt;
@@ -75149,7 +75368,7 @@ ${ae}`)) return {
               Key: Se,
               Body: ""
             }), Gr();
-            const it = getParentPathsToExpand(Pe);
+            const it = getParentPathsToExpand(Oe);
             (_a3 = Cn.current) == null ? void 0 : _a3.call(Cn, ae, it);
           } else {
             await putObject(ot, {
@@ -75157,7 +75376,7 @@ ${ae}`)) return {
               Key: Se,
               Body: Be
             }), Gr();
-            const it = getParentPathsToExpand(Pe);
+            const it = getParentPathsToExpand(Oe);
             (_b3 = Cn.current) == null ? void 0 : _b3.call(Cn, ae, it), Ke({
               type: "s3",
               id: Se,
@@ -75167,13 +75386,13 @@ ${ae}`)) return {
           }
         } else if (ae === "local") {
           if (!rt && !de) return alert("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
-          const ot = rt ? await De(we) : de;
+          const ot = rt ? await Fe(we) : de;
           if (!ot) return alert("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
           if (ge === "folder") {
             await ot.getDirectoryHandle(_e2, {
               create: true
             });
-            const it = getParentPathsToExpand(Pe);
+            const it = getParentPathsToExpand(Oe);
             (_c3 = Cn.current) == null ? void 0 : _c3.call(Cn, ae, it);
           } else {
             const it = await ot.getFileHandle(_e2, {
@@ -75183,7 +75402,7 @@ ${ae}`)) return {
               const Nt = await it.createWritable();
               await Nt.write(Be), await Nt.close();
             }
-            const Ct = getParentPathsToExpand(Pe);
+            const Ct = getParentPathsToExpand(Oe);
             (_d2 = Cn.current) == null ? void 0 : _d2.call(Cn, ae, Ct), Ke({
               type: "local",
               id: Se,
@@ -75197,11 +75416,11 @@ ${ae}`)) return {
           const ot = createWebdavBackend$1(Vt);
           if (ge === "folder") {
             await ot.mkdir(Se), await nn();
-            const it = getParentPathsToExpand(Pe);
+            const it = getParentPathsToExpand(Oe);
             (_e3 = Cn.current) == null ? void 0 : _e3.call(Cn, ae, it);
           } else {
             await ot.writeText(Se, Be, "text/markdown"), await nn();
-            const it = getParentPathsToExpand(Pe);
+            const it = getParentPathsToExpand(Oe);
             (_f = Cn.current) == null ? void 0 : _f.call(Cn, ae, it), Ke({
               type: "webdav",
               id: Se,
@@ -75286,21 +75505,21 @@ ${ae}`)) return {
         parentPath: ie,
         parentDirHandle: de
       }), Nn.current.value = "", (_a3 = Nn.current) == null ? void 0 : _a3.click();
-    }, Oi = reactExports.useCallback((ae) => new Promise((ie) => {
+    }, Pi = reactExports.useCallback((ae) => new Promise((ie) => {
       $a.current = ie, io(ae);
     }), []), Zo = reactExports.useCallback((ae) => {
       const ie = $a.current;
       $a.current = null, io(null), ie == null ? void 0 : ie(ae);
-    }, []), Fi = reactExports.useCallback((ae, ie) => Oi({
+    }, []), Di = reactExports.useCallback((ae, ie) => Pi({
       name: ae,
       renameAs: ie,
       kind: "file",
       action: "upload"
     }), [
-      Oi
-    ]), ai = reactExports.useCallback((ae) => ae === "s3" ? Re : ae === "webdav" ? Fe : Me, [
+      Pi
+    ]), ai = reactExports.useCallback((ae) => ae === "s3" ? Re : ae === "webdav" ? De : Me, [
       Re,
-      Fe,
+      De,
       Me
     ]), Qo = reactExports.useCallback(async (ae, ie, de = null) => {
       var _a3;
@@ -75323,12 +75542,12 @@ ${ae}`)) return {
       Vt,
       Me
     ]), es = reactExports.useCallback(async ({ storageType: ae, destFolderPath: ie, fileName: de, incomingPath: ge, incomingNode: he, existingLabel: xe, incomingLabel: Se }) => {
-      const we = `${ie || ""}${de}`, _e2 = findNodeByPath(ai(ae), we) || findFileNodeByPath(ai(ae), we), [Pe, Be] = await Promise.all([
+      const we = `${ie || ""}${de}`, _e2 = findNodeByPath(ai(ae), we) || findFileNodeByPath(ai(ae), we), [Oe, Be] = await Promise.all([
         Qo(ae, we, _e2),
         Qo(ae, ge, he)
       ]);
       return buildFileComparePayload({
-        existingBytes: Pe,
+        existingBytes: Oe,
         incomingBytes: Be,
         existingLabel: xe || `\uB300\uC0C1: ${we}`,
         incomingLabel: Se || `\uAC00\uC838\uC62C \uD30C\uC77C: ${ge}`
@@ -75339,8 +75558,8 @@ ${ae}`)) return {
     ]), Lc = async (ae) => {
       var _a3;
       const ie = ae.target.files;
-      if (!(ie == null ? void 0 : ie.length) || !Fr) return;
-      const { storageType: de, parentPath: ge, parentDirHandle: he } = Fr;
+      if (!(ie == null ? void 0 : ie.length) || !Dr) return;
+      const { storageType: de, parentPath: ge, parentDirHandle: he } = Dr;
       bn(null);
       const xe = e({
         id: "upload-file",
@@ -75354,50 +75573,50 @@ ${ae}`)) return {
           const Be = or();
           if (!Be) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
           for (let Ye = 0; Ye < ie.length; Ye++) {
-            const Ke = ie[Ye], De = await resolveUploadDestFileName(Ke.name, Se, Fi);
-            if (!De) {
+            const Ke = ie[Ye], Fe = await resolveUploadDestFileName(Ke.name, Se, Di);
+            if (!Fe) {
               _e2 += 1;
               continue;
             }
-            const ot = ge + De, it = await Ke.arrayBuffer();
+            const ot = ge + Fe, it = await Ke.arrayBuffer();
             await putObject(Be, {
               Bucket: ee.bucket,
               Key: ot,
               Body: new Uint8Array(it),
               ContentType: Ke.type || "application/octet-stream"
-            }), Se.add(De), we += 1, await ua(de, ot);
+            }), Se.add(Fe), we += 1, await ua(de, ot);
           }
           Gr();
         } else if (de === "local") {
           const Be = he || rt;
           if (!Be) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
           for (let Ye = 0; Ye < ie.length; Ye++) {
-            const Ke = ie[Ye], De = await resolveUploadDestFileName(Ke.name, Se, Fi);
-            if (!De) {
+            const Ke = ie[Ye], Fe = await resolveUploadDestFileName(Ke.name, Se, Di);
+            if (!Fe) {
               _e2 += 1;
               continue;
             }
-            const it = await (await Be.getFileHandle(De, {
+            const it = await (await Be.getFileHandle(Fe, {
               create: true
             })).createWritable();
-            await it.write(await Ke.arrayBuffer()), await it.close(), Se.add(De), we += 1, await ua(de, `${ge || ""}${De}`);
+            await it.write(await Ke.arrayBuffer()), await it.close(), Se.add(Fe), we += 1, await ua(de, `${ge || ""}${Fe}`);
           }
           Rn();
         } else if (de === "webdav") {
           const Be = createWebdavBackend$1(Vt);
           for (let Ye = 0; Ye < ie.length; Ye++) {
-            const Ke = ie[Ye], De = await resolveUploadDestFileName(Ke.name, Se, Fi);
-            if (!De) {
+            const Ke = ie[Ye], Fe = await resolveUploadDestFileName(Ke.name, Se, Di);
+            if (!Fe) {
               _e2 += 1;
               continue;
             }
-            const ot = ge + De, it = new Uint8Array(await Ke.arrayBuffer());
-            await Be.writeBytes(ot, it, Ke.type || "application/octet-stream"), Se.add(De), we += 1, await ua(de, ot);
+            const ot = ge + Fe, it = new Uint8Array(await Ke.arrayBuffer());
+            await Be.writeBytes(ot, it, Ke.type || "application/octet-stream"), Se.add(Fe), we += 1, await ua(de, ot);
           }
           await nn();
         }
-        const Pe = getParentPathsToExpand(ge);
-        (_a3 = Cn.current) == null ? void 0 : _a3.call(Cn, de, Pe), we === 0 && _e2 > 0 ? Et("\uC5C5\uB85C\uB4DC \uCDE8\uC18C\uB428") : _e2 > 0 ? Et(we > 1 ? `${we}\uAC1C \uD30C\uC77C \uC5C5\uB85C\uB4DC \uC644\uB8CC (${_e2}\uAC1C \uCDE8\uC18C)` : `\uC5C5\uB85C\uB4DC \uC644\uB8CC (${_e2}\uAC1C \uCDE8\uC18C)`) : Et(we > 1 ? `${we}\uAC1C \uD30C\uC77C \uC5C5\uB85C\uB4DC \uC644\uB8CC` : "\uC5C5\uB85C\uB4DC \uC644\uB8CC");
+        const Oe = getParentPathsToExpand(ge);
+        (_a3 = Cn.current) == null ? void 0 : _a3.call(Cn, de, Oe), we === 0 && _e2 > 0 ? Et("\uC5C5\uB85C\uB4DC \uCDE8\uC18C\uB428") : _e2 > 0 ? Et(we > 1 ? `${we}\uAC1C \uD30C\uC77C \uC5C5\uB85C\uB4DC \uC644\uB8CC (${_e2}\uAC1C \uCDE8\uC18C)` : `\uC5C5\uB85C\uB4DC \uC644\uB8CC (${_e2}\uAC1C \uCDE8\uC18C)`) : Et(we > 1 ? `${we}\uAC1C \uD30C\uC77C \uC5C5\uB85C\uB4DC \uC644\uB8CC` : "\uC5C5\uB85C\uB4DC \uC644\uB8CC");
       } catch (Se) {
         alert("\uC5C5\uB85C\uB4DC \uC2E4\uD328: " + Se.message);
       } finally {
@@ -75406,8 +75625,8 @@ ${ae}`)) return {
     }, $c = async (ae) => {
       var _a3;
       const ie = ae.target.files;
-      if (!(ie == null ? void 0 : ie.length) || !Fr) return;
-      const { storageType: de, parentPath: ge, parentDirHandle: he } = Fr;
+      if (!(ie == null ? void 0 : ie.length) || !Dr) return;
+      const { storageType: de, parentPath: ge, parentDirHandle: he } = Dr;
       bn(null);
       const xe = e({
         id: "upload-folder",
@@ -75420,12 +75639,12 @@ ${ae}`)) return {
           if (!we) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
           const _e2 = collectS3DirectoryMarkersFromUpload(ge, ie);
           _e2.length && await putS3FolderMarkers(we, ee.bucket, _e2);
-          for (let Pe = 0; Pe < ie.length; Pe++) {
-            const Be = ie[Pe], Ye = normalizePathToNfc(Be.webkitRelativePath || Be.name), Ke = ge + Ye, De = await Be.arrayBuffer();
+          for (let Oe = 0; Oe < ie.length; Oe++) {
+            const Be = ie[Oe], Ye = normalizePathToNfc(Be.webkitRelativePath || Be.name), Ke = ge + Ye, Fe = await Be.arrayBuffer();
             await putObject(we, {
               Bucket: ee.bucket,
               Key: Ke,
-              Body: new Uint8Array(De),
+              Body: new Uint8Array(Fe),
               ContentType: Be.type || "application/octet-stream"
             });
           }
@@ -75434,22 +75653,22 @@ ${ae}`)) return {
           const we = he || rt;
           if (!we) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
           for (let _e2 = 0; _e2 < ie.length; _e2++) {
-            const Pe = ie[_e2], Ye = normalizePathToNfc(Pe.webkitRelativePath || Pe.name).replace(/\/$/, "").split("/");
+            const Oe = ie[_e2], Ye = normalizePathToNfc(Oe.webkitRelativePath || Oe.name).replace(/\/$/, "").split("/");
             let Ke = we;
             for (let Ct = 0; Ct < Ye.length - 1; Ct++) Ke = await Ke.getDirectoryHandle(Ye[Ct], {
               create: true
             });
-            const De = Ye[Ye.length - 1], it = await (await Ke.getFileHandle(De, {
+            const Fe = Ye[Ye.length - 1], it = await (await Ke.getFileHandle(Fe, {
               create: true
             })).createWritable();
-            await it.write(await Pe.arrayBuffer()), await it.close();
+            await it.write(await Oe.arrayBuffer()), await it.close();
           }
           Rn();
         } else if (de === "webdav") {
           const we = createWebdavBackend$1(Vt);
           for (let _e2 = 0; _e2 < ie.length; _e2++) {
-            const Pe = ie[_e2], Be = normalizePathToNfc(Pe.webkitRelativePath || Pe.name), Ye = ge + Be, Ke = new Uint8Array(await Pe.arrayBuffer());
-            await we.writeBytes(Ye, Ke, Pe.type || "application/octet-stream");
+            const Oe = ie[_e2], Be = normalizePathToNfc(Oe.webkitRelativePath || Oe.name), Ye = ge + Be, Ke = new Uint8Array(await Oe.arrayBuffer());
+            await we.writeBytes(Ye, Ke, Oe.type || "application/octet-stream");
           }
           await nn();
         }
@@ -75465,7 +75684,7 @@ ${ae}`)) return {
       const { storageType: ie, parentPath: de, parentDirHandle: ge, type: he, fromMoveModal: xe, fromAddToNoteModal: Se, fromSaveSessionModal: we } = wn;
       wa(true);
       try {
-        if (await Oc(ie, de, ge, he, ae), he === "folder") {
+        if (await Pc(ie, de, ge, he, ae), he === "folder") {
           const _e2 = resolveCreateItemPath(de, ae, "folder");
           _e2.ok && (xe && ba(_e2.path), Se && xa(_e2.path), we && xi(_e2.path));
         }
@@ -75497,15 +75716,15 @@ ${ae}`)) return {
           create: true
         }), _e2 = async (Be, Ye) => {
           for await (const Ke of Be.values()) if (Ke.kind === "file") {
-            const De = await Ke.getFile(), it = await (await Ye.getFileHandle(Ke.name, {
+            const Fe = await Ke.getFile(), it = await (await Ye.getFileHandle(Ke.name, {
               create: true
             })).createWritable();
-            await it.write(await De.arrayBuffer()), await it.close();
+            await it.write(await Fe.arrayBuffer()), await it.close();
           } else if (Ke.kind === "directory") {
-            const De = await Ye.getDirectoryHandle(Ke.name, {
+            const Fe = await Ye.getDirectoryHandle(Ke.name, {
               create: true
             });
-            await _e2(Ke, De);
+            await _e2(Ke, Fe);
           }
         };
         await _e2(Se, we), await (ae.parentHandle || rt).removeEntry(ae.name, {
@@ -75554,7 +75773,7 @@ ${ae}`)) return {
           "local",
           "webdav"
         ].includes(ge.type) || ge.node.type !== "file") continue;
-        const he = ge.type === "s3" ? Re : ge.type === "webdav" ? Fe : Me;
+        const he = ge.type === "s3" ? Re : ge.type === "webdav" ? De : Me;
         for (const xe of getRecordingKeysFromTree(he, ge.node.path)) ie.has(xe.key) || (ie.add(xe.key), de.push(xe));
       }
       return de;
@@ -75562,7 +75781,7 @@ ${ae}`)) return {
       var _a3, _b3;
       const ie = normalizeDeleteTargets(Tt);
       if (!ie.length) return;
-      const { deleteWithRecordings: de = false } = ae, ge = () => Pr(null);
+      const { deleteWithRecordings: de = false } = ae, ge = () => Or(null);
       let he = null;
       if (ie.length === 1 && ie[0].node.path === ".trash/") {
         ge();
@@ -75573,35 +75792,35 @@ ${ae}`)) return {
       zt(true);
       const Se = xe.length > 1;
       Se && Et(`${xe.length}\uAC1C \uD56D\uBAA9 \uC0AD\uC81C \uC911\u2026`), he = setTimeout(ge, 3e3);
-      let we = 0, _e2 = 0, Pe = null, Be = false;
+      let we = 0, _e2 = 0, Oe = null, Be = false;
       const Ye = Ha;
       let Ke = false;
-      const De = [], ot = (gt) => gt === "s3" ? Re : gt === "webdav" ? Fe : Me, it = (gt, wt) => !de || gt.type !== "file" ? [] : getRecordingKeysFromTree(ot(wt), gt.path).flatMap((At) => {
-        const Ot = getSyncKeyForRecording(At.key);
-        return Ot ? [
+      const Fe = [], ot = (gt) => gt === "s3" ? Re : gt === "webdav" ? De : Me, it = (gt, wt) => !de || gt.type !== "file" ? [] : getRecordingKeysFromTree(ot(wt), gt.path).flatMap((At) => {
+        const Pt = getSyncKeyForRecording(At.key);
+        return Pt ? [
           At.key,
-          Ot
+          Pt
         ] : [
           At.key
         ];
       }), Ct = (gt, wt) => loadOrphanImageAutoDeleteEnabled() ? collectCompanionImageKeysForDelete(gt, ot(wt)) : [], Nt = (gt, wt) => {
-        const At = /* @__PURE__ */ new Set(), Ot = [];
+        const At = /* @__PURE__ */ new Set(), Pt = [];
         for (const ar of [
           ...it(gt, wt),
           ...Ct(gt, wt)
-        ]) !ar || At.has(ar) || ar === gt.path || (At.add(ar), Ot.push(ar));
-        return Ot;
+        ]) !ar || At.has(ar) || ar === gt.path || (At.add(ar), Pt.push(ar));
+        return Pt;
       };
       try {
         const gt = /* @__PURE__ */ new Set();
         for (const { node: wt, type: At } of xe) {
-          const Ot = wt.path.startsWith(".trash/"), ar = wt.type === "folder", Yt = Nt(wt, At);
-          ar ? (Be = true, cn(true), hn(wt.path), Se || Et(`\uD3F4\uB354 \uC0AD\uC81C \uC911: ${wt.path}`)) : Se || Et(Ot ? `\uC601\uAD6C \uC0AD\uC81C \uC911: ${wt.path}` : `\uC0AD\uC81C \uC911: ${wt.path}`);
+          const Pt = wt.path.startsWith(".trash/"), ar = wt.type === "folder", Yt = Nt(wt, At);
+          ar ? (Be = true, cn(true), hn(wt.path), Se || Et(`\uD3F4\uB354 \uC0AD\uC81C \uC911: ${wt.path}`)) : Se || Et(Pt ? `\uC601\uAD6C \uC0AD\uC81C \uC911: ${wt.path}` : `\uC0AD\uC81C \uC911: ${wt.path}`);
           try {
             if (At === "s3") {
               const cr = or();
               if (!cr) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
-              if (Ot) if (wt.type === "folder") {
+              if (Pt) if (wt.type === "folder") {
                 const Lr = [
                   ...(await listObjectsV2(cr, ee.bucket, wt.path)).map(({ Key: dn }) => dn),
                   ...Yt
@@ -75624,7 +75843,7 @@ ${ae}`)) return {
               gt.add("s3");
             } else if (At === "local") {
               if (!rt) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
-              if (Ot) {
+              if (Pt) {
                 if (await (wt.parentHandle || rt).removeEntry(wt.name, {
                   recursive: true
                 }), Yt.length > 0) {
@@ -75643,7 +75862,7 @@ ${ae}`)) return {
               gt.add("local");
             } else if (At === "webdav") {
               const cr = createWebdavBackend$1(Vt);
-              if (Ot) if (wt.type === "folder") {
+              if (Pt) if (wt.type === "folder") {
                 await cr.deletePrefix(wt.path);
                 for (const dr of Yt) try {
                   await cr.delete(dr);
@@ -75668,21 +75887,21 @@ ${ae}`)) return {
               });
               gt.add("webdav");
             }
-            we += 1, De.push(wt), (Ie == null ? void 0 : Ie.id) && (wt.type === "folder" ? Ie.id === wt.path || Ie.id.startsWith(wt.path) : Ie.id === wt.path) && (Ke = true);
+            we += 1, Fe.push(wt), (Ie == null ? void 0 : Ie.id) && (wt.type === "folder" ? Ie.id === wt.path || Ie.id.startsWith(wt.path) : Ie.id === wt.path) && (Ke = true);
           } catch (cr) {
-            _e2 += 1, Pe = cr;
+            _e2 += 1, Oe = cr;
           }
         }
         if (gt.has("s3") && Gr(), gt.has("local") && await Rn(), gt.has("webdav") && await nn(), Ke) {
           const wt = getActiveFileTab(Rt.current);
           wt ? la(wt.id, {
             skipDirtyConfirm: true
-          }) : (Zt(null), Dt.current = null, fr(""), tr.current = "", Ye || ue("/"));
+          }) : (Zt(null), Ft.current = null, fr(""), tr.current = "", Ye || ue("/"));
         }
-        if (Ii && ca && De.length) try {
-          for (const wt of De) {
-            const At = deletedNoteScopeFromNode(wt), { dateStrs: Ot } = await unlinkChatNotesForDeletedPaths(ca, At);
-            for (const ar of Ot) postChatSyncEvent("day", {
+        if (Ii && ca && Fe.length) try {
+          for (const wt of Fe) {
+            const At = deletedNoteScopeFromNode(wt), { dateStrs: Pt } = await unlinkChatNotesForDeletedPaths(ca, At);
+            for (const ar of Pt) postChatSyncEvent("day", {
               dateStr: ar
             }), postChatLocalSyncEvent("day", {
               dateStr: ar
@@ -75693,10 +75912,10 @@ ${ae}`)) return {
         }
         we > 0 && pa(/* @__PURE__ */ new Set());
       } finally {
-        he && clearTimeout(he), ge(), zt(false), Be && (cn(false), hn(null)), _e2 === 0 && we > 0 ? Et(Se ? `${we}\uAC1C \uD56D\uBAA9 \uC0AD\uC81C \uC644\uB8CC` : `\uC0AD\uC81C \uC644\uB8CC: ${xe[0].node.path}`) : we === 0 && Pe ? (alert("\uC0AD\uC81C \uC2E4\uD328: " + Pe.message), Et(`\uC0AD\uC81C \uC2E4\uD328: ${Pe.message}`)) : _e2 > 0 && (alert(`${we}\uAC1C \uC0AD\uC81C \uC644\uB8CC, ${_e2}\uAC1C \uC2E4\uD328` + (Pe ? `: ${Pe.message}` : "")), Et(`${we}\uAC1C \uC0AD\uC81C, ${_e2}\uAC1C \uC2E4\uD328`));
+        he && clearTimeout(he), ge(), zt(false), Be && (cn(false), hn(null)), _e2 === 0 && we > 0 ? Et(Se ? `${we}\uAC1C \uD56D\uBAA9 \uC0AD\uC81C \uC644\uB8CC` : `\uC0AD\uC81C \uC644\uB8CC: ${xe[0].node.path}`) : we === 0 && Oe ? (alert("\uC0AD\uC81C \uC2E4\uD328: " + Oe.message), Et(`\uC0AD\uC81C \uC2E4\uD328: ${Oe.message}`)) : _e2 > 0 && (alert(`${we}\uAC1C \uC0AD\uC81C \uC644\uB8CC, ${_e2}\uAC1C \uC2E4\uD328` + (Oe ? `: ${Oe.message}` : "")), Et(`${we}\uAC1C \uC0AD\uC81C, ${_e2}\uAC1C \uC2E4\uD328`));
       }
     }, qc = async (ae) => {
-      if (!(Qt == null ? void 0 : Qt.storageType) || Or) return;
+      if (!(Qt == null ? void 0 : Qt.storageType) || Pr) return;
       const ie = Qt.storageType;
       rn(true), Et("\uC4F0\uB808\uAE30\uD1B5 \uBE44\uC6B0\uB294 \uC911\u2026");
       try {
@@ -75761,28 +75980,28 @@ ${ae}`)) return {
           return;
         }
         if (ae === "s3") {
-          const he = ie.name || "", xe = he.lastIndexOf("."), Se = xe > 0 ? he.slice(xe) : "", we = `${ge}${Se}`, _e2 = ie.path, Pe = (Ie == null ? void 0 : Ie.type) === "s3" && (Ie == null ? void 0 : Ie.id) === ie.path, Be = Pe ? {
+          const he = ie.name || "", xe = he.lastIndexOf("."), Se = xe > 0 ? he.slice(xe) : "", we = `${ge}${Se}`, _e2 = ie.path, Oe = (Ie == null ? void 0 : Ie.type) === "s3" && (Ie == null ? void 0 : Ie.id) === ie.path, Be = Oe ? {
             ...Ie,
             viewer: Ie.viewer
           } : {
             id: ie.path,
             name: ie.name
-          }, Ke = Pe && Ie.content !== yr ? yr : null, De = await Ws(Be, we, Ke);
-          Pe ? Qn(De, {
+          }, Ke = Oe && Ie.content !== yr ? yr : null, Fe = await Ws(Be, we, Ke);
+          Oe ? Qn(Fe, {
             oldPath: _e2
-          }) : pi("s3", _e2, De.id, {
-            ...De,
+          }) : pi("s3", _e2, Fe.id, {
+            ...Fe,
             name: we
           });
         } else if (ae === "local") {
           const he = ie.parentHandle || rt;
           if (!he) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
-          const xe = ie.path, Se = xe.lastIndexOf("/"), we = Se >= 0 ? xe.slice(0, Se + 1) : "", _e2 = ie.name || "", Pe = _e2.lastIndexOf("."), Be = Pe > 0 ? _e2.slice(Pe) : "", Ye = `${ge}${Be}`, Ke = we + Ye;
+          const xe = ie.path, Se = xe.lastIndexOf("/"), we = Se >= 0 ? xe.slice(0, Se + 1) : "", _e2 = ie.name || "", Oe = _e2.lastIndexOf("."), Be = Oe > 0 ? _e2.slice(Oe) : "", Ye = `${ge}${Be}`, Ke = we + Ye;
           if (Ke === xe) return;
-          const De = await ie.handle.getFile(), ot = await he.getFileHandle(Ye, {
+          const Fe = await ie.handle.getFile(), ot = await he.getFileHandle(Ye, {
             create: true
           }), it = await ot.createWritable();
-          await it.write(await De.arrayBuffer()), await it.close(), await he.removeEntry(ie.name, {
+          await it.write(await Fe.arrayBuffer()), await it.close(), await he.removeEntry(ie.name, {
             recursive: false
           }), await Rn(), Ie && Ie.type === "local" && Ie.id === ie.path ? Qn({
             ...Ie,
@@ -75797,10 +76016,10 @@ ${ae}`)) return {
             handle: ot
           });
         } else if (ae === "webdav") {
-          const he = createWebdavBackend$1(Vt), xe = ie.path, Se = xe.lastIndexOf("/"), we = Se >= 0 ? xe.slice(0, Se + 1) : "", _e2 = ie.name || "", Pe = _e2.lastIndexOf("."), Be = Pe > 0 ? _e2.slice(Pe) : "", Ye = `${ge}${Be}`, Ke = we + Ye;
+          const he = createWebdavBackend$1(Vt), xe = ie.path, Se = xe.lastIndexOf("/"), we = Se >= 0 ? xe.slice(0, Se + 1) : "", _e2 = ie.name || "", Oe = _e2.lastIndexOf("."), Be = Oe > 0 ? _e2.slice(Oe) : "", Ye = `${ge}${Be}`, Ke = we + Ye;
           if (Ke === xe) return;
-          const De = (Ie == null ? void 0 : Ie.type) === "webdav" && (Ie == null ? void 0 : Ie.id) === ie.path;
-          De && Ie.content !== yr ? (await he.writeText(Ke, yr, "text/markdown"), await he.delete(xe)) : await he.move(xe, Ke), await nn(), De ? Qn({
+          const Fe = (Ie == null ? void 0 : Ie.type) === "webdav" && (Ie == null ? void 0 : Ie.id) === ie.path;
+          Fe && Ie.content !== yr ? (await he.writeText(Ke, yr, "text/markdown"), await he.delete(xe)) : await he.move(xe, Ke), await nn(), Fe ? Qn({
             ...Ie,
             id: Ke,
             name: Ye
@@ -75839,7 +76058,7 @@ ${ae}`)) return {
           }
         ]);
       }
-      const Pe = formatChatMessageAsNoteMarkdown(ae, we, Se, {
+      const Oe = formatChatMessageAsNoteMarkdown(ae, we, Se, {
         threadMessages: _e2
       });
       if (xt === "s3") {
@@ -75848,17 +76067,17 @@ ${ae}`)) return {
         await putObject(Be, {
           Bucket: ee.bucket,
           Key: Se,
-          Body: Pe,
+          Body: Oe,
           ContentType: "text/markdown; charset=utf-8"
         }), await Gr();
-      } else if (xt === "webdav") await createWebdavBackend$1(Vt).writeText(Se, Pe, "text/markdown; charset=utf-8"), await nn();
+      } else if (xt === "webdav") await createWebdavBackend$1(Vt).writeText(Se, Oe, "text/markdown; charset=utf-8"), await nn();
       else {
         const Be = de || rt;
         if (!Be) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
         const Ke = await (await Be.getFileHandle(xe, {
           create: true
         })).createWritable();
-        await Ke.write(Pe), await Ke.close(), await Rn();
+        await Ke.write(Oe), await Ke.close(), await Rn();
       }
       if (ca && (ae == null ? void 0 : ae.id)) {
         const Be = ae.dateStr || localDateString(new Date(ae.at || Date.now()), we);
@@ -75875,7 +76094,7 @@ ${ae}`)) return {
       return Et(`\uB178\uD2B8 \uC0DD\uC131 \uC644\uB8CC: ${Se}`), Se;
     }, Xs = reactExports.useCallback(async (ae) => {
       if (!ae) return;
-      const ie = String(ae), de = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3", ge = de === "s3" ? Re : de === "webdav" ? Fe : Me;
+      const ie = String(ae), de = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3", ge = de === "s3" ? Re : de === "webdav" ? De : Me;
       let he = findNodeByPath(ge, ie) || findFileNodeByPath(ge, ie);
       if ((!he || he.type !== "file") && de === "local" && (he = await resolveLocalFileNode(rt, ie)), !he || he.type !== "file") {
         n({
@@ -75885,19 +76104,19 @@ ${ae}`)) return {
         });
         return;
       }
-      await Pi(de, he);
+      await Oi(de, he);
     }, [
       xt,
       Re,
-      Fe,
+      De,
       Me,
       rt,
-      Pi,
+      Oi,
       n
     ]), Jc = reactExports.useCallback(async (ae) => {
       const ie = ae == null ? void 0 : ae.node, de = String((ae == null ? void 0 : ae.path) || (ie == null ? void 0 : ie.path) || "");
       if (!de) return;
-      const ge = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3", he = ge === "s3" ? Re : ge === "webdav" ? Fe : Me, xe = findNodeByPath(he, de) || findFileNodeByPath(he, de), Se = ge === "local" && (ie == null ? void 0 : ie.handle) ? ie : xe || ie;
+      const ge = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3", he = ge === "s3" ? Re : ge === "webdav" ? De : Me, xe = findNodeByPath(he, de) || findFileNodeByPath(he, de), Se = ge === "local" && (ie == null ? void 0 : ie.handle) ? ie : xe || ie;
       if (!Se) {
         n({
           title: "\uD30C\uC77C \uC5F4\uAE30",
@@ -75920,7 +76139,7 @@ ${ae}`)) return {
     }, [
       xt,
       Re,
-      Fe,
+      De,
       Me,
       ri,
       n,
@@ -76006,40 +76225,40 @@ ${ae}`)) return {
         }
       ] : null;
       if (Se) {
-        const we = !!(ge == null ? void 0 : ge.copy), _e3 = we ? "\uBCF5\uC81C" : "\uC774\uB3D9", Pe = pruneNestedMovePaths(Se).filter((Ct) => !(Ct.storageType !== ie || Ct.path === he || Ct.nodeType === "folder" && (he === Ct.path || he.startsWith(Ct.path))));
-        if (!Pe.length) return;
-        const Be = ie === "s3" ? Re : ie === "webdav" ? Fe : Me, Ye = new Set(getTreeChildNames(Be, he, findNodeByPath));
-        let Ke = 0, De = 0, ot = null, it = null;
-        Pe.length > 1 && Et(`${Pe.length}\uAC1C \uD56D\uBAA9 ${_e3} \uC911\u2026`);
-        for (const Ct of Pe) {
+        const we = !!(ge == null ? void 0 : ge.copy), _e3 = we ? "\uBCF5\uC81C" : "\uC774\uB3D9", Oe = pruneNestedMovePaths(Se).filter((Ct) => !(Ct.storageType !== ie || Ct.path === he || Ct.nodeType === "folder" && (he === Ct.path || he.startsWith(Ct.path))));
+        if (!Oe.length) return;
+        const Be = ie === "s3" ? Re : ie === "webdav" ? De : Me, Ye = new Set(getTreeChildNames(Be, he, findNodeByPath));
+        let Ke = 0, Fe = 0, ot = null, it = null;
+        Oe.length > 1 && Et(`${Oe.length}\uAC1C \uD56D\uBAA9 ${_e3} \uC911\u2026`);
+        for (const Ct of Oe) {
           const { storageType: Nt, path: gt, nodeType: wt } = Ct, At = findNodeByPath(Be, gt);
           if (!At) {
-            De += 1, ot = new Error(`${_e3}\uD560 \uD56D\uBAA9\uC744 \uD2B8\uB9AC\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+            Fe += 1, ot = new Error(`${_e3}\uD560 \uD56D\uBAA9\uC744 \uD2B8\uB9AC\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
             continue;
           }
           if (!we) {
             if (wt === "file") {
               if (`${he || ""}${At.name}` === gt) continue;
             } else if (wt === "folder") {
-              const Ot = `${he || ""}${At.name}/`;
-              if (Ot === gt || Ot.startsWith(gt) || gt.startsWith(Ot)) continue;
+              const Pt = `${he || ""}${At.name}/`;
+              if (Pt === gt || Pt.startsWith(gt) || gt.startsWith(Pt)) continue;
             }
           }
           try {
-            const Ot = wt === "folder", ar = we && getParentFolderPath$1(gt) === he;
+            const Pt = wt === "folder", ar = we && getParentFolderPath$1(gt) === he;
             let Yt = At.name;
             if (ar) Yt = allocateUniqueCopyName(At.name, Ye, {
               forceSuffix: true,
-              isFolder: Ot
+              isFolder: Pt
             });
             else if (treeChildNameTaken(Ye, At.name)) {
               const dr = await resolveTreeDestName({
                 name: At.name,
                 usedNames: Ye,
-                kind: Ot ? "folder" : "file",
+                kind: Pt ? "folder" : "file",
                 action: we ? "copy" : "move",
-                askConflict: Oi,
-                loadCompare: Ot ? void 0 : () => es({
+                askConflict: Pi,
+                loadCompare: Pt ? void 0 : () => es({
                   storageType: Nt,
                   destFolderPath: he,
                   fileName: At.name,
@@ -76055,9 +76274,9 @@ ${ae}`)) return {
             if (Nt === "local" && xe && Yt !== At.name) {
               const dr = new Set(Ye);
               for (; ; ) try {
-                Ot ? await xe.getDirectoryHandle(Yt) : await xe.getFileHandle(Yt), dr.add(Yt), Yt = allocateUniqueCopyName(At.name, dr, {
+                Pt ? await xe.getDirectoryHandle(Yt) : await xe.getFileHandle(Yt), dr.add(Yt), Yt = allocateUniqueCopyName(At.name, dr, {
                   forceSuffix: true,
-                  isFolder: Ot
+                  isFolder: Pt
                 });
               } catch {
                 break;
@@ -76068,7 +76287,7 @@ ${ae}`)) return {
             ro({
               storageType: Nt,
               path: gt,
-              nodeType: Ot ? "folder" : "file",
+              nodeType: Pt ? "folder" : "file",
               destFolderPath: he || "",
               action: we ? "copy" : "move"
             });
@@ -76093,8 +76312,8 @@ ${ae}`)) return {
                   ...At,
                   id: At.path
                 };
-                if (Nt === "s3") await zo(dr, he, Yt), ((_b3 = Dt.current) == null ? void 0 : _b3.type) === "s3" && Dt.current.id === gt ? Qn({
-                  ...Dt.current,
+                if (Nt === "s3") await zo(dr, he, Yt), ((_b3 = Ft.current) == null ? void 0 : _b3.type) === "s3" && Ft.current.id === gt ? Qn({
+                  ...Ft.current,
                   id: cr,
                   name: Yt
                 }, {
@@ -76105,7 +76324,7 @@ ${ae}`)) return {
                 }), await ua(Nt, cr));
                 else if (Nt === "webdav") {
                   const Lr = await Ko(dr, he, Yt);
-                  ((_c3 = Dt.current) == null ? void 0 : _c3.type) === "webdav" && Dt.current.id === gt ? Qn(Lr, {
+                  ((_c3 = Ft.current) == null ? void 0 : _c3.type) === "webdav" && Ft.current.id === gt ? Qn(Lr, {
                     oldPath: gt
                   }) : (pi(Nt, gt, cr, {
                     id: cr,
@@ -76113,7 +76332,7 @@ ${ae}`)) return {
                   }), await ua(Nt, cr));
                 } else {
                   const Lr = await Ho(dr, xe, he, Yt);
-                  ((_d2 = Dt.current) == null ? void 0 : _d2.type) === "local" && Dt.current.id === gt ? Qn(Lr, {
+                  ((_d2 = Ft.current) == null ? void 0 : _d2.type) === "local" && Ft.current.id === gt ? Qn(Lr, {
                     oldPath: gt
                   }) : (pi(Nt, gt, cr, {
                     id: cr,
@@ -76127,8 +76346,8 @@ ${ae}`)) return {
               } else {
                 Nt === "s3" ? await Uo(At, he, Yt) : Nt === "webdav" ? await Go(At, he, Yt) : await Wo(At, xe, he, Yt);
                 const dr = At.path.endsWith("/") ? At.path : `${At.path}/`, Lr = `${he}${Yt}/`;
-                if (no(Nt, dr, Lr), Dt.current && Dt.current.type === Nt && (Dt.current.id.startsWith(dr) || Dt.current.id.startsWith(At.path))) {
-                  const dn = Dt.current, an = dn.id.startsWith(dr) ? Lr + dn.id.slice(dr.length) : Lr + dn.id.slice(At.path.length);
+                if (no(Nt, dr, Lr), Ft.current && Ft.current.type === Nt && (Ft.current.id.startsWith(dr) || Ft.current.id.startsWith(At.path))) {
+                  const dn = Ft.current, an = dn.id.startsWith(dr) ? Lr + dn.id.slice(dr.length) : Lr + dn.id.slice(At.path.length);
                   Qn({
                     ...dn,
                     id: an
@@ -76143,51 +76362,51 @@ ${ae}`)) return {
             } finally {
               Ka(Nt, gt);
             }
-          } catch (Ot) {
-            De += 1, ot = Ot, Ka(Nt, gt);
+          } catch (Pt) {
+            Fe += 1, ot = Pt, Ka(Nt, gt);
           }
         }
-        if (Ke === 0 && De === 0) return;
+        if (Ke === 0 && Fe === 0) return;
         if (Ke > 0 && !we && pa(/* @__PURE__ */ new Set()), Ke > 0 && we) {
           const Ct = getParentPathsToExpand(he);
           (_e2 = Cn.current) == null ? void 0 : _e2.call(Cn, ie, Ct);
         }
-        De === 0 ? Et(Ke > 1 ? `${Ke}\uAC1C \uD56D\uBAA9 ${_e3} \uC644\uB8CC` : `${Pe[0].nodeType === "folder" ? "\uD3F4\uB354" : "\uD30C\uC77C"} ${_e3} \uC644\uB8CC: ${it || Pe[0].name || Pe[0].path}`) : Ke === 0 ? (alert(`${_e3} \uC2E4\uD328: ` + ((ot == null ? void 0 : ot.message) || "\uC54C \uC218 \uC5C6\uB294 \uC624\uB958")), Et(`${_e3} \uC2E4\uD328: ${(ot == null ? void 0 : ot.message) || ""}`)) : (alert(`${Ke}\uAC1C ${_e3} \uC644\uB8CC, ${De}\uAC1C \uC2E4\uD328` + (ot ? `: ${ot.message}` : "")), Et(`${Ke}\uAC1C ${_e3}, ${De}\uAC1C \uC2E4\uD328`));
+        Fe === 0 ? Et(Ke > 1 ? `${Ke}\uAC1C \uD56D\uBAA9 ${_e3} \uC644\uB8CC` : `${Oe[0].nodeType === "folder" ? "\uD3F4\uB354" : "\uD30C\uC77C"} ${_e3} \uC644\uB8CC: ${it || Oe[0].name || Oe[0].path}`) : Ke === 0 ? (alert(`${_e3} \uC2E4\uD328: ` + ((ot == null ? void 0 : ot.message) || "\uC54C \uC218 \uC5C6\uB294 \uC624\uB958")), Et(`${_e3} \uC2E4\uD328: ${(ot == null ? void 0 : ot.message) || ""}`)) : (alert(`${Ke}\uAC1C ${_e3} \uC644\uB8CC, ${Fe}\uAC1C \uC2E4\uD328` + (ot ? `: ${ot.message}` : "")), Et(`${Ke}\uAC1C ${_e3}, ${Fe}\uAC1C \uC2E4\uD328`));
         return;
       }
       if (((_f = ge == null ? void 0 : ge.files) == null ? void 0 : _f.length) > 0 || ((_g = ge == null ? void 0 : ge.dirHandles) == null ? void 0 : _g.length) > 0) {
-        const { files: we = [], dirHandles: _e3 = [] } = ge, Pe = we.length + _e3.length, Be = e({
+        const { files: we = [], dirHandles: _e3 = [] } = ge, Oe = we.length + _e3.length, Be = e({
           id: "drop-upload",
           type: ActivityTypes.FILE_UPLOAD,
-          label: Pe > 1 ? `${Pe}\uAC1C \uD56D\uBAA9 \uC5C5\uB85C\uB4DC \uC911` : "\uC5C5\uB85C\uB4DC \uC911"
+          label: Oe > 1 ? `${Oe}\uAC1C \uD56D\uBAA9 \uC5C5\uB85C\uB4DC \uC911` : "\uC5C5\uB85C\uB4DC \uC911"
         });
         try {
           const Ye = new Set(getTreeChildNames(ai(ie), he || "", findNodeByPath));
-          let Ke = 0, De = 0;
+          let Ke = 0, Fe = 0;
           if (ie === "s3") {
             const ot = or();
             if (!ot) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
             const it = async (gt, wt, At = normalizeUnicodeNfc(gt.name)) => {
-              const Ot = wt + normalizeUnicodeNfc(At), ar = await gt.arrayBuffer();
+              const Pt = wt + normalizeUnicodeNfc(At), ar = await gt.arrayBuffer();
               await putObject(ot, {
                 Bucket: ee.bucket,
-                Key: Ot,
+                Key: Pt,
                 Body: new Uint8Array(ar),
                 ContentType: gt.type || "application/octet-stream"
               });
             }, Ct = async (gt, wt) => {
               for await (const At of gt.values()) {
-                const Ot = normalizeUnicodeNfc(At.name);
+                const Pt = normalizeUnicodeNfc(At.name);
                 if (At.kind === "file") {
                   const ar = await At.getFile();
-                  await it(ar, wt, Ot);
-                } else At.kind === "directory" && await Ct(At, `${wt}${Ot}/`);
+                  await it(ar, wt, Pt);
+                } else At.kind === "directory" && await Ct(At, `${wt}${Pt}/`);
               }
             };
             for (const gt of we) {
-              const wt = await resolveUploadDestFileName(gt.name, Ye, Fi);
+              const wt = await resolveUploadDestFileName(gt.name, Ye, Di);
               if (!wt) {
-                De += 1;
+                Fe += 1;
                 continue;
               }
               await it(gt, he, wt), Ye.add(wt), Ke += 1, await ua(ie, `${he || ""}${wt}`);
@@ -76201,21 +76420,21 @@ ${ae}`)) return {
             (_h = Cn.current) == null ? void 0 : _h.call(Cn, ie, Nt);
           } else if (ie === "webdav") {
             const ot = createWebdavBackend$1(Vt), it = async (gt, wt, At = normalizeUnicodeNfc(gt.name)) => {
-              const Ot = wt + normalizeUnicodeNfc(At), ar = new Uint8Array(await gt.arrayBuffer());
-              await ot.writeBytes(Ot, ar, gt.type || "application/octet-stream");
+              const Pt = wt + normalizeUnicodeNfc(At), ar = new Uint8Array(await gt.arrayBuffer());
+              await ot.writeBytes(Pt, ar, gt.type || "application/octet-stream");
             }, Ct = async (gt, wt) => {
               for await (const At of gt.values()) {
-                const Ot = normalizeUnicodeNfc(At.name);
+                const Pt = normalizeUnicodeNfc(At.name);
                 if (At.kind === "file") {
                   const ar = await At.getFile();
-                  await it(ar, wt, Ot);
-                } else At.kind === "directory" && await Ct(At, `${wt}${Ot}/`);
+                  await it(ar, wt, Pt);
+                } else At.kind === "directory" && await Ct(At, `${wt}${Pt}/`);
               }
             };
             for (const gt of we) {
-              const wt = await resolveUploadDestFileName(gt.name, Ye, Fi);
+              const wt = await resolveUploadDestFileName(gt.name, Ye, Di);
               if (!wt) {
-                De += 1;
+                Fe += 1;
                 continue;
               }
               await it(gt, he, wt), Ye.add(wt), Ke += 1, await ua(ie, `${he || ""}${wt}`);
@@ -76231,28 +76450,28 @@ ${ae}`)) return {
             const ot = xe || rt;
             if (!ot) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
             const it = async (gt, wt, At = normalizeUnicodeNfc(gt.name)) => {
-              const Ot = normalizeUnicodeNfc(At), Yt = await (await wt.getFileHandle(Ot, {
+              const Pt = normalizeUnicodeNfc(At), Yt = await (await wt.getFileHandle(Pt, {
                 create: true
               })).createWritable();
               await Yt.write(await gt.arrayBuffer()), await Yt.close();
             }, Ct = async (gt, wt) => {
-              const At = normalizeUnicodeNfc(gt.name), Ot = await wt.getDirectoryHandle(At, {
+              const At = normalizeUnicodeNfc(gt.name), Pt = await wt.getDirectoryHandle(At, {
                 create: true
               });
               for await (const ar of gt.values()) {
                 const Yt = normalizeUnicodeNfc(ar.name);
                 if (ar.kind === "file") {
-                  const cr = await ar.getFile(), Lr = await (await Ot.getFileHandle(Yt, {
+                  const cr = await ar.getFile(), Lr = await (await Pt.getFileHandle(Yt, {
                     create: true
                   })).createWritable();
                   await Lr.write(await cr.arrayBuffer()), await Lr.close();
-                } else ar.kind === "directory" && await Ct(ar, Ot);
+                } else ar.kind === "directory" && await Ct(ar, Pt);
               }
             };
             for (const gt of we) {
-              const wt = await resolveUploadDestFileName(gt.name, Ye, Fi);
+              const wt = await resolveUploadDestFileName(gt.name, Ye, Di);
               if (!wt) {
-                De += 1;
+                Fe += 1;
                 continue;
               }
               await it(gt, ot, wt), Ye.add(wt), Ke += 1, await ua(ie, `${he || ""}${wt}`);
@@ -76262,7 +76481,7 @@ ${ae}`)) return {
             const Nt = getParentPathsToExpand(he);
             (_j = Cn.current) == null ? void 0 : _j.call(Cn, ie, Nt);
           }
-          Ke === 0 && De > 0 ? Et("\uC5C5\uB85C\uB4DC \uCDE8\uC18C\uB428") : De > 0 ? Et(`\uC5C5\uB85C\uB4DC \uC644\uB8CC (${De}\uAC1C \uCDE8\uC18C)`) : Et("\uC5C5\uB85C\uB4DC \uC644\uB8CC");
+          Ke === 0 && Fe > 0 ? Et("\uC5C5\uB85C\uB4DC \uCDE8\uC18C\uB428") : Fe > 0 ? Et(`\uC5C5\uB85C\uB4DC \uC644\uB8CC (${Fe}\uAC1C \uCDE8\uC18C)`) : Et("\uC5C5\uB85C\uB4DC \uC644\uB8CC");
         } catch (Ye) {
           alert("\uC5C5\uB85C\uB4DC \uC2E4\uD328: " + Ye.message), Et(`\uC5C5\uB85C\uB4DC \uC2E4\uD328: ${Ye.message}`);
         } finally {
@@ -76286,7 +76505,7 @@ ${ae}`)) return {
             usedNames: xe,
             kind: "folder",
             action: "move",
-            askConflict: Oi
+            askConflict: Pi
           });
           if (!_e2) return;
           we = _e2;
@@ -76306,9 +76525,9 @@ ${ae}`)) return {
             if (!Be) throw new Error("\uB300\uC0C1 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
             await Wo(ie, Be, ge, we);
           }
-          const _e2 = ie.path.endsWith("/") ? ie.path : `${ie.path}/`, Pe = `${ge}${we}/`;
-          if (no(de, _e2, Pe), Dt.current && Dt.current.type === de && (Dt.current.id === ie.path || Dt.current.id.startsWith(_e2) || Dt.current.id.startsWith(ie.path))) {
-            const Be = Dt.current, Ye = Be.id.startsWith(_e2) ? Pe + Be.id.slice(_e2.length) : Be.id.startsWith(ie.path) ? Pe + Be.id.slice(ie.path.length) : Be.id;
+          const _e2 = ie.path.endsWith("/") ? ie.path : `${ie.path}/`, Oe = `${ge}${we}/`;
+          if (no(de, _e2, Oe), Ft.current && Ft.current.type === de && (Ft.current.id === ie.path || Ft.current.id.startsWith(_e2) || Ft.current.id.startsWith(ie.path))) {
+            const Be = Ft.current, Ye = Be.id.startsWith(_e2) ? Oe + Be.id.slice(_e2.length) : Be.id.startsWith(ie.path) ? Oe + Be.id.slice(ie.path.length) : Be.id;
             Qn({
               ...Be,
               id: Ye
@@ -76334,12 +76553,12 @@ ${ae}`)) return {
       let Se = he;
       try {
         if (treeChildNameTaken(ge, he)) {
-          const Pe = await resolveTreeDestName({
+          const Oe = await resolveTreeDestName({
             name: he,
             usedNames: ge,
             kind: "file",
             action: "move",
-            askConflict: Oi,
+            askConflict: Pi,
             loadCompare: () => es({
               storageType: Ie.type,
               destFolderPath: ie,
@@ -76350,8 +76569,8 @@ ${ae}`)) return {
               incomingLabel: `\uC774\uB3D9\uD560 "${he}"`
             })
           });
-          if (!Pe) return;
-          Se = Pe;
+          if (!Oe) return;
+          Se = Oe;
         }
         const we = Ie.id, _e2 = `${ie}${Se}`;
         ro({
@@ -76363,22 +76582,22 @@ ${ae}`)) return {
         });
         try {
           if (Ie.type === "s3") {
-            const Pe = await zo(Ie, ie, Se);
-            Pe && Qn({
+            const Oe = await zo(Ie, ie, Se);
+            Oe && Qn({
               ...Ie,
-              id: Pe.id,
+              id: Oe.id,
               name: Se
             }, {
               oldPath: we
             });
           } else if (Ie.type === "webdav") {
-            const Pe = await Ko(Ie, ie, Se);
-            Pe && Qn(Pe, {
+            const Oe = await Ko(Ie, ie, Se);
+            Oe && Qn(Oe, {
               oldPath: we
             });
           } else if (Ie.type === "local") {
-            const Pe = await Ho(Ie, ae.handle, ie, Se);
-            Pe && Qn(Pe, {
+            const Oe = await Ho(Ie, ae.handle, ie, Se);
+            Oe && Qn(Oe, {
               oldPath: we
             });
           }
@@ -76414,7 +76633,7 @@ ${ae}`)) return {
       if (!Ie || Ie.type !== "s3" && Ie.type !== "webdav" || Ie.viewer !== "markdown" || isEncMdPath(Ie.id) || isEncMdPath(Ie.name)) return;
       const ae = setInterval(async () => {
         if (!zr || Date.now() - zr < 3e4 || Ie.content !== yr || isEncMdPath(Ie.id) || isEncMdPath(Ie.name)) return;
-        const de = On(Ie.type);
+        const de = Pn(Ie.type);
         if (de) try {
           const { text: ge } = await de.readText(Ie.id);
           Zt((he) => !he || he.type !== Ie.type || he.id !== Ie.id ? he : {
@@ -76447,8 +76666,8 @@ ${ae}`)) return {
 `), he = ge.length - de.length;
         let xe = Math.max(0, ge.length - 1);
         const Se = Math.max(de.length, ge.length);
-        for (let Pe = 0; Pe < Se; Pe++) if ((de[Pe] ?? null) !== (ge[Pe] ?? null)) {
-          xe = Pe;
+        for (let Oe = 0; Oe < Se; Oe++) if ((de[Oe] ?? null) !== (ge[Oe] ?? null)) {
+          xe = Oe;
           break;
         }
         const we = ge[xe] ?? "";
@@ -76523,8 +76742,8 @@ ${ae}`)) return {
       if (ie < 1024) return `${ie.toFixed(1)} KB`;
       const de = ie / 1024;
       return de < 1024 ? `${de.toFixed(1)} MB` : `${(de / 1024).toFixed(1)} GB`;
-    }, Di = (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "local" || (Ie == null ? void 0 : Ie.type) === "webdav" || (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE, iu = Di && Ie && Ie.content !== yr, ou = Di ? iu ? "bg-yellow-400 animate-pulse" : Di && !!mr ? "bg-green-500" : "bg-gray-400" : "bg-gray-300";
-    if (!Oe) return jsxRuntimeExports.jsx("div", {
+    }, Fi = (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "local" || (Ie == null ? void 0 : Ie.type) === "webdav" || (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE, iu = Fi && Ie && Ie.content !== yr, ou = Fi ? iu ? "bg-yellow-400 animate-pulse" : Fi && !!mr ? "bg-green-500" : "bg-gray-400" : "bg-gray-300";
+    if (!Pe) return jsxRuntimeExports.jsx("div", {
       className: "flex h-screen items-center justify-center bg-gray-50 text-gray-500 dark:bg-odp-bgSofter dark:text-odp-fg",
       children: "\uB85C\uB529 \uC911..."
     });
@@ -76548,17 +76767,17 @@ ${ae}`)) return {
             getTrees: () => xt === STORAGE_MODE_LOCAL ? [
               Me
             ] : xt === STORAGE_MODE_WEBDAV ? [
-              Fe
+              De
             ] : [
               Re
             ],
-            onOpenFile: Ps,
+            onOpenFile: Os,
             preferPrintActions: true,
             snippetConfig: Ba
           }),
           jsxRuntimeExports.jsx(AuthModal, {
             isOpen: c && !bo,
-            onUnlock: Po,
+            onUnlock: Oo,
             fileInputRef: In,
             onCloseWithoutUnlock: () => {
               pe(), Vn();
@@ -76662,7 +76881,7 @@ ${ae}`)) return {
         }),
         l ? jsxRuntimeExports.jsx(AdvancedSearchHost, {
           getTrees: jl,
-          onOpenFile: Ps,
+          onOpenFile: Os,
           ensureBrowseFolderLoaded: Jl,
           onRequestCreateItem: Xo,
           getChatGroups: Ll,
@@ -76675,7 +76894,7 @@ ${ae}`)) return {
         }) : null,
         jsxRuntimeExports.jsx(AuthModal, {
           isOpen: c && !bo,
-          onUnlock: Po,
+          onUnlock: Oo,
           fileInputRef: In,
           onCloseWithoutUnlock: () => {
             pe(), Vn();
@@ -76726,7 +76945,7 @@ ${ae}`)) return {
                     localRootHandle: rt,
                     isLocalTreeLoading: pr,
                     localFolderLoadingPath: Lt,
-                    webdavTree: Fe,
+                    webdavTree: De,
                     webdavReady: Cr,
                     isWebdavTreeLoading: ct,
                     webdavFolderLoadingPath: Bt,
@@ -76747,7 +76966,7 @@ ${ae}`)) return {
                     dropTarget: ii,
                     transferBusyItems: Ro,
                     onOpenLocalFolder: Ms,
-                    onSetDeleteTarget: Pr,
+                    onSetDeleteTarget: Or,
                     onRequestEmptyTrash: (ae, ie) => {
                       $r({
                         storageType: ie
@@ -76961,7 +77180,7 @@ ${ae}`)) return {
                           snippetConfig: Ba,
                           llmProviderProfiles: be,
                           getImgbbApiKey: Ee,
-                          onRequestDelete: () => Pr(ae ? {
+                          onRequestDelete: () => Or(ae ? {
                             node: {
                               path: ae == null ? void 0 : ae.id,
                               name: ae == null ? void 0 : ae.name,
@@ -76984,7 +77203,7 @@ ${ae}`)) return {
                           onOpenSidebar: () => qn(true),
                           s3Tree: Re,
                           localTree: Me,
-                          webdavTree: Fe,
+                          webdavTree: De,
                           shareGroupSend: ol,
                           onShareGroupSendConsumed: zl,
                           onOpenNote: Xs,
@@ -77124,7 +77343,7 @@ ${ae}`)) return {
                     children: [
                       jsxRuntimeExports.jsxs("span", {
                         className: "flex items-center gap-1 md:gap-1.5",
-                        title: Di ? mr ? `\uC800\uC7A5 ${ao(mr)}` : "\uB300\uAE30 \uC911" : "\uB300\uC0C1 \uC544\uB2D8",
+                        title: Fi ? mr ? `\uC800\uC7A5 ${ao(mr)}` : "\uB300\uAE30 \uC911" : "\uB300\uC0C1 \uC544\uB2D8",
                         children: [
                           jsxRuntimeExports.jsx("span", {
                             className: `w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 ${ou}`,
@@ -77132,14 +77351,14 @@ ${ae}`)) return {
                           }),
                           jsxRuntimeExports.jsx("span", {
                             className: "md:hidden",
-                            children: Di ? mr ? ao(mr) : "\uB300\uAE30" : "-"
+                            children: Fi ? mr ? ao(mr) : "\uB300\uAE30" : "-"
                           }),
                           jsxRuntimeExports.jsxs("span", {
                             className: "hidden md:inline",
                             children: [
                               "\uC790\uB3D9\uC800\uC7A5:",
                               " ",
-                              Di ? mr ? `\uB9C8\uC9C0\uB9C9 ${ao(mr)}` : "\uB300\uAE30 \uC911 (\uC785\uB825 \uD6C4 5\uCD08)" : "\uB300\uC0C1 \uC544\uB2D8"
+                              Fi ? mr ? `\uB9C8\uC9C0\uB9C9 ${ao(mr)}` : "\uB300\uAE30 \uC911 (\uC785\uB825 \uD6C4 5\uCD08)" : "\uB300\uC0C1 \uC544\uB2D8"
                             ]
                           })
                         ]
@@ -77179,7 +77398,7 @@ ${ae}`)) return {
           })
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
-          isOpen: Oa,
+          isOpen: Pa,
           title: "\uD45C\uC9C0 \uC218\uC815 \uAC10\uC9C0",
           message: `\uD45C\uC9C0(note-cover) \uBD80\uBD84\uC774 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uC758\uB3C4\uCE58 \uC54A\uC740 \uC218\uC815\uC774\uB77C\uBA74 \uD45C\uC9C0 \uBD80\uBD84\uB9CC \uB418\uB3CC\uB9B0 \uB4A4 \uB2E4\uC2DC \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`,
@@ -77187,23 +77406,23 @@ ${ae}`)) return {
           cancelLabel: "\uCDE8\uC18C",
           discardLabel: "\uD45C\uC9C0 \uBD80\uBD84 \uD3B8\uC9D1 \uB418\uB3CC\uB9AC\uAE30",
           onConfirm: () => {
-            const ae = Da.current;
-            Da.current = null, Fa(false), mi((ae == null ? void 0 : ae.fileOverride) ?? null, {
+            const ae = Fa.current;
+            Fa.current = null, Da(false), mi((ae == null ? void 0 : ae.fileOverride) ?? null, {
               ...(ae == null ? void 0 : ae.options) ?? {},
               skipCoverChangeCheck: true
             });
           },
           onCancel: () => {
-            Da.current = null, Fa(false);
+            Fa.current = null, Da(false);
           },
           onDiscard: () => {
-            const ae = Dt.current;
+            const ae = Ft.current;
             if (!ae) {
-              Da.current = null, Fa(false);
+              Fa.current = null, Da(false);
               return;
             }
             const ie = revertNoteCoverComment(String(tr.current ?? ""), String(ae.content ?? ""));
-            tr.current = ie, fr(ie), Da.current = null, Fa(false);
+            tr.current = ie, fr(ie), Fa.current = null, Da(false);
           }
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
@@ -77220,7 +77439,7 @@ ${ae}`)) return {
           }
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
-          isOpen: Pt,
+          isOpen: Ot,
           title: "\uC571 \uC5C5\uB370\uC774\uD2B8",
           message: (() => {
             const ae = er || "\uC54C \uC218 \uC5C6\uC74C", ie = $t;
@@ -77308,11 +77527,11 @@ ${ae}`)) return {
           confirmLabel: "\uC800\uC7A5 \uD6C4 \uB2EB\uAE30",
           cancelLabel: "\uCDE8\uC18C",
           discardLabel: "\uC800\uC7A5 \uC548 \uD558\uACE0 \uB2EB\uAE30",
-          onConfirm: Pl,
+          onConfirm: Ol,
           onCancel: () => {
             Sr(false), An(null);
           },
-          onDiscard: Ol
+          onDiscard: Pl
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
           isOpen: wo.isBlocked,
@@ -77321,9 +77540,9 @@ ${ae}`)) return {
           confirmLabel: "\uC800\uC7A5 \uD6C4 \uC774\uB3D9",
           cancelLabel: "\uCDE8\uC18C",
           discardLabel: "\uC800\uC7A5 \uC548 \uD558\uACE0 \uC774\uB3D9",
-          onConfirm: Fl,
+          onConfirm: Dl,
           onCancel: wo.reset,
-          onDiscard: Dl
+          onDiscard: Fl
         }),
         jsxRuntimeExports.jsx(ExportPasswordModal, {
           isOpen: Aa,
@@ -77334,7 +77553,7 @@ ${ae}`)) return {
           isOpen: ji,
           onConfirm: El,
           onCancel: () => {
-            Dr(false), Ra(null);
+            Fr(false), Ra(null);
           }
         }),
         jsxRuntimeExports.jsx(DownloadMethodModal, {
@@ -77364,7 +77583,7 @@ ${ae}`)) return {
           storageType: xt,
           s3Tree: Re,
           localTree: Me,
-          webdavTree: Fe,
+          webdavTree: De,
           localRootHandle: rt,
           defaultFileName: (Ie == null ? void 0 : Ie.name) || "untitled.md",
           isSaving: zi,
@@ -77412,16 +77631,16 @@ ${ae}`)) return {
         jsxRuntimeExports.jsx(DeleteConfirmModal, {
           target: Tt,
           associatedRecordings: Kc,
-          onCancel: () => Pr(null),
+          onCancel: () => Or(null),
           onConfirm: Gc,
-          isProcessing: Dn
+          isProcessing: Fn
         }),
         jsxRuntimeExports.jsx(EmptyTrashConfirmModal, {
           isOpen: !!Qt,
           storageType: Qt == null ? void 0 : Qt.storageType,
-          isProcessing: Or,
+          isProcessing: Pr,
           onCancel: () => {
-            Or || $r(null);
+            Pr || $r(null);
           },
           onConfirm: qc
         }),
@@ -77430,7 +77649,7 @@ ${ae}`)) return {
           storageType: Bn ? Bn.storageType : Ie == null ? void 0 : Ie.type,
           s3Tree: Re,
           localTree: Me,
-          webdavTree: Fe,
+          webdavTree: De,
           localRootHandle: rt,
           currentFile: Bn ? null : Ie,
           fileToMove: Bn == null ? void 0 : Bn.node,
@@ -77456,14 +77675,14 @@ ${ae}`)) return {
           storageType: hr == null ? void 0 : hr.storageType,
           s3Tree: Re,
           localTree: Me,
-          webdavTree: Fe,
+          webdavTree: De,
           localRootHandle: rt,
           folderNode: hr == null ? void 0 : hr.node,
           onClose: () => zn(null),
           onConfirm: eu
         }),
         jsxRuntimeExports.jsx(CreateItemModal, {
-          isOpen: Pa,
+          isOpen: Oa,
           type: wn == null ? void 0 : wn.type,
           storageType: wn == null ? void 0 : wn.storageType,
           parentPath: (wn == null ? void 0 : wn.parentPath) || "",
