@@ -197,6 +197,7 @@ const plugins: PluginOption[] = [
 if (!isElectron) {
   plugins.push(
     VitePWA({
+      disable: false,
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
