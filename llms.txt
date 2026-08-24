@@ -9,6 +9,7 @@ https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-folder/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-note/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-saved-note/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/document-settings/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/enc-md/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/footnotes/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/haim-table/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/heading-levels/
@@ -18,6 +19,7 @@ https://explainpark101.github.io/DocuHaim/docs/custom-markdown/note-cover/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/page-break/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/plan-frontmatter/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/preview-hard-break/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/remote-image/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/wiki-image/
 https://explainpark101.github.io/DocuHaim/docs/
 
