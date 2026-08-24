@@ -4,8 +4,6 @@ import {
 } from './collectSources';
 import { indexableEncMdBody } from '@/utils/encMd';
 import {
-  applyChatUpsertPatch,
-  applyFileUpsertPatch,
   pruneIndexToPaths,
   upsertChatDayDocuments,
   upsertFileDocument,
@@ -14,10 +12,8 @@ import {
   clearIndexInVault,
   docsToObject,
   gzipJsonBytes,
-  hydrateIndexFromBlobs,
-  loadIndexFromVault,
-  postingsToObject,
-  saveIndexBlobsToVault,
+  gunzipBytes,
+  loadDocsAndManifestFromVault,
   saveIndexToVault,
   type AdvancedSearchBackend,
 } from './store';
@@ -33,15 +29,11 @@ import {
   recountManifest,
   type InMemoryIndex,
 } from './types';
-import { ensureGaru } from './tokenize';
 import {
   subscribeAdvancedSearchChanges,
   type AdvancedSearchChangeEvent,
 } from './notify';
 import { runAdvancedSearch, type AdvancedSearchHit } from './query';
-import { IndexWorkerClient } from './indexWorkerClient';
-import { fileDocId } from './paths';
-import { chatDateFromPath } from './collectSources';
 import {
   deleteRebuildCheckpoint,
   getRebuildCheckpoint,
@@ -49,6 +41,14 @@ import {
   saveRebuildCheckpoint,
   type RebuildCheckpointRecord,
 } from './rebuildCheckpointDb';
+import {
+  emptyDocIdMap,
+  hydrateDocIdMapFromDocs,
+  type DocIdMapState,
+} from './docIdMap';
+import { isSearchIsolationReady, searchIsolationBlockedReason } from './isolation';
+import { gzip } from 'fflate';
+
 export type BuildLogLevel = 'info' | 'ok' | 'warn' | 'error';
 
 export type BuildLogEntry = {
@@ -81,6 +81,8 @@ export type EngineStatus = {
   buildProgress: number | null;
   /** Recent background index log lines (newest last). */
   buildLogs: BuildLogEntry[];
+  /** False when SharedArrayBuffer / COOP+COEP isolation is missing. */
+  isolationReady: boolean;
 };
 
 export type RebuildOptions = {
@@ -106,11 +108,8 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
-/** Emit UI updates at most this often during rebuild (React thrash freeze). */
 const EMIT_MIN_MS = 250;
-/** Cap in-memory scrollback; UI virtualizes so DOM stays small. */
 const MAX_BUILD_LOGS = 2000;
-/** Persist partial rebuild state to IndexedDB every N processed sources. */
 const CHECKPOINT_EVERY = 25;
 
 class RebuildCancelledError extends Error {
@@ -120,14 +119,26 @@ class RebuildCancelledError extends Error {
   }
 }
 
-/** Yield to the event loop so paint/input can run between heavy sync work (fallback path). */
 function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function gzipBytes(input: Uint8Array): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    gzip(input, { level: 6 }, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  });
+}
+
+type LucivyApi = typeof import('./lucivyBackend');
+
 class AdvancedSearchEngine {
   private index: InMemoryIndex = emptyIndex();
+  private docIdMap: DocIdMapState = emptyDocIdMap();
   private loaded = false;
+  private lucivyReady = false;
   private building = false;
   private cancelRequested = false;
   private lastBuildCancelled = false;
@@ -138,7 +149,6 @@ class AdvancedSearchEngine {
   private includeOtherFiles = loadAdvancedSearchIncludeOtherFiles();
   private backend: AdvancedSearchBackend | null = null;
   private getTree: (() => TreeNode[]) | null = null;
-  /** Scopes IndexedDB rebuild checkpoints to the active storage backend. */
   private storageKey = '';
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private lastError: string | null = null;
@@ -148,9 +158,7 @@ class AdvancedSearchEngine {
   private lastBuildEmitAt = 0;
   private unsub: (() => void) | null = null;
   private listeners = new Set<() => void>();
-  private workerClient: IndexWorkerClient | null | undefined;
-  private workerInitFailed = false;
-  private workerReady = false;
+  private lucivyApi: LucivyApi | null = null;
 
   constructor() {
     this.unsub = subscribeAdvancedSearchChanges((event) => {
@@ -190,7 +198,6 @@ class AdvancedSearchEngine {
     this.buildLogs = [];
   }
 
-  /** Throttle listener notify during bulk rebuild to avoid main-thread React storms. */
   private emitBuildProgress(force = false): void {
     const now = Date.now();
     if (!force && now - this.lastBuildEmitAt < EMIT_MIN_MS) return;
@@ -203,7 +210,7 @@ class AdvancedSearchEngine {
   }
 
   hasIndex(): boolean {
-    return this.loaded && isIndexInitialized(this.index);
+    return this.loaded && isIndexInitialized(this.index) && this.lucivyReady;
   }
 
   getStatus(): EngineStatus {
@@ -223,11 +230,16 @@ class AdvancedSearchEngine {
       checkpointProcessedCount: this.checkpointProcessedCount,
       buildProgress: this.buildProgress,
       buildLogs: this.buildLogs,
+      isolationReady: isSearchIsolationReady(),
     };
   }
 
   getIndex(): InMemoryIndex {
     return this.index;
+  }
+
+  getDocIdMap(): DocIdMapState {
+    return this.docIdMap;
   }
 
   isEnabled(): boolean {
@@ -238,7 +250,6 @@ class AdvancedSearchEngine {
     this.enabled = Boolean(value);
     saveAdvancedSearchIndexEnabled(this.enabled);
     this.emit();
-    // Do not auto-rebuild when enabling — user must start indexing from Settings.
     if (this.enabled && this.backend?.isReady?.()) {
       void this.ensureLoaded();
     }
@@ -264,25 +275,66 @@ class AdvancedSearchEngine {
     }
   }
 
+  private async loadLucivyApi(): Promise<LucivyApi> {
+    if (this.lucivyApi) return this.lucivyApi;
+    this.lucivyApi = await import('./lucivyBackend');
+    return this.lucivyApi;
+  }
+
+  private assertIsolation(): void {
+    if (!isSearchIsolationReady()) {
+      throw new Error(
+        searchIsolationBlockedReason() ||
+          'Cross-origin isolation required for Lucivy search index',
+      );
+    }
+  }
+
   async ensureLoaded(): Promise<void> {
-    if (this.loaded) return;
+    if (this.loaded && this.lucivyReady) return;
     if (!this.backend?.isReady?.()) return;
     try {
-      this.index = await loadIndexFromVault(this.backend);
-      // Legacy manifests without `initialized`: treat non-empty docs as initialized.
-      if (
-        this.index.manifest.initialized !== true &&
-        this.index.docs.size > 0
-      ) {
-        this.index.manifest.initialized = true;
+      if (!isSearchIsolationReady()) {
+        const { index } = await loadDocsAndManifestFromVault(this.backend);
+        this.index = index;
+        this.docIdMap = hydrateDocIdMapFromDocs(
+          index.docs,
+          index.manifest.nextNumericId,
+        );
+        this.loaded = true;
+        this.lucivyReady = false;
+        this.lastError = searchIsolationBlockedReason();
+        this.emit();
+        return;
       }
+
+      const { index, luceGz } = await loadDocsAndManifestFromVault(this.backend);
+      this.index = index;
+      this.docIdMap = hydrateDocIdMapFromDocs(
+        index.docs,
+        index.manifest.nextNumericId,
+      );
+
+      const api = await this.loadLucivyApi();
+      let snapshot: Uint8Array | null = null;
+      if (luceGz?.byteLength) {
+        try {
+          snapshot = gunzipBytes(luceGz);
+        } catch {
+          snapshot = null;
+        }
+      }
+      await api.openOrCreateLucivyIndex(snapshot);
+      this.lucivyReady = true;
       this.loaded = true;
       this.lastError = null;
       this.emit();
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : String(err);
       this.index = emptyIndex();
+      this.docIdMap = emptyDocIdMap();
       this.loaded = true;
+      this.lucivyReady = false;
       this.emit();
     }
   }
@@ -297,9 +349,15 @@ class AdvancedSearchEngine {
   }
 
   async persistNow(): Promise<void> {
-    if (!this.enabled || !this.backend?.isReady?.()) return;
+    if (!this.enabled || !this.backend?.isReady?.() || !this.lucivyReady) return;
     try {
-      await saveIndexToVault(this.backend, this.index);
+      this.assertIsolation();
+      const api = await this.loadLucivyApi();
+      await api.lucivyCommit();
+      const snapshot = await api.lucivyExportSnapshot();
+      recountManifest(this.index);
+      this.index.manifest.nextNumericId = this.docIdMap.nextNumericId;
+      await saveIndexToVault(this.backend, this.index, snapshot);
       this.dirty = false;
       this.lastError = null;
       this.emit();
@@ -315,11 +373,10 @@ class AdvancedSearchEngine {
       this.persistTimer = null;
     }
     this.cancelRequested = true;
-    if (this.workerClient) {
-      void this.workerClient.cancel();
-    }
     this.index = emptyIndex();
+    this.docIdMap = emptyDocIdMap();
     this.loaded = true;
+    this.lucivyReady = false;
     this.dirty = false;
     this.buildProgress = null;
     this.lastBuildCancelled = false;
@@ -332,6 +389,15 @@ class AdvancedSearchEngine {
         // ignore
       }
     }
+    try {
+      if (this.lucivyApi) {
+        await this.lucivyApi.destroyLucivyIndex();
+        this.lucivyApi.terminateLucivyRuntime();
+        this.lucivyApi = null;
+      }
+    } catch {
+      // ignore
+    }
     if (this.backend?.isReady?.()) {
       try {
         await clearIndexInVault(this.backend);
@@ -343,42 +409,6 @@ class AdvancedSearchEngine {
     this.emit();
   }
 
-  private getWorker(): IndexWorkerClient | null {
-    if (this.workerInitFailed) return null;
-    if (this.workerClient === undefined) {
-      this.workerClient = IndexWorkerClient.tryCreate({
-        onLog: (level, message) => {
-          this.appendLog(level, message);
-          this.emitBuildProgress();
-        },
-      });
-      if (!this.workerClient) this.workerInitFailed = true;
-    }
-    return this.workerClient;
-  }
-
-  private async ensureWorkerReady(): Promise<IndexWorkerClient | null> {
-    const client = this.getWorker();
-    if (!client) return null;
-    if (this.workerReady) return client;
-    try {
-      await client.init();
-      this.workerReady = true;
-      return client;
-    } catch (err) {
-      console.warn('[advancedSearch] worker init failed; using main thread', err);
-      this.workerInitFailed = true;
-      this.workerReady = false;
-      client.dispose();
-      this.workerClient = null;
-      return null;
-    }
-  }
-
-  /**
-   * Refresh whether an IndexedDB rebuild checkpoint exists for the current storage.
-   * Does not start a rebuild — UI asks the user to resume or start over.
-   */
   async refreshCheckpointStatus(): Promise<void> {
     if (!this.storageKey) {
       this.hasCheckpoint = false;
@@ -407,7 +437,6 @@ class AdvancedSearchEngine {
     this.emit();
   }
 
-  /** Snapshot of the current rebuild checkpoint, if any. */
   async getRebuildCheckpointInfo(): Promise<RebuildCheckpointInfo | null> {
     if (!this.storageKey) return null;
     try {
@@ -426,12 +455,11 @@ class AdvancedSearchEngine {
     }
   }
 
-  /** @deprecated Use refreshCheckpointStatus — auto-resume removed in favor of user choice. */
+  /** @deprecated Use refreshCheckpointStatus */
   async maybeResumeRebuild(): Promise<void> {
     await this.refreshCheckpointStatus();
   }
 
-  /** Request stop of the in-progress full rebuild (checkpoint is kept for resume). */
   cancelRebuild(): void {
     if (!this.building) return;
     this.cancelRequested = true;
@@ -443,28 +471,6 @@ class AdvancedSearchEngine {
     if (this.cancelRequested) {
       throw new RebuildCancelledError();
     }
-  }
-
-  private async flushCheckpointBeforeCancel(
-    exportSnap: () => Promise<{ postingsGz: Uint8Array; docsGz: Uint8Array }>,
-    processedFilePaths: string[],
-    processedChatPaths: string[],
-  ): Promise<void> {
-    if (!this.cancelRequested) return;
-    try {
-      if (processedFilePaths.length + processedChatPaths.length > 0) {
-        const snap = await exportSnap();
-        await this.writeCheckpoint(
-          processedFilePaths,
-          processedChatPaths,
-          snap.postingsGz,
-          snap.docsGz,
-        );
-      }
-    } catch (err) {
-      console.warn('[advancedSearch] checkpoint flush on cancel failed', err);
-    }
-    throw new RebuildCancelledError();
   }
 
   private async loadCompatibleCheckpoint(): Promise<RebuildCheckpointRecord | null> {
@@ -494,17 +500,19 @@ class AdvancedSearchEngine {
   private async writeCheckpoint(
     processedFilePaths: string[],
     processedChatPaths: string[],
-    postingsGz: Uint8Array,
-    docsGz: Uint8Array,
   ): Promise<void> {
-    if (!this.storageKey) return;
+    if (!this.storageKey || !this.lucivyApi) return;
     try {
+      await this.lucivyApi.lucivyCommit();
+      const snapshot = await this.lucivyApi.lucivyExportSnapshot();
+      const luceGz = await gzipBytes(snapshot);
+      const docsGz = await gzipJsonBytes(docsToObject(this.index.docs));
       await saveRebuildCheckpoint({
         key: this.storageKey,
         includeOtherFiles: this.includeOtherFiles,
         processedFilePaths: [...processedFilePaths],
         processedChatPaths: [...processedChatPaths],
-        postingsGz,
+        luceGz,
         docsGz,
       });
       this.appendLog(
@@ -519,30 +527,21 @@ class AdvancedSearchEngine {
     }
   }
 
-  private async checkpointFromIndex(
-    index: InMemoryIndex,
+  private async flushCheckpointBeforeCancel(
     processedFilePaths: string[],
     processedChatPaths: string[],
   ): Promise<void> {
-    const [postingsGz, docsGz] = await Promise.all([
-      gzipJsonBytes(postingsToObject(index.postings)),
-      gzipJsonBytes(docsToObject(index.docs)),
-    ]);
-    await this.writeCheckpoint(
-      processedFilePaths,
-      processedChatPaths,
-      postingsGz,
-      docsGz,
-    );
+    if (!this.cancelRequested) return;
+    try {
+      if (processedFilePaths.length + processedChatPaths.length > 0) {
+        await this.writeCheckpoint(processedFilePaths, processedChatPaths);
+      }
+    } catch (err) {
+      console.warn('[advancedSearch] checkpoint flush on cancel failed', err);
+    }
+    throw new RebuildCancelledError();
   }
 
-  /**
-   * Full vault index build.
-   * Prefer Web Worker for CPU work; fall back to main-thread path if unavailable.
-   * Mid-build progress is checkpointed to IndexedDB so interrupted builds can resume.
-   *
-   * Pass `{ resume: true }` to continue a checkpoint, or `{ resume: false }` to discard it.
-   */
   async rebuild(options: RebuildOptions = {}): Promise<void> {
     if (!this.enabled) {
       this.appendLog('warn', '역색인이 꺼져 있어 색인을 시작할 수 없습니다.');
@@ -551,6 +550,16 @@ class AdvancedSearchEngine {
     }
     if (!this.backend?.isReady?.()) {
       this.appendLog('warn', '저장소가 준비되지 않아 색인을 시작할 수 없습니다.');
+      this.emit();
+      return;
+    }
+    if (!isSearchIsolationReady()) {
+      this.appendLog(
+        'error',
+        searchIsolationBlockedReason() ||
+          'Cross-origin isolation required (COOP/COEP).',
+      );
+      this.lastError = searchIsolationBlockedReason();
       this.emit();
       return;
     }
@@ -569,8 +578,8 @@ class AdvancedSearchEngine {
     this.appendLog(
       'info',
       this.includeOtherFiles
-        ? '색인 시작 (Markdown + 기타 텍스트)'
-        : '색인 시작 (Markdown만)',
+        ? '색인 시작 (Markdown + 기타 텍스트, Lucivy)'
+        : '색인 시작 (Markdown만, Lucivy)',
     );
     this.emit();
 
@@ -601,29 +610,10 @@ class AdvancedSearchEngine {
         this.hasCheckpoint = false;
         this.checkpointProcessedCount = 0;
       } else if (checkpoint && options.resume !== false) {
-        // resume === true or undefined with existing checkpoint → resume
         this.appendLog('info', '저장된 체크포인트에서 이어서 색인합니다.');
       }
 
-      const worker = await this.ensureWorkerReady();
-      if (worker) {
-        await this.rebuildWithWorker(
-          worker,
-          filePaths,
-          chatDayPaths,
-          total,
-          checkpoint,
-        );
-      } else {
-        this.appendLog('warn', 'Web Worker 불가 — 메인 스레드에서 색인합니다.');
-        this.emit();
-        await this.rebuildOnMainThread(
-          filePaths,
-          chatDayPaths,
-          total,
-          checkpoint,
-        );
-      }
+      await this.rebuildWithLucivy(filePaths, chatDayPaths, total, checkpoint);
       await this.clearCheckpoint();
       this.hasCheckpoint = false;
       this.checkpointProcessedCount = 0;
@@ -640,9 +630,6 @@ class AdvancedSearchEngine {
         this.appendLog('error', `색인 실패: ${this.lastError}`);
       }
     } finally {
-      if (this.workerClient) {
-        void this.workerClient.cancel();
-      }
       this.cancelRequested = false;
       this.building = false;
       this.buildProgress = null;
@@ -654,13 +641,13 @@ class AdvancedSearchEngine {
     }
   }
 
-  private async rebuildWithWorker(
-    worker: IndexWorkerClient,
+  private async rebuildWithLucivy(
     filePaths: string[],
     chatDayPaths: string[],
     total: number,
     checkpoint: RebuildCheckpointRecord | null,
   ): Promise<void> {
+    const api = await this.loadLucivyApi();
     const processedFiles = new Set(
       checkpoint?.processedFilePaths?.filter((p) => filePaths.includes(p)) || [],
     );
@@ -677,174 +664,48 @@ class AdvancedSearchEngine {
         `체크포인트에서 재개 (파일 ${processedFiles.size}/${filePaths.length} · 채팅 ${processedChats.size}/${chatDayPaths.length})`,
       );
       this.emit();
-      await worker.startRebuildFromCheckpoint(
-        checkpoint.postingsGz,
-        checkpoint.docsGz,
-        filePaths,
-        chatDayPaths,
+      const snapshot = gunzipBytes(checkpoint.luceGz);
+      const { gunzipSync, strFromU8 } = await import('fflate');
+      let docsMap = new Map<string, import('./types').DocMeta>();
+      try {
+        const raw = gunzipSync(checkpoint.docsGz);
+        docsMap = new Map(
+          Object.entries(
+            JSON.parse(strFromU8(raw)) as Record<
+              string,
+              import('./types').DocMeta
+            >,
+          ),
+        );
+      } catch {
+        docsMap = new Map();
+      }
+      this.index = {
+        docs: docsMap,
+        manifest: {
+          ...emptyIndex().manifest,
+          initialized: false,
+        },
+      };
+      this.docIdMap = hydrateDocIdMapFromDocs(
+        this.index.docs,
+        this.index.manifest.nextNumericId,
       );
+      await api.openOrCreateLucivyIndex(snapshot);
+      await pruneIndexToPaths(this.index, this.docIdMap, filePaths, chatDayPaths, {
+        skipRecount: true,
+      });
     } else {
-      this.appendLog('info', 'Web Worker에서 색인 중…');
+      this.appendLog('info', 'Lucivy OPFS 인덱스 생성 중…');
       this.emit();
-      await worker.startRebuild();
+      this.index = emptyIndex();
+      this.docIdMap = emptyDocIdMap();
+      await api.destroyLucivyIndex();
+      await api.openOrCreateLucivyIndex(null);
     }
 
-    let n = processedFiles.size + processedChats.size;
-    this.buildProgress = n / total;
-    this.emitBuildProgress(true);
-
-    let fileOk = processedFiles.size;
-    let fileFail = 0;
-    let sinceCheckpoint = 0;
-    for (const path of remainingFiles) {
-      this.assertNotCancelled();
-      try {
-        const { text: raw } = (await this.backend!.readText?.(path)) || { text: '' };
-        const text = indexableEncMdBody(path, raw);
-        await worker.processFile(path, text);
-        fileOk += 1;
-        this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
-      } catch (err) {
-        if (err instanceof RebuildCancelledError) throw err;
-        fileFail += 1;
-        const msg = err instanceof Error ? err.message : String(err);
-        this.appendLog('warn', `[파일 실패] ${path} — ${msg}`);
-      }
-      processedFiles.add(path);
-      n += 1;
-      sinceCheckpoint += 1;
-      this.buildProgress = n / total;
-      this.emitBuildProgress();
-      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-        const snap = await worker.exportCheckpoint();
-        await this.writeCheckpoint(
-          [...processedFiles],
-          [...processedChats],
-          snap.postingsGz,
-          snap.docsGz,
-        );
-        sinceCheckpoint = 0;
-      }
-      if (this.cancelRequested) {
-        await this.flushCheckpointBeforeCancel(
-          () => worker.exportCheckpoint(),
-          [...processedFiles],
-          [...processedChats],
-        );
-      }
-    }
-    this.appendLog(
-      'info',
-      `파일 색인 완료 (성공 ${fileOk} · 실패 ${fileFail})`,
-    );
-    this.emitBuildProgress(true);
-
-    let chatOk = processedChats.size;
-    let chatFail = 0;
-    for (const path of remainingChats) {
-      this.assertNotCancelled();
-      try {
-        const { text } = (await this.backend!.readText?.(path)) || { text: '' };
-        const changed = await worker.processChatDay(path, text);
-        chatOk += 1;
-        this.appendLog(
-          'ok',
-          `[채팅] ${chatOk}/${chatDayPaths.length} ${path} (+${changed})`,
-        );
-      } catch (err) {
-        if (err instanceof RebuildCancelledError) throw err;
-        chatFail += 1;
-        const msg = err instanceof Error ? err.message : String(err);
-        this.appendLog('warn', `[채팅 실패] ${path} — ${msg}`);
-      }
-      processedChats.add(path);
-      n += 1;
-      sinceCheckpoint += 1;
-      this.buildProgress = n / total;
-      this.emitBuildProgress();
-      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-        const snap = await worker.exportCheckpoint();
-        await this.writeCheckpoint(
-          [...processedFiles],
-          [...processedChats],
-          snap.postingsGz,
-          snap.docsGz,
-        );
-        sinceCheckpoint = 0;
-      }
-      if (this.cancelRequested) {
-        await this.flushCheckpointBeforeCancel(
-          () => worker.exportCheckpoint(),
-          [...processedFiles],
-          [...processedChats],
-        );
-      }
-    }
-    this.assertNotCancelled();
-    this.appendLog(
-      'info',
-      `채팅 색인 완료 (day 성공 ${chatOk} · 실패 ${chatFail})`,
-    );
-
-    this.appendLog('info', '압축·저장 중…');
-    this.buildProgress = 1;
-    this.emit();
-    const { manifest, postingsGz, docsGz } = await worker.finalize();
-    this.appendLog(
-      'info',
-      `저장 중… (파일 문서 ${manifest.fileCount} · 채팅 문서 ${manifest.chatCount})`,
-    );
-    this.emit();
-    // Keep copies for hydrate in case a storage backend mutates buffers.
-    const postingsCopy = postingsGz.slice();
-    const docsCopy = docsGz.slice();
-    await saveIndexBlobsToVault(this.backend!, manifest, postingsGz, docsGz);
-    this.index = hydrateIndexFromBlobs(manifest, postingsCopy, docsCopy);
+    this.lucivyReady = true;
     this.loaded = true;
-    this.dirty = false;
-    this.lastError = null;
-    this.appendLog('ok', '색인 저장 완료 (.advanced-search/) [Worker]');
-  }
-
-  private async rebuildOnMainThread(
-    filePaths: string[],
-    chatDayPaths: string[],
-    total: number,
-    checkpoint: RebuildCheckpointRecord | null,
-  ): Promise<void> {
-    this.appendLog('info', '한국어 토크나이저(garu-ko) 로드 중…');
-    this.emit();
-    await ensureGaru();
-    this.appendLog('ok', '토크나이저 준비 완료');
-    this.emit();
-
-    const processedFiles = new Set(
-      checkpoint?.processedFilePaths?.filter((p) => filePaths.includes(p)) || [],
-    );
-    const processedChats = new Set(
-      checkpoint?.processedChatPaths?.filter((p) => chatDayPaths.includes(p)) ||
-        [],
-    );
-    const remainingFiles = filePaths.filter((p) => !processedFiles.has(p));
-    const remainingChats = chatDayPaths.filter((p) => !processedChats.has(p));
-
-    let next: InMemoryIndex;
-    if (checkpoint) {
-      this.appendLog(
-        'info',
-        `체크포인트에서 재개 (파일 ${processedFiles.size}/${filePaths.length} · 채팅 ${processedChats.size}/${chatDayPaths.length})`,
-      );
-      this.emit();
-      next = hydrateIndexFromBlobs(
-        emptyIndex().manifest,
-        checkpoint.postingsGz,
-        checkpoint.docsGz,
-      );
-      next.manifest.initialized = false;
-      pruneIndexToPaths(next, filePaths, chatDayPaths, { skipRecount: true });
-    } else {
-      next = emptyIndex();
-    }
 
     const bulk = { skipRecount: true as const };
     let n = processedFiles.size + processedChats.size;
@@ -857,9 +718,11 @@ class AdvancedSearchEngine {
     for (const path of remainingFiles) {
       this.assertNotCancelled();
       try {
-        const { text: raw } = (await this.backend!.readText?.(path)) || { text: '' };
+        const { text: raw } = (await this.backend!.readText?.(path)) || {
+          text: '',
+        };
         const text = indexableEncMdBody(path, raw);
-        await upsertFileDocument(next, path, text, bulk);
+        await upsertFileDocument(this.index, this.docIdMap, path, text, bulk);
         fileOk += 1;
         this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
       } catch (err) {
@@ -874,20 +737,11 @@ class AdvancedSearchEngine {
       this.buildProgress = n / total;
       this.emitBuildProgress();
       if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-        await this.checkpointFromIndex(next, [...processedFiles], [
-          ...processedChats,
-        ]);
+        await this.writeCheckpoint([...processedFiles], [...processedChats]);
         sinceCheckpoint = 0;
       }
       if (this.cancelRequested) {
         await this.flushCheckpointBeforeCancel(
-          async () => {
-            const [postingsGz, docsGz] = await Promise.all([
-              gzipJsonBytes(postingsToObject(next.postings)),
-              gzipJsonBytes(docsToObject(next.docs)),
-            ]);
-            return { postingsGz, docsGz };
-          },
           [...processedFiles],
           [...processedChats],
         );
@@ -906,11 +760,17 @@ class AdvancedSearchEngine {
       this.assertNotCancelled();
       try {
         const { text } = (await this.backend!.readText?.(path)) || { text: '' };
-        const changed = await upsertChatDayDocuments(next, path, text, {
-          ...bulk,
-          yieldEvery: 8,
-          yieldFn: yieldToMain,
-        });
+        const changed = await upsertChatDayDocuments(
+          this.index,
+          this.docIdMap,
+          path,
+          text,
+          {
+            ...bulk,
+            yieldEvery: 8,
+            yieldFn: yieldToMain,
+          },
+        );
         chatOk += 1;
         this.appendLog(
           'ok',
@@ -928,20 +788,11 @@ class AdvancedSearchEngine {
       this.buildProgress = n / total;
       this.emitBuildProgress();
       if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-        await this.checkpointFromIndex(next, [...processedFiles], [
-          ...processedChats,
-        ]);
+        await this.writeCheckpoint([...processedFiles], [...processedChats]);
         sinceCheckpoint = 0;
       }
       if (this.cancelRequested) {
         await this.flushCheckpointBeforeCancel(
-          async () => {
-            const [postingsGz, docsGz] = await Promise.all([
-              gzipJsonBytes(postingsToObject(next.postings)),
-              gzipJsonBytes(docsToObject(next.docs)),
-            ]);
-            return { postingsGz, docsGz };
-          },
           [...processedFiles],
           [...processedChats],
         );
@@ -954,25 +805,20 @@ class AdvancedSearchEngine {
       `채팅 색인 완료 (day 성공 ${chatOk} · 실패 ${chatFail})`,
     );
 
-    recountManifest(next);
-    next.manifest.initialized = true;
-    this.index = next;
-    this.loaded = true;
+    recountManifest(this.index);
+    this.index.manifest.initialized = true;
+    this.index.manifest.nextNumericId = this.docIdMap.nextNumericId;
     this.dirty = true;
     this.buildProgress = 1;
     this.appendLog(
       'info',
-      `저장 중… (파일 문서 ${next.manifest.fileCount} · 채팅 문서 ${next.manifest.chatCount})`,
+      `저장 중… (파일 문서 ${this.index.manifest.fileCount} · 채팅 문서 ${this.index.manifest.chatCount})`,
     );
     this.emit();
     await this.persistNow();
-    this.appendLog('ok', '색인 저장 완료 (.advanced-search/)');
+    this.appendLog('ok', '색인 저장 완료 (.advanced-search/index.luce.gz)');
   }
 
-  /**
-   * Incremental update for one saved file.
-   * Runs whenever indexing is enabled (even if a full vault rebuild has never run).
-   */
   async indexFile(path: string, content: string): Promise<void> {
     if (!this.enabled) return;
     if (
@@ -980,62 +826,31 @@ class AdvancedSearchEngine {
     ) {
       return;
     }
+    if (!isSearchIsolationReady()) return;
     await this.ensureLoaded();
+    if (!this.lucivyReady) return;
 
-    const worker = await this.ensureWorkerReady();
-    if (worker) {
-      const docId = fileDocId(path);
-      const existingHash = this.index.docs.get(docId)?.contentHash ?? null;
-      const patch = await worker.upsertFile(path, content, existingHash);
-      if (applyFileUpsertPatch(this.index, patch)) {
-        this.index.manifest.initialized = true;
-        this.schedulePersist();
-      }
-      return;
-    }
-
-    const changed = await upsertFileDocument(this.index, path, content);
+    const changed = await upsertFileDocument(
+      this.index,
+      this.docIdMap,
+      path,
+      content,
+    );
     if (changed) {
       this.index.manifest.initialized = true;
       this.schedulePersist();
     }
   }
 
-  /**
-   * Incremental update for one chat day.
-   * Runs whenever indexing is enabled (even if a full vault rebuild has never run).
-   */
   async indexChatDay(dateStrOrPath: string, content: string): Promise<void> {
     if (!this.enabled) return;
+    if (!isSearchIsolationReady()) return;
     await this.ensureLoaded();
-
-    const worker = await this.ensureWorkerReady();
-    if (worker) {
-      const dateStr =
-        chatDateFromPath(dateStrOrPath) ||
-        (/^\d{4}-\d{2}-\d{2}$/.test(dateStrOrPath) ? dateStrOrPath : null);
-      const existingHashes: Record<string, string> = {};
-      if (dateStr) {
-        for (const [docId, meta] of this.index.docs) {
-          if (meta.kind === 'chat' && meta.dateStr === dateStr) {
-            existingHashes[docId] = meta.contentHash;
-          }
-        }
-      }
-      const patch = await worker.upsertChatDay(
-        dateStrOrPath,
-        content,
-        existingHashes,
-      );
-      if (applyChatUpsertPatch(this.index, patch) > 0) {
-        this.index.manifest.initialized = true;
-        this.schedulePersist();
-      }
-      return;
-    }
+    if (!this.lucivyReady) return;
 
     const changed = await upsertChatDayDocuments(
       this.index,
+      this.docIdMap,
       dateStrOrPath,
       content,
     );
@@ -1045,7 +860,9 @@ class AdvancedSearchEngine {
     }
   }
 
-  private async handleChangeEvent(event: AdvancedSearchChangeEvent): Promise<void> {
+  private async handleChangeEvent(
+    event: AdvancedSearchChangeEvent,
+  ): Promise<void> {
     if (event.type === 'rebuild') {
       await this.rebuild();
       return;
@@ -1077,6 +894,21 @@ class AdvancedSearchEngine {
       trees,
       index: this.index,
       indexEnabled: useIndex,
+      lucivySearch: useIndex
+        ? async (terms, lim) => {
+            const api = await this.loadLucivyApi();
+            const q = api.buildContainsAndQuery('body', terms);
+            if (!q) return [];
+            const hits = await api.lucivySearch(q, { limit: lim });
+            return hits
+              .map((h) => {
+                const docId = this.docIdMap.numericToString.get(h.docId);
+                if (!docId) return null;
+                return { docId, score: h.score };
+              })
+              .filter((x): x is { docId: string; score: number } => x != null);
+          }
+        : null,
       limit,
       ...(commandContext ? { commandContext } : {}),
     });
@@ -1086,9 +918,12 @@ class AdvancedSearchEngine {
     this.unsub?.();
     this.unsub = null;
     if (this.persistTimer) clearTimeout(this.persistTimer);
-    this.workerClient?.dispose();
-    this.workerClient = null;
-    this.workerReady = false;
+    try {
+      this.lucivyApi?.terminateLucivyRuntime();
+    } catch {
+      // ignore
+    }
+    this.lucivyApi = null;
   }
 }
 

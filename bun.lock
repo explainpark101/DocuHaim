@@ -33,6 +33,7 @@
         "@zip.js/zip.js": "^2.8.26",
         "baseline-browser-mapping": "^2.11.12",
         "caniuse-lite": "^1.0.30001806",
+        "coi-serviceworker": "^0.1.7",
         "cropperjs": "2.1.1",
         "dexie": "^4.3.0",
         "embla-carousel-react": "^8.6.0",
@@ -41,6 +42,7 @@
         "garu-ko": "^0.9.14",
         "js-yaml": "^5.2.3",
         "lucide-react": "^0.576.0",
+        "lucivy-wasm": "^2.0.1",
         "markdown-it": "15.0.0",
         "md-editor-rt": "^6.3.1",
         "mermaid": "^11.17.0",
@@ -1378,6 +1380,8 @@
 
     "codemirror": ["codemirror@6.0.2", "", { "dependencies": { "@codemirror/autocomplete": "^6.0.0", "@codemirror/commands": "^6.0.0", "@codemirror/language": "^6.0.0", "@codemirror/lint": "^6.0.0", "@codemirror/search": "^6.0.0", "@codemirror/state": "^6.0.0", "@codemirror/view": "^6.0.0" } }, "sha512-VhydHotNW5w1UGK0Qj96BwSk/Zqbp9WbnyK2W/eVMv4QyF41INRGpjUhFJY7/uDNuudSc33a/PKr4iDqRduvHw=="],
 
+    "coi-serviceworker": ["coi-serviceworker@0.1.7", "", {}, "sha512-bjSUqEngCPOkErY2vbyWsaIGCNRODYzlNycaREVw5s12/C8SM+RnRUUeX6pZbTtov6C52ZLY/+tvHK+BDxuUuA=="],
+
     "color-convert": ["color-convert@2.0.1", "", { "dependencies": { "color-name": "~1.1.4" } }, "sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ=="],
 
     "color-name": ["color-name@1.1.4", "", {}, "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA=="],
@@ -1893,6 +1897,8 @@
     "lucide-react": ["lucide-react@0.576.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-koNxU14BXrxUfZQ9cUaP0ES1uyPZKYDjk31FQZB6dQ/x+tXk979sVAn9ppZ/pVeJJyOxVM8j1E+8QEuSc02Vug=="],
 
     "lucide-vue-next": ["lucide-vue-next@0.543.0", "", { "peerDependencies": { "vue": ">=3.0.1" } }, "sha512-Az5kpNm/koKAwSNIKjsZ4uHV2tVfmlQlcHwFBygQ8gc5/jFg7An9OrxgDy/aE5m+HLx7VfLYqDxLr8gWecZbQA=="],
+
+    "lucivy-wasm": ["lucivy-wasm@2.0.1", "", {}, "sha512-5gRn6meOzFSSB88FD5yTPVfc3hrph7aZ17vcdwaQ26cx1UIT0ev3rromcwmCB/304FCoXXQhcVGVRxipCDa0/g=="],
 
     "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
 

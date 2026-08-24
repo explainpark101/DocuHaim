@@ -78,6 +78,17 @@ async function bootstrap() {
   const canRender = await ensureLatestAppBuild()
   if (!canRender) return
 
+  // Tell the controlling SW (PWA or coi-serviceworker) to use credentialless COEP.
+  // Same message protocol as https://github.com/gzuidhof/coi-serviceworker
+  try {
+    navigator.serviceWorker?.controller?.postMessage({
+      type: 'coepCredentialless',
+      value: true,
+    })
+  } catch {
+    // ignore
+  }
+
   const root = document.getElementById('root')
   if (!root) return
 

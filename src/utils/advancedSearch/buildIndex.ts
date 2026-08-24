@@ -1,14 +1,24 @@
 import { parseDayFile } from '@/utils/chatWithMyself/format.js';
 import { hashText } from './hash';
-import { pathBasename, scrubTextForIndex } from './scrubText';
-import { tokenizeForIndex, ensureGaru } from './tokenize';
 import { chatDocId, fileDocId } from './paths';
 import { recountManifest, type DocMeta, type InMemoryIndex } from './types';
 import { chatDateFromPath } from './collectSources';
-import type {
-  ChatUpsertPatch,
-  FileUpsertPatch,
-} from './indexWorkerProtocol';
+import {
+  allocateNumericId,
+  getNumericId,
+  releaseDocId,
+  type DocIdMapState,
+} from './docIdMap';
+import {
+  lucivyAdd,
+  lucivyRemove,
+  lucivyUpdate,
+  type LucivyDocFields,
+} from './lucivyBackend';
+import {
+  prepareChatLucivyFields,
+  prepareFileLucivyFields,
+} from './prepareDocument';
 
 export type UpsertOptions = {
   /** Skip recountManifest (bulk rebuild should recount once at the end). */
@@ -16,87 +26,69 @@ export type UpsertOptions = {
   /** Yield to the event loop every N chat messages (bulk rebuild). */
   yieldEvery?: number;
   yieldFn?: () => Promise<void>;
+  /** When false, only update docs map (Lucivy already written). Default true. */
+  writeLucivy?: boolean;
 };
 
-function removeDocFromPostings(
-  postings: Map<string, Set<string>>,
+async function writeLucivyDoc(
+  map: DocIdMapState,
   docId: string,
-): void {
-  for (const [term, set] of postings) {
-    if (!set.delete(docId)) continue;
-    if (set.size === 0) postings.delete(term);
-  }
-}
-
-function addTermsToPostings(
-  postings: Map<string, Set<string>>,
-  docId: string,
-  terms: string[],
-): void {
-  for (const term of terms) {
-    let set = postings.get(term);
-    if (!set) {
-      set = new Set();
-      postings.set(term, set);
-    }
-    set.add(docId);
-  }
-}
-
-function previewFromText(text: string, max = 120): string {
-  const t = String(text || '').replace(/\s+/g, ' ').trim();
-  if (t.length <= max) return t;
-  return `${t.slice(0, max)}…`;
+  fields: LucivyDocFields,
+  existed: boolean,
+): Promise<number> {
+  const numericId = allocateNumericId(map, docId);
+  if (existed) await lucivyUpdate(numericId, fields);
+  else await lucivyAdd(numericId, fields);
+  return numericId;
 }
 
 export async function upsertFileDocument(
   index: InMemoryIndex,
+  map: DocIdMapState,
   path: string,
   content: string,
   options: UpsertOptions = {},
 ): Promise<boolean> {
-  await ensureGaru();
   const docId = fileDocId(path);
   const contentHash = await hashText(content);
   const existing = index.docs.get(docId);
   if (existing?.contentHash === contentHash) return false;
 
-  // Only scrub old postings when replacing an existing doc (avoid O(V) scan for new docs).
-  if (existing) removeDocFromPostings(index.postings, docId);
-
-  const scrubbed = scrubTextForIndex(content);
-  const name = pathBasename(path);
-  const pathParts = String(path || '')
-    .split(/[/\\]/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const terms = tokenizeForIndex(scrubbed.text, [
-    ...scrubbed.extraTerms,
-    name,
-    path,
-    ...pathParts,
-  ]);
-  addTermsToPostings(index.postings, docId, terms);
+  const prepared = await prepareFileLucivyFields(path, content);
+  const writeLucivy = options.writeLucivy !== false;
+  let numericId = existing?.numericId ?? getNumericId(map, docId) ?? undefined;
+  if (writeLucivy) {
+    numericId = await writeLucivyDoc(
+      map,
+      docId,
+      prepared.fields,
+      Boolean(existing),
+    );
+  } else if (numericId == null) {
+    numericId = allocateNumericId(map, docId);
+  }
 
   const meta: DocMeta = {
     kind: 'file',
     path,
-    title: name,
-    preview: previewFromText(scrubbed.text),
+    title: prepared.title,
+    preview: prepared.preview,
     contentHash,
+    numericId,
   };
   index.docs.set(docId, meta);
+  index.manifest.nextNumericId = map.nextNumericId;
   if (!options.skipRecount) recountManifest(index);
   return true;
 }
 
 export async function upsertChatDayDocuments(
   index: InMemoryIndex,
+  map: DocIdMapState,
   dayPathOrDate: string,
   content: string,
   options: UpsertOptions = {},
 ): Promise<number> {
-  await ensureGaru();
   const dateStr =
     chatDateFromPath(dayPathOrDate) ||
     (/^\d{4}-\d{2}-\d{2}$/.test(dayPathOrDate) ? dayPathOrDate : null);
@@ -104,13 +96,18 @@ export async function upsertChatDayDocuments(
 
   const { messages } = parseDayFile(content);
   let changed = 0;
+  const writeLucivy = options.writeLucivy !== false;
 
-  // Drop stale chat docs for this day that no longer exist
   for (const [docId, meta] of index.docs) {
     if (meta.kind !== 'chat' || meta.dateStr !== dateStr) continue;
     const still = messages.some((m: { id?: string }) => m.id === meta.messageId);
     if (!still) {
-      removeDocFromPostings(index.postings, docId);
+      if (writeLucivy) {
+        const n = releaseDocId(map, docId) ?? meta.numericId;
+        if (typeof n === 'number') await lucivyRemove(n);
+      } else {
+        releaseDocId(map, docId);
+      }
       index.docs.delete(docId);
       changed += 1;
     }
@@ -137,23 +134,34 @@ export async function upsertChatDayDocuments(
       continue;
     }
 
-    if (existing) removeDocFromPostings(index.postings, docId);
-    const scrubbed = scrubTextForIndex(body);
-    const terms = tokenizeForIndex(
-      `${group} ${scrubbed.text}`,
-      scrubbed.extraTerms,
-    );
-    addTermsToPostings(index.postings, docId, terms);
+    const prepared = await prepareChatLucivyFields({
+      dateStr,
+      messageId,
+      group,
+      body,
+    });
+    let numericId = existing?.numericId ?? getNumericId(map, docId) ?? undefined;
+    if (writeLucivy) {
+      numericId = await writeLucivyDoc(
+        map,
+        docId,
+        prepared.fields,
+        Boolean(existing),
+      );
+    } else if (numericId == null) {
+      numericId = allocateNumericId(map, docId);
+    }
 
     index.docs.set(docId, {
       kind: 'chat',
       path: `.chat-with-myself/${dateStr}.md`,
-      title: group || 'chat',
+      title: prepared.title,
       dateStr,
       messageId,
       group,
-      preview: previewFromText(scrubbed.text || body),
+      preview: prepared.preview,
       contentHash,
+      numericId,
     });
     changed += 1;
 
@@ -162,176 +170,39 @@ export async function upsertChatDayDocuments(
     }
   }
 
+  index.manifest.nextNumericId = map.nextNumericId;
   if (changed > 0 && !options.skipRecount) recountManifest(index);
   return changed;
 }
 
-/**
- * Compute a file upsert patch without mutating an index (Worker incremental path).
- */
-export async function computeFileUpsertPatch(
-  path: string,
-  content: string,
-  existingHash?: string | null,
-): Promise<FileUpsertPatch> {
-  await ensureGaru();
-  const docId = fileDocId(path);
-  const contentHash = await hashText(content);
-  if (existingHash && existingHash === contentHash) {
-    return { changed: false, docId };
-  }
-
-  const scrubbed = scrubTextForIndex(content);
-  const name = pathBasename(path);
-  const pathParts = String(path || '')
-    .split(/[/\\]/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const terms = tokenizeForIndex(scrubbed.text, [
-    ...scrubbed.extraTerms,
-    name,
-    path,
-    ...pathParts,
-  ]);
-  const meta: DocMeta = {
-    kind: 'file',
-    path,
-    title: name,
-    preview: previewFromText(scrubbed.text),
-    contentHash,
-  };
-  return { changed: true, docId, meta, terms };
-}
-
-/**
- * Compute a chat-day upsert patch without mutating an index (Worker incremental).
- * `existingHashes` is docId → contentHash for chat docs already on this day.
- */
-export async function computeChatUpsertPatch(
-  dayPathOrDate: string,
-  content: string,
-  existingHashes: Record<string, string> = {},
-): Promise<ChatUpsertPatch> {
-  await ensureGaru();
-  const dateStr =
-    chatDateFromPath(dayPathOrDate) ||
-    (/^\d{4}-\d{2}-\d{2}$/.test(dayPathOrDate) ? dayPathOrDate : null);
-  if (!dateStr) {
-    return {
-      dateStr: null,
-      changed: 0,
-      keepDocIds: [],
-      upserts: [],
-      removedDocIds: [],
-    };
-  }
-
-  const { messages } = parseDayFile(content);
-  const keepDocIds: string[] = [];
-  const upserts: ChatUpsertPatch['upserts'] = [];
-  let changed = 0;
-
-  for (const msg of messages) {
-    const messageId = String(msg.id || '');
-    if (!messageId) continue;
-    const docId = chatDocId(dateStr, messageId);
-    keepDocIds.push(docId);
-
-    const body = String(msg.body || '');
-    const group = String(msg.group || '');
-    const payload = `${group}\n${body}`;
-    const contentHash = await hashText(payload);
-    if (existingHashes[docId] === contentHash) continue;
-
-    const scrubbed = scrubTextForIndex(body);
-    const terms = tokenizeForIndex(
-      `${group} ${scrubbed.text}`,
-      scrubbed.extraTerms,
-    );
-    upserts.push({
-      docId,
-      terms,
-      meta: {
-        kind: 'chat',
-        path: `.chat-with-myself/${dateStr}.md`,
-        title: group || 'chat',
-        dateStr,
-        messageId,
-        group,
-        preview: previewFromText(scrubbed.text || body),
-        contentHash,
-      },
-    });
-    changed += 1;
-  }
-
-  const keepSet = new Set(keepDocIds);
-  const removedDocIds = Object.keys(existingHashes).filter((id) => !keepSet.has(id));
-  changed += removedDocIds.length;
-
-  return { dateStr, changed, keepDocIds, upserts, removedDocIds };
-}
-
-/** Apply a file patch produced by the Worker onto the main-thread index. */
-export function applyFileUpsertPatch(
+export async function removeDocument(
   index: InMemoryIndex,
-  patch: FileUpsertPatch,
-): boolean {
-  if (!patch.changed || !patch.meta || !patch.terms) return false;
-  if (index.docs.has(patch.docId)) {
-    removeDocFromPostings(index.postings, patch.docId);
+  map: DocIdMapState,
+  docId: string,
+  options: { writeLucivy?: boolean } = {},
+): Promise<void> {
+  const meta = index.docs.get(docId);
+  if (!meta) return;
+  if (options.writeLucivy !== false) {
+    const n = releaseDocId(map, docId) ?? meta.numericId;
+    if (typeof n === 'number') await lucivyRemove(n);
+  } else {
+    releaseDocId(map, docId);
   }
-  addTermsToPostings(index.postings, patch.docId, patch.terms);
-  index.docs.set(patch.docId, patch.meta);
-  recountManifest(index);
-  return true;
-}
-
-/** Apply a chat-day patch produced by the Worker onto the main-thread index. */
-export function applyChatUpsertPatch(
-  index: InMemoryIndex,
-  patch: ChatUpsertPatch,
-): number {
-  if (!patch.dateStr || patch.changed === 0) return 0;
-  let applied = 0;
-
-  for (const docId of patch.removedDocIds) {
-    if (!index.docs.has(docId)) continue;
-    removeDocFromPostings(index.postings, docId);
-    index.docs.delete(docId);
-    applied += 1;
-  }
-
-  for (const item of patch.upserts) {
-    if (index.docs.has(item.docId)) {
-      removeDocFromPostings(index.postings, item.docId);
-    }
-    addTermsToPostings(index.postings, item.docId, item.terms);
-    index.docs.set(item.docId, item.meta);
-    applied += 1;
-  }
-
-  if (applied > 0) recountManifest(index);
-  return applied;
-}
-
-export function removeDocument(index: InMemoryIndex, docId: string): void {
-  if (!index.docs.has(docId)) return;
-  removeDocFromPostings(index.postings, docId);
   index.docs.delete(docId);
   recountManifest(index);
 }
 
 /**
  * Drop docs whose source path is no longer in the planned rebuild set.
- * Used when resuming a checkpoint after the vault tree changed.
  */
-export function pruneIndexToPaths(
+export async function pruneIndexToPaths(
   index: InMemoryIndex,
+  map: DocIdMapState,
   filePaths: string[],
   chatDayPaths: string[],
-  options: { skipRecount?: boolean } = {},
-): number {
+  options: { skipRecount?: boolean; writeLucivy?: boolean } = {},
+): Promise<number> {
   const files = new Set(filePaths);
   const chats = new Set(chatDayPaths);
   let removed = 0;
@@ -344,7 +215,12 @@ export function pruneIndexToPaths(
         (meta.dateStr ? `.chat-with-myself/${meta.dateStr}.md` : '');
       if (dayPath && chats.has(dayPath)) continue;
     }
-    removeDocFromPostings(index.postings, docId);
+    if (options.writeLucivy !== false) {
+      const n = releaseDocId(map, docId) ?? meta.numericId;
+      if (typeof n === 'number') await lucivyRemove(n);
+    } else {
+      releaseDocId(map, docId);
+    }
     index.docs.delete(docId);
     removed += 1;
   }

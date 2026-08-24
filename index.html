@@ -30,6 +30,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      SharedArrayBuffer / lucivy-wasm: GitHub Pages cannot set COOP/COEP headers.
+      coi-serviceworker (https://github.com/gzuidhof/coi-serviceworker) registers a
+      same-origin SW that stamps those headers, then reloads once.
+      Must stay a classic script (not bundled). Desktop builds strip this via Vite.
+    -->
+    <script>
+      window.coi = {
+        // Prefer credentialless so S3/presigned images without CORP still load.
+        coepCredentialless: () => true,
+        // Skip when Vite/Tauri already send COOP/COEP (crossOriginIsolated === true).
+        shouldRegister: () =>
+          typeof window !== 'undefined' && window.crossOriginIsolated === false,
+        quiet: false,
+      };
+    </script>
+    <script src="./coi-serviceworker.js"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

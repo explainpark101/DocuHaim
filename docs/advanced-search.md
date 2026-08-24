@@ -355,6 +355,30 @@ Chat with Myself Advanced Search 매핑:
 
 ---
 
+## 8.1 Vault 본문 역색인 (Lucivy-wasm)
+
+노트/채팅 **본문** Spotlight 검색은 커스텀 Map postings가 아니라 **lucivy-wasm**(Tantivy 계열)을 사용합니다.
+
+| 항목 | 내용 |
+|------|------|
+| 런타임 | OPFS + Web Worker (`public/lucivy/`) |
+| 볼트 동기화 | `.advanced-search/manifest.json`, `docs.json.gz`, `index.luce.gz` (schema v2) |
+| 증분 | 문서·채팅 저장 시 Lucivy upsert + 디바운스 스냅샷 저장 |
+| 한국어 | scrub + garu-ko 명사 보강 후 Lucivy `contains` / boolean AND |
+| Isolation | `SharedArrayBuffer` 필요 → Vite/Tauri: COOP + COEP `credentialless`; GitHub Pages: [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker)가 최초 등록·reload, 이후 VitePWA `sw.ts`가 동일 COOP/COEP를 유지 |
+| 폴백 | isolation 실패 시 본문 색인 비활성, 파일명·커맨드 fuzzy만 |
+
+**Tauri** (후속 스캐폴드): `tauri.conf.json` → `app.security.headers`에
+
+- `Cross-Origin-Opener-Policy: same-origin`
+- `Cross-Origin-Embedder-Policy: credentialless`
+
+구현 경로: `src/utils/advancedSearch/engine.ts`, `lucivyBackend.ts`, `store.ts`.
+
+채팅 패널 풀스캔(`ChatSearchPanel`)과 사이드바 파일명 substring은 이 역색인과 별개입니다.
+
+---
+
 ## 9. 비기능 요구사항 (권장)
 
 - **오프라인 우선**: 검색 경로에서 원격 fetch 금지; 캐시 미스면 그 필드는 미매칭 처리  

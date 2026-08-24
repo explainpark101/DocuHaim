@@ -615,6 +615,7 @@ export default function AdvancedSearchHost({
       onSelectHit={handleSelect}
       indexEnabled={status.enabled}
       hasIndex={status.hasIndex}
+      isolationReady={status.isolationReady}
       building={status.building}
       editorActionsAvailable={editorActionsAvailable}
       printActionsAvailable={printActionsAvailable}

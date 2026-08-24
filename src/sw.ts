@@ -13,10 +13,59 @@ declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<string | { url: string; revision: string | null }>;
 };
 
+/**
+ * coi-serviceworker posts this when the page loads.
+ * @see https://github.com/gzuidhof/coi-serviceworker
+ */
+let coepCredentialless = true;
+
+self.addEventListener('message', (event) => {
+  const data = event.data as { type?: string; value?: boolean } | null;
+  if (!data) return;
+  if (data.type === 'coepCredentialless') {
+    coepCredentialless = Boolean(data.value);
+  }
+});
+
 self.skipWaiting();
 clientsClaim();
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
+
+/**
+ * Stamp COOP/COEP on document navigations only (enough for crossOriginIsolated).
+ * Avoid wrapping every fetch so Workbox precache/routes keep ownership.
+ * First-load isolation on GitHub Pages is provided by coi-serviceworker.js;
+ * this keeps isolation after the VitePWA worker takes over.
+ */
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.mode !== 'navigate') return;
+  if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') {
+    return;
+  }
+
+  event.respondWith(
+    (async () => {
+      const response = await fetch(request);
+      if (response.status === 0) return response;
+      const headers = new Headers(response.headers);
+      headers.set(
+        'Cross-Origin-Embedder-Policy',
+        coepCredentialless ? 'credentialless' : 'require-corp',
+      );
+      if (!coepCredentialless) {
+        headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+      }
+      headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    })(),
+  );
+});
 
 registerRoute(/build-id\.json$/i, new NetworkOnly());
 

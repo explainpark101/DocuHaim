@@ -426,7 +426,14 @@ export default function StorageUsageAnalysis({
   };
 
   const startRebuild = (resume: boolean) => {
-    if (indexBusy || indexStatus.building || !indexStatus.enabled) return;
+    if (
+      indexBusy ||
+      indexStatus.building ||
+      !indexStatus.enabled ||
+      !indexStatus.isolationReady
+    ) {
+      return;
+    }
     setIndexBusy(true);
     void advancedSearchEngine
       .rebuild({ resume })
@@ -434,7 +441,14 @@ export default function StorageUsageAnalysis({
   };
 
   const handleBuildIndex = () => {
-    if (indexBusy || indexStatus.building || !indexStatus.enabled) return;
+    if (
+      indexBusy ||
+      indexStatus.building ||
+      !indexStatus.enabled ||
+      !indexStatus.isolationReady
+    ) {
+      return;
+    }
     void (async () => {
       const info = await advancedSearchEngine.getRebuildCheckpointInfo();
       if (info) {
@@ -506,13 +520,16 @@ export default function StorageUsageAnalysis({
               !canScan ||
               indexBusy ||
               indexStatus.building ||
-              !indexStatus.enabled
+              !indexStatus.enabled ||
+              !indexStatus.isolationReady
             }
             className="inline-flex items-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60"
             title={
               !indexStatus.enabled
                 ? '설정에서 역색인을 켠 뒤 사용할 수 있습니다'
-                : 'Advanced Search 역색인을 백그라운드로 생성합니다'
+                : !indexStatus.isolationReady
+                  ? '검색 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하세요'
+                  : 'Advanced Search 역색인을 백그라운드로 생성합니다'
             }
           >
             {indexBusy || indexStatus.building ? (

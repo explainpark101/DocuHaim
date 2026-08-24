@@ -9,6 +9,9 @@ export default defineConfig([
     'dist',
     'release',
     'dev-dist',
+    // Vendored WASM / COI helpers copied from node_modules into public/
+    'public/lucivy/**',
+    'public/coi-serviceworker.js',
     // VitePress caches (deps prebundles); not app source
     '.vitepress/**',
     'docs/.vitepress/**',

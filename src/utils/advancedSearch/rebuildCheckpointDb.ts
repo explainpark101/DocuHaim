@@ -1,6 +1,6 @@
 /**
  * Mid-rebuild checkpoints for Advanced Search (IndexedDB).
- * Full vault write still happens only on finalize; this lets a crashed build resume.
+ * Stores Lucivy LUCE snapshot + docs meta so a crashed build can resume.
  */
 import Dexie from 'dexie';
 import { INDEX_SCHEMA_VERSION } from './types';
@@ -11,6 +11,11 @@ rebuildCheckpointDb.version(1).stores({
   checkpoints: 'key',
 });
 
+// v2: luceGz instead of postingsGz (same store; incompatible rows cleared by schemaVersion)
+rebuildCheckpointDb.version(2).stores({
+  checkpoints: 'key',
+});
+
 export type RebuildCheckpointRecord = {
   /** Stable per-storage identity (e.g. s3:bucket, webdav:url, local:name). */
   key: string;
@@ -18,7 +23,8 @@ export type RebuildCheckpointRecord = {
   includeOtherFiles: boolean;
   processedFilePaths: string[];
   processedChatPaths: string[];
-  postingsGz: Uint8Array;
+  /** Gzipped Lucivy LUCE snapshot (raw snapshot bytes gzipped). */
+  luceGz: Uint8Array;
   docsGz: Uint8Array;
   updatedAt: number;
 };
@@ -26,7 +32,7 @@ export type RebuildCheckpointRecord = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dexie table typing
 const checkpoints = (rebuildCheckpointDb as any).checkpoints as {
   put: (row: RebuildCheckpointRecord) => Promise<string>;
-  get: (key: string) => Promise<RebuildCheckpointRecord | undefined>;
+  get: (key: string) => Promise<(RebuildCheckpointRecord & { postingsGz?: Uint8Array }) | undefined>;
   delete: (key: string) => Promise<void>;
 };
 
@@ -41,7 +47,7 @@ export async function saveRebuildCheckpoint(
     includeOtherFiles: record.includeOtherFiles,
     processedFilePaths: record.processedFilePaths,
     processedChatPaths: record.processedChatPaths,
-    postingsGz: record.postingsGz,
+    luceGz: record.luceGz,
     docsGz: record.docsGz,
     updatedAt: Date.now(),
   };
@@ -54,9 +60,16 @@ export async function getRebuildCheckpoint(
   if (!key) return null;
   const row = await checkpoints.get(key);
   if (!row) return null;
+  // Drop v1 postings checkpoints
+  if (!row.luceGz && (row as { postingsGz?: Uint8Array }).postingsGz) {
+    await deleteRebuildCheckpoint(key);
+    return null;
+  }
   return {
-    ...row,
-    postingsGz: toUint8Array(row.postingsGz),
+    key: row.key,
+    schemaVersion: row.schemaVersion,
+    includeOtherFiles: row.includeOtherFiles,
+    luceGz: toUint8Array(row.luceGz),
     docsGz: toUint8Array(row.docsGz),
     processedFilePaths: Array.isArray(row.processedFilePaths)
       ? row.processedFilePaths
@@ -64,6 +77,7 @@ export async function getRebuildCheckpoint(
     processedChatPaths: Array.isArray(row.processedChatPaths)
       ? row.processedChatPaths
       : [],
+    updatedAt: row.updatedAt || 0,
   };
 }
 
@@ -88,5 +102,6 @@ export function isCheckpointCompatible(
 ): row is RebuildCheckpointRecord {
   if (!row) return false;
   if (row.schemaVersion !== INDEX_SCHEMA_VERSION) return false;
+  if (!row.luceGz?.byteLength) return false;
   return row.includeOtherFiles === includeOtherFiles;
 }

@@ -1310,8 +1310,10 @@ export default function SettingsPage({
             <kbd className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">⌘K</kbd>
             {' / '}
             <kbd className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Ctrl+K</kbd>
-            로 Spotlight 검색을 엽니다. 역색인이 켜져 있으면 문서·채팅 저장 시 해당 항목만 증분
-            색인합니다. 전체 볼트 색인은 아래 버튼으로 백그라운드에서 만듭니다.
+            로 Spotlight 검색을 엽니다. 역색인(Lucivy)이 켜져 있으면 문서·채팅 저장 시 해당 항목만 증분
+            색인하고, 「색인」으로 볼트 전체를 백그라운드에서 만듭니다. 인덱스는{' '}
+            <code className="text-[11px]">.advanced-search/</code>
+            (LUCE 스냅샷)에 저장됩니다.
           </p>
           <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
@@ -1421,6 +1423,11 @@ export default function SettingsPage({
                   ? ` · ${Math.round(advancedSearchStatus.buildProgress * 100)}%`
                   : '…'}
               </>
+            ) : !advancedSearchStatus.isolationReady ? (
+              <>
+                검색 엔진 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하거나 SharedArrayBuffer를
+                지원하는 환경에서 다시 시도하세요. 파일명·바로가기는 계속 검색됩니다.
+              </>
             ) : advancedSearchStatus.hasIndex ? (
               <>
                 색인 있음 · 파일 {advancedSearchStatus.fileCount} · 채팅{' '}
@@ -1449,7 +1456,8 @@ export default function SettingsPage({
               disabled={
                 advancedSearchBusy ||
                 !advancedSearchStatus.enabled ||
-                advancedSearchStatus.building
+                advancedSearchStatus.building ||
+                !advancedSearchStatus.isolationReady
               }
               onClick={() => {
                 void (async () => {

@@ -1,6 +1,7 @@
 import { gzip, gunzipSync, strToU8, strFromU8 } from 'fflate';
 import {
   docsKey,
+  luceKey,
   manifestKey,
   postingsKey,
   advancedSearchFolderPrefix,
@@ -42,7 +43,7 @@ function gzipJsonAsync(value: unknown): Promise<Uint8Array> {
   });
 }
 
-/** Public alias for Worker / callers that need gzipped JSON bytes. */
+/** Public alias for callers that need gzipped JSON bytes. */
 export function gzipJsonBytes(value: unknown): Promise<Uint8Array> {
   return gzipJsonAsync(value);
 }
@@ -52,62 +53,17 @@ function gunzipJson<T>(body: Uint8Array): T {
   return JSON.parse(strFromU8(raw)) as T;
 }
 
-/** Hydrate an in-memory index from pre-gzipped vault blobs (Worker finalize). */
-export function hydrateIndexFromBlobs(
-  manifest: IndexManifest,
-  postingsGz: Uint8Array,
-  docsGz: Uint8Array,
-): InMemoryIndex {
-  const postingsObj = gunzipJson<Record<string, string[]>>(postingsGz);
-  const docsObj = gunzipJson<Record<string, DocMeta>>(docsGz);
-  return {
-    manifest: {
-      ...emptyManifest(),
-      ...manifest,
-      initialized: true,
-    },
-    postings: objectToPostings(postingsObj),
-    docs: objectToDocs(docsObj),
-  };
+function gzipBytesAsync(input: Uint8Array): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    gzip(input, { level: 6 }, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  });
 }
 
-export function postingsToObject(
-  postings: Map<string, Set<string>>,
-): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  for (const [term, set] of postings) {
-    out[term] = Array.from(set);
-  }
-  return out;
-}
-
-/** Build postings payload while yielding so large indexes do not freeze the UI. */
-export async function postingsToObjectAsync(
-  postings: Map<string, Set<string>>,
-  yieldEvery = 400,
-): Promise<Record<string, string[]>> {
-  const out: Record<string, string[]> = {};
-  let i = 0;
-  for (const [term, set] of postings) {
-    out[term] = Array.from(set);
-    i += 1;
-    if (i % yieldEvery === 0) {
-      await new Promise<void>((r) => setTimeout(r, 0));
-    }
-  }
-  return out;
-}
-
-export function objectToPostings(
-  obj: Record<string, string[]> | null | undefined,
-): Map<string, Set<string>> {
-  const map = new Map<string, Set<string>>();
-  if (!obj || typeof obj !== 'object') return map;
-  for (const [term, ids] of Object.entries(obj)) {
-    if (!Array.isArray(ids) || ids.length === 0) continue;
-    map.set(term, new Set(ids));
-  }
-  return map;
+export function gunzipBytes(body: Uint8Array): Uint8Array {
+  return gunzipSync(body);
 }
 
 export function docsToObject(
@@ -171,12 +127,12 @@ async function writeGzipJson(
   await backend.writeBytes(path, compressed, 'application/gzip');
 }
 
-export async function loadIndexFromVault(
+export async function loadDocsAndManifestFromVault(
   backend: AdvancedSearchBackend,
-): Promise<InMemoryIndex> {
+): Promise<{ index: InMemoryIndex; luceGz: Uint8Array | null }> {
   const index = emptyIndex();
   if (typeof backend.isReady === 'function' && !backend.isReady()) {
-    return index;
+    return { index, luceGz: null };
   }
 
   let manifest: IndexManifest | null = null;
@@ -190,29 +146,44 @@ export async function loadIndexFromVault(
   }
 
   if (!manifest || manifest.schemaVersion !== INDEX_SCHEMA_VERSION) {
-    return index;
+    return { index, luceGz: null };
   }
 
-  const [postingsObj, docsObj] = await Promise.all([
-    readGzipJson<Record<string, string[]>>(backend, postingsKey()),
-    readGzipJson<Record<string, DocMeta>>(backend, docsKey()),
-  ]);
+  const docsObj = await readGzipJson<Record<string, DocMeta>>(backend, docsKey());
+  let luceGz: Uint8Array | null = null;
+  if (backend.readBytes) {
+    try {
+      const { body } = await backend.readBytes(luceKey());
+      luceGz = body;
+    } catch {
+      luceGz = null;
+    }
+  }
 
   index.manifest = {
     ...emptyManifest(),
     ...manifest,
+    schemaVersion: INDEX_SCHEMA_VERSION,
     initialized:
       manifest.initialized === true ||
       (docsObj != null && Object.keys(docsObj).length > 0),
   };
-  index.postings = objectToPostings(postingsObj);
   index.docs = objectToDocs(docsObj);
+  return { index, luceGz };
+}
+
+/** @deprecated use loadDocsAndManifestFromVault + Lucivy import */
+export async function loadIndexFromVault(
+  backend: AdvancedSearchBackend,
+): Promise<InMemoryIndex> {
+  const { index } = await loadDocsAndManifestFromVault(backend);
   return index;
 }
 
 export async function saveIndexToVault(
   backend: AdvancedSearchBackend,
   index: InMemoryIndex,
+  luceSnapshot: Uint8Array,
 ): Promise<void> {
   if (!backend.writeText || !backend.writeBytes) {
     throw new Error('Storage backend cannot persist advanced search index');
@@ -227,37 +198,18 @@ export async function saveIndexToVault(
     JSON.stringify(index.manifest, null, 2),
     'application/json; charset=utf-8',
   );
-  // Yield between heavy sync steps (object build + JSON.stringify inside gzip).
-  const postingsObj = await postingsToObjectAsync(index.postings);
-  await new Promise<void>((r) => setTimeout(r, 0));
-  await writeGzipJson(backend, postingsKey(), postingsObj);
   await new Promise<void>((r) => setTimeout(r, 0));
   const docsObj = await docsToObjectAsync(index.docs);
   await writeGzipJson(backend, docsKey(), docsObj);
-}
-
-/** Persist Worker-produced gzip blobs without re-compressing. */
-export async function saveIndexBlobsToVault(
-  backend: AdvancedSearchBackend,
-  manifest: IndexManifest,
-  postingsGz: Uint8Array,
-  docsGz: Uint8Array,
-): Promise<void> {
-  if (!backend.writeText || !backend.writeBytes) {
-    throw new Error('Storage backend cannot persist advanced search index');
-  }
+  await new Promise<void>((r) => setTimeout(r, 0));
+  const luceGz = await gzipBytesAsync(luceSnapshot);
+  await backend.writeBytes(luceKey(), luceGz, 'application/gzip');
+  // Drop legacy v1 postings if present
   try {
-    await backend.mkdir?.(advancedSearchFolderPrefix().replace(/\/$/, ''));
+    await backend.delete?.(postingsKey());
   } catch {
     // ignore
   }
-  await backend.writeText(
-    manifestKey(),
-    JSON.stringify(manifest, null, 2),
-    'application/json; charset=utf-8',
-  );
-  await backend.writeBytes(postingsKey(), postingsGz, 'application/gzip');
-  await backend.writeBytes(docsKey(), docsGz, 'application/gzip');
 }
 
 export async function clearIndexInVault(
@@ -271,11 +223,24 @@ export async function clearIndexInVault(
       // fall through to per-key delete
     }
   }
-  for (const key of [manifestKey(), postingsKey(), docsKey()]) {
+  for (const key of [manifestKey(), docsKey(), luceKey(), postingsKey()]) {
     try {
       await backend.delete?.(key);
     } catch {
       // ignore missing
     }
+  }
+}
+
+export async function readLuceSnapshotFromVault(
+  backend: AdvancedSearchBackend,
+): Promise<Uint8Array | null> {
+  if (!backend.readBytes) return null;
+  try {
+    const { body } = await backend.readBytes(luceKey());
+    if (!body?.byteLength) return null;
+    return gunzipBytes(body);
+  } catch {
+    return null;
   }
 }

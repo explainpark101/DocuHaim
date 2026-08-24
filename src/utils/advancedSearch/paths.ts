@@ -1,10 +1,12 @@
-/** Vault paths for Advanced Search inverted index. */
+/** Vault paths for Advanced Search inverted index (Lucivy LUCE + docs meta). */
 
 export const ADVANCED_SEARCH_FOLDER = '.advanced-search';
 
 export const MANIFEST_FILE = 'manifest.json';
-export const POSTINGS_FILE = 'postings.json.gz';
 export const DOCS_FILE = 'docs.json.gz';
+export const LUCE_FILE = 'index.luce.gz';
+/** @deprecated schema v1 — cleared on migrate */
+export const POSTINGS_FILE = 'postings.json.gz';
 
 export function advancedSearchFolderPrefix(): string {
   return `${ADVANCED_SEARCH_FOLDER}/`;
@@ -14,12 +16,17 @@ export function manifestKey(): string {
   return `${ADVANCED_SEARCH_FOLDER}/${MANIFEST_FILE}`;
 }
 
-export function postingsKey(): string {
-  return `${ADVANCED_SEARCH_FOLDER}/${POSTINGS_FILE}`;
-}
-
 export function docsKey(): string {
   return `${ADVANCED_SEARCH_FOLDER}/${DOCS_FILE}`;
+}
+
+export function luceKey(): string {
+  return `${ADVANCED_SEARCH_FOLDER}/${LUCE_FILE}`;
+}
+
+/** @deprecated schema v1 */
+export function postingsKey(): string {
+  return `${ADVANCED_SEARCH_FOLDER}/${POSTINGS_FILE}`;
 }
 
 export function fileDocId(path: string): string {

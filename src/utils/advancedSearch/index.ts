@@ -2,8 +2,9 @@ export {
   ADVANCED_SEARCH_FOLDER,
   advancedSearchFolderPrefix,
   manifestKey,
-  postingsKey,
   docsKey,
+  luceKey,
+  postingsKey,
   fileDocId,
   chatDocId,
 } from './paths';

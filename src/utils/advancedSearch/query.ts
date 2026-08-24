@@ -34,33 +34,10 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
-function intersectSorted(a: string[], b: Set<string>): string[] {
-  const out: string[] = [];
-  for (const id of a) {
-    if (b.has(id)) out.push(id);
-  }
-  return out;
-}
-
-function postingsLookup(
-  index: InMemoryIndex,
+export type LucivyContentSearchFn = (
   terms: string[],
-): string[] {
-  if (terms.length === 0) return [];
-  let current: string[] | null = null;
-  for (const term of terms) {
-    const set = index.postings.get(term);
-    if (!set || set.size === 0) return [];
-    const ids = Array.from(set);
-    if (!current) {
-      current = ids;
-      continue;
-    }
-    current = intersectSorted(current, set);
-    if (current.length === 0) return [];
-  }
-  return current || [];
-}
+  limit: number,
+) => Promise<Array<{ docId: string; score: number }>>;
 
 function scoreHit(reasons: MatchReason[]): number {
   let s = 0;
@@ -83,13 +60,12 @@ function commandHits(
     preview: cmd.description,
     commandId: cmd.id,
     reasons: ['command'] as MatchReason[],
-    // Relevance-first: keep command category boost small so ranking is mostly score.
     score: score + 50,
   }));
 }
 
 /**
- * Merge built-in commands, filename/path matches, and inverted-index content hits.
+ * Merge built-in commands, filename/path matches, and Lucivy content hits.
  * Empty query → built-in commands only (palette suggestions).
  */
 export async function runAdvancedSearch(options: {
@@ -97,6 +73,8 @@ export async function runAdvancedSearch(options: {
   trees: Array<TreeNode[] | null | undefined>;
   index: InMemoryIndex | null;
   indexEnabled: boolean;
+  /** Lucivy content search; null when index unavailable. */
+  lucivySearch?: LucivyContentSearchFn | null;
   limit?: number;
   commandContext?: AppCommandContext;
 }): Promise<AdvancedSearchHit[]> {
@@ -104,7 +82,6 @@ export async function runAdvancedSearch(options: {
   const limit = options.limit ?? 50;
   const commands = commandHits(q, options.commandContext);
 
-  // Empty query: show app shortcuts only
   if (!q) {
     return commands.slice(0, limit);
   }
@@ -119,6 +96,7 @@ export async function runAdvancedSearch(options: {
   const upsert = (
     partial: Omit<AdvancedSearchHit, 'score' | 'reasons'> & {
       reason: MatchReason;
+      scoreBoost?: number;
     },
   ) => {
     const prev = hits.get(partial.docId);
@@ -131,7 +109,7 @@ export async function runAdvancedSearch(options: {
       path: partial.path,
       title: partial.title,
       reasons,
-      score: scoreHit(reasons),
+      score: scoreHit(reasons) + (partial.scoreBoost || 0),
     };
     const preview = partial.preview ?? prev?.preview;
     if (preview !== undefined) next.preview = preview;
@@ -143,10 +121,12 @@ export async function runAdvancedSearch(options: {
     if (group !== undefined) next.group = group;
     const commandId = partial.commandId ?? prev?.commandId;
     if (commandId !== undefined) next.commandId = commandId;
+    if (prev && partial.scoreBoost) {
+      next.score = Math.max(prev.score, next.score) + (partial.scoreBoost || 0);
+    }
     hits.set(partial.docId, next);
   };
 
-  // Filename / path from live trees (chat-style fuzzy / partial match)
   for (const tree of options.trees) {
     const files = collectSearchableFileEntries(tree);
     for (const file of files) {
@@ -175,7 +155,6 @@ export async function runAdvancedSearch(options: {
           reason: 'path',
         });
         const hit = hits.get(`file:${file.path}`);
-        // Path fuzzy is weaker than name; avoid double-counting full nameScore.
         if (hit && nameScore <= 0) hit.score += Math.round(pathScore * 0.45);
         else if (hit && pathScore > nameScore) {
           hit.score += Math.round((pathScore - nameScore) * 0.3);
@@ -184,7 +163,6 @@ export async function runAdvancedSearch(options: {
     }
   }
 
-  // Path / title from indexed docs (folder segments, even when tree is incomplete)
   if (options.indexEnabled && options.index) {
     for (const [docId, meta] of options.index.docs) {
       if (meta.kind !== 'file') continue;
@@ -221,8 +199,8 @@ export async function runAdvancedSearch(options: {
     }
   }
 
-  // Content / chat via inverted index
-  if (options.indexEnabled && options.index) {
+  // Content / chat via Lucivy
+  if (options.indexEnabled && options.index && options.lucivySearch) {
     const terms = await tokenizeForIndexAsync(q, []);
     const queryTerms =
       terms.length > 0
@@ -233,70 +211,67 @@ export async function runAdvancedSearch(options: {
             .filter((t) => t.length >= 2);
 
     if (queryTerms.length > 0) {
-      const docIds = postingsLookup(options.index, queryTerms);
-      for (const docId of docIds) {
-        const meta: DocMeta | undefined = options.index.docs.get(docId);
-        if (!meta) continue;
-        if (meta.kind === 'file') {
-          upsert({
-            docId,
-            kind: 'file',
-            path: meta.path,
-            title: meta.title || pathBasenameSafe(meta.path),
-            ...(meta.preview ? { preview: meta.preview } : {}),
-            reason: 'content',
-          });
-        } else {
-          upsert({
-            docId,
-            kind: 'chat',
-            path: meta.path,
-            title: meta.group || meta.title || 'chat',
-            ...(meta.preview ? { preview: meta.preview } : {}),
-            ...(meta.dateStr ? { dateStr: meta.dateStr } : {}),
-            ...(meta.messageId ? { messageId: meta.messageId } : {}),
-            ...(meta.group ? { group: meta.group } : {}),
-            reason: 'content',
-          });
+      try {
+        const lucivyHits = await options.lucivySearch(queryTerms, limit * 2);
+        for (const { docId, score } of lucivyHits) {
+          const meta: DocMeta | undefined = options.index.docs.get(docId);
+          if (!meta) continue;
+          if (meta.kind === 'file') {
+            upsert({
+              docId,
+              kind: 'file',
+              path: meta.path,
+              title: meta.title || pathBasenameSafe(meta.path),
+              ...(meta.preview ? { preview: meta.preview } : {}),
+              reason: 'content',
+              scoreBoost: Math.round(score * 10),
+            });
+          } else {
+            upsert({
+              docId,
+              kind: 'chat',
+              path: meta.path,
+              title: meta.group || meta.title || 'chat',
+              ...(meta.preview ? { preview: meta.preview } : {}),
+              ...(meta.dateStr ? { dateStr: meta.dateStr } : {}),
+              ...(meta.messageId ? { messageId: meta.messageId } : {}),
+              ...(meta.group ? { group: meta.group } : {}),
+              reason: 'content',
+              scoreBoost: Math.round(score * 10),
+            });
+          }
         }
+      } catch (err) {
+        console.warn('[advancedSearch] Lucivy search failed', err);
       }
     }
 
-    // Path-like query: OR postings for slash-separated segments (folder navigation).
+    // Path-like query: fuzzy on indexed paths for slash segments
     if (qLower.includes('/') || qLower.includes('\\')) {
       const pathParts = qLower
         .split(/[/\\]+/)
         .map((t) => t.trim())
         .filter((t) => t.length >= 2);
-      const seenIds = new Set<string>();
-      for (const part of pathParts) {
-        const set = options.index.postings.get(part);
-        if (!set) continue;
-        for (const docId of set) {
-          if (seenIds.has(docId)) continue;
-          const meta = options.index.docs.get(docId);
-          if (!meta || meta.kind !== 'file') continue;
-          const pathLower = String(meta.path || '').toLowerCase();
-          if (
-            !fuzzyMatchText(pathLower, qLower) &&
-            !pathParts.every((p) => fuzzyMatchText(pathLower, p))
-          ) {
-            continue;
-          }
-          seenIds.add(docId);
-          upsert({
-            docId,
-            kind: 'file',
-            path: meta.path,
-            title: meta.title || pathBasenameSafe(meta.path),
-            ...(meta.preview ? { preview: meta.preview } : {}),
-            reason: 'path',
-          });
+      for (const [docId, meta] of options.index.docs) {
+        if (meta.kind !== 'file') continue;
+        const pathLower = String(meta.path || '').toLowerCase();
+        if (
+          !fuzzyMatchText(pathLower, qLower) &&
+          !pathParts.every((p) => fuzzyMatchText(pathLower, p))
+        ) {
+          continue;
         }
+        upsert({
+          docId,
+          kind: 'file',
+          path: meta.path,
+          title: meta.title || pathBasenameSafe(meta.path),
+          ...(meta.preview ? { preview: meta.preview } : {}),
+          reason: 'path',
+        });
       }
     }
 
-    // Fuzzy / partial match on indexed chat + file meta when token postings miss.
     for (const [docId, meta] of options.index.docs) {
       if (hits.has(docId)) continue;
       const title = meta.title || pathBasenameSafe(meta.path);

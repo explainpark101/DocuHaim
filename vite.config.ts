@@ -117,6 +117,67 @@ function docsTrailingSlashPlugin(): Plugin {
   };
 }
 
+/** Sync lucivy-wasm + coi-serviceworker into public/ (same-origin, not bundled). */
+function syncLucivyPublicAssetsPlugin(): Plugin {
+  const sync = () => {
+    const lucivySrc = path.join(rootDir, 'node_modules/lucivy-wasm');
+    const lucivyDest = path.join(rootDir, 'public/lucivy');
+    const pairs: Array<[string, string]> = [
+      ['js/lucivy-worker.js', 'js/lucivy-worker.js'],
+      ['js/lucivy.js', 'js/lucivy.js'],
+      ['pkg/lucivy.js', 'pkg/lucivy.js'],
+      ['pkg/lucivy.wasm', 'pkg/lucivy.wasm'],
+    ];
+    try {
+      for (const [rel, outRel] of pairs) {
+        const from = path.join(lucivySrc, rel);
+        const to = path.join(lucivyDest, outRel);
+        if (!fs.existsSync(from)) continue;
+        fs.mkdirSync(path.dirname(to), { recursive: true });
+        fs.copyFileSync(from, to);
+      }
+      const coiFrom = path.join(
+        rootDir,
+        'node_modules/coi-serviceworker/coi-serviceworker.js',
+      );
+      const coiTo = path.join(rootDir, 'public/coi-serviceworker.js');
+      if (fs.existsSync(coiFrom)) {
+        fs.copyFileSync(coiFrom, coiTo);
+      }
+    } catch (err) {
+      console.warn('[syncLucivyPublicAssets]', err);
+    }
+  };
+  return {
+    name: 'sync-lucivy-public-assets',
+    buildStart() {
+      sync();
+    },
+    configureServer() {
+      sync();
+    },
+  };
+}
+
+/**
+ * Desktop shells get COOP/COEP from Tauri/Vite headers — drop coi-serviceworker
+ * so it does not replace the app service worker scope.
+ */
+function coiHtmlPlugin(): Plugin {
+  return {
+    name: 'coi-html-for-web',
+    transformIndexHtml(html) {
+      if (!isElectron) return html;
+      return html
+        .replace(
+          /<!--\s*SharedArrayBuffer[\s\S]*?<script src="\.\/coi-serviceworker\.js"><\/script>\s*/m,
+          '',
+        )
+        .replace(/<script>\s*window\.coi\s*=[\s\S]*?<\/script>\s*/m, '');
+    },
+  };
+}
+
 const plugins: PluginOption[] = [
   fixMermaidKatexNewlinesPlugin(),
   react({
@@ -127,6 +188,8 @@ const plugins: PluginOption[] = [
   tailwindcss(),
   emitBuildIdPlugin(),
   docsTrailingSlashPlugin(),
+  syncLucivyPublicAssetsPlugin(),
+  coiHtmlPlugin(),
   wasm(),
   topLevelAwait(),
 ];
@@ -332,12 +395,18 @@ function manualChunks(id: string): string | undefined {
   }
 }
 
+/** SharedArrayBuffer / lucivy-wasm pthread isolation (S3 images need credentialless). */
+const CROSS_ORIGIN_ISOLATION_HEADERS = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
+} as const;
+
 export default defineConfig({
   base: basePath,
   plugins,
   assetsInclude: ['**/*.wasm', '**/*.gmdl'],
   optimizeDeps: {
-    exclude: ['garu-ko'],
+    exclude: ['garu-ko', 'lucivy-wasm'],
   },
   build: {
     rollupOptions: {
@@ -349,9 +418,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 1200,
   },
   server: {
+    headers: { ...CROSS_ORIGIN_ISOLATION_HEADERS },
     watch: {
       ignored: ['**/.vitepress/**'],
     },
+  },
+  preview: {
+    headers: { ...CROSS_ORIGIN_ISOLATION_HEADERS },
   },
   resolve: {
     alias: {

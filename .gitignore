@@ -31,6 +31,9 @@ docs/.vitepress/cache
 docs/.vitepress/dist
 public/llms.txt
 public/llms-*.txt
+# Synced from node_modules by vite (lucivy-wasm / coi-serviceworker)
+public/lucivy/
+public/coi-serviceworker.js
 .vitepress/cache/**/*
 
 # Private design / ops notes (not for VitePress or public repo)
