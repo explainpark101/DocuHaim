@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-CqGm-VUe.js","assets/vendor-md-editor-D4hOzNKK.js","assets/vendor-mermaid-P93x_-Fy.js","assets/MarkdownEditor-Dl4HUnVD.js","assets/previewFootnoteScroll-BLY-okPz.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix-BgY9OwZN.js","assets/vendor-aws-bxAUTq4h.js","assets/OpenAiCompatibleModelSelect-DJS9uQ4D.js","assets/vendor-lucide-DyPOSMSJ.js","assets/LlmAssistPanel-Bz_zl8Wq.js","assets/useLazyMermaidRender-CWmT5pEt.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BG3jnywq.css","assets/MdEditorToolbarTooltips-BIS5YQnD.js","assets/useTocTitleWrap-B1Mr4E6T.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-CnT5tCxA.js","assets/TableStyleTemplateEditor-BAe0dXIZ.js","assets/index-CG4BSG42.js","assets/turndown.browser.es-vehoUyjw.js","assets/useWikiImageHydration-i-s6tPbm.js","assets/vendor-zip-Bez6qchM.js","assets/NovelMarkdownEditor-BIgwOUmO.js","assets/vendor-novel-B4_RXX0E.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-BT_0i_Q4.js","assets/ChatWithMyselfPane-Dt-kABu9.js","assets/ChatImageBackgroundPicker-BPsLwa8q.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-DUQQB5nu.js","assets/ChatWithMyselfPane-CM8foxSE.css","assets/SettingsPage-s8YNbjJf.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/core-DhEqZVGG.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-BTCGwIC7.js","assets/LlmAssistPopoutPage-6ztHX5by.js","assets/toHtml-CPygWFtq.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-CqGm-VUe.js","assets/vendor-md-editor-D4hOzNKK.js","assets/vendor-mermaid-CHTWe5v1.js","assets/MarkdownEditor-0xBAbf8q.js","assets/previewFootnoteScroll-qduq1GXO.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix-BgY9OwZN.js","assets/vendor-aws-bxAUTq4h.js","assets/OpenAiCompatibleModelSelect-CWys2Jou.js","assets/vendor-lucide-DyPOSMSJ.js","assets/LlmAssistPanel-CfO4JZCO.js","assets/useLazyMermaidRender-D8-Hda1W.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BG3jnywq.css","assets/MdEditorToolbarTooltips-BIS5YQnD.js","assets/useTocTitleWrap-CtruYPZb.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-CHXQM4FE.js","assets/TableStyleTemplateEditor-BF8YbEHR.js","assets/index-CG4BSG42.js","assets/turndown.browser.es-Cd29C_gN.js","assets/useWikiImageHydration-B2YUO3TX.js","assets/vendor-zip-Bez6qchM.js","assets/NovelMarkdownEditor-BVdJGRoL.js","assets/vendor-novel-DoZSccA8.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-Bg8MUab_.js","assets/ChatWithMyselfPane-BqZk-6qD.js","assets/ChatImageBackgroundPicker-CFH1q58j.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-DidM1WXr.js","assets/ChatWithMyselfPane-CM8foxSE.css","assets/SettingsPage-B3GNz0Q_.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/core-DhEqZVGG.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-BjcDfBCE.js","assets/LlmAssistPopoutPage-DW_OHIRm.js","assets/toHtml-B1u3bUQf.js"])))=>i.map(i=>d[i]);
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key2, value) => key2 in obj ? __defProp(obj, key2, { enumerable: true, configurable: true, writable: true, value }) : obj[key2] = value;
 var __publicField = (obj, key2, value) => __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value);
@@ -56884,7 +56884,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return renderSeq += 1, `haim-mermaid-${Date.now().toString(36)}-${renderSeq}`;
   }
   async function getMermaidInstance() {
-    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-P93x_-Fy.js").then(async (m2) => {
+    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-CHTWe5v1.js").then(async (m2) => {
       await m2.__tla;
       return m2;
     }), __vite__mapDeps([5,4,1])).then((e) => {
@@ -57333,7 +57333,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const r = await e.text(), n = t || (e.name ? e.name.replace(/\.svg$/i, ".png") : `clipboard-${Date.now()}.png`);
     return rasterizeSvgTextToPngFile(r, n);
   };
-  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-Dl4HUnVD.js"), __vite__mapDeps([6,1,4,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-BIgwOUmO.js"), __vite__mapDeps([26,1,27,4,0,2,9,10,28,23,12,29,18,19,20,8,25,30]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([31,1,32]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-BT_0i_Q4.js"), __vite__mapDeps([33,1,31,32,12,4,10,8,9,25])));
+  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-0xBAbf8q.js"), __vite__mapDeps([6,1,4,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-BVdJGRoL.js"), __vite__mapDeps([26,1,27,4,0,2,9,10,28,23,12,29,18,19,20,8,25,30]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([31,1,32]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-Bg8MUab_.js"), __vite__mapDeps([33,1,31,32,12,4,10,8,9,25])));
   function EditorPaneSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted",
@@ -59039,10 +59039,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       children: t
     });
   }
-  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-Dt-kABu9.js").then(async (m2) => {
+  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-BqZk-6qD.js").then(async (m2) => {
     await m2.__tla;
     return m2;
-  }), __vite__mapDeps([34,1,4,35,22,9,10,12,8,19,20,24,14,36,37,0,2,27,28,25,38]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-s8YNbjJf.js").then(async (m2) => {
+  }), __vite__mapDeps([34,1,4,35,22,9,10,12,8,19,20,24,14,36,37,0,2,27,28,25,38]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-B3GNz0Q_.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([39,4,1,12,21,22,9,10,40,11,8,25])));
@@ -70449,7 +70449,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
   getLocalAppBuildId = function() {
-    return "5048c7a0a49e263cf48647acb3b92c304b50ca1a".trim();
+    return "90240b1da6901164c3980f27bb298825824807fd".trim();
   };
   function buildIdRequestUrl() {
     return `/DocuHaim/build-id.json?t=${Date.now()}`;
@@ -70588,11 +70588,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       updateServiceWorker: re
     };
   }
-  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-Dt-kABu9.js").then(async (m2) => {
+  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-BqZk-6qD.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([34,1,4,35,22,9,10,12,8,19,20,24,14,36,37,0,2,27,28,25,38])));
-  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-BTCGwIC7.js"), __vite__mapDeps([45,1,4,14,12,9,10,7,8,35,22,40,18,19,20,15,29,24,25,16]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-6ztHX5by.js"), __vite__mapDeps([46,1,13,4,14,11,12,9,10,15,16,8,25])));
+  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-BjcDfBCE.js"), __vite__mapDeps([45,1,4,14,12,9,10,7,8,35,22,40,18,19,20,15,29,24,25,16]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-DW_OHIRm.js"), __vite__mapDeps([46,1,13,4,14,11,12,9,10,15,16,8,25])));
   function RouteSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted",
@@ -74122,7 +74122,7 @@ ${ae}`)) return {
       let Se = remapMarkdownHeadingLevels(tr.current ?? "", de);
       if (ge === "html") {
         const { convertHaimTablesToHtmlInMarkdown: Pe } = await __vitePreload(async () => {
-          const { convertHaimTablesToHtmlInMarkdown: He } = await import("./toHtml-CPygWFtq.js");
+          const { convertHaimTablesToHtmlInMarkdown: He } = await import("./toHtml-B1u3bUQf.js");
           return {
             convertHaimTablesToHtmlInMarkdown: He
           };
@@ -74308,7 +74308,7 @@ ${ae}`)) return {
         let _e2 = remapMarkdownHeadingLevels(we, ie);
         if (de === "html") {
           const { convertHaimTablesToHtmlInMarkdown: Ge } = await __vitePreload(async () => {
-            const { convertHaimTablesToHtmlInMarkdown: tt } = await import("./toHtml-CPygWFtq.js");
+            const { convertHaimTablesToHtmlInMarkdown: tt } = await import("./toHtml-B1u3bUQf.js");
             return {
               convertHaimTablesToHtmlInMarkdown: tt
             };
@@ -74358,7 +74358,7 @@ ${ae}`)) return {
           let Pe = remapMarkdownHeadingLevels(_e2, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: Ge } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: tt } = await import("./toHtml-CPygWFtq.js");
+              const { convertHaimTablesToHtmlInMarkdown: tt } = await import("./toHtml-B1u3bUQf.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: tt
               };
@@ -74502,7 +74502,7 @@ ${ae}`)) return {
           let tt = remapMarkdownHeadingLevels(De, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: Bt } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: ir } = await import("./toHtml-CPygWFtq.js");
+              const { convertHaimTablesToHtmlInMarkdown: ir } = await import("./toHtml-B1u3bUQf.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: ir
               };

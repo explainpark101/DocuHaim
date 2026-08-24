@@ -1,4 +1,4 @@
-import { g7 as p, g9 as F } from "./index-BGi2DbIx.js";
+import { g7 as p, g9 as F } from "./index-BDGl3GOe.js";
 function fe(e) {
   var _a, _b, _c, _d;
   if (p("collect:incoming", { hasData: !!e, filesLength: ((_a = e == null ? void 0 : e.files) == null ? void 0 : _a.length) ?? 0, itemsLength: ((_b = e == null ? void 0 : e.items) == null ? void 0 : _b.length) ?? 0 }), !e) return p("collect:result", { count: 0, reason: "no data" }), [];
