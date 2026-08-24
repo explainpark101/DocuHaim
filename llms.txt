@@ -21,5 +21,6 @@ https://explainpark101.github.io/DocuHaim/docs/custom-markdown/plan-frontmatter/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/preview-hard-break/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/remote-image/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/wiki-image/
+https://explainpark101.github.io/DocuHaim/docs/desktop/code-signing/
 https://explainpark101.github.io/DocuHaim/docs/
 

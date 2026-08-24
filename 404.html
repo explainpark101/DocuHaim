@@ -27,17 +27,38 @@
     <meta name="twitter:description" content="S3, 로컬, WebDAV에 저장하는 마크다운 메모 앱" />
     <meta name="twitter:image" content="https://explainpark101.github.io/DocuHaim/og-image.png" />
     <meta name="twitter:image:alt" content="Docu Haim — Markdown Notes" />
-    <script type="module" crossorigin src="/DocuHaim/assets/index-D81vs87V.js"></script>
-    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-react-CilcuO6o.js">
-    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-md-editor-B2m4XuEx.js">
-    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-aws-BvC50Sfp.js">
-    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-lucide-B-6FUPT3.js">
-    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-motion-BkQ6fGAi.js">
-    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-radix-Dw9h8CzQ.js">
+    <script type="module" crossorigin src="/DocuHaim/assets/index-BGi2DbIx.js"></script>
+    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-react-SY5QCjFA.js">
+    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-md-editor-D4hOzNKK.js">
+    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-aws-bxAUTq4h.js">
+    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-lucide-DyPOSMSJ.js">
+    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-motion-YU7ZxHqi.js">
+    <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-radix-BgY9OwZN.js">
     <link rel="modulepreload" crossorigin href="/DocuHaim/assets/vendor-zip-Bez6qchM.js">
-    <link rel="stylesheet" crossorigin href="/DocuHaim/assets/index-8cTho3QQ.css">
+    <link rel="stylesheet" crossorigin href="/DocuHaim/assets/index-B7UvbGgD.css">
   <link rel="manifest" href="/DocuHaim/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>
+    <!--
+      SharedArrayBuffer / lucivy-wasm: GitHub Pages cannot set COOP/COEP headers.
+      coi-serviceworker (https://github.com/gzuidhof/coi-serviceworker) registers a
+      same-origin SW that stamps those headers, then reloads once.
+      Must stay a classic script (not bundled). Desktop builds strip this via Vite.
+    -->
+    <script>
+      window.coi = {
+        // Prefer credentialless so S3/presigned images without CORP still load.
+        coepCredentialless: () => true,
+        // Skip when Vite already sends COOP/COEP, or when running inside Tauri
+        // (COI SW reload loops break WKWebView module loading: "Importing a module failed").
+        shouldRegister: () =>
+          typeof window !== 'undefined' &&
+          window.crossOriginIsolated === false &&
+          !('__TAURI_INTERNALS__' in window) &&
+          !('__TAURI__' in window),
+        quiet: false,
+      };
+    </script>
+    <script src="./coi-serviceworker.js"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-08-24T11:49:14.782Z
+Generated: 2026-08-24T14:10:47.111Z
 
 ============================================================
 Advanced Search
@@ -353,6 +353,30 @@ Chat with Myself Advanced Search 매핑:
 - 히트에 `ogSearchText`를 실어 카드 미리보기에 사용  
 - 결과 클릭 시 `jumpToDate(dateStr, id)`  
 - 컨텍스트 메뉴: 이동, 고정, 노트 열기, 수정 기록, 복사  
+
+---
+
+## 8.1 Vault 본문 역색인 (Lucivy-wasm)
+
+노트/채팅 **본문** Spotlight 검색은 커스텀 Map postings가 아니라 **lucivy-wasm**(Tantivy 계열)을 사용합니다.
+
+| 항목 | 내용 |
+|------|------|
+| 런타임 | OPFS + Web Worker (`public/lucivy/`) |
+| 볼트 동기화 | `.advanced-search/manifest.json`, `docs.json.gz`, `index.luce.gz` (schema v2) |
+| 증분 | 문서·채팅 저장 시 Lucivy upsert + 디바운스 스냅샷 저장 |
+| 한국어 | scrub + garu-ko 명사 보강 후 Lucivy `contains` / boolean AND |
+| Isolation | `SharedArrayBuffer` 필요 → Vite/Tauri: COOP + COEP `credentialless`; GitHub Pages: [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker)가 최초 등록·reload, 이후 VitePWA `sw.ts`가 동일 COOP/COEP를 유지 |
+| 폴백 | isolation 실패 시 본문 색인 비활성, 파일명·커맨드 fuzzy만 |
+
+**Tauri** (후속 스캐폴드): `tauri.conf.json` → `app.security.headers`에
+
+- `Cross-Origin-Opener-Policy: same-origin`
+- `Cross-Origin-Embedder-Policy: credentialless`
+
+구현 경로: `src/utils/advancedSearch/engine.ts`, `lucivyBackend.ts`, `store.ts`.
+
+채팅 패널 풀스캔(`ChatSearchPanel`)과 사이드바 파일명 substring은 이 역색인과 별개입니다.
 
 ---
 
@@ -2411,6 +2435,97 @@ Public ImgBB cache without replacing the vault path: [remote-image.md](./remote-
 | Bulk MD→wiki convert | `src/utils/convertMarkdownImagesToWiki.ts`, `EditorPane` file menu |
 
 관련 스킬: `.cursor/skills/md-editor-rt-wiki-image/`
+
+============================================================
+Desktop code signing
+============================================================
+
+URL: https://explainpark101.github.io/DocuHaim/docs/desktop/code-signing/
+
+# Desktop code signing
+
+DocuHaim desktop releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml).
+
+**If signing secrets are missing, the workflow still uploads unsigned DMG / NSIS artifacts.** Gatekeeper (macOS) and SmartScreen (Windows) will warn users until secrets are configured.
+
+## Version source of truth
+
+Desktop app version is owned by root [`package.json`](../../package.json) `version`.
+
+| Consumer | How it inherits |
+|----------|-----------------|
+| `src-tauri/tauri.conf.json` | `"version": "../package.json"` |
+| `src-tauri/Cargo.toml` | `bun run sync:tauri-version` (before `tauri:dev` / `tauri:build`) |
+
+Release workflow bumps **only** `package.json`, then runs `sync:tauri-version`.
+
+## Trigger
+
+GitHub → Actions → **Release Tauri** → Run workflow → enter semver (`1.2.3`).
+
+## Optional secrets (1:1 with the workflow)
+
+| Secret | Platform | Purpose |
+|--------|----------|---------|
+| `APPLE_CERTIFICATE` | macOS | Base64-encoded `.p12` Developer ID Application certificate |
+| `APPLE_CERTIFICATE_PASSWORD` | macOS | Password for the `.p12` |
+| `APPLE_SIGNING_IDENTITY` | macOS | e.g. `Developer ID Application: Your Name (TEAMID)` |
+| `APPLE_ID` | macOS | Apple ID email for notarization |
+| `APPLE_PASSWORD` | macOS | App-specific password (not your Apple ID password) |
+| `APPLE_TEAM_ID` | macOS | 10-character Team ID |
+| `WINDOWS_CERTIFICATE` | Windows | Base64-encoded Authenticode PFX / P12 |
+| `WINDOWS_CERTIFICATE_PASSWORD` | Windows | PFX password |
+
+Empty secrets are ignored by the runner environment; Tauri simply skips signing.
+
+## macOS setup
+
+1. Create a **Developer ID Application** certificate in your Apple Developer account.
+2. Export as `.p12` from Keychain Access.
+3. Encode for GitHub Secrets:
+
+```bash
+base64 -i DeveloperID.p12 | pbcopy
+```
+
+4. Create an [app-specific password](https://appleid.apple.com/) for notarization → `APPLE_PASSWORD`.
+5. Set `APPLE_SIGNING_IDENTITY` to the exact Common Name of the certificate.
+6. Set `APPLE_TEAM_ID` from [Membership details](https://developer.apple.com/account).
+
+After the first signed release, verify:
+
+```bash
+spctl --assess --type execute /path/to/DocuHaim.app
+```
+
+## Windows setup
+
+1. Obtain an Authenticode code-signing certificate (PFX).
+2. Encode:
+
+```bash
+# Git Bash / WSL
+base64 -w0 certificate.pfx > certificate.b64
+```
+
+3. Store as `WINDOWS_CERTIFICATE` and `WINDOWS_CERTIFICATE_PASSWORD`.
+
+Tauri NSIS signing uses these when present. Confirm the built installer is signed with `signtool verify /pa DocuHaim_*_x64-setup.exe` when available.
+
+## Local unsigned build
+
+```bash
+bun install
+bun run tauri:build
+```
+
+Artifacts appear under `src-tauri/target/release/bundle/` (`dmg/`, `nsis/`).
+
+## Notes
+
+- Web (GitHub Pages) deploy is unchanged (`deploy.yml`).
+- Desktop builds use `VITE_ELECTRON=true` / `build:tauri` (HashRouter, no PWA) so the same SPA ships in the shell.
+- `.md` / `.markdown` file associations are registered in `src-tauri/tauri.conf.json`. Composite `.enc.md` opens as markdown via the same association on most OSes.
 
 ============================================================
 Docu Haim Docs
