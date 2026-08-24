@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
-import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
-import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
@@ -61,10 +58,6 @@ import {
   parseDocumentSettingsMeta,
 } from '@/utils/documentSettingsMeta';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
-import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
-import { usePrintTableFit } from '@/hooks/usePrintTableFit';
-import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
-import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
 import { usePagedJsPreview } from '@/hooks/usePagedJsPreview';
 import { buildPrintPreviewThemeVarsCss, scopeExportPdfPreviewStyles } from '@/utils/printPagedJs';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
@@ -121,7 +114,6 @@ import { FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT } from '@/utils/previewFootnotesSet
 import PreviewFootnoteTooltips from '@/components/PreviewFootnoteTooltips';
 import '@/styles/exportPDF.css';
 
-const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
 const PRINT_TOC_DEFAULT_WIDTH = 360;
 
@@ -630,30 +622,10 @@ export default function ExportPDFPage({
     previewContainerRef.current = node;
     setPreviewPanRoot(node);
   }, []);
-  const paperContentRef = useRef(null);
   const pagesHostRef = useRef(null);
   const coverPageRef = useRef(null);
-  const imageMaxProbeRef = useRef(null);
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
-  const { metricRef } = usePrintPageInnerHeightPx(printLayoutKey);
-  usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
-  usePrintTableFit(paperContentRef, `${printLayoutKey}|${previewValue}`);
-  useLazyMermaidRender(paperContentRef, {
-    eager: true,
-    layoutKey: `${printLayoutKey}|${previewValue}`,
-  });
   const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
-  const pagedLayoutKey = `${printLayoutKey}|${previewValue}`;
-  const { pageCount: bodyPageCount } = usePagedJsPreview(
-    paperContentRef,
-    pagesHostRef,
-    imageMaxProbeRef,
-    pagedLayoutKey,
-    {
-      pageSizeId: printLayout.pageSizeId,
-      contentStyles: printFontStyles,
-    },
-  );
   const tocListRef = useRef(null);
   const tocProgrammaticScrollRef = useRef(false);
   const tocProgrammaticResetTimerRef = useRef(null);
@@ -730,6 +702,21 @@ export default function ExportPDFPage({
     return meta ?? DEFAULT_DOCUMENT_SETTINGS_META;
   }, [previewValue]);
   const bodyMarkdown = useMemo(() => stripNoteCoverComment(previewValue), [previewValue]);
+  const pagedLayoutKey = `${printLayoutKey}|${previewValue}|fn-${previewFootnotesRenderKey}`;
+  const { pageCount: bodyPageCount } = usePagedJsPreview(
+    bodyMarkdown,
+    pagesHostRef,
+    pagedLayoutKey,
+    {
+      pageSizeId: printLayout.pageSizeId,
+      contentStyles: printFontStyles,
+      headingId,
+      getPresignedUrl: getPresignedUrl ?? undefined,
+      currentNotePath: currentFile?.id ?? null,
+      imageMaxWidth: printLayout.imageMaxWidth,
+      imageMaxHeight: printLayout.imageMaxHeight,
+    },
+  );
   const parsedCoverResult = useMemo(() => parseNoteCover(previewValue), [previewValue]);
   const parsedCover = parsedCoverResult.cover;
   const activeCover = parsedCover;
@@ -989,13 +976,9 @@ export default function ExportPDFPage({
         `[data-export-pdf-pages] .pagedjs_page_content h5`,
         `[data-export-pdf-pages] .pagedjs_page_content h6`,
       ].join(', ');
-      const stagingSelector = '#export-pdf-preview .md-editor-preview h1, #export-pdf-preview .md-editor-preview h2, #export-pdf-preview .md-editor-preview h3, #export-pdf-preview .md-editor-preview h4, #export-pdf-preview .md-editor-preview h5, #export-pdf-preview .md-editor-preview h6';
-      const packed = pagesHost
+      const headings = pagesHost
         ? [...pagesHost.querySelectorAll(headingSelector)]
         : [];
-      const headings = packed.length
-        ? packed
-        : [...root.querySelectorAll(stagingSelector)];
       const seen = new Set();
       const next = [];
       headings.forEach((el, index) => {
@@ -1063,7 +1046,7 @@ export default function ExportPDFPage({
     window.addEventListener('resize', scheduleUpdate);
 
     let resizeObserver = null;
-    const resizeTarget = scrollRoot?.querySelector(`#${EDITOR_ID}`) ?? scrollRoot;
+    const resizeTarget = pagesHostRef.current ?? scrollRoot;
     if (typeof ResizeObserver !== 'undefined' && resizeTarget) {
       resizeObserver = new ResizeObserver(scheduleUpdate);
       resizeObserver.observe(resizeTarget);
@@ -1247,11 +1230,7 @@ export default function ExportPDFPage({
       if (isCoverContextMenu(event)) return;
       if (event.ctrlKey) return;
 
-      const contentRoot =
-        pagesHostRef.current
-        && event.target?.closest?.('[data-export-pdf-pages]')
-          ? pagesHostRef.current
-          : paperContentRef.current;
+      const contentRoot = pagesHostRef.current;
       if (!contentRoot) return;
 
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
@@ -2099,52 +2078,6 @@ export default function ExportPDFPage({
               data-export-pdf-pages="1"
               className="export-pdf-pages w-full"
             />
-            {/* Staging: continuous MdPreview for measure/fit; never printed. */}
-            <div
-              className="export-pdf-paper export-pdf-staging relative mx-auto bg-white text-gray-900 print:hidden"
-              style={{
-                width: 'var(--print-page-width)',
-                minHeight: 'var(--print-page-height)',
-                padding: 'var(--print-page-margin)',
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                visibility: 'hidden',
-                pointerEvents: 'none',
-                zIndex: -1,
-              }}
-              aria-hidden
-            >
-              <div
-                ref={metricRef}
-                className="export-pdf-paper-metric pointer-events-none absolute top-0 left-0 -z-10 w-px opacity-0"
-                aria-hidden
-              />
-              <div ref={paperContentRef} className="export-pdf-paper-content relative">
-                <div
-                  ref={imageMaxProbeRef}
-                  className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
-                  style={{
-                    width: 'var(--print-img-max-width)',
-                    height: 'var(--print-img-max-height)',
-                  }}
-                  aria-hidden
-                />
-                <MdPreview
-                  key={`footnotes-${previewFootnotesRenderKey}`}
-                  id={EDITOR_ID}
-                  theme="light"
-                  language="ko-KR"
-                  codeTheme={MD_EDITOR_CODE_THEME}
-                  customIcon={MD_EDITOR_CUSTOM_ICONS}
-                  value={bodyMarkdown}
-                  mdHeadingId={headingId}
-                  noMermaid
-                  codeFoldable={false}
-                  showCodeRowNumber={false}
-                />
-              </div>
-            </div>
           </div>
         </div>
         <PrintVisiblePageBadge
@@ -2388,7 +2321,7 @@ export default function ExportPDFPage({
       <PrintPgbrContextMenu
         containerEl={previewPanRoot}
         containerRef={previewContainerRef}
-        paperContentRef={paperContentRef}
+        paperContentRef={pagesHostRef}
         getMarkdown={() => previewValueRef.current ?? ''}
         setMarkdown={(next) => {
           setPreviewValue(next);

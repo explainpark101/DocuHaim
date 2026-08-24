@@ -6,3 +6,8 @@
     max-height: 90vh !important;
     overflow: auto !important;
 }
+
+pre {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
