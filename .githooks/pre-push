@@ -1,8 +1,19 @@
 #!/usr/bin/env sh
-# Gate pushes on undeclared/unused checks (ESLint) and TypeScript files (tsc).
+# Gate pushes to main on undeclared/unused checks (ESLint) and TypeScript files (tsc).
 # Enable once per clone: git config core.hooksPath .githooks
 set -e
 cd "$(git rev-parse --show-toplevel)"
+
+should_check=false
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main) should_check=true ;;
+  esac
+done
+
+if [ "$should_check" = false ]; then
+  exit 0
+fi
 
 if command -v bun >/dev/null 2>&1; then
   bun run check
