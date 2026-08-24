@@ -332,7 +332,7 @@ export default function AdvancedSearchHost({
         chatActionsAvailable,
         editorAutocompleteEnabled,
         editorMirrorEditEnabled,
-        snippetConfig,
+        ...(snippetConfig ? { snippetConfig } : {}),
       });
 
       if (!printActionsAvailable) return hits;

@@ -279,7 +279,6 @@ export async function generateOpenAiCompatibleTransform({
   const imageList = Array.isArray(images)
     ? images.filter((img) => img?.mimeType && img?.dataBase64)
     : [];
-  const hasImages = imageList.length > 0;
 
   if (!modelId) throw new Error('모델 ID를 입력하거나 목록에서 선택하세요.');
   if (!trimmedInstruction) throw new Error('지시사항을 입력하세요.');
