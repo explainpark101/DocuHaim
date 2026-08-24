@@ -60,25 +60,16 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           python3 - <<'PY'
-          import json, os, re
+          import json, os
           from pathlib import Path
           version = os.environ["VERSION"]
           pkg = Path("package.json")
           data = json.loads(pkg.read_text())
           data["version"] = version
           pkg.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-          conf = Path("src-tauri/tauri.conf.json")
-          c = json.loads(conf.read_text())
-          c["version"] = version
-          conf.write_text(json.dumps(c, indent=2, ensure_ascii=False) + "\n")
-          cargo = Path("src-tauri/Cargo.toml")
-          text = cargo.read_text()
-          text2, n = re.subn(r'(?m)^version = "[^"]+"', f'version = "{version}"', text, count=1)
-          if n != 1:
-              raise SystemExit("failed to bump Cargo.toml version")
-          cargo.write_text(text2)
-          print("bumped to", version)
+          print("bumped package.json to", version)
           PY
+          bun run sync:tauri-version
 
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons

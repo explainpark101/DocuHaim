@@ -1,17 +1,8 @@
 /**
  * Local vault backend for the Tauri desktop shell (absolute vault root + plugin-fs).
+ * Plugin APIs are loaded lazily so plain web Vite never eagerly imports @tauri-apps/*.
  */
 
-import {
-  copyFile,
-  mkdir,
-  readDir,
-  readFile,
-  remove,
-  rename,
-  stat,
-  writeFile,
-} from '@tauri-apps/plugin-fs';
 import { STORAGE_CAPABILITIES } from './capabilities.js';
 
 function joinVault(root: string, rel: string): string {
@@ -33,6 +24,10 @@ function parentRel(path: string): { parent: string; name: string } {
   return { parent: normalized.slice(0, i), name: normalized.slice(i + 1) };
 }
 
+async function fsApi() {
+  return import('@tauri-apps/plugin-fs');
+}
+
 export function createTauriLocalBackend(vaultRoot: string) {
   const root = String(vaultRoot || '').trim();
 
@@ -47,6 +42,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
 
     async listChildren(path = '') {
       if (!root) return [];
+      const { readDir, stat } = await fsApi();
       const basePath = path ? (path.endsWith('/') ? path : `${path}/`) : '';
       const abs = joinVault(root, path.replace(/\/$/, ''));
       const entries = await readDir(abs);
@@ -97,6 +93,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
     async head(path: string) {
       if (!root) return null;
       try {
+        const { stat } = await fsApi();
         const meta = await stat(joinVault(root, path));
         return {
           etag: null,
@@ -111,6 +108,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
 
     async readBytes(path: string) {
       if (!root) throw new Error('Local vault path is not set');
+      const { readFile } = await fsApi();
       const body = await readFile(joinVault(root, path));
       return {
         body,
@@ -130,6 +128,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
 
     async writeBytes(path: string, body: Uint8Array) {
       if (!root) throw new Error('Local vault path is not set');
+      const { mkdir, writeFile } = await fsApi();
       const { parent } = parentRel(path);
       if (parent) {
         await mkdir(joinVault(root, parent), { recursive: true });
@@ -143,16 +142,19 @@ export function createTauriLocalBackend(vaultRoot: string) {
 
     async mkdir(path: string) {
       if (!root) throw new Error('Local vault path is not set');
+      const { mkdir } = await fsApi();
       await mkdir(joinVault(root, path.replace(/\/+$/, '')), { recursive: true });
     },
 
     async delete(path: string) {
       if (!root) throw new Error('Local vault path is not set');
+      const { remove } = await fsApi();
       await remove(joinVault(root, path.replace(/\/+$/, '')));
     },
 
     async deletePrefix(prefix: string) {
       if (!root) throw new Error('Local vault path is not set');
+      const { remove } = await fsApi();
       const normalized = prefix.replace(/\/+$/, '').replace(/^\/+/, '');
       if (!normalized) throw new Error('Cannot delete local root');
       await remove(joinVault(root, normalized), { recursive: true });
@@ -160,6 +162,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
 
     async copy(fromPath: string, toPath: string) {
       if (!root) throw new Error('Local vault path is not set');
+      const { copyFile, mkdir } = await fsApi();
       const { parent } = parentRel(toPath);
       if (parent) await mkdir(joinVault(root, parent), { recursive: true });
       await copyFile(joinVault(root, fromPath), joinVault(root, toPath));
@@ -167,6 +170,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
 
     async move(fromPath: string, toPath: string) {
       if (!root) throw new Error('Local vault path is not set');
+      const { rename, mkdir } = await fsApi();
       const { parent } = parentRel(toPath);
       if (parent) await mkdir(joinVault(root, parent), { recursive: true });
       await rename(joinVault(root, fromPath), joinVault(root, toPath));
@@ -212,6 +216,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
     async getObjectUrl(path: string) {
       if (!root) return null;
       try {
+        const { readFile } = await fsApi();
         const bytes = await readFile(joinVault(root, path));
         const blob = new Blob([bytes as BlobPart]);
         return URL.createObjectURL(blob);

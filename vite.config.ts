@@ -402,6 +402,9 @@ const CROSS_ORIGIN_ISOLATION_HEADERS = {
 } as const;
 
 export default defineConfig({
+  // Avoid wiping Rust/Tauri compile logs when Vite restarts under `tauri dev`.
+  clearScreen: false,
+  envPrefix: ['VITE_', 'TAURI_'],
   base: basePath,
   plugins,
   assetsInclude: ['**/*.wasm', '**/*.gmdl'],
@@ -418,6 +421,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 1200,
   },
   server: {
+    // Tauri expects a fixed port; fail instead of silently switching.
+    port: 5173,
+    strictPort: true,
     headers: { ...CROSS_ORIGIN_ISOLATION_HEADERS },
     watch: {
       ignored: ['**/.vitepress/**', '**/src-tauri/**'],

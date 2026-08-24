@@ -17,10 +17,12 @@
     "build:image": "bun scripts/generate-og-image.ts",
     "llms": "bun scripts/generate-llms.ts",
     "preview": "VITE_BASE_PATH=/DocuHaim bun run build && VITE_BASE_PATH=/DocuHaim vite preview",
-    "build:tauri": "bun run llms && cross-env VITE_ELECTRON=true VITE_BASE_PATH=/ vite build",
+    "build:tauri": "bun run sync:tauri-version && bun run llms && cross-env VITE_ELECTRON=true VITE_BASE_PATH=/ vite build",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:dev": "bun run sync:tauri-version && tauri dev",
+    "tauri:build": "bun run sync:tauri-version && tauri build",
+    "sync:tauri-version": "bun scripts/sync-tauri-version-from-package.mjs",
+    "tauri:vite": "cross-env VITE_ELECTRON=true vite"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",

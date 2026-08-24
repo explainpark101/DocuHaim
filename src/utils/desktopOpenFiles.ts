@@ -1,6 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { readFile } from '@tauri-apps/plugin-fs';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   loadLocalVaultFsPath,
@@ -14,6 +11,7 @@ import {
 export const DESKTOP_OPEN_FILES_EVENT = 'desktop-open-files';
 
 type Listener = (paths: string[]) => void;
+type UnlistenFn = () => void;
 
 const queue: string[] = [];
 const listeners = new Set<Listener>();
@@ -55,12 +53,14 @@ export async function startDesktopOpenFilesBridge(): Promise<void> {
   if (!isDesktopApp() || started || typeof window === 'undefined') return;
   started = true;
   try {
+    const { invoke } = await import('@tauri-apps/api/core');
     const pending = await invoke<string[]>('take_pending_open_paths');
     enqueue(pending || []);
   } catch {
     // command may be unavailable in plain vite preview
   }
   try {
+    const { listen } = await import('@tauri-apps/api/event');
     unlisten = await listen<string[]>(DESKTOP_OPEN_FILES_EVENT, (event) => {
       enqueue(event.payload || []);
     });
@@ -91,6 +91,7 @@ function basename(path: string): string {
 export async function resolveDesktopOpenPaths(
   absolutePaths: string[],
 ): Promise<DesktopOpenRoute[]> {
+  const { readFile } = await import('@tauri-apps/plugin-fs');
   const vaultRoot = loadLocalVaultFsPath();
   const routes: DesktopOpenRoute[] = [];
 
@@ -106,9 +107,10 @@ export async function resolveDesktopOpenPaths(
       const copy = new Uint8Array(bytes.byteLength);
       copy.set(bytes);
       const file = new File([copy], name, {
-        type: name.toLowerCase().endsWith('.md') || name.toLowerCase().endsWith('.markdown')
-          ? 'text/markdown'
-          : 'application/octet-stream',
+        type:
+          name.toLowerCase().endsWith('.md') || name.toLowerCase().endsWith('.markdown')
+            ? 'text/markdown'
+            : 'application/octet-stream',
       });
       const workspace = await workspaceFromInputFiles(
         [{ relativePath: name, file }],

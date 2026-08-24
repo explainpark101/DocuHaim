@@ -4,6 +4,17 @@ DocuHaim desktop releases are built by [`.github/workflows/release-tauri.yml`](.
 
 **If signing secrets are missing, the workflow still uploads unsigned DMG / NSIS artifacts.** Gatekeeper (macOS) and SmartScreen (Windows) will warn users until secrets are configured.
 
+## Version source of truth
+
+Desktop app version is owned by root [`package.json`](../../package.json) `version`.
+
+| Consumer | How it inherits |
+|----------|-----------------|
+| `src-tauri/tauri.conf.json` | `"version": "../package.json"` |
+| `src-tauri/Cargo.toml` | `bun run sync:tauri-version` (before `tauri:dev` / `tauri:build`) |
+
+Release workflow bumps **only** `package.json`, then runs `sync:tauri-version`.
+
 ## Trigger
 
 GitHub → Actions → **Release Tauri** → Run workflow → enter semver (`1.2.3`).

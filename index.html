@@ -40,9 +40,13 @@
       window.coi = {
         // Prefer credentialless so S3/presigned images without CORP still load.
         coepCredentialless: () => true,
-        // Skip when Vite/Tauri already send COOP/COEP (crossOriginIsolated === true).
+        // Skip when Vite already sends COOP/COEP, or when running inside Tauri
+        // (COI SW reload loops break WKWebView module loading: "Importing a module failed").
         shouldRegister: () =>
-          typeof window !== 'undefined' && window.crossOriginIsolated === false,
+          typeof window !== 'undefined' &&
+          window.crossOriginIsolated === false &&
+          !('__TAURI_INTERNALS__' in window) &&
+          !('__TAURI__' in window),
         quiet: false,
       };
     </script>

@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DocuHaim",
-  "version": "0.1.0",
+  "version": "../package.json",
   "identifier": "com.docuhaim.app",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": "bun run sync:tauri-version && bun run tauri:vite",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "bun run build:tauri",
+    "beforeBuildCommand": "bun run sync:tauri-version && bun run build:tauri",
     "frontendDist": "../dist"
   },
   "app": {
