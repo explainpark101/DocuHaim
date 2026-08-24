@@ -1,3 +1,4 @@
+import { isDesktopApp } from '@/utils/isDesktopApp';
 import { useEffect } from 'react';
 import { isPwaStandalone } from '@/utils/pwaStandalone';
 
@@ -16,7 +17,7 @@ export function usePwaNewFileShortcut({
 }: UsePwaNewFileShortcutOptions): void {
   useEffect(() => {
     if (!enabled || !isPwaStandalone()) return;
-    if (import.meta.env.VITE_ELECTRON === 'true') return;
+    if (isDesktopApp()) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.isComposing) return;

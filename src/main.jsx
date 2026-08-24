@@ -12,21 +12,24 @@ import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
+import { isDesktopApp } from '@/utils/isDesktopApp'
+import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
 
 initEditorAutocompleteDomFlag()
 initTouchLongPressHaptics()
 initMdEditorCodeCopy()
+void startDesktopOpenFilesBridge()
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
-const isElectron = import.meta.env.VITE_ELECTRON === 'true'
-const routerBasename = isElectron ? '/' : base
+const isDesktop = isDesktopApp()
+const routerBasename = isDesktop ? '/' : base
 
 /**
  * Hosts often SPA-fallback `/docs` to this app shell. VitePress lives at `/docs/`.
  * If we landed on a docs URL as the React shell, retry with a trailing slash or stop.
  */
 function bailIfSpaShellOnDocsPath() {
-  if (isElectron || typeof window === 'undefined') return false
+  if (isDesktop || typeof window === 'undefined') return false
   const pathname = window.location.pathname || '/'
   const prefix = base === '/' ? '' : base
   const docsRoot = `${prefix}/docs`
@@ -67,7 +70,7 @@ function AppShell() {
   )
 }
 
-const router = (isElectron ? createHashRouter : createBrowserRouter)(
+const router = (isDesktop ? createHashRouter : createBrowserRouter)(
   [{ path: '/*', Component: AppShell }],
   { basename: routerBasename },
 )

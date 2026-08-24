@@ -6,7 +6,7 @@ import { isEncMdPath, tryUnlockEncMdContent } from '@/utils/encMd';
  *
  * @param {Object} params
  * @param {{ readBytes: Function, getObjectUrl: Function, readText?: Function }} params.backend
- * @param {'s3'|'webdav'} params.type
+ * @param {'s3'|'webdav'|'local'} params.type
  * @param {{ path: string, name: string, lastModified?: Date|number }} params.node
  * @returns {Promise<{
  *   currentFile: object,

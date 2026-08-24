@@ -4,25 +4,25 @@ overview: 기존 Vite SPA를 Tauri v2로 감싸 웹(GitHub Pages)과 데스크�
 todos:
   - id: scaffold-tauri
     content: Add src-tauri (Tauri v2), package scripts build:tauri/tauri:dev/build, remove dead electron main
-    status: pending
+    status: completed
   - id: desktop-flag
     content: Add isDesktopApp helper; keep VITE_ELECTRON=true for HashRouter/no-PWA desktop builds
-    status: pending
+    status: completed
   - id: local-vault-path
     content: Persist absolute local vault root on Tauri (dialog+fs); keep FSA on web
-    status: pending
+    status: completed
   - id: file-association
     content: Configure .md/.markdown fileAssociations; Rust Opened/argv → frontend event
-    status: pending
+    status: completed
   - id: open-routing
     content: "Route OS opens: under vault root → local note; else session workspace"
-    status: pending
+    status: completed
   - id: release-workflow
     content: "workflow_dispatch release-tauri.yml: version input, macOS DMG + Windows NSIS, optional signing secrets"
-    status: pending
+    status: completed
   - id: signing-docs
     content: Write docs/desktop/code-signing.md + VitePress sidebar entry
-    status: pending
+    status: completed
 isProject: false
 ---
 

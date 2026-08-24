@@ -35,6 +35,13 @@ export default defineConfig({
             { text: '홈', link: '/' },
             { text: 'Advanced Search', link: '/advanced-search' },
             { text: 'Custom Markdown', link: '/custom-markdown/' },
+            { text: 'Desktop', link: '/desktop/code-signing' },
+          ],
+        },
+        {
+          text: 'Desktop',
+          items: [
+            { text: 'Code signing', link: '/desktop/code-signing' },
           ],
         },
       ],

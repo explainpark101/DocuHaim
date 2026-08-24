@@ -1,0 +1,112 @@
+name: Release Tauri
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver version (e.g. 1.2.3)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark GitHub Release as prerelease'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+          - platform: windows-latest
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Bump version in manifests
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          version = os.environ["VERSION"]
+          pkg = Path("package.json")
+          data = json.loads(pkg.read_text())
+          data["version"] = version
+          pkg.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+          conf = Path("src-tauri/tauri.conf.json")
+          c = json.loads(conf.read_text())
+          c["version"] = version
+          conf.write_text(json.dumps(c, indent=2, ensure_ascii=False) + "\n")
+          cargo = Path("src-tauri/Cargo.toml")
+          text = cargo.read_text()
+          text2, n = re.subn(r'(?m)^version = "[^"]+"', f'version = "{version}"', text, count=1)
+          if n != 1:
+              raise SystemExit("failed to bump Cargo.toml version")
+          cargo.write_text(text2)
+          print("bumped to", version)
+          PY
+
+      - name: Generate Tauri icons
+        run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
+
+      - name: Build and upload release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS signing / notarization (optional — all or none)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Authenticode (optional)
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        with:
+          tagName: v${{ env.VERSION }}
+          releaseName: DocuHaim v${{ env.VERSION }}
+          releaseBody: |
+            Desktop builds (DMG / NSIS).
+
+            - macOS: universal DMG
+            - Windows: NSIS installer (.exe)
+
+            Unsigned builds if signing secrets are not configured — see docs/desktop/code-signing.md.
+          releaseDraft: false
+          prerelease: ${{ inputs.prerelease }}
+          args: ${{ matrix.args }}

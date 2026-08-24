@@ -1,0 +1,125 @@
+import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { readFile } from '@tauri-apps/plugin-fs';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import {
+  loadLocalVaultFsPath,
+  relativePathUnderVault,
+} from '@/utils/localVaultPathStore';
+import {
+  workspaceFromInputFiles,
+  type SessionWorkspace,
+} from '@/utils/sessionWorkspace';
+
+export const DESKTOP_OPEN_FILES_EVENT = 'desktop-open-files';
+
+type Listener = (paths: string[]) => void;
+
+const queue: string[] = [];
+const listeners = new Set<Listener>();
+let started = false;
+let unlisten: UnlistenFn | null = null;
+
+function enqueue(paths: string[]): void {
+  const next = (Array.isArray(paths) ? paths : [])
+    .map((p) => String(p || '').trim())
+    .filter(Boolean);
+  if (!next.length) return;
+  for (const p of next) {
+    if (!queue.includes(p)) queue.push(p);
+  }
+  const snapshot = [...queue];
+  for (const listener of listeners) {
+    try {
+      listener(snapshot);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function takeDesktopOpenPathQueue(): string[] {
+  return queue.splice(0, queue.length);
+}
+
+export function subscribeDesktopOpenFiles(listener: Listener): () => void {
+  listeners.add(listener);
+  if (queue.length) listener([...queue]);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** Start listening for OS / CLI open-file events (desktop builds only). */
+export async function startDesktopOpenFilesBridge(): Promise<void> {
+  if (!isDesktopApp() || started || typeof window === 'undefined') return;
+  started = true;
+  try {
+    const pending = await invoke<string[]>('take_pending_open_paths');
+    enqueue(pending || []);
+  } catch {
+    // command may be unavailable in plain vite preview
+  }
+  try {
+    unlisten = await listen<string[]>(DESKTOP_OPEN_FILES_EVENT, (event) => {
+      enqueue(event.payload || []);
+    });
+  } catch {
+    // ignore
+  }
+}
+
+export function stopDesktopOpenFilesBridge(): void {
+  unlisten?.();
+  unlisten = null;
+  started = false;
+}
+
+export type DesktopOpenRoute =
+  | { kind: 'vault'; relativePath: string }
+  | { kind: 'session'; workspace: SessionWorkspace };
+
+function basename(path: string): string {
+  const n = String(path || '').replace(/\\/g, '/');
+  const parts = n.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'note.md';
+}
+
+/**
+ * Route absolute OS paths: under registered vault → relative local note; else session workspace.
+ */
+export async function resolveDesktopOpenPaths(
+  absolutePaths: string[],
+): Promise<DesktopOpenRoute[]> {
+  const vaultRoot = loadLocalVaultFsPath();
+  const routes: DesktopOpenRoute[] = [];
+
+  for (const abs of absolutePaths) {
+    const relative = vaultRoot ? relativePathUnderVault(abs, vaultRoot) : null;
+    if (relative) {
+      routes.push({ kind: 'vault', relativePath: relative });
+      continue;
+    }
+    try {
+      const bytes = await readFile(abs);
+      const name = basename(abs);
+      const copy = new Uint8Array(bytes.byteLength);
+      copy.set(bytes);
+      const file = new File([copy], name, {
+        type: name.toLowerCase().endsWith('.md') || name.toLowerCase().endsWith('.markdown')
+          ? 'text/markdown'
+          : 'application/octet-stream',
+      });
+      const workspace = await workspaceFromInputFiles(
+        [{ relativePath: name, file }],
+        'md',
+        name,
+      );
+      routes.push({ kind: 'session', workspace });
+    } catch (e) {
+      console.warn('Failed to open desktop path as session:', abs, e);
+    }
+  }
+
+  return routes;
+}

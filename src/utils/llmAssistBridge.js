@@ -1,3 +1,4 @@
+import { isDesktopApp } from '@/utils/isDesktopApp';
 /** postMessage bridge between parent tab and LLM assist popout window */
 
 export const LLM_ASSIST_CHANNEL = 's3haim-llm-assist';
@@ -14,7 +15,7 @@ export function isLlmAssistMessage(data) {
 }
 
 export function getLlmAssistPopoutUrl() {
-  if (import.meta.env.VITE_ELECTRON === 'true') {
+  if (isDesktopApp()) {
     const url = new URL(window.location.href);
     url.hash = '#/llm-assist-popout';
     return url.toString();

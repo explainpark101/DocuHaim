@@ -244,6 +244,21 @@ import {
   saveLocalRootHandle,
   tryRestoreLocalRootHandle,
 } from '@/utils/localFolderStore';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import {
+  loadLocalVaultFsPath,
+  saveLocalVaultFsPath,
+  clearLocalVaultFsPath,
+} from '@/utils/localVaultPathStore';
+import {
+  pickTauriLocalVaultDirectory,
+  readTauriLocalDirectoryTree,
+} from '@/utils/storage/tauriLocalBackend';
+import {
+  resolveDesktopOpenPaths,
+  subscribeDesktopOpenFiles,
+  takeDesktopOpenPathQueue,
+} from '@/utils/desktopOpenFiles';
 import { loadHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
 import { loadTreeStickyFolderPathEnabled } from '@/utils/treeStickySettings';
 import {
@@ -424,6 +439,9 @@ function MainApp() {
   const [isWebdavTreeLoading, setIsWebdavTreeLoading] = useState(false);
   const [webdavFolderLoadingPath, setWebdavFolderLoadingPath] = useState(null);
   const [localRootHandle, setLocalRootHandle] = useState(null);
+  const [localVaultFsPath, setLocalVaultFsPath] = useState(() =>
+    isDesktopApp() ? loadLocalVaultFsPath() : '',
+  );
   const [isLocalTreeLoading, setIsLocalTreeLoading] = useState(false);
   const [localFolderLoadingPath, setLocalFolderLoadingPath] = useState(null);
   const localFolderLoadInFlightRef = useRef(new Set());
@@ -2078,9 +2096,10 @@ function MainApp() {
         getS3Client,
         s3Creds,
         localRootHandle,
+        localVaultFsPath,
         webdavConfig,
       }),
-    [getS3Client, s3Creds, localRootHandle, webdavConfig],
+    [getS3Client, s3Creds, localRootHandle, localVaultFsPath, webdavConfig],
   );
 
   const advancedSearchTreesRef = useRef({
@@ -2102,7 +2121,7 @@ function MainApp() {
     const backend = getBackendForType(storageMode);
     const storageKey =
       storageMode === STORAGE_MODE_LOCAL
-        ? `local:${localRootHandle?.name || 'default'}`
+        ? `local:${localVaultFsPath || localRootHandle?.name || 'default'}`
         : storageMode === STORAGE_MODE_WEBDAV
           ? `webdav:${webdavConfig?.endpoint || ''}:${webdavConfig?.basePath || ''}`
           : `s3:${s3Creds?.bucket || ''}`;
@@ -2156,6 +2175,16 @@ function MainApp() {
       const fallbackName =
         entry.name || path.split('/').filter(Boolean).pop() || 'file';
       if (storageType === 'local') {
+        if (localVaultFsPath) {
+          const node =
+            findFileNodeByPath(localTree, path) ||
+            findNodeByPath(localTree, path) || {
+              type: 'file',
+              path,
+              name: fallbackName,
+            };
+          return node?.type === 'file' ? node : null;
+        }
         if (!localRootHandle) {
           throw new Error('Local storage not ready');
         }
@@ -2199,6 +2228,7 @@ function MainApp() {
     },
     [
       localRootHandle,
+      localVaultFsPath,
       localTree,
       webdavReady,
       webdavConfig,
@@ -2411,6 +2441,9 @@ function MainApp() {
 
   const scanActiveStorageUsageTree = useCallback(async () => {
     if (storageMode === STORAGE_MODE_LOCAL) {
+      if (isDesktopApp() && localVaultFsPath) {
+        return readTauriLocalDirectoryTree(localVaultFsPath);
+      }
       if (!localRootHandle) throw new Error('로컬 폴더가 열려 있지 않습니다.');
       return readLocalDirectoryTree(localRootHandle, '', localRootHandle);
     }
@@ -2426,6 +2459,7 @@ function MainApp() {
   }, [
     storageMode,
     localRootHandle,
+    localVaultFsPath,
     webdavReady,
     webdavConfig,
     getS3Client,
@@ -2433,7 +2467,7 @@ function MainApp() {
   ]);
 
   const canScanStorageUsage =
-    (storageMode === STORAGE_MODE_LOCAL && Boolean(localRootHandle)) ||
+    (storageMode === STORAGE_MODE_LOCAL && Boolean(localRootHandle || localVaultFsPath)) ||
     (storageMode === STORAGE_MODE_WEBDAV && webdavReady) ||
     (storageMode !== STORAGE_MODE_LOCAL &&
       storageMode !== STORAGE_MODE_WEBDAV &&
@@ -3205,8 +3239,26 @@ function MainApp() {
 
   const openLocalFolder = async () => {
     try {
+      if (isDesktopApp()) {
+        const abs = await pickTauriLocalVaultDirectory();
+        if (!abs) return;
+        saveLocalVaultFsPath(abs);
+        setLocalVaultFsPath(abs);
+        setLocalRootHandle(null);
+        setStorageMode(STORAGE_MODE_LOCAL);
+        setIsLocalTreeLoading(true);
+        try {
+          const tree = await readTauriLocalDirectoryTree(abs);
+          setLocalTree(tree);
+        } finally {
+          setIsLocalTreeLoading(false);
+        }
+        return;
+      }
       // Must request readwrite; default showDirectoryPicker mode is read-only.
       const dirHandle = await pickLocalRootDirectory();
+      clearLocalVaultFsPath();
+      setLocalVaultFsPath('');
       setStorageMode(STORAGE_MODE_LOCAL);
       await attachLocalRootFolder(dirHandle);
     } catch (e) {
@@ -3217,6 +3269,16 @@ function MainApp() {
   };
 
   const refreshLocalTree = async () => {
+    if (isDesktopApp() && localVaultFsPath) {
+      setIsLocalTreeLoading(true);
+      try {
+        const tree = await readTauriLocalDirectoryTree(localVaultFsPath);
+        setLocalTree(tree);
+      } finally {
+        setIsLocalTreeLoading(false);
+      }
+      return;
+    }
     if (!localRootHandle) return;
     setIsLocalTreeLoading(true);
     try {
@@ -3238,9 +3300,10 @@ function MainApp() {
       getS3Client,
       s3Creds,
       localRootHandle,
+      localVaultFsPath,
       webdavConfig,
     });
-  }, [storageMode, getS3Client, s3Creds, localRootHandle, webdavConfig]);
+  }, [storageMode, getS3Client, s3Creds, localRootHandle, localVaultFsPath, webdavConfig]);
 
   const handleReadUnusedImageText = useCallback(
     async (path) => {
@@ -3646,6 +3709,26 @@ function MainApp() {
       const ok = markAsLoading();
       if (!ok) return;
 
+      // Desktop (Tauri) vault: no FileSystemAccess handles — use path backend.
+      if ((localVaultFsPath || isDesktopApp()) && !node.handle) {
+        const backend = getBackendForType('local');
+        if (!backend?.isReady?.()) {
+          alert('로컬 폴더를 먼저 열어주세요.');
+          return;
+        }
+        const opened = await openPathFileFromBackend({ backend, type: 'local', node });
+        if (!opened) return;
+        let { currentFile: openedFile, editorContent: content } = opened;
+        if (opened.needsEncMdPassword) {
+          const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
+          if (plain == null) return;
+          content = plain;
+          openedFile = { ...openedFile, content: plain, encMd: true };
+        }
+        commit(openedFile, content || '');
+        return;
+      }
+
       const file = await node.handle.getFile();
       const serverLastModTs = file.lastModified ?? 0;
 
@@ -3826,6 +3909,8 @@ function MainApp() {
     commitOpenFile,
     activateWorkspaceTab,
     showToast,
+    localVaultFsPath,
+    getBackendForType,
   ]);
 
   const toSelectKey = (storageType, path) => `${storageType}:${path}`;
@@ -4113,7 +4198,7 @@ function MainApp() {
         .filter(Boolean)
         .map((segment) => encodeURIComponent(segment))
         .join('/');
-      if (import.meta.env.VITE_ELECTRON === 'true') {
+      if (isDesktopApp()) {
         url.hash = `/view/${encodedView}`;
       } else {
         url.pathname = `${base && base !== '/' ? base : ''}/view/${encodedView}`;
@@ -4266,6 +4351,44 @@ function MainApp() {
     }
     seedTabsRestoreQueueFromSnapshot(source, openIds);
   }, [isUnlocked, workspaceTabsEnabled]);
+
+  // Desktop OS / CLI open-file queue (Tauri file association)
+  useEffect(() => {
+    if (!isUnlocked || !isDesktopApp()) return undefined;
+    let cancelled = false;
+
+    const processPaths = async (paths) => {
+      const abs = (paths || []).filter(Boolean);
+      if (!abs.length || cancelled) return;
+      const routes = await resolveDesktopOpenPaths(abs);
+      for (const route of routes) {
+        if (cancelled) return;
+        if (route.kind === 'vault') {
+          const name = route.relativePath.split('/').filter(Boolean).pop() || 'note.md';
+          const node = {
+            type: 'file',
+            path: route.relativePath,
+            name,
+          };
+          await selectFileRaw('local', node);
+        } else if (route.kind === 'session') {
+          await openSessionWorkspace(route.workspace);
+        }
+      }
+    };
+
+    const drain = () => {
+      const pending = takeDesktopOpenPathQueue();
+      if (pending.length) void processPaths(pending);
+    };
+
+    drain();
+    const unsub = subscribeDesktopOpenFiles(() => drain());
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [isUnlocked, selectFileRaw, openSessionWorkspace]);
 
   // Open file from ?open=, /view/* or /export-pdf/* route, or last-file cache once storage is ready.
   useEffect(() => {
@@ -4669,6 +4792,31 @@ function MainApp() {
       cancelled = true;
     };
   }, [isUnlocked, storageMode, localRootHandle]);
+
+  // Restore Tauri local vault tree from persisted absolute path
+  useEffect(() => {
+    if (!isUnlocked || !isDesktopApp()) return;
+    if (storageMode !== STORAGE_MODE_LOCAL) return;
+    const abs = localVaultFsPath || loadLocalVaultFsPath();
+    if (!abs) return;
+    if (localVaultFsPath !== abs) setLocalVaultFsPath(abs);
+    let cancelled = false;
+    (async () => {
+      setIsLocalTreeLoading(true);
+      try {
+        const tree = await readTauriLocalDirectoryTree(abs);
+        if (!cancelled) setLocalTree(tree);
+      } catch (e) {
+        console.warn('Failed to restore Tauri local vault tree:', e);
+      } finally {
+        if (!cancelled) setIsLocalTreeLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isUnlocked, storageMode, localVaultFsPath]);
+
 
   const moveS3FileToFolder = async (file, destFolderPath, destFileName) => {
     const client = getS3Client();

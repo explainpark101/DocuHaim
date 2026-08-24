@@ -36,5 +36,8 @@ public/lucivy/
 public/coi-serviceworker.js
 .vitepress/cache/**/*
 
+# Tauri
+src-tauri/target
+
 # Private design / ops notes (not for VitePress or public repo)
 /private/

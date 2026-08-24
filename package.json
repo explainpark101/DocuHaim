@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "author": "Jaehyung Park <explainpark101@gmail.com>",
   "type": "module",
-  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "bun run llms && vite build && bun run docs:build && test -f dist/docs/index.html",
@@ -17,7 +16,11 @@
     "check": "eslint . --quiet && bun run typecheck",
     "build:image": "bun scripts/generate-og-image.ts",
     "llms": "bun scripts/generate-llms.ts",
-    "preview": "VITE_BASE_PATH=/DocuHaim bun run build && VITE_BASE_PATH=/DocuHaim vite preview"
+    "preview": "VITE_BASE_PATH=/DocuHaim bun run build && VITE_BASE_PATH=/DocuHaim vite preview",
+    "build:tauri": "bun run llms && cross-env VITE_ELECTRON=true VITE_BASE_PATH=/ vite build",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",
@@ -43,6 +46,9 @@
     "@radix-ui/react-select": "^2.3.7",
     "@simplewebauthn/browser": "^13.2.2",
     "@tailwindcss/vite": "^4.2.1",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
+    "@tauri-apps/plugin-fs": "^2.5.1",
     "@vavt/cm-extension": "^1.11.2",
     "@vavt/v3-extension": "^4.0.0",
     "@zip.js/zip.js": "^2.8.26",
@@ -80,6 +86,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@tauri-apps/cli": "^2.11.4",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",

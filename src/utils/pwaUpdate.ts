@@ -1,3 +1,4 @@
+import { isDesktopApp } from '@/utils/isDesktopApp';
 const BUILD_RELOAD_GUARD_KEY = 's3haim_build_reload_guard';
 
 export type RemoteBuildIdResult =
@@ -156,7 +157,7 @@ export async function applyForcedAppUpdate(): Promise<void> {
  */
 export async function ensureLatestAppBuild(): Promise<boolean> {
   if (!import.meta.env.PROD) return true;
-  if (import.meta.env.VITE_ELECTRON === 'true') return true;
+  if (isDesktopApp()) return true;
 
   const localId = getLocalAppBuildId();
   if (!localId) return true;

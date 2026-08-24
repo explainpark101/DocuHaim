@@ -1,6 +1,7 @@
 import { createS3Backend } from './s3Backend.js';
 import { createLocalBackend } from './localBackend.js';
 import { createWebdavBackend } from './webdavBackend.js';
+import { createTauriLocalBackend } from './tauriLocalBackend';
 import { getStorageCapabilities } from './capabilities.js';
 
 /**
@@ -9,6 +10,7 @@ import { getStorageCapabilities } from './capabilities.js';
  * @property {() => import('@aws-sdk/client-s3').S3Client | null} [getS3Client]
  * @property {{ bucket?: string } | null} [s3Creds]
  * @property {FileSystemDirectoryHandle | null} [localRootHandle]
+ * @property {string} [localVaultFsPath] Absolute vault root (Tauri desktop)
  * @property {{ endpoint: string, username: string, password: string, basePath: string } | null} [webdavConfig]
  */
 
@@ -18,6 +20,10 @@ import { getStorageCapabilities } from './capabilities.js';
 export function createStorageBackend(deps) {
   const mode = deps?.mode || 's3';
   if (mode === 'local') {
+    const vaultPath = String(deps.localVaultFsPath || '').trim();
+    if (vaultPath) {
+      return createTauriLocalBackend(vaultPath);
+    }
     return createLocalBackend(deps.localRootHandle ?? null);
   }
   if (mode === 'webdav') {

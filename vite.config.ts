@@ -420,7 +420,7 @@ export default defineConfig({
   server: {
     headers: { ...CROSS_ORIGIN_ISOLATION_HEADERS },
     watch: {
-      ignored: ['**/.vitepress/**'],
+      ignored: ['**/.vitepress/**', '**/src-tauri/**'],
     },
   },
   preview: {
