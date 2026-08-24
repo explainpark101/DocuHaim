@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, type Connect, type Plugin, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -482,5 +483,30 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
+  },
+  test: {
+    testTimeout: 60_000,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          environment: 'jsdom',
+          include: ['src/**/*.test.ts'],
+          exclude: ['src/**/*.puppeteer.test.ts'],
+          setupFiles: ['src/test/setupPrintPagedJs.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'puppeteer',
+          environment: 'node',
+          include: ['src/**/*.puppeteer.test.ts'],
+          testTimeout: 180_000,
+          hookTimeout: 180_000,
+        },
+      },
+    ],
   },
 });

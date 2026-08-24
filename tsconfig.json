@@ -32,6 +32,8 @@
     ".vitepress",
     "docs/.vitepress",
     "**/.vitepress/**",
-    ".vitepress/**/*"
+    ".vitepress/**/*",
+    "**/*.test.ts",
+    "**/*.puppeteer.test.ts"
   ]
 }

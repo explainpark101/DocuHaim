@@ -104,7 +104,9 @@ export function waitForPrintMermaidReady(
 /** Blockers keeping staging from print layout (for debug). */
 export function describePrintStagingBlockers(stagingRoot: HTMLElement): string[] {
   const blockers: string[] = [];
-  const preview = stagingRoot.querySelector('.md-editor-preview');
+  const preview = stagingRoot.classList.contains('md-editor-preview')
+    ? stagingRoot
+    : stagingRoot.querySelector('.md-editor-preview');
   if (!preview) blockers.push('no .md-editor-preview');
 
   for (const img of stagingRoot.querySelectorAll('img')) {

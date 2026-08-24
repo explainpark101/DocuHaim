@@ -265,30 +265,49 @@ export async function renderMarkdownToPagedPreview(
 
     const previewRoot = createMarkdownPreviewRoot(markdown, headingId);
 
-    await renderMarkdownFlow(previewRoot, {
-      contentWidthPx,
-      imageMaxWidthPx,
-      imageMaxHeightPx,
-      ...(getPresignedUrl ? { getPresignedUrl, currentNotePath } : {}),
-    });
+    const measureShell = document.createElement('div');
+    measureShell.className = 'export-pdf-staging-measure';
+    measureShell.style.cssText = [
+      'position:absolute',
+      'left:0',
+      'top:0',
+      'visibility:hidden',
+      'pointer-events:none',
+      'width:' + `${contentWidthPx}px`,
+    ].join(';');
+    pagesHost.appendChild(measureShell);
+    measureShell.appendChild(previewRoot);
 
-    debugExportPdf('paged-preview', 'phase 1 render done', {
-      elapsedMs: Math.round(performance.now() - t0),
-      preview: previewContentStats(previewRoot),
-    });
+    try {
+      await renderMarkdownFlow(previewRoot, {
+        contentWidthPx,
+        imageMaxWidthPx,
+        imageMaxHeightPx,
+        ...(getPresignedUrl ? { getPresignedUrl, currentNotePath } : {}),
+      });
 
-    const result = await paginateRenderedFlow(pagesHost, previewRoot, {
-      pageSizeId,
-      contentStyles,
-      contentWidthPx,
-      imageMaxHeightPx,
-    });
+      debugExportPdf('paged-preview', 'phase 1 render done', {
+        elapsedMs: Math.round(performance.now() - t0),
+        preview: previewContentStats(previewRoot),
+      });
 
-    debugExportPdf('paged-preview', 'pipeline complete', {
-      pageCount: result.pageCount,
-      elapsedMs: Math.round(performance.now() - t0),
-    });
+      measureShell.remove();
 
-    return result;
+      const result = await paginateRenderedFlow(pagesHost, previewRoot, {
+        pageSizeId,
+        contentStyles,
+        contentWidthPx,
+        imageMaxHeightPx,
+      });
+
+      debugExportPdf('paged-preview', 'pipeline complete', {
+        pageCount: result.pageCount,
+        elapsedMs: Math.round(performance.now() - t0),
+      });
+
+      return result;
+    } finally {
+      measureShell.remove();
+    }
   });
 }
