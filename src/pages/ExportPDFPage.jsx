@@ -63,7 +63,6 @@ import {
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
 import { usePrintTableFit } from '@/hooks/usePrintTableFit';
-import { usePrintMermaidFit } from '@/hooks/usePrintMermaidFit';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { usePrintPageInnerHeightPx } from '@/hooks/usePrintPageInnerHeightPx';
 import { usePagedJsPreview } from '@/hooks/usePagedJsPreview';
@@ -360,22 +359,38 @@ const printFontStylesRaw = `
     height: auto !important;
     min-height: 0 !important;
   }
-  .export-pdf-pages .md-editor-mermaid[data-processed] {
+  .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas="1"] {
     display: block !important;
-    width: auto !important;
-    max-width: 100% !important;
-    height: auto !important;
-    max-height: var(--print-img-max-height, var(--print-page-inner-height)) !important;
+    line-height: 0 !important;
     overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
-  }
-  .export-pdf-pages .md-editor-mermaid[data-processed] svg {
-    display: block;
-    width: auto !important;
     max-width: 100% !important;
+    width: auto !important;
     height: auto !important;
-    max-height: var(--print-img-max-height, var(--print-page-inner-height)) !important;
+  }
+  .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas-state="loading"] {
+    min-height: 48px;
+    background: #f3f4f6;
+  }
+  .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas-state="error"] .print-mermaid-canvas-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 12px;
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px dashed #fca5a5;
+    box-sizing: border-box;
+  }
+  .export-pdf-pages .md-editor-mermaid[data-print-mermaid-canvas="1"] canvas {
+    display: block !important;
+    max-width: 100% !important;
+    vertical-align: top;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .export-pdf-cover-stack--live {
     position: relative;
@@ -610,7 +625,6 @@ export default function ExportPDFPage({
     eager: true,
     layoutKey: `${printLayoutKey}|${previewValue}`,
   });
-  usePrintMermaidFit(paperContentRef, imageMaxProbeRef, `${printLayoutKey}|${previewValue}`);
   const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
   const pagedLayoutKey = `${printLayoutKey}|${previewValue}`;
   const { pageCount: bodyPageCount } = usePagedJsPreview(

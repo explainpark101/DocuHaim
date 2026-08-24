@@ -14,12 +14,9 @@ import {
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
 } from '@/components/contextMenu/mobileContextMenuStyles';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
-import { getVisualLineAtPoint } from '@/utils/printVisualLinePgbr';
 import {
   headingTargetFromElement,
   insertPgbrBeforeHeadingByText,
-  insertPgbrBeforeHrInBody,
-  insertPgbrBeforeVisualLineInBody,
   removePgbrByOccurrenceInBody,
 } from '@/utils/printPgbrInsert';
 
@@ -37,23 +34,6 @@ type MenuTarget =
       headingText: string;
       occurrence: number;
       headingIndex: number;
-      preview: PreviewBand;
-      label: string;
-    }
-  | {
-      kind: 'line';
-      x: number;
-      y: number;
-      lineText: string;
-      occurrence: number;
-      preview: PreviewBand;
-      label: string;
-    }
-  | {
-      kind: 'hr';
-      x: number;
-      y: number;
-      hrIndex: number;
       preview: PreviewBand;
       label: string;
     }
@@ -107,10 +87,6 @@ function applyPgbrAction(
       target.occurrence,
       target.headingIndex,
     );
-  } else if (target.kind === 'hr') {
-    next = insertPgbrBeforeHrInBody(md, target.hrIndex);
-  } else if (target.kind === 'line') {
-    next = insertPgbrBeforeVisualLineInBody(md, target.lineText, target.occurrence);
   } else {
     next = removePgbrByOccurrenceInBody(md, target.occurrence);
   }
@@ -265,46 +241,6 @@ export function PrintPgbrContextMenu({
         });
         return;
       }
-
-      const hr = (event.target as Element | null)?.closest?.('hr');
-      if (hr instanceof HTMLElement && contentRoot.contains(hr)) {
-        event.preventDefault();
-        event.stopPropagation();
-        const hrs = [...contentRoot.querySelectorAll('hr')];
-        const hrIndex = hrs.findIndex((el) => el === hr);
-        if (hrIndex < 0) return;
-        const rect = hr.getBoundingClientRect();
-        openAt({
-          kind: 'hr',
-          x: event.clientX,
-          y: event.clientY,
-          hrIndex,
-          preview: paperPreviewBand(bandRoot, rect.top),
-          label: '구분선',
-        });
-        return;
-      }
-
-      if (!(event.target instanceof Node) || !contentRoot.contains(event.target)) {
-        return;
-      }
-      const visualLine = getVisualLineAtPoint(
-        contentRoot,
-        event.clientX,
-        event.clientY,
-      );
-      if (!visualLine?.lineText) return;
-      event.preventDefault();
-      event.stopPropagation();
-      openAt({
-        kind: 'line',
-        x: event.clientX,
-        y: event.clientY,
-        lineText: visualLine.lineText,
-        occurrence: visualLine.occurrence,
-        preview: paperPreviewBand(bandRoot, visualLine.top),
-        label: visualLine.lineText,
-      });
     };
 
     root.addEventListener('contextmenu', onContextMenu);

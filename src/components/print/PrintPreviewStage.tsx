@@ -23,6 +23,7 @@ import {
   type PrintSpreadPair,
 } from '@/utils/printPreviewView';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
+import { copyPrintMermaidCanvases } from '@/utils/printMermaidCanvas';
 import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagedJs';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 
@@ -103,6 +104,7 @@ function BodyPageSlot({
     );
     if (!source) return;
     const clone = source.cloneNode(true) as HTMLElement;
+    copyPrintMermaidCanvases(source, clone);
     for (const el of clone.querySelectorAll('[id]')) {
       el.removeAttribute('id');
     }

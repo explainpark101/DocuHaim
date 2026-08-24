@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { renderAllLazyMermaidsInRoot } from '@/utils/lazyMermaid';
 import { renderPagedJsPreview } from '@/utils/printPagedJs';
 import { waitForPrintStagingReady } from '@/utils/printStagingReady';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
@@ -33,7 +34,10 @@ export function usePagedJsPreview(
     let cancelled = false;
     const generation = (packGenerationRef.current += 1);
 
-    void waitForPrintStagingReady(staging).then(async () => {
+    void (async () => {
+      await renderAllLazyMermaidsInRoot(staging);
+      if (cancelled || generation !== packGenerationRef.current) return;
+      await waitForPrintStagingReady(staging);
       if (cancelled || generation !== packGenerationRef.current) return;
       const preview = staging.querySelector('.md-editor-preview');
       if (!preview) {
@@ -57,7 +61,7 @@ export function usePagedJsPreview(
         console.error('[usePagedJsPreview] render failed', err);
         if (!cancelled) setPageCount(1);
       }
-    });
+    })();
 
     return () => {
       cancelled = true;
