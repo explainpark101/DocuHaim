@@ -6,19 +6,13 @@
  * `div.md-editor-mermaid` placeholders for `useLazyMermaidRender`.
  */
 import type { MarkdownIt as MarkdownItInstance, Token } from 'markdown-it';
+import { resolveMermaidThemeForHost } from '@/utils/mermaidTheme';
 
 const PREFIX = 'md-editor';
 
 type FenceEnv = {
   srcLines?: string[];
 };
-
-function resolveMermaidTheme(): 'dark' | 'default' {
-  if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
-    return 'dark';
-  }
-  return 'default';
-}
 
 function isFenceClosed(token: Token, env: FenceEnv | undefined): boolean {
   if (!token.map || token.level !== 0) return true;
@@ -41,7 +35,7 @@ export function mermaidFenceMarkdownItPlugin(md: MarkdownItInstance): void {
     const source = token.content.trim();
     const fenceEnv = env as FenceEnv;
     token.attrSet('class', `${PREFIX}-mermaid`);
-    token.attrSet('data-mermaid-theme', resolveMermaidTheme());
+    token.attrSet('data-mermaid-theme', resolveMermaidThemeForHost());
     token.attrSet('data-haim-mermaid-lazy', '1');
     if (token.map && token.level === 0) {
       token.attrSet('data-closed', String(isFenceClosed(token, fenceEnv)));

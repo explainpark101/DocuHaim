@@ -322,6 +322,11 @@ html {
   white-space: pre
 }
 
+/* Keep newlines even if placeholder is moved outside .md-editor-preview (print pack). */
+.md-editor-mermaid:not([data-processed]) {
+  white-space: pre
+}
+
 .md-editor-preview [class=md-editor-mermaid][data-grab] {
   cursor: grab
 }

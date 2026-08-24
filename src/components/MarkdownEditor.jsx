@@ -88,15 +88,7 @@ import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
 import { highlightSelectionMatches, selectNextOccurrence } from '@codemirror/search';
 import { Loader2 } from 'lucide-react';
-import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
-import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
-import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
-import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
-import { chatSavedNotePlugin } from '@/utils/chatSavedNoteMarkdownIt';
-import { noteCoverPlaceholderMarkdownItPlugin } from '@/utils/noteCoverPlaceholderMarkdownIt';
-import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
-import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
-import { betterMdMarkdownItPlugin } from '@/utils/betterMd/markdownItPlugin';
+import { applyAppMarkdownItPluginsFromList } from '@/utils/appMarkdownItPlugins';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
@@ -550,40 +542,10 @@ config({
 
     return nextExtensions;
   },
+  // Must use shared merge (includes mermaid fence). A hand-rolled list here
+  // overwrote mdEditorConfig and dropped mermaid → plain code blocks.
   markdownItPlugins(plugins) {
-    let next = plugins;
-    // wiki_image? @/config/mdEditorConfig?? ?? ???. ???? ?? ?? ??.
-    if (!next.some((p) => p.type === 'better_md')) {
-      next = [...next, { type: 'better_md', plugin: betterMdMarkdownItPlugin, options: {} }];
-    }
-    if (!next.some((p) => p.type === 'heading_levels')) {
-      next = [...next, { type: 'heading_levels', plugin: headingLevelsMarkdownItPlugin, options: {} }];
-    }
-    if (!next.some((p) => p.type === 'wiki_image')) {
-      next = [...next, { type: 'wiki_image', plugin: wikiImagePlugin, options: {} }];
-    }
-    if (!next.some((p) => p.type === 'preview_link_target_blank')) {
-      next = [...next, { type: 'preview_link_target_blank', plugin: previewLinkTargetBlankPlugin, options: {} }];
-    }
-    if (!next.some((p) => p.type === 'pgbr')) {
-      next = [...next, { type: 'pgbr', plugin: pageBreakMarkdownItPlugin, options: {} }];
-    }
-    if (!next.some((p) => p.type === 'chat_saved_note')) {
-      next = [...next, { type: 'chat_saved_note', plugin: chatSavedNotePlugin, options: {} }];
-    }
-    if (!next.some((p) => p.type === 'note_cover_placeholder')) {
-      next = [
-        ...next,
-        { type: 'note_cover_placeholder', plugin: noteCoverPlaceholderMarkdownItPlugin, options: {} },
-      ];
-    }
-    if (!next.some((p) => p.type === 'haim_table')) {
-      next = [...next, { type: 'haim_table', plugin: haimTableMarkdownItPlugin, options: {} }];
-    }
-    if (!next.some((p) => p.type === 'plan_frontmatter')) {
-      next = [...next, { type: 'plan_frontmatter', plugin: planFrontmatterMarkdownItPlugin, options: {} }];
-    }
-    return next;
+    return applyAppMarkdownItPluginsFromList(plugins);
   },
 });
 
@@ -626,9 +588,12 @@ export default function MarkdownEditor({
   const currentFileRef = useRef(currentFile);
   const themeRef = useRef(theme);
   const coverIssuesAlertSigRef = useRef('');
-  valueRef.current = value;
-  currentFileRef.current = currentFile;
-  themeRef.current = theme;
+
+  useEffect(() => {
+    valueRef.current = value;
+    currentFileRef.current = currentFile;
+    themeRef.current = theme;
+  }, [value, currentFile, theme]);
 
   useEffect(() => {
     const { issues } = parseNoteCover(value ?? '');
@@ -674,8 +639,10 @@ export default function MarkdownEditor({
   });
   const openHaimTableEditRef = useRef(haimTableEdit.openAtOffset);
   const openHaimTablePreviewRef = useRef(haimTableEdit.openPreviewTable);
-  openHaimTableEditRef.current = haimTableEdit.openAtOffset;
-  openHaimTablePreviewRef.current = haimTableEdit.openPreviewTable;
+  useEffect(() => {
+    openHaimTableEditRef.current = haimTableEdit.openAtOffset;
+    openHaimTablePreviewRef.current = haimTableEdit.openPreviewTable;
+  }, [haimTableEdit.openAtOffset, haimTableEdit.openPreviewTable]);
   const handleToolbarImageUploadRef = useRef(null);
   const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
@@ -689,7 +656,9 @@ export default function MarkdownEditor({
   const [footnoteComposeOpen, setFootnoteComposeOpen] = useState(false);
   const footnoteInsertRangeRef = useRef({ from: 0, to: 0 });
   const onChangeWithUndoHistoryRef = useRef(onChangeWithUndoHistory);
-  onChangeWithUndoHistoryRef.current = onChangeWithUndoHistory;
+  useEffect(() => {
+    onChangeWithUndoHistoryRef.current = onChangeWithUndoHistory;
+  }, [onChangeWithUndoHistory]);
   const [clipCropFile, setClipCropFile] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
@@ -2298,7 +2267,9 @@ export default function MarkdownEditor({
     if (!paths?.length) return;
     insertMarkdownAtCursor(`${paths.map((p) => `![[${p}]]`).join('\n')}\n`);
   }, [insertMarkdownAtCursor, isUploadingEditorImage, onUploadImage]);
-  handleToolbarImageUploadRef.current = handleToolbarImageUpload;
+  useEffect(() => {
+    handleToolbarImageUploadRef.current = handleToolbarImageUpload;
+  }, [handleToolbarImageUpload]);
 
   const handleToolbarImageClipConfirm = useCallback(async (file) => {
     if (!file || typeof onUploadImage !== 'function') {
@@ -2330,7 +2301,9 @@ export default function MarkdownEditor({
     setHeadingRemapSelection(snapshot);
     setHeadingRemapOpen(true);
   }, []);
-  openHeadingRemapRef.current = openHeadingRemap;
+  useEffect(() => {
+    openHeadingRemapRef.current = openHeadingRemap;
+  }, [openHeadingRemap]);
 
   const defToolbars = useMemo(() => [
     <ExportPDF

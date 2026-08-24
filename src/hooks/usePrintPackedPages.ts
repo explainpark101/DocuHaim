@@ -66,7 +66,7 @@ export function usePrintPackedPages(
       subtree: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ['style', 'class', 'src', 'width', 'height'],
+      attributeFilter: ['style', 'class', 'src', 'width', 'height', 'data-processed'],
     });
     const images = [...staging.querySelectorAll('img')];
     for (const img of images) {

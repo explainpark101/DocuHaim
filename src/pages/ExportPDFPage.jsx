@@ -265,6 +265,11 @@ const printFontStyles = `
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview figure figcaption {
     text-align: left;
   }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid svg,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid svg * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-pgbr,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview hr,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h1,

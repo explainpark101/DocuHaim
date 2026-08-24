@@ -389,7 +389,61 @@ function overflows(inner: HTMLElement, pageInnerHeightPx: number): boolean {
 
 function stripDuplicateIds(root: HTMLElement): void {
   for (const el of root.querySelectorAll('[id]')) {
+    // Mermaid SVG theme/marker CSS is keyed by id; rewrite separately.
+    if (el.closest('.md-editor-mermaid')) continue;
     el.removeAttribute('id');
+  }
+}
+
+let printMermaidIdSeq = 0;
+
+/**
+ * Mermaid embeds theme rules as `#svgId .node rect { fill:… }`. Packing used to
+ * strip those ids, so clones fell back to black fills under html.dark. Remap every
+ * id inside each cloned diagram (and url(#…) / style references) to unique values.
+ */
+export function rewriteMermaidIdsInClone(root: HTMLElement): void {
+  const hosts = root.classList?.contains('md-editor-mermaid')
+    ? [root]
+    : [...root.querySelectorAll<HTMLElement>('.md-editor-mermaid')];
+
+  for (const host of hosts) {
+    const svg = host.querySelector('svg');
+    if (!svg) continue;
+
+    printMermaidIdSeq += 1;
+    const prefix = `pm${printMermaidIdSeq}-`;
+    const idMap = new Map<string, string>();
+    const withIds = [svg, ...svg.querySelectorAll('[id]')];
+    for (const el of withIds) {
+      const oldId = el.id;
+      if (!oldId) continue;
+      const next = `${prefix}${oldId}`;
+      idMap.set(oldId, next);
+      el.id = next;
+    }
+    if (idMap.size === 0) continue;
+
+    const replaceIds = (text: string): string => {
+      let out = text;
+      // Longest-first so shorter ids are not partial matches of longer ones.
+      const entries = [...idMap.entries()].sort((a, b) => b[0].length - a[0].length);
+      for (const [oldId, newId] of entries) {
+        out = out.split(oldId).join(newId);
+      }
+      return out;
+    };
+
+    for (const styleEl of svg.querySelectorAll('style')) {
+      if (styleEl.textContent) styleEl.textContent = replaceIds(styleEl.textContent);
+    }
+    for (const el of [svg, ...svg.querySelectorAll('*')]) {
+      for (const attr of [...el.attributes]) {
+        if (!attr.value.includes('#')) continue;
+        const next = replaceIds(attr.value);
+        if (next !== attr.value) el.setAttribute(attr.name, next);
+      }
+    }
   }
 }
 
@@ -437,6 +491,7 @@ export function packPrintPages(options: {
 
     const node = unit.element.cloneNode(true) as HTMLElement;
     stripDuplicateIds(node);
+    rewriteMermaidIdsInClone(node);
     // Preserve heading id on first line only (already set in materialize).
     if (unit.element.id && node.classList.contains(PRINT_PACK_LINE_CLASS)) {
       node.id = unit.element.id;

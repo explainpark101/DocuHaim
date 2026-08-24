@@ -4,6 +4,7 @@
  * render every diagram at once.
  */
 import { patchMermaidRender } from '@/utils/mermaidFixLabelNewlines';
+import { resolveMermaidThemeForHost, type MermaidThemeName } from '@/utils/mermaidTheme';
 
 type MermaidModule = {
   default: {
@@ -37,13 +38,8 @@ export async function getMermaidInstance(): Promise<MermaidModule['default']> {
   return mermaidPromise;
 }
 
-function resolveTheme(el: Element): 'dark' | 'default' {
-  const attr = (el.getAttribute('data-mermaid-theme') || '').trim();
-  if (attr === 'dark') return 'dark';
-  if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
-    return 'dark';
-  }
-  return 'default';
+function resolveTheme(el: Element): MermaidThemeName {
+  return resolveMermaidThemeForHost(el);
 }
 
 async function ensureInitialized(theme: 'dark' | 'default'): Promise<MermaidModule['default']> {
@@ -70,7 +66,10 @@ export function isLazyMermaidPlaceholder(el: Element): boolean {
 export function getMermaidSourceFromElement(el: HTMLElement): string {
   const fromAttr = (el.getAttribute('data-content') || '').trim();
   if (fromAttr) return fromAttr;
-  return (el.innerText || el.textContent || '').trim();
+  // Prefer textContent: innerText collapses newlines when white-space is not
+  // `pre` (e.g. offscreen/print hosts). That turns `subgraph 고객 영역` into a
+  // single-line parse error while simple `A --> B` diagrams still work.
+  return (el.textContent || el.innerText || '').trim();
 }
 
 /**
@@ -100,6 +99,7 @@ export async function renderLazyMermaidElement(
     host.setAttribute('data-processed', '');
     host.setAttribute('data-content', source);
     host.setAttribute('data-haim-mermaid-lazy', '1');
+    host.setAttribute('data-mermaid-theme', theme);
     const line = el.getAttribute('data-line');
     if (line != null) host.setAttribute('data-line', line);
     const replaceKey = el.getAttribute('data-haim-imgbb-replace-key');
