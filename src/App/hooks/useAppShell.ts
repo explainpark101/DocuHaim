@@ -1,9 +1,14 @@
 import { useContext } from 'react';
-import { AppShellContext, type AppShellBag } from '@/App/context/AppShellContext';
+import { AppShellContext } from '@/App/context/AppShellContext';
+import { useAppHandlers } from '@/App/hooks/useAppHandlers';
 
-/** Full shell bag — prefer domain hooks for new code. */
-export function useAppShell(): AppShellBag {
-  const ctx = useContext(AppShellContext);
-  if (!ctx) throw new Error('useAppShell must be used within AppProviders');
-  return ctx;
+/**
+ * Back-compat: merges chrome shell + handlers bag for consumers not yet migrated.
+ * Prefer useAppChrome / useAppHandlers / domain hooks.
+ */
+export function useAppShell(): Record<string, any> {
+  const chrome = useContext(AppShellContext);
+  const handlers = useAppHandlers();
+  if (!chrome) throw new Error('useAppShell must be used within AppProviders');
+  return { ...handlers, ...chrome };
 }

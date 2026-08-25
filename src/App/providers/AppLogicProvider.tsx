@@ -2,38 +2,75 @@ import { useMemo, type ReactNode } from 'react';
 import { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppModalsProvider } from '@/App/providers/AppModalsProvider';
+import { AppChromeProvider } from '@/App/providers/AppChromeProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
-import { useAutoSave } from '@/App/hooks/useAutoSave';
-import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
+import { AppHandlersContext } from '@/App/context/AppHandlersContext';
+import type { AppChromeValue } from '@/App/context/AppChromeContext';
 import { useAppOrchestration } from '@/App/providers/useAppOrchestration';
 
-function AppShellMerge({
+const CHROME_KEYS = [
+  'sidebarOpen',
+  'setSidebarOpen',
+  'sidebarCollapsed',
+  'setSidebarCollapsed',
+  'isMobile',
+  'chatSurfaceActive',
+  'lockChatViewport',
+  'isChatRoute',
+  'isSettingsRoute',
+  'appName',
+  'handleBrandClick',
+  'chatAttachDropHost',
+  'setChatAttachDropHost',
+  'handleDropToChatAttach',
+  'handleRegisterChatAttachDrop',
+  'fileTabContextMenuRef',
+  'expandPathsRef',
+  'showHiddenFolders',
+  'showTrashFolder',
+  'hideRecordingCompanions',
+  'treeStickyFolderPathEnabled',
+  'showTreeModifiedDate',
+  'treeHoverExpandSettings',
+  'setTreeHoverExpandSettings',
+  'uploadFileInputRef',
+  'uploadFolderInputRef',
+  'handleUploadFileSelect',
+  'handleUploadFolderSelect',
+] as const;
+
+function pickChrome(c: Record<string, any>): AppChromeValue {
+  const chrome = {} as AppChromeValue;
+  for (const key of CHROME_KEYS) {
+    (chrome as any)[key] = c[key];
+  }
+  return chrome;
+}
+
+function AppChromeAndHandlers({
   controller,
   children,
 }: {
-  controller: Record<string, unknown>;
+  controller: Record<string, any>;
   children: ReactNode;
 }) {
-  const autoSave = useAutoSave();
-  const bootstrap = useAppBootstrap();
-  const value = useMemo(
-    () => ({
-      ...controller,
-      ...autoSave,
-      theme: bootstrap.theme,
-      setTheme: bootstrap.setTheme,
-      scriptsLoaded: bootstrap.scriptsLoaded,
-      shareBlockingAuth: bootstrap.shareBlockingAuth,
-      setShareBlockingAuth: bootstrap.setShareBlockingAuth,
-    }),
-    [controller, autoSave, bootstrap],
+  const chrome = useMemo(() => pickChrome(controller), [controller]);
+  // Remaining orchestration handlers for AppLayout until fully domain-owned.
+  const handlers = useMemo(() => controller, [controller]);
+
+  return (
+    <AppChromeProvider value={chrome}>
+      <AppShellContext.Provider value={chrome}>
+        <AppHandlersContext.Provider value={handlers}>
+          {children}
+        </AppHandlersContext.Provider>
+      </AppShellContext.Provider>
+    </AppChromeProvider>
   );
-  return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;
 }
 
 /**
- * Runs cross-domain orchestration (handlers still in useAppOrchestration) and fans out
- * typed domain slices. Domain React state lives in *StateProvider / RecordingProvider wrappers.
+ * Fans out modals + chrome/handlers. Vault/File/Tree contexts are owned above.
  */
 export function AppLogicProvider({ children }: { children: ReactNode }) {
   const c = useAppOrchestration() as Record<string, any>;
@@ -147,7 +184,7 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
     <AppBootstrapProvider logic={bootstrapLogic}>
       <AppModalsProvider value={modals}>
         <AutoSaveProvider>
-          <AppShellMerge controller={c}>{children}</AppShellMerge>
+          <AppChromeAndHandlers controller={c}>{children}</AppChromeAndHandlers>
         </AutoSaveProvider>
       </AppModalsProvider>
     </AppBootstrapProvider>

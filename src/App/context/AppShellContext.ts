@@ -1,10 +1,10 @@
 import { createContext } from 'react';
+import type { AppChromeValue } from '@/App/context/AppChromeContext';
 
 /**
- * Remaining chrome bag for AppLayout (sidebar chrome, settings handlers, chat bridge).
- * Prefer domain hooks (useVault, useFileSession, useRecordingOwned, …) for new work.
- * Domain-owned keys are still merged for back-compat until AppLayout finishes migrating.
+ * Chrome-only shell bag (&lt;30 keys). Alias of AppChromeValue.
+ * Prefer useAppChrome / domain hooks for new consumers.
  */
-export type AppShellBag = Record<string, any>;
+export type AppShellBag = AppChromeValue;
 
 export const AppShellContext = createContext<AppShellBag | null>(null);

@@ -6,4 +6,6 @@ export { useTreeOps } from '@/App/hooks/useTreeOps';
 export { useAutoSave } from '@/App/hooks/useAutoSave';
 export { useAutoSaveDomain } from '@/App/hooks/useAutoSaveDomain';
 export { useAppModals } from '@/App/hooks/useAppModals';
+export { useAppChrome } from '@/App/hooks/useAppChrome';
+export { useAppHandlers } from '@/App/hooks/useAppHandlers';
 export { useAppShell } from '@/App/hooks/useAppShell';

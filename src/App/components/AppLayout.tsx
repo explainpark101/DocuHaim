@@ -27,22 +27,28 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { useAppShell } from '@/App/hooks/useAppShell';
+import { useAppChrome } from '@/App/hooks/useAppChrome';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
+import { useRecordingOwned } from '@/App/providers/RecordingProvider';
+import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
 
 /** Main app chrome — domain hooks for vault/file/tabs; shell bag for remaining chrome. */
 export function AppLayout({ children }: { children?: ReactNode }) {
   const b = useAppShell();
+  const chrome = useAppChrome();
   const vault = useVault();
   const file = useFileSession();
   const autoSave = useAutoSave();
   const bootstrap = useAppBootstrap();
   const tabsCtx = useWorkspaceTabsCtx();
   const treeOps = useTreeOps();
+  const recording = useRecordingOwned();
+  const pwaSnippets = usePwaSnippetsOwned();
 
   const {
     addToNoteSelectPath,

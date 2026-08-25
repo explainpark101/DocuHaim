@@ -10,7 +10,7 @@ import { isExportPdfAppPathname, parseExportPdfPathFromAppPathname } from '@/uti
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSession } from '@/App/hooks/useFileSession';
-import { useAppShell } from '@/App/hooks/useAppShell';
+import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
 
 const ExportPDFPage = lazy(() => import('@/pages/ExportPDFPage'));
 
@@ -20,7 +20,7 @@ export function ExportPdfGate() {
   const bootstrap = useAppBootstrap();
   const vault = useVault();
   const file = useFileSession();
-  const shell = useAppShell();
+  const pwaSnippets = usePwaSnippetsOwned();
 
   const routeExportPath = parseExportPdfPathFromAppPathname(location.pathname);
   const navState = location.state && typeof location.state === 'object' ? location.state : null;
@@ -62,7 +62,7 @@ export function ExportPdfGate() {
         }
         onOpenFile={file.openAdvancedSearchFile}
         preferPrintActions
-        snippetConfig={shell.snippetConfig}
+        snippetConfig={pwaSnippets.snippetConfig}
       />
       <AuthModal
         isOpen={bootstrap.showAuthModal && !bootstrap.shareBlockingAuth}
