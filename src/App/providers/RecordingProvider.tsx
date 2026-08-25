@@ -37,6 +37,8 @@ export type RecordingOwnedApi = RecordingSyncValue & {
   setRecordingAudioUrl: (url: string | ((prev: string) => string)) => void;
   recordingSyncData: any[];
   setRecordingSyncData: (data: any[] | ((prev: any[]) => any[])) => void;
+  /** Injected from AppLogic (orchestration) via RecordingToggleBridge. */
+  handleToggleRecording?: (...args: any[]) => any;
 };
 
 const RecordingOwnedContext = createContext<RecordingOwnedApi | null>(null);
@@ -114,5 +116,26 @@ export function RecordingProvider({ children }: { children: ReactNode }) {
         {children}
       </RecordingSyncContext.Provider>
     </RecordingOwnedContext.Provider>
+  );
+}
+
+/**
+ * Nested under AppLogic: merges orchestration `handleToggleRecording` onto
+ * RecordingOwned without moving RecordingProvider below orchestration.
+ */
+export function RecordingToggleBridge({
+  handleToggleRecording,
+  children,
+}: {
+  handleToggleRecording: (...args: any[]) => any;
+  children: ReactNode;
+}) {
+  const parent = useRecordingOwned();
+  const value = useMemo(
+    () => ({ ...parent, handleToggleRecording }),
+    [parent, handleToggleRecording],
+  );
+  return (
+    <RecordingOwnedContext.Provider value={value}>{children}</RecordingOwnedContext.Provider>
   );
 }

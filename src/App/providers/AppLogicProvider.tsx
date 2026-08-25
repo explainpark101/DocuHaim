@@ -3,10 +3,24 @@ import { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppModalsProvider } from '@/App/providers/AppModalsProvider';
 import { AppChromeProvider } from '@/App/providers/AppChromeProvider';
+import { RecordingToggleBridge } from '@/App/providers/RecordingProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
-import { AppHandlersContext } from '@/App/context/AppHandlersContext';
 import type { AppChromeValue } from '@/App/context/AppChromeContext';
-import { APP_HANDLER_KEYS } from '@/App/context/appHandlerKeys';
+import {
+  SessionWorkspaceContext,
+  SESSION_WORKSPACE_KEYS,
+  type SessionWorkspaceValue,
+} from '@/App/context/SessionWorkspaceContext';
+import {
+  ChatIntegrationContext,
+  CHAT_INTEGRATION_KEYS,
+  type ChatIntegrationValue,
+} from '@/App/context/ChatIntegrationContext';
+import {
+  AppEditorExtrasContext,
+  APP_EDITOR_EXTRAS_KEYS,
+  type AppEditorExtrasValue,
+} from '@/App/context/AppEditorExtrasContext';
 import { useAppOrchestration } from '@/App/providers/useAppOrchestration';
 
 const CHROME_KEYS = [
@@ -38,25 +52,25 @@ const CHROME_KEYS = [
   'uploadFolderInputRef',
   'handleUploadFileSelect',
   'handleUploadFolderSelect',
+  'operationStatus',
 ] as const;
 
+function pickKeys<T extends Record<string, any>>(
+  c: Record<string, any>,
+  keys: readonly (keyof T)[],
+): T {
+  const out = {} as T;
+  for (const key of keys) {
+    (out as any)[key] = c[key as string];
+  }
+  return out;
+}
+
 function pickChrome(c: Record<string, any>): AppChromeValue {
-  const chrome = {} as AppChromeValue;
-  for (const key of CHROME_KEYS) {
-    (chrome as any)[key] = c[key];
-  }
-  return chrome;
+  return pickKeys<AppChromeValue>(c, CHROME_KEYS);
 }
 
-function pickHandlers(c: Record<string, any>): Record<string, any> {
-  const handlers: Record<string, any> = {};
-  for (const key of APP_HANDLER_KEYS) {
-    handlers[key] = c[key];
-  }
-  return handlers;
-}
-
-function AppChromeAndHandlers({
+function AppChromeAndThinContexts({
   controller,
   children,
 }: {
@@ -64,21 +78,38 @@ function AppChromeAndHandlers({
   children: ReactNode;
 }) {
   const chrome = useMemo(() => pickChrome(controller), [controller]);
-  const handlers = useMemo(() => pickHandlers(controller), [controller]);
+  const session = useMemo(
+    () => pickKeys<SessionWorkspaceValue>(controller, SESSION_WORKSPACE_KEYS),
+    [controller],
+  );
+  const chat = useMemo(
+    () => pickKeys<ChatIntegrationValue>(controller, CHAT_INTEGRATION_KEYS),
+    [controller],
+  );
+  const editorExtras = useMemo(
+    () => pickKeys<AppEditorExtrasValue>(controller, APP_EDITOR_EXTRAS_KEYS),
+    [controller],
+  );
 
   return (
     <AppChromeProvider value={chrome}>
       <AppShellContext.Provider value={chrome}>
-        <AppHandlersContext.Provider value={handlers}>
-          {children}
-        </AppHandlersContext.Provider>
+        <RecordingToggleBridge handleToggleRecording={controller.handleToggleRecording}>
+          <SessionWorkspaceContext.Provider value={session}>
+            <ChatIntegrationContext.Provider value={chat}>
+              <AppEditorExtrasContext.Provider value={editorExtras}>
+                {children}
+              </AppEditorExtrasContext.Provider>
+            </ChatIntegrationContext.Provider>
+          </SessionWorkspaceContext.Provider>
+        </RecordingToggleBridge>
       </AppShellContext.Provider>
     </AppChromeProvider>
   );
 }
 
 /**
- * Fans out modals + chrome/handlers. Vault/File/Tree contexts are owned above.
+ * Fans out modals + chrome + thin domain contexts. Vault/File/Tree contexts are owned above.
  */
 export function AppLogicProvider({ children }: { children: ReactNode }) {
   const c = useAppOrchestration() as Record<string, any>;
@@ -141,8 +172,12 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
       setShowUnsavedConfirmModal: c.setShowUnsavedConfirmModal,
       handleUnsavedConfirmLeave: c.handleUnsavedConfirmLeave,
       showSuffixChangeConfirmModal: c.showSuffixChangeConfirmModal,
+      setShowSuffixChangeConfirmModal: c.setShowSuffixChangeConfirmModal,
+      setSuffixConfirmAction: c.setSuffixConfirmAction,
       handleSuffixChangeConfirm: c.handleSuffixChangeConfirm,
       handleSuffixChangeCancel: c.handleSuffixChangeCancel,
+      addToNoteSelectPath: c.addToNoteSelectPath,
+      setAddToNoteSelectPath: c.setAddToNoteSelectPath,
       showCloseFileConfirmModal: c.showCloseFileConfirmModal,
       setShowCloseFileConfirmModal: c.setShowCloseFileConfirmModal,
       pendingCloseTabId: c.pendingCloseTabId,
@@ -197,7 +232,7 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
     <AppBootstrapProvider logic={bootstrapLogic}>
       <AppModalsProvider value={modals}>
         <AutoSaveProvider>
-          <AppChromeAndHandlers controller={c}>{children}</AppChromeAndHandlers>
+          <AppChromeAndThinContexts controller={c}>{children}</AppChromeAndThinContexts>
         </AutoSaveProvider>
       </AppModalsProvider>
     </AppBootstrapProvider>

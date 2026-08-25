@@ -30,6 +30,7 @@ export type AppChromeValue = {
   uploadFolderInputRef: { current: any };
   handleUploadFileSelect: (...args: any[]) => any;
   handleUploadFolderSelect: (...args: any[]) => any;
+  operationStatus: string;
 };
 
 export const AppChromeContext = createContext<AppChromeValue | null>(null);

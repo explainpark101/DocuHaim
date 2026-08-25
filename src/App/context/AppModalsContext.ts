@@ -39,8 +39,12 @@ export type AppModalsValue = {
   setShowUnsavedConfirmModal: (v: boolean) => void;
   handleUnsavedConfirmLeave: (...args: any[]) => any;
   showSuffixChangeConfirmModal: boolean;
+  setShowSuffixChangeConfirmModal: (v: boolean | ((p: boolean) => boolean)) => void;
+  setSuffixConfirmAction: (v: string | ((p: string) => string)) => void;
   handleSuffixChangeConfirm: (...args: any[]) => any;
   handleSuffixChangeCancel: (...args: any[]) => any;
+  addToNoteSelectPath: any;
+  setAddToNoteSelectPath: (v: any) => void;
   showCloseFileConfirmModal: boolean;
   setShowCloseFileConfirmModal: (v: boolean) => void;
   pendingCloseTabId: string | null;

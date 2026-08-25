@@ -27,8 +27,10 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { useAppChrome } from '@/App/hooks/useAppChrome';
-import { useAppHandlers } from '@/App/hooks/useAppHandlers';
 import { useAppModals } from '@/App/hooks/useAppModals';
+import { useSessionWorkspace } from '@/App/hooks/useSessionWorkspace';
+import { useChatIntegration } from '@/App/hooks/useChatIntegration';
+import { useAppEditorExtras } from '@/App/hooks/useAppEditorExtras';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
@@ -46,10 +48,12 @@ import {
 } from '@/utils/webauthn';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
 
-/** Main app chrome — domain hooks + narrow handlers bag (no useAppShell mega-merge). */
+/** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
 export function AppLayout({ children }: { children?: ReactNode }) {
   const chrome = useAppChrome();
-  const h = useAppHandlers();
+  const session = useSessionWorkspace();
+  const chat = useChatIntegration();
+  const editorExtras = useAppEditorExtras();
   const modals = useAppModals();
   const vault = useVault();
   const file = useFileSession();
@@ -93,6 +97,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     uploadFolderInputRef,
     handleUploadFileSelect,
     handleUploadFolderSelect,
+    operationStatus,
   } = chrome;
 
   const {
@@ -104,6 +109,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     handleRequestSessionTransformDownload,
     isOpeningSession,
     requestNewTempFile,
+  } = session;
+
+  const {
     chatStorageCtx,
     chatStorageReady,
     shareGroupSend,
@@ -116,6 +124,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     handleOpenNoteFromChat,
     getChatImageUrlForPath,
     getAdvancedSearchChatGroups,
+  } = chat;
+
+  const {
     handleUploadEditorImage,
     cancelEditorImageUpload,
     isUploadingEditorImage,
@@ -125,20 +136,20 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     getAdvancedSearchTrees,
     ensureAdvancedSearchBrowseFolder,
     getPresignedUrlForPath,
-    handleToggleRecording,
-    operationStatus,
-    addToNoteSelectPath,
-    setAddToNoteSelectPath,
-    setShowSuffixChangeConfirmModal,
-    setSuffixConfirmAction,
     handleOpenInNewWindow,
     handleOpenStorageUsageFile,
     handleDeleteUnusedImagePaths,
     handleReadUnusedImageBytes,
     handleReadUnusedImageText,
-  } = h;
+  } = editorExtras;
 
-  const { pendingLocalFolderName } = modals;
+  const {
+    pendingLocalFolderName,
+    addToNoteSelectPath,
+    setAddToNoteSelectPath,
+    setShowSuffixChangeConfirmModal,
+    setSuffixConfirmAction,
+  } = modals;
 
   const {
     storageMode,
@@ -260,6 +271,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     recordingSyncData,
     recordingPipelineStatus,
     recordingQueueStats,
+    handleToggleRecording,
   } = recording;
 
   const {
