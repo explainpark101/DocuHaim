@@ -1,4 +1,4 @@
-import { dC as a } from "./index-BGTd31p3.js";
+import { dD as a } from "./index-BegHbZbw.js";
 import "./vendor-react-SY5QCjFA.js";
 import "./vendor-md-editor-CyUZNHY0.js";
 import "./vendor-aws-BNw5jQBi.js";
@@ -10,13 +10,13 @@ var n;
 (function(t) {
   t[t.None = 0] = "None", t[t.Auto = 1] = "Auto", t[t.TouchID = 2] = "TouchID", t[t.FaceID = 3] = "FaceID", t[t.Iris = 4] = "Iris";
 })(n || (n = {}));
-async function g() {
+async function f() {
   return await a("plugin:biometry|status");
 }
-async function p(t, i = {}) {
+async function g(t, i = {}) {
   await a("plugin:biometry|authenticate", { reason: t, options: i });
 }
-async function D(t) {
+async function p(t) {
   return await a("plugin:biometry|has_data", { options: t });
 }
 async function h(t) {
@@ -30,10 +30,10 @@ async function l(t) {
 }
 export {
   n as BiometryType,
-  p as authenticate,
-  g as checkStatus,
+  g as authenticate,
+  f as checkStatus,
   h as getData,
-  D as hasData,
+  p as hasData,
   l as removeData,
   b as setData
 };

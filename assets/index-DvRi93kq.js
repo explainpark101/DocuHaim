@@ -1,4 +1,4 @@
-import { dC as r } from "./index-BGTd31p3.js";
+import { dD as r } from "./index-BegHbZbw.js";
 import "./vendor-react-SY5QCjFA.js";
 import "./vendor-md-editor-CyUZNHY0.js";
 import "./vendor-aws-BNw5jQBi.js";

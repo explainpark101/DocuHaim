@@ -1,5 +1,5 @@
-import { dE as u, dC as t, dF as U } from "./index-BGTd31p3.js";
-import { dG as Y } from "./index-BGTd31p3.js";
+import { dC as u, dD as t, dE as U } from "./index-BegHbZbw.js";
+import { dF as Y } from "./index-BegHbZbw.js";
 import "./vendor-react-SY5QCjFA.js";
 import "./vendor-md-editor-CyUZNHY0.js";
 import "./vendor-aws-BNw5jQBi.js";
@@ -125,12 +125,12 @@ async function O(e, n, i) {
     }
   } else await t("plugin:fs|write_file", n, { headers: { path: encodeURIComponent(e instanceof URL ? e.toString() : e), options: JSON.stringify(i) } });
 }
-async function G(e, n, i) {
+async function H(e, n, i) {
   if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
   const r = new TextEncoder();
   await t("plugin:fs|write_text_file", r.encode(n), { headers: { path: encodeURIComponent(e instanceof URL ? e.toString() : e), options: JSON.stringify(i) } });
 }
-async function H(e, n) {
+async function W(e, n) {
   if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
   return await t("plugin:fs|exists", { path: e instanceof URL ? e.toString() : e, options: n });
 }
@@ -146,13 +146,13 @@ async function y(e, n, i) {
     c.close();
   };
 }
-async function W(e, n, i) {
+async function j(e, n, i) {
   return await y(e, n, { delayMs: 2e3, ...i });
 }
-async function j(e, n, i) {
+async function q(e, n, i) {
   return await y(e, n, { ...i, delayMs: void 0 });
 }
-async function q(e) {
+async function G(e) {
   if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
   return await t("plugin:fs|size", { path: e instanceof URL ? e.toString() : e });
 }
@@ -170,7 +170,7 @@ export {
   l as SeekMode,
   M as copyFile,
   A as create,
-  H as exists,
+  W as exists,
   J as lstat,
   v as mkdir,
   L as open,
@@ -180,13 +180,13 @@ export {
   z as readTextFileLines,
   C as remove,
   B as rename,
-  q as size,
+  G as size,
   K as startAccessingSecurityScopedResource,
   I as stat,
   Q as stopAccessingSecurityScopedResource,
   N as truncate,
-  W as watch,
-  j as watchImmediate,
+  j as watch,
+  q as watchImmediate,
   O as writeFile,
-  G as writeTextFile
+  H as writeTextFile
 };

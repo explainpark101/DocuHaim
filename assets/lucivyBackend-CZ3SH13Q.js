@@ -1,12 +1,12 @@
 import { _ as s, __tla as __tla_0 } from "./vendor-md-editor-CyUZNHY0.js";
-import { eS as y, eT as m, __tla as __tla_1 } from "./index-BGTd31p3.js";
+import { eR as y, eS as m, __tla as __tla_1 } from "./index-BegHbZbw.js";
 import { __tla as __tla_2 } from "./vendor-react-SY5QCjFA.js";
 import "./vendor-aws-BNw5jQBi.js";
 import "./vendor-lucide-DpPvFd8E.js";
 import "./vendor-motion-YU7ZxHqi.js";
 import "./vendor-radix--fTcLYkF.js";
 import "./vendor-zip-Bez6qchM.js";
-let f, l, H, T, v, U, g, k, O, P, E, D, C, x, c, V;
+let f, l, H, V, v, U, g, k, O, P, E, D, C, x, c, j;
 let __tla = Promise.all([
   (() => {
     try {
@@ -144,7 +144,7 @@ let __tla = Promise.all([
       }))
     };
   };
-  T = async function() {
+  V = async function() {
     if (e) {
       try {
         await e.destroy();
@@ -153,7 +153,7 @@ let __tla = Promise.all([
       e = null;
     }
   };
-  V = function() {
+  j = function() {
     if (e = null, a) {
       try {
         a.terminate();
@@ -168,7 +168,7 @@ export {
   l as LUCIVY_OPFS_PATH,
   __tla,
   H as buildContainsAndQuery,
-  T as destroyLucivyIndex,
+  V as destroyLucivyIndex,
   v as ensureLucivyRuntime,
   U as getLucivyIndex,
   g as isLucivyOpen,
@@ -180,5 +180,5 @@ export {
   C as lucivyUpdate,
   x as openOrCreateLucivyIndex,
   c as requireLucivyIndex,
-  V as terminateLucivyRuntime
+  j as terminateLucivyRuntime
 };

@@ -1,5 +1,5 @@
 import { r as m } from "./vendor-react-SY5QCjFA.js";
-import { fX as y, fY as g, fZ as w } from "./index-BGTd31p3.js";
+import { fY as y, fZ as g, f_ as w } from "./index-BegHbZbw.js";
 const M = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy md-editor-icon" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>', x = { copy: M }, p = "160px 0px";
 function I(i, f = {}) {
   const { eager: t = false, layoutKey: v = "" } = f;

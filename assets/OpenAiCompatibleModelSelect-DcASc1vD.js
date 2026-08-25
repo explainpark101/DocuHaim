@@ -1,7 +1,7 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-BGTd31p3.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-BegHbZbw.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
 import { r as p, j as d, __tla as __tla_0 } from "./vendor-react-SY5QCjFA.js";
 import { A as V, G as Y } from "./vendor-google-genai-Dw3BcYJd.js";
-import { fW as $, g0 as Z, g1 as Q, g2 as ee, e5 as te, f2 as re, g3 as M, f0 as ne, f1 as se, __tla as __tla_1 } from "./index-BGTd31p3.js";
+import { fX as $, g1 as Z, g2 as Q, g3 as ee, e4 as te, f3 as re, g4 as M, f1 as ne, f2 as se, __tla as __tla_1 } from "./index-BegHbZbw.js";
 import { _ as oe, __tla as __tla_2 } from "./vendor-md-editor-CyUZNHY0.js";
 import { v as O, ap as P } from "./vendor-lucide-DpPvFd8E.js";
 import { a0 as ie, a1 as ae, a2 as ce, a3 as le, a4 as G } from "./vendor-radix--fTcLYkF.js";
@@ -132,10 +132,10 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
     const r = t.method ?? "GET";
     if ($()) {
       const { invoke: s } = await oe(async () => {
-        const { invoke: i } = await import("./index-BGTd31p3.js").then(async (m) => {
+        const { invoke: i } = await import("./index-BegHbZbw.js").then(async (m) => {
           await m.__tla;
           return m;
-        }).then((c) => c.gh);
+        }).then((c) => c.gi);
         return {
           invoke: i
         };
@@ -319,13 +319,13 @@ ${t}`;
 `) : t || "OpenAI \uD638\uD658 \uC694\uCCAD\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.";
   }
   const Ge = 1;
-  function W(e) {
+  function H(e) {
     const t = {
       "Content-Type": "application/json"
     }, r = String(e || "").trim();
     return r && (t.Authorization = `Bearer ${r}`), t;
   }
-  function H(e) {
+  function W(e) {
     const t = te(e);
     if (!t) throw new Error("OpenAI \uD638\uD658 Endpoint\uB97C \uC785\uB825\uD558\uC138\uC694. \uC608: https://api.openai.com/v1 \uB610\uB294 http://localhost:11434/v1");
     return t;
@@ -371,8 +371,8 @@ ${t}`;
     return typeof n == "string" && n.trim() ? n.trim() : t;
   }
   async function $e(e, t = "") {
-    const r = H(e), n = await J(`${r}/models`, {
-      headers: W(t)
+    const r = W(e), n = await J(`${r}/models`, {
+      headers: H(t)
     });
     if (!n.ok) {
       const l = await X(n);
@@ -441,7 +441,7 @@ ${t}`;
   async function _e({ baseUrl: e, apiKey: t, modelId: r, messages: n }) {
     const s = await J(`${e}/chat/completions`, {
       method: "POST",
-      headers: W(t),
+      headers: H(t),
       body: JSON.stringify({
         model: r,
         messages: n,
@@ -471,7 +471,7 @@ ${t}`;
     }
   }
   Je = async function({ baseUrl: e, apiKey: t, model: r, instruction: n, selectedText: s, images: o }) {
-    const a = H(e), i = (r || ee()).trim(), c = (n || "").trim(), l = (s || "").trim(), u = Array.isArray(o) ? o.filter((y) => (y == null ? void 0 : y.mimeType) && (y == null ? void 0 : y.dataBase64)) : [];
+    const a = W(e), i = (r || ee()).trim(), c = (n || "").trim(), l = (s || "").trim(), u = Array.isArray(o) ? o.filter((y) => (y == null ? void 0 : y.mimeType) && (y == null ? void 0 : y.dataBase64)) : [];
     if (!i) throw new Error("\uBAA8\uB378 ID\uB97C \uC785\uB825\uD558\uAC70\uB098 \uBAA9\uB85D\uC5D0\uC11C \uC120\uD0DD\uD558\uC138\uC694.");
     if (!c) throw new Error("\uC9C0\uC2DC\uC0AC\uD56D\uC744 \uC785\uB825\uD558\uC138\uC694.");
     const h = Pe({

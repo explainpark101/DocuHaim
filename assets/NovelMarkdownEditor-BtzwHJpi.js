@@ -1,11 +1,11 @@
-import { j as d, r as m, u as Se } from "./vendor-react-SY5QCjFA.js";
-import { N as se, m as Q, P as Le, T as Me, t as Ce, p as He, u as oe, H as Pe, v as je, U as Ie, a as Re, C as De, z as $e, S as qe, A as We, L as _e, V as Be, b as ze, d as Oe, e as Fe, l as Ve, f as Ge, I as Ke, g as Je, B as Xe, O as Ye, h as Qe, K as Ze, i as Ue, F as et } from "./vendor-novel-D0j53cet.js";
-import { T as tt, c as ce } from "./clipboardImageFiles-DRgQZHSt.js";
-import { g4 as le, g5 as V, f9 as nt, g6 as rt, g7 as p, k as it, au as at, av as st, cW as ot, f6 as ct, fJ as lt, fK as ut, d4 as re, d6 as dt, d9 as mt, da as ht, db as pt, dc as ft, g8 as gt, dl as bt, g9 as kt, eY as ue } from "./index-BGTd31p3.js";
-import { aW as wt, aB as xt, bA as ie, bB as yt, bC as vt, bD as Tt, bE as Nt, bF as Et, bG as _, bH as At, bI as St, bJ as Lt, bK as Mt, aE as Ct, J as Ht, q as Pt, g as jt, bL as It, v as Rt } from "./vendor-lucide-DpPvFd8E.js";
+import { j as d, r as m, u as Le } from "./vendor-react-SY5QCjFA.js";
+import { N as se, m as Y, P as Se, T as Me, t as Ce, p as He, u as oe, H as Pe, v as je, U as Ie, a as Re, C as De, z as $e, S as qe, A as We, L as _e, V as Be, b as ze, d as Oe, e as Fe, l as Ve, f as Ge, I as Ke, g as Je, B as Xe, O as Qe, h as Ye, K as Ze, i as Ue, F as et } from "./vendor-novel-DA0yD4wH.js";
+import { T as tt, c as ce } from "./clipboardImageFiles-D5g2hP5Q.js";
+import { g5 as le, g6 as V, fa as nt, g7 as rt, g8 as p, k as it, au as at, av as st, cW as ot, f7 as ct, fK as lt, fL as ut, d4 as re, d6 as dt, d9 as mt, da as ht, db as pt, dc as ft, g9 as gt, dl as bt, ga as kt, eZ as ue } from "./index-BegHbZbw.js";
+import { aW as wt, aB as xt, bA as ie, bB as yt, bC as vt, bD as Tt, bE as Nt, bF as Et, bG as _, bH as At, bI as Lt, bJ as St, bK as Mt, aE as Ct, J as Ht, q as Pt, g as jt, bL as It, v as Rt } from "./vendor-lucide-DpPvFd8E.js";
 import { T as Dt } from "./TocTitleWrapToggle-CQlKMMuI.js";
-import { u as $t, t as qt, W as Wt } from "./useTocTitleWrap-CrQIaCCj.js";
-import { h as X, m as _t } from "./storageImageHydration-Dv8YJDkk.js";
+import { u as $t, t as qt, W as Wt } from "./useTocTitleWrap-ChMnJ6gC.js";
+import { h as X, m as _t } from "./storageImageHydration-otJ-rd-k.js";
 import "./vendor-md-editor-CyUZNHY0.js";
 import "./vendor-git-diff-view-CtfFh0fN.js";
 import "./vendor-radix--fTcLYkF.js";
@@ -26,8 +26,8 @@ const Bt = se.create({ name: "wikiImage", group: "inline", inline: true, atom: t
   const i = {};
   e.attrs.width && (i["data-wiki-width"] = e.attrs.width), e.attrs.height && (i["data-wiki-height"] = e.attrs.height), e.attrs.background && (i["data-wiki-bg"] = e.attrs.background);
   const t = le({ width: e.attrs.width, height: e.attrs.height, background: e.attrs.background });
-  return t && (i.style = t), ["img", Q(this.options.HTMLAttributes, r, { "data-wiki-path": e.attrs.path, ...i, alt: "", class: "novel-wiki-image" })];
-} }), zt = "novel-wiki-caption-line", Ot = Le.extend({ addAttributes() {
+  return t && (i.style = t), ["img", Y(this.options.HTMLAttributes, r, { "data-wiki-path": e.attrs.path, ...i, alt: "", class: "novel-wiki-image" })];
+} }), zt = "novel-wiki-caption-line", Ot = Se.extend({ addAttributes() {
   return { class: { default: null, parseHTML: (e) => e.getAttribute("class"), renderHTML: (e) => e.class ? { class: e.class } : {} } };
 }, addKeyboardShortcuts() {
   return { Enter: ({ editor: e }) => {
@@ -61,16 +61,16 @@ const Bt = se.create({ name: "wikiImage", group: "inline", inline: true, atom: t
         return;
       }
       const { checked: b } = o.target;
-      t.isEditable && typeof i == "function" && t.chain().focus(void 0, { scrollIntoView: false }).command(({ tr: S }) => {
+      t.isEditable && typeof i == "function" && t.chain().focus(void 0, { scrollIntoView: false }).command(({ tr: L }) => {
         const A = i();
         if (typeof A != "number") return false;
-        const L = S.doc.nodeAt(A);
-        return S.setNodeMarkup(A, void 0, { ...(L == null ? void 0 : L.attrs) ?? {}, checked: b }), true;
+        const S = L.doc.nodeAt(A);
+        return L.setNodeMarkup(A, void 0, { ...(S == null ? void 0 : S.attrs) ?? {}, checked: b }), true;
       }).run(), !t.isEditable && this.options.onReadOnlyChecked && (this.options.onReadOnlyChecked(e, b) || (c.checked = !c.checked));
     }), Object.entries(this.options.HTMLAttributes ?? {}).forEach(([o, b]) => {
-      b != null && (o === "class" ? String(b).split(/\s+/).filter(Boolean).forEach((S) => n.classList.add(S)) : n.setAttribute(o, b));
+      b != null && (o === "class" ? String(b).split(/\s+/).filter(Boolean).forEach((L) => n.classList.add(L)) : n.setAttribute(o, b));
     }), n.dataset.checked = e.attrs.checked, c.checked = e.attrs.checked, s.append(c, w), n.append(s, x), Object.entries(r ?? {}).forEach(([o, b]) => {
-      b != null && (o === "class" ? String(b).split(/\s+/).filter(Boolean).forEach((S) => n.classList.add(S)) : n.setAttribute(o, b));
+      b != null && (o === "class" ? String(b).split(/\s+/).filter(Boolean).forEach((L) => n.classList.add(L)) : n.setAttribute(o, b));
     }), { dom: n, contentDOM: x, update: (o) => o.type !== this.type ? false : (n.dataset.checked = o.attrs.checked, c.checked = o.attrs.checked, y(), true) };
   };
 } });
@@ -85,7 +85,7 @@ const Gt = se.create({ name: "heading", addOptions() {
   const e = this.options.levels.filter((i) => i > V).flatMap((i) => [{ tag: `h6[data-heading-level="${i}"]`, attrs: { level: i } }, { tag: `h${i}`, attrs: { level: i } }]), r = this.options.levels.filter((i) => i <= V).map((i) => ({ tag: `h${i}`, attrs: { level: i } }));
   return [...e, ...r];
 }, renderHTML({ node: e, HTMLAttributes: r }) {
-  const t = this.options.levels.includes(e.attrs.level) ? Number(e.attrs.level) : this.options.levels[0] ?? 1, n = t > V ? Q(this.options.HTMLAttributes, r, { "data-heading-level": String(t), class: `md-heading md-heading-${t}` }) : Q(this.options.HTMLAttributes, r);
+  const t = this.options.levels.includes(e.attrs.level) ? Number(e.attrs.level) : this.options.levels[0] ?? 1, n = t > V ? Y(this.options.HTMLAttributes, r, { "data-heading-level": String(t), class: `md-heading md-heading-${t}` }) : Y(this.options.HTMLAttributes, r);
   return [Vt(t), n, 0];
 }, addCommands() {
   return { setHeading: (e) => ({ commands: r }) => this.options.levels.includes(e.level) ? r.setNode(this.name, e) : false, toggleHeading: (e) => ({ commands: r }) => this.options.levels.includes(e.level) ? r.toggleNode(this.name, "paragraph", e) : false };
@@ -128,7 +128,7 @@ function Xt(e) {
     return c && s.push(`style="${B(c)}"`), `<img ${s.join(" ")} />`;
   });
 }
-function Yt(e) {
+function Qt(e) {
   if (!e || typeof e != "string" || typeof document > "u") return e;
   const r = document.createElement("div");
   r.innerHTML = e, r.querySelectorAll("p").forEach((t) => {
@@ -191,7 +191,7 @@ function ae(e) {
   }
   return r.innerHTML;
 }
-function Qt(e) {
+function Yt(e) {
   if (typeof document > "u" || !e || typeof e != "string") return e;
   try {
     const r = document.createElement("div");
@@ -209,12 +209,12 @@ function Qt(e) {
           M.textContent = o, o = M.outerHTML;
         }
         c.innerHTML = "", c.setAttribute("data-type", "taskItem"), c.setAttribute("data-checked", y ? "true" : "false");
-        const b = document.createElement("label"), S = document.createElement("input");
-        S.type = "checkbox", y && S.setAttribute("checked", "checked");
+        const b = document.createElement("label"), L = document.createElement("input");
+        L.type = "checkbox", y && L.setAttribute("checked", "checked");
         const A = document.createElement("span");
-        b.appendChild(S), b.appendChild(A);
-        const L = document.createElement("div");
-        L.innerHTML = o, c.appendChild(b), c.appendChild(L);
+        b.appendChild(L), b.appendChild(A);
+        const S = document.createElement("div");
+        S.innerHTML = o, c.appendChild(b), c.appendChild(S);
       }));
     }), r.innerHTML;
   } catch {
@@ -236,10 +236,10 @@ function Zt(e) {
   }
   return null;
 }
-function Y(e) {
+function Q(e) {
   try {
-    const r = rt(e ?? "", "novel"), i = Qt(r);
-    return Yt(Xt(i));
+    const r = rt(e ?? "", "novel"), i = Yt(r);
+    return Qt(Xt(i));
   } catch {
     return "<p></p>";
   }
@@ -276,9 +276,9 @@ function tn({ onUploadImage: e, onExportPdf: r, onSave: i } = {}) {
     t.chain().focus().deleteRange(n).setHeading({ level: 10 }).run();
   } }, { title: "\uAE00\uBA38\uB9AC \uBAA9\uB85D", description: "\uC21C\uC11C \uC5C6\uB294 \uBAA9\uB85D", searchTerms: ["bullet", "unordered", "ul"], icon: d.jsx(At, { className: "h-4 w-4" }), command: ({ editor: t, range: n }) => {
     t.chain().focus().deleteRange(n).toggleBulletList().run();
-  } }, { title: "\uBC88\uD638 \uBAA9\uB85D", description: "\uC21C\uC11C \uC788\uB294 \uBAA9\uB85D", searchTerms: ["ordered", "ol", "number"], icon: d.jsx(St, { className: "h-4 w-4" }), command: ({ editor: t, range: n }) => {
+  } }, { title: "\uBC88\uD638 \uBAA9\uB85D", description: "\uC21C\uC11C \uC788\uB294 \uBAA9\uB85D", searchTerms: ["ordered", "ol", "number"], icon: d.jsx(Lt, { className: "h-4 w-4" }), command: ({ editor: t, range: n }) => {
     t.chain().focus().deleteRange(n).toggleOrderedList().run();
-  } }, { title: "\uC778\uC6A9", description: "\uC778\uC6A9 \uBE14\uB85D", searchTerms: ["quote", "blockquote"], icon: d.jsx(Lt, { className: "h-4 w-4" }), command: ({ editor: t, range: n }) => {
+  } }, { title: "\uC778\uC6A9", description: "\uC778\uC6A9 \uBE14\uB85D", searchTerms: ["quote", "blockquote"], icon: d.jsx(St, { className: "h-4 w-4" }), command: ({ editor: t, range: n }) => {
     t.chain().focus().deleteRange(n).toggleBlockquote().run();
   } }, { title: "\uCF54\uB4DC \uBE14\uB85D", description: "\uC5EC\uB7EC \uC904 \uCF54\uB4DC", searchTerms: ["code", "codeblock", "pre"], icon: d.jsx(Mt, { className: "h-4 w-4" }), command: ({ editor: t, range: n }) => {
     t.chain().focus().deleteRange(n).toggleCodeBlock().run();
@@ -316,7 +316,7 @@ function nn(e) {
 }
 const rn = "s3haim_novel_toc_width", me = 360, an = "md:pr-(--novel-toc-width)";
 function sn({ theme: e = "light", open: r = true, onRequestClose: i, mobileOverlayTopPx: t = null, onWidthChange: n }) {
-  const { editor: s } = oe(), [c, w] = m.useState([]), [x, y] = $t(), { width: o, isResizing: b, handleProps: S } = at({ storageKey: rn, defaultWidth: me, minWidth: 180, collapseBelowWidth: 90, maxWidth: 640, edge: "right", onCollapseBelowMin: i });
+  const { editor: s } = oe(), [c, w] = m.useState([]), [x, y] = $t(), { width: o, isResizing: b, handleProps: L } = at({ storageKey: rn, defaultWidth: me, minWidth: 180, collapseBelowWidth: 90, maxWidth: 640, edge: "right", onCollapseBelowMin: i });
   m.useEffect(() => {
     n == null ? void 0 : n(o);
   }, [n, o]);
@@ -335,10 +335,10 @@ function sn({ theme: e = "light", open: r = true, onRequestClose: i, mobileOverl
       N.off("update", A), N.off("selectionUpdate", A);
     };
   }, [s, A]), !s || s.isDestroyed) return null;
-  const L = e === "dark", M = () => typeof window < "u" && window.matchMedia("(max-width: 767px)").matches, D = (N) => {
+  const S = e === "dark", M = () => typeof window < "u" && window.matchMedia("(max-width: 767px)").matches, D = (N) => {
     !s || s.isDestroyed || (s.chain().focus().setTextSelection(N + 1).scrollIntoView().run(), M() && (i == null ? void 0 : i()));
   }, P = typeof t == "number" && Number.isFinite(t) ? t : null, z = P !== null ? { top: P, left: 0, right: 0, bottom: 0 } : void 0, j = P !== null ? { top: P, bottom: 0, width: r ? o : void 0 } : r ? { width: o } : void 0;
-  return d.jsxs(d.Fragment, { children: [r && typeof i == "function" && d.jsx("button", { type: "button", className: `fixed z-10080 bg-black/35 md:hidden ${P !== null ? "left-0 right-0 bottom-0" : "inset-0"}`, style: z, "aria-label": "\uBAA9\uCC28 \uB2EB\uAE30", onClick: i }), d.jsx("div", { className: `novel-editor-toc-shell relative max-h-full overflow-hidden ${r ? `max-md:fixed max-md:right-0 max-md:z-10090 max-md:flex max-md:flex-col max-md:shadow-2xl ${P !== null ? "max-md:bottom-0" : "max-md:inset-y-0"} pointer-events-auto md:absolute md:inset-y-0 md:right-0 md:z-6 md:block` : "max-md:hidden md:absolute md:inset-y-0 md:right-0 md:z-6 md:block md:w-0 md:pointer-events-none"}`, style: j, "aria-hidden": !r, children: d.jsxs("aside", { className: `novel-editor-toc novel-editor-toc-panel relative flex h-full w-full flex-col border-l py-2.5 pl-2.5 pr-1.5 text-base leading-snug ${L ? "novel-editor-toc--dark border-odp-borderSoft bg-odp-bg/95 text-odp-muted" : "border-gray-200 bg-white/95 text-gray-600"}`, "aria-label": "\uBAA9\uCC28", children: [r && d.jsx(st, { handleProps: S, isResizing: b, visibleOnHover: true, label: "\uBAA9\uCC28 \uB108\uBE44 \uC870\uC808", className: "hidden md:block" }), d.jsxs("div", { className: `mb-2 flex shrink-0 items-center justify-between gap-2 px-0.5 pl-1 ${L ? "text-odp-fg" : "text-gray-800"}`, children: [d.jsx("span", { className: "text-sm font-semibold uppercase tracking-wide", children: "\uBAA9\uCC28" }), d.jsx(Dt, { checked: x, onChange: y, isDark: L })] }), d.jsx("ul", { className: "novel-editor-toc-list m-0 max-h-full min-h-0 flex-1 list-none space-y-1 overflow-y-auto p-0 pr-0.5", children: c.length === 0 ? d.jsx("li", { className: "px-0.5 text-sm opacity-70", children: "\uC81C\uBAA9 \uC5C6\uC74C" }) : c.map((N, $) => d.jsx("li", { className: "min-w-0", style: { paddingLeft: `${Math.min(N.level - 1, 9) * 0.45}rem` }, children: d.jsx("button", { type: "button", className: `w-full max-w-full rounded px-1 py-0.5 text-left text-base transition hover:underline focus:outline-none focus-visible:ring-1 ${qt(x)} ${L ? "text-odp-fg ring-odp-borderStrong hover:text-white" : "text-gray-700 ring-gray-300 hover:text-gray-900"}`, title: N.text, onClick: () => D(N.pos), children: N.text }) }, `${N.pos}-${$}`)) })] }) })] });
+  return d.jsxs(d.Fragment, { children: [r && typeof i == "function" && d.jsx("button", { type: "button", className: `fixed z-10080 bg-black/35 md:hidden ${P !== null ? "left-0 right-0 bottom-0" : "inset-0"}`, style: z, "aria-label": "\uBAA9\uCC28 \uB2EB\uAE30", onClick: i }), d.jsx("div", { className: `novel-editor-toc-shell relative max-h-full overflow-hidden ${r ? `max-md:fixed max-md:right-0 max-md:z-10090 max-md:flex max-md:flex-col max-md:shadow-2xl ${P !== null ? "max-md:bottom-0" : "max-md:inset-y-0"} pointer-events-auto md:absolute md:inset-y-0 md:right-0 md:z-6 md:block` : "max-md:hidden md:absolute md:inset-y-0 md:right-0 md:z-6 md:block md:w-0 md:pointer-events-none"}`, style: j, "aria-hidden": !r, children: d.jsxs("aside", { className: `novel-editor-toc novel-editor-toc-panel relative flex h-full w-full flex-col border-l py-2.5 pl-2.5 pr-1.5 text-base leading-snug ${S ? "novel-editor-toc--dark border-odp-borderSoft bg-odp-bg/95 text-odp-muted" : "border-gray-200 bg-white/95 text-gray-600"}`, "aria-label": "\uBAA9\uCC28", children: [r && d.jsx(st, { handleProps: L, isResizing: b, visibleOnHover: true, label: "\uBAA9\uCC28 \uB108\uBE44 \uC870\uC808", className: "hidden md:block" }), d.jsxs("div", { className: `mb-2 flex shrink-0 items-center justify-between gap-2 px-0.5 pl-1 ${S ? "text-odp-fg" : "text-gray-800"}`, children: [d.jsx("span", { className: "text-sm font-semibold uppercase tracking-wide", children: "\uBAA9\uCC28" }), d.jsx(Dt, { checked: x, onChange: y, isDark: S })] }), d.jsx("ul", { className: "novel-editor-toc-list m-0 max-h-full min-h-0 flex-1 list-none space-y-1 overflow-y-auto p-0 pr-0.5", children: c.length === 0 ? d.jsx("li", { className: "px-0.5 text-sm opacity-70", children: "\uC81C\uBAA9 \uC5C6\uC74C" }) : c.map((N, $) => d.jsx("li", { className: "min-w-0", style: { paddingLeft: `${Math.min(N.level - 1, 9) * 0.45}rem` }, children: d.jsx("button", { type: "button", className: `w-full max-w-full rounded px-1 py-0.5 text-left text-base transition hover:underline focus:outline-none focus-visible:ring-1 ${qt(x)} ${S ? "text-odp-fg ring-odp-borderStrong hover:text-white" : "text-gray-700 ring-gray-300 hover:text-gray-900"}`, title: N.text, onClick: () => D(N.pos), children: N.text }) }, `${N.pos}-${$}`)) })] }) })] });
 }
 const R = new tt({ headingStyle: "atx", codeBlockStyle: "fenced", bulletListMarker: "-" });
 R.addRule("deepHeading", { filter: (e) => {
@@ -414,8 +414,8 @@ function on({ previewOnly: e, onUploadImage: r, isUploadingEditorImage: i, paste
     return c.addEventListener("paste", w, true), () => c.removeEventListener("paste", w, true);
   }, [s, e, r, n, i, t]), null;
 }
-function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile: n = null, previewOnly: s = false, tocVisible: c = true, onTocRequestClose: w, mobileTocOverlayTopPx: x = null, onRegisterFlushBeforeSave: y, onUploadImage: o, isUploadingEditorImage: b = false, uploadImagePercent: S = 0, onCancelUploadImage: A, documentKey: L, onResolveWikiImageUrl: M, onRegisterConvertAllImagesToWiki: D, getImgbbApiKey: P }) {
-  const z = Se(), j = m.useRef(null), N = m.useRef(null), $ = m.useRef(true), H = m.useRef(null), he = m.useRef(false), [Z, q] = m.useState(0), [E, U] = m.useState(null), [pe, fe] = m.useState(me), [ge, be] = m.useState(() => Y(e ?? "")), ee = m.useCallback((a) => {
+function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile: n = null, previewOnly: s = false, tocVisible: c = true, onTocRequestClose: w, mobileTocOverlayTopPx: x = null, onRegisterFlushBeforeSave: y, onUploadImage: o, isUploadingEditorImage: b = false, uploadImagePercent: L = 0, onCancelUploadImage: A, documentKey: S, onResolveWikiImageUrl: M, onRegisterConvertAllImagesToWiki: D, getImgbbApiKey: P }) {
+  const z = Le(), j = m.useRef(null), N = m.useRef(null), $ = m.useRef(true), H = m.useRef(null), he = m.useRef(false), [Z, q] = m.useState(0), [E, U] = m.useState(null), [pe, fe] = m.useState(me), [ge, be] = m.useState(() => Q(e ?? "")), ee = m.useCallback((a) => {
     let u = "";
     try {
       const l = ae(a.getHTML());
@@ -426,8 +426,8 @@ function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile:
     ot({ currentFile: n, editorContent: u }), z(ct(n == null ? void 0 : n.id), { state: { value: u, theme: t, currentFile: n } });
   }, [z, t, n]), G = m.useMemo(() => tn({ onUploadImage: o, onExportPdf: ee, onSave: i }), [o, ee, i]);
   m.useEffect(() => {
-    be(Y(e ?? ""));
-  }, [L]);
+    be(Q(e ?? ""));
+  }, [S]);
   const ke = m.useMemo(() => [qe.configure({ horizontalRule: false, paragraph: false, heading: false, dropcursor: { color: "#3b82f6", width: 3 } }), Gt, Ot, Bt, Pe, We.configure({ placeholder: ({ node: a }) => a.type.name === "heading" ? `\uC81C\uBAA9 ${a.attrs.level}` : "\uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694\u2026", includeChildren: true }), _e.configure({ openOnClick: false, HTMLAttributes: { class: "text-blue-600 underline underline-offset-2 dark:text-blue-400" } }), Be.configure({ allowBase64: true, HTMLAttributes: { class: "rounded-lg border border-gray-200 dark:border-odp-borderSoft max-w-full" } }), ze.configure({ HTMLAttributes: { class: "not-prose pl-2" } }), Ft.configure({ nested: true, HTMLAttributes: { class: "novel-task-item" } }), je, Oe.configure(), Ie, Re, De, $e, Fe.configure({ suggestion: { items: () => G, render: Ve } })], [G]), O = m.useCallback((a) => {
     let u = "";
     try {
@@ -466,7 +466,7 @@ function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile:
       if (u.markdown !== a) {
         N.current = u.markdown, $.current = true;
         const l = H.current;
-        l && !l.isDestroyed && (l.commands.setContent(Y(u.markdown)), q((h) => h + 1)), r == null ? void 0 : r(u.markdown);
+        l && !l.isDestroyed && (l.commands.setContent(Q(u.markdown)), q((h) => h + 1)), r == null ? void 0 : r(u.markdown);
       }
       return u;
     }), () => D(null);
@@ -474,9 +474,9 @@ function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile:
     j.current && clearTimeout(j.current);
   }, []), m.useEffect(() => {
     N.current = e ?? "";
-  }, [L, e]), m.useEffect(() => {
+  }, [S, e]), m.useEffect(() => {
     $.current = true;
-  }, [L]);
+  }, [S]);
   const W = m.useRef(null);
   function K(a) {
     let u = false;
@@ -640,12 +640,12 @@ function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile:
     if (!F.updated && v === e) throw new Error("\uB9C8\uD06C\uB2E4\uC6B4\uC5D0\uC11C \uD574\uB2F9 \uC774\uBBF8\uC9C0\uB97C \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
     r(F.markdown), q((Ae) => Ae + 1), C();
   }, [C, P, r, e, E]);
-  return d.jsxs("div", { ref: W, className: "relative flex h-full min-h-0 w-full flex-1 flex-col", children: [b && d.jsxs("div", { className: "absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center gap-2 py-2 text-sm bg-blue-300/40 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 border-b border-blue-500/20", "aria-live": "polite", children: [d.jsx(Rt, { size: 16, className: "animate-spin shrink-0" }), d.jsxs("span", { children: ["\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC911\u2026 ", Math.max(0, Math.min(100, Math.round(S))), "%"] }), typeof A == "function" && d.jsx("button", { type: "button", onClick: A, className: "ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950", children: "\uCDE8\uC18C" })] }), d.jsx(Ge, { children: d.jsxs(Ke, { className: "relative flex h-full min-h-0 w-full flex-1 flex-col", editorContainerProps: { className: ["flex min-h-0 flex-1 flex-col overflow-y-auto novel-editor-scroll-area", c ? an : "md:pr-0"].join(" "), style: { "--novel-toc-width": `${pe}px` } }, initialContent: ge, extensions: ke, editable: !s, onUpdate: we, onCreate: ({ editor: a }) => {
+  return d.jsxs("div", { ref: W, className: "relative flex h-full min-h-0 w-full flex-1 flex-col", children: [b && d.jsxs("div", { className: "absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center gap-2 py-2 text-sm bg-blue-300/40 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 border-b border-blue-500/20", "aria-live": "polite", children: [d.jsx(Rt, { size: 16, className: "animate-spin shrink-0" }), d.jsxs("span", { children: ["\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC911\u2026 ", Math.max(0, Math.min(100, Math.round(L))), "%"] }), typeof A == "function" && d.jsx("button", { type: "button", onClick: A, className: "ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950", children: "\uCDE8\uC18C" })] }), d.jsx(Ge, { children: d.jsxs(Ke, { className: "relative flex h-full min-h-0 w-full flex-1 flex-col", editorContainerProps: { className: ["flex min-h-0 flex-1 flex-col overflow-y-auto novel-editor-scroll-area", c ? an : "md:pr-0"].join(" "), style: { "--novel-toc-width": `${pe}px` } }, initialContent: ge, extensions: ke, editable: !s, onUpdate: we, onCreate: ({ editor: a }) => {
     H.current = a;
-  }, editorProps: { handleDrop: ye, handleDOMEvents: { keydown: (a, u) => !!Ue(u) }, attributes: { class: ve } }, children: [d.jsx(sn, { theme: t, open: c, onRequestClose: w, mobileOverlayTopPx: x, onWidthChange: fe }), d.jsx(on, { previewOnly: s, onUploadImage: o, isUploadingEditorImage: b, pasteImageUploadLockRef: he, insertWikiImagesFromPaths: J }), d.jsxs(Je, { className: "z-50 h-auto max-h-[min(330px,70vh)] w-[min(100%,18rem)] shrink-0 overflow-y-auto rounded-lg border border-gray-200 bg-white px-1 py-2 shadow-lg dark:border-odp-borderStrong dark:bg-odp-surface", children: [d.jsx(Xe, { className: "px-2 py-1.5 text-sm text-gray-500 dark:text-odp-muted", children: "\uACB0\uACFC \uC5C6\uC74C" }), d.jsx(Ye, { children: G.map((a) => d.jsxs(Qe, { value: a.title, keywords: a.searchTerms ?? [], onCommand: (u) => {
+  }, editorProps: { handleDrop: ye, handleDOMEvents: { keydown: (a, u) => !!Ue(u) }, attributes: { class: ve } }, children: [d.jsx(sn, { theme: t, open: c, onRequestClose: w, mobileOverlayTopPx: x, onWidthChange: fe }), d.jsx(on, { previewOnly: s, onUploadImage: o, isUploadingEditorImage: b, pasteImageUploadLockRef: he, insertWikiImagesFromPaths: J }), d.jsxs(Je, { className: "z-50 h-auto max-h-[min(330px,70vh)] w-[min(100%,18rem)] shrink-0 overflow-y-auto rounded-lg border border-gray-200 bg-white px-1 py-2 shadow-lg dark:border-odp-borderStrong dark:bg-odp-surface", children: [d.jsx(Xe, { className: "px-2 py-1.5 text-sm text-gray-500 dark:text-odp-muted", children: "\uACB0\uACFC \uC5C6\uC74C" }), d.jsx(Qe, { children: G.map((a) => d.jsxs(Ye, { value: a.title, keywords: a.searchTerms ?? [], onCommand: (u) => {
     var _a;
     return (_a = a.command) == null ? void 0 : _a.call(a, u);
-  }, className: "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-100 aria-selected:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-bgSoft dark:aria-selected:bg-odp-bgSoft", children: [d.jsx("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft", children: a.icon }), d.jsxs("div", { className: "min-w-0 flex-1", children: [d.jsx("p", { className: "font-medium leading-snug", children: a.title }), d.jsx("p", { className: "text-xs text-gray-500 dark:text-odp-muted", children: a.description })] })] }, a.title)) })] }), d.jsx(Ze, {})] }) }, L ?? "novel"), d.jsx(Wt, { isOpen: !!E, onClose: () => U(null), path: (E == null ? void 0 : E.path) ?? "", initialWidth: (E == null ? void 0 : E.width) ?? "", initialHeight: (E == null ? void 0 : E.height) ?? "", imageSrc: (E == null ? void 0 : E.imageSrc) ?? "", onApply: Te, onCrop: Ne, onConvertToImgbb: Ee }, E ? `${E.path}|${E.width ?? ""}|${E.height ?? ""}|${E.occurrence ?? 0}|${E.nodePos ?? -1}` : "wiki-image-size-modal")] });
+  }, className: "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-100 aria-selected:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-bgSoft dark:aria-selected:bg-odp-bgSoft", children: [d.jsx("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft", children: a.icon }), d.jsxs("div", { className: "min-w-0 flex-1", children: [d.jsx("p", { className: "font-medium leading-snug", children: a.title }), d.jsx("p", { className: "text-xs text-gray-500 dark:text-odp-muted", children: a.description })] })] }, a.title)) })] }), d.jsx(Ze, {})] }) }, S ?? "novel"), d.jsx(Wt, { isOpen: !!E, onClose: () => U(null), path: (E == null ? void 0 : E.path) ?? "", initialWidth: (E == null ? void 0 : E.width) ?? "", initialHeight: (E == null ? void 0 : E.height) ?? "", imageSrc: (E == null ? void 0 : E.imageSrc) ?? "", onApply: Te, onCrop: Ne, onConvertToImgbb: Ee }, E ? `${E.path}|${E.width ?? ""}|${E.height ?? ""}|${E.occurrence ?? 0}|${E.nodePos ?? -1}` : "wiki-image-size-modal")] });
 }
 export {
   Tn as default
