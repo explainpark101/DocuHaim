@@ -2,6 +2,7 @@ import type { FileStorageType, PersistedWorkspaceTab, PersistedWorkspaceTabs } f
 import { CHAT_TAB_ID, SETTINGS_TAB_ID } from './types';
 import { fileTabId } from './helpers';
 import type { ClosedTabEntry } from './closedTabHistory';
+import { loadPersistedWorkspaceTabs } from './persistence';
 
 /**
  * Last non-empty open-tab list from the previous session (localStorage).
@@ -91,6 +92,27 @@ export function saveLastOpenTabsSnapshot(payload: PersistedWorkspaceTabs): void 
 
 export function loadLastOpenTabsSnapshot(): PersistedWorkspaceTabs | null {
   return normalizeSnapshot(readJson(LAST_OPEN_TABS_RESTORE_KEY));
+}
+
+/**
+ * Pick the fullest tab snapshot for cold-start restore.
+ * Live `s3haim_workspaceTabs` can be truncated to the active tab before siblings reopen.
+ */
+export function pickWorkspaceTabsRestoreSource(): PersistedWorkspaceTabs | null {
+  const live = loadPersistedWorkspaceTabs();
+  const snap = loadLastOpenTabsSnapshot();
+  if (!live?.tabs?.length && !snap?.tabs?.length) return null;
+  if (!live?.tabs?.length) return snap;
+  if (!snap?.tabs?.length) return live;
+  if (snap.tabs.length !== live.tabs.length) {
+    return snap.tabs.length > live.tabs.length ? snap : live;
+  }
+  // Same count — prefer live activeId with the last-open tab order (pagehide truth).
+  return {
+    version: 1,
+    tabs: snap.tabs,
+    activeId: live.activeId ?? snap.activeId,
+  };
 }
 
 export function clearLastOpenTabsSnapshot(): void {

@@ -72,6 +72,7 @@ export {
   clearLastOpenTabsSnapshot,
   clearTabsRestoreQueue,
   loadLastOpenTabsSnapshot,
+  pickWorkspaceTabsRestoreSource,
   persistedTabId,
   persistedTabToClosedEntry,
   popTabsRestoreQueue,

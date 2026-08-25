@@ -66,6 +66,7 @@ import {
   isSettingsTab,
   loadLastOpenTabsSnapshot,
   loadPersistedWorkspaceTabs,
+  pickWorkspaceTabsRestoreSource,
   popClosedTab,
   popTabsRestoreQueue,
   pushClosedTab,
@@ -723,9 +724,10 @@ function MainApp() {
 
   const hasSeededTabsRestoreQueueRef = useRef(false);
   const hasRestoredPersistedWorkspaceTabsRef = useRef(false);
+  const restoringWorkspaceTabsRef = useRef(false);
 
   const loadLastOpenedFile = useCallback(() => {
-    const persisted = loadPersistedWorkspaceTabs();
+    const persisted = pickWorkspaceTabsRestoreSource();
     if (persisted?.tabs?.length) {
       const active = persisted.tabs.find((t) => {
         if (t.kind === 'chat') return persisted.activeId === CHAT_TAB_ID;
@@ -4264,6 +4266,10 @@ function MainApp() {
   // Persist open workspace tabs (+ legacy lastFile mirror)
   useEffect(() => {
     if (!isUnlocked) return;
+    // Cold start opens the active tab first; defer writes until siblings are restored.
+    if (workspaceTabsEnabledRef.current && !hasRestoredPersistedWorkspaceTabsRef.current) {
+      return;
+    }
     const flushed = flushEditorIntoActiveFileTab(workspaceTabs, {
       editorContent: editorContentRef.current ?? '',
       currentFile: currentFileRef.current,
@@ -4315,11 +4321,16 @@ function MainApp() {
       );
       saveLastOpenTabsSnapshot(payload);
     };
+    const onVisibilityHidden = () => {
+      if (document.visibilityState === 'hidden') persistLastOpenSnapshot();
+    };
     window.addEventListener('pagehide', persistLastOpenSnapshot);
     window.addEventListener('beforeunload', persistLastOpenSnapshot);
+    document.addEventListener('visibilitychange', onVisibilityHidden);
     return () => {
       window.removeEventListener('pagehide', persistLastOpenSnapshot);
       window.removeEventListener('beforeunload', persistLastOpenSnapshot);
+      document.removeEventListener('visibilitychange', onVisibilityHidden);
     };
   }, [isUnlocked]);
 
@@ -4328,14 +4339,7 @@ function MainApp() {
     if (!isUnlocked || !workspaceTabsEnabled) return;
     if (hasSeededTabsRestoreQueueRef.current) return;
     hasSeededTabsRestoreQueueRef.current = true;
-    const live = loadPersistedWorkspaceTabs();
-    const snap = loadLastOpenTabsSnapshot();
-    const source =
-      snap && live
-        ? snap.tabs.length >= live.tabs.length
-          ? snap
-          : live
-        : snap || live;
+    const source = pickWorkspaceTabsRestoreSource();
     if (!source?.tabs?.length) return;
     const openIds = new Set();
     if (typeof source.activeId === 'string' && source.activeId) {
@@ -4347,6 +4351,15 @@ function MainApp() {
       else if (first?.kind === 'file') openIds.add(`${first.type}:${first.path}`);
     }
     seedTabsRestoreQueueFromSnapshot(source, openIds);
+  }, [isUnlocked, workspaceTabsEnabled]);
+
+  // Nothing to restore — allow live tab persistence (avoids blocking fresh sessions).
+  useEffect(() => {
+    if (!isUnlocked || !workspaceTabsEnabled) return;
+    if (hasRestoredPersistedWorkspaceTabsRef.current) return;
+    const persisted = pickWorkspaceTabsRestoreSource();
+    if (persisted?.tabs?.length) return;
+    hasRestoredPersistedWorkspaceTabsRef.current = true;
   }, [isUnlocked, workspaceTabsEnabled]);
 
   // Desktop OS / CLI open-file queue (Tauri file association)
@@ -4447,7 +4460,7 @@ function MainApp() {
       return;
     } else {
       if (hasRestoredLastFileRef.current) return;
-      const persisted = loadPersistedWorkspaceTabs();
+      const persisted = pickWorkspaceTabsRestoreSource();
       if (persisted?.tabs?.length) {
         hasRestoredLastFileRef.current = true;
         // Restore chat/settings shell immediately; files open asynchronously below when possible.
@@ -4585,16 +4598,16 @@ function MainApp() {
 
   useEffect(() => {
     if (!isUnlocked || !workspaceTabsEnabled || !hasProcessedOpenFromUrlRef.current) return;
-    if (hasRestoredPersistedWorkspaceTabsRef.current) return;
+    if (hasRestoredPersistedWorkspaceTabsRef.current || restoringWorkspaceTabsRef.current) return;
 
-    const persisted = loadPersistedWorkspaceTabs();
+    const persisted = pickWorkspaceTabsRestoreSource();
     if (!persisted?.tabs?.length) {
       hasRestoredPersistedWorkspaceTabsRef.current = true;
       return;
     }
 
     const needsLocal = persisted.tabs.some((tab) => tab.kind === 'file' && tab.type === 'local');
-    if (needsLocal && !localRootHandle) {
+    if (needsLocal && !localRootHandle && !localVaultFsPath) {
       if (localFolderRestoreSettled) {
         hasRestoredPersistedWorkspaceTabsRef.current = true;
       }
@@ -4621,15 +4634,23 @@ function MainApp() {
           : null;
     const navigateActiveUrl = explicitActiveId == null && !isExportPdfAppPathname(location.pathname);
 
-    hasRestoredPersistedWorkspaceTabsRef.current = true;
-    void restorePersistedWorkspaceTabs(persisted, {
-      activeId: explicitActiveId,
-      navigateActiveUrl,
-    });
+    restoringWorkspaceTabsRef.current = true;
+    void (async () => {
+      try {
+        await restorePersistedWorkspaceTabs(persisted, {
+          activeId: explicitActiveId,
+          navigateActiveUrl,
+        });
+      } finally {
+        restoringWorkspaceTabsRef.current = false;
+        hasRestoredPersistedWorkspaceTabsRef.current = true;
+      }
+    })();
   }, [
     isUnlocked,
     workspaceTabsEnabled,
     localRootHandle,
+    localVaultFsPath,
     localFolderRestoreSettled,
     webdavReady,
     location.pathname,
