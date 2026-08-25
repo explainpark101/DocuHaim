@@ -1,74 +1,77 @@
-import { useCallback, useMemo, useRef, type ReactNode } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { TreeOpsContext } from '@/App/context/TreeOpsContext';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
+import {
+  useTreeOpsDomain,
+  type TreeOpsBridgeDeps,
+} from '@/App/hooks/useTreeOpsDomain';
 
-type TreeOpsActions = {
-  requestCreateItem: (...args: any[]) => any;
-  requestNewFile: (...args: any[]) => any;
-  requestUploadFile: (...args: any[]) => any;
-  requestUploadFolder: (...args: any[]) => any;
-  handleTreeNodeSelect: (...args: any[]) => any;
-  handleDragEndNode: (...args: any[]) => any;
-  handleDropOnFolder: (...args: any[]) => any;
-  handleDownloadNode: (...args: any[]) => any;
-  handleDuplicateNode: (...args: any[]) => any;
-  renameTreeItem: (...args: any[]) => any;
-  settleTreeNameConflict: (...args: any[]) => any;
-  handleRequestMoveFolder: (...args: any[]) => any;
-};
+type Props = { children: ReactNode };
 
-const noop = (..._args: any[]) => {};
-
-/** Owns tree-ops context; heavy CRUD/DnD bodies register from orchestration. */
-export function TreeOpsProvider({ children }: { children: ReactNode }) {
+/**
+ * Owns tree-ops context + CRUD/DnD/select actions (useTreeOpsDomain).
+ * Bridge deps (chrome, rename helpers, download bytes) inject from orchestration.
+ */
+export function TreeOpsProvider({ children }: Props) {
   const owned = useTreeOpsOwned();
-  const actionsRef = useRef<TreeOpsActions>({
-    requestCreateItem: noop,
-    requestNewFile: noop,
-    requestUploadFile: noop,
-    requestUploadFolder: noop,
-    handleTreeNodeSelect: noop,
-    handleDragEndNode: noop,
-    handleDropOnFolder: noop,
-    handleDownloadNode: noop,
-    handleDuplicateNode: noop,
-    renameTreeItem: noop,
-    settleTreeNameConflict: noop,
-    handleRequestMoveFolder: noop,
-  });
+  const bridgeDepsRef = useRef<TreeOpsBridgeDeps>({});
 
-  const registerTreeOpsActions = useCallback((actions: Partial<TreeOpsActions>) => {
-    actionsRef.current = { ...actionsRef.current, ...actions };
-  }, []);
+  const registerTreeOpsBridgeDeps = useCallback(
+    (deps: Partial<TreeOpsBridgeDeps>) => {
+      bridgeDepsRef.current = { ...bridgeDepsRef.current, ...deps };
+    },
+    [],
+  );
+
+  const domain = useTreeOpsDomain({ bridgeDepsRef });
 
   const value = useMemo(
     () => ({
       ...owned,
-      registerTreeOpsActions,
-      requestCreateItem: (...args: any[]) =>
-        actionsRef.current.requestCreateItem(...args),
-      requestNewFile: (...args: any[]) => actionsRef.current.requestNewFile(...args),
-      requestUploadFile: (...args: any[]) =>
-        actionsRef.current.requestUploadFile(...args),
-      requestUploadFolder: (...args: any[]) =>
-        actionsRef.current.requestUploadFolder(...args),
-      handleTreeNodeSelect: (...args: any[]) =>
-        actionsRef.current.handleTreeNodeSelect(...args),
-      handleDragEndNode: (...args: any[]) =>
-        actionsRef.current.handleDragEndNode(...args),
-      handleDropOnFolder: (...args: any[]) =>
-        actionsRef.current.handleDropOnFolder(...args),
-      handleDownloadNode: (...args: any[]) =>
-        actionsRef.current.handleDownloadNode(...args),
-      handleDuplicateNode: (...args: any[]) =>
-        actionsRef.current.handleDuplicateNode(...args),
-      renameTreeItem: (...args: any[]) => actionsRef.current.renameTreeItem(...args),
-      settleTreeNameConflict: (...args: any[]) =>
-        actionsRef.current.settleTreeNameConflict(...args),
-      handleRequestMoveFolder: (...args: any[]) =>
-        actionsRef.current.handleRequestMoveFolder(...args),
+      registerTreeOpsBridgeDeps,
+      requestCreateItem: domain.requestCreateItem,
+      requestNewFile: domain.requestNewFile,
+      requestAdvancedSearchCreateItem: domain.requestAdvancedSearchCreateItem,
+      newFileDefaultParentPath: domain.newFileDefaultParentPath,
+      requestUploadFile: domain.requestUploadFile,
+      requestUploadFolder: domain.requestUploadFolder,
+      handleTreeNodeSelect: domain.handleTreeNodeSelect,
+      handleDragEndNode: domain.handleDragEndNode,
+      handleDropOnFolder: domain.handleDropOnFolder,
+      handleDownloadNode: domain.handleDownloadNode,
+      handleDuplicateNode: domain.handleDuplicateNode,
+      renameTreeItem: domain.renameTreeItem,
+      settleTreeNameConflict: domain.settleTreeNameConflict,
+      askTreeNameConflict: domain.askTreeNameConflict,
+      askUploadNameConflict: domain.askUploadNameConflict,
+      getUploadTreeForStorage: domain.getUploadTreeForStorage,
+      loadFileCompareForDest: domain.loadFileCompareForDest,
+      handleRequestMoveFolder: domain.handleRequestMoveFolder,
+      handleCreateItemSubmit: domain.handleCreateItemSubmit,
+      beginTreeTransferBusy: domain.beginTreeTransferBusy,
+      endTreeTransferBusy: domain.endTreeTransferBusy,
+      reloadOpenFileIfPath: domain.reloadOpenFileIfPath,
+      moveS3FileToFolder: domain.moveS3FileToFolder,
+      moveLocalFileToFolder: domain.moveLocalFileToFolder,
+      moveS3FolderToFolder: domain.moveS3FolderToFolder,
+      moveLocalFolderToFolder: domain.moveLocalFolderToFolder,
+      moveWebdavFileToFolder: domain.moveWebdavFileToFolder,
+      moveWebdavFolderToFolder: domain.moveWebdavFolderToFolder,
+      copyS3FileToFolder: domain.copyS3FileToFolder,
+      copyLocalFileToFolder: domain.copyLocalFileToFolder,
+      copyS3FolderToFolder: domain.copyS3FolderToFolder,
+      copyLocalFolderToFolder: domain.copyLocalFolderToFolder,
+      copyWebdavFileToFolder: domain.copyWebdavFileToFolder,
+      copyWebdavFolderToFolder: domain.copyWebdavFolderToFolder,
+      lastSelectedIdRef: domain.lastSelectedIdRef,
+      toSelectKey: domain.toSelectKey,
     }),
-    [owned, registerTreeOpsActions],
+    [owned, registerTreeOpsBridgeDeps, domain],
   );
 
   return <TreeOpsContext.Provider value={value}>{children}</TreeOpsContext.Provider>;

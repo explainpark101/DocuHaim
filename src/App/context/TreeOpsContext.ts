@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { TreeOpsBridgeDeps } from '@/App/hooks/useTreeOpsDomain';
 
 /** §6 tree CRUD / DnD / upload / download. */
 export type TreeOpsValue = {
@@ -14,6 +15,8 @@ export type TreeOpsValue = {
   setCreateModalContext: (...args: any[]) => any;
   requestCreateItem: (...args: any[]) => any;
   requestNewFile: (...args: any[]) => any;
+  requestAdvancedSearchCreateItem: (...args: any[]) => any;
+  newFileDefaultParentPath: string;
   requestUploadFile: (...args: any[]) => any;
   requestUploadFolder: (...args: any[]) => any;
   handleTreeNodeSelect: (...args: any[]) => any;
@@ -25,6 +28,10 @@ export type TreeOpsValue = {
   dropTarget: any;
   treeNameConflict: any;
   settleTreeNameConflict: (...args: any[]) => any;
+  askTreeNameConflict: (...args: any[]) => any;
+  askUploadNameConflict: (...args: any[]) => any;
+  getUploadTreeForStorage: (...args: any[]) => any;
+  loadFileCompareForDest: (...args: any[]) => any;
   treeTransferBusy: any[];
   isDeleting: boolean;
   isDeletingFolder: boolean;
@@ -40,20 +47,25 @@ export type TreeOpsValue = {
   moveModalSelectPath: any;
   setMoveModalSelectPath: (...args: any[]) => any;
   handleRequestMoveFolder: (...args: any[]) => any;
-  registerTreeOpsActions: (actions: Partial<{
-    requestCreateItem: (...args: any[]) => any;
-    requestNewFile: (...args: any[]) => any;
-    requestUploadFile: (...args: any[]) => any;
-    requestUploadFolder: (...args: any[]) => any;
-    handleTreeNodeSelect: (...args: any[]) => any;
-    handleDragEndNode: (...args: any[]) => any;
-    handleDropOnFolder: (...args: any[]) => any;
-    handleDownloadNode: (...args: any[]) => any;
-    handleDuplicateNode: (...args: any[]) => any;
-    renameTreeItem: (...args: any[]) => any;
-    settleTreeNameConflict: (...args: any[]) => any;
-    handleRequestMoveFolder: (...args: any[]) => any;
-  }>) => void;
+  handleCreateItemSubmit: (...args: any[]) => any;
+  beginTreeTransferBusy: (...args: any[]) => any;
+  endTreeTransferBusy: (...args: any[]) => any;
+  reloadOpenFileIfPath: (...args: any[]) => any;
+  moveS3FileToFolder: (...args: any[]) => any;
+  moveLocalFileToFolder: (...args: any[]) => any;
+  moveS3FolderToFolder: (...args: any[]) => any;
+  moveLocalFolderToFolder: (...args: any[]) => any;
+  moveWebdavFileToFolder: (...args: any[]) => any;
+  moveWebdavFolderToFolder: (...args: any[]) => any;
+  copyS3FileToFolder: (...args: any[]) => any;
+  copyLocalFileToFolder: (...args: any[]) => any;
+  copyS3FolderToFolder: (...args: any[]) => any;
+  copyLocalFolderToFolder: (...args: any[]) => any;
+  copyWebdavFileToFolder: (...args: any[]) => any;
+  copyWebdavFolderToFolder: (...args: any[]) => any;
+  lastSelectedIdRef: { current: any };
+  toSelectKey: (storageType: string, path: string) => string;
+  registerTreeOpsBridgeDeps: (deps: Partial<TreeOpsBridgeDeps>) => void;
 };
 
 export const TreeOpsContext = createContext<TreeOpsValue | null>(null);

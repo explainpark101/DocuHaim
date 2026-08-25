@@ -113,7 +113,6 @@ export function AppModals() {
     handleConfirmMoveFolder,
     createModalTree,
     ensureCreateModalFolderLoaded,
-    handleCreateItemSubmit,
   } = useAppModals();
 
   const { theme } = useAppBootstrap();
@@ -148,6 +147,7 @@ export function AppModals() {
     setCreateModalContext,
     setCreateModalOpen,
     isCreateSubmitting,
+    handleCreateItemSubmit,
   } = useTreeOps();
   const {
     storageMode,

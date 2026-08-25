@@ -3,6 +3,8 @@ export { useVault } from '@/App/hooks/useVault';
 export { useWorkspaceTabsCtx, useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 export { useFileSession } from '@/App/hooks/useFileSession';
 export { useTreeOps } from '@/App/hooks/useTreeOps';
+export { useTreeOpsDomain } from '@/App/hooks/useTreeOpsDomain';
+export type { TreeOpsBridgeDeps } from '@/App/hooks/useTreeOpsDomain';
 export { useAutoSave } from '@/App/hooks/useAutoSave';
 export { useAutoSaveDomain } from '@/App/hooks/useAutoSaveDomain';
 export { useAppModals } from '@/App/hooks/useAppModals';
