@@ -6,9 +6,7 @@ import { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
-import { WorkspaceTabsContext } from '@/App/context/WorkspaceTabsContext';
 import { RecordingSyncContext } from '@/App/context/RecordingSyncContext';
-import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useMainAppController } from '@/App/providers/useMainAppController';
@@ -36,7 +34,6 @@ function AppShellMerge({ controller, children }: { controller: any; children: Re
  * domain slices. AutoSaveProvider owns §7–8; AppBootstrapProvider owns theme/scriptsLoaded.
  */
 export function AppLogicProvider({ children }: { children: ReactNode }) {
-  const tabs = useWorkspaceTabsCtx();
   const c = useMainAppController();
 
   const bootstrapLogic = useMemo(
@@ -157,39 +154,18 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
     [c.isRecording, c.captureSync],
   );
 
-  const tabsWithActions = useMemo(
-    () => ({
-      ...tabs,
-      activateWorkspaceTab: c.activateWorkspaceTab,
-      closeWorkspaceTabById: c.closeWorkspaceTabById,
-      openChatWorkspaceTab: c.openChatWorkspaceTab,
-      openSettingsWorkspaceTab: c.openSettingsWorkspaceTab,
-      reorderWorkspaceTabs: c.reorderWorkspaceTabs,
-    }),
-    [
-      tabs,
-      c.activateWorkspaceTab,
-      c.closeWorkspaceTabById,
-      c.openChatWorkspaceTab,
-      c.openSettingsWorkspaceTab,
-      c.reorderWorkspaceTabs,
-    ],
-  );
-
   return (
     <AppBootstrapProvider logic={bootstrapLogic}>
       <VaultProvider value={vault}>
-        <WorkspaceTabsContext.Provider value={tabsWithActions}>
-          <FileSessionProvider value={fileSession}>
-            <TreeOpsProvider value={treeOps}>
-              <RecordingSyncContext.Provider value={recordingSync}>
-                <AutoSaveProvider>
-                  <AppShellMerge controller={c}>{children}</AppShellMerge>
-                </AutoSaveProvider>
-              </RecordingSyncContext.Provider>
-            </TreeOpsProvider>
-          </FileSessionProvider>
-        </WorkspaceTabsContext.Provider>
+        <FileSessionProvider value={fileSession}>
+          <TreeOpsProvider value={treeOps}>
+            <RecordingSyncContext.Provider value={recordingSync}>
+              <AutoSaveProvider>
+                <AppShellMerge controller={c}>{children}</AppShellMerge>
+              </AutoSaveProvider>
+            </RecordingSyncContext.Provider>
+          </TreeOpsProvider>
+        </FileSessionProvider>
       </VaultProvider>
     </AppBootstrapProvider>
   );

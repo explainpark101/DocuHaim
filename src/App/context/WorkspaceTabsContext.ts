@@ -7,6 +7,13 @@ export type WorkspaceTabsCtxValue = ReturnType<typeof useWorkspaceTabs> & {
   setWorkspaceTabsEnabled: (enabled: boolean) => void;
   workspaceTabsEnabledRef: { current: boolean };
   workspaceTabsRef: { current: WorkspaceTabsState };
+  registerTabActions: (actions: {
+    activateWorkspaceTab?: (...args: any[]) => any;
+    closeWorkspaceTabById?: (...args: any[]) => any;
+    openChatWorkspaceTab?: (...args: any[]) => any;
+    openSettingsWorkspaceTab?: (...args: any[]) => any;
+    reorderWorkspaceTabs?: (...args: any[]) => any;
+  }) => void;
   activateWorkspaceTab: (...args: any[]) => any;
   closeWorkspaceTabById: (...args: any[]) => any;
   openChatWorkspaceTab: (...args: any[]) => any;

@@ -1167,6 +1167,23 @@ export function useMainAppController() {
     setWorkspaceTabs(next);
   }, []);
 
+  useLayoutEffect(() => {
+    workspaceTabsApi.registerTabActions({
+      activateWorkspaceTab,
+      closeWorkspaceTabById,
+      openChatWorkspaceTab,
+      openSettingsWorkspaceTab,
+      reorderWorkspaceTabs,
+    });
+  }, [
+    workspaceTabsApi,
+    activateWorkspaceTab,
+    closeWorkspaceTabById,
+    openChatWorkspaceTab,
+    openSettingsWorkspaceTab,
+    reorderWorkspaceTabs,
+  ]);
+
   const cycleWorkspaceTab = useCallback(
     (delta) => {
       if (!workspaceTabsEnabledRef.current) return;
