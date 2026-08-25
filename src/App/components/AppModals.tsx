@@ -19,9 +19,10 @@ import { revertNoteCoverComment } from '@/utils/noteCover';
 import { getActiveFileTab, isFileTab } from '@/utils/workspaceTabs';
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
-import type { AppModalsProps } from '@/App/types';
+import { useAppShell } from '@/App/hooks/useAppShell';
 
-export function AppModals(props: AppModalsProps) {
+/** App-level modals — reads state from AppProviders via useAppShell. */
+export function AppModals() {
   const {
     showSaveMethodModal,
     setShowSaveMethodModal,
@@ -143,7 +144,7 @@ export function AppModals(props: AppModalsProps) {
     isCreateSubmitting,
     handleCreateItemSubmit,
     encMdPrompt,
-  } = props;
+  } = useAppShell();
 
   return (
     <>

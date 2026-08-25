@@ -8,7 +8,7 @@
  * Quasi-pages that are not under `pages/` (feature-owned):
  * - ChatWithMyselfPane — `components/chatWithMyself/` (workspace chat tab)
  *
- * App shell orchestration: `src/App/` (MainApp + sections/useMainAppController).
+ * App shell orchestration: `src/App/` (AppProviders + AppShellView + domain providers).
  */
 export const APP_PAGE_ENTRIES = [
   'SettingsPage',

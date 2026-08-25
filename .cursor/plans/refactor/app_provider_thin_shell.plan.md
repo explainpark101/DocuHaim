@@ -3,37 +3,36 @@ name: App Provider thin shell
 overview: PR1–12(기계적 분리·폴더 정리) 완료 후, App sections의 state/handler를 도메인 Provider·hook으로 이전해 MainApp을 매우 얇은 조립 레이어로 축소합니다. useWorkspaceTabs 채택·prop drilling 제거가 핵심입니다.
 todos:
   - id: prereq-check
-    content: "선행 완료 확인 — app.jsx_cluster_split PR1–12, MainApp <600줄, sections·taxonomy 안정"
-    status: pending
+    content: 선행 완료 확인 — app.jsx_cluster_split PR1–12, MainApp <600줄, sections·taxonomy 안정
+    status: completed
   - id: provider-design
-    content: "Provider 경계 확정 — Vault/Workspace/FileOps/TreeCrud/AutoSave 도메인 분할 + 의존 그래프 문서화"
-    status: pending
+    content: Provider 경계 확정 — Vault/Workspace/FileOps/TreeCrud/AutoSave 도메인 분할 + 의존 그래프 문서화
+    status: completed
   - id: workspace-tabs-hook
-    content: "useWorkspaceTabs + appBridge 인라인 state 통합 — workspaceTabsStore 단일 소스"
-    status: pending
+    content: useWorkspaceTabs + appBridge 인라인 state 통합 — workspaceTabsStore 단일 소스
+    status: completed
   - id: vault-provider
-    content: "VaultProvider — storageMode, trees, getBackendForType, load/refresh (§3–4)"
-    status: pending
+    content: VaultProvider — storageMode, trees, getBackendForType, load/refresh (§3–4)
+    status: completed
   - id: file-session-provider
-    content: "FileSessionProvider — selectFileRaw, saveFile, enc.md, editor sync (§5)"
-    status: pending
+    content: FileSessionProvider — selectFileRaw, saveFile, enc.md, editor sync (§5)
+    status: completed
   - id: tree-ops-provider
-    content: "TreeOpsProvider — create/delete/move/upload/download (§6)"
-    status: pending
+    content: TreeOpsProvider — create/delete/move/upload/download (§6)
+    status: completed
   - id: autosave-provider
-    content: "AutoSaveProvider — debounce save, idle sync, handleEditorChange (§7–8)"
-    status: pending
+    content: AutoSaveProvider — debounce save, idle sync, handleEditorChange (§7–8)
+    status: completed
   - id: shell-compose
-    content: "MainApp → AppProviders + AppShellView (<150줄 목표)"
-    status: pending
+    content: MainApp → AppProviders + AppShellView (<150줄 목표)
+    status: completed
   - id: consumer-migration
-    content: "shell/editor 컴포넌트가 props 대신 context hook 사용하도록 점진 전환"
-    status: pending
+    content: shell/editor 컴포넌트가 props 대신 context hook 사용하도록 점진 전환
+    status: completed
   - id: cleanup-factories
-    content: "App/sections factory 파일 제거·hooks로 대체, dead deps 타입 정리"
-    status: pending
+    content: App/sections factory 파일 제거·hooks로 대체, dead deps 타입 정리
+    status: completed
 isProject: false
-depends_on: app.jsx_cluster_split_2524a7ea
 ---
 
 # App Provider 기반 얇은 셸 전환

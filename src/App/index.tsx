@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { useLocation } from 'react-router';
 import { RouteSuspenseFallback } from '@/App/RouteSuspenseFallback';
-import { MainApp } from '@/App/MainApp';
+import { AppProviders } from '@/App/AppProviders';
+import { AppShellView } from '@/App/AppShellView';
 
 const LlmAssistPopoutPage = lazy(() => import('@/pages/LlmAssistPopoutPage'));
 
@@ -16,5 +17,9 @@ export default function App() {
       </div>
     );
   }
-  return <MainApp />;
+  return (
+    <AppProviders>
+      <AppShellView />
+    </AppProviders>
+  );
 }

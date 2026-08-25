@@ -1,24 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
-  APP_AUTH_ACTIONS_SECTION,
-  APP_FILE_SESSION_SECTION,
-  APP_INIT_SECTION,
-  APP_LOCAL_FOLDER_SECTION,
-  APP_STORAGE_BACKEND_SECTION,
-  APP_TREE_CRUD_SECTION,
-  createAutoSaveSyncHandlers,
   isVaultPathStorageType,
   VAULT_PATH_STORAGE_TYPES,
-} from '@/App/sections';
+} from '@/App/context/VaultContext';
+import { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
+import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
-describe('App/sections public API', () => {
-  it('exports §1–6 section markers', () => {
-    expect(APP_INIT_SECTION).toContain('Init');
-    expect(APP_AUTH_ACTIONS_SECTION).toContain('Auth');
-    expect(APP_STORAGE_BACKEND_SECTION).toContain('Storage');
-    expect(APP_LOCAL_FOLDER_SECTION).toContain('Local');
-    expect(APP_FILE_SESSION_SECTION).toContain('File');
-    expect(APP_TREE_CRUD_SECTION).toContain('Tree');
+describe('App provider public API', () => {
+  it('documents fixed provider nesting order', () => {
+    expect(APP_PROVIDER_ORDER).toEqual([
+      'AppBootstrapProvider',
+      'VaultProvider',
+      'WorkspaceTabsProvider',
+      'FileSessionProvider',
+      'TreeOpsProvider',
+      'AutoSaveProvider',
+    ]);
   });
 
   it('classifies vault path storage types', () => {

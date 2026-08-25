@@ -1,5 +1,5 @@
 import { emptyWorkspaceTabsState } from '@/utils/workspaceTabs';
-import { createAutoSaveSyncHandlers } from '@/App/sections/appAutoSaveSync';
+import { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
 import { describe, expect, it, vi } from 'vitest';
 
 function makeDeps(overrides: Record<string, unknown> = {}) {

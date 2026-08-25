@@ -1,8 +1,8 @@
-// @ts-nocheck — extracted from MainApp; tighten in Phase C
+// @ts-nocheck — extracted auto-save factory; tighten types later
 import { isEncMdPath } from '@/utils/encMd';
 import { getActiveFileTab } from '@/utils/workspaceTabs';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
-import { isVaultPathStorageType } from '@/App/sections/appStorageBackend';
+import { isVaultPathStorageType } from '@/App/context/VaultContext';
 
 /** §7–8 Auto save / sync + editor change bridge (factory). */
 export function createAutoSaveSyncHandlers(deps: Record<string, any>) {

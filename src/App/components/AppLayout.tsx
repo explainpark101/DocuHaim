@@ -26,9 +26,11 @@ import { getDesktopAppEntryLockModeSync, saveDesktopWebdavConfig } from '@/utils
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { useAppShell } from '@/App/hooks/useAppShell';
 
-/** Main app chrome (sidebar, workspace, status). Props bag = MainApp locals (Phase A). */
-export function AppLayout({ children, ...b }: Record<string, any> & { children?: ReactNode }) {
+/** Main app chrome — reads domain state from AppProviders via useAppShell. */
+export function AppLayout({ children }: { children?: ReactNode }) {
+  const b = useAppShell();
   const {
     activateWorkspaceTab,
     addToNoteSelectPath,

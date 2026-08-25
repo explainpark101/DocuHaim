@@ -1,7 +1,8 @@
 // @ts-nocheck — migrated from App.jsx; typed gradually in later PRs
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
-import { createAutoSaveSyncHandlers } from '@/App/sections/appAutoSaveSync';
+import { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
+import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
@@ -61,7 +62,6 @@ import {
   anyFileTabDirty,
   clearPersistedWorkspaceTabs,
   closedTabEntryFromWorkspaceTab,
-  emptyWorkspaceTabsState,
   getActiveFileTab,
   getActiveTab,
   isChatTab,
@@ -102,7 +102,6 @@ import {
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
 import {
   loadWorkspaceTabsAutoSaveMode,
-  loadWorkspaceTabsEnabled,
   WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
 } from '@/utils/workspaceTabsSettings';
 import {
@@ -446,13 +445,15 @@ export function useMainAppController() {
   const [editorContent, setEditorContent] = useState('');
   /** 저장 시점의 최신 문자열 (Novel 디바운스 onChange 직후에도 동기 반영) */
   const editorContentRef = useRef('');
-  const [workspaceTabs, setWorkspaceTabs] = useState(() => emptyWorkspaceTabsState());
-  const workspaceTabsRef = useRef(workspaceTabs);
+  // Workspace tab state: sole source is WorkspaceTabsProvider → useWorkspaceTabs.
+  const workspaceTabsApi = useWorkspaceTabsCtx();
+  const workspaceTabs = workspaceTabsApi.state;
+  const setWorkspaceTabs = workspaceTabsApi.setState;
+  const workspaceTabsRef = workspaceTabsApi.workspaceTabsRef;
   workspaceTabsRef.current = workspaceTabs;
-  const [workspaceTabsEnabled, setWorkspaceTabsEnabled] = useState(() =>
-    loadWorkspaceTabsEnabled(),
-  );
-  const workspaceTabsEnabledRef = useRef(workspaceTabsEnabled);
+  const workspaceTabsEnabled = workspaceTabsApi.workspaceTabsEnabled;
+  const setWorkspaceTabsEnabled = workspaceTabsApi.setWorkspaceTabsEnabled;
+  const workspaceTabsEnabledRef = workspaceTabsApi.workspaceTabsEnabledRef;
   workspaceTabsEnabledRef.current = workspaceTabsEnabled;
   const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
   const editedFileNameRef = useRef('');
@@ -9872,6 +9873,7 @@ export function useMainAppController() {
     formatTime,
     getAdvancedSearchChatGroups,
     getAdvancedSearchTrees,
+    getBackendForType,
     getChatImageUrlForPath,
     getImgbbApiKey,
     getPresignedUrlForPath,
@@ -10033,6 +10035,7 @@ export function useMainAppController() {
     setChatAttachDropHost,
     setCreateModalContext,
     setCreateModalOpen,
+    setCurrentFile,
     setDeleteTarget,
     setDownloadComplete,
     setDownloadModalMode,
