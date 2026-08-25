@@ -38,9 +38,6 @@ import {
   WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
 } from '@/utils/workspaceTabsSettings';
 import {
-  loadNewFileAsTempEnabled,
-} from '@/utils/newFileTempSettings';
-import {
   getComposerHelperTextVisible,
 } from '@/utils/chatWithMyself';
 import {
@@ -148,9 +145,6 @@ export default function SettingsPage({
   const [workspaceTabsAutoSaveMode, setWorkspaceTabsAutoSaveMode] = useState(() =>
     loadWorkspaceTabsAutoSaveMode(),
   );
-  const [newFileAsTempEnabled, setNewFileAsTempEnabled] = useState(() =>
-    loadNewFileAsTempEnabled(),
-  );
   const [composerHelperTextVisible, setComposerHelperTextVisible] = useState(() =>
     getComposerHelperTextVisible(),
   );
@@ -185,7 +179,6 @@ export default function SettingsPage({
     return subscribeSettingsToggles((id, enabled) => {
       if (id === 'settings-alt-vim') setAltVimNavigationEnabled(enabled);
       else if (id === 'settings-workspace-tabs') setWorkspaceTabsEnabled(enabled);
-      else if (id === 'settings-new-file-temp') setNewFileAsTempEnabled(enabled);
       else if (id === 'settings-composer-helper') setComposerHelperTextVisible(enabled);
       else if (id === 'settings-as-animation') setAdvancedSearchUiAnimation(enabled);
       else if (id === 'settings-as-index' || id === 'settings-as-include-other') {
@@ -1296,34 +1289,6 @@ export default function SettingsPage({
                   여러 파일과 「나와의 채팅」을 탭으로 동시에 열어 둘 수 있습니다. 끄면 기존처럼
                   한 번에 하나의 파일(또는 채팅)만 표시합니다.
                   Ctrl+W 닫기 · Ctrl+Tab / Ctrl+Shift+Tab 전환 · Ctrl+Shift+T 닫은 탭 다시 열기.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsToggle('settings-new-file-temp', !newFileAsTempEnabled);
-                }}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
-                  newFileAsTempEnabled
-                    ? 'bg-blue-500 border-blue-500 shadow-sm'
-                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-                } group-hover:brightness-105 group-hover:border-blue-400`}
-                aria-pressed={newFileAsTempEnabled}
-                aria-label="새 파일 임시(메모리) 생성"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    newFileAsTempEnabled ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-                새 파일 임시(메모리) 생성
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  켜면 Ctrl/Cmd+N이 이름·경로 없이 메모리 문서(untitled)를 엽니다. 저장 시
-                  파일명과 위치를 지정합니다. 끄면 기존처럼 생성 즉시 이름과 폴더를 묻습니다.
                 </span>
               </span>
             </label>

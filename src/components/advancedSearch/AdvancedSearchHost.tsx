@@ -128,6 +128,8 @@ export type AdvancedSearchHostProps = {
     type: 'file' | 'folder',
     parentPath: string,
   ) => void;
+  /** Open an in-memory untitled session file (Ctrl/Cmd+Shift+N). */
+  onRequestCreateTempFile?: () => void;
   /** Load chat groups for nested "채팅 그룹 선택" mode (SELF_GROUP added by lister). */
   getChatGroups?: () => ChatGroupEntry[] | Promise<ChatGroupEntry[]>;
   /** Resolve chat group / wiki image paths for avatars in results. */
@@ -167,6 +169,7 @@ export default function AdvancedSearchHost({
   onOpenFile,
   ensureBrowseFolderLoaded,
   onRequestCreateItem,
+  onRequestCreateTempFile,
   getChatGroups,
   getPresignedUrl,
   currentFile = null,
@@ -458,6 +461,13 @@ export default function AdvancedSearchHost({
           if (!snippet?.body) return;
           window.setTimeout(() => {
             runEditorAction('editor-insert-snippet', snippet.body);
+          }, 0);
+          return;
+        }
+
+        if (commandId === 'create-temp-file') {
+          window.setTimeout(() => {
+            onRequestCreateTempFile?.();
           }, 0);
           return;
         }

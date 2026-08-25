@@ -18,6 +18,8 @@ type Props = {
   webdavTree?: TreeNodeLike[];
   localRootHandle?: FileSystemDirectoryHandle | null;
   defaultFileName?: string;
+  /** Vault-relative parent folder (trailing `/`) to pre-select on open. */
+  defaultParentPath?: string;
   isSaving?: boolean;
   onClose: () => void;
   onConfirm: (payload: {
@@ -33,18 +35,46 @@ type Props = {
   onSelectPathAfterCreateApplied?: () => void;
 };
 
+function findFolderByPath(nodes: TreeNodeLike[], path: string): TreeNodeLike | null {
+  for (const node of nodes) {
+    if (node.path === path) return node;
+    if (node.children?.length) {
+      const found = findFolderByPath(node.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function getAncestorPathsToExpand(path: string): string[] {
+  if (!path || path === '') return [];
+  const parts = path.replace(/\/$/, '').split('/').filter(Boolean);
+  if (parts.length <= 1) return [];
+  const result: string[] = [];
+  let acc = '';
+  for (let i = 0; i < parts.length - 1; i++) {
+    acc += `${parts[i]}/`;
+    result.push(acc);
+  }
+  return result;
+}
+
 function FolderNode({
   node,
   level,
   onSelect,
   selectedPath,
+  expandedPaths,
 }: {
   node: TreeNodeLike;
   level: number;
   onSelect: (node: TreeNodeLike) => void;
   selectedPath: string | null;
+  expandedPaths?: Set<string> | null | undefined;
 }) {
-  const [open, setOpen] = useState(true);
+  const mustBeOpen = expandedPaths?.has(node.path);
+  const [userOpen, setUserOpen] = useState(true);
+  const isOpen = mustBeOpen === true ? true : userOpen;
   if (node.type !== 'folder') return null;
   const isSelected = selectedPath === node.path;
 
@@ -57,10 +87,13 @@ function FolderNode({
             : 'text-gray-700 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-bgSoft'
         }`}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          if (mustBeOpen === true) return;
+          setUserOpen((value) => !value);
+        }}
       >
         <span className="flex w-4 shrink-0 justify-center text-gray-400 dark:text-gray-500">
-          {open ? '▾' : '▸'}
+          {isOpen ? '▾' : '▸'}
         </span>
         <button
           type="button"
@@ -74,7 +107,7 @@ function FolderNode({
           <span className="truncate">{node.name || '/'}</span>
         </button>
       </div>
-      {open
+      {isOpen
         ? (node.children ?? []).map((child) => (
             <FolderNode
               key={child.path}
@@ -82,6 +115,7 @@ function FolderNode({
               level={level + 1}
               onSelect={onSelect}
               selectedPath={selectedPath}
+              expandedPaths={expandedPaths}
             />
           ))
         : null}
@@ -97,6 +131,7 @@ export default function SaveSessionToNoteModal({
   webdavTree = [],
   localRootHandle = null,
   defaultFileName = 'untitled.md',
+  defaultParentPath = '',
   isSaving = false,
   onClose,
   onConfirm,
@@ -117,26 +152,44 @@ export default function SaveSessionToNoteModal({
       initializedRef.current = false;
       return;
     }
-    if (!initializedRef.current) {
+    if (initializedRef.current) return;
+
+    setFileName(defaultFileName);
+
+    if (selectPathAfterCreate) {
+      const node = findFolderByPath(tree, selectPathAfterCreate);
+      if (node && node.type === 'folder') {
+        setSelectedRoot(false);
+        setSelectedFolder(node);
+      } else {
+        setSelectedRoot(true);
+        setSelectedFolder(null);
+      }
+      initializedRef.current = true;
+      return;
+    }
+
+    const parentPath = String(defaultParentPath || '');
+    if (!parentPath) {
       setSelectedRoot(true);
       setSelectedFolder(null);
-      setFileName(defaultFileName);
-      initializedRef.current = true;
+    } else {
+      const node = findFolderByPath(tree, parentPath);
+      if (node && node.type === 'folder') {
+        setSelectedRoot(false);
+        setSelectedFolder(node);
+      } else {
+        setSelectedRoot(true);
+        setSelectedFolder(null);
+      }
     }
-  }, [isOpen, defaultFileName]);
+    initializedRef.current = true;
+  }, [isOpen, defaultFileName, defaultParentPath, selectPathAfterCreate, tree]);
 
   useEffect(() => {
     if (!isOpen || !selectPathAfterCreate) return;
-    const walk = (nodes: TreeNodeLike[]): TreeNodeLike | null => {
-      for (const node of nodes) {
-        if (node.path === selectPathAfterCreate) return node;
-        const found = node.children ? walk(node.children) : null;
-        if (found) return found;
-      }
-      return null;
-    };
-    const node = walk(tree);
-    if (node) {
+    const node = findFolderByPath(tree, selectPathAfterCreate);
+    if (node && node.type === 'folder') {
       setSelectedRoot(false);
       setSelectedFolder(node);
     }
@@ -148,6 +201,10 @@ export default function SaveSessionToNoteModal({
   const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle || null;
   const canSubmit = isS3 || isWebdav ? true : Boolean(selectedRoot ? localRootHandle : selectedFolder?.handle);
+  const pathToExpand = selectPathAfterCreate || selectedFolder?.path || defaultParentPath || '';
+  const expandedPaths = pathToExpand
+    ? new Set(getAncestorPathsToExpand(pathToExpand))
+    : null;
 
   return (
     <Modal
@@ -163,7 +220,8 @@ export default function SaveSessionToNoteModal({
               })
           : undefined
       }
-    >      <div className="flex max-h-[90vh] flex-col gap-4 p-6">
+    >
+      <div className="flex max-h-[90vh] flex-col gap-4 p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">내 노트에 저장</h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted">
           현재 다운로드 세션 문서를 연결된 저장소에 노트로 저장합니다.
@@ -216,6 +274,7 @@ export default function SaveSessionToNoteModal({
                   setSelectedFolder(next);
                 }}
                 selectedPath={selectedRoot ? null : selectedFolder?.path || null}
+                {...(expandedPaths ? { expandedPaths } : {})}
               />
             ))}
           </div>

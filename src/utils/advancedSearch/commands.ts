@@ -89,6 +89,7 @@ export type AppCommandId =
   | 'browse-new-file'
   | 'browse-new-folder'
   | 'create-file'
+  | 'create-temp-file'
   | 'create-folder'
   | EditorActionId
   | PrintActionId
@@ -556,6 +557,25 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       'md',
       'markdown',
       '만들기',
+      'ctrl+n',
+      'cmd+n',
+    ],
+  },
+  {
+    id: 'create-temp-file',
+    title: '새 임시 파일',
+    description: '이름·경로 없이 메모리 문서(untitled) 열기 · 저장 시 위치 지정',
+    path: '',
+    keywords: [
+      '새 임시 파일',
+      '임시 파일',
+      'temp file',
+      'untitled',
+      '메모리',
+      'session',
+      'ctrl+shift+n',
+      'cmd+shift+n',
+      '임시',
     ],
   },
   {

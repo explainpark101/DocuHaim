@@ -294,6 +294,7 @@ import { resolveStorageImagePath } from '@/utils/storageImagePath';
 import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import { usePwaNewFileShortcut } from '@/hooks/usePwaNewFileShortcut';
+import { useNewTempFileShortcut } from '@/hooks/useNewTempFileShortcut';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
   SESSION_STORAGE_TYPE,
@@ -312,7 +313,6 @@ import {
   workspaceFromDirectoryHandle,
   workspaceFromFileList,
 } from '@/utils/sessionWorkspace';
-import { loadNewFileAsTempEnabled } from '@/utils/newFileTempSettings';
 import {
   buildMarkdownImageZipEntries,
   collectMarkdownExportImageBytes,
@@ -7693,16 +7693,17 @@ function MainApp() {
   ]);
 
   const requestNewFile = useCallback(() => {
-    if (loadNewFileAsTempEnabled()) {
-      requestNewTempFile();
-      return;
-    }
     requestAdvancedSearchCreateItem('file', newFileDefaultParentPath);
-  }, [requestAdvancedSearchCreateItem, newFileDefaultParentPath, requestNewTempFile]);
+  }, [requestAdvancedSearchCreateItem, newFileDefaultParentPath]);
 
   usePwaNewFileShortcut({
     enabled: isUnlocked && canScanStorageUsage,
     onNewFile: requestNewFile,
+  });
+
+  useNewTempFileShortcut({
+    enabled: isUnlocked && canScanStorageUsage,
+    onNewTempFile: requestNewTempFile,
   });
 
   const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
@@ -9834,6 +9835,7 @@ function MainApp() {
           onOpenFile={openAdvancedSearchFile}
           ensureBrowseFolderLoaded={ensureAdvancedSearchBrowseFolder}
           onRequestCreateItem={requestAdvancedSearchCreateItem}
+          onRequestCreateTempFile={requestNewTempFile}
           getChatGroups={getAdvancedSearchChatGroups}
           getPresignedUrl={getChatImageUrlForPath}
           currentFile={currentFile}
@@ -10717,6 +10719,7 @@ function MainApp() {
         webdavTree={webdavTree}
         localRootHandle={localRootHandle}
         defaultFileName={currentFile?.name || 'untitled.md'}
+        defaultParentPath={newFileDefaultParentPath}
         isSaving={isSavingSessionToNote}
         onClose={() => setShowSaveSessionToNoteModal(false)}
         onConfirm={handleConfirmSaveSessionToNote}

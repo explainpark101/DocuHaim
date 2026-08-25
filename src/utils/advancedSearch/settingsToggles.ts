@@ -56,10 +56,6 @@ import {
   type FootnoteDisplayMode,
 } from '@/utils/previewFootnotesSettings';
 import {
-  loadNewFileAsTempEnabled,
-  saveNewFileAsTempEnabled,
-} from '@/utils/newFileTempSettings';
-import {
   loadOrphanImageAutoDeleteEnabled,
   saveOrphanImageAutoDeleteEnabled,
 } from '@/utils/orphanImageCleanupSettings';
@@ -68,7 +64,6 @@ import { advancedSearchEngine } from './engine';
 export type SettingsToggleId =
   | 'settings-alt-vim'
   | 'settings-workspace-tabs'
-  | 'settings-new-file-temp'
   | 'settings-show-trash'
   | 'settings-show-hidden'
   | 'settings-hide-recording'
@@ -140,27 +135,6 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadWorkspaceTabsEnabled,
     save: saveWorkspaceTabsEnabled,
-  },
-  {
-    id: 'settings-new-file-temp',
-    enableTitle: '새 파일 임시(메모리) 생성 켜기',
-    disableTitle: '새 파일 임시(메모리) 생성 끄기',
-    description:
-      'Ctrl/Cmd+N 시 이름·경로 없이 메모리 문서를 열고, 저장할 때 파일명과 위치를 지정',
-    keywords: [
-      'new file',
-      '새 파일',
-      'temp',
-      '임시',
-      'untitled',
-      '메모리',
-      'session',
-      'ctrl+n',
-      'cmd+n',
-      '저장',
-    ],
-    load: loadNewFileAsTempEnabled,
-    save: saveNewFileAsTempEnabled,
   },
   {
     id: 'settings-show-trash',
