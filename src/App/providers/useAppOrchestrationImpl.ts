@@ -340,7 +340,7 @@ import {
   getLocalAppBuildId,
 } from '@/utils/pwaUpdate';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-
+import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
 
 
 export function useMainAppController() {

@@ -1974,7 +1974,7 @@ export function useTreeOpsDomain({
     requestCreateItem,
     requestAdvancedSearchCreateItem,
     newFileDefaultParentPath,
-    requestNewFile,
+    // requestNewFile,
     requestUploadFile,
     requestUploadFolder,
     askTreeNameConflict,
