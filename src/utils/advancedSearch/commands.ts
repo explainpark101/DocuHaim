@@ -28,6 +28,11 @@ import {
   isFootnoteRelatedCommandId,
   type FootnoteInsertCommandId,
 } from './footnoteInsert';
+import {
+  CIRCLE_NUMBER_INSERT_COMMAND_ID,
+  isCircleNumberInsertCommandId,
+  type CircleNumberInsertCommandId,
+} from './circleNumberInsert';
 import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
 
@@ -86,6 +91,7 @@ export type AppCommandId =
   | WorkspaceTabsAutoSaveCommandId
   | FootnoteDisplayModeCommandId
   | FootnoteInsertCommandId
+  | CircleNumberInsertCommandId
   | SnippetActionId;
 
 export type AppCommand = {
@@ -715,6 +721,18 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
         keywords: insertCmd.keywords,
       });
     }
+    const circleCmd = EDITOR_ACTION_COMMANDS.find(
+      (cmd) => cmd.id === CIRCLE_NUMBER_INSERT_COMMAND_ID,
+    );
+    if (circleCmd) {
+      list.push({
+        id: circleCmd.id,
+        title: circleCmd.title,
+        description: circleCmd.description,
+        path: '',
+        keywords: circleCmd.keywords,
+      });
+    }
   }
 
   // Page-specific toolbar actions: only attached when a query is present (see matchAppCommands).
@@ -1015,6 +1033,10 @@ export function matchAppCommandsRanked(
     const bInsert = b.command.id === FOOTNOTE_INSERT_COMMAND_ID;
     if (aInsert && isFootnoteRelatedCommandId(b.command.id) && !bInsert) return -1;
     if (bInsert && isFootnoteRelatedCommandId(a.command.id) && !aInsert) return 1;
+    const aCircle = a.command.id === CIRCLE_NUMBER_INSERT_COMMAND_ID;
+    const bCircle = b.command.id === CIRCLE_NUMBER_INSERT_COMMAND_ID;
+    if (aCircle && isCircleNumberInsertCommandId(b.command.id) && !bCircle) return -1;
+    if (bCircle && isCircleNumberInsertCommandId(a.command.id) && !aCircle) return 1;
     return b.score - a.score || a.command.title.localeCompare(b.command.title, 'ko');
   });
   return ranked;

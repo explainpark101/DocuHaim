@@ -6,6 +6,7 @@ import {
   advancedSearchEngine,
   listBrowseDirectoryHits,
   listChatGroupHits,
+  listCircleNumberHits,
   listExistingFootnoteHits,
   listFootnoteInsertChoiceHits,
   normalizeDirPath,
@@ -44,6 +45,10 @@ import {
   runInsertExistingFootnote,
   runOpenFootnoteCompose,
 } from '@/utils/advancedSearch/footnoteInsert';
+import {
+  CIRCLE_NUMBER_INSERT_COMMAND_ID,
+  CIRCLE_NUMBER_INSERT_ITEM_ID,
+} from '@/utils/advancedSearch/circleNumberInsert';
 import {
   loadEditorAutocompleteEnabled,
   subscribeEditorAutocomplete,
@@ -248,6 +253,7 @@ export default function AdvancedSearchHost({
       else if (detail?.mode === 'chat-groups') openSearch('chat-groups');
       else if (detail?.mode === 'footnote-insert') openSearch('footnote-insert');
       else if (detail?.mode === 'footnote-existing') openSearch('footnote-existing');
+      else if (detail?.mode === 'circle-number') openSearch('circle-number');
       else openSearch('default');
     });
   }, [openSearch]);
@@ -323,6 +329,10 @@ export default function AdvancedSearchHost({
       if (pickerMode === 'footnote-existing') {
         const markdown = getFootnoteInsertMarkdown() || editorContent || '';
         return listExistingFootnoteHits(markdown, query, 80);
+      }
+
+      if (pickerMode === 'circle-number') {
+        return listCircleNumberHits(query, 80);
       }
 
       const hits = await advancedSearchEngine.search(query, getTrees(), 50, {
@@ -493,6 +503,21 @@ export default function AdvancedSearchHost({
           return;
         }
 
+        if (commandId === CIRCLE_NUMBER_INSERT_COMMAND_ID) {
+          setPickerMode('circle-number');
+          return false;
+        }
+
+        if (commandId === CIRCLE_NUMBER_INSERT_ITEM_ID) {
+          const glyph = String(hit.path || '').trim();
+          if (glyph) {
+            window.setTimeout(() => {
+              runEditorAction(CIRCLE_NUMBER_INSERT_COMMAND_ID, glyph);
+            }, 0);
+          }
+          return;
+        }
+
         if (commandId === 'chat-select-group-item') {
           if (hit.path) navigate(hit.path);
           return;
@@ -627,6 +652,7 @@ export default function AdvancedSearchHost({
       chatGroupsPickerMode={pickerMode === 'chat-groups'}
       footnoteInsertPickerMode={pickerMode === 'footnote-insert'}
       footnoteExistingPickerMode={pickerMode === 'footnote-existing'}
+      circleNumberPickerMode={pickerMode === 'circle-number'}
       {...(getPresignedUrl ? { getPresignedUrl } : {})}
     />
   );

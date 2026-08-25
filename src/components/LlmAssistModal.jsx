@@ -16,7 +16,7 @@ import {
   saveLlmModalHidden,
   saveLlmModalPosition,
 } from '@/utils/llmModalPosition';
-import { getEditorSelectionFromRef, replaceEditorRange } from '@/utils/editorSelection';
+import { applyLlmResultToEditor, getEditorSelectionFromRef } from '@/utils/editorSelection';
 import { useLlmProfileIdState } from '@/components/LlmProviderSelect';
 import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
@@ -42,6 +42,7 @@ import { LLM_ASSIST_MAX_IMAGES, normalizeImageAttachment } from '@/utils/llmAssi
 export default function LlmAssistModal({
   editorRef,
   onChange,
+  getMarkdown,
   llmProviderProfiles = [],
   open,
   onOpenChange,
@@ -426,15 +427,21 @@ export default function LlmAssistModal({
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
-    const { view } = getEditorSelectionFromRef(editorRef);
     const { from, to } = selectionRange;
-    const ok = replaceEditorRange(view, from, to, result, onChange);
+    const ok = applyLlmResultToEditor({
+      editorRef,
+      from,
+      to,
+      result,
+      onChange,
+      getMarkdown,
+    });
     if (!ok) {
       setError('에디터에 결과를 적용할 수 없습니다. 선택 영역을 다시 확인하세요.');
       return;
     }
     refreshSelection();
-  }, [result, editorRef, selectionRange, onChange, refreshSelection]);
+  }, [result, editorRef, selectionRange, onChange, getMarkdown, refreshSelection]);
 
   const handleLoadTemplate = useCallback(
     (id) => {

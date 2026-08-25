@@ -824,6 +824,21 @@ export default function MarkdownEditor({
     handlers['editor-insert-footnote'] = () => {
       requestOpenAdvancedSearch({ mode: 'footnote-insert' });
     };
+    handlers['editor-insert-circle-number'] = (payload) => {
+      const glyph = typeof payload === 'string' ? payload : '';
+      if (!glyph) {
+        requestOpenAdvancedSearch({ mode: 'circle-number' });
+        return;
+      }
+
+      restoreSelectionIfNeeded();
+      const api = getApi();
+      const view = api?.getEditorView?.();
+      if (!view) return;
+
+      view.dispatch(view.state.replaceSelection(glyph));
+      view.focus?.();
+    };
 
     // Advanced Search snippet insertion: host passes snippet body as payload.
     handlers['editor-insert-snippet'] = (payload) => {
@@ -2646,6 +2661,11 @@ export default function MarkdownEditor({
       <LlmAssistModal
         editorRef={editorRef}
         onChange={onChangeWithUndoHistory}
+        getMarkdown={() => {
+          const api = editorRef.current?.value ?? editorRef.current;
+          const view = api?.getEditorView?.();
+          return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
+        }}
         llmProviderProfiles={llmProviderProfiles}
         open={llmAssistOpen}
         onOpenChange={setLlmAssistOpen}

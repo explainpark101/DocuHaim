@@ -6,7 +6,8 @@ export type AdvancedSearchOpenMode =
   | 'browse-directory'
   | 'chat-groups'
   | 'footnote-insert'
-  | 'footnote-existing';
+  | 'footnote-existing'
+  | 'circle-number';
 
 export type AdvancedSearchOpenDetail = {
   source?: string;

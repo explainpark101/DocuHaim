@@ -4,6 +4,7 @@
 
 export type EditorActionId =
   | 'editor-insert-footnote'
+  | 'editor-insert-circle-number'
   | 'editor-insert-snippet'
   | 'editor-bold'
   | 'editor-italic'
@@ -118,6 +119,24 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       'sources',
       '인용',
       'citation',
+    ],
+  },
+  {
+    id: 'editor-insert-circle-number',
+    title: '원숫자 삽입',
+    description: '① ② ③ … 원 안 숫자를 커서에 삽입',
+    keywords: [
+      '원숫자',
+      '숫자원',
+      'circle number',
+      'circled number',
+      'CircleNumber',
+      'NumberCircle',
+      'ONo',
+      'NumberO',
+      '①',
+      '②',
+      'insert circle number',
     ],
   },
   {

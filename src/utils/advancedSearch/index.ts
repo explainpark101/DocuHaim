@@ -101,6 +101,13 @@ export {
 } from './footnoteInsert';
 export type { FootnoteInsertCommandId } from './footnoteInsert';
 export {
+  listCircleNumberHits,
+  isCircleNumberInsertCommandId,
+  CIRCLE_NUMBER_INSERT_COMMAND_ID,
+  CIRCLE_NUMBER_INSERT_ITEM_ID,
+} from './circleNumberInsert';
+export type { CircleNumberInsertCommandId } from './circleNumberInsert';
+export {
   SETTINGS_TOGGLE_DEFS,
   isSettingsToggleId,
   loadSettingsToggle,
