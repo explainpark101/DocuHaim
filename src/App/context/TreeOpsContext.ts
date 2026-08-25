@@ -36,6 +36,7 @@ export type TreeOpsValue = {
   moveFileTarget: any;
   moveFolderTarget: any;
   moveModalSelectPath: any;
+  handleRequestMoveFolder: (...args: any[]) => any;
 };
 
 export const TreeOpsContext = createContext<TreeOpsValue | null>(null);

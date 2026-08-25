@@ -1,7 +1,6 @@
 // @ts-nocheck — migrated from App.jsx; typed gradually in later PRs
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
-import { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconX } from '@/components/icons';
@@ -351,7 +350,6 @@ import {
 import { decryptDesktopPasswordWebdav, hasDesktopAppEntryLock, refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
 import { unlockDesktopWithBiometricGate } from '@/utils/desktopBiometricUnlock';
 import { registerAppLockAction } from '@/utils/advancedSearch/appLockActions';
-import { applyDocumentTheme } from '@/utils/documentTheme';
 import {
   applyForcedAppUpdate,
   checkAppBuildUpdate,
@@ -407,14 +405,6 @@ export function useMainAppController() {
     clearAllLlmApiKeySessions();
   }, [s3Creds?.googleAiStudioApiKey, s3Creds?.openaiCompatibleApiKey, s3Creds?.openaiCompatibleBaseUrl, s3Creds?.llmProviderProfiles]);
 
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === 'undefined') return 'light';
-    const stored = window.localStorage.getItem('theme');
-    if (stored === 'light' || stored === 'dark') return stored;
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  });
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
   
   // File Systems State
@@ -466,9 +456,6 @@ export function useMainAppController() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [emptyTrashTarget, setEmptyTrashTarget] = useState(null);
   const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
-  const [lastInputAt, setLastInputAt] = useState(null);
-  const [lastAutoSaveAt, setLastAutoSaveAt] = useState(null);
-  const [lastAutoSyncAt, setLastAutoSyncAt] = useState(null);
   const [showHiddenFolders, setShowHiddenFolders] = useState(() => loadShowHiddenFolders());
   const [showTrashFolder, setShowTrashFolder] = useState(() => loadShowTrashFolder());
   const [editorType, setEditorType] = useState(() => loadEditorType());
@@ -1395,11 +1382,6 @@ export function useMainAppController() {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [maybeAutoSaveOnWindowChange]);
-
-  useEffect(() => {
-    applyDocumentTheme(theme);
-    window.localStorage.setItem('theme', theme);
-  }, [theme]);
 
   // 1. Init (S3 client etc. are from npm modules; no script loading)
   // Same-tab reload: restore unlock from sessionStorage before showing AuthModal.
@@ -9675,47 +9657,11 @@ export function useMainAppController() {
     }
   };
 
-  // 7. Auto Save (S3, local, WebDAV — 5s debounce)
-  // `.enc.md`: manual save only — never debounce-write plaintext or prompt for password.
-  // 8. Auto Sync (S3 + WebDAV, pull when idle >= 30s)
-  // Skip `.enc.md`: remote body is ciphertext; never pull it into the plaintext editor.
-  // Recreate each render so isRecording / currentFile stay live (no stale closure).
-  const { handleEditorChange, runAutoSaveEffect, runAutoSyncEffect } = createAutoSaveSyncHandlers({
-    saveFile,
-    setLastAutoSaveAt,
-    setLastAutoSyncAt,
-    setCurrentFile,
-    setEditorContent,
-    editorContentRef,
-    prevEditorContentRef,
-    workspaceTabsRef,
-    setWorkspaceTabs,
-    setLastInputAt,
-    getBackendForType,
-    isRecording,
-    captureSync,
-    currentFile,
-  });
-
-  useEffect(
-    () => runAutoSaveEffect({ currentFile, editorContent, lastInputAt }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lastInputAt, currentFile, editorContent],
-  );
-
-  useEffect(
-    () => runAutoSyncEffect({ currentFile, editorContent, lastInputAt }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentFile, editorContent, lastInputAt],
-  );
+  // §7–8 Auto save / sync owned by AutoSaveProvider (useAutoSaveDomain).
 
   useEffect(() => {
     editorContentRef.current = editorContent;
   }, [editorContent]);
-
-  useEffect(() => {
-    if (currentFile?.id) prevEditorContentRef.current = editorContent;
-  }, [currentFile?.id, editorContent]);
 
   const handleToggleRecording = async () => {
     const pathStorageTypes = ['s3', 'local', 'webdav'];
@@ -9807,17 +9753,6 @@ export function useMainAppController() {
     currentFile?.type === 'local' ||
     currentFile?.type === 'webdav' ||
     currentFile?.type === SESSION_STORAGE_TYPE;
-  const hasUnsavedChanges =
-    isEditableStorage && currentFile && currentFile.content !== editorContent;
-  const hasAutoSaved = isEditableStorage && !!lastAutoSaveAt;
-
-  const autoSaveIndicatorClass = !isEditableStorage
-    ? 'bg-gray-300'
-    : hasUnsavedChanges
-    ? 'bg-yellow-400 animate-pulse'
-    : hasAutoSaved
-    ? 'bg-green-500'
-    : 'bg-gray-400';
 
   return {
     activateWorkspaceTab,
@@ -9830,10 +9765,10 @@ export function useMainAppController() {
     associatedRecordings,
     audioLevel,
     autoPromptWebAuthnForModal,
-    autoSaveIndicatorClass,
     canScanStorageUsage,
     canUnlockWithWebAuthnForModal,
     cancelEditorImageUpload,
+    captureSync,
     chatAttachDropHost,
     chatStorageCtx,
     chatStorageReady,
@@ -9859,6 +9794,7 @@ export function useMainAppController() {
     editedFileName,
     editorContent,
     editorContentRef,
+    prevEditorContentRef,
     editorImageUploadPercent,
     editorType,
     emptyTrashTarget,
@@ -9902,7 +9838,6 @@ export function useMainAppController() {
     handleDropSessionTransfer,
     handleDropToChatAttach,
     handleDuplicateNode,
-    handleEditorChange,
     handleEditorTypeChange,
     handleExportConfirm,
     handleExportCreds,
@@ -9972,8 +9907,6 @@ export function useMainAppController() {
     isUnlocked,
     isUploadingEditorImage,
     isWebdavTreeLoading,
-    lastAutoSaveAt,
-    lastAutoSyncAt,
     llmProviderProfiles,
     loadLocalFolderChildren,
     loadS3Files,
@@ -10074,7 +10007,6 @@ export function useMainAppController() {
     setSidebarOpen,
     setStorageMode,
     setSuffixConfirmAction,
-    setTheme,
     setTreeHoverExpandSettings,
     setWebdavConfig,
     setWorkspaceTabs,
@@ -10106,7 +10038,6 @@ export function useMainAppController() {
     snippetLoadedFromS3,
     snippetLoadedFromWebdav,
     storageMode,
-    theme,
     treeHoverExpandSettings,
     treeNameConflict,
     treeStickyFolderPathEnabled,

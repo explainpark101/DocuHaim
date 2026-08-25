@@ -6,8 +6,11 @@ import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 export { APP_PROVIDER_ORDER };
 
 /**
- * Fixed nesting: WorkspaceTabs owns tab state; AppLogic fans out domain contexts
- * (Bootstrap → Vault → FileSession → TreeOps → AutoSave) per APP_PROVIDER_ORDER.
+ * Nesting (conceptual order in APP_PROVIDER_ORDER):
+ *   Bootstrap → Vault → WorkspaceTabs → FileSession → TreeOps → AutoSave
+ *
+ * WorkspaceTabsProvider wraps AppLogic so tab state exists before the controller
+ * runs; AppLogic then nests Bootstrap/Vault/File/Tree/AutoSave around the shell.
  */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (

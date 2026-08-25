@@ -1,4 +1,4 @@
-// @ts-nocheck — domain fan-out from useMainAppController
+// @ts-nocheck — domain composition from useMainAppController
 import { useMemo, type ReactNode } from 'react';
 import { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
 import { VaultProvider } from '@/App/providers/VaultProvider';
@@ -7,22 +7,39 @@ import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
 import { WorkspaceTabsContext } from '@/App/context/WorkspaceTabsContext';
+import { RecordingSyncContext } from '@/App/context/RecordingSyncContext';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { useAutoSave } from '@/App/hooks/useAutoSave';
+import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useMainAppController } from '@/App/providers/useMainAppController';
+
+function AppShellMerge({ controller, children }: { controller: any; children: ReactNode }) {
+  const autoSave = useAutoSave();
+  const bootstrap = useAppBootstrap();
+  const value = useMemo(
+    () => ({
+      ...controller,
+      ...autoSave,
+      theme: bootstrap.theme,
+      setTheme: bootstrap.setTheme,
+      scriptsLoaded: bootstrap.scriptsLoaded,
+    }),
+    [controller, autoSave, bootstrap],
+  );
+  return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;
+}
 
 /**
  * Runs the main app controller (inside WorkspaceTabsProvider) and fans out
- * domain slices into Bootstrap / Vault / FileSession / TreeOps / AutoSave contexts.
+ * domain slices. AutoSaveProvider owns §7–8; AppBootstrapProvider owns theme/scriptsLoaded.
  */
 export function AppLogicProvider({ children }: { children: ReactNode }) {
   const tabs = useWorkspaceTabsCtx();
   const c = useMainAppController();
 
-  const bootstrap = useMemo(
+  const bootstrapLogic = useMemo(
     () => ({
       scriptsLoaded: c.scriptsLoaded,
-      theme: c.theme,
-      setTheme: c.setTheme,
       shareBlockingAuth: c.shareBlockingAuth,
       showAuthModal: c.showAuthModal,
       handleUnlock: c.handleUnlock,
@@ -72,6 +89,7 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
       editorContent: c.editorContent,
       setEditorContent: c.setEditorContent,
       editorContentRef: c.editorContentRef,
+      prevEditorContentRef: c.prevEditorContentRef,
       currentFileRef: c.currentFileRef,
       editedFileName: c.editedFileName,
       setEditedFileName: c.setEditedFileName,
@@ -126,19 +144,17 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
       moveFileTarget: c.moveFileTarget,
       moveFolderTarget: c.moveFolderTarget,
       moveModalSelectPath: c.moveModalSelectPath,
+      handleRequestMoveFolder: c.handleRequestMoveFolder,
     }),
     [c],
   );
 
-  const autoSave = useMemo(
+  const recordingSync = useMemo(
     () => ({
-      handleEditorChange: c.handleEditorChange,
-      lastInputAt: c.lastInputAt,
-      lastAutoSaveAt: c.lastAutoSaveAt,
-      lastAutoSyncAt: c.lastAutoSyncAt,
-      autoSaveIndicatorClass: c.autoSaveIndicatorClass,
+      isRecording: c.isRecording,
+      captureSync: c.captureSync,
     }),
-    [c],
+    [c.isRecording, c.captureSync],
   );
 
   const tabsWithActions = useMemo(
@@ -161,14 +177,16 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AppBootstrapProvider value={bootstrap}>
+    <AppBootstrapProvider logic={bootstrapLogic}>
       <VaultProvider value={vault}>
         <WorkspaceTabsContext.Provider value={tabsWithActions}>
           <FileSessionProvider value={fileSession}>
             <TreeOpsProvider value={treeOps}>
-              <AutoSaveProvider value={autoSave}>
-                <AppShellContext.Provider value={c}>{children}</AppShellContext.Provider>
-              </AutoSaveProvider>
+              <RecordingSyncContext.Provider value={recordingSync}>
+                <AutoSaveProvider>
+                  <AppShellMerge controller={c}>{children}</AppShellMerge>
+                </AutoSaveProvider>
+              </RecordingSyncContext.Provider>
             </TreeOpsProvider>
           </FileSessionProvider>
         </WorkspaceTabsContext.Provider>

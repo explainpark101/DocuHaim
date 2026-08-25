@@ -27,18 +27,29 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { useAppShell } from '@/App/hooks/useAppShell';
+import { useVault } from '@/App/hooks/useVault';
+import { useFileSession } from '@/App/hooks/useFileSession';
+import { useAutoSave } from '@/App/hooks/useAutoSave';
+import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
+import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { useTreeOps } from '@/App/hooks/useTreeOps';
 
-/** Main app chrome — reads domain state from AppProviders via useAppShell. */
+/** Main app chrome — domain hooks for vault/file/tabs; shell bag for remaining chrome. */
 export function AppLayout({ children }: { children?: ReactNode }) {
   const b = useAppShell();
+  const vault = useVault();
+  const file = useFileSession();
+  const autoSave = useAutoSave();
+  const bootstrap = useAppBootstrap();
+  const tabsCtx = useWorkspaceTabsCtx();
+  const treeOps = useTreeOps();
+
   const {
-    activateWorkspaceTab,
     addToNoteSelectPath,
     appBuildRemoteId,
     appName,
     audioLevel,
     autoPromptWebAuthnForModal,
-    autoSaveIndicatorClass,
     canScanStorageUsage,
     canUnlockWithWebAuthnForModal,
     cancelEditorImageUpload,
@@ -47,19 +58,13 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     chatStorageReady,
     chatSurfaceActive,
     closeSessionWorkspace,
-    closeWorkspaceTabById,
-    currentFile,
-    deletingFolderPath,
     disableWebAuthnUnlock,
-    dropTarget,
     editedFileName,
-    editorContent,
     editorImageUploadPercent,
     editorType,
     enableWebAuthnUnlock,
     ensureAdvancedSearchBrowseFolder,
     expandPathsRef,
-    fileInputRef,
     fileTabContextMenuRef,
     formatFileSize,
     formatTime,
@@ -68,20 +73,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     getChatImageUrlForPath,
     getImgbbApiKey,
     getPresignedUrlForPath,
-    getS3Client,
     handleApplyPwaUpdate,
     handleBrandClick,
     handleChangeSnippetConfig,
     handleCheckAppUpdate,
     handleCreateNoteFromChatMessage,
     handleDeleteUnusedImagePaths,
-    handleDownloadNode,
-    handleDragEndNode,
-    handleDropOnFolder,
     handleDropSessionTransfer,
     handleDropToChatAttach,
-    handleDuplicateNode,
-    handleEditorChange,
     handleEditorTypeChange,
     handleExportCreds,
     handleImportCreds,
@@ -93,11 +92,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     handleReadUnusedImageBytes,
     handleReadUnusedImageText,
     handleRegisterChatAttachDrop,
-    handleRequestCloseEditor,
     handleRequestDownload,
     handleRequestMove,
     handleRequestMoveFileFromSidebar,
-    handleRequestMoveFolder,
     handleRequestSaveSessionToNote,
     handleRequestSessionTransformDownload,
     handleSaveS3Creds,
@@ -109,9 +106,6 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     handleShareNodeToChatWithMyself,
     handleShareNoteToChatWithMyself,
     handleToggleRecording,
-    handleTreeNodeSelect,
-    handleUnlock,
-    handleUnlockWithWebAuthn,
     handleUploadEditorImage,
     handleUploadFileSelect,
     handleUploadFolderSelect,
@@ -121,9 +115,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     isApplyingPwaUpdate,
     isChatRoute,
     isCheckingAppUpdate,
-    isDeletingFolder,
     isEditableStorage,
-    isLocalTreeLoading,
     isMobile,
     isOpeningSession,
     isPullingFromRemote,
@@ -134,79 +126,40 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     isSettingsRoute,
     isUnlocked,
     isUploadingEditorImage,
-    isWebdavTreeLoading,
-    lastAutoSaveAt,
-    lastAutoSyncAt,
     llmProviderProfiles,
-    loadLocalFolderChildren,
-    loadS3Files,
-    loadWebdavFolderChildren,
-    localFolderLoadingPath,
-    localRootHandle,
-    localTree,
-    localVaultFsPath,
     location,
     lockChatViewport,
     masterPassword,
     navigate,
     needRefresh,
     newFileDefaultParentPath,
-    openAdvancedSearchFile,
-    openChatWorkspaceTab,
-    openLocalFolder,
-    openSettingsWorkspaceTab,
     operationStatus,
     pendingLocalFolderName,
-    proceedWithoutStoredCreds,
     recordingAudioUrl,
     recordingPipelineStatus,
     recordingQueueStats,
     recordingSyncData,
     recordingsList,
-    refreshLocalFileFromDisk,
-    refreshLocalTree,
-    refreshRemoteFile,
-    refreshWebdavTree,
     renameCurrentFileFullName,
-    renameTreeItem,
-    reorderWorkspaceTabs,
     requestAdvancedSearchCreateItem,
-    requestCreateItem,
     requestNewFile,
     requestNewTempFile,
-    requestUploadFile,
-    requestUploadFolder,
     s3Creds,
-    s3Tree,
-    saveFile,
-    savingTabIds,
     scanActiveStorageUsageTree,
-    selectedIds,
     selectedRecordingKey,
-    sessionWorkspace,
     setAddToNoteSelectPath,
     setChatAttachDropHost,
-    setCreateModalContext,
-    setCreateModalOpen,
-    setDeleteTarget,
     setEditedFileName,
-    setEmptyTrashTarget,
     setHidePwaUpdateToast,
-    setSelectedIds,
     setSelectedRecordingKey,
     setShowSuffixChangeConfirmModal,
     setSidebarCollapsed,
     setSidebarOpen,
-    setStorageMode,
     setSuffixConfirmAction,
-    setTheme,
     setTreeHoverExpandSettings,
-    setWebdavConfig,
     setWorkspaceTabs,
-    shareBlockingAuth,
     shareGroupSend,
     showAlert,
-    showAuthModal,
     showHiddenFolders,
     showTrashFolder,
     showTreeModifiedDate,
@@ -216,23 +169,95 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     snippetLoadedFromLocal,
     snippetLoadedFromS3,
     snippetLoadedFromWebdav,
-    storageMode,
-    theme,
     treeHoverExpandSettings,
     treeStickyFolderPathEnabled,
-    treeTransferBusy,
     uploadFileInputRef,
     uploadFolderInputRef,
     webauthnPRFSupported,
-    webdavConfig,
-    webdavFolderLoadingPath,
-    webdavReady,
-    webdavTree,
-    workspaceTabs,
-    workspaceTabsEnabled,
-    workspaceTabsEnabledRef,
-    workspaceTabsRef
   } = b;
+
+  // Domain hooks (prefer over shell bag for vault / file / tabs / tree / autosave / bootstrap)
+  const {
+    storageMode,
+    setStorageMode,
+    s3Tree,
+    localTree,
+    webdavTree,
+    sessionWorkspace,
+    localRootHandle,
+    localVaultFsPath,
+    webdavConfig,
+    setWebdavConfig,
+    isLocalTreeLoading,
+    isWebdavTreeLoading,
+    localFolderLoadingPath,
+    webdavFolderLoadingPath,
+    getS3Client,
+    loadS3Files,
+    refreshLocalTree,
+    refreshWebdavTree,
+    loadLocalFolderChildren,
+    loadWebdavFolderChildren,
+    openLocalFolder,
+    webdavReady,
+  } = vault;
+  const {
+    currentFile,
+    editorContent,
+    saveFile,
+    savingTabIds,
+    openAdvancedSearchFile,
+    handleRequestCloseEditor,
+    refreshLocalFileFromDisk,
+    refreshRemoteFile,
+  } = file;
+  const {
+    handleEditorChange,
+    autoSaveIndicatorClass,
+    lastAutoSaveAt,
+    lastAutoSyncAt,
+  } = autoSave;
+  const {
+    theme,
+    setTheme,
+    showAuthModal,
+    shareBlockingAuth,
+    handleUnlock,
+    handleUnlockWithWebAuthn,
+    proceedWithoutStoredCreds,
+    fileInputRef,
+    openSettingsWorkspaceTab,
+  } = bootstrap;
+  const workspaceTabs = tabsCtx.state;
+  const workspaceTabsEnabled = tabsCtx.workspaceTabsEnabled;
+  const workspaceTabsEnabledRef = tabsCtx.workspaceTabsEnabledRef;
+  const workspaceTabsRef = tabsCtx.workspaceTabsRef;
+  const activateWorkspaceTab = tabsCtx.activateWorkspaceTab;
+  const closeWorkspaceTabById = tabsCtx.closeWorkspaceTabById;
+  const openChatWorkspaceTab = tabsCtx.openChatWorkspaceTab;
+  const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
+  const {
+    selectedIds,
+    setSelectedIds,
+    setDeleteTarget,
+    setEmptyTrashTarget,
+    setCreateModalContext,
+    setCreateModalOpen,
+    requestCreateItem,
+    requestUploadFile,
+    requestUploadFolder,
+    handleTreeNodeSelect,
+    handleDragEndNode,
+    handleDropOnFolder,
+    handleDownloadNode,
+    handleDuplicateNode,
+    renameTreeItem,
+    dropTarget,
+    treeTransferBusy,
+    isDeletingFolder,
+    deletingFolderPath,
+    handleRequestMoveFolder,
+  } = treeOps;
 
   return (
     <div
@@ -467,7 +492,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               }}
               theme={theme}
               onToggleTheme={() =>
-                setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+                setTheme(theme === 'dark' ? 'light' : 'dark')
               }
               onRenameItem={renameTreeItem}
               showHiddenFolders={showHiddenFolders}

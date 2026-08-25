@@ -7,6 +7,8 @@ export type FileSessionValue = {
   editorContent: string;
   setEditorContent: (...args: any[]) => any;
   editorContentRef: { current: string };
+  /** Shared with AutoSave for recording line-diff / restore handoff. */
+  prevEditorContentRef: { current: string };
   currentFileRef: { current: any };
   editedFileName: string;
   setEditedFileName: (name: string) => void;
