@@ -1,7 +1,7 @@
 import { r as l, j as e } from "./vendor-react-SY5QCjFA.js";
 import N from "./MonacoTextEditor-DBaA6JQu.js";
-import { au as T, ac as _, av as W } from "./index-CgidRXf1.js";
-import { E as V, j as D, aC as P } from "./vendor-lucide-DyPOSMSJ.js";
+import { au as T, ac as _, av as W } from "./index-Ut6Cs96T.js";
+import { E as D, j as V, aD as P } from "./vendor-lucide-CbFAdz-T.js";
 import "./vendor-monaco-KBbFQb8S.js";
 import "./vendor-md-editor-D4hOzNKK.js";
 import "./vendor-aws-bxAUTq4h.js";
@@ -9,7 +9,7 @@ import "./vendor-motion-YU7ZxHqi.js";
 import "./vendor-radix-BgY9OwZN.js";
 import "./vendor-zip-Bez6qchM.js";
 const n = ["dual", "editor", "preview"], z = "s3haim_html_svg_preview_width", R = 280;
-function C(i, t) {
+function H(i, t) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,9 +43,9 @@ function C(i, t) {
 </html>`;
 }
 function w(i, t, r) {
-  return t === "svg" ? C(i, r) : i ?? "";
+  return t === "svg" ? H(i, r) : i ?? "";
 }
-const b = { dual: { label: "\uC591\uBA74\uBCF4\uAE30", icon: P, title: "\uC591\uBA74\uBCF4\uAE30 (\uB2E4\uC74C: \uD14D\uC2A4\uD2B8\uC5D0\uB514\uD130)" }, editor: { label: "\uD14D\uC2A4\uD2B8\uC5D0\uB514\uD130", icon: D, title: "\uD14D\uC2A4\uD2B8\uC5D0\uB514\uD130 (\uB2E4\uC74C: \uBBF8\uB9AC\uBCF4\uAE30)" }, preview: { label: "\uBBF8\uB9AC\uBCF4\uAE30", icon: V, title: "\uBBF8\uB9AC\uBCF4\uAE30 (\uB2E4\uC74C: \uC591\uBA74\uBCF4\uAE30)" } };
+const b = { dual: { label: "\uC591\uBA74\uBCF4\uAE30", icon: P, title: "\uC591\uBA74\uBCF4\uAE30 (\uB2E4\uC74C: \uD14D\uC2A4\uD2B8\uC5D0\uB514\uD130)" }, editor: { label: "\uD14D\uC2A4\uD2B8\uC5D0\uB514\uD130", icon: V, title: "\uD14D\uC2A4\uD2B8\uC5D0\uB514\uD130 (\uB2E4\uC74C: \uBBF8\uB9AC\uBCF4\uAE30)" }, preview: { label: "\uBBF8\uB9AC\uBCF4\uAE30", icon: D, title: "\uBBF8\uB9AC\uBCF4\uAE30 (\uB2E4\uC74C: \uC591\uBA74\uBCF4\uAE30)" } };
 function A({ value: i = "", mode: t = "html", theme: r = "light", readOnly: c = false, onChange: x, onSave: g }) {
   const [o, p] = l.useState("dual"), [m, u] = l.useState(() => w(i, t, r)), { width: v, isResizing: y, handleProps: E } = T({ storageKey: z, defaultWidth: 480, minWidth: 200, maxWidth: 960, edge: "right" }), j = t === "svg" ? "xml" : "html", a = o === "dual" || o === "editor", h = o === "dual" || o === "preview";
   l.useEffect(() => {

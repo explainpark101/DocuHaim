@@ -1,23 +1,4 @@
-import { g1 as p, g3 as F } from "./index-CgidRXf1.js";
-function fe(e) {
-  var _a, _b, _c, _d;
-  if (p("collect:incoming", { hasData: !!e, filesLength: ((_a = e == null ? void 0 : e.files) == null ? void 0 : _a.length) ?? 0, itemsLength: ((_b = e == null ? void 0 : e.items) == null ? void 0 : _b.length) ?? 0 }), !e) return p("collect:result", { count: 0, reason: "no data" }), [];
-  const r = [], t = /* @__PURE__ */ new Set(), n = (i) => {
-    if (!i || !i.size) return;
-    const a = String(i.size);
-    t.has(a) || (t.add(a), r.push(i));
-  };
-  if ((_c = e.files) == null ? void 0 : _c.length) for (const i of e.files) i && (((_d = i.type) == null ? void 0 : _d.startsWith("image/")) || !i.type && i.size > 0) && n(i);
-  if (e.items) for (const i of e.items) {
-    if (i.kind !== "file") continue;
-    const a = i.type || "";
-    if (a.startsWith("image/") || a === "") {
-      const s = i.getAsFile();
-      s && n(s);
-    }
-  }
-  return p("collect:result", { count: r.length, files: F(r) }), r;
-}
+import { g1 as p, g3 as F } from "./index-Ut6Cs96T.js";
 function $(e) {
   for (var r = 1; r < arguments.length; r++) {
     var t = arguments[r];
@@ -417,6 +398,25 @@ function I(e, r) {
 }
 function se(e) {
   return e != null && (typeof e == "string" || e.nodeType && (e.nodeType === 1 || e.nodeType === 9 || e.nodeType === 11));
+}
+function fe(e) {
+  var _a, _b, _c, _d;
+  if (p("collect:incoming", { hasData: !!e, filesLength: ((_a = e == null ? void 0 : e.files) == null ? void 0 : _a.length) ?? 0, itemsLength: ((_b = e == null ? void 0 : e.items) == null ? void 0 : _b.length) ?? 0 }), !e) return p("collect:result", { count: 0, reason: "no data" }), [];
+  const r = [], t = /* @__PURE__ */ new Set(), n = (i) => {
+    if (!i || !i.size) return;
+    const a = String(i.size);
+    t.has(a) || (t.add(a), r.push(i));
+  };
+  if ((_c = e.files) == null ? void 0 : _c.length) for (const i of e.files) i && (((_d = i.type) == null ? void 0 : _d.startsWith("image/")) || !i.type && i.size > 0) && n(i);
+  if (e.items) for (const i of e.items) {
+    if (i.kind !== "file") continue;
+    const a = i.type || "";
+    if (a.startsWith("image/") || a === "") {
+      const s = i.getAsFile();
+      s && n(s);
+    }
+  }
+  return p("collect:result", { count: r.length, files: F(r) }), r;
 }
 export {
   y as T,

@@ -1,10 +1,10 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/vendor-image-crop-Loz3ogoo.js","assets/vendor-react-SY5QCjFA.js"])))=>i.map(i=>d[i]);
 import { _ as T, __tla as __tla_0 } from "./vendor-md-editor-D4hOzNKK.js";
 import { r as a, j as n, __tla as __tla_1 } from "./vendor-react-SY5QCjFA.js";
-import { f as A } from "./storageImageHydration-C74TeM7s.js";
-import { v as P, b6 as D, aH as M } from "./vendor-lucide-DyPOSMSJ.js";
+import { f as A } from "./storageImageHydration-Cep0mM1i.js";
+import { v as P, b6 as D, aI as M } from "./vendor-lucide-CbFAdz-T.js";
 import { K as Y, M as O } from "./vendor-radix-BgY9OwZN.js";
-import { __tla as __tla_2 } from "./index-CgidRXf1.js";
+import { __tla as __tla_2 } from "./index-Ut6Cs96T.js";
 import "./vendor-aws-bxAUTq4h.js";
 import "./vendor-motion-YU7ZxHqi.js";
 import "./vendor-zip-Bez6qchM.js";
@@ -58,7 +58,7 @@ let __tla = Promise.all([
     <cropper-handle action="sw-resize" theme-color="#3b82f6"></cropper-handle>
   </cropper-selection>
 </cropper-canvas>
-`, H = `
+`, G = `
 :host([action="ne-resize"]),
 :host([action="nw-resize"]),
 :host([action="se-resize"]),
@@ -100,7 +100,7 @@ let __tla = Promise.all([
   :host([action="se-resize"]) { bottom: -14px; right: -14px; }
   :host([action="sw-resize"]) { bottom: -14px; left: -14px; }
 }
-`, G = /* @__PURE__ */ new Set([
+`, H = /* @__PURE__ */ new Set([
     "ne-resize",
     "nw-resize",
     "se-resize",
@@ -110,10 +110,10 @@ let __tla = Promise.all([
     s && s.querySelectorAll("cropper-handle").forEach((h) => {
       var _a;
       const u = h, g = u.getAttribute("action") || "";
-      G.has(g) && ((_a = u.$addStyles) == null ? void 0 : _a.call(u, H));
+      H.has(g) && ((_a = u.$addStyles) == null ? void 0 : _a.call(u, G));
     });
   }
-  const S = 1;
+  const I = 1;
   function q(s, h) {
     const u = h[0] ?? 1, g = h[1] ?? 0, p = Math.hypot(u, g) || 1;
     return {
@@ -122,7 +122,7 @@ let __tla = Promise.all([
     };
   }
   oe = function({ imageSrc: s, fileName: h, onCancel: u, onConfirm: g }) {
-    const p = a.useRef(null), k = a.useRef(null), d = a.useRef(null), [b, v] = a.useState(false), [E, C] = a.useState(""), [w, j] = a.useState(false), [I, N] = a.useState(""), [y, L] = a.useState(true);
+    const p = a.useRef(null), k = a.useRef(null), d = a.useRef(null), [b, v] = a.useState(false), [E, C] = a.useState(""), [w, j] = a.useState(false), [S, N] = a.useState(""), [y, L] = a.useState(true);
     a.useEffect(() => {
       v(false), C(""), j(false), N(""), L(true);
     }, [
@@ -181,7 +181,7 @@ let __tla = Promise.all([
           o.pointerId = -1, t.style.cursor = "";
         }
       }, i = (e) => {
-        if (!(e.button !== S || (e.preventDefault(), e.stopPropagation(), !r.getCropperImage()))) {
+        if (!(e.button !== I || (e.preventDefault(), e.stopPropagation(), !r.getCropperImage()))) {
           o.active = true, o.pointerId = e.pointerId, o.lastX = e.clientX, o.lastY = e.clientY;
           try {
             t.setPointerCapture(e.pointerId);
@@ -197,9 +197,9 @@ let __tla = Promise.all([
         const z = e.clientX - o.lastX, R = e.clientY - o.lastY;
         o.lastX = e.clientX, o.lastY = e.clientY, (z !== 0 || R !== 0) && x.$move(z, R);
       }, l = (e) => {
-        e.pointerId !== o.pointerId && e.button !== S || f(e);
+        e.pointerId !== o.pointerId && e.button !== I || f(e);
       }, m = (e) => {
-        e.button === S && (e.preventDefault(), e.stopPropagation());
+        e.button === I && (e.preventDefault(), e.stopPropagation());
       };
       return t.addEventListener("pointerdown", i, true), t.addEventListener("pointermove", c, true), t.addEventListener("pointerup", l, true), t.addEventListener("pointercancel", l, true), t.addEventListener("auxclick", m, true), () => {
         f(), t.removeEventListener("pointerdown", i, true), t.removeEventListener("pointermove", c, true), t.removeEventListener("pointerup", l, true), t.removeEventListener("pointercancel", l, true), t.removeEventListener("auxclick", m, true);
@@ -303,9 +303,9 @@ let __tla = Promise.all([
           className: "shrink-0 text-xs text-red-600 dark:text-red-300",
           children: E
         }) : null,
-        I ? n.jsx("p", {
+        S ? n.jsx("p", {
           className: "shrink-0 text-xs text-red-600 dark:text-red-300",
-          children: I
+          children: S
         }) : null,
         n.jsxs("div", {
           className: "flex shrink-0 justify-end gap-2",

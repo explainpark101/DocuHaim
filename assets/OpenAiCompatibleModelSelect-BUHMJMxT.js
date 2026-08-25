@@ -1,6 +1,6 @@
 import { r as f, j as d } from "./vendor-react-SY5QCjFA.js";
-import { fW as J, fX as q, fY as Y, e0 as Z, eY as H, fZ as L, eW as Q, eX as V } from "./index-CgidRXf1.js";
-import { v as O, ao as $ } from "./vendor-lucide-DyPOSMSJ.js";
+import { fW as W, fX as Z, fY as q, e0 as Y, eZ as H, fZ as L, eX as Q, eY as V } from "./index-Ut6Cs96T.js";
+import { v as O, ap as $ } from "./vendor-lucide-CbFAdz-T.js";
 import { a0 as ee, a1 as te, a2 as re, a3 as ne, a4 as R } from "./vendor-radix-BgY9OwZN.js";
 const se = /* @__PURE__ */ new Set(["gemini-2.0-flash-lite"]);
 function N(e) {
@@ -91,7 +91,7 @@ async function de(e, r, t) {
   }
 }
 async function je({ apiKey: e, model: r, instruction: t, selectedText: n, images: s }) {
-  const o = (r || J()).trim() || q, a = (t || "").trim(), i = (n || "").trim(), c = Array.isArray(s) ? s.filter((m) => (m == null ? void 0 : m.mimeType) && (m == null ? void 0 : m.dataBase64)) : [];
+  const o = (r || W()).trim() || Z, a = (t || "").trim(), i = (n || "").trim(), c = Array.isArray(s) ? s.filter((m) => (m == null ? void 0 : m.mimeType) && (m == null ? void 0 : m.dataBase64)) : [];
   if (c.length > 0, !a) throw new Error("\uC9C0\uC2DC\uC0AC\uD56D\uC744 \uC785\uB825\uD558\uC138\uC694.");
   const l = le({ instruction: a, selectedText: i, images: c });
   return de(e, o, l);
@@ -131,11 +131,11 @@ function z(e) {
   return t && (r.Authorization = `Bearer ${t}`), r;
 }
 function K(e) {
-  const r = Z(e);
+  const r = Y(e);
   if (!r) throw new Error("OpenAI \uD638\uD658 Endpoint\uB97C \uC785\uB825\uD558\uC138\uC694. \uC608: https://api.openai.com/v1 \uB610\uB294 http://localhost:11434/v1");
   return r;
 }
-async function W(e) {
+async function X(e) {
   let r = e.statusText;
   try {
     const t = await e.json();
@@ -152,7 +152,7 @@ async function W(e) {
   }
   return r;
 }
-async function X(e, r) {
+async function J(e, r) {
   try {
     return await fetch(e, r);
   } catch (t) {
@@ -176,9 +176,9 @@ function pe(e, r) {
   return typeof n == "string" && n.trim() ? n.trim() : r;
 }
 async function he(e, r = "") {
-  const t = K(e), n = await X(`${t}/models`, { headers: z(r) });
+  const t = K(e), n = await J(`${t}/models`, { headers: z(r) });
   if (!n.ok) {
-    const l = await W(n);
+    const l = await X(n);
     throw new Error(U({ status: n.status, detail: l }));
   }
   const s = await n.json(), o = A(s), a = o ? Array.isArray(o.data) ? o.data : Array.isArray(o.models) ? o.models : [] : Array.isArray(s) ? s : [], i = [], c = /* @__PURE__ */ new Set();
@@ -211,9 +211,9 @@ function ge({ instruction: e, selectedText: r, images: t }) {
   return n ? [{ role: "user", content: [{ type: "text", text: s }, ...t.map((a) => ({ type: "image_url", image_url: { url: `data:${a.mimeType};base64,${a.dataBase64}` } }))] }] : [{ role: "user", content: s }];
 }
 async function xe({ baseUrl: e, apiKey: r, modelId: t, messages: n }) {
-  const s = await X(`${e}/chat/completions`, { method: "POST", headers: z(r), body: JSON.stringify({ model: t, messages: n, temperature: 0.4 }) });
+  const s = await J(`${e}/chat/completions`, { method: "POST", headers: z(r), body: JSON.stringify({ model: t, messages: n, temperature: 0.4 }) });
   if (!s.ok) {
-    const i = await W(s), c = new Error(U({ status: s.status, detail: i, modelId: t }));
+    const i = await X(s), c = new Error(U({ status: s.status, detail: i, modelId: t }));
     throw c.status = s.status, c.retryAfterSec = B(i, s.headers.get("retry-after")), c;
   }
   const o = await s.json(), a = ye(o);
@@ -231,7 +231,7 @@ async function be(e) {
   }
 }
 async function Ne({ baseUrl: e, apiKey: r, model: t, instruction: n, selectedText: s, images: o }) {
-  const a = K(e), i = (t || Y()).trim(), c = (n || "").trim(), l = (s || "").trim(), m = Array.isArray(o) ? o.filter((y) => (y == null ? void 0 : y.mimeType) && (y == null ? void 0 : y.dataBase64)) : [];
+  const a = K(e), i = (t || q()).trim(), c = (n || "").trim(), l = (s || "").trim(), m = Array.isArray(o) ? o.filter((y) => (y == null ? void 0 : y.mimeType) && (y == null ? void 0 : y.dataBase64)) : [];
   if (!i) throw new Error("\uBAA8\uB378 ID\uB97C \uC785\uB825\uD558\uAC70\uB098 \uBAA9\uB85D\uC5D0\uC11C \uC120\uD0DD\uD558\uC138\uC694.");
   if (!c) throw new Error("\uC9C0\uC2DC\uC0AC\uD56D\uC744 \uC785\uB825\uD558\uC138\uC694.");
   const x = ge({ instruction: c, selectedText: l, images: m });
