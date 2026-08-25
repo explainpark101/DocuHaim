@@ -10077,7 +10077,7 @@ class fk extends aw {
 function dk(r10, e) {
   return (t) => t.editor.contentComponent ? new fk(r10, t, e) : {};
 }
-const cn = { BASE_URL: "/DocuHaim/", DEV: false, MODE: "production", PROD: true, SSR: false, VITE_APP_BUILD_ID: "fc0179f18f6e4afca7ab76a86bfbc048282ce0a0", VITE_BASE_PATH: "/DocuHaim/" };
+const cn = { BASE_URL: "/DocuHaim/", DEV: false, MODE: "production", PROD: true, SSR: false, VITE_APP_BUILD_ID: "7da1082c14c70b1d988dead1fe587e032f3f2fa5", VITE_BASE_PATH: "/DocuHaim/" };
 function Z2(r10) {
   return "init" in r10;
 }
