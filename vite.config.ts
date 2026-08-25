@@ -379,6 +379,9 @@ function manualChunks(id: string): string | undefined {
   ) {
     return 'vendor-git-diff-view';
   }
+  if (normalizedId.includes('/node_modules/@google/genai/')) {
+    return 'vendor-google-genai';
+  }
   if (
     normalizedId.includes('/node_modules/emoji-mart/') ||
     normalizedId.includes('/node_modules/@emoji-mart/')
