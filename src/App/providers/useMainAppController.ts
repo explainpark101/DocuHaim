@@ -3,6 +3,7 @@ import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } fr
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
+import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
 import { useNavigate, useLocation } from 'react-router';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -363,6 +364,32 @@ export function useMainAppController() {
     setShareBlockingAuth,
   } = useBootstrapOwned();
   const {
+    storageMode,
+    setStorageMode,
+    s3Tree,
+    setS3Tree,
+    localTree,
+    setLocalTree,
+    webdavTree,
+    setWebdavTree,
+    sessionWorkspace,
+    setSessionWorkspace,
+    localRootHandle,
+    setLocalRootHandle,
+    localVaultFsPath,
+    setLocalVaultFsPath,
+    webdavConfig,
+    setWebdavConfig,
+    isLocalTreeLoading,
+    setIsLocalTreeLoading,
+    isWebdavTreeLoading,
+    setIsWebdavTreeLoading,
+    localFolderLoadingPath,
+    setLocalFolderLoadingPath,
+    webdavFolderLoadingPath,
+    setWebdavFolderLoadingPath,
+  } = useVaultOwned();
+  const {
     isUnlocked,
     showAuthModal,
     setShowAuthModal,
@@ -402,25 +429,13 @@ export function useMainAppController() {
     clearAllLlmApiKeySessions();
   }, [s3Creds?.googleAiStudioApiKey, s3Creds?.openaiCompatibleApiKey, s3Creds?.openaiCompatibleBaseUrl, s3Creds?.llmProviderProfiles]);
 
-  // File Systems State
-  const [s3Tree, setS3Tree] = useState([]);
-  const [localTree, setLocalTree] = useState([]);
-  const [webdavTree, setWebdavTree] = useState([]);
-  const [sessionWorkspace, setSessionWorkspace] = useState(null);
+  // Vault trees / storageMode owned by AppVaultStateProvider (useVaultOwned).
   const sessionWorkspaceRef = useRef(null);
   const sessionObjectUrlsRef = useRef(new Map());
   /** session file id -> { destPath, storageType } after saving into connected Haim */
   const sessionVaultBindingsRef = useRef(Object.create(null));
   const writeSessionFileToHaimRef = useRef(null);
   const [isOpeningSession, setIsOpeningSession] = useState(false);
-  const [isWebdavTreeLoading, setIsWebdavTreeLoading] = useState(false);
-  const [webdavFolderLoadingPath, setWebdavFolderLoadingPath] = useState(null);
-  const [localRootHandle, setLocalRootHandle] = useState(null);
-  const [localVaultFsPath, setLocalVaultFsPath] = useState(() =>
-    isDesktopApp() ? loadLocalVaultFsPath() : '',
-  );
-  const [isLocalTreeLoading, setIsLocalTreeLoading] = useState(false);
-  const [localFolderLoadingPath, setLocalFolderLoadingPath] = useState(null);
   const localFolderLoadInFlightRef = useRef(new Set());
   const [showRestoreLocalFolderModal, setShowRestoreLocalFolderModal] = useState(false);
   const [pendingLocalFolderName, setPendingLocalFolderName] = useState('');
@@ -454,8 +469,6 @@ export function useMainAppController() {
   const [showHiddenFolders, setShowHiddenFolders] = useState(() => loadShowHiddenFolders());
   const [showTrashFolder, setShowTrashFolder] = useState(() => loadShowTrashFolder());
   const [editorType, setEditorType] = useState(() => loadEditorType());
-  const [storageMode, setStorageMode] = useState(() => loadStorageMode());
-  const [webdavConfig, setWebdavConfig] = useState(() => ({ ...DEFAULT_WEBDAV_CONFIG }));
 
   const lockApp = useCallback(() => {
     clearPlaintextWebdavConfig();
