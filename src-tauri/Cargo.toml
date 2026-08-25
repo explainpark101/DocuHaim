@@ -20,7 +20,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 url = "2"
-tauri-plugin-biometry = "0.2.8"
 tauri-plugin-stronghold = "2"
 rust-argon2 = "2"
 getrandom = "0.3"
@@ -32,6 +31,9 @@ opt-level = 3
 panic = "abort"
 codegen-units = 1
 lto = true
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-biometry = "0.2.8"
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-biometric = "2"
