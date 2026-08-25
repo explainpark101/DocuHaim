@@ -1,9 +1,10 @@
 /**
- * Cross-domain orchestration glue (open/save/CRUD handlers, URL sync).
- * Domain React state is owned by App*StateProvider / RecordingProvider / WorkspaceTabsProvider.
- * Prefer moving remaining handlers into domain modules until this file is obsolete.
+ * Cross-domain orchestration entry.
+ * Domain React state + public handlers live in Vault/File/Tree/Tabs providers;
+ * this impl still holds large open/save/CRUD bodies registered into those providers.
+ * Follow-up: move registered bodies into use*Domain until this file is obsolete.
  */
 export {
   useMainAppController as useAppOrchestration,
   useMainAppController,
-} from '@/App/providers/useMainAppController';
+} from '@/App/providers/useAppOrchestrationImpl';
