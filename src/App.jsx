@@ -262,6 +262,7 @@ import {
 } from '@/utils/desktopOpenFiles';
 import { loadHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
 import { loadTreeStickyFolderPathEnabled } from '@/utils/treeStickySettings';
+import { loadTreeShowModifiedDateEnabled } from '@/utils/treeModifiedDateSettings';
 import {
   loadShowHiddenFolders,
   loadShowTrashFolder,
@@ -657,6 +658,9 @@ function MainApp() {
   const [hideRecordingCompanions, setHideRecordingCompanions] = useState(() => loadHideRecordingCompanions());
   const [treeStickyFolderPathEnabled, setTreeStickyFolderPathEnabled] = useState(() =>
     loadTreeStickyFolderPathEnabled(),
+  );
+  const [showTreeModifiedDate, setShowTreeModifiedDate] = useState(() =>
+    loadTreeShowModifiedDateEnabled(),
   );
   const [treeHoverExpandSettings, setTreeHoverExpandSettings] = useState(() =>
     loadTreeHoverExpandSettings(),
@@ -1311,6 +1315,7 @@ function MainApp() {
       else if (id === 'settings-show-hidden') setShowHiddenFolders(enabled);
       else if (id === 'settings-hide-recording') setHideRecordingCompanions(enabled);
       else if (id === 'settings-tree-sticky') setTreeStickyFolderPathEnabled(enabled);
+      else if (id === 'settings-tree-modified-date') setShowTreeModifiedDate(enabled);
       else if (id === 'settings-workspace-tabs') {
         workspaceTabsEnabledRef.current = enabled;
         setWorkspaceTabsEnabled(enabled);
@@ -9642,6 +9647,7 @@ function MainApp() {
               showTrashFolder={showTrashFolder}
               hideRecordingCompanions={hideRecordingCompanions}
               treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
+              showTreeModifiedDate={showTreeModifiedDate}
               hoverExpandDelayMs={treeHoverExpandSettingsToMs(treeHoverExpandSettings)}
               onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
               deletingFolderPath={deletingFolderPath}
@@ -9767,12 +9773,15 @@ function MainApp() {
                       setSettingsToggle('settings-show-trash', !showTrashFolder),
                     hideRecordingCompanions,
                     treeStickyFolderPathEnabled,
+                    showTreeModifiedDate,
                     treeHoverExpandSettings,
                     onTreeHoverExpandSettingsChange: setTreeHoverExpandSettings,
                     onToggleHideRecordingCompanions: () =>
                       setSettingsToggle('settings-hide-recording', !hideRecordingCompanions),
                     onToggleTreeStickyFolderPath: () =>
                       setSettingsToggle('settings-tree-sticky', !treeStickyFolderPathEnabled),
+                    onToggleShowTreeModifiedDate: () =>
+                      setSettingsToggle('settings-tree-modified-date', !showTreeModifiedDate),
                     onRequestClose: handleSettingsClose,
                     webauthnSupported: webauthnPRFSupported,
                     webauthnEnabled: isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword,

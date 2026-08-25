@@ -26,6 +26,7 @@ import {
   findApplicableTransferBusy,
   transferBusyTooltipText,
 } from '@/utils/treeTransferBusy';
+import TreeNodeModifiedLabel from '@/components/TreeNodeModifiedLabel';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -88,6 +89,7 @@ export default function TreeNode({
   onClearRenameTarget,
   recordingBasePathSet = null,
   stickyFoldersEnabled = true,
+  showModifiedDate = false,
   stickyTopOffset = 0,
   isFolderLoading = null,
   activeDragItemIds = null,
@@ -772,20 +774,28 @@ export default function TreeNode({
               )}
             </span>
           ) : (
-            <span
-              ref={titleContainerRef}
-              className={`text-sm select-none overflow-hidden whitespace-nowrap ${
-                isTrashRoot
-                  ? 'font-semibold text-red-600 dark:text-red-400'
-                  : isOnActivePath
-                    ? 'font-bold underline'
-                    : ''
-              }`}
-              title={displayName}
-              onMouseEnter={startTitleScroll}
-              onMouseLeave={stopTitleScroll}
-            >
-              {displayName}
+            <span className="flex min-w-0 flex-col overflow-hidden">
+              <span
+                ref={titleContainerRef}
+                className={`text-sm select-none overflow-hidden whitespace-nowrap ${
+                  isTrashRoot
+                    ? 'font-semibold text-red-600 dark:text-red-400'
+                    : isOnActivePath
+                      ? 'font-bold underline'
+                      : ''
+                }`}
+                title={displayName}
+                onMouseEnter={startTitleScroll}
+                onMouseLeave={stopTitleScroll}
+              >
+                {displayName}
+              </span>
+              {showModifiedDate && node.type === 'file' && !isTrashRoot && node.lastModified ? (
+                <TreeNodeModifiedLabel
+                  lastModified={node.lastModified}
+                  className="text-gray-400/75 dark:text-gray-500/80"
+                />
+              ) : null}
             </span>
           )}
         </div>
@@ -878,6 +888,7 @@ export default function TreeNode({
               onClearRenameTarget={onClearRenameTarget}
               recordingBasePathSet={recordingBasePathSet}
               stickyFoldersEnabled={stickyFoldersEnabled}
+              showModifiedDate={showModifiedDate}
               stickyTopOffset={stickyTopOffset}
               isFolderLoading={isFolderLoading}
               activeDragItemIds={activeDragItemIds}

@@ -88,6 +88,8 @@ export default function SettingsPage({
   onToggleHideRecordingCompanions,
   treeStickyFolderPathEnabled = true,
   onToggleTreeStickyFolderPath,
+  showTreeModifiedDate = false,
+  onToggleShowTreeModifiedDate,
   treeHoverExpandSettings = DEFAULT_TREE_HOVER_EXPAND,
   onTreeHoverExpandSettingsChange,
   onRequestClose,
@@ -1465,6 +1467,32 @@ export default function SettingsPage({
               </button>
               <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
                 트리에서 열린 폴더 경로 sticky 표시 (스크롤 시 현재 경로 고정)
+              </span>
+            </label>
+          )}
+          {typeof onToggleShowTreeModifiedDate === 'function' && (
+            <label
+              className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
+            >
+              <button
+                type="button"
+                onClick={onToggleShowTreeModifiedDate}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                  showTreeModifiedDate
+                    ? 'bg-blue-500 border-blue-500 shadow-sm'
+                    : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+                } group-hover:brightness-105 group-hover:border-blue-400`}
+                aria-pressed={showTreeModifiedDate}
+                aria-label="트리 수정 날짜 표시"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    showTreeModifiedDate ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+                트리 파일명 아래 수정 날짜 표시 (yy-MM-dd hh:mm:ss, 공간에 따라 축약)
               </span>
             </label>
           )}

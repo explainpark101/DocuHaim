@@ -247,6 +247,7 @@ export default function Sidebar({
   showTrashFolder = false,
   hideRecordingCompanions = false,
   treeStickyFolderPathEnabled = true,
+  showTreeModifiedDate = false,
   hoverExpandDelayMs = 2000,
   onRequestCollapseSidebar,
   deletingFolderPath,
@@ -1538,6 +1539,7 @@ export default function Sidebar({
                     onClearRenameTarget={() => setRenameTarget(null)}
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                    showModifiedDate={showTreeModifiedDate}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
                     mobileTree={mobileTree}
                   />
@@ -1707,6 +1709,7 @@ export default function Sidebar({
                     onClearRenameTarget={() => setRenameTarget(null)}
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                    showModifiedDate={showTreeModifiedDate}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
                     mobileTree={mobileTree}
                   />
@@ -1854,6 +1857,7 @@ export default function Sidebar({
                     onClearRenameTarget={() => setRenameTarget(null)}
                     recordingBasePathSet={recordingBasePathSet}
                     stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                    showModifiedDate={showTreeModifiedDate}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
                     mobileTree={mobileTree}
                   />

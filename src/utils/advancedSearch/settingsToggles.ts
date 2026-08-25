@@ -32,6 +32,10 @@ import {
   saveTreeStickyFolderPathEnabled,
 } from '@/utils/treeStickySettings';
 import {
+  loadTreeShowModifiedDateEnabled,
+  saveTreeShowModifiedDateEnabled,
+} from '@/utils/treeModifiedDateSettings';
+import {
   loadCoverCenterSnapEnabled,
   loadCoverObjectSnapEnabled,
   loadCoverPlacePreviewEnabled,
@@ -69,6 +73,7 @@ export type SettingsToggleId =
   | 'settings-show-hidden'
   | 'settings-hide-recording'
   | 'settings-tree-sticky'
+  | 'settings-tree-modified-date'
   | 'settings-composer-helper'
   | 'settings-as-animation'
   | 'settings-as-index'
@@ -201,6 +206,25 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['sticky', '트리', 'tree', '폴더 경로', '경로'],
     load: loadTreeStickyFolderPathEnabled,
     save: saveTreeStickyFolderPathEnabled,
+  },
+  {
+    id: 'settings-tree-modified-date',
+    enableTitle: '트리 수정 날짜 표시 켜기',
+    disableTitle: '트리 수정 날짜 표시 끄기',
+    description: '사이드바 파일명 아래 최근 수정 시각 표시',
+    keywords: [
+      'tree',
+      '트리',
+      'modified',
+      '수정',
+      '날짜',
+      'date',
+      'mtime',
+      '사이드바',
+      'sidebar',
+    ],
+    load: loadTreeShowModifiedDateEnabled,
+    save: saveTreeShowModifiedDateEnabled,
   },
   {
     id: 'settings-composer-helper',
