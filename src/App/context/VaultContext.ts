@@ -9,10 +9,10 @@ export function isVaultPathStorageType(
   return VAULT_PATH_STORAGE_TYPES.includes(type as VaultPathStorageType);
 }
 
-/** §3–4 vault / storage trees + backends. */
+/** §3–4 vault / storage trees + backends (owned by VaultProvider / useVaultDomain). */
 export type VaultValue = {
   storageMode: string;
-  setStorageMode: (mode: string) => void;
+  setStorageMode: (mode: string | ((prev: string) => string)) => void;
   s3Tree: any[];
   localTree: any[];
   webdavTree: any[];
@@ -34,6 +34,17 @@ export type VaultValue = {
   loadWebdavFolderChildren: (...args: any[]) => any;
   openLocalFolder: (...args: any[]) => any;
   webdavReady: boolean;
+  attachLocalRootFolder: (...args: any[]) => any;
+  scanActiveStorageUsageTree: (...args: any[]) => any;
+  canScanStorageUsage: boolean;
+  setS3Tree: (...args: any[]) => any;
+  setLocalTree: (...args: any[]) => any;
+  setWebdavTree: (...args: any[]) => any;
+  setSessionWorkspace: (...args: any[]) => any;
+  setLocalRootHandle: (...args: any[]) => any;
+  setLocalVaultFsPath: (...args: any[]) => any;
+  setIsLocalTreeLoading: (...args: any[]) => any;
+  setIsWebdavTreeLoading: (...args: any[]) => any;
 };
 
 export const VaultContext = createContext<VaultValue | null>(null);

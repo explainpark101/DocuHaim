@@ -7,7 +7,7 @@ import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } fr
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
-import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
+import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
@@ -392,10 +392,20 @@ export function useMainAppController() {
     isWebdavTreeLoading,
     setIsWebdavTreeLoading,
     localFolderLoadingPath,
-    setLocalFolderLoadingPath,
     webdavFolderLoadingPath,
-    setWebdavFolderLoadingPath,
-  } = useVaultOwned();
+    getBackendForType,
+    getS3Client,
+    loadS3Files,
+    refreshLocalTree,
+    refreshWebdavTree,
+    loadLocalFolderChildren,
+    loadWebdavFolderChildren,
+    openLocalFolder,
+    webdavReady,
+    attachLocalRootFolder,
+    scanActiveStorageUsageTree,
+    canScanStorageUsage,
+  } = useVault();
   const {
     currentFile,
     setCurrentFile,
@@ -543,7 +553,6 @@ export function useMainAppController() {
   const sessionVaultBindingsRef = useRef(Object.create(null));
   const writeSessionFileToHaimRef = useRef(null);
   const [isOpeningSession, setIsOpeningSession] = useState(false);
-  const localFolderLoadInFlightRef = useRef(new Set());
   const [showRestoreLocalFolderModal, setShowRestoreLocalFolderModal] = useState(false);
   const [pendingLocalFolderName, setPendingLocalFolderName] = useState('');
   
@@ -2406,20 +2415,7 @@ export function useMainAppController() {
     navGuard.proceed();
   };
 
-  // 3. S3 Actions (using @aws-sdk/client-s3)
-  const getS3Client = useCallback((creds = s3Creds) => createS3Client(creds), [s3Creds]);
-
-  const getBackendForType = useCallback(
-    (type) =>
-      createStorageBackendForType(type, {
-        getS3Client,
-        s3Creds,
-        localRootHandle,
-        localVaultFsPath,
-        webdavConfig,
-      }),
-    [getS3Client, s3Creds, localRootHandle, localVaultFsPath, webdavConfig],
-  );
+  // 3. S3 Actions — getS3Client / getBackendForType / load* owned by VaultProvider (useVault)
 
   const advancedSearchTreesRef = useRef({
     storageMode,
@@ -2494,7 +2490,7 @@ export function useMainAppController() {
     return trees;
   }, []);
 
-  const webdavReady = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
+  // webdavReady owned by VaultProvider (useVault)
 
   const resolveClosedFileNode = useCallback(
     async (entry) => {
@@ -2727,79 +2723,7 @@ export function useMainAppController() {
     setShareGroupSend(null);
   }, []);
 
-  const refreshWebdavTree = useCallback(async () => {
-    if (!webdavReady) return;
-    setIsWebdavTreeLoading(true);
-    try {
-      const backend = createWebdavBackend(webdavConfig);
-      const children = await backend.listChildren('');
-      setWebdavTree(children);
-    } catch (err) {
-      console.error('WebDAV tree load error:', err);
-    } finally {
-      setIsWebdavTreeLoading(false);
-    }
-  }, [webdavReady, webdavConfig]);
-
-  const loadWebdavFolderChildren = useCallback(
-    async (folderNode) => {
-      if (!folderNode?.path || folderNode.childrenLoaded === true || !webdavReady) return;
-      setWebdavFolderLoadingPath(folderNode.path);
-      try {
-        const backend = createWebdavBackend(webdavConfig);
-        const children = await backend.listChildren(folderNode.path);
-        setWebdavTree((prev) => patchWebdavTreeChildren(prev, folderNode.path, children));
-      } finally {
-        setWebdavFolderLoadingPath((current) => (current === folderNode.path ? null : current));
-      }
-    },
-    [webdavReady, webdavConfig],
-  );
-
-  const loadS3Files = useCallback(async (creds = s3Creds) => {
-    const client = getS3Client(creds);
-    if (!client || !creds.bucket) return;
-    try {
-      const contents = await listObjectsV2(client, creds.bucket, '');
-      setS3Tree(buildS3Tree(contents));
-    } catch (err) {
-      console.error("S3 Load Error:", err);
-    }
-  }, [getS3Client, s3Creds]);
-
-  const scanActiveStorageUsageTree = useCallback(async () => {
-    if (storageMode === STORAGE_MODE_LOCAL) {
-      if (isDesktopApp() && localVaultFsPath) {
-        return readTauriLocalDirectoryTree(localVaultFsPath);
-      }
-      if (!localRootHandle) throw new Error('로컬 폴더가 열려 있지 않습니다.');
-      return readLocalDirectoryTree(localRootHandle, '', localRootHandle);
-    }
-    if (storageMode === STORAGE_MODE_WEBDAV) {
-      if (!webdavReady) throw new Error('WebDAV가 연결되지 않았습니다.');
-      const backend = createWebdavBackend(webdavConfig);
-      return backend.listAll();
-    }
-    const client = getS3Client();
-    if (!client || !s3Creds.bucket) throw new Error('S3가 연결되지 않았습니다.');
-    const contents = await listObjectsV2(client, s3Creds.bucket, '');
-    return buildS3Tree(contents);
-  }, [
-    storageMode,
-    localRootHandle,
-    localVaultFsPath,
-    webdavReady,
-    webdavConfig,
-    getS3Client,
-    s3Creds.bucket,
-  ]);
-
-  const canScanStorageUsage =
-    (storageMode === STORAGE_MODE_LOCAL && Boolean(localRootHandle || localVaultFsPath)) ||
-    (storageMode === STORAGE_MODE_WEBDAV && webdavReady) ||
-    (storageMode !== STORAGE_MODE_LOCAL &&
-      storageMode !== STORAGE_MODE_WEBDAV &&
-      Boolean(s3Creds.bucket));
+  // refreshWebdavTree / loadWebdavFolderChildren / loadS3Files owned by VaultProvider
 
   // IndexedDB recording upload retry: on app start / network recovery (S3/WebDAV only)
   useEffect(() => {
@@ -3568,98 +3492,7 @@ export function useMainAppController() {
     return () => clearInterval(t);
   }, [isMobile, storageMode, webdavReady, webdavConfig, isUnlocked]);
 
-  // 4. Local Folder Load
-  const attachLocalRootFolder = useCallback(async (dirHandle, { fullScan = false } = {}) => {
-    const canWrite = await ensureDirectoryReadWritePermission(dirHandle);
-    if (!canWrite) {
-      throw new Error('선택한 폴더에 쓰기 권한이 없습니다. 폴더를 다시 선택해 주세요.');
-    }
-    setIsLocalTreeLoading(true);
-    setLocalRootHandle(dirHandle);
-    try {
-      await saveLocalRootHandle(dirHandle);
-      let tree = fullScan
-        ? await readLocalDirectoryTree(dirHandle, '', dirHandle)
-        : await readLocalDirectoryLevel(dirHandle, '', dirHandle);
-      if (!fullScan) {
-        tree = await hydrateExpandedLocalFolders(tree, loadExpandedFolderPaths().local);
-      }
-      setLocalTree(tree);
-    } finally {
-      setIsLocalTreeLoading(false);
-    }
-  }, []);
-
-  const loadLocalFolderChildren = useCallback(async (folderNode) => {
-    if (!folderNode?.handle || folderNode.childrenLoaded === true) return;
-    const folderPath = folderNode.path;
-    if (!folderPath || localFolderLoadInFlightRef.current.has(folderPath)) return;
-    localFolderLoadInFlightRef.current.add(folderPath);
-    setLocalFolderLoadingPath(folderPath);
-    try {
-      const children = await readLocalDirectoryLevel(
-        folderNode.handle,
-        folderPath,
-        folderNode.handle,
-      );
-      setLocalTree((prev) => patchLocalTreeChildren(prev, folderPath, children));
-    } finally {
-      localFolderLoadInFlightRef.current.delete(folderPath);
-      setLocalFolderLoadingPath((current) => (current === folderPath ? null : current));
-    }
-  }, []);
-
-  const openLocalFolder = async () => {
-    try {
-      if (isDesktopApp()) {
-        const abs = await pickTauriLocalVaultDirectory();
-        if (!abs) return;
-        saveLocalVaultFsPath(abs);
-        setLocalVaultFsPath(abs);
-        setLocalRootHandle(null);
-        setStorageMode(STORAGE_MODE_LOCAL);
-        setIsLocalTreeLoading(true);
-        try {
-          const tree = await readTauriLocalDirectoryTree(abs);
-          setLocalTree(tree);
-        } finally {
-          setIsLocalTreeLoading(false);
-        }
-        return;
-      }
-      // Must request readwrite; default showDirectoryPicker mode is read-only.
-      const dirHandle = await pickLocalRootDirectory();
-      clearLocalVaultFsPath();
-      setLocalVaultFsPath('');
-      setStorageMode(STORAGE_MODE_LOCAL);
-      await attachLocalRootFolder(dirHandle);
-    } catch (e) {
-      if (e?.name === 'AbortError') return;
-      console.error('Local folder selection cancelled or failed:', e);
-      alert(e?.message || '로컬 폴더를 열지 못했습니다.');
-    }
-  };
-
-  const refreshLocalTree = async () => {
-    if (isDesktopApp() && localVaultFsPath) {
-      setIsLocalTreeLoading(true);
-      try {
-        const tree = await readTauriLocalDirectoryTree(localVaultFsPath);
-        setLocalTree(tree);
-      } finally {
-        setIsLocalTreeLoading(false);
-      }
-      return;
-    }
-    if (!localRootHandle) return;
-    setIsLocalTreeLoading(true);
-    try {
-      const tree = await readLocalDirectoryTree(localRootHandle, '', localRootHandle);
-      setLocalTree(tree);
-    } finally {
-      setIsLocalTreeLoading(false);
-    }
-  };
+  // Local folder load/open/refresh owned by VaultProvider (useVault)
 
   const getActiveStorageBackend = useCallback(() => {
     return createStorageBackend({

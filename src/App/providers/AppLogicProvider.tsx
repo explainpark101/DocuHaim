@@ -1,6 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
 import { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
-import { VaultProvider } from '@/App/providers/VaultProvider';
 import { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
@@ -51,35 +50,6 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
       proceedWithoutStoredCreds: c.proceedWithoutStoredCreds,
       fileInputRef: c.fileInputRef,
       openSettingsWorkspaceTab: c.openSettingsWorkspaceTab,
-    }),
-    [c],
-  );
-
-  const vault = useMemo(
-    () => ({
-      storageMode: c.storageMode,
-      setStorageMode: c.setStorageMode,
-      s3Tree: c.s3Tree,
-      localTree: c.localTree,
-      webdavTree: c.webdavTree,
-      sessionWorkspace: c.sessionWorkspace,
-      localRootHandle: c.localRootHandle,
-      localVaultFsPath: c.localVaultFsPath,
-      webdavConfig: c.webdavConfig,
-      setWebdavConfig: c.setWebdavConfig,
-      isLocalTreeLoading: c.isLocalTreeLoading,
-      isWebdavTreeLoading: c.isWebdavTreeLoading,
-      localFolderLoadingPath: c.localFolderLoadingPath,
-      webdavFolderLoadingPath: c.webdavFolderLoadingPath,
-      getBackendForType: c.getBackendForType,
-      getS3Client: c.getS3Client,
-      loadS3Files: c.loadS3Files,
-      refreshLocalTree: c.refreshLocalTree,
-      refreshWebdavTree: c.refreshWebdavTree,
-      loadLocalFolderChildren: c.loadLocalFolderChildren,
-      loadWebdavFolderChildren: c.loadWebdavFolderChildren,
-      openLocalFolder: c.openLocalFolder,
-      webdavReady: c.webdavReady,
     }),
     [c],
   );
@@ -248,17 +218,15 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppBootstrapProvider logic={bootstrapLogic}>
-      <VaultProvider value={vault}>
-        <FileSessionProvider value={fileSession}>
-          <TreeOpsProvider value={treeOps}>
-            <AppModalsProvider value={modals}>
-              <AutoSaveProvider>
-                <AppShellMerge controller={c}>{children}</AppShellMerge>
-              </AutoSaveProvider>
-            </AppModalsProvider>
-          </TreeOpsProvider>
-        </FileSessionProvider>
-      </VaultProvider>
+      <FileSessionProvider value={fileSession}>
+        <TreeOpsProvider value={treeOps}>
+          <AppModalsProvider value={modals}>
+            <AutoSaveProvider>
+              <AppShellMerge controller={c}>{children}</AppShellMerge>
+            </AutoSaveProvider>
+          </AppModalsProvider>
+        </TreeOpsProvider>
+      </FileSessionProvider>
     </AppBootstrapProvider>
   );
 }

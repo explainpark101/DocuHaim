@@ -1,13 +1,12 @@
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { VaultContext } from '@/App/context/VaultContext';
+import { useVaultDomain } from '@/App/hooks/useVaultDomain';
 
-/** Vault domain context host — state still supplied by AppLogic until full extract. */
-export function VaultProvider({
-  children,
-  value,
-}: {
-  children: ReactNode;
-  value: React.ContextType<typeof VaultContext>;
-}) {
+/**
+ * Owns vault context value (state from AppVaultStateProvider + load/backend handlers).
+ * Must wrap AppLogic so orchestration can call useVault().
+ */
+export function VaultProvider({ children }: { children: ReactNode }) {
+  const value = useVaultDomain();
   return <VaultContext.Provider value={value}>{children}</VaultContext.Provider>;
 }
