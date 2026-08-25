@@ -131,6 +131,14 @@ pub fn run() {
     .manage(pending)
     .invoke_handler(tauri::generate_handler![take_pending_open_paths, gemini_api_fetch])
     .setup(|app| {
+      let salt_path = app
+        .path()
+        .app_local_data_dir()
+        .expect("could not resolve app local data path")
+        .join("stronghold-salt.txt");
+      app
+        .handle()
+        .plugin(tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build())?;
       if let Some(state) = app.try_state::<PendingOpenPaths>() {
         if let Ok(guard) = state.0.lock() {
           if !guard.is_empty() {

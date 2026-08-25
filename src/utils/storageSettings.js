@@ -1,4 +1,9 @@
 import { encryptData, decryptData } from '@/utils/crypto';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import {
+  loadDesktopWebdavConfig,
+  saveDesktopWebdavConfig,
+} from '@/utils/desktopStrongholdSecrets';
 
 export const STORAGE_MODE_S3 = 's3';
 export const STORAGE_MODE_LOCAL = 'local';
@@ -54,10 +59,15 @@ function normalizeWebdavConfig(parsed) {
 
 /**
  * Load plaintext WebDAV config (legacy). Prefer decryptWebdavConfig when password available.
+ * On desktop, reads from Stronghold when available.
  */
-export function loadWebdavConfig() {
+export async function loadWebdavConfig() {
   try {
     if (typeof window === 'undefined') return { ...DEFAULT_WEBDAV_CONFIG };
+    if (isDesktopApp()) {
+      const fromStronghold = await loadDesktopWebdavConfig();
+      if (fromStronghold) return fromStronghold;
+    }
     const raw = window.localStorage.getItem(WEBDAV_CONFIG_KEY);
     if (!raw) return { ...DEFAULT_WEBDAV_CONFIG };
     return normalizeWebdavConfig(JSON.parse(raw));
@@ -75,6 +85,12 @@ export async function saveWebdavConfig(config, password) {
   const safe = normalizeWebdavConfig(config);
   try {
     if (typeof window === 'undefined') return;
+    if (isDesktopApp()) {
+      await saveDesktopWebdavConfig(safe);
+      window.localStorage.removeItem(WEBDAV_CONFIG_KEY);
+      window.localStorage.removeItem(WEBDAV_ENCRYPTED_KEY);
+      return;
+    }
     if (password) {
       const encrypted = await encryptData(password, JSON.stringify(safe));
       window.localStorage.setItem(WEBDAV_ENCRYPTED_KEY, JSON.stringify(encrypted));
@@ -97,6 +113,9 @@ export async function saveWebdavConfig(config, password) {
 
 export function hasEncryptedWebdavConfig() {
   try {
+    if (isDesktopApp() && typeof window !== 'undefined') {
+      return localStorage.getItem('s3haim_desktop_stronghold_creds') === '1';
+    }
     return Boolean(
       typeof window !== 'undefined' && window.localStorage.getItem(WEBDAV_ENCRYPTED_KEY),
     );
@@ -113,6 +132,10 @@ export function hasEncryptedWebdavConfig() {
 export async function decryptWebdavConfig(password) {
   try {
     if (typeof window === 'undefined') return { ...DEFAULT_WEBDAV_CONFIG };
+    if (isDesktopApp()) {
+      const fromStronghold = await loadDesktopWebdavConfig();
+      if (fromStronghold) return fromStronghold;
+    }
     const encRaw = window.localStorage.getItem(WEBDAV_ENCRYPTED_KEY);
     if (encRaw && password) {
       try {
@@ -123,7 +146,7 @@ export async function decryptWebdavConfig(password) {
         /* fall through */
       }
     }
-    const plain = loadWebdavConfig();
+    const plain = await loadWebdavConfig();
     if (password && (plain.endpoint || plain.username || plain.password)) {
       try {
         await saveWebdavConfig(plain, password);

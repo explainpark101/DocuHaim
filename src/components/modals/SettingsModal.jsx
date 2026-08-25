@@ -1,4 +1,6 @@
 import { IconDownload, IconSettings, IconUpload } from '@/components/icons';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import { hasDesktopStoredCredsMarker } from '@/utils/desktopStrongholdSecrets';
 import Modal from '@/components/modals/Modal';
 
 export function SettingsModal({
@@ -125,7 +127,11 @@ export function SettingsModal({
           <button
             type="button"
             onClick={() => {
-              if (!masterPassword && localStorage.getItem('s3NotesEncrypted')) {
+              const hasLegacyEncrypted =
+                !isDesktopApp() && localStorage.getItem('s3NotesEncrypted');
+              const hasDesktopEncrypted =
+                isDesktopApp() && hasDesktopStoredCredsMarker();
+              if (!masterPassword && (hasLegacyEncrypted || hasDesktopEncrypted)) {
                 onCancel();
               } else if (!masterPassword) {
                 alert('마스터 비밀번호를 설정해야 창을 닫을 수 있습니다.');

@@ -8,6 +8,7 @@
     "core:webview:allow-print",
     "dialog:default",
     "biometry:default",
+    "stronghold:default",
     "fs:default",
     "fs:allow-read-file",
     "fs:allow-read-text-file",

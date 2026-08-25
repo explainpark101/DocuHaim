@@ -205,6 +205,7 @@ import {
 import { loadEditorType, saveEditorType } from '@/utils/editorTypeSettings';
 import {
   DEFAULT_STORAGE_MODE,
+  DEFAULT_WEBDAV_CONFIG,
   getAppNameByStorageMode,
   loadStorageMode,
   loadWebdavConfig,
@@ -333,6 +334,14 @@ import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import { clearAllLlmApiKeySessions } from '@/utils/llmApiKeySession';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
 import { tryRestoreAuthSession } from '@/utils/authSession';
+import {
+  hasDesktopStoredCredsMarker,
+  loadDesktopWebdavConfig,
+  migrateLegacyDesktopSecretsToStronghold,
+  saveDesktopCreds,
+  saveDesktopWebdavConfig,
+  tryRestoreDesktopStrongholdSession,
+} from '@/utils/desktopStrongholdSecrets';
 import { applyDocumentTheme } from '@/utils/documentTheme';
 import {
   applyForcedAppUpdate,
@@ -482,7 +491,7 @@ function MainApp() {
   const [showTrashFolder, setShowTrashFolder] = useState(() => loadShowTrashFolder());
   const [editorType, setEditorType] = useState(() => loadEditorType());
   const [storageMode, setStorageMode] = useState(() => loadStorageMode());
-  const [webdavConfig, setWebdavConfig] = useState(() => loadWebdavConfig());
+  const [webdavConfig, setWebdavConfig] = useState(() => ({ ...DEFAULT_WEBDAV_CONFIG }));
 
   const fileInputRef = useRef(null);
   const uploadFileInputRef = useRef(null);
@@ -1382,6 +1391,10 @@ function MainApp() {
   }, []);
 
   useEffect(() => {
+    void loadWebdavConfig().then(setWebdavConfig);
+  }, []);
+
+  useEffect(() => {
     setScriptsLoaded(true);
     if (isUnlocked) return;
 
@@ -1400,6 +1413,26 @@ function MainApp() {
         }
         return;
       }
+
+      if (isDesktopApp()) {
+        try {
+          const desktop = await tryRestoreDesktopStrongholdSession();
+          if (cancelled) return;
+          if (desktop.creds) {
+            unlock(desktop.creds, '');
+            if (desktop.webdav) setWebdavConfig(desktop.webdav);
+            return;
+          }
+        } catch (err) {
+          console.warn('Desktop Stronghold restore failed:', err);
+        }
+        if (!cancelled && hasDesktopStoredCredsMarker()) {
+          proceedWithoutStoredCreds();
+          navigate('/settings');
+          return;
+        }
+      }
+
       const stored = localStorage.getItem('s3NotesEncrypted');
       if (stored) {
         setAuthWanted(true);
@@ -1430,6 +1463,15 @@ function MainApp() {
   // 2. Auth Actions
   const handleUnlock = async (password) => {
     try {
+      if (isDesktopApp()) {
+        const migrated = await migrateLegacyDesktopSecretsToStronghold(password);
+        if (migrated.creds) {
+          unlock(migrated.creds, '');
+          if (migrated.webdav) setWebdavConfig(migrated.webdav);
+          return;
+        }
+      }
+
       const stored = localStorage.getItem('s3NotesEncrypted');
       if (!stored) throw new Error("저장된 데이터가 없습니다.");
       const encryptedObj = JSON.parse(stored);
@@ -1442,12 +1484,23 @@ function MainApp() {
         decryptedStr = await decryptData(password, encryptedObj);
       }
       const creds = JSON.parse(decryptedStr);
-      unlock(creds, password);
-      try {
+      if (isDesktopApp()) {
+        await saveDesktopCreds(creds);
         const decryptedWebdav = await decryptWebdavConfig(password);
-        if (decryptedWebdav) setWebdavConfig(decryptedWebdav);
-      } catch (webdavErr) {
-        console.warn('WebDAV config decrypt failed:', webdavErr);
+        if (decryptedWebdav) {
+          await saveDesktopWebdavConfig(decryptedWebdav);
+          setWebdavConfig(decryptedWebdav);
+        }
+        await migrateLegacyDesktopSecretsToStronghold(password);
+      }
+      unlock(creds, isDesktopApp() ? '' : password);
+      if (!isDesktopApp()) {
+        try {
+          const decryptedWebdav = await decryptWebdavConfig(password);
+          if (decryptedWebdav) setWebdavConfig(decryptedWebdav);
+        } catch (webdavErr) {
+          console.warn('WebDAV config decrypt failed:', webdavErr);
+        }
       }
     } catch (e) {
       alert(e?.message || "비밀번호가 틀렸거나 데이터가 손상되었습니다.");
@@ -1458,6 +1511,12 @@ function MainApp() {
   const handleUnlockWithWebAuthn = async () => {
     if (isStoredWithWebAuthn()) {
       const creds = await loadCredsWithWebAuthn();
+      if (isDesktopApp()) {
+        await saveDesktopCreds(creds);
+        await migrateLegacyDesktopSecretsToStronghold();
+        const webdav = await loadDesktopWebdavConfig();
+        if (webdav) setWebdavConfig(webdav);
+      }
       unlock(creds, '');
       loadS3Files(creds);
       navigate('/');
@@ -1470,6 +1529,23 @@ function MainApp() {
   const saveEncryptedSettings = async (creds, password, options = {}) => {
     const { stayOnSettings = false } = options;
     try {
+      if (isDesktopApp()) {
+        await saveDesktopCreds(creds);
+        setS3Creds(creds);
+        setMasterPassword('');
+        setShowSetPasswordModal(false);
+        loadS3Files(creds);
+        if (stayOnSettings) {
+          showAlert({
+            title: '연결 정보',
+            message: '연결 정보 업데이트가 완료되었습니다.',
+          });
+        } else {
+          navigate('/');
+        }
+        return;
+      }
+
       const passwordSalt = window.crypto.getRandomValues(new Uint8Array(16));
       const entropy = await deriveEntropyFromPassword(password, passwordSalt);
       const encrypted = await encryptWithEntropy(JSON.stringify(creds), entropy);
@@ -1539,6 +1615,27 @@ function MainApp() {
   };
 
   const handleSaveS3Creds = (creds) => {
+    if (isDesktopApp()) {
+      void (async () => {
+        try {
+          if (hasStoredCreds()) {
+            setPendingPasswordSave({ creds, password: '', options: { stayOnSettings: true } });
+            setShowOverwriteCredsConfirmModal(true);
+            return;
+          }
+          await saveDesktopCreds(creds);
+          setS3Creds(creds);
+          loadS3Files(creds);
+          showAlert({
+            title: '연결 정보',
+            message: '연결 정보 업데이트가 완료되었습니다.',
+          });
+        } catch (e) {
+          alert(e?.message || '설정 저장 중 오류가 발생했습니다.');
+        }
+      })();
+      return;
+    }
     setS3Creds(creds);
     setSaveMethodModalCreds(creds);
     setShowSaveMethodModal(true);
@@ -1566,9 +1663,15 @@ function MainApp() {
     setShowSetPasswordModal(true);
   };
 
-  const hasStoredCreds = () =>
-    typeof localStorage !== 'undefined' &&
-    (!!localStorage.getItem('s3NotesEncrypted') || !!getStoredWebAuthn());
+  const hasStoredCreds = () => {
+    if (isDesktopApp()) {
+      return hasDesktopStoredCredsMarker();
+    }
+    return (
+      typeof localStorage !== 'undefined' &&
+      (!!localStorage.getItem('s3NotesEncrypted') || !!getStoredWebAuthn())
+    );
+  };
 
   const requestSaveEncryptedSettings = (creds, password, options = {}) => {
     if (hasStoredCreds()) {
@@ -1592,12 +1695,23 @@ function MainApp() {
           message: '연결 정보 업데이트가 완료되었습니다.',
         });
       } else if (pendingPasswordSave) {
-        await saveEncryptedSettings(
-          pendingPasswordSave.creds,
-          pendingPasswordSave.password,
-          pendingPasswordSave.options
-        );
-        setPendingPasswordSave(null);
+        if (isDesktopApp()) {
+          await saveDesktopCreds(pendingPasswordSave.creds);
+          setS3Creds(pendingPasswordSave.creds);
+          loadS3Files(pendingPasswordSave.creds);
+          setPendingPasswordSave(null);
+          showAlert({
+            title: '연결 정보',
+            message: '연결 정보 업데이트가 완료되었습니다.',
+          });
+        } else {
+          await saveEncryptedSettings(
+            pendingPasswordSave.creds,
+            pendingPasswordSave.password,
+            pendingPasswordSave.options
+          );
+          setPendingPasswordSave(null);
+        }
       }
     } finally {
       setShowOverwriteCredsConfirmModal(false);
@@ -1605,7 +1719,7 @@ function MainApp() {
   };
 
   const handleExportCreds = () => {
-    if (!s3Creds?.bucket && !localStorage.getItem('s3NotesEncrypted')) return alert("내보낼 데이터가 없습니다.");
+    if (!s3Creds?.bucket && !hasStoredCreds()) return alert("내보낼 데이터가 없습니다.");
     setShowExportPasswordModal(true);
   };
 
@@ -1660,7 +1774,14 @@ function MainApp() {
       const creds = JSON.parse(decryptedStr);
       setImportFileContent(null);
       setShowImportPasswordModal(false);
-      if (webauthnPRFSupported) {
+      if (isDesktopApp()) {
+        await saveDesktopCreds(creds);
+        setS3Creds(creds);
+        setMasterPassword('');
+        loadS3Files(creds);
+        navigate('/');
+        alert('복원되었습니다.');
+      } else if (webauthnPRFSupported) {
         await saveCredsWithWebAuthn(creds);
         setS3Creds(creds);
         setMasterPassword('');
@@ -1676,7 +1797,7 @@ function MainApp() {
   };
 
   const handleSettingsClose = (formCreds) => {
-    if (!isUnlocked && localStorage.getItem('s3NotesEncrypted')) {
+    if (!isUnlocked && hasStoredCreds()) {
       alert("저장소 잠금 해제 후 닫을 수 있습니다.");
       return;
     }
