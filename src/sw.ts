@@ -37,10 +37,15 @@ precacheAndRoute(self.__WB_MANIFEST);
  * Avoid wrapping every fetch so Workbox precache/routes keep ownership.
  * First-load isolation on GitHub Pages is provided by coi-serviceworker.js;
  * this keeps isolation after the VitePWA worker takes over.
+ *
+ * Skip non-GET navigations: Web Share Target posts as mode=navigate + POST to
+ * /chat; that must reach the share_target registerRoute (303 + Cache Storage),
+ * not a network POST that static hosting cannot serve (blank white screen).
  */
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.mode !== 'navigate') return;
+  if (request.method !== 'GET' && request.method !== 'HEAD') return;
   if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') {
     return;
   }
