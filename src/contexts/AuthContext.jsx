@@ -30,6 +30,8 @@ export function AuthProvider({ children }) {
   const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
   const [masterPassword, setMasterPassword] = useState('');
   const [s3Creds, setS3Creds] = useState(initialCreds);
+  /** True when the user explicitly locked the app (settings / Advanced Search). */
+  const [appLockPromptManual, setAppLockPromptManual] = useState(false);
 
   useEffect(() => {
     if (!isUnlocked) return;
@@ -45,6 +47,7 @@ export function AuthProvider({ children }) {
     setMasterPassword(password);
     setIsUnlocked(true);
     setShowAuthModal(false);
+    setAppLockPromptManual(false);
   }, []);
 
   /** 잠금 해제 없이 모달만 닫고, 빈 연결정보로 앱 사용(설정에서 새로 입력 가능). 기존 localStorage 저장값은 유지. */
@@ -53,11 +56,13 @@ export function AuthProvider({ children }) {
     setMasterPassword('');
     setIsUnlocked(true);
     setShowAuthModal(false);
+    setAppLockPromptManual(false);
   }, []);
 
   const lock = useCallback(() => {
     clearAuthSession();
     setIsUnlocked(false);
+    setAppLockPromptManual(true);
     setShowAuthModal(true);
     setS3Creds(initialCreds);
     setMasterPassword('');
@@ -77,6 +82,7 @@ export function AuthProvider({ children }) {
     unlock,
     proceedWithoutStoredCreds,
     lock,
+    appLockPromptManual,
   };
 
   return (

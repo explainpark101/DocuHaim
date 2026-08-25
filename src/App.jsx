@@ -409,6 +409,7 @@ function MainApp() {
     unlock,
     proceedWithoutStoredCreds,
     lock,
+    appLockPromptManual,
   } = auth;
   const navigate = useNavigate();
   const location = useLocation();
@@ -1504,7 +1505,8 @@ function MainApp() {
   const autoPromptWebAuthnForModal = !(
     isDesktopApp() &&
     hasDesktopAppEntryLock() &&
-    canUnlockWithWebAuthnForModal
+    canUnlockWithWebAuthnForModal &&
+    appLockPromptManual
   );
 
   // 2. Auth Actions
