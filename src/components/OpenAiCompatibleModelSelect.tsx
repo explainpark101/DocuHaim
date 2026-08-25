@@ -13,6 +13,8 @@ type OpenAiCompatibleModelSelectProps = {
   value: string;
   onChange?: (nextId: string) => void;
   autoLoad?: boolean;
+  /** Remount/reload when provider or endpoint context changes. */
+  reloadKey?: string;
   className?: string;
 };
 
@@ -22,6 +24,7 @@ export default function OpenAiCompatibleModelSelect({
   value,
   onChange,
   autoLoad = false,
+  reloadKey = '',
   className = '',
 }: OpenAiCompatibleModelSelectProps) {
   const getBaseUrlRef = useRef(getBaseUrl);
@@ -56,9 +59,14 @@ export default function OpenAiCompatibleModelSelect({
   }, []);
 
   useEffect(() => {
+    setFetched([]);
+    setError('');
+  }, [reloadKey]);
+
+  useEffect(() => {
     if (!autoLoad) return;
     void refreshModels();
-  }, [autoLoad, refreshModels]);
+  }, [autoLoad, refreshModels, reloadKey]);
 
   const handleChange = (nextId: string) => {
     saveLastUsedOpenAiCompatibleModel(nextId);

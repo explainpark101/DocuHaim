@@ -131,6 +131,8 @@ export default function LlmAssistPanel({
           <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">모델</label>
           {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
             <OpenAiCompatibleModelSelect
+              key={`${selectedProfile.id}-openai`}
+              reloadKey={`${selectedProfile.id}:${selectedProfile.baseUrl || ''}`}
               getBaseUrl={() => selectedProfile.baseUrl || ''}
               getApiKey={() => selectedProfile.apiKey || ''}
               value={model}
@@ -139,6 +141,7 @@ export default function LlmAssistPanel({
             />
           ) : (
             <GeminiModelSelect
+              key={`${selectedProfile.id}-gemini`}
               getGeminiApiKey={() => selectedProfile.apiKey || ''}
               profileId={selectedProfile.id}
               value={model}

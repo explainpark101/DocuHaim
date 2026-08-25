@@ -241,7 +241,19 @@ export default function LlmProviderProfilesSettings({
                     if (next !== LLM_PROVIDER_GEMINI && next !== LLM_PROVIDER_OPENAI_COMPATIBLE) {
                       return;
                     }
-                    setDraft((p) => (p ? { ...p, kind: next } : p));
+                    const nextKind = next as LlmProviderKind;
+                    setDraft((p) => {
+                      if (!p) return p;
+                      saveLastUsedModelForProfile(p.id, defaultModelForKind(nextKind));
+                      return {
+                        ...p,
+                        kind: nextKind,
+                        keyInput: '',
+                        hasStoredKey:
+                          editingProfile?.kind === nextKind &&
+                          Boolean(editingProfile.apiKey.trim()),
+                      };
+                    });
                     setModelTick((n) => n + 1);
                   }}
                   aria-label="제공자 종류"
@@ -309,13 +321,13 @@ export default function LlmProviderProfilesSettings({
                   <GeminiModelSelect
                     key={`${draft.id}-${modelTick}`}
                     getGeminiApiKey={() =>
-                      draft.keyInput.trim() || editingProfile?.apiKey || ''
+                      draft.keyInput.trim() ||
+                      (editingProfile?.kind === LLM_PROVIDER_GEMINI ? editingProfile.apiKey : '')
                     }
                     profileId={draft.id}
                     value={modelValue}
                     onChange={(next: string) => {
                       saveLastUsedModelForProfile(draft.id, next);
-                      setModelTick((n) => n + 1);
                     }}
                     autoLoad={draft.hasStoredKey || Boolean(draft.keyInput.trim())}
                   />
@@ -323,11 +335,15 @@ export default function LlmProviderProfilesSettings({
                   <OpenAiCompatibleModelSelect
                     key={`${draft.id}-${modelTick}`}
                     getBaseUrl={() => draft.baseUrl}
-                    getApiKey={() => draft.keyInput.trim() || editingProfile?.apiKey || ''}
+                    getApiKey={() =>
+                      draft.keyInput.trim() ||
+                      (editingProfile?.kind === LLM_PROVIDER_OPENAI_COMPATIBLE
+                        ? editingProfile.apiKey
+                        : '')
+                    }
                     value={modelValue}
                     onChange={(next: string) => {
                       saveLastUsedModelForProfile(draft.id, next);
-                      setModelTick((n) => n + 1);
                     }}
                     autoLoad={Boolean(normalizeOpenAiCompatibleBaseUrl(draft.baseUrl))}
                   />

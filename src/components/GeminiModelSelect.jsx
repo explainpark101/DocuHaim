@@ -105,13 +105,16 @@ export default function GeminiModelSelect({
     onChange?.(nextId);
   };
 
+  const selectValue = models.some((m) => m.id === value)
+    ? value
+    : (models[0]?.id ?? '');
+
   return (
     <div className={className}>
       <div className="flex items-center gap-2">
         <select
-          value={value}
+          value={selectValue}
           onChange={(e) => handleChange(e.target.value)}
-          disabled={loading}
           className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
         >
           {models.map((m) => (

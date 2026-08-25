@@ -189,6 +189,18 @@ function readProfileModelMap(): Record<string, string> {
   }
 }
 
+function looksLikeGeminiModelId(modelId: string): boolean {
+  return /^gemini-/i.test(String(modelId || '').trim());
+}
+
+function storedModelMatchesKind(modelId: string, kind: LlmProviderKind): boolean {
+  const trimmed = String(modelId || '').trim();
+  if (!trimmed) return false;
+  return kind === LLM_PROVIDER_GEMINI
+    ? looksLikeGeminiModelId(trimmed)
+    : !looksLikeGeminiModelId(trimmed);
+}
+
 export function loadLastUsedModelForProfile(
   profileId: string,
   kind: LlmProviderKind,
@@ -196,7 +208,7 @@ export function loadLastUsedModelForProfile(
   const id = String(profileId || '').trim();
   if (id) {
     const stored = readProfileModelMap()[id];
-    if (stored) return stored;
+    if (stored && storedModelMatchesKind(stored, kind)) return stored;
   }
   if (kind === LLM_PROVIDER_GEMINI) return loadLastUsedGeminiModel();
   return loadLastUsedOpenAiCompatibleModel();
