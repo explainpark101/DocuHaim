@@ -46,6 +46,7 @@ jobs:
         run: bun install
 
       - name: Resolve version from package.json
+        id: app_version
         shell: bash
         run: |
           VERSION="$(node -p "require('./package.json').version")"
@@ -54,23 +55,47 @@ jobs:
             echo "Invalid package.json version: $VERSION"
             exit 1
           fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Using version $VERSION from package.json"
           bun run sync:tauri-version
 
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
 
-      # Pass signing env only when the matching platform secret exists.
+      # Secrets cannot be referenced in step `if:` — probe via env in a shell step.
       # Empty strings still trigger tauri-action import/codesign and fail.
+      - name: Resolve signing mode
+        id: signing
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+        run: |
+          case "${{ matrix.platform }}" in
+            macos-latest)
+              if [[ -n "$APPLE_CERTIFICATE" ]]; then
+                echo "signed=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "signed=false" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+            windows-latest)
+              if [[ -n "$WINDOWS_CERTIFICATE" ]]; then
+                echo "signed=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "signed=false" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+          esac
+
       - name: Build and upload release (unsigned)
-        if: ${{ matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE == '' || matrix.platform == 'windows-latest' && secrets.WINDOWS_CERTIFICATE == '' }}
+        if: steps.signing.outputs.signed == 'false'
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v${{ env.VERSION }}
-          releaseName: DocuHaim v${{ env.VERSION }}
+          tagName: v${{ steps.app_version.outputs.version }}
+          releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: |
             Desktop builds (DMG / NSIS).
 
@@ -83,7 +108,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Build and upload release (signed macOS)
-        if: ${{ matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != '' }}
+        if: matrix.platform == 'macos-latest' && steps.signing.outputs.signed == 'true'
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,8 +119,8 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: v${{ env.VERSION }}
-          releaseName: DocuHaim v${{ env.VERSION }}
+          tagName: v${{ steps.app_version.outputs.version }}
+          releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: |
             Desktop builds (DMG / NSIS).
 
@@ -108,15 +133,15 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Build and upload release (signed Windows)
-        if: ${{ matrix.platform == 'windows-latest' && secrets.WINDOWS_CERTIFICATE != '' }}
+        if: matrix.platform == 'windows-latest' && steps.signing.outputs.signed == 'true'
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         with:
-          tagName: v${{ env.VERSION }}
-          releaseName: DocuHaim v${{ env.VERSION }}
+          tagName: v${{ steps.app_version.outputs.version }}
+          releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: |
             Desktop builds (DMG / NSIS).
 
