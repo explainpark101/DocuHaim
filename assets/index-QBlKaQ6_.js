@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-D1QYVGAQ.js","assets/core-DhEqZVGG.js","assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-DXiO85YG.js","assets/vendor-md-editor-CyUZNHY0.js","assets/lucivyBackend-tW7DBbQL.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-mermaid-BoSnlBZK.js","assets/MarkdownEditor-9cTkelTJ.js","assets/previewFootnoteScroll-UiV4HE5u.js","assets/OpenAiCompatibleModelSelect-CdgiRmpo.js","assets/clipboardImageFiles-CyK7TYHr.js","assets/LlmAssistPanel-D-A_Sqen.js","assets/useLazyMermaidRender-CfDNDV81.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BHjN1VVl.css","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/useTocTitleWrap-BDEgpnhw.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-B4Qb4fqq.js","assets/TableStyleTemplateEditor-TRl49243.js","assets/index-CG4BSG42.js","assets/useWikiImageHydration-CX7nkgec.js","assets/NovelMarkdownEditor-CmEMV2J0.js","assets/vendor-novel-CGBuPPZ7.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-Cz5vXOUB.js","assets/ChatWithMyselfPane-DTawJvHQ.js","assets/ChatImageBackgroundPicker-ymVSU-9A.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-BTFRsK0o.js","assets/ChatWithMyselfPane-DAmWMq_1.css","assets/SettingsPage-CDJAfcg6.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-B4dpcAKV.js","assets/LlmAssistPopoutPage-DbbUrudC.js","assets/toHtml-BHNOX-Mp.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-D1QYVGAQ.js","assets/core-DhEqZVGG.js","assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-DXiO85YG.js","assets/vendor-md-editor-CyUZNHY0.js","assets/lucivyBackend-v96FKhv0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-mermaid-CTPidILZ.js","assets/MarkdownEditor-C_8Bjsvc.js","assets/previewFootnoteScroll-Bkq_GauU.js","assets/OpenAiCompatibleModelSelect-Z7C6xzHM.js","assets/clipboardImageFiles-C90I9L5e.js","assets/LlmAssistPanel-DXbsWqLz.js","assets/useLazyMermaidRender-Du53WTD5.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BHjN1VVl.css","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/useTocTitleWrap-CTkUkgjy.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-pBX2zXtK.js","assets/TableStyleTemplateEditor-CrgyHUMn.js","assets/index-CG4BSG42.js","assets/useWikiImageHydration-Cx8ybZm2.js","assets/NovelMarkdownEditor-_IY2aBoo.js","assets/vendor-novel-BMhEiQO8.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-CFUMNyEy.js","assets/ChatWithMyselfPane-wAuyyOSM.js","assets/ChatImageBackgroundPicker-DJ2fuw0Z.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-C278i2RL.js","assets/ChatWithMyselfPane-DAmWMq_1.css","assets/SettingsPage-B7jw17XV.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-7fbkmZCz.js","assets/LlmAssistPopoutPage-DpLiQ480.js","assets/toHtml-CWPzA8eW.js"])))=>i.map(i=>d[i]);
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key2, value) => key2 in obj ? __defProp(obj, key2, { enumerable: true, configurable: true, writable: true, value }) : obj[key2] = value;
 var __publicField = (obj, key2, value) => __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value);
@@ -630,13 +630,13 @@ ${be}` : fe;
         }), le(Rt).from(yt), le(nt).from(yt);
         var hr = yr.reduce(function(ne, se) {
           return ne[se] = se + "Error", ne;
-        }, {}), Yt = yt, At = yr.reduce(function(ne, se) {
+        }, {}), qt = yt, At = yr.reduce(function(ne, se) {
           var ce = se + "Error";
           function me(ye, ve) {
             this.name = ce, ye ? typeof ye == "string" ? (this.message = "".concat(ye).concat(ve ? `
  ` + ve : ""), this.inner = ve || null) : typeof ye == "object" && (this.message = "".concat(ye.name, " ").concat(ye.message), this.inner = ye) : (this.message = ut[se] || ce, this.inner = null);
           }
-          return le(me).from(Yt), ne[se] = me, ne;
+          return le(me).from(qt), ne[se] = me, ne;
         }, {}), $t = (At.Syntax = SyntaxError, At.Type = TypeError, At.Range = RangeError, Ft.reduce(function(ne, se) {
           return ne[se + "Error"] = At[se], ne;
         }, {}));
@@ -657,28 +657,28 @@ ${be}` : fe;
             return se(ne(ce));
           };
         }
-        function kr(ne, se) {
+        function Tr(ne, se) {
           return function() {
             ne.apply(this, arguments), se.apply(this, arguments);
           };
         }
-        function vr(ne, se) {
+        function Er(ne, se) {
           return ne === Ut ? se : function() {
             var ce = ne.apply(this, arguments), me = (ce !== void 0 && (arguments[0] = ce), this.onsuccess), ye = this.onerror, ve = (this.onsuccess = null, this.onerror = null, se.apply(this, arguments));
-            return me && (this.onsuccess = this.onsuccess ? kr(me, this.onsuccess) : me), ye && (this.onerror = this.onerror ? kr(ye, this.onerror) : ye), ve !== void 0 ? ve : ce;
+            return me && (this.onsuccess = this.onsuccess ? Tr(me, this.onsuccess) : me), ye && (this.onerror = this.onerror ? Tr(ye, this.onerror) : ye), ve !== void 0 ? ve : ce;
           };
         }
         function Jr(ne, se) {
           return ne === Ut ? se : function() {
             ne.apply(this, arguments);
             var ce = this.onsuccess, me = this.onerror;
-            this.onsuccess = this.onerror = null, se.apply(this, arguments), ce && (this.onsuccess = this.onsuccess ? kr(ce, this.onsuccess) : ce), me && (this.onerror = this.onerror ? kr(me, this.onerror) : me);
+            this.onsuccess = this.onerror = null, se.apply(this, arguments), ce && (this.onsuccess = this.onsuccess ? Tr(ce, this.onsuccess) : ce), me && (this.onerror = this.onerror ? Tr(me, this.onerror) : me);
           };
         }
         function gn(ne, se) {
           return ne === Ut ? se : function(ye) {
             var me = ne.apply(this, arguments), ye = (f(ye, me), this.onsuccess), ve = this.onerror, Te = (this.onsuccess = null, this.onerror = null, se.apply(this, arguments));
-            return ye && (this.onsuccess = this.onsuccess ? kr(ye, this.onsuccess) : ye), ve && (this.onerror = this.onerror ? kr(ve, this.onerror) : ve), me === void 0 ? Te === void 0 ? void 0 : Te : f(me, Te);
+            return ye && (this.onsuccess = this.onsuccess ? Tr(ye, this.onsuccess) : ye), ve && (this.onerror = this.onerror ? Tr(ve, this.onerror) : ve), me === void 0 ? Te === void 0 ? void 0 : Te : f(me, Te);
           };
         }
         function Zr(ne, se) {
@@ -699,9 +699,9 @@ ${be}` : fe;
           };
         }
         Ft.ModifyError = Rt, Ft.DexieError = yt, Ft.BulkError = nt;
-        var qt = typeof location < "u" && /^(http|https):\/\/(localhost|127\.0\.0\.1)/.test(location.href);
+        var Vt = typeof location < "u" && /^(http|https):\/\/(localhost|127\.0\.0\.1)/.test(location.href);
         function gr(ne) {
-          qt = ne;
+          Vt = ne;
         }
         var dr = {}, ar = 100, fr = typeof Promise > "u" ? [] : (yr = Promise.resolve(), typeof crypto < "u" && crypto.subtle ? [
           fr = crypto.subtle.digest("SHA-512", new Uint8Array([
@@ -713,12 +713,12 @@ ${be}` : fe;
           yr,
           A(yr),
           yr
-        ]), yr = fr[0], ha = fr[1], ha = ha && ha.then, St = yr && yr.constructor, Tr = !!fr[2], Dr = function(ne, se) {
+        ]), yr = fr[0], ha = fr[1], ha = ha && ha.then, St = yr && yr.constructor, wr = !!fr[2], Dr = function(ne, se) {
           Bt.push([
             ne,
             se
           ]), sn && (queueMicrotask(Xr), sn = false);
-        }, Pr = true, sn = true, Ar = [], Fr = [], wt = Kt, mt = {
+        }, Nr = true, sn = true, Ar = [], Fr = [], wt = Kt, mt = {
           id: "global",
           global: true,
           ref: 0,
@@ -734,7 +734,7 @@ ${be}` : fe;
           var se = this._PSD = tt;
           if (typeof ne != "function") {
             if (ne !== dr) throw new TypeError("Not a function");
-            this._state = arguments[1], this._value = arguments[2], this._state === false && Er(this, this._value);
+            this._state = arguments[1], this._value = arguments[2], this._state === false && Sr(this, this._value);
           } else this._state = null, this._value = null, ++se.ref, (function ce(me, ye) {
             try {
               ye(function(ve) {
@@ -743,15 +743,15 @@ ${be}` : fe;
                   var Te = me._lib && Gr();
                   ve && typeof ve.then == "function" ? ce(me, function(_e, qe) {
                     ve instanceof _t ? ve._then(_e, qe) : ve.then(_e, qe);
-                  }) : (me._state = true, me._value = ve, Mr(me)), Te && Vr();
+                  }) : (me._state = true, me._value = ve, Or(me)), Te && Vr();
                 }
-              }, Er.bind(null, me));
+              }, Sr.bind(null, me));
             } catch (ve) {
-              Er(me, ve);
+              Sr(me, ve);
             }
           })(this, ne);
         }
-        var Nr = {
+        var Mr = {
           get: function() {
             var ne = tt, se = kn;
             function ce(me, ye) {
@@ -763,24 +763,24 @@ ${be}` : fe;
             return ce.prototype = dr, ce;
           },
           set: function(ne) {
-            oe(this, "then", ne && ne.prototype === dr ? Nr : {
+            oe(this, "then", ne && ne.prototype === dr ? Mr : {
               get: function() {
                 return ne;
               },
-              set: Nr.set
+              set: Mr.set
             });
           }
         };
         function lr(ne, se, ce, me, ye) {
           this.onFulfilled = typeof ne == "function" ? ne : null, this.onRejected = typeof se == "function" ? se : null, this.resolve = ce, this.reject = me, this.psd = ye;
         }
-        function Er(ne, se) {
+        function Sr(ne, se) {
           var ce, me;
           Fr.push(se), ne._state === null && (ce = ne._lib && Gr(), se = wt(se), ne._state = false, ne._value = se, me = ne, Ar.some(function(ye) {
             return ye._value === me._value;
-          }) || Ar.push(me), Mr(ne), ce) && Vr();
+          }) || Ar.push(me), Or(ne), ce) && Vr();
         }
-        function Mr(ne) {
+        function Or(ne) {
           var se = ne._listeners;
           ne._listeners = [];
           for (var ce = 0, me = se.length; ce < me; ++ce) Br(ne, se[ce]);
@@ -804,7 +804,7 @@ ${be}` : fe;
         function cn(ne, se, ce) {
           try {
             var me, ye = se._value;
-            !se._state && Fr.length && (Fr = []), me = qt && se._consoleTask ? se._consoleTask.run(function() {
+            !se._state && Fr.length && (Fr = []), me = Vt && se._consoleTask ? se._consoleTask.run(function() {
               return ne(ye);
             }) : ne(ye), se._state || Fr.indexOf(ye) !== -1 || ((ve) => {
               for (var Te = Ar.length; Te; ) if (Ar[--Te]._value === ve._value) return Ar.splice(Te, 1);
@@ -821,8 +821,8 @@ ${be}` : fe;
           });
         }
         function Gr() {
-          var ne = Pr;
-          return sn = Pr = false, ne;
+          var ne = Nr;
+          return sn = Nr = false, ne;
         }
         function Vr() {
           var ne, se, ce;
@@ -832,7 +832,7 @@ ${be}` : fe;
               me[0].apply(null, me[1]);
             }
           while (0 < Bt.length);
-          sn = Pr = true;
+          sn = Nr = true;
         }
         function br() {
           for (var ne = Ar, se = (Ar = [], ne.forEach(function(me) {
@@ -856,7 +856,7 @@ ${be}` : fe;
           };
         }
         re(_t.prototype, {
-          then: Nr,
+          then: Mr,
           _then: function(ne, se) {
             Br(this, new lr(null, null, ne, se, tt));
           },
@@ -950,7 +950,7 @@ ${be}` : fe;
             return new _t(function(ce, me) {
               return zn(function(ye, ve) {
                 var Te = tt;
-                Te.unhandleds = [], Te.onunhandled = ve, Te.finalize = kr(function() {
+                Te.unhandleds = [], Te.onunhandled = ve, Te.finalize = Tr(function() {
                   var _e, qe = this;
                   _e = function() {
                     qe.unhandleds.length === 0 ? ye() : ve(qe.unhandleds[0]);
@@ -998,13 +998,13 @@ ${be}` : fe;
             });
           });
         }), St.withResolvers) && (_t.withResolvers = St.withResolvers);
-        var Or = {
+        var Pr = {
           awaits: 0,
           echoes: 0,
           id: 0
         }, xn = 0, en = [], un = 0, kn = 0, Vn = 0;
         function zn(ne, Te, ce, me) {
-          var ye = tt, ve = Object.create(ye), Te = (ve.parent = ye, ve.ref = 0, ve.global = false, ve.id = ++Vn, mt.env, ve.env = Tr ? {
+          var ye = tt, ve = Object.create(ye), Te = (ve.parent = ye, ve.ref = 0, ve.global = false, ve.id = ++Vn, mt.env, ve.env = wr ? {
             Promise: _t,
             PromiseProp: {
               value: _t,
@@ -1023,13 +1023,13 @@ ${be}` : fe;
           return ve.ref === 0 && ve.finalize(), Te;
         }
         function xt() {
-          return Or.id || (Or.id = ++xn), ++Or.awaits, Or.echoes += ar, Or.id;
+          return Pr.id || (Pr.id = ++xn), ++Pr.awaits, Pr.echoes += ar, Pr.id;
         }
         function mn() {
-          return !!Or.awaits && (--Or.awaits == 0 && (Or.id = 0), Or.echoes = Or.awaits * ar, true);
+          return !!Pr.awaits && (--Pr.awaits == 0 && (Pr.id = 0), Pr.echoes = Pr.awaits * ar, true);
         }
         function Zt(ne) {
-          return Or.echoes && ne && ne.constructor === St ? (xt(), ne.then(function(se) {
+          return Pr.echoes && ne && ne.constructor === St ? (xt(), ne.then(function(se) {
             return mn(), se;
           }, function(se) {
             return mn(), Cr(se);
@@ -1041,13 +1041,13 @@ ${be}` : fe;
         }
         function Tn(ne, se) {
           var ce, me, ye = tt;
-          (se ? !Or.echoes || un++ && ne === tt : !un || --un && ne === tt) || queueMicrotask(se ? (function(ve) {
-            ++kn, Or.echoes && --Or.echoes != 0 || (Or.echoes = Or.awaits = Or.id = 0), en.push(tt), Tn(ve, true);
-          }).bind(null, ne) : Qn), ne !== tt && (tt = ne, ye === mt && (mt.env = ea()), Tr) && (ce = mt.env.Promise, me = ne.env, ye.global || ne.global) && (Object.defineProperty(s, "Promise", me.PromiseProp), ce.all = me.all, ce.race = me.race, ce.resolve = me.resolve, ce.reject = me.reject, me.allSettled && (ce.allSettled = me.allSettled), me.any) && (ce.any = me.any);
+          (se ? !Pr.echoes || un++ && ne === tt : !un || --un && ne === tt) || queueMicrotask(se ? (function(ve) {
+            ++kn, Pr.echoes && --Pr.echoes != 0 || (Pr.echoes = Pr.awaits = Pr.id = 0), en.push(tt), Tn(ve, true);
+          }).bind(null, ne) : Qn), ne !== tt && (tt = ne, ye === mt && (mt.env = ea()), wr) && (ce = mt.env.Promise, me = ne.env, ye.global || ne.global) && (Object.defineProperty(s, "Promise", me.PromiseProp), ce.all = me.all, ce.race = me.race, ce.resolve = me.resolve, ce.reject = me.reject, me.allSettled && (ce.allSettled = me.allSettled), me.any) && (ce.any = me.any);
         }
         function ea() {
           var ne = s.Promise;
-          return Tr ? {
+          return wr ? {
             Promise: ne,
             PromiseProp: Object.getOwnPropertyDescriptor(s, "Promise"),
             all: ne.all,
@@ -1078,10 +1078,10 @@ ${be}` : fe;
           };
         }
         function jr(ne) {
-          Promise === St && Or.echoes === 0 ? un === 0 ? ne() : enqueueNativeMicroTask(ne) : setTimeout(ne, 0);
+          Promise === St && Pr.echoes === 0 ? un === 0 ? ne() : enqueueNativeMicroTask(ne) : setTimeout(ne, 0);
         }
         ("" + ha).indexOf("[native code]") === -1 && (xt = mn = Ut);
-        var Cr = _t.reject, wn = "\uFFFF", yn = "Invalid key provided. Keys must be of type string, number, Date or Array<string | number | Date>.", da = "String expected.", jt = [], Rr = "__dbnames", wr = "readonly", Ze = "readwrite";
+        var Cr = _t.reject, wn = "\uFFFF", yn = "Invalid key provided. Keys must be of type string, number, Date or Array<string | number | Date>.", da = "String expected.", jt = [], Rr = "__dbnames", vr = "readonly", Ze = "readwrite";
         function mr(ne, se) {
           return ne ? se ? function() {
             return ne.apply(this, arguments) && se.apply(this, arguments);
@@ -1178,15 +1178,15 @@ ${be}` : fe;
         function Ca(ne) {
           this["@@propmod"] = ne;
         }
-        function bi(ne, se) {
+        function xi(ne, se) {
           for (var ce = l(se), me = ce.length, ye = false, ve = 0; ve < me; ++ve) {
             var Te = ce[ve], _e = se[Te], qe = ke(ne, Te);
             _e instanceof vn ? (Pe(ne, Te, _e.execute(qe)), ye = true) : qe !== _e && (Pe(ne, Te, _e), ye = true);
           }
           return ye;
         }
-        Sr.prototype._trans = function(ne, se, ce) {
-          var me = this._tx || tt.trans, ye = this.name, ve = qt && typeof console < "u" && console.createTask && console.createTask("Dexie: ".concat(ne === "readonly" ? "read" : "write", " ").concat(this.name));
+        kr.prototype._trans = function(ne, se, ce) {
+          var me = this._tx || tt.trans, ye = this.name, ve = Vt && typeof console < "u" && console.createTask && console.createTask("Dexie: ".concat(ne === "readonly" ? "read" : "write", " ").concat(this.name));
           function Te(it, Ke, He) {
             if (He.schema[ye]) return se(He.idbtrans, He);
             throw new At.NotFound("Table " + ye + " not part of transaction");
@@ -1241,7 +1241,7 @@ ${be}` : fe;
           } finally {
             _e && Vr();
           }
-        }, Sr.prototype.get = function(ne, se) {
+        }, kr.prototype.get = function(ne, se) {
           var ce = this;
           return ne && ne.constructor === Object ? this.where(ne).first(se) : ne == null ? Cr(new At.Type("Invalid argument to Table.get()")) : this._trans("readonly", function(me) {
             return ce.core.get({
@@ -1251,7 +1251,7 @@ ${be}` : fe;
               return ce.hook.reading.fire(ye);
             });
           }).then(se);
-        }, Sr.prototype.where = function(ne) {
+        }, kr.prototype.where = function(ne) {
           if (typeof ne == "string") return new this.db.WhereClause(this, ne);
           if (c(ne)) return new this.db.WhereClause(this, "[".concat(ne.join("+"), "]"));
           var se = l(ne);
@@ -1270,7 +1270,7 @@ ${be}` : fe;
           if (ce && this.db._maxKey !== wn) return Te = ce.keyPath.slice(0, se.length), this.where(Te).equals(Te.map(function(_e) {
             return ne[_e];
           }));
-          !ce && qt && console.warn("The query ".concat(JSON.stringify(ne), " on ").concat(this.name, " would benefit from a ") + "compound index [".concat(se.join("+"), "]"));
+          !ce && Vt && console.warn("The query ".concat(JSON.stringify(ne), " on ").concat(this.name, " would benefit from a ") + "compound index [".concat(se.join("+"), "]"));
           var me = this.schema.idxByName;
           function ye(_e, qe) {
             return or(_e, qe) === 0;
@@ -1292,25 +1292,25 @@ ${be}` : fe;
             null
           ]), ve = Te[0], Te = Te[1];
           return ve ? this.where(ve.name).equals(ne[ve.keyPath]).filter(Te) : ce ? this.filter(Te) : this.where(se).equals("");
-        }, Sr.prototype.filter = function(ne) {
+        }, kr.prototype.filter = function(ne) {
           return this.toCollection().and(ne);
-        }, Sr.prototype.count = function(ne) {
+        }, kr.prototype.count = function(ne) {
           return this.toCollection().count(ne);
-        }, Sr.prototype.offset = function(ne) {
+        }, kr.prototype.offset = function(ne) {
           return this.toCollection().offset(ne);
-        }, Sr.prototype.limit = function(ne) {
+        }, kr.prototype.limit = function(ne) {
           return this.toCollection().limit(ne);
-        }, Sr.prototype.each = function(ne) {
+        }, kr.prototype.each = function(ne) {
           return this.toCollection().each(ne);
-        }, Sr.prototype.toArray = function(ne) {
+        }, kr.prototype.toArray = function(ne) {
           return this.toCollection().toArray(ne);
-        }, Sr.prototype.toCollection = function() {
+        }, kr.prototype.toCollection = function() {
           return new this.db.Collection(new this.db.WhereClause(this));
-        }, Sr.prototype.orderBy = function(ne) {
+        }, kr.prototype.orderBy = function(ne) {
           return new this.db.Collection(new this.db.WhereClause(this, c(ne) ? "[".concat(ne.join("+"), "]") : ne));
-        }, Sr.prototype.reverse = function() {
+        }, kr.prototype.reverse = function() {
           return this.toCollection().reverse();
-        }, Sr.prototype.mapToClass = function(ne) {
+        }, kr.prototype.mapToClass = function(ne) {
           for (var se = this.db, ce = this.name, me = ((this.schema.mappedClass = ne).prototype instanceof Kr && (ne = ((Te) => {
             var _e = Ke, qe = Te;
             if (typeof qe != "function" && qe !== null) throw new TypeError("Class extends value " + String(qe) + " is not a constructor or null");
@@ -1342,11 +1342,11 @@ ${be}` : fe;
             return qe;
           }
           return this.schema.readHook && this.hook.reading.unsubscribe(this.schema.readHook), this.schema.readHook = ve, this.hook("reading", ve), ne;
-        }, Sr.prototype.defineClass = function() {
+        }, kr.prototype.defineClass = function() {
           return this.mapToClass(function(ne) {
             f(this, ne);
           });
-        }, Sr.prototype.add = function(ne, se) {
+        }, kr.prototype.add = function(ne, se) {
           var ce = this, me = this.schema.primKey, ye = me.auto, ve = me.keyPath, Te = ne;
           return ve && ye && (Te = tn(ve)(ne)), this._trans("readwrite", function(_e) {
             return ce.core.mutate({
@@ -1368,7 +1368,7 @@ ${be}` : fe;
             }
             return _e;
           });
-        }, Sr.prototype.upsert = function(ne, se) {
+        }, kr.prototype.upsert = function(ne, se) {
           var ce = this, me = this.schema.primKey.keyPath;
           return this._trans("readwrite", function(ye) {
             return ce.core.get({
@@ -1376,7 +1376,7 @@ ${be}` : fe;
               key: ne
             }).then(function(ve) {
               var Te = ve ?? {};
-              return bi(Te, se), me && Pe(Te, me, ne), ce.core.mutate({
+              return xi(Te, se), me && Pe(Te, me, ne), ce.core.mutate({
                 trans: ye,
                 type: "put",
                 values: [
@@ -1399,9 +1399,9 @@ ${be}` : fe;
               });
             });
           });
-        }, Sr.prototype.update = function(ne, se) {
+        }, kr.prototype.update = function(ne, se) {
           return typeof ne != "object" || c(ne) ? this.where(":id").equals(ne).modify(se) : (ne = ke(ne, this.schema.primKey.keyPath)) === void 0 ? Cr(new At.InvalidArgument("Given object does not contain its primary key")) : this.where(":id").equals(ne).modify(se);
-        }, Sr.prototype.put = function(ne, se) {
+        }, kr.prototype.put = function(ne, se) {
           var ce = this, me = this.schema.primKey, ye = me.auto, ve = me.keyPath, Te = ne;
           return ve && ye && (Te = tn(ve)(ne)), this._trans("readwrite", function(_e) {
             return ce.core.mutate({
@@ -1423,7 +1423,7 @@ ${be}` : fe;
             }
             return _e;
           });
-        }, Sr.prototype.delete = function(ne) {
+        }, kr.prototype.delete = function(ne) {
           var se = this;
           return this._trans("readwrite", function(ce) {
             return se.core.mutate({
@@ -1440,7 +1440,7 @@ ${be}` : fe;
               return me.numFailures ? _t.reject(me.failures[0]) : void 0;
             });
           });
-        }, Sr.prototype.clear = function() {
+        }, kr.prototype.clear = function() {
           var ne = this;
           return this._trans("readwrite", function(se) {
             return ne.core.mutate({
@@ -1453,7 +1453,7 @@ ${be}` : fe;
           }).then(function(se) {
             return se.numFailures ? _t.reject(se.failures[0]) : void 0;
           });
-        }, Sr.prototype.bulkGet = function(ne) {
+        }, kr.prototype.bulkGet = function(ne) {
           var se = this;
           return this._trans("readonly", function(ce) {
             return se.core.getMany({
@@ -1465,7 +1465,7 @@ ${be}` : fe;
               });
             });
           });
-        }, Sr.prototype.bulkAdd = function(ne, se, ce) {
+        }, kr.prototype.bulkAdd = function(ne, se, ce) {
           var me = this, ye = Array.isArray(se) ? se : void 0, ve = (ce = ce || (ye ? void 0 : se)) ? ce.allKeys : void 0;
           return this._trans("readwrite", function(Te) {
             var _e = me.schema.primKey, it = _e.auto, _e = _e.keyPath;
@@ -1484,7 +1484,7 @@ ${be}` : fe;
               throw new nt("".concat(me.name, ".bulkAdd(): ").concat(He, " of ").concat(qe, " operations failed"), Xe);
             });
           });
-        }, Sr.prototype.bulkPut = function(ne, se, ce) {
+        }, kr.prototype.bulkPut = function(ne, se, ce) {
           var me = this, ye = Array.isArray(se) ? se : void 0, ve = (ce = ce || (ye ? void 0 : se)) ? ce.allKeys : void 0;
           return this._trans("readwrite", function(Te) {
             var _e = me.schema.primKey, it = _e.auto, _e = _e.keyPath;
@@ -1503,7 +1503,7 @@ ${be}` : fe;
               throw new nt("".concat(me.name, ".bulkPut(): ").concat(He, " of ").concat(qe, " operations failed"), Xe);
             });
           });
-        }, Sr.prototype.bulkUpdate = function(ne) {
+        }, kr.prototype.bulkUpdate = function(ne) {
           var se = this, ce = this.core, me = ne.map(function(Te) {
             return Te.key;
           }), ye = ne.map(function(Te) {
@@ -1547,7 +1547,7 @@ ${be}` : fe;
               });
             });
           });
-        }, Sr.prototype.bulkDelete = function(ne) {
+        }, kr.prototype.bulkDelete = function(ne) {
           var se = this, ce = ne.length;
           return this._trans("readwrite", function(me) {
             return se.core.mutate({
@@ -1563,8 +1563,8 @@ ${be}` : fe;
             throw new nt("".concat(se.name, ".bulkDelete(): ").concat(ye, " of ").concat(ce, " operations failed"), ve);
           });
         };
-        var ya = Sr;
-        function Sr() {
+        var ya = kr;
+        function kr() {
         }
         function Hn(ne) {
           function se(Te, _e) {
@@ -1864,8 +1864,8 @@ ${be}` : fe;
               }
             }
             var ve = typeof ne == "function" ? ne : function(Ue) {
-              return bi(Ue, ne);
-            }, Te = ce.table.core, Ke = Te.schema.primaryKey, _e = Ke.outbound, qe = Ke.extractKey, it = 200, Ke = se.db._options.modifyChunkSize, He = (Ke && (it = typeof Ke == "object" ? Ke[Te.name] || Ke["*"] || 200 : Ke), []), Xe = 0, Ye = [], Ve = ne === xi;
+              return xi(Ue, ne);
+            }, Te = ce.table.core, Ke = Te.schema.primaryKey, _e = Ke.outbound, qe = Ke.extractKey, it = 200, Ke = se.db._options.modifyChunkSize, He = (Ke && (it = typeof Ke == "object" ? Ke[Te.name] || Ke["*"] || 200 : Ke), []), Xe = 0, Ye = [], Ve = ne === wi;
             return se.clone().primaryKeys().then(function(Ue) {
               function ot(at) {
                 var vt = Math.min(it, Ue.length - at), Ot = Ue.slice(at, at + vt);
@@ -1930,7 +1930,7 @@ ${be}` : fe;
           });
         }, Lr.prototype.delete = function() {
           var ne = this._ctx, se = ne.range;
-          return !fa(ne) || ne.table.schema.yProps || !ne.isPrimKey && se.type !== 3 ? this.modify(xi) : this._write(function(ce) {
+          return !fa(ne) || ne.table.schema.yProps || !ne.isPrimKey && se.type !== 3 ? this.modify(wi) : this._write(function(ce) {
             var me = ne.table.core.schema.primaryKey, ye = se;
             return ne.table.core.count({
               trans: ce,
@@ -1956,7 +1956,7 @@ ${be}` : fe;
         var ai = Lr;
         function Lr() {
         }
-        var xi = function(ne, se) {
+        var wi = function(ne, se) {
           return se.value = null;
         };
         function ii(ne, se) {
@@ -2232,7 +2232,7 @@ ${be}` : fe;
         function In(ne) {
           ne.stopPropagation && ne.stopPropagation(), ne.preventDefault && ne.preventDefault();
         }
-        var ht = "storagemutated", ct = "x-storagemutated-1", It = Hn(null, ht), Vt = (pr.prototype._lock = function() {
+        var ht = "storagemutated", ct = "x-storagemutated-1", It = Hn(null, ht), Yt = (pr.prototype._lock = function() {
           return Se(!tt.global), ++this._reculock, this._reculock !== 1 || tt.global || (tt.lockOwnerFor = this), this;
         }, pr.prototype._unlock = function() {
           if (Se(!tt.global), --this._reculock == 0) for (tt.global || (tt.lockOwnerFor = null); 0 < this._blockedFuncs.length && !this._locked(); ) {
@@ -2380,14 +2380,14 @@ ${be}` : fe;
           };
           var se;
         }
-        function fo(ne) {
+        function mo(ne) {
           return [].slice.call(ne);
         }
         var oi = 0;
         function ma(ne) {
           return ne == null ? ":id" : typeof ne == "string" ? ne : "[".concat(ne.join("+"), "]");
         }
-        function Wi(ne, se, qe) {
+        function Ki(ne, se, qe) {
           function me(Ve) {
             if (Ve.type === 3) return null;
             if (Ve.type === 4) throw new Error("Cannot convert never type to IDBKeyRange");
@@ -2549,7 +2549,7 @@ ${be}` : fe;
               }
             };
           }
-          ve = qe, Te = fo((qe = ne).objectStoreNames);
+          ve = qe, Te = mo((qe = ne).objectStoreNames);
           var ve, qe = {
             schema: {
               name: qe.name,
@@ -2568,7 +2568,7 @@ ${be}` : fe;
                     unique: true,
                     extractKey: Ia(He)
                   },
-                  indexes: fo(Ke.indexNames).map(function(Ue) {
+                  indexes: mo(Ke.indexNames).map(function(Ue) {
                     return Ke.index(Ue);
                   }).map(function(at) {
                     var vt = at.name, ot = at.unique, ft = at.multiEntry, at = at.keyPath, vt = {
@@ -2604,15 +2604,15 @@ ${be}` : fe;
             schema: Te
           };
         }
-        function Ki(ne, se, ce, me) {
-          return ce = ce.IDBKeyRange, se = Wi(se, ce, me), {
+        function Gi(ne, se, ce, me) {
+          return ce = ce.IDBKeyRange, se = Ki(se, ce, me), {
             dbcore: ne.dbcore.reduce(function(ye, ve) {
               return ve = ve.create, n(n({}, ye), ve(ye));
             }, se)
           };
         }
         function Da(ne, se) {
-          var ce = se.db, ce = Ki(ne._middlewares, ce, ne._deps, se);
+          var ce = se.db, ce = Gi(ne._middlewares, ce, ne._deps, se);
           ne.core = ce.dbcore, ne.tables.forEach(function(me) {
             var ye = me.name;
             ne.core.schema.tables.some(function(ve) {
@@ -2643,12 +2643,12 @@ ${be}` : fe;
             });
           });
         }
-        function wi(ne, se) {
+        function vi(ne, se) {
           se.forEach(function(ce) {
             for (var me in ce) ce[me] instanceof ne.Table && delete ce[me];
           });
         }
-        function vi(ne, se) {
+        function Ei(ne, se) {
           return ne._cfg.version - se._cfg.version;
         }
         function oa(ne, se, ce, me) {
@@ -2657,13 +2657,13 @@ ${be}` : fe;
             if (tt.trans = ve, tt.transless = _e, se !== 0) return Da(ne, ce), it = se, ((qe = ve).storeNames.includes("$meta") ? qe.table("$meta").get("version").then(function(Ke) {
               return Ke ?? it;
             }) : _t.resolve(it)).then(function(ot) {
-              var He = ne, Xe = ot, Ye = ve, Ve = ce, Ue = [], ot = He._versions, ft = He._dbSchema = Si(0, He.idbdb, Ve);
+              var He = ne, Xe = ot, Ye = ve, Ve = ce, Ue = [], ot = He._versions, ft = He._dbSchema = ki(0, He.idbdb, Ve);
               return (ot = ot.filter(function(at) {
                 return at._cfg.version >= Xe;
               })).length === 0 ? _t.resolve() : (ot.forEach(function(at) {
                 Ue.push(function() {
-                  var vt, Ot, Wt, Gt = ft, Pt = at._cfg.dbschema, er = (Ln(He, Gt, Ve), Ln(He, Pt, Ve), ft = He._dbSchema = Pt, Gi(Gt, Pt)), Qt = (er.add.forEach(function(Lt) {
-                    Ei(Ve, Lt[0], Lt[1].primKey, Lt[1].indexes);
+                  var vt, Ot, Wt, Gt = ft, Pt = at._cfg.dbschema, er = (Ln(He, Gt, Ve), Ln(He, Pt, Ve), ft = He._dbSchema = Pt, qi(Gt, Pt)), Qt = (er.add.forEach(function(Lt) {
+                    Si(Ve, Lt[0], Lt[1].primKey, Lt[1].indexes);
                   }), er.change.forEach(function(Lt) {
                     if (Lt.recreate) throw new At.Upgrade("Not yet support for changing primary key");
                     var tr = Ve.objectStore(Lt.name);
@@ -2677,7 +2677,7 @@ ${be}` : fe;
                   }), at._cfg.contentUpgrade);
                   if (Qt && at._cfg.version > Xe) return Da(He, Ve), Ye._memoizedTables = {}, vt = Le(Pt), er.del.forEach(function(Lt) {
                     vt[Lt] = Gt[Lt];
-                  }), wi(He, [
+                  }), vi(He, [
                     He.Transaction.prototype
                   ]), Wa(He, [
                     He.Transaction.prototype
@@ -2691,7 +2691,7 @@ ${be}` : fe;
                   var Ot, Wt, Gt = at._cfg.dbschema;
                   Ot = Gt, Wt = vt, [].slice.call(Wt.db.objectStoreNames).forEach(function(Pt) {
                     return Ot[Pt] == null && Wt.db.deleteObjectStore(Pt);
-                  }), wi(He, [
+                  }), vi(He, [
                     He.Transaction.prototype
                   ]), Wa(He, [
                     He.Transaction.prototype
@@ -2709,30 +2709,30 @@ ${be}` : fe;
             }).catch(Te);
             var qe, it;
             l(ye).forEach(function(Ke) {
-              Ei(ce, Ke, ye[Ke].primKey, ye[Ke].indexes);
+              Si(ce, Ke, ye[Ke].primKey, ye[Ke].indexes);
             }), Da(ne, ce), _t.follow(function() {
               return ne.on.populate.fire(ve);
             }).catch(Te);
           });
         }
-        function mo(ne, se) {
+        function po(ne, se) {
           Ka(ne._dbSchema, se), se.db.version % 10 != 0 || se.objectStoreNames.contains("$meta") || se.db.createObjectStore("$meta").add(Math.ceil(se.db.version / 10 - 1), "version");
-          var ce = Si(0, ne.idbdb, se);
+          var ce = ki(0, ne.idbdb, se);
           Ln(ne, ne._dbSchema, se);
-          for (var me = 0, ye = Gi(ce, ne._dbSchema).change; me < ye.length; me++) {
+          for (var me = 0, ye = qi(ce, ne._dbSchema).change; me < ye.length; me++) {
             var ve = ((Te) => {
               if (Te.change.length || Te.recreate) return console.warn("Unable to patch indexes of table ".concat(Te.name, " because it has changes on the type of index or primary key.")), {
                 value: void 0
               };
               var _e = se.objectStore(Te.name);
               Te.add.forEach(function(qe) {
-                qt && console.debug("Dexie upgrade patch: Creating missing index ".concat(Te.name, ".").concat(qe.src)), An(_e, qe);
+                Vt && console.debug("Dexie upgrade patch: Creating missing index ".concat(Te.name, ".").concat(qe.src)), An(_e, qe);
               });
             })(ye[me]);
             if (typeof ve == "object") return ve.value;
           }
         }
-        function Gi(ne, se) {
+        function qi(ne, se) {
           var ce, me = {
             del: [],
             add: [],
@@ -2767,7 +2767,7 @@ ${be}` : fe;
           }
           return me;
         }
-        function Ei(ne, se, ce, me) {
+        function Si(ne, se, ce, me) {
           var ye = ne.db.createObjectStore(se, ce.keyPath ? {
             keyPath: ce.keyPath,
             autoIncrement: ce.auto
@@ -2780,7 +2780,7 @@ ${be}` : fe;
         }
         function Ka(ne, se) {
           l(ne).forEach(function(ce) {
-            se.db.objectStoreNames.contains(ce) || (qt && console.debug("Dexie: Creating missing table", ce), Ei(se, ce, ne[ce].primKey, ne[ce].indexes));
+            se.db.objectStoreNames.contains(ce) || (Vt && console.debug("Dexie: Creating missing table", ce), Si(se, ce, ne[ce].primKey, ne[ce].indexes));
           });
         }
         function An(ne, se) {
@@ -2789,7 +2789,7 @@ ${be}` : fe;
             multiEntry: se.multi
           });
         }
-        function Si(ne, se, ce) {
+        function ki(ne, se, ce) {
           var me = {};
           return fe(se.objectStoreNames, 0).forEach(function(ye) {
             for (var ve = ce.objectStore(ye), Te = zr(On(it = ve.keyPath), it || "", true, false, !!ve.autoIncrement, it && typeof it != "string", true), _e = [], qe = 0; qe < ve.indexNames.length; ++qe) {
@@ -2833,7 +2833,7 @@ ${be}` : fe;
           var se = this.db, ce = (this._cfg.storesSource = this._cfg.storesSource ? f(this._cfg.storesSource, ce) : ce, se._versions), me = {}, ye = {};
           return ce.forEach(function(ve) {
             f(me, ve._cfg.storesSource), ye = ve._cfg.dbschema = {}, ve._parseStoresSpec(me, ye);
-          }), se._dbSchema = ye, wi(se, [
+          }), se._dbSchema = ye, vi(se, [
             se._allTables,
             se,
             se.Transaction.prototype
@@ -2859,15 +2859,15 @@ ${be}` : fe;
             dbnames: "name"
           }), ce.table("dbnames");
         }
-        function qi(ne) {
+        function Vi(ne) {
           return ne && typeof ne.databases == "function";
         }
-        function ki(ne) {
+        function Ti(ne) {
           return zn(function() {
             return tt.letThrough = true, ne();
           });
         }
-        function Vi(ne) {
+        function Yi(ne) {
           return !("from" in ne);
         }
         var Pn = function(ne, se) {
@@ -2885,7 +2885,7 @@ ${be}` : fe;
           var me = or(se, ce);
           if (!isNaN(me)) {
             if (0 < me) throw RangeError();
-            if (Vi(ne)) return f(ne, {
+            if (Yi(ne)) return f(ne, {
               from: se,
               to: ce,
               d: 1
@@ -2897,24 +2897,24 @@ ${be}` : fe;
               d: 1,
               l: null,
               r: null
-            }, Ti(ne);
+            }, Ai(ne);
             if (0 < or(se, ne.to)) return ye ? Fa(ye, se, ce) : ne.r = {
               from: se,
               to: ce,
               d: 1,
               l: null,
               r: null
-            }, Ti(ne);
+            }, Ai(ne);
             or(se, ne.from) < 0 && (ne.from = se, ne.l = null, ne.d = ye ? ye.d + 1 : 1), 0 < or(ce, ne.to) && (ne.to = ce, ne.r = null, ne.d = ne.l ? ne.l.d + 1 : 1), se = !ne.r, me && !ne.l && Nn(ne, me), ye && se && Nn(ne, ye);
           }
         }
         function Nn(ne, se) {
-          Vi(se) || (function ce(me, ye) {
+          Yi(se) || (function ce(me, ye) {
             var ve = ye.from, Te = ye.l, _e = ye.r;
             Fa(me, ve, ye.to), Te && ce(me, Te), _e && ce(me, _e);
           })(ne, se);
         }
-        function Yi(ne, se) {
+        function Xi(ne, se) {
           var ce = Jn(se), me = ce.next();
           if (!me.done) for (var ye = me.value, ve = Jn(ne), Te = ve.next(ye.from), _e = Te.value; !me.done && !Te.done; ) {
             if (or(_e.from, ye.to) <= 0 && 0 <= or(_e.to, ye.from)) return true;
@@ -2923,7 +2923,7 @@ ${be}` : fe;
           return false;
         }
         function Jn(ne) {
-          var se = Vi(ne) ? null : {
+          var se = Yi(ne) ? null : {
             s: 0,
             n: ne
           };
@@ -2964,11 +2964,11 @@ ${be}` : fe;
             }
           };
         }
-        function Ti(ne) {
+        function Ai(ne) {
           var se, ce, me, ye = (((ye = ne.r) == null ? void 0 : ye.d) || 0) - (((ye = ne.l) == null ? void 0 : ye.d) || 0), ye = 1 < ye ? "r" : ye < -1 ? "l" : "";
-          ye && (se = ye == "r" ? "l" : "r", ce = n({}, ne), me = ne[ye], ne.from = me.from, ne.to = me.to, ne[ye] = me[ye], ce[ye] = me[se], (ne[se] = ce).d = Ai(ce)), ne.d = Ai(ne);
+          ye && (se = ye == "r" ? "l" : "r", ce = n({}, ne), me = ne[ye], ne.from = me.from, ne.to = me.to, ne[ye] = me[ye], ce[ye] = me[se], (ne[se] = ce).d = Ri(ce)), ne.d = Ri(ne);
         }
-        function Ai(ce) {
+        function Ri(ce) {
           var se = ce.r, ce = ce.l;
           return (se ? ce ? Math.max(se.d, ce.d) : se.d : ce ? ce.d : 0) + 1;
         }
@@ -2981,9 +2981,9 @@ ${be}` : fe;
             })(se[ce]);
           }), ne;
         }
-        function Ri(ne, se) {
+        function Ci(ne, se) {
           return ne.all || se.all || Object.keys(ne).some(function(ce) {
-            return se[ce] && Yi(se[ce], ne[ce]);
+            return se[ce] && Xi(se[ce], ne[ce]);
           });
         }
         re(Pn.prototype, ((yr = {
@@ -3006,10 +3006,10 @@ ${be}` : fe;
         })[lt] = function() {
           return Jn(this);
         }, yr));
-        var ja = {}, Dn = {}, Ci = false;
-        function Ii(ne) {
-          Va(Dn, ne), Ci || (Ci = true, setTimeout(function() {
-            Ci = false, pa(Dn, !(Dn = {}));
+        var ja = {}, Dn = {}, Ii = false;
+        function Ni(ne) {
+          Va(Dn, ne), Ii || (Ii = true, setTimeout(function() {
+            Ii = false, pa(Dn, !(Dn = {}));
           }, 0));
         }
         function pa(ne, se) {
@@ -3028,7 +3028,7 @@ ${be}` : fe;
           for (var ye = [], ve = 0, Te = Object.entries(ne.queries.query); ve < Te.length; ve++) {
             for (var _e = Te[ve], qe = _e[0], it = [], Ke = 0, He = _e[1]; Ke < He.length; Ke++) {
               var Xe = He[Ke];
-              Ri(se, Xe.obsSet) ? Xe.subscribers.forEach(function(ot) {
+              Ci(se, Xe.obsSet) ? Xe.subscribers.forEach(function(ot) {
                 return ce.add(ot);
               }) : me && it.push(Xe);
             }
@@ -3061,16 +3061,16 @@ ${be}` : fe;
                 var ft;
                 Ke = Ue.transaction, se.autoSchema && !ne._options.allowEmptyDB ? (Ue.onerror = In, Ke.abort(), Ue.result.close(), (ft = ce.deleteDatabase(Ve)).onsuccess = ft.onerror = xr(function() {
                   Ye(new At.NoSuchDatabase("Database ".concat(Ve, " doesnt exist")));
-                })) : (Ke.onerror = pn(Ye), ft = ot.oldVersion > Math.pow(2, 62) ? 0 : ot.oldVersion, He = ft < 1, ne.idbdb = Ue.result, ve && mo(ne, Ke), oa(ne, ft / 10, Ke, Ye));
+                })) : (Ke.onerror = pn(Ye), ft = ot.oldVersion > Math.pow(2, 62) ? 0 : ot.oldVersion, He = ft < 1, ne.idbdb = Ue.result, ve && po(ne, Ke), oa(ne, ft / 10, Ke, Ye));
               }, Ye), Ue.onsuccess = xr(function() {
                 Ke = null;
                 var ot, ft, at, vt, Ot, Wt, Gt = ne.idbdb = Ue.result, Pt = fe(Gt.objectStoreNames);
                 if (0 < Pt.length) try {
                   var er = Gt.transaction((Ot = Pt).length === 1 ? Ot[0] : Ot, "readonly");
-                  if (se.autoSchema) Wt = Gt, vt = er, (at = ne).verno = Wt.version / 10, vt = at._dbSchema = Si(0, Wt, vt), at._storeNames = fe(Wt.objectStoreNames, 0), Wa(at, [
+                  if (se.autoSchema) Wt = Gt, vt = er, (at = ne).verno = Wt.version / 10, vt = at._dbSchema = ki(0, Wt, vt), at._storeNames = fe(Wt.objectStoreNames, 0), Wa(at, [
                     at._allTables
                   ], l(vt), vt);
-                  else if (Ln(ne, ne._dbSchema, er), ft = er, ((ft = Gi(Si(0, (ot = ne).idbdb, ft), ot._dbSchema)).add.length || ft.change.some(function(Qt) {
+                  else if (Ln(ne, ne._dbSchema, er), ft = er, ((ft = qi(ki(0, (ot = ne).idbdb, ft), ot._dbSchema)).add.length || ft.change.some(function(Qt) {
                     return Qt.add.length || Qt.change.length;
                   })) && !ve) return console.warn("Dexie SchemaDiff: Schema was extended without increasing the number passed to db.version(). Dexie will add missing parts and increment native version number to workaround this."), Gt.close(), ye = Gt.version + 1, ve = true, Xe(_e());
                   Da(ne, er);
@@ -3082,7 +3082,7 @@ ${be}` : fe;
                   ne.close({
                     disableAutoOpen: false
                   });
-                }), He && (Pt = ne._deps, Ot = Ve, qi(Wt = Pt.indexedDB) || Ot === Rr || si(Wt, Pt.IDBKeyRange).put({
+                }), He && (Pt = ne._deps, Ot = Ve, Vi(Wt = Pt.indexedDB) || Ot === Rr || si(Wt, Pt.IDBKeyRange).put({
                   name: Ot
                 }).catch(Ut)), Xe();
               }, Ye);
@@ -3109,11 +3109,11 @@ ${be}` : fe;
               return clearInterval(qe);
             }) : Promise.resolve()).then(_e)
           ]).then(function() {
-            return Te(), se.onReadyBeingFired = [], _t.resolve(ki(function() {
+            return Te(), se.onReadyBeingFired = [], _t.resolve(Ti(function() {
               return ne.on.ready.fire(ne.vip);
             })).then(function Xe() {
               var Ye;
-              if (0 < se.onReadyBeingFired.length) return Ye = se.onReadyBeingFired.reduce(Ie, Ut), se.onReadyBeingFired = [], _t.resolve(ki(function() {
+              if (0 < se.onReadyBeingFired.length) return Ye = se.onReadyBeingFired.reduce(Ie, Ut), se.onReadyBeingFired = [], _t.resolve(Ti(function() {
                 return Ye(ne.vip);
               })).then(Xe);
             });
@@ -3166,7 +3166,7 @@ ${be}` : fe;
           ], ye = 0; ye < ce; ++ye) me.push(se);
           return me;
         }
-        var Xi = {
+        var Ji = {
           stack: "dbcore",
           name: "VirtualIndexMiddleware",
           level: 1,
@@ -3274,10 +3274,10 @@ ${be}` : fe;
             V(ne, ye) || (ce[me + ye] = se[ye]);
           }), ce;
         }
-        function Ni(ne, se) {
+        function Mi(ne, se) {
           return se.type === "delete" ? se.keys : se.keys || se.values.map(ne.extractKey);
         }
-        var Ji = {
+        var Zi = {
           stack: "dbcore",
           name: "HooksMiddleware",
           level: 2,
@@ -3338,7 +3338,7 @@ ${be}` : fe;
                     }
                     return ce.mutate(ye);
                     function Ke(He) {
-                      var Xe, Ye, Ve, Ue = tt.trans, ot = He.keys || Ni(me, He);
+                      var Xe, Ye, Ve, Ue = tt.trans, ot = He.keys || Mi(me, He);
                       if (ot) return (He = He.type === "add" || He.type === "put" ? n(n({}, He), {
                         keys: ot
                       }) : n({}, He)).type !== "delete" && (He.values = o([], He.values)), He.keys && (He.keys = o([], He.keys)), Xe = ce, Ve = ot, ((Ye = He).type === "add" ? Promise.resolve([]) : Xe.getMany({
@@ -3380,7 +3380,7 @@ ${be}` : fe;
             });
           }
         };
-        function Mi(ne, se, ce) {
+        function Oi(ne, se, ce) {
           try {
             if (!se || se.keys.length < ne.length) return null;
             for (var me = [], ye = 0, ve = 0; ye < se.keys.length && ve < ne.length; ++ye) or(se.keys[ye], ne[ve]) === 0 && (me.push(ce ? Fe(se.values[ye]) : se.values[ye]), ++ve);
@@ -3399,7 +3399,7 @@ ${be}` : fe;
                 return n(n({}, ce), {
                   getMany: function(me) {
                     var ye;
-                    return me.cache ? (ye = Mi(me.keys, me.trans._cache, me.cache === "clone")) ? _t.resolve(ye) : ce.getMany(me).then(function(ve) {
+                    return me.cache ? (ye = Oi(me.keys, me.trans._cache, me.cache === "clone")) ? _t.resolve(ye) : ce.getMany(me).then(function(ve) {
                       return me.trans._cache = {
                         keys: me.keys,
                         values: me.cache === "clone" ? Fe(ve) : ve
@@ -3414,7 +3414,7 @@ ${be}` : fe;
             };
           }
         };
-        function Zi(ne, se) {
+        function Qi(ne, se) {
           return ne.trans.mode === "readonly" && !!ne.subscr && !ne.trans.explicit && ne.trans.db._options.cache !== "disabled" && !se.schema.primaryKey.outbound;
         }
         function Qr(ne, se) {
@@ -3459,12 +3459,12 @@ ${be}` : fe;
                     ] : Ve.type === "delete" ? [
                       Ve.keys
                     ] : Ve.values.length < 50 ? [
-                      Ni(_e, Ve).filter(function(tr) {
+                      Mi(_e, Ve).filter(function(tr) {
                         return tr;
                       }),
                       Ve.values
                     ] : [], er = Qt[0], Qt = Qt[1], Lt = Ve.trans._cache;
-                    return c(er) ? (Wt.addKeys(er), (Pt = Pt === "delete" || er.length === Qt.length ? Mi(er, Lt) : null) || Gt.addKeys(er), (Pt || Qt) && (ot = Ue, ft = Pt, at = Qt, Te.indexes.forEach(function(tr) {
+                    return c(er) ? (Wt.addKeys(er), (Pt = Pt === "delete" || er.length === Qt.length ? Oi(er, Lt) : null) || Gt.addKeys(er), (Pt || Qt) && (ot = Ue, ft = Pt, at = Qt, Te.indexes.forEach(function(tr) {
                       var $r = ot(tr.name || "");
                       function qr(_r) {
                         return _r != null ? tr.extractKey(_r) : null;
@@ -3513,7 +3513,7 @@ ${be}` : fe;
                 };
                 return l(Ye).forEach(function(Ve) {
                   Xe[Ve] = function(Ue) {
-                    var ot = tt.subscr, ft = !!ot, at = Zi(tt, ve) && Qr(Ve, Ue) ? Ue.obsSet = {} : ot;
+                    var ot = tt.subscr, ft = !!ot, at = Qi(tt, ve) && Qr(Ve, Ue) ? Ue.obsSet = {} : ot;
                     if (ft) {
                       var vt, ot = function(Qt) {
                         return Qt = "idb://".concat(se, "/").concat(me, "/").concat(Qt), at[Qt] || (at[Qt] = new Pn());
@@ -3573,7 +3573,7 @@ ${be}` : fe;
           return ce = ne, ((me = se).lower === void 0 || (me.lowerOpen ? 0 < or(ce, me.lower) : 0 <= or(ce, me.lower))) && (ce = ne, (me = se).upper === void 0 || (me.upperOpen ? or(ce, me.upper) < 0 : or(ce, me.upper) <= 0));
           var ce, me;
         }
-        function Oi(ne, se, ce, me, ye, ve) {
+        function Pi(ne, se, ce, me, ye, ve) {
           var Te, _e, qe, it, Ke, He;
           return !ce || ce.length === 0 || (Te = se.query.index, _e = Te.multiEntry, qe = se.query.range, it = me.schema.primaryKey.extractKey, Ke = Te.extractKey, He = (Te.lowLevelIndex || Te).extractKey, (me = ce.reduce(function(Xe, Ye) {
             var Ve = Xe, Ue = [];
@@ -3622,7 +3622,7 @@ ${be}` : fe;
             return or(He(Xe), He(Ye)) || or(it(Xe), it(Ye));
           }), se.limit && se.limit < 1 / 0 && (me.length > se.limit ? me.length = se.limit : ne.length === se.limit && me.length < se.limit && (ye.dirty = true)), ve ? Object.freeze(me) : me);
         }
-        function po(ne, se) {
+        function ho(ne, se) {
           return or(ne.lower, se.lower) === 0 && or(ne.upper, se.upper) === 0 && !!ne.lowerOpen == !!se.lowerOpen && !!ne.upperOpen == !!se.upperOpen;
         }
         function Ja(ne, se) {
@@ -3646,7 +3646,7 @@ ${be}` : fe;
             return ce;
           })(ne.upper, se.upper, ne.upperOpen, se.upperOpen);
         }
-        function Qi(ne, se, ce, me) {
+        function eo(ne, se, ce, me) {
           ne.subscribers.add(ce), me.addEventListener("abort", function() {
             var ye, ve;
             ne.subscribers.delete(ce), ne.subscribers.size === 0 && (ye = ne, ve = se, setTimeout(function() {
@@ -3672,14 +3672,14 @@ ${be}` : fe;
                           var Ve = ne.table(Xe), Ue = Ye.optimisticOps.filter(function(tr) {
                             return tr.trans === _e;
                           });
-                          if (_e._explicit && qe && _e.mutatedParts) for (var ot = 0, ft = Object.values(Ye.queries.query); ot < ft.length; ot++) for (var at = 0, vt = (Gt = ft[ot]).slice(); at < vt.length; at++) Ri((Pt = vt[at]).obsSet, _e.mutatedParts) && (pt(Gt, Pt), Pt.subscribers.forEach(function(tr) {
+                          if (_e._explicit && qe && _e.mutatedParts) for (var ot = 0, ft = Object.values(Ye.queries.query); ot < ft.length; ot++) for (var at = 0, vt = (Gt = ft[ot]).slice(); at < vt.length; at++) Ci((Pt = vt[at]).obsSet, _e.mutatedParts) && (pt(Gt, Pt), Pt.subscribers.forEach(function(tr) {
                             return it.add(tr);
                           }));
                           else if (0 < Ue.length) {
                             Ye.optimisticOps = Ye.optimisticOps.filter(function(tr) {
                               return tr.trans !== _e;
                             });
-                            for (var Ot = 0, Wt = Object.values(Ye.queries.query); Ot < Wt.length; Ot++) for (var Gt, Pt, er, Qt = 0, Lt = (Gt = Wt[Ot]).slice(); Qt < Lt.length; Qt++) (Pt = Lt[Qt]).res != null && _e.mutatedParts && (qe && !Pt.dirty ? (er = Object.isFrozen(Pt.res), er = Oi(Pt.res, Pt.req, Ue, Ve, Pt, er), Pt.dirty ? (pt(Gt, Pt), Pt.subscribers.forEach(function(tr) {
+                            for (var Ot = 0, Wt = Object.values(Ye.queries.query); Ot < Wt.length; Ot++) for (var Gt, Pt, er, Qt = 0, Lt = (Gt = Wt[Ot]).slice(); Qt < Lt.length; Qt++) (Pt = Lt[Qt]).res != null && _e.mutatedParts && (qe && !Pt.dirty ? (er = Object.isFrozen(Pt.res), er = Pi(Pt.res, Pt.req, Ue, Ve, Pt, er), Pt.dirty ? (pt(Gt, Pt), Pt.subscribers.forEach(function(tr) {
                               return it.add(tr);
                             })) : er !== Pt.res && (Pt.res = er, Pt.promise = _t.resolve({
                               result: er
@@ -3707,12 +3707,12 @@ ${be}` : fe;
                 return n(n({}, me), {
                   mutate: function(ve) {
                     var Te, _e = tt.trans;
-                    return !ye.outbound && _e.db._options.cache !== "disabled" && !_e.explicit && _e.idbtrans.mode === "readwrite" && (Te = ja["idb://".concat(se, "/").concat(ce)]) ? (_e = me.mutate(ve), ve.type !== "add" && ve.type !== "put" || !(50 <= ve.values.length || Ni(ye, ve).some(function(qe) {
+                    return !ye.outbound && _e.db._options.cache !== "disabled" && !_e.explicit && _e.idbtrans.mode === "readwrite" && (Te = ja["idb://".concat(se, "/").concat(ce)]) ? (_e = me.mutate(ve), ve.type !== "add" && ve.type !== "put" || !(50 <= ve.values.length || Mi(ye, ve).some(function(qe) {
                       return qe == null;
-                    })) ? (Te.optimisticOps.push(ve), ve.mutatedParts && Ii(ve.mutatedParts), _e.then(function(qe) {
-                      0 < qe.numFailures && (pt(Te.optimisticOps, ve), (qe = $a(0, ve, qe)) && Te.optimisticOps.push(qe), ve.mutatedParts) && Ii(ve.mutatedParts);
+                    })) ? (Te.optimisticOps.push(ve), ve.mutatedParts && Ni(ve.mutatedParts), _e.then(function(qe) {
+                      0 < qe.numFailures && (pt(Te.optimisticOps, ve), (qe = $a(0, ve, qe)) && Te.optimisticOps.push(qe), ve.mutatedParts) && Ni(ve.mutatedParts);
                     }), _e.catch(function() {
-                      pt(Te.optimisticOps, ve), ve.mutatedParts && Ii(ve.mutatedParts);
+                      pt(Te.optimisticOps, ve), ve.mutatedParts && Ni(ve.mutatedParts);
                     })) : _e.then(function(qe) {
                       var it = $a(0, n(n({}, ve), {
                         values: ve.values.map(function(Ke, He) {
@@ -3721,13 +3721,13 @@ ${be}` : fe;
                         })
                       }), qe);
                       Te.optimisticOps.push(it), queueMicrotask(function() {
-                        return ve.mutatedParts && Ii(ve.mutatedParts);
+                        return ve.mutatedParts && Ni(ve.mutatedParts);
                       });
                     }), _e) : me.mutate(ve);
                   },
                   query: function(ve) {
                     var Te, _e, qe, it, Ke, He, Xe;
-                    return Zi(tt, me) && Qr("query", ve) ? (Te = ((qe = tt.trans) == null ? void 0 : qe.db._options.cache) === "immutable", _e = (qe = tt).requery, qe = qe.signal, He = ((Ye, Ve, Ue, ot) => {
+                    return Qi(tt, me) && Qr("query", ve) ? (Te = ((qe = tt.trans) == null ? void 0 : qe.db._options.cache) === "immutable", _e = (qe = tt).requery, qe = qe.signal, He = ((Ye, Ve, Ue, ot) => {
                       var ft = ja["idb://".concat(Ye, "/").concat(Ve)];
                       if (!ft) return [];
                       if (!(Ye = ft.queries[Ue])) return [
@@ -3746,7 +3746,7 @@ ${be}` : fe;
                       switch (Ue) {
                         case "query":
                           var vt = at.find(function(Ot) {
-                            return Ot.req.limit === ot.limit && Ot.req.values === ot.values && po(Ot.req.query.range, ot.query.range);
+                            return Ot.req.limit === ot.limit && Ot.req.values === ot.values && ho(Ot.req.query.range, ot.query.range);
                           });
                           return vt ? [
                             vt,
@@ -3763,7 +3763,7 @@ ${be}` : fe;
                           ];
                         case "count":
                           return vt = at.find(function(Ot) {
-                            return po(Ot.req.query.range, ot.query.range);
+                            return ho(Ot.req.query.range, ot.query.range);
                           }), [
                             vt,
                             !!vt,
@@ -3797,9 +3797,9 @@ ${be}` : fe;
                       objs: /* @__PURE__ */ new Map(),
                       optimisticOps: [],
                       unsignaledParts: {}
-                    })).queries.query[ve.query.index.name || ""] = Ke)), Qi(Xe, Ke, _e, qe), Xe.promise.then(function(Ye) {
+                    })).queries.query[ve.query.index.name || ""] = Ke)), eo(Xe, Ke, _e, qe), Xe.promise.then(function(Ye) {
                       return {
-                        result: Oi(Ye.result, ve, it == null ? void 0 : it.optimisticOps, me, Xe, Te)
+                        result: Pi(Ye.result, ve, it == null ? void 0 : it.optimisticOps, me, Xe, Te)
                       };
                     })) : me.query(ve);
                   }
@@ -3822,7 +3822,7 @@ ${be}` : fe;
           var se = this._versions, ce = se.filter(function(me) {
             return me._cfg.version === ne;
           })[0];
-          return ce || (ce = new this.Version(ne), se.push(ce), se.sort(vi), ce.stores({}), this._state.autoSchema = false), ce;
+          return ce || (ce = new this.Version(ne), se.push(ce), se.sort(Ei), ce.stores({}), this._state.autoSchema = false), ce;
         }, nn.prototype._whenReady = function(ne) {
           var se = this;
           return this.idbdb && (this._state.openComplete || tt.letThrough || this._vip) ? ne() : new _t(function(ce, me) {
@@ -3886,7 +3886,7 @@ ${be}` : fe;
               var _e = se._deps.indexedDB.deleteDatabase(se.name);
               _e.onsuccess = xr(function() {
                 var qe, it, Ke;
-                qe = se._deps, it = se.name, qi(Ke = qe.indexedDB) || it === Rr || si(Ke, qe.IDBKeyRange).delete(it).catch(Ut), ye();
+                qe = se._deps, it = se.name, Vi(Ke = qe.indexedDB) || it === Rr || si(Ke, qe.IDBKeyRange).delete(it).catch(Ut), ye();
               }), _e.onerror = pn(ve), _e.onblocked = se._fireOnBlocked;
             }
             if (ce) throw new At.InvalidArgument("Invalid closeOptions argument to db.delete()");
@@ -3931,13 +3931,13 @@ ${be}` : fe;
             if (ye = se.map(function(it) {
               if (it = it instanceof ve.Table ? it.name : it, typeof it != "string") throw new TypeError("Invalid table argument to Dexie.transaction(). Only Table or String are allowed");
               return it;
-            }), ne == "r" || ne === wr) me = wr;
+            }), ne == "r" || ne === vr) me = vr;
             else {
               if (ne != "rw" && ne != Ze) throw new At.InvalidArgument("Invalid transaction mode: " + ne);
               me = Ze;
             }
             if (Te) {
-              if (Te.mode === wr && me === Ze) {
+              if (Te.mode === vr && me === Ze) {
                 if (!_e) throw new At.SubTransaction("Cannot enter a sub-transaction with READWRITE mode when parent transaction is READONLY");
                 Te = null;
               }
@@ -4071,7 +4071,7 @@ ${be}` : fe;
           })), this.Table = (me = this, Oa(ya.prototype, function(He, Xe, Ye) {
             this.db = me, this._tx = Ye, this.name = He, this.schema = Xe, this.hook = me._allTables[He] ? me._allTables[He].hook : Hn(null, {
               creating: [
-                vr,
+                Er,
                 Ut
               ],
               reading: [
@@ -4087,7 +4087,7 @@ ${be}` : fe;
                 Ut
               ]
             });
-          })), this.Transaction = (ye = this, Oa(Vt.prototype, function(He, Xe, Ye, Ve, Ue) {
+          })), this.Transaction = (ye = this, Oa(Yt.prototype, function(He, Xe, Ye, Ve, Ue) {
             var ot = this;
             He !== "readonly" && Xe.forEach(function(ft) {
               ft = (ft = Ye[ft]) == null ? void 0 : ft.yProps, ft && (Xe = Xe.concat(ft.map(function(at) {
@@ -4135,7 +4135,7 @@ ${be}` : fe;
             }).map(function(Xe) {
               return Xe.on("versionchange").fire(He);
             });
-          }, this.use(Io), this.use(Za), this.use(No), this.use(Xi), this.use(Ji), new Proxy(this, {
+          }, this.use(Io), this.use(Za), this.use(No), this.use(Ji), this.use(Zi), new Proxy(this, {
             get: function(He, Xe, Ye) {
               var Ve;
               return Xe === "_vip" || (Xe === "table" ? function(Ue) {
@@ -4174,7 +4174,7 @@ ${be}` : fe;
             IDBKeyRange: null
           };
         }
-        function ho(ne) {
+        function go(ne) {
           var se, ce = false, me = new Mo(function(ye) {
             var ve = zt(ne), Te, _e = false, qe = {}, it = {}, Ke = {
               get closed() {
@@ -4186,7 +4186,7 @@ ${be}` : fe;
             }, He = (ye.start && ye.start(Ke), false), Xe = function() {
               return jr(Ve);
             }, Ye = function(Ue) {
-              Va(qe, Ue), Ri(it, qe) && Xe();
+              Va(qe, Ue), Ci(it, qe) && Xe();
             }, Ve = function() {
               var Ue, ot, ft;
               !_e && Ba.indexedDB && (qe = {}, Ue = {}, Te && Te.abort(), Te = new AbortController(), ft = ((at) => {
@@ -4229,7 +4229,7 @@ ${be}` : fe;
           }, me;
         }
         var ka = Sa;
-        function eo(ne) {
+        function to(ne) {
           var se = Na;
           try {
             Na = true, It.storagemutated.fire(ne), pa(ne, true);
@@ -4254,7 +4254,7 @@ ${be}` : fe;
           },
           getDatabaseNames: function(ne) {
             try {
-              return se = ka.dependencies, ce = se.indexedDB, se = se.IDBKeyRange, (qi(ce) ? Promise.resolve(ce.databases()).then(function(me) {
+              return se = ka.dependencies, ce = se.indexedDB, se = se.IDBKeyRange, (Vi(ce) ? Promise.resolve(ce.databases()).then(function(me) {
                 return me.map(function(ye) {
                   return ye.name;
                 }).filter(function(ye) {
@@ -4274,7 +4274,7 @@ ${be}` : fe;
           ignoreTransaction: function(ne) {
             return tt.trans ? Cn(tt.transless, ne) : ne();
           },
-          vip: ki,
+          vip: Ti,
           async: function(ne) {
             return function() {
               try {
@@ -4304,7 +4304,7 @@ ${be}` : fe;
           Promise: _t,
           debug: {
             get: function() {
-              return qt;
+              return Vt;
             },
             set: function(ne) {
               gr(ne);
@@ -4316,7 +4316,7 @@ ${be}` : fe;
           override: be,
           Events: Hn,
           on: It,
-          liveQuery: ho,
+          liveQuery: go,
           extendObservabilitySet: Va,
           getByKeyPath: ke,
           setByKeyPath: Pe,
@@ -4347,25 +4347,25 @@ ${be}` : fe;
             detail: ne
           }), Na = true, dispatchEvent(ne), Na = false);
         }), addEventListener(ct, function(ne) {
-          ne = ne.detail, Na || eo(ne);
+          ne = ne.detail, Na || to(ne);
         }));
-        var Ta, Na = false, Pi = function() {
+        var Ta, Na = false, Di = function() {
         };
-        return typeof BroadcastChannel < "u" && ((Pi = function() {
+        return typeof BroadcastChannel < "u" && ((Di = function() {
           (Ta = new BroadcastChannel(ct)).onmessage = function(ne) {
-            return ne.data && eo(ne.data);
+            return ne.data && to(ne.data);
           };
         })(), typeof Ta.unref == "function" && Ta.unref(), It(ht, function(ne) {
           Na || Ta.postMessage(ne);
         })), typeof addEventListener < "u" && (addEventListener("pagehide", function(ne) {
           if (!Sa.disableBfCache && ne.persisted) {
-            qt && console.debug("Dexie: handling persisted pagehide"), Ta == null ? void 0 : Ta.close();
+            Vt && console.debug("Dexie: handling persisted pagehide"), Ta == null ? void 0 : Ta.close();
             for (var se = 0, ce = jt; se < ce.length; se++) ce[se].close({
               disableAutoOpen: false
             });
           }
         }), addEventListener("pageshow", function(ne) {
-          !Sa.disableBfCache && ne.persisted && (qt && console.debug("Dexie: handling persisted pageshow"), Pi(), eo({
+          !Sa.disableBfCache && ne.persisted && (Vt && console.debug("Dexie: handling persisted pageshow"), Di(), to({
             all: new Pn(-1 / 0, [
               []
             ])
@@ -4376,7 +4376,7 @@ ${be}` : fe;
               return this.inner.stack;
             }
           }), se);
-        }, gr(qt), n(Sa, Object.freeze({
+        }, gr(Vt), n(Sa, Object.freeze({
           __proto__: null,
           Dexie: Sa,
           Entity: Kr,
@@ -4389,9 +4389,9 @@ ${be}` : fe;
           },
           cmp: or,
           default: Sa,
-          liveQuery: ho,
+          liveQuery: go,
           mergeRanges: Nn,
-          rangesOverlap: Yi,
+          rangesOverlap: Xi,
           remove: function(ne) {
             return new vn({
               remove: ne
@@ -6900,7 +6900,7 @@ ${l}`;
     }
     return t;
   }
-  var Schema = class rl {
+  var Schema = class nl {
     constructor(t) {
       __publicField(this, "tags");
       __publicField(this, "implicitScalarTags");
@@ -6940,7 +6940,7 @@ ${l}`;
     withTags(...t) {
       let r = [];
       for (const n of t) r = r.concat(n);
-      return new rl([
+      return new nl([
         ...this.tags,
         ...r
       ]);
@@ -12769,6 +12769,15 @@ ${L}`;
   function loadLastOpenTabsSnapshot() {
     return normalizeSnapshot(readJson(LAST_OPEN_TABS_RESTORE_KEY));
   }
+  function pickWorkspaceTabsRestoreSource() {
+    var _a2, _b2, _c, _d;
+    const e = loadPersistedWorkspaceTabs(), t = loadLastOpenTabsSnapshot();
+    return !((_a2 = e == null ? void 0 : e.tabs) == null ? void 0 : _a2.length) && !((_b2 = t == null ? void 0 : t.tabs) == null ? void 0 : _b2.length) ? null : ((_c = e == null ? void 0 : e.tabs) == null ? void 0 : _c.length) ? ((_d = t == null ? void 0 : t.tabs) == null ? void 0 : _d.length) ? t.tabs.length !== e.tabs.length ? t.tabs.length > e.tabs.length ? t : e : {
+      version: 1,
+      tabs: t.tabs,
+      activeId: e.activeId ?? t.activeId
+    } : e : t;
+  }
   function persistedTabId(e) {
     return e.kind === "chat" ? CHAT_TAB_ID : e.kind === "settings" ? SETTINGS_TAB_ID : fileTabId(e.type, e.path);
   }
@@ -15305,14 +15314,14 @@ ${L}`;
       config: Ft.droppable
     }), Rt = useCachedNode(Le, Pe), nt = reactExports.useMemo(() => ze ? getEventCoordinates(ze) : null, [
       ze
-    ]), hr = Nr(), Yt = useInitialRect(Rt, Ft.draggable.measure);
+    ]), hr = Mr(), qt = useInitialRect(Rt, Ft.draggable.measure);
     useLayoutShiftScrollCompensation({
       activeNode: Pe != null ? Le.get(Pe) : null,
       config: hr.layoutShiftCompensation,
-      initialRect: Yt,
+      initialRect: qt,
       measure: Ft.draggable.measure
     });
-    const At = useRect(Rt, Ft.draggable.measure, Yt), $t = useRect(Rt ? Rt.parentElement : null), Ut = reactExports.useRef({
+    const At = useRect(Rt, Ft.draggable.measure, qt), $t = useRect(Rt ? Rt.parentElement : null), Ut = reactExports.useRef({
       activatorEvent: null,
       active: null,
       activeNode: Rt,
@@ -15328,7 +15337,7 @@ ${L}`;
       scrollAdjustedTranslate: null
     }), Kt = Qe.getNodeFor((r = Ut.current.over) == null ? void 0 : r.id), Jt = useDragOverlayMeasuring({
       measure: Ft.dragOverlay.measure
-    }), kr = (n = Jt.nodeRef.current) != null ? n : Rt, vr = ke ? (o = Jt.rect) != null ? o : At : null, Jr = !!(Jt.nodeRef.current && Jt.rect), gn = useRectDelta(Jr ? null : At), Zr = useWindowRect(kr ? getWindow(kr) : null), Ie = useScrollableAncestors(ke ? Kt ?? Rt : null), qt = useRects(Ie), gr = applyModifiers(ee, {
+    }), Tr = (n = Jt.nodeRef.current) != null ? n : Rt, Er = ke ? (o = Jt.rect) != null ? o : At : null, Jr = !!(Jt.nodeRef.current && Jt.rect), gn = useRectDelta(Jr ? null : At), Zr = useWindowRect(Tr ? getWindow(Tr) : null), Ie = useScrollableAncestors(ke ? Kt ?? Rt : null), Vt = useRects(Ie), gr = applyModifiers(ee, {
       transform: {
         x: Re.x - gn.x,
         y: Re.y - gn.y,
@@ -15339,26 +15348,26 @@ ${L}`;
       active: Fe,
       activeNodeRect: At,
       containerNodeRect: $t,
-      draggingNodeRect: vr,
+      draggingNodeRect: Er,
       over: Ut.current.over,
       overlayNodeRect: Jt.rect,
       scrollableAncestors: Ie,
-      scrollableAncestorRects: qt,
+      scrollableAncestorRects: Vt,
       windowRect: Zr
     }), dr = nt ? add(nt, Re) : null, ar = useScrollOffsets(Ie), fr = useScrollOffsetsDelta(ar), yr = useScrollOffsetsDelta(ar, [
       At
-    ]), St = add(gr, fr), Tr = vr ? getAdjustedRect(vr, gr) : null, Dr = Fe && Tr ? V({
+    ]), St = add(gr, fr), wr = Er ? getAdjustedRect(Er, gr) : null, Dr = Fe && wr ? V({
       active: Fe,
-      collisionRect: Tr,
+      collisionRect: wr,
       droppableRects: ut,
       droppableContainers: zt,
       pointerCoordinates: dr
-    }) : null, Pr = getFirstCollision(Dr, "id"), [sn, Ar] = reactExports.useState(null), Fr = Jr ? gr : add(gr, yr), wt = adjustScale(Fr, (s = sn == null ? void 0 : sn.rect) != null ? s : null, At), mt = reactExports.useRef(null), tt = reactExports.useCallback((lr, Er) => {
-      let { sensor: Mr, options: Br } = Er;
+    }) : null, Nr = getFirstCollision(Dr, "id"), [sn, Ar] = reactExports.useState(null), Fr = Jr ? gr : add(gr, yr), wt = adjustScale(Fr, (s = sn == null ? void 0 : sn.rect) != null ? s : null, At), mt = reactExports.useRef(null), tt = reactExports.useCallback((lr, Sr) => {
+      let { sensor: Or, options: Br } = Sr;
       if (je.current == null) return;
       const cn = Le.get(je.current);
       if (!cn) return;
-      const Xr = lr.nativeEvent, Gr = new Mr({
+      const Xr = lr.nativeEvent, Gr = new Or({
         active: je.current,
         activeNode: cn,
         event: Xr,
@@ -15366,21 +15375,21 @@ ${L}`;
         context: Ut,
         onAbort(br) {
           if (!Le.get(br)) return;
-          const { onDragAbort: xr } = Je.current, Or = {
+          const { onDragAbort: xr } = Je.current, Pr = {
             id: br
           };
-          xr == null ? void 0 : xr(Or), fe({
+          xr == null ? void 0 : xr(Pr), fe({
             type: "onDragAbort",
-            event: Or
+            event: Pr
           });
         },
-        onPending(br, rn, xr, Or) {
+        onPending(br, rn, xr, Pr) {
           if (!Le.get(br)) return;
           const { onDragPending: en } = Je.current, un = {
             id: br,
             constraint: rn,
             initialCoordinates: xr,
-            offset: Or
+            offset: Pr
           };
           en == null ? void 0 : en(un), fe({
             type: "onDragPending",
@@ -15392,7 +15401,7 @@ ${L}`;
           if (rn == null) return;
           const xr = Le.get(rn);
           if (!xr) return;
-          const { onDragStart: Or } = Je.current, xn = {
+          const { onDragStart: Pr } = Je.current, xn = {
             activatorEvent: Xr,
             active: {
               id: rn,
@@ -15401,7 +15410,7 @@ ${L}`;
             }
           };
           reactDomExports.unstable_batchedUpdates(() => {
-            Or == null ? void 0 : Or(xn), Ae(Status$1.Initializing), ue({
+            Pr == null ? void 0 : Pr(xn), Ae(Status$1.Initializing), ue({
               type: Action.DragStart,
               initialCoordinates: br,
               active: rn
@@ -15423,14 +15432,14 @@ ${L}`;
       mt.current = Gr;
       function Vr(br) {
         return async function() {
-          const { active: xr, collisions: Or, over: xn, scrollAdjustedTranslate: en } = Ut.current;
+          const { active: xr, collisions: Pr, over: xn, scrollAdjustedTranslate: en } = Ut.current;
           let un = null;
           if (xr && en) {
             const { cancelDrop: kn } = Je.current;
             un = {
               activatorEvent: Xr,
               active: xr,
-              collisions: Or,
+              collisions: Pr,
               delta: en,
               over: xn
             }, br === Action.DragEnd && typeof kn == "function" && await Promise.resolve(kn(un)) && (br = Action.DragCancel);
@@ -15452,15 +15461,15 @@ ${L}`;
       }
     }, [
       Le
-    ]), Bt = reactExports.useCallback((lr, Er) => (Mr, Br) => {
-      const cn = Mr.nativeEvent, Xr = Le.get(Br);
+    ]), Bt = reactExports.useCallback((lr, Sr) => (Or, Br) => {
+      const cn = Or.nativeEvent, Xr = Le.get(Br);
       if (je.current !== null || !Xr || cn.dndKit || cn.defaultPrevented) return;
       const Gr = {
         active: Xr
       };
-      lr(Mr, Er.options, Gr) === true && (cn.dndKit = {
-        capturedBy: Er.sensor
-      }, je.current = Br, tt(Mr, Er));
+      lr(Or, Sr.options, Gr) === true && (cn.dndKit = {
+        capturedBy: Sr.sensor
+      }, je.current = Br, tt(Or, Sr));
     }, [
       Le,
       tt
@@ -15471,11 +15480,11 @@ ${L}`;
       At,
       Se
     ]), reactExports.useEffect(() => {
-      const { onDragMove: lr } = Je.current, { active: Er, activatorEvent: Mr, collisions: Br, over: cn } = Ut.current;
-      if (!Er || !Mr) return;
+      const { onDragMove: lr } = Je.current, { active: Sr, activatorEvent: Or, collisions: Br, over: cn } = Ut.current;
+      if (!Sr || !Or) return;
       const Xr = {
-        active: Er,
-        activatorEvent: Mr,
+        active: Sr,
+        activatorEvent: Or,
         collisions: Br,
         delta: {
           x: St.x,
@@ -15493,17 +15502,17 @@ ${L}`;
       St.x,
       St.y
     ]), reactExports.useEffect(() => {
-      const { active: lr, activatorEvent: Er, collisions: Mr, droppableContainers: Br, scrollAdjustedTranslate: cn } = Ut.current;
-      if (!lr || je.current == null || !Er || !cn) return;
-      const { onDragOver: Xr } = Je.current, Gr = Br.get(Pr), Vr = Gr && Gr.rect.current ? {
+      const { active: lr, activatorEvent: Sr, collisions: Or, droppableContainers: Br, scrollAdjustedTranslate: cn } = Ut.current;
+      if (!lr || je.current == null || !Sr || !cn) return;
+      const { onDragOver: Xr } = Je.current, Gr = Br.get(Nr), Vr = Gr && Gr.rect.current ? {
         id: Gr.id,
         rect: Gr.rect.current,
         data: Gr.data,
         disabled: Gr.disabled
       } : null, br = {
         active: lr,
-        activatorEvent: Er,
-        collisions: Mr,
+        activatorEvent: Sr,
+        collisions: Or,
         delta: {
           x: cn.x,
           y: cn.y
@@ -15517,34 +15526,34 @@ ${L}`;
         });
       });
     }, [
-      Pr
+      Nr
     ]), useIsomorphicLayoutEffect(() => {
       Ut.current = {
         activatorEvent: ze,
         active: Fe,
         activeNode: Rt,
-        collisionRect: Tr,
+        collisionRect: wr,
         collisions: Dr,
         droppableRects: ut,
         draggableNodes: Le,
-        draggingNode: kr,
-        draggingNodeRect: vr,
+        draggingNode: Tr,
+        draggingNodeRect: Er,
         droppableContainers: Qe,
         over: sn,
         scrollableAncestors: Ie,
         scrollAdjustedTranslate: St
       }, dt.current = {
-        initial: vr,
-        translated: Tr
+        initial: Er,
+        translated: wr
       };
     }, [
       Fe,
       Rt,
       Dr,
-      Tr,
+      wr,
       Le,
-      kr,
-      vr,
+      Tr,
+      Er,
       ut,
       Qe,
       sn,
@@ -15553,10 +15562,10 @@ ${L}`;
     ]), useAutoScroller({
       ...hr,
       delta: Re,
-      draggingRect: Tr,
+      draggingRect: wr,
       pointerCoordinates: dr,
       scrollableAncestors: Ie,
-      scrollableAncestorRects: qt
+      scrollableAncestorRects: Vt
     });
     const rr = reactExports.useMemo(() => ({
       active: Fe,
@@ -15572,7 +15581,7 @@ ${L}`;
       over: sn,
       measureDroppableContainers: yt,
       scrollableAncestors: Ie,
-      scrollableAncestorRects: qt,
+      scrollableAncestorRects: Vt,
       measuringConfiguration: Ft,
       measuringScheduled: Ht,
       windowRect: Zr
@@ -15590,7 +15599,7 @@ ${L}`;
       sn,
       yt,
       Ie,
-      qt,
+      Vt,
       Ft,
       Ht,
       Zr
@@ -15631,13 +15640,13 @@ ${L}`;
       ...c,
       hiddenTextDescribedById: Et
     }));
-    function Nr() {
-      const lr = (Ge == null ? void 0 : Ge.autoScrollEnabled) === false, Er = typeof f == "object" ? f.enabled === false : f === false, Mr = ke && !lr && !Er;
+    function Mr() {
+      const lr = (Ge == null ? void 0 : Ge.autoScrollEnabled) === false, Sr = typeof f == "object" ? f.enabled === false : f === false, Or = ke && !lr && !Sr;
       return typeof f == "object" ? {
         ...f,
-        enabled: Mr
+        enabled: Or
       } : {
-        enabled: Mr
+        enabled: Or
       };
     }
   });
@@ -16273,14 +16282,14 @@ ${L}`;
       e.name,
       Le
     ]);
-    const zt = e.type === "folder" ? ee ? true : pe ? pe.has(e.path) : false : false, [Ft, ut] = reactExports.useState(false), [yt, Ht] = reactExports.useState(e.name), [Rt, nt] = reactExports.useState(false), hr = f && e.path != null ? `${f}:${e.path}` : e.path, Yt = c && c.has && c.has(hr), At = (A == null ? void 0 : A.id) && (A == null ? void 0 : A.type) === f ? A.id : null, $t = !!(At && (e.type === "file" && e.path === At || e.type === "folder" && e.path && At.startsWith(e.path))), Ut = `${t * INDENT_SIZE + BASE_LEFT_PADDING}px`, Kt = Array.from({
+    const zt = e.type === "folder" ? ee ? true : pe ? pe.has(e.path) : false : false, [Ft, ut] = reactExports.useState(false), [yt, Ht] = reactExports.useState(e.name), [Rt, nt] = reactExports.useState(false), hr = f && e.path != null ? `${f}:${e.path}` : e.path, qt = c && c.has && c.has(hr), At = (A == null ? void 0 : A.id) && (A == null ? void 0 : A.type) === f ? A.id : null, $t = !!(At && (e.type === "file" && e.path === At || e.type === "folder" && e.path && At.startsWith(e.path))), Ut = `${t * INDENT_SIZE + BASE_LEFT_PADDING}px`, Kt = Array.from({
       length: t
-    }, (jt, Rr) => INDENT_SIZE / 2 + BASE_LEFT_PADDING + Rr * INDENT_SIZE), Jt = e.path === ".trash/", kr = Jt ? "\uC4F0\uB808\uAE30\uD1B5" : e.name, vr = e.name.includes(".") ? e.name.slice(0, e.name.lastIndexOf(".")) : e.name, Jr = e.name.includes(".") ? e.name.slice(e.name.lastIndexOf(".")) : "", gn = reactExports.useRef(null), Zr = reactExports.useRef(null), Ie = reactExports.useRef(null), qt = reactExports.useRef(1), gr = V && e.path.startsWith(V), dr = re && e.type === "folder" && V === e.path, ar = findApplicableTransferBusy(Et, f, e.path), fr = !!ar, yr = transferBusyTooltipText(ar), St = !!(gr || fr), Tr = e.type === "folder" && le && e.path === le, Dr = e.type === "folder" && Fe && Fe === e.path, Pr = e.type === "file" && e.size === 0, sn = e.type === "folder" && !Jt && !ee && !Dr && e.childrenLoaded !== false && Array.isArray(e.children) && e.children.length === 0, Ar = Pr ? "\uD30C\uC77C \uD06C\uAE30\uAC00 0 byte \uC785\uB2C8\uB2E4." : sn ? "\uD558\uC704\uC5D0 \uB0B4\uC6A9\uC774 \uC5C6\uB294 \uBE48 \uD3F4\uB354\uC785\uB2C8\uB2E4." : null, Fr = !pt && !Jt && !St, wt = e.type === "file" ? getParentFolderPath$1(e.path) : null, mt = e.type === "file" ? wt === "" && Se ? Se : {
+    }, (jt, Rr) => INDENT_SIZE / 2 + BASE_LEFT_PADDING + Rr * INDENT_SIZE), Jt = e.path === ".trash/", Tr = Jt ? "\uC4F0\uB808\uAE30\uD1B5" : e.name, Er = e.name.includes(".") ? e.name.slice(0, e.name.lastIndexOf(".")) : e.name, Jr = e.name.includes(".") ? e.name.slice(e.name.lastIndexOf(".")) : "", gn = reactExports.useRef(null), Zr = reactExports.useRef(null), Ie = reactExports.useRef(null), Vt = reactExports.useRef(1), gr = V && e.path.startsWith(V), dr = re && e.type === "folder" && V === e.path, ar = findApplicableTransferBusy(Et, f, e.path), fr = !!ar, yr = transferBusyTooltipText(ar), St = !!(gr || fr), wr = e.type === "folder" && le && e.path === le, Dr = e.type === "folder" && Fe && Fe === e.path, Nr = e.type === "file" && e.size === 0, sn = e.type === "folder" && !Jt && !ee && !Dr && e.childrenLoaded !== false && Array.isArray(e.children) && e.children.length === 0, Ar = Nr ? "\uD30C\uC77C \uD06C\uAE30\uAC00 0 byte \uC785\uB2C8\uB2E4." : sn ? "\uD558\uC704\uC5D0 \uB0B4\uC6A9\uC774 \uC5C6\uB294 \uBE48 \uD3F4\uB354\uC785\uB2C8\uB2E4." : null, Fr = !pt && !Jt && !St, wt = e.type === "file" ? getParentFolderPath$1(e.path) : null, mt = e.type === "file" ? wt === "" && Se ? Se : {
       path: wt ?? "",
       type: "folder",
       name: wt === "" ? "root" : (wt || "").replace(/\/$/, "").split("/").pop() || "folder",
       handle: null
-    } : e, tt = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) === mt.path, Bt = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) && e.path.startsWith(be.folderPath), Mt = !Jt && !fr && (tt || Bt), rr = !Jt && !fr, _t = !Jt && !fr, Nr = toDraggableId(f, e.path), lr = toDroppableId(f, e.path), Er = reactExports.useCallback(() => {
+    } : e, tt = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) === mt.path, Bt = (be == null ? void 0 : be.storageType) === f && (be == null ? void 0 : be.folderPath) && e.path.startsWith(be.folderPath), Mt = !Jt && !fr && (tt || Bt), rr = !Jt && !fr, _t = !Jt && !fr, Mr = toDraggableId(f, e.path), lr = toDroppableId(f, e.path), Sr = reactExports.useCallback(() => {
       !Ae || St || Ae({
         preventDefault: () => {
         },
@@ -16291,11 +16300,11 @@ ${L}`;
       Ae,
       St,
       e
-    ]), { contextMenuOpenedRef: Mr, bindTouchGesture: Br } = useTreeNodeTouchGesture({
+    ]), { contextMenuOpenedRef: Or, bindTouchGesture: Br } = useTreeNodeTouchGesture({
       enabled: Je && !!Ae && !St,
-      onContextMenu: Er
+      onContextMenu: Sr
     }), { attributes: cn, listeners: Xr, setNodeRef: Gr, isDragging: Vr } = useDraggable({
-      id: Nr,
+      id: Mr,
       data: {
         storageType: f,
         path: e.path,
@@ -16317,8 +16326,8 @@ ${L}`;
     }, [
       Gr,
       br
-    ]), xr = !Ge && (Vr || (((_a2 = je == null ? void 0 : je.has) == null ? void 0 : _a2.call(je, hr)) ?? false)), Or = (jt, Rr) => (wr) => {
-      jt == null ? void 0 : jt(wr), Rr == null ? void 0 : Rr(wr);
+    ]), xr = !Ge && (Vr || (((_a2 = je == null ? void 0 : je.has) == null ? void 0 : _a2.call(je, hr)) ?? false)), Pr = (jt, Rr) => (vr) => {
+      jt == null ? void 0 : jt(vr), Rr == null ? void 0 : Rr(vr);
     }, xn = Fr && !Ft, en = Xr ? {
       onPointerDown: Xr.onPointerDown,
       onPointerMove: Xr.onPointerMove,
@@ -16327,10 +16336,10 @@ ${L}`;
     } : {}, un = (Xr == null ? void 0 : Xr.onKeyDown) ? {
       onKeyDown: Xr.onKeyDown
     } : {}, kn = Je && Ae ? {
-      onPointerDown: Or(Br.onPointerDown, xn ? en.onPointerDown : void 0),
-      onPointerMove: Or(Br.onPointerMove, xn ? en.onPointerMove : void 0),
-      onPointerUp: Or(Br.onPointerUp, xn ? en.onPointerUp : void 0),
-      onPointerCancel: Or(Br.onPointerCancel, xn ? en.onPointerCancel : void 0)
+      onPointerDown: Pr(Br.onPointerDown, xn ? en.onPointerDown : void 0),
+      onPointerMove: Pr(Br.onPointerMove, xn ? en.onPointerMove : void 0),
+      onPointerUp: Pr(Br.onPointerUp, xn ? en.onPointerUp : void 0),
+      onPointerCancel: Pr(Br.onPointerCancel, xn ? en.onPointerCancel : void 0)
     } : {}, Vn = Fr && !Ft ? Je && Ae ? {
       ...cn,
       ...un,
@@ -16342,7 +16351,7 @@ ${L}`;
       if (e.type === "folder") return e.name === ".settings" || e.path.endsWith("/.settings") || e.path.includes("/.settings/") ? IconSettings : e.name === ".images" || e.path.endsWith("/.images") || e.path.includes("/.images/") ? IconImageFolder : IconFolder;
       if (e.type !== "file") return IconFile;
       if (isEncMdPath(e.name) || isEncMdPath(e.path)) return IconLock;
-      const jt = e.name.toLowerCase(), Rr = jt.lastIndexOf("."), wr = Rr > -1 ? jt.slice(Rr + 1) : "", Ze = [
+      const jt = e.name.toLowerCase(), Rr = jt.lastIndexOf("."), vr = Rr > -1 ? jt.slice(Rr + 1) : "", Ze = [
         "png",
         "jpg",
         "jpeg",
@@ -16366,12 +16375,12 @@ ${L}`;
         "flac",
         "weba"
       ];
-      return Ze.includes(wr) ? IconImage : mr.includes(wr) ? IconVideo : Ur.includes(wr) ? IconMusic : wr === "pdf" ? IconFileJson : wr === "md" || wr === "markdown" || wr === "mdx" || wr === "html" || wr === "htm" || wr === "svg" ? IconFileCode : IconFile;
+      return Ze.includes(vr) ? IconImage : mr.includes(vr) ? IconVideo : Ur.includes(vr) ? IconMusic : vr === "pdf" ? IconFileJson : vr === "md" || vr === "markdown" || vr === "mdx" || vr === "html" || vr === "htm" || vr === "svg" ? IconFileCode : IconFile;
     }, xt = () => {
       if (e.type === "folder") return Jt ? "text-red-600 dark:text-red-400" : e.name === ".settings" || e.path.endsWith("/.settings") || e.path.includes("/.settings/") ? "text-blue-600 dark:text-blue-300" : e.name === ".images" || e.path.endsWith("/.images") || e.path.includes("/.images/") ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400";
       const jt = e.name.toLowerCase();
       if (isEncMdPath(e.name) || isEncMdPath(e.path)) return "text-violet-600 dark:text-violet-400";
-      const Rr = jt.lastIndexOf("."), wr = Rr > -1 ? jt.slice(Rr + 1) : "", Ze = [
+      const Rr = jt.lastIndexOf("."), vr = Rr > -1 ? jt.slice(Rr + 1) : "", Ze = [
         "png",
         "jpg",
         "jpeg",
@@ -16395,12 +16404,12 @@ ${L}`;
         "flac",
         "weba"
       ];
-      if (Ze.includes(wr)) return "text-green-600 dark:text-green-400";
-      if (mr.includes(wr)) return "text-orange-600 dark:text-orange-400";
-      if (Ur.includes(wr)) return "text-purple-600 dark:text-purple-400";
-      if (wr === "pdf") return "text-red-500 dark:text-red-400";
-      if (wr === "html" || wr === "htm" || wr === "svg") return "text-sky-600 dark:text-sky-400";
-      if (wr === "md" || wr === "markdown" || wr === "mdx") {
+      if (Ze.includes(vr)) return "text-green-600 dark:text-green-400";
+      if (mr.includes(vr)) return "text-orange-600 dark:text-orange-400";
+      if (Ur.includes(vr)) return "text-purple-600 dark:text-purple-400";
+      if (vr === "pdf") return "text-red-500 dark:text-red-400";
+      if (vr === "html" || vr === "htm" || vr === "svg") return "text-sky-600 dark:text-sky-400";
+      if (vr === "md" || vr === "markdown" || vr === "mdx") {
         if ((Re == null ? void 0 : Re.size) && e.path) {
           const tn = getFilePathBaseForRecordingLookup(e.path);
           if (tn && Re.has(tn)) return "text-teal-600 dark:text-teal-400";
@@ -16410,10 +16419,10 @@ ${L}`;
       return "text-blue-600 dark:text-blue-400";
     }, mn = zn(), Zt = xt(), Qn = () => {
       const jt = gn.current;
-      jt && (jt.scrollWidth <= jt.clientWidth || (Ie.current && window.clearInterval(Ie.current), qt.current = 1, Ie.current = window.setInterval(() => {
+      jt && (jt.scrollWidth <= jt.clientWidth || (Ie.current && window.clearInterval(Ie.current), Vt.current = 1, Ie.current = window.setInterval(() => {
         const Rr = gn.current;
         if (!Rr) return;
-        qt.current > 0 ? Rr.scrollLeft + Rr.clientWidth >= Rr.scrollWidth ? qt.current = -1 : Rr.scrollLeft += 1 : Rr.scrollLeft <= 0 ? qt.current = 1 : Rr.scrollLeft -= 1;
+        Vt.current > 0 ? Rr.scrollLeft + Rr.clientWidth >= Rr.scrollWidth ? Vt.current = -1 : Rr.scrollLeft += 1 : Rr.scrollLeft <= 0 ? Vt.current = 1 : Rr.scrollLeft -= 1;
       }, 30)));
     }, Tn = () => {
       Ie.current && (window.clearInterval(Ie.current), Ie.current = null), gn.current && (gn.current.scrollLeft = 0);
@@ -16428,26 +16437,26 @@ ${L}`;
       jt.preventDefault(), jt.stopPropagation();
       const Rr = jt.dataTransfer;
       if (((_a3 = Rr.items) == null ? void 0 : _a3.length) > 0 || ((_b3 = Rr.files) == null ? void 0 : _b3.length) > 0) {
-        const wr = [], Ze = [];
+        const vr = [], Ze = [];
         if (((_c = Rr.items) == null ? void 0 : _c.length) > 0) {
           for (const mr of Rr.items) if (mr.kind === "file") {
             const Ur = (_d = mr.getAsFileSystemHandle) == null ? void 0 : _d.call(mr);
             if ((Ur == null ? void 0 : Ur.kind) === "directory") Ze.push(Ur);
             else {
               const tn = mr.getAsFile();
-              tn && wr.push(tn);
+              tn && vr.push(tn);
             }
           }
-        } else wr.push(...Array.from(Rr.files || []));
-        (wr.length > 0 || Ze.length > 0) && fe && fe(mt, f, "drop", {
-          files: wr,
+        } else vr.push(...Array.from(Rr.files || []));
+        (vr.length > 0 || Ze.length > 0) && fe && fe(mt, f, "drop", {
+          files: vr,
           dirHandles: Ze
         });
       }
     }, Bn = (jt) => {
       if (jt.stopPropagation(), St) return;
-      if (Mr.current) {
-        Mr.current = false;
+      if (Or.current) {
+        Or.current = false;
         return;
       }
       typeof ke == "function" && ke(e);
@@ -16455,11 +16464,11 @@ ${L}`;
         ctrlKey: jt.ctrlKey,
         metaKey: jt.metaKey,
         shiftKey: jt.shiftKey
-      }, wr = jt.ctrlKey || jt.metaKey || jt.shiftKey;
-      e.type === "folder" ? ze ? (ue && !ee && ue(f, e.path, !zt), oe && oe(e), r && r(f, e, Rr)) : wr && r ? r(f, e, Rr) : (ue && !ee && ue(f, e.path, !zt), oe && oe(e)) : (oe && !e.path.includes("/") && oe(null), r && r(f, e, Rr));
+      }, vr = jt.ctrlKey || jt.metaKey || jt.shiftKey;
+      e.type === "folder" ? ze ? (ue && !ee && ue(f, e.path, !zt), oe && oe(e), r && r(f, e, Rr)) : vr && r ? r(f, e, Rr) : (ue && !ee && ue(f, e.path, !zt), oe && oe(e)) : (oe && !e.path.includes("/") && oe(null), r && r(f, e, Rr));
     }, jr = (jt) => {
       if (jt.stopPropagation(), !St) {
-        if (e.type === "file") Ht(vr);
+        if (e.type === "file") Ht(Er);
         else if (e.type === "folder") Ht(e.name);
         else return;
         ut(true);
@@ -16471,15 +16480,15 @@ ${L}`;
       }
       const jt = yt.trim();
       if (!jt) {
-        Ht(e.type === "file" ? vr : e.name), ut(false);
+        Ht(e.type === "file" ? Er : e.name), ut(false);
         return;
       }
       if (jt.includes("/")) {
-        alert(e.type === "folder" ? "\uD3F4\uB354 \uC774\uB984\uC5D0\uB294 '/' \uBB38\uC790\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4." : "\uD30C\uC77C \uC774\uB984\uC5D0\uB294 '/' \uBB38\uC790\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."), Ht(e.type === "file" ? vr : e.name), ut(false);
+        alert(e.type === "folder" ? "\uD3F4\uB354 \uC774\uB984\uC5D0\uB294 '/' \uBB38\uC790\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4." : "\uD30C\uC77C \uC774\uB984\uC5D0\uB294 '/' \uBB38\uC790\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."), Ht(e.type === "file" ? Er : e.name), ut(false);
         return;
       }
       if (e.type === "file") {
-        if (jt === vr) {
+        if (jt === Er) {
           ut(false);
           return;
         }
@@ -16493,7 +16502,7 @@ ${L}`;
       }
       ut(false);
     }, wn = (jt) => {
-      jt.key === "Enter" ? (jt.preventDefault(), jt.stopPropagation(), Cr()) : jt.key === "Escape" && (jt.preventDefault(), jt.stopPropagation(), Ht(e.type === "file" ? vr : e.name), ut(false));
+      jt.key === "Enter" ? (jt.preventDefault(), jt.stopPropagation(), Cr()) : jt.key === "Escape" && (jt.preventDefault(), jt.stopPropagation(), Ht(e.type === "file" ? Er : e.name), ut(false));
     }, yn = Qe && e.type === "folder" && zt && !ee && Array.isArray(e.children) && e.children.length > 0, da = yn ? {
       paddingLeft: Ut,
       top: `${dt + t * 30}px`,
@@ -16508,7 +16517,7 @@ ${L}`;
       }
       const jt = Zr.current;
       if (!jt) return;
-      const wr = ((tn) => {
+      const vr = ((tn) => {
         let Kr = tn.parentElement;
         for (; Kr; ) {
           const Yn = window.getComputedStyle(Kr).overflowY || "";
@@ -16528,10 +16537,10 @@ ${L}`;
           Ze = null, mr();
         }));
       };
-      return mr(), wr.addEventListener("scroll", Ur, {
+      return mr(), vr.addEventListener("scroll", Ur, {
         passive: true
       }), window.addEventListener("resize", Ur), () => {
-        Ze !== null && window.cancelAnimationFrame(Ze), wr.removeEventListener("scroll", Ur), window.removeEventListener("resize", Ur);
+        Ze !== null && window.cancelAnimationFrame(Ze), vr.removeEventListener("scroll", Ur), window.removeEventListener("resize", Ur);
       };
     }, [
       yn,
@@ -16556,7 +16565,7 @@ ${L}`;
           ...Vn,
           onDragOver: rr ? ea : void 0,
           onDrop: rr ? Cn : void 0,
-          className: `group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${Yt ? "bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg"} ${St ? "opacity-60 cursor-not-allowed pointer-events-auto" : "cursor-pointer"} ${Tr ? "ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter" : ""} ${Mt ? "bg-blue-100 dark:bg-blue-900/40" : ""} ${Je ? "touch-pan-y" : ""} ${yn ? "sticky bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-[1px] border-b border-gray-200/80 dark:border-odp-borderSoft" : ""} ${yn && Rt && !Yt && !Mt ? "bg-gray-50 dark:bg-odp-surface" : ""}`,
+          className: `group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${qt ? "bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-odp-focusBg"} ${St ? "opacity-60 cursor-not-allowed pointer-events-auto" : "cursor-pointer"} ${wr ? "ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter" : ""} ${Mt ? "bg-blue-100 dark:bg-blue-900/40" : ""} ${Je ? "touch-pan-y" : ""} ${yn ? "sticky bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-[1px] border-b border-gray-200/80 dark:border-odp-borderSoft" : ""} ${yn && Rt && !qt && !Mt ? "bg-gray-50 dark:bg-odp-surface" : ""}`,
           style: da,
           onClick: Bn,
           onContextMenu: Ae ? (jt) => {
@@ -16638,7 +16647,7 @@ ${L}`;
                       onKeyDown: wn,
                       onClick: (jt) => jt.stopPropagation(),
                       autoFocus: true,
-                      placeholder: e.type === "file" ? vr || "\uC774\uB984 \uC5C6\uC74C" : e.name || "\uD3F4\uB354\uBA85"
+                      placeholder: e.type === "file" ? Er || "\uC774\uB984 \uC5C6\uC74C" : e.name || "\uD3F4\uB354\uBA85"
                     }),
                     e.type === "file" && Jr && jsxRuntimeExports.jsx("span", {
                       className: "text-xs text-gray-400 dark:text-gray-500 shrink-0",
@@ -16651,10 +16660,10 @@ ${L}`;
                     jsxRuntimeExports.jsx("span", {
                       ref: gn,
                       className: `text-sm select-none overflow-hidden whitespace-nowrap ${Jt ? "font-semibold text-red-600 dark:text-red-400" : $t ? "font-bold underline" : ""}`,
-                      title: kr,
+                      title: Tr,
                       onMouseEnter: Qn,
                       onMouseLeave: Tn,
-                      children: kr
+                      children: Tr
                     }),
                     Me && e.type === "file" && !Jt && e.lastModified ? jsxRuntimeExports.jsx(TreeNodeModifiedLabel, {
                       lastModified: e.lastModified,
@@ -22848,7 +22857,7 @@ ${t}${r}`;
     };
   }
   async function lucivyApi() {
-    return __vitePreload(() => import("./lucivyBackend-tW7DBbQL.js").then(async (m2) => {
+    return __vitePreload(() => import("./lucivyBackend-v96FKhv0.js").then(async (m2) => {
       await m2.__tla;
       return m2;
     }), __vite__mapDeps([7,6,3,8,9,10,11,12]));
@@ -23188,8 +23197,8 @@ ${le}`, fe = await hashText(ue), be = e.docs.get(oe);
           c && A(re + 131072);
           var hr = re + yt;
           if (re < Je) {
-            var Yt = s - Je, At = Math.min(Je, hr);
-            for (Yt + re < 0 && err(3); re < At; ++re) r[re] = n[Yt + re];
+            var qt = s - Je, At = Math.min(Je, hr);
+            for (qt + re < 0 && err(3); re < At; ++re) r[re] = n[qt + re];
           }
           for (; re < hr; ++re) r[re] = r[re - Je];
         }
@@ -23359,7 +23368,7 @@ ${le}`, fe = await hashText(ue), be = e.docs.get(oe);
               if (Ht > pt) {
                 if (pt = Ht, Je = zt, Ht > Ft) break;
                 for (var Rt = Math.min(zt, Ht - 2), nt = 0, ze = 0; ze < Rt; ++ze) {
-                  var hr = Re - zt + ze & 32767, Yt = le[hr], At = hr - Yt & 32767;
+                  var hr = Re - zt + ze & 32767, qt = le[hr], At = hr - qt & 32767;
                   At > nt && (nt = At, Ge = hr);
                 }
               }
@@ -26989,7 +26998,7 @@ ${t}
       this.backend = t.backend, t.getTree && (this.getTree = t.getTree), typeof t.storageKey == "string" && (this.storageKey = t.storageKey, this.refreshCheckpointStatus());
     }
     async loadLucivyApi() {
-      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-tW7DBbQL.js").then(async (m2) => {
+      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-v96FKhv0.js").then(async (m2) => {
         await m2.__tla;
         return m2;
       }), __vite__mapDeps([7,6,3,8,9,10,11,12])), this.lucivyApi);
@@ -28395,14 +28404,14 @@ ${t}
   function expandedSetForStorageType(e, t) {
     return t === "s3" ? e.s3 : t === "webdav" ? e.webdav : e.local;
   }
-  function Sidebar({ appName: e = "Docu Haim", storageMode: t = "s3", s3Tree: r, s3Bucket: n, localTree: o, localRootHandle: s, isLocalTreeLoading: l = false, localFolderLoadingPath: c = null, onLoadLocalFolderChildren: f, onRefreshLocal: A, webdavTree: L = [], webdavReady: V = false, isWebdavTreeLoading: re = false, webdavFolderLoadingPath: ee = null, onRefreshWebdav: oe, onLoadWebdavFolderChildren: le, currentFile: pe, selectedIds: ue, onSelectFile: fe, onClearSelection: be, onCreateItem: Se, onRequestUploadFile: Ae, onRequestUploadFolder: ke, onRequestMoveFolder: Pe, onOpenLocalFolder: Le, onSetDeleteTarget: Re, onRequestEmptyTrash: Qe, onOpenSettings: Me, theme: dt, onToggleTheme: Fe, onRenameItem: je, showHiddenFolders: Ge, showTrashFolder: lt = false, hideRecordingCompanions: ze = false, treeStickyFolderPathEnabled: pt = true, showTreeModifiedDate: Je = false, hoverExpandDelayMs: Et = 2e3, onRequestCollapseSidebar: zt, deletingFolderPath: Ft, isDeletingFolder: ut, onDropOnFolder: yt, onDragEndNode: Ht, dropTarget: Rt, transferBusyItems: nt = null, expandPathsRef: hr, onRefreshS3: Yt, onDownloadNode: At, onDuplicateNode: $t, onRequestMoveFile: Ut, onOpenInNewWindow: Kt, onShareToChatWithMyself: Jt, onOpenChatWithMyself: kr, chatWithMyselfActive: vr = false, chatAttachDropHost: Jr = null, onDropToChatAttach: gn, onBrandClick: Zr, onStorageModeChange: Ie, sessionWorkspace: qt = null, sessionTree: gr = [], onCloseSessionWorkspace: dr, isMobileLayout: ar = false, fileTabContextMenuRef: fr = null }) {
-    const St = useIsCoarsePointer(), Tr = ar || St, Dr = useMobileContextMenuMode(ar), [Pr, sn] = reactExports.useState(false), Ar = reactExports.useRef(null), Fr = reactExports.useRef(false), wt = reactExports.useRef(null), mt = reactExports.useCallback(() => {
+  function Sidebar({ appName: e = "Docu Haim", storageMode: t = "s3", s3Tree: r, s3Bucket: n, localTree: o, localRootHandle: s, isLocalTreeLoading: l = false, localFolderLoadingPath: c = null, onLoadLocalFolderChildren: f, onRefreshLocal: A, webdavTree: L = [], webdavReady: V = false, isWebdavTreeLoading: re = false, webdavFolderLoadingPath: ee = null, onRefreshWebdav: oe, onLoadWebdavFolderChildren: le, currentFile: pe, selectedIds: ue, onSelectFile: fe, onClearSelection: be, onCreateItem: Se, onRequestUploadFile: Ae, onRequestUploadFolder: ke, onRequestMoveFolder: Pe, onOpenLocalFolder: Le, onSetDeleteTarget: Re, onRequestEmptyTrash: Qe, onOpenSettings: Me, theme: dt, onToggleTheme: Fe, onRenameItem: je, showHiddenFolders: Ge, showTrashFolder: lt = false, hideRecordingCompanions: ze = false, treeStickyFolderPathEnabled: pt = true, showTreeModifiedDate: Je = false, hoverExpandDelayMs: Et = 2e3, onRequestCollapseSidebar: zt, deletingFolderPath: Ft, isDeletingFolder: ut, onDropOnFolder: yt, onDragEndNode: Ht, dropTarget: Rt, transferBusyItems: nt = null, expandPathsRef: hr, onRefreshS3: qt, onDownloadNode: At, onDuplicateNode: $t, onRequestMoveFile: Ut, onOpenInNewWindow: Kt, onShareToChatWithMyself: Jt, onOpenChatWithMyself: Tr, chatWithMyselfActive: Er = false, chatAttachDropHost: Jr = null, onDropToChatAttach: gn, onBrandClick: Zr, onStorageModeChange: Ie, sessionWorkspace: Vt = null, sessionTree: gr = [], onCloseSessionWorkspace: dr, isMobileLayout: ar = false, fileTabContextMenuRef: fr = null }) {
+    const St = useIsCoarsePointer(), wr = ar || St, Dr = useMobileContextMenuMode(ar), [Nr, sn] = reactExports.useState(false), Ar = reactExports.useRef(null), Fr = reactExports.useRef(false), wt = reactExports.useRef(null), mt = reactExports.useCallback(() => {
       Ar.current && (clearTimeout(Ar.current), Ar.current = null), wt.current = null;
     }, []);
     reactExports.useEffect(() => () => mt(), [
       mt
     ]);
-    const [tt, Bt] = reactExports.useState(""), [Mt, rr] = reactExports.useState(""), _t = tt !== Mt, [Nr, lr] = reactExports.useState(null), [Er, Mr] = reactExports.useState(null), [Br, cn] = reactExports.useState(null), Xr = vr ? EMPTY_SELECTED_IDS : ue, Gr = vr ? null : pe, [Vr, br] = reactExports.useState(loadExpandedFolderPaths), [rn, xr] = reactExports.useState(null), [Or, xn] = reactExports.useState(null), [en, un] = reactExports.useState(null), [kn, Vn] = reactExports.useState(false), [zn, xt] = reactExports.useState(false), [mn, Zt] = reactExports.useState(null), { isCopyDrag: Qn, isCopyDragRef: Tn, syncFromEvent: ea } = useTreeCopyDragModifier(!!(mn == null ? void 0 : mn.length)), Cn = reactExports.useRef(null), Bn = reactExports.useRef(false), jr = reactExports.useRef(null), Cr = reactExports.useRef(null), wn = reactExports.useRef(null), yn = reactExports.useRef(null), da = reactExports.useRef(Et), jt = reactExports.useRef(Vr), Rr = reactExports.useRef(Mt), wr = reactExports.useRef(null);
+    const [tt, Bt] = reactExports.useState(""), [Mt, rr] = reactExports.useState(""), _t = tt !== Mt, [Mr, lr] = reactExports.useState(null), [Sr, Or] = reactExports.useState(null), [Br, cn] = reactExports.useState(null), Xr = Er ? EMPTY_SELECTED_IDS : ue, Gr = Er ? null : pe, [Vr, br] = reactExports.useState(loadExpandedFolderPaths), [rn, xr] = reactExports.useState(null), [Pr, xn] = reactExports.useState(null), [en, un] = reactExports.useState(null), [kn, Vn] = reactExports.useState(false), [zn, xt] = reactExports.useState(false), [mn, Zt] = reactExports.useState(null), { isCopyDrag: Qn, isCopyDragRef: Tn, syncFromEvent: ea } = useTreeCopyDragModifier(!!(mn == null ? void 0 : mn.length)), Cn = reactExports.useRef(null), Bn = reactExports.useRef(false), jr = reactExports.useRef(null), Cr = reactExports.useRef(null), wn = reactExports.useRef(null), yn = reactExports.useRef(null), da = reactExports.useRef(Et), jt = reactExports.useRef(Vr), Rr = reactExports.useRef(Mt), vr = reactExports.useRef(null);
     jt.current = Vr, Rr.current = Mt, da.current = Et;
     const Ze = reactExports.useCallback(() => {
       wn.current != null && (clearTimeout(wn.current), wn.current = null), yn.current = null;
@@ -28424,17 +28433,17 @@ ${t}
         Ze();
         return;
       }
-      const Vt = `${ht}:${ct}`;
-      if (yn.current === Vt) return;
-      Ze(), yn.current = Vt;
+      const Yt = `${ht}:${ct}`;
+      if (yn.current === Yt) return;
+      Ze(), yn.current = Yt;
       const pr = Math.max(0, Number(da.current) || 0);
       wn.current = setTimeout(() => {
         var _a3;
-        wn.current = null, yn.current = null, (_a3 = wr.current) == null ? void 0 : _a3.call(wr, ht, ct, true);
+        wn.current = null, yn.current = null, (_a3 = vr.current) == null ? void 0 : _a3.call(vr, ht, ct, true);
       }, pr);
     }, [
       Ze
-    ]), Ur = 48, tn = 12, Kr = useSensors(useSensor(Tr ? TouchSensor : PointerSensor, {
+    ]), Ur = 48, tn = 12, Kr = useSensors(useSensor(wr ? TouchSensor : PointerSensor, {
       activationConstraint: {
         distance: 8
       }
@@ -28454,18 +28463,18 @@ ${t}
       if (!It) return null;
       if (It.type === "folder") return It;
       if (It.type !== "file") return null;
-      const Vt = getParentFolderPath$1(It.path);
-      if (Vt === "") return {
+      const Yt = getParentFolderPath$1(It.path);
+      if (Yt === "") return {
         path: "",
         type: "folder",
         name: "root",
         handle: ht === "local" ? s : null
       };
-      const pr = or(ht, Vt);
+      const pr = or(ht, Yt);
       return (pr == null ? void 0 : pr.type) === "folder" ? pr : {
-        path: Vt,
+        path: Yt,
         type: "folder",
-        name: Vt.replace(/\/$/, "").split("/").pop() || "folder",
+        name: Yt.replace(/\/$/, "").split("/").pop() || "folder",
         handle: null
       };
     }, [
@@ -28503,7 +28512,7 @@ ${t}
       or,
       Xn,
       ea
-    ]), bi = reactExports.useCallback((ht) => {
+    ]), xi = reactExports.useCallback((ht) => {
       const { over: ct } = ht;
       if (!ct) {
         Ze(), yt == null ? void 0 : yt(null, null, "dragLeave");
@@ -28518,8 +28527,8 @@ ${t}
         Ze();
         return;
       }
-      const Vt = It.path === "" || It.path == null ? null : or(It.storageType, It.path);
-      (Vt == null ? void 0 : Vt.type) === "folder" ? mr(It.storageType, Vt.path) : Ze();
+      const Yt = It.path === "" || It.path == null ? null : or(It.storageType, It.path);
+      (Yt == null ? void 0 : Yt.type) === "folder" ? mr(It.storageType, Yt.path) : Ze();
       const pr = Yn(It.storageType, It.path);
       pr && (yt == null ? void 0 : yt(pr, It.storageType, "dragOver"));
     }, [
@@ -28529,7 +28538,7 @@ ${t}
       Yn,
       mr
     ]), ya = reactExports.useCallback((ht) => {
-      const { over: ct } = ht, It = jr.current, Vt = Tn.current;
+      const { over: ct } = ht, It = jr.current, Yt = Tn.current;
       if (jr.current = null, Zt(null), Ze(), vn(), !ct || !(It == null ? void 0 : It.length)) {
         yt == null ? void 0 : yt(null, null, "dragLeave");
         return;
@@ -28550,7 +28559,7 @@ ${t}
       }
       yt == null ? void 0 : yt(zr, pr.storageType, "drop", {
         items: It,
-        copy: Vt
+        copy: Yt
       });
     }, [
       Ze,
@@ -28559,7 +28568,7 @@ ${t}
       yt,
       gn,
       Yn
-    ]), Sr = reactExports.useCallback(() => {
+    ]), kr = reactExports.useCallback(() => {
       jr.current = null, Zt(null), Ze(), vn(), yt == null ? void 0 : yt(null, null, "dragLeave");
     }, [
       Ze,
@@ -28580,8 +28589,8 @@ ${t}
       if (!ht) return;
       const ct = (It) => {
         if (!Bn.current) return;
-        const Vt = ht.getBoundingClientRect();
-        It.clientX >= Vt.left && It.clientX <= Vt.right && It.clientY >= Vt.top && It.clientY <= Vt.bottom && (ht.scrollTop += It.deltaY, It.preventDefault());
+        const Yt = ht.getBoundingClientRect();
+        It.clientX >= Yt.left && It.clientX <= Yt.right && It.clientY >= Yt.top && It.clientY <= Yt.bottom && (ht.scrollTop += It.deltaY, It.preventDefault());
       };
       return document.addEventListener("wheel", ct, {
         passive: false
@@ -28601,31 +28610,31 @@ ${t}
       var _a2, _b2, _c, _d, _e;
       const ct = Cn.current, It = ((_c = (_b2 = (_a2 = ht.dataTransfer) == null ? void 0 : _a2.types) == null ? void 0 : _b2.includes) == null ? void 0 : _c.call(_b2, "Files")) && ((_e = (_d = ht.dataTransfer) == null ? void 0 : _d.items) == null ? void 0 : _e.length) > 0;
       if (!ct || !It) return;
-      const Vt = ct.getBoundingClientRect(), pr = ht.clientY - Vt.top, zr = Ur;
+      const Yt = ct.getBoundingClientRect(), pr = ht.clientY - Yt.top, zr = Ur;
       if (ct.scrollHeight - ct.clientHeight <= 0) return;
       const Sn = () => {
         Cr.current && (clearInterval(Cr.current), Cr.current = null);
       };
       pr < zr ? Cr.current || (Cr.current = setInterval(() => {
         ct ? ct.scrollTop = Math.max(0, ct.scrollTop - tn) : Sn();
-      }, 16)) : pr > Vt.height - zr ? Cr.current || (Cr.current = setInterval(() => {
+      }, 16)) : pr > Yt.height - zr ? Cr.current || (Cr.current = setInterval(() => {
         ct ? ct.scrollTop = Math.min(ct.scrollHeight - ct.clientHeight, ct.scrollTop + tn) : Sn();
       }, 16)) : Sn();
     }, []), Un = reactExports.useCallback((ht, ct, It) => {
-      if (br((Vt) => {
+      if (br((Yt) => {
         const pr = {
-          s3: new Set(Vt.s3),
-          local: new Set(Vt.local),
-          webdav: new Set(Vt.webdav)
+          s3: new Set(Yt.s3),
+          local: new Set(Yt.local),
+          webdav: new Set(Yt.webdav)
         }, zr = expandedSetForStorageType(pr, ht);
         return It ? zr.add(ct) : zr.delete(ct), saveExpandedFolderPaths(pr), pr;
       }), ht === "local" && It && f) {
-        const Vt = findNodeByPath(o, ct);
-        (Vt == null ? void 0 : Vt.type) === "folder" && Vt.childrenLoaded !== true && f(Vt);
+        const Yt = findNodeByPath(o, ct);
+        (Yt == null ? void 0 : Yt.type) === "folder" && Yt.childrenLoaded !== true && f(Yt);
       }
       if (ht === "webdav" && It && le) {
-        const Vt = findNodeByPath(L, ct);
-        (Vt == null ? void 0 : Vt.type) === "folder" && Vt.childrenLoaded !== true && le(Vt);
+        const Yt = findNodeByPath(L, ct);
+        (Yt == null ? void 0 : Yt.type) === "folder" && Yt.childrenLoaded !== true && le(Yt);
       }
     }, [
       o,
@@ -28633,13 +28642,13 @@ ${t}
       f,
       le
     ]);
-    wr.current = Un, reactExports.useEffect(() => {
+    vr.current = Un, reactExports.useEffect(() => {
       if (!f || !(o == null ? void 0 : o.length)) return;
       const ht = Vr.local;
       if (!(ht == null ? void 0 : ht.size)) return;
       const ct = (It) => {
         var _a2;
-        for (const Vt of It) (Vt == null ? void 0 : Vt.type) === "folder" && (ht.has(Vt.path) && Vt.childrenLoaded !== true && f(Vt), ((_a2 = Vt.children) == null ? void 0 : _a2.length) && ct(Vt.children));
+        for (const Yt of It) (Yt == null ? void 0 : Yt.type) === "folder" && (ht.has(Yt.path) && Yt.childrenLoaded !== true && f(Yt), ((_a2 = Yt.children) == null ? void 0 : _a2.length) && ct(Yt.children));
       };
       ct(o);
     }, [
@@ -28652,7 +28661,7 @@ ${t}
       if (!(ht == null ? void 0 : ht.size)) return;
       const ct = (It) => {
         var _a2;
-        for (const Vt of It) (Vt == null ? void 0 : Vt.type) === "folder" && (ht.has(Vt.path) && Vt.childrenLoaded !== true && le(Vt), ((_a2 = Vt.children) == null ? void 0 : _a2.length) && ct(Vt.children));
+        for (const Yt of It) (Yt == null ? void 0 : Yt.type) === "folder" && (ht.has(Yt.path) && Yt.childrenLoaded !== true && le(Yt), ((_a2 = Yt.children) == null ? void 0 : _a2.length) && ct(Yt.children));
       };
       ct(L);
     }, [
@@ -28662,12 +28671,12 @@ ${t}
     ]);
     const ta = reactExports.useCallback((ht, ct) => {
       (ct == null ? void 0 : ct.length) && br((It) => {
-        const Vt = {
+        const Yt = {
           s3: new Set(It.s3),
           local: new Set(It.local),
           webdav: new Set(It.webdav)
-        }, pr = expandedSetForStorageType(Vt, ht);
-        return ct.forEach((zr) => pr.add(zr)), saveExpandedFolderPaths(Vt), Vt;
+        }, pr = expandedSetForStorageType(Yt, ht);
+        return ct.forEach((zr) => pr.add(zr)), saveExpandedFolderPaths(Yt), Yt;
       });
     }, []);
     reactExports.useEffect(() => {
@@ -28719,15 +28728,15 @@ ${t}
       o,
       L
     ]), ai = (ht) => {
-      const ct = /* @__PURE__ */ new Set(), It = (Vt) => {
-        Vt.type === "folder" && Vt.path && (ct.add(Vt.path), Vt.children && Vt.children.forEach(It));
+      const ct = /* @__PURE__ */ new Set(), It = (Yt) => {
+        Yt.type === "folder" && Yt.path && (ct.add(Yt.path), Yt.children && Yt.children.forEach(It));
       };
       return ht.forEach(It), ct;
     }, Lr = reactExports.useMemo(() => Mt ? ai(ba) : Vr.s3, [
       Mt,
       ba,
       Vr.s3
-    ]), xi = reactExports.useMemo(() => Mt ? ai(xa) : Vr.local, [
+    ]), wi = reactExports.useMemo(() => Mt ? ai(xa) : Vr.local, [
       Mt,
       xa,
       Vr.local
@@ -28735,8 +28744,8 @@ ${t}
       Mt,
       ia,
       Vr.webdav
-    ]), Ua = getSelectedFolderForMove(ue, r, o, L), Wr = rn == null ? void 0 : rn.node, _n = rn == null ? void 0 : rn.storageType, En = reactExports.useCallback((ht) => ht === "s3" ? Nr !== null ? {
-      parentPath: Nr,
+    ]), Ua = getSelectedFolderForMove(ue, r, o, L), Wr = rn == null ? void 0 : rn.node, _n = rn == null ? void 0 : rn.storageType, En = reactExports.useCallback((ht) => ht === "s3" ? Mr !== null ? {
+      parentPath: Mr,
       parentDirHandle: null
     } : (pe == null ? void 0 : pe.type) === "s3" && pe.id ? {
       parentPath: getParentPathFromFilePath(pe.id),
@@ -28753,9 +28762,9 @@ ${t}
     } : {
       parentPath: "",
       parentDirHandle: null
-    } : Er !== null ? {
-      parentPath: Er.path,
-      parentDirHandle: Er.handle
+    } : Sr !== null ? {
+      parentPath: Sr.path,
+      parentDirHandle: Sr.handle
     } : (pe == null ? void 0 : pe.type) === "local" && pe.id ? {
       parentPath: getParentPathFromFilePath(pe.id),
       parentDirHandle: pe.parentHandle || s || null
@@ -28764,8 +28773,8 @@ ${t}
       parentDirHandle: s || null
     }, [
       pe,
-      Er,
-      Nr,
+      Sr,
+      Mr,
       Br,
       s
     ]), Wn = t === "s3", ra = t === "local", wa = t === "webdav", dn = reactExports.useCallback((ht, ct) => {
@@ -28773,36 +28782,36 @@ ${t}
         storageType: ht,
         node: ct
       });
-    }, []), pn = reactExports.useCallback((ht, ct, It, Vt = {}) => {
+    }, []), pn = reactExports.useCallback((ht, ct, It, Yt = {}) => {
       dn(ht, ct), xr({
-        x: Tr ? null : (It == null ? void 0 : It.clientX) ?? null,
-        y: Tr ? null : (It == null ? void 0 : It.clientY) ?? null,
+        x: wr ? null : (It == null ? void 0 : It.clientX) ?? null,
+        y: wr ? null : (It == null ? void 0 : It.clientY) ?? null,
         node: ct,
         storageType: ht,
         modal: Dr,
-        onCloseTab: typeof Vt.onCloseTab == "function" ? Vt.onCloseTab : null
+        onCloseTab: typeof Yt.onCloseTab == "function" ? Yt.onCloseTab : null
       });
     }, [
       dn,
-      Tr,
+      wr,
       Dr
-    ]), In = reactExports.useCallback(({ storageType: ht, path: ct, name: It, currentFile: Vt, clientX: pr, clientY: zr, onCloseTab: On } = {}) => {
+    ]), In = reactExports.useCallback(({ storageType: ht, path: ct, name: It, currentFile: Yt, clientX: pr, clientY: zr, onCloseTab: On } = {}) => {
       if (!ht || !ct) return;
       let Sn = or(ht, ct);
       if (!Sn || Sn.type !== "file") {
-        const Ia = It || (typeof (Vt == null ? void 0 : Vt.name) == "string" ? Vt.name : "") || String(ct).split("/").filter(Boolean).pop() || ct;
+        const Ia = It || (typeof (Yt == null ? void 0 : Yt.name) == "string" ? Yt.name : "") || String(ct).split("/").filter(Boolean).pop() || ct;
         Sn = {
           type: "file",
           path: ct,
           name: Ia,
-          ...(Vt == null ? void 0 : Vt.handle) ? {
-            handle: Vt.handle
+          ...(Yt == null ? void 0 : Yt.handle) ? {
+            handle: Yt.handle
           } : {},
-          ...(Vt == null ? void 0 : Vt.parentHandle) ? {
-            parentHandle: Vt.parentHandle
+          ...(Yt == null ? void 0 : Yt.parentHandle) ? {
+            parentHandle: Yt.parentHandle
           } : {},
-          ...(Vt == null ? void 0 : Vt.lastModified) != null ? {
-            lastModified: Vt.lastModified
+          ...(Yt == null ? void 0 : Yt.lastModified) != null ? {
+            lastModified: Yt.lastModified
           } : {}
         };
       }
@@ -28832,17 +28841,17 @@ ${t}
         if (!ct.defaultPrevented && !isTypingElement(ct.target)) {
           if (ct.key === "F2") {
             if (!en) return;
-            const { storageType: It, node: Vt } = en;
-            if (Wn && It !== "s3" || ra && It !== "local" || wa && It !== "webdav" || !isRenameableTreeNode(Vt) || findApplicableTransferBusy(nt, It, Vt.path)) return;
+            const { storageType: It, node: Yt } = en;
+            if (Wn && It !== "s3" || ra && It !== "local" || wa && It !== "webdav" || !isRenameableTreeNode(Yt) || findApplicableTransferBusy(nt, It, Yt.path)) return;
             ct.preventDefault(), xn({
               storageType: It,
-              node: Vt
+              node: Yt
             });
             return;
           }
           if (ct.key === "Delete" || ct.key === "Backspace") {
-            const It = document.activeElement, Vt = isEventInsideSidebarTree(ct.target) || isEventInsideSidebarTree(It);
-            if (!Vt && isTypingElement(It) || !Vt && It && It !== document.body && typeof It.closest == "function" && !It.closest("[data-sidebar-root], [data-sidebar-tree-scroll]")) return;
+            const It = document.activeElement, Yt = isEventInsideSidebarTree(ct.target) || isEventInsideSidebarTree(It);
+            if (!Yt && isTypingElement(It) || !Yt && It && It !== document.body && typeof It.closest == "function" && !It.closest("[data-sidebar-root], [data-sidebar-tree-scroll]")) return;
             let pr = null, zr = null;
             if (en) {
               const On = toTreeSelectKey(en.storageType, en.node.path);
@@ -28857,7 +28866,7 @@ ${t}
                 zr = or(pr, va);
               }
             }
-            if (!zr && en && (pr = en.storageType, zr = en.node), (!zr || !pr) && (Wn && Nr != null && Nr !== "" ? (pr = "s3", zr = or("s3", Nr)) : ra && (Er == null ? void 0 : Er.path) != null && Er.path !== "" ? (pr = "local", zr = or("local", Er.path)) : wa && Br != null && Br !== "" && (pr = "webdav", zr = or("webdav", Br))), !zr || !pr || Wn && pr !== "s3" || ra && pr !== "local" || wa && pr !== "webdav" || zr.path === ".trash/" || zr.path === "" || findApplicableTransferBusy(nt, pr, zr.path)) return;
+            if (!zr && en && (pr = en.storageType, zr = en.node), (!zr || !pr) && (Wn && Mr != null && Mr !== "" ? (pr = "s3", zr = or("s3", Mr)) : ra && (Sr == null ? void 0 : Sr.path) != null && Sr.path !== "" ? (pr = "local", zr = or("local", Sr.path)) : wa && Br != null && Br !== "" && (pr = "webdav", zr = or("webdav", Br))), !zr || !pr || Wn && pr !== "s3" || ra && pr !== "local" || wa && pr !== "webdav" || zr.path === ".trash/" || zr.path === "" || findApplicableTransferBusy(nt, pr, zr.path)) return;
             ct.preventDefault(), ct.stopPropagation(), jn(zr, pr);
           }
         }
@@ -28869,8 +28878,8 @@ ${t}
       Wn,
       ra,
       en,
-      Er,
-      Nr,
+      Sr,
+      Mr,
       Br,
       jn,
       ue,
@@ -28941,7 +28950,7 @@ ${t}
                                 Fr.current = false;
                                 return;
                               }
-                              Pr || (Zr == null ? void 0 : Zr());
+                              Nr || (Zr == null ? void 0 : Zr());
                             },
                             onPointerDown: (ct) => {
                               !Ie || !Dr || ct.pointerType !== "mouse" && (ct.button !== 0 && ct.button !== -1 || (Fr.current = false, mt(), wt.current = {
@@ -28965,7 +28974,7 @@ ${t}
                             children: e
                           });
                           return typeof Ie != "function" ? ht : jsxRuntimeExports.jsx(AdaptiveContextMenu, {
-                            open: Pr,
+                            open: Nr,
                             onOpenChange: sn,
                             title: e,
                             subtitle: "\uC800\uC7A5\uC18C \uC804\uD658",
@@ -28973,7 +28982,7 @@ ${t}
                             contentClassName: SIDEBAR_BRAND_MENU_CONTENT_CLASS,
                             trigger: ht,
                             children: BRAND_STORAGE_MODES.map((ct) => {
-                              const It = t === ct, Vt = getAppNameByStorageMode(ct);
+                              const It = t === ct, Yt = getAppNameByStorageMode(ct);
                               return jsxRuntimeExports.jsxs(AdaptiveMenuItem, {
                                 disabled: It,
                                 className: Dr ? MOBILE_CONTEXT_MENU_ITEM_CLASS : SIDEBAR_BRAND_MENU_ITEM_CLASS,
@@ -28990,7 +28999,7 @@ ${t}
                                   }),
                                   jsxRuntimeExports.jsx("span", {
                                     className: "min-w-0 flex-1 truncate",
-                                    children: Vt
+                                    children: Yt
                                   })
                                 ]
                               }, ct);
@@ -29088,9 +29097,9 @@ ${t}
           sensors: Kr,
           collisionDetection: treeCollisionDetection,
           onDragStart: Ca,
-          onDragOver: bi,
+          onDragOver: xi,
           onDragEnd: ya,
-          onDragCancel: Sr,
+          onDragCancel: kr,
           autoScroll: true,
           children: [
             jsxRuntimeExports.jsxs("div", {
@@ -29107,12 +29116,12 @@ ${t}
                 });
               },
               onClick: (ht) => {
-                !ht.target.closest("[data-tree-node-row]") && !ht.target.closest("[data-tree-root-drop-zone]") && !ht.target.closest("button") && !ht.target.closest("input") && (lr(null), Mr(null), cn(null), be == null ? void 0 : be());
+                !ht.target.closest("[data-tree-node-row]") && !ht.target.closest("[data-tree-root-drop-zone]") && !ht.target.closest("button") && !ht.target.closest("input") && (lr(null), Or(null), cn(null), be == null ? void 0 : be());
               },
               role: "tree",
               "aria-label": "\uD30C\uC77C \uD2B8\uB9AC",
               children: [
-                qt ? jsxRuntimeExports.jsxs("div", {
+                Vt ? jsxRuntimeExports.jsxs("div", {
                   children: [
                     jsxRuntimeExports.jsxs("div", {
                       className: "sticky top-0 z-9999 mb-1 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:border-odp-surface dark:bg-odp-bgSoft",
@@ -29143,8 +29152,8 @@ ${t}
                     }),
                     jsxRuntimeExports.jsx("p", {
                       className: "px-3 pb-1 text-[11px] text-gray-400 dark:text-odp-muted truncate",
-                      title: qt.originName,
-                      children: qt.originName
+                      title: Vt.originName,
+                      children: Vt.originName
                     }),
                     jsxRuntimeExports.jsx(SessionTreeList, {
                       nodes: gr,
@@ -29168,11 +29177,11 @@ ${t}
                         jsxRuntimeExports.jsxs("div", {
                           className: "flex gap-1",
                           children: [
-                            Yt && n && jsxRuntimeExports.jsx("button", {
+                            qt && n && jsxRuntimeExports.jsx("button", {
                               onClick: () => {
                                 if (kn) return;
                                 const ht = Date.now();
-                                Vn(true), Promise.resolve(Yt()).finally(() => {
+                                Vn(true), Promise.resolve(qt()).finally(() => {
                                   const ct = Date.now() - ht, It = Math.max(0, 500 - ct);
                                   setTimeout(() => {
                                     Vn(false), xt(true), setTimeout(() => xt(false), 300);
@@ -29243,20 +29252,20 @@ ${t}
                       className: "space-y-0.5",
                       children: [
                         jsxRuntimeExports.jsx(ChatWithMyselfEntry, {
-                          isActive: vr,
-                          onOpen: kr
+                          isActive: Er,
+                          onOpen: Tr
                         }),
                         jsxRuntimeExports.jsx(RootDropZone, {
                           storageType: "s3",
                           localRootHandle: null,
                           onDropOnFolder: yt,
                           dropTarget: Rt,
-                          isFocused: !vr && Nr === "",
+                          isFocused: !Er && Mr === "",
                           onFocusRoot: () => lr(""),
                           onContextMenu: (ht, ct) => {
                             lr(""), pn("s3", ct, ht);
                           },
-                          mobileTree: Tr
+                          mobileTree: wr
                         }),
                         ba.length > 0 ? ba.map((ht) => jsxRuntimeExports.jsx(TreeNode, {
                           node: ht,
@@ -29282,20 +29291,20 @@ ${t}
                           expandedPaths: Lr,
                           onExpandedChange: Un,
                           onFolderFocus: (ct) => lr(ct ? ct.path || "" : null),
-                          focusedFolderPath: vr ? void 0 : Nr ?? void 0,
+                          focusedFolderPath: Er ? void 0 : Mr ?? void 0,
                           onDropOnFolder: yt,
                           dropTarget: Rt,
                           activeDragItemIds: Hn,
                           isCopyDrag: Qn,
                           onOpenContextMenu: (ct, It) => pn("s3", It, ct),
                           onActivate: (ct) => dn("s3", ct),
-                          renameTarget: Or,
+                          renameTarget: Pr,
                           onClearRenameTarget: () => xn(null),
                           recordingBasePathSet: Pa,
                           stickyFoldersEnabled: pt,
                           showModifiedDate: Je,
                           stickyTopOffset: 33,
-                          mobileTree: Tr
+                          mobileTree: wr
                         }, ht.path)) : jsxRuntimeExports.jsx("p", {
                           className: "text-xs text-gray-400 px-4 py-2",
                           children: "\uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
@@ -29402,26 +29411,26 @@ ${t}
                       className: "space-y-0.5",
                       children: [
                         jsxRuntimeExports.jsx(ChatWithMyselfEntry, {
-                          isActive: vr,
-                          onOpen: kr
+                          isActive: Er,
+                          onOpen: Tr
                         }),
                         jsxRuntimeExports.jsx(RootDropZone, {
                           storageType: "local",
                           localRootHandle: s,
                           onDropOnFolder: yt,
                           dropTarget: Rt,
-                          isFocused: !vr && Er !== null && Er.path === "" && Er.handle === s,
-                          onFocusRoot: () => Mr({
+                          isFocused: !Er && Sr !== null && Sr.path === "" && Sr.handle === s,
+                          onFocusRoot: () => Or({
                             path: "",
                             handle: s
                           }),
                           onContextMenu: (ht, ct) => {
-                            Mr({
+                            Or({
                               path: "",
                               handle: s
                             }), pn("local", ct, ht);
                           },
-                          mobileTree: Tr
+                          mobileTree: wr
                         }),
                         l && !xa.length && jsxRuntimeExports.jsx("p", {
                           className: "text-xs text-gray-400 px-4 py-2",
@@ -29448,13 +29457,13 @@ ${t}
                           isDeletingFolder: ut,
                           transferBusyItems: nt,
                           isSearching: !!Mt,
-                          expandedPaths: xi,
+                          expandedPaths: wi,
                           onExpandedChange: Un,
-                          onFolderFocus: (ct) => Mr(ct ? {
+                          onFolderFocus: (ct) => Or(ct ? {
                             path: ct.path || "",
                             handle: ct.handle
                           } : null),
-                          focusedFolderPath: vr ? void 0 : (Er == null ? void 0 : Er.path) ?? void 0,
+                          focusedFolderPath: Er ? void 0 : (Sr == null ? void 0 : Sr.path) ?? void 0,
                           onDropOnFolder: yt,
                           dropTarget: Rt,
                           activeDragItemIds: Hn,
@@ -29462,13 +29471,13 @@ ${t}
                           onOpenContextMenu: (ct, It) => pn("local", It, ct),
                           onActivate: (ct) => dn("local", ct),
                           isFolderLoading: c,
-                          renameTarget: Or,
+                          renameTarget: Pr,
                           onClearRenameTarget: () => xn(null),
                           recordingBasePathSet: Pa,
                           stickyFoldersEnabled: pt,
                           showModifiedDate: Je,
                           stickyTopOffset: 33,
-                          mobileTree: Tr
+                          mobileTree: wr
                         }, ht.path)) : jsxRuntimeExports.jsx("p", {
                           className: "text-xs text-gray-400 px-4 py-2",
                           children: "\uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
@@ -29561,20 +29570,20 @@ ${t}
                       className: "space-y-0.5",
                       children: [
                         jsxRuntimeExports.jsx(ChatWithMyselfEntry, {
-                          isActive: vr,
-                          onOpen: kr
+                          isActive: Er,
+                          onOpen: Tr
                         }),
                         jsxRuntimeExports.jsx(RootDropZone, {
                           storageType: "webdav",
                           localRootHandle: null,
                           onDropOnFolder: yt,
                           dropTarget: Rt,
-                          isFocused: !vr && Br === "",
+                          isFocused: !Er && Br === "",
                           onFocusRoot: () => cn(""),
                           onContextMenu: (ht, ct) => {
                             cn(""), pn("webdav", ct, ht);
                           },
-                          mobileTree: Tr
+                          mobileTree: wr
                         }),
                         re && !ia.length && jsxRuntimeExports.jsx("p", {
                           className: "text-xs text-gray-400 px-4 py-2",
@@ -29604,7 +29613,7 @@ ${t}
                           expandedPaths: ii,
                           onExpandedChange: Un,
                           onFolderFocus: (ct) => cn(ct ? ct.path || "" : null),
-                          focusedFolderPath: vr ? void 0 : Br ?? void 0,
+                          focusedFolderPath: Er ? void 0 : Br ?? void 0,
                           onDropOnFolder: yt,
                           dropTarget: Rt,
                           activeDragItemIds: Hn,
@@ -29612,13 +29621,13 @@ ${t}
                           onOpenContextMenu: (ct, It) => pn("webdav", It, ct),
                           onActivate: (ct) => dn("webdav", ct),
                           isFolderLoading: ee,
-                          renameTarget: Or,
+                          renameTarget: Pr,
                           onClearRenameTarget: () => xn(null),
                           recordingBasePathSet: Pa,
                           stickyFoldersEnabled: pt,
                           showModifiedDate: Je,
                           stickyTopOffset: 33,
-                          mobileTree: Tr
+                          mobileTree: wr
                         }, ht.path)) : re ? null : jsxRuntimeExports.jsx("p", {
                           className: "text-xs text-gray-400 px-4 py-2",
                           children: "\uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
@@ -29640,7 +29649,7 @@ ${t}
                 isCopy: Qn
               })
             }), document.body) : null,
-            vr && (mn == null ? void 0 : mn.length) ? jsxRuntimeExports.jsx(ChatTreeAttachDroppable, {
+            Er && (mn == null ? void 0 : mn.length) ? jsxRuntimeExports.jsx(ChatTreeAttachDroppable, {
               host: Jr,
               enabled: !!Jr
             }) : null
@@ -52303,10 +52312,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       number: 3,
       unit: "ex"
     }, r) : 12 * V, le = 3 * V, pe = t.arraystretch * oe, ue = 0.7 * pe, fe = 0.3 * pe, be = 0;
-    function Se(Tr) {
-      for (var Dr = 0; Dr < Tr.length; ++Dr) Dr > 0 && (be += 0.25), A.push({
+    function Se(wr) {
+      for (var Dr = 0; Dr < wr.length; ++Dr) Dr > 0 && (be += 0.25), A.push({
         pos: be,
-        isDashed: Tr[Dr]
+        isDashed: wr[Dr]
       });
     }
     for (Se(l[0]), n = 0; n < t.body.length; ++n) {
@@ -52326,7 +52335,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Qe && (Me = calculateSize(Qe, r), Me > 0 && (Me += fe, Pe < Me && (Pe = Me), Me = 0)), t.addJot && n < t.body.length - 1 && (Pe += le), Le.height = ke, Le.depth = Pe, be += ke, Le.pos = be, be += Pe + Me, f[n] = Le, Se(l[n + 1]);
     }
     var dt = be / 2 + r.fontMetrics().axisHeight, Fe = t.cols || [], je = [], Ge, lt, ze = [];
-    if (t.tags && t.tags.some((Tr) => Tr)) for (n = 0; n < s; ++n) {
+    if (t.tags && t.tags.some((wr) => wr)) for (n = 0; n < s; ++n) {
       var pt = f[n], Je = pt.pos - dt, Et = t.tags[n], zt = void 0;
       Et === true ? zt = makeSpan([
         "eqn-num"
@@ -52352,38 +52361,38 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         lt++, ut = Fe[lt], yt = false;
       }
       if (!(o >= c)) {
-        var Yt = void 0;
+        var qt = void 0;
         if (o > 0 || t.hskipBeforeAndAfter) {
           var At, $t;
-          Yt = (At = ($t = ut) == null ? void 0 : $t.pregap) != null ? At : re, Yt !== 0 && (Ge = makeSpan([
+          qt = (At = ($t = ut) == null ? void 0 : $t.pregap) != null ? At : re, qt !== 0 && (Ge = makeSpan([
             "arraycolsep"
-          ], []), Ge.style.width = makeEm(Yt), je.push(Ge));
+          ], []), Ge.style.width = makeEm(qt), je.push(Ge));
         }
         var Ut = [];
         for (n = 0; n < s; ++n) {
           var Kt = f[n], Jt = Kt.cells[o];
           if (Jt) {
-            var kr = Kt.pos - dt;
+            var Tr = Kt.pos - dt;
             Jt.depth = Kt.depth, Jt.height = Kt.height, Ut.push({
               type: "elem",
               elem: Jt,
-              shift: kr
+              shift: Tr
             });
           }
         }
-        var vr = makeVList({
+        var Er = makeVList({
           positionType: "individualShift",
           children: Ut
         }), Jr = makeSpan([
           "col-align-" + (((Ft = ut) == null ? void 0 : Ft.align) || "c")
         ], [
-          vr
+          Er
         ]);
         if (je.push(Jr), o < c - 1 || t.hskipBeforeAndAfter) {
           var gn, Zr;
-          Yt = (gn = (Zr = ut) == null ? void 0 : Zr.postgap) != null ? gn : re, Yt !== 0 && (Ge = makeSpan([
+          qt = (gn = (Zr = ut) == null ? void 0 : Zr.postgap) != null ? gn : re, qt !== 0 && (Ge = makeSpan([
             "arraycolsep"
-          ], []), Ge.style.width = makeEm(Yt), je.push(Ge));
+          ], []), Ge.style.width = makeEm(qt), je.push(Ge));
         }
       }
     }
@@ -52391,7 +52400,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       "mtable"
     ], je);
     if (A.length > 0) {
-      for (var qt = makeLineSpan("hline", r, L), gr = makeLineSpan("hdashline", r, L), dr = [
+      for (var Vt = makeLineSpan("hline", r, L), gr = makeLineSpan("hdashline", r, L), dr = [
         {
           type: "elem",
           elem: Ie,
@@ -52405,7 +52414,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           shift: fr
         }) : dr.push({
           type: "elem",
-          elem: qt,
+          elem: Vt,
           shift: fr
         });
       }
@@ -57187,7 +57196,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return renderSeq += 1, `haim-mermaid-${Date.now().toString(36)}-${renderSeq}`;
   }
   async function getMermaidInstance() {
-    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-BoSnlBZK.js").then(async (m2) => {
+    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-CTPidILZ.js").then(async (m2) => {
       await m2.__tla;
       return m2;
     }), __vite__mapDeps([13,6,3])).then((e) => {
@@ -57643,17 +57652,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const r = await e.text(), n = t || (e.name ? e.name.replace(/\.svg$/i, ".png") : `clipboard-${Date.now()}.png`);
     return rasterizeSvgTextToPngFile(r, n);
   };
-  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-9cTkelTJ.js"), __vite__mapDeps([14,3,6,15,10,11,8,16,9,17,18,19,20,21,22,23,24,25,26,27,28,12]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-CmEMV2J0.js"), __vite__mapDeps([29,3,30,6,2,4,11,8,31,17,9,32,23,24,25,10,12,33]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([34,3,35]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-Cz5vXOUB.js"), __vite__mapDeps([36,3,34,35,9,6,8,10,11,12])));
+  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-C_8Bjsvc.js"), __vite__mapDeps([14,3,6,15,10,11,8,16,9,17,18,19,20,21,22,23,24,25,26,27,28,12]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-_IY2aBoo.js"), __vite__mapDeps([29,3,30,6,2,4,11,8,31,17,9,32,23,24,25,10,12,33]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([34,3,35]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-CFUMNyEy.js"), __vite__mapDeps([36,3,34,35,9,6,8,10,11,12])));
   function EditorPaneSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted",
       children: "\uC5D0\uB514\uD130 \uB85C\uB529 \uC911\u2026"
     });
   }
-  function EditorPane({ currentFile: e, editorContent: t, onChangeEditor: r, onSave: n, isSaving: o, onRefreshFromDisk: s, isRefreshingFromDisk: l = false, onPullFromRemote: c, isPullingFromRemote: f = false, onRequestDelete: A, editedFileName: L = "", setEditedFileName: V, onRenameFullName: re, onRequestSuffixChangeConfirmForBlur: ee, onRequestClose: oe, onRequestMove: le, onViewUnsupportedAsText: pe, onRequestDownload: ue, onShareToChatWithMyself: fe, theme: be = "light", previewOnly: Se = false, isMobileLayout: Ae = false, sidebarOpen: ke = true, sidebarCollapsed: Pe = false, onOpenSidebar: Le, onRequestCreateFile: Re, onOpenChatWithMyself: Qe, onOpenSessionFiles: Me, onOpenSessionDirectory: dt, onDropSessionTransfer: Fe, isOpeningSession: je = false, onSaveSessionToNote: Ge, onRequestSessionTransformDownload: lt, isRecording: ze = false, audioLevel: pt = 0, onToggleRecording: Je, recordingPipelineStatus: Et = "", recordingsList: zt = [], selectedRecordingKey: Ft = null, onSelectRecording: ut, recordingAudioUrl: yt = "", recordingSyncData: Ht = [], onUploadImage: Rt, isUploadingEditorImage: nt = false, uploadImagePercent: hr = 0, onCancelUploadImage: Yt, onResolveWikiImageUrl: At, onOpenViewPath: $t, snippetConfig: Ut = {
+  function EditorPane({ currentFile: e, editorContent: t, onChangeEditor: r, onSave: n, isSaving: o, onRefreshFromDisk: s, isRefreshingFromDisk: l = false, onPullFromRemote: c, isPullingFromRemote: f = false, onRequestDelete: A, editedFileName: L = "", setEditedFileName: V, onRenameFullName: re, onRequestSuffixChangeConfirmForBlur: ee, onRequestClose: oe, onRequestMove: le, onViewUnsupportedAsText: pe, onRequestDownload: ue, onShareToChatWithMyself: fe, theme: be = "light", previewOnly: Se = false, isMobileLayout: Ae = false, sidebarOpen: ke = true, sidebarCollapsed: Pe = false, onOpenSidebar: Le, onRequestCreateFile: Re, onOpenChatWithMyself: Qe, onOpenSessionFiles: Me, onOpenSessionDirectory: dt, onDropSessionTransfer: Fe, isOpeningSession: je = false, onSaveSessionToNote: Ge, onRequestSessionTransformDownload: lt, isRecording: ze = false, audioLevel: pt = 0, onToggleRecording: Je, recordingPipelineStatus: Et = "", recordingsList: zt = [], selectedRecordingKey: Ft = null, onSelectRecording: ut, recordingAudioUrl: yt = "", recordingSyncData: Ht = [], onUploadImage: Rt, isUploadingEditorImage: nt = false, uploadImagePercent: hr = 0, onCancelUploadImage: qt, onResolveWikiImageUrl: At, onOpenViewPath: $t, snippetConfig: Ut = {
     snippets: []
-  }, editorType: Kt, hideRecordingCompanions: Jt = false, llmProviderProfiles: kr = [], getImgbbApiKey: vr }) {
-    const Jr = Kt ?? loadEditorType(), [gn, Zr] = reactExports.useState(0), Ie = reactExports.useRef(null), [qt, gr] = reactExports.useState(false), [dr, ar] = reactExports.useState(false), fr = reactExports.useRef(null), [yr, St] = reactExports.useState(false), Tr = reactExports.useRef(null), [Dr, Pr] = reactExports.useState(true), sn = reactExports.useRef(null), Ar = reactExports.useRef(null), Fr = reactExports.useRef(null), [wt, mt] = reactExports.useState(false), [tt, Bt] = reactExports.useState(false), [Mt, rr] = reactExports.useState(false), [_t, Nr] = reactExports.useState(false), [lr, Er] = reactExports.useState([]), [Mr, Br] = reactExports.useState(false), [cn, Xr] = reactExports.useState(null), [Gr, Vr] = reactExports.useState(false), { showAlert: br } = useAlertModal(), rn = reactExports.useMemo(() => {
+  }, editorType: Kt, hideRecordingCompanions: Jt = false, llmProviderProfiles: Tr = [], getImgbbApiKey: Er }) {
+    const Jr = Kt ?? loadEditorType(), [gn, Zr] = reactExports.useState(0), Ie = reactExports.useRef(null), [Vt, gr] = reactExports.useState(false), [dr, ar] = reactExports.useState(false), fr = reactExports.useRef(null), [yr, St] = reactExports.useState(false), wr = reactExports.useRef(null), [Dr, Nr] = reactExports.useState(true), sn = reactExports.useRef(null), Ar = reactExports.useRef(null), Fr = reactExports.useRef(null), [wt, mt] = reactExports.useState(false), [tt, Bt] = reactExports.useState(false), [Mt, rr] = reactExports.useState(false), [_t, Mr] = reactExports.useState(false), [lr, Sr] = reactExports.useState([]), [Or, Br] = reactExports.useState(false), [cn, Xr] = reactExports.useState(null), [Gr, Vr] = reactExports.useState(false), { showAlert: br } = useAlertModal(), rn = reactExports.useMemo(() => {
       const { meta: Ze } = parseDocumentSettingsMeta(t ?? "");
       return Ze ?? DEFAULT_DOCUMENT_SETTINGS_META;
     }, [
@@ -57663,7 +57672,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       (_a2 = Ar.current) == null ? void 0 : _a2.call(Ar), n == null ? void 0 : n();
     }, [
       n
-    ]), Or = reactExports.useCallback(() => {
+    ]), Pr = reactExports.useCallback(() => {
       var _a2;
       (_a2 = Ar.current) == null ? void 0 : _a2.call(Ar), s == null ? void 0 : s();
     }, [
@@ -57690,13 +57699,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       br
     ]), kn = reactExports.useCallback(async () => {
       var _a2;
-      if (!(Mt || Mr)) {
+      if (!(Mt || Or)) {
         rr(true);
         try {
           (_a2 = Ar.current) == null ? void 0 : _a2.call(Ar);
           const Ze = collectImgbbCopyCandidates();
           if (Ze.length > 0) {
-            Er(Ze), Nr(true);
+            Sr(Ze), Mr(true);
             return;
           }
           await un();
@@ -57713,13 +57722,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       Mt,
       un,
-      Mr,
+      Or,
       br
     ]), Vn = reactExports.useCallback(async () => {
-      if (!Mr) {
+      if (!Or) {
         Br(true);
         try {
-          const Ze = typeof vr == "function" ? String(await Promise.resolve(vr()) || "").trim() : "";
+          const Ze = typeof Er == "function" ? String(await Promise.resolve(Er()) || "").trim() : "";
           if (!Ze) throw new Error("ImgBB API \uD0A4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uC124\uC815\uC5D0\uC11C \uD0A4\uB97C \uC800\uC7A5\uD558\uC138\uC694.");
           const mr = String(t ?? ""), Ur = /* @__PURE__ */ new Map(), tn = [];
           for (const Kr of lr) {
@@ -57755,7 +57764,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             const Kr = await batchUpsertRemoteImageComments(mr, tn);
             Kr.updated && r(Kr.markdown);
           }
-          Nr(false), Er([]), await un(Ur);
+          Mr(false), Sr([]), await un(Ur);
         } catch (Ze) {
           const mr = Ze instanceof Error && Ze.message ? Ze.message : "ImgBB \uC5C5\uB85C\uB4DC \uD6C4 \uBCF5\uC0AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.";
           br({
@@ -57769,14 +57778,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       t,
       un,
-      vr,
+      Er,
       lr,
-      Mr,
+      Or,
       r,
       br
     ]), zn = reactExports.useCallback(async () => {
-      if (!Mr) {
-        Nr(false), Er([]), rr(true);
+      if (!Or) {
+        Mr(false), Sr([]), rr(true);
         try {
           await un();
         } catch (Ze) {
@@ -57791,12 +57800,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }, [
       un,
-      Mr,
+      Or,
       br
     ]), xt = reactExports.useCallback(() => {
-      Mr || (Nr(false), Er([]));
+      Or || (Mr(false), Sr([]));
     }, [
-      Mr
+      Or
     ]), mn = reactExports.useCallback(() => {
       St(false), mt(true);
     }, []), Zt = reactExports.useCallback(async () => {
@@ -57863,14 +57872,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       e == null ? void 0 : e.viewer,
       dr,
       zt.length,
-      qt,
+      Vt,
       Jr,
       Dr,
       e == null ? void 0 : e.id
     ]), reactExports.useEffect(() => {
       if (!yr) return;
       const Ze = (Ur) => {
-        Tr.current && !Tr.current.contains(Ur.target) && St(false);
+        wr.current && !wr.current.contains(Ur.target) && St(false);
       }, mr = window.setTimeout(() => {
         document.addEventListener("click", Ze);
       }, 0);
@@ -58026,7 +58035,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         re == null ? void 0 : re(Ze);
       }
-    }, wr = () => {
+    }, vr = () => {
       var _a2;
       try {
         ((_a2 = Ie.current) == null ? void 0 : _a2.contentWindow) && Ie.current.contentWindow.location.reload();
@@ -58106,7 +58115,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                       type: "button",
                       variant: "secondary",
                       size: "sm",
-                      onClick: wr,
+                      onClick: vr,
                       title: "PDF \uBDF0\uC5B4 \uC0C8\uB85C\uACE0\uCE68",
                       children: [
                         jsxRuntimeExports.jsx(IconRefresh, {
@@ -58122,7 +58131,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                       type: "button",
                       variant: "secondary",
                       size: "sm",
-                      onClick: Or,
+                      onClick: Pr,
                       disabled: o || l,
                       title: l ? "\uC0C8\uB85C\uACE0\uCE68 \uC911..." : "\uB514\uC2A4\uD06C\uC5D0\uC11C \uC0C8\uB85C\uACE0\uCE68",
                       className: "shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5",
@@ -58141,7 +58150,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                       ]
                     }),
                     (e.type !== "session" || Cr || ue) && jsxRuntimeExports.jsxs("div", {
-                      ref: Tr,
+                      ref: wr,
                       className: "relative",
                       children: [
                         jsxRuntimeExports.jsxs(Button, {
@@ -58368,10 +58377,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 }),
                 jsxRuntimeExports.jsxs(Button, {
                   type: "button",
-                  variant: qt ? "primary" : "secondary",
+                  variant: Vt ? "primary" : "secondary",
                   size: "sm",
                   onClick: () => gr((Ze) => !Ze),
-                  title: qt ? "\uD3B8\uC9D1 \uBAA8\uB4DC" : "\uB179\uC74C \uB3D9\uAE30\uD654 \uBCF4\uAE30",
+                  title: Vt ? "\uD3B8\uC9D1 \uBAA8\uB4DC" : "\uB179\uC74C \uB3D9\uAE30\uD654 \uBCF4\uAE30",
                   className: "shrink-0",
                   children: [
                     jsxRuntimeExports.jsx(IconEye, {
@@ -58379,17 +58388,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                     }),
                     jsxRuntimeExports.jsx("span", {
                       className: "hidden md:inline",
-                      children: qt ? "\uD3B8\uC9D1" : "\uB3D9\uAE30\uD654 \uBCF4\uAE30"
+                      children: Vt ? "\uD3B8\uC9D1" : "\uB3D9\uAE30\uD654 \uBCF4\uAE30"
                     })
                   ]
                 }),
-                qt && yt && jsxRuntimeExports.jsx(RecordingPlayer, {
+                Vt && yt && jsxRuntimeExports.jsx(RecordingPlayer, {
                   audioUrl: yt,
                   audioRef: fr
                 })
               ]
             }),
-            jr === "markdown" && Jr === EDITOR_TYPE_NOVEL && !qt && jsxRuntimeExports.jsxs("div", {
+            jr === "markdown" && Jr === EDITOR_TYPE_NOVEL && !Vt && jsxRuntimeExports.jsxs("div", {
               className: "shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50/90 dark:bg-odp-bgSoft/90",
               role: "toolbar",
               "aria-label": "Markdown \uD3B8\uC9D1\uAE30",
@@ -58424,7 +58433,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                     jsxRuntimeExports.jsx("button", {
                       type: "button",
                       className: `shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${Dr ? "border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong"}`,
-                      onClick: () => Pr((Ze) => !Ze),
+                      onClick: () => Nr((Ze) => !Ze),
                       title: Dr ? "\uBAA9\uCC28 \uC228\uAE30\uAE30" : "\uBAA9\uCC28 \uBCF4\uC774\uAE30",
                       "aria-pressed": Dr,
                       "aria-label": Dr ? "\uBAA9\uCC28 \uC228\uAE30\uAE30" : "\uBAA9\uCC28 \uBCF4\uC774\uAE30",
@@ -58457,7 +58466,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }) : jr === "markdown" ? jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, {
             children: jsxRuntimeExports.jsx("div", {
               className: "flex-1 min-h-0",
-              children: qt && yt ? jsxRuntimeExports.jsx(RecordingSyncView, {
+              children: Vt && yt ? jsxRuntimeExports.jsx(RecordingSyncView, {
                 content: t,
                 syncData: Ht,
                 audioRef: fr,
@@ -58473,7 +58482,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   currentFile: e,
                   previewOnly: Se,
                   tocVisible: Dr,
-                  onTocRequestClose: () => Pr(false),
+                  onTocRequestClose: () => Nr(false),
                   mobileTocOverlayTopPx: Ae ? cn : null,
                   onRegisterFlushBeforeSave: (Ze) => {
                     Ar.current = Ze;
@@ -58484,9 +58493,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   onUploadImage: Rt,
                   isUploadingEditorImage: nt,
                   uploadImagePercent: hr,
-                  onCancelUploadImage: Yt,
+                  onCancelUploadImage: qt,
                   onResolveWikiImageUrl: At,
-                  getImgbbApiKey: vr
+                  getImgbbApiKey: Er
                 }, (e == null ? void 0 : e.id) ?? "novel-md") : jsxRuntimeExports.jsx(MarkdownEditor, {
                   value: t,
                   onChange: r,
@@ -58498,12 +58507,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                   onUploadImage: Rt,
                   isUploadingEditorImage: nt,
                   uploadImagePercent: hr,
-                  onCancelUploadImage: Yt,
+                  onCancelUploadImage: qt,
                   onResolveWikiImageUrl: At,
                   onOpenViewPath: $t,
                   snippetConfig: Ut,
-                  llmProviderProfiles: kr,
-                  getImgbbApiKey: vr,
+                  llmProviderProfiles: Tr,
+                  getImgbbApiKey: Er,
                   onRequestConvertAllImagesToWiki: mn,
                   onRegisterConvertAllImagesToWiki: (Ze) => {
                     Fr.current = Ze;
@@ -58644,11 +58653,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         jsxRuntimeExports.jsx(ConfirmModal, {
           isOpen: _t,
           title: "ImgBB\uB85C \uC5C5\uB85C\uB4DC\uD560\uAE4C\uC694?",
-          message: Mr ? "\uC774\uBBF8\uC9C0\uB97C ImgBB\uC5D0 \uC5C5\uB85C\uB4DC\uD558\uB294 \uC911\uC785\uB2C8\uB2E4\u2026" : `wiki\xB7base64\xB7\uC774\uBBF8\uC9C0\xB7Mermaid ${lr.length}\uAC1C\uB97C ImgBB\uC5D0 \uC62C\uB9B0 \uB4A4 \uC6D0\uBCF8\uC5D0 \uB9C1\uD06C\uB97C \uC800\uC7A5\uD558\uACE0 \uBCF5\uC0AC\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`,
-          confirmLabel: Mr ? "\uC5C5\uB85C\uB4DC \uC911\u2026" : "\uC5C5\uB85C\uB4DC \uD6C4 \uBCF5\uC0AC",
+          message: Or ? "\uC774\uBBF8\uC9C0\uB97C ImgBB\uC5D0 \uC5C5\uB85C\uB4DC\uD558\uB294 \uC911\uC785\uB2C8\uB2E4\u2026" : `wiki\xB7base64\xB7\uC774\uBBF8\uC9C0\xB7Mermaid ${lr.length}\uAC1C\uB97C ImgBB\uC5D0 \uC62C\uB9B0 \uB4A4 \uC6D0\uBCF8\uC5D0 \uB9C1\uD06C\uB97C \uC800\uC7A5\uD558\uACE0 \uBCF5\uC0AC\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`,
+          confirmLabel: Or ? "\uC5C5\uB85C\uB4DC \uC911\u2026" : "\uC5C5\uB85C\uB4DC \uD6C4 \uBCF5\uC0AC",
           cancelLabel: "\uCDE8\uC18C",
           discardLabel: "\uC5C5\uB85C\uB4DC \uC5C6\uC774 \uBCF5\uC0AC",
-          confirmDisabled: Mr || lr.length === 0,
+          confirmDisabled: Or || lr.length === 0,
           onConfirm: () => {
             Vn();
           },
@@ -58945,8 +58954,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       items: L,
       activeIndex: re,
       overIndex: pe
-    }) : Se, Yt = Me == null ? void 0 : Me.id, At = reactExports.useRef({
-      activeId: Yt,
+    }) : Se, qt = Me == null ? void 0 : Me.id, At = reactExports.useRef({
+      activeId: qt,
       items: L,
       newIndex: hr,
       containerId: V
@@ -58977,17 +58986,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       V,
       L
     ]), reactExports.useEffect(() => {
-      if (Yt === At.current.activeId) return;
-      if (Yt != null && At.current.activeId == null) {
-        At.current.activeId = Yt;
+      if (qt === At.current.activeId) return;
+      if (qt != null && At.current.activeId == null) {
+        At.current.activeId = qt;
         return;
       }
-      const kr = setTimeout(() => {
-        At.current.activeId = Yt;
+      const Tr = setTimeout(() => {
+        At.current.activeId = qt;
       }, 50);
-      return () => clearTimeout(kr);
+      return () => clearTimeout(Tr);
     }, [
-      Yt
+      qt
     ]), {
       active: Me,
       activeIndex: re,
@@ -59363,10 +59372,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       children: t
     });
   }
-  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-DTawJvHQ.js").then(async (m2) => {
+  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-wAuyyOSM.js").then(async (m2) => {
     await m2.__tla;
     return m2;
-  }), __vite__mapDeps([37,3,6,38,27,11,8,9,10,24,25,28,19,39,40,2,4,30,31,12,41]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-CDJAfcg6.js").then(async (m2) => {
+  }), __vite__mapDeps([37,3,6,38,27,11,8,9,10,24,25,28,19,39,40,2,4,30,31,12,41]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-B7jw17XV.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([42,6,3,9,26,27,11,8,43,16,10,12])));
@@ -61734,11 +61743,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ge.ok && Kt.add(Ge.listDir), (Me == null ? void 0 : Me.ok) && Kt.add(Me.parentDirPath);
       let Jt = false;
       return (async () => {
-        for (const kr of Kt) if (kr) try {
-          await (l == null ? void 0 : l(kr));
+        for (const Tr of Kt) if (Tr) try {
+          await (l == null ? void 0 : l(Tr));
         } catch {
         }
-        Jt || Se((kr) => kr + 1);
+        Jt || Se((Tr) => Tr + 1);
       })(), () => {
         Jt = true;
       };
@@ -61775,8 +61784,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]), reactExports.useEffect(() => {
       const Kt = ke.current;
       if (!Kt) return;
-      const Jt = (kr) => {
-        Kt.contains(kr.target) || pe(false);
+      const Jt = (Tr) => {
+        Kt.contains(Tr.target) || pe(false);
       };
       return document.addEventListener("mousedown", Jt), () => document.removeEventListener("mousedown", Jt);
     }, []);
@@ -61790,18 +61799,18 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Kt.preventDefault();
       const Jt = V.trim();
       if (!Jt) return;
-      const kr = resolveCreateItemPath(n, Jt, Le, Qe);
-      if (!kr.ok) {
-        kr.reason === "outside-root" && ze();
+      const Tr = resolveCreateItemPath(n, Jt, Le, Qe);
+      if (!Tr.ok) {
+        Tr.reason === "outside-root" && ze();
         return;
       }
-      if (isCreateItemPathTaken(Re, kr, Le)) {
+      if (isCreateItemPathTaken(Re, Tr, Le)) {
         ze();
         return;
       }
       pe(false);
-      const vr = Le === "file" && applyCreateFileFormat(Jt, ee) || Jt;
-      f(vr);
+      const Er = Le === "file" && applyCreateFileFormat(Jt, ee) || Jt;
+      f(Er);
     }, zt = (Kt) => {
       if (!(!le || lt.length === 0)) {
         if (Kt.key === "ArrowDown") {
@@ -61826,7 +61835,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         c();
       }
-    }, ut = Le === "folder", yt = ut ? "\uC0C8 \uD3F4\uB354" : "\uC0C8 \uD30C\uC77C", Ht = ut ? IconFolderPlus : IconFilePlus, Rt = o === "local" ? "\uB85C\uCEEC: " : o === "webdav" ? "WebDAV: " : "S3: ", nt = CREATE_FILE_FORMATS.find((Kt) => Kt.id === ee) || defaultCreateFileFormat(), hr = `\uC0C8 \uD30C\uC77C${nt.extension}`, Yt = V.trim() ? (Me == null ? void 0 : Me.ok) ? `${Rt}${Me.path}` : dt ? `${Rt}(\uB8E8\uD2B8 \uBC16 \u2014 \uC0DD\uC131 \uBD88\uAC00)` : `${Rt}${n || ""}${V.trim()}` : `${Rt}${n || ""}${ut ? "\uC0C8 \uD3F4\uB354/" : hr}`, At = Ge.ok ? Ge.listDir || "(\uB8E8\uD2B8)" : "(\uB8E8\uD2B8 \uBC16)", $t = je ? "border-red-500 dark:border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-odp-borderStrong focus:ring-blue-500 focus:border-transparent", Ut = le && !dt && Ge.ok && lt.length > 0;
+    }, ut = Le === "folder", yt = ut ? "\uC0C8 \uD3F4\uB354" : "\uC0C8 \uD30C\uC77C", Ht = ut ? IconFolderPlus : IconFilePlus, Rt = o === "local" ? "\uB85C\uCEEC: " : o === "webdav" ? "WebDAV: " : "S3: ", nt = CREATE_FILE_FORMATS.find((Kt) => Kt.id === ee) || defaultCreateFileFormat(), hr = `\uC0C8 \uD30C\uC77C${nt.extension}`, qt = V.trim() ? (Me == null ? void 0 : Me.ok) ? `${Rt}${Me.path}` : dt ? `${Rt}(\uB8E8\uD2B8 \uBC16 \u2014 \uC0DD\uC131 \uBD88\uAC00)` : `${Rt}${n || ""}${V.trim()}` : `${Rt}${n || ""}${ut ? "\uC0C8 \uD3F4\uB354/" : hr}`, At = Ge.ok ? Ge.listDir || "(\uB8E8\uD2B8)" : "(\uB8E8\uD2B8 \uBC16)", $t = je ? "border-red-500 dark:border-red-500 focus:ring-red-500" : "border-gray-300 dark:border-odp-borderStrong focus:ring-blue-500 focus:border-transparent", Ut = le && !dt && Ge.ok && lt.length > 0;
     return jsxRuntimeExports.jsx(Modal, {
       isOpen: e,
       onClose: Ft,
@@ -61888,7 +61897,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                       " ",
                       jsxRuntimeExports.jsx("span", {
                         className: `font-mono break-all ${je ? "text-red-600 dark:text-red-400" : ""}`,
-                        children: Yt
+                        children: qt
                       })
                     ]
                   }),
@@ -61906,15 +61915,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                         ]
                       }),
                       lt.map((Kt, Jt) => {
-                        const kr = Jt === ue;
+                        const Tr = Jt === ue;
                         return jsxRuntimeExports.jsxs("button", {
                           type: "button",
                           role: "option",
                           id: `${L}-opt-${Jt}`,
-                          "aria-selected": kr,
-                          className: `flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${kr ? "bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100" : "text-gray-800 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg"}`,
-                          onMouseDown: (vr) => {
-                            vr.preventDefault(), pt(Kt);
+                          "aria-selected": Tr,
+                          className: `flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${Tr ? "bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100" : "text-gray-800 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg"}`,
+                          onMouseDown: (Er) => {
+                            Er.preventDefault(), pt(Kt);
                           },
                           onMouseEnter: () => fe(Jt),
                           children: [
@@ -65235,7 +65244,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           throw Rt(mt, "value");
         }
       }
-      function Yt(wt, mt) {
+      function qt(wt, mt) {
         var tt, Bt;
         do
           if (mt && ((tt = Fe()) === '"' || tt === "'")) {
@@ -65254,11 +65263,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         var rr = {
           options: void 0
         };
-        rr.setOption = function(_t, Nr) {
-          this.options === void 0 && (this.options = {}), this.options[_t] = Nr;
-        }, Jr(rr, function(Nr) {
-          if (Nr === "option") fr(rr, Nr), je(";");
-          else throw Rt(Nr);
+        rr.setOption = function(_t, Mr) {
+          this.options === void 0 && (this.options = {}), this.options[_t] = Mr;
+        }, Jr(rr, function(Mr) {
+          if (Mr === "option") fr(rr, Mr), je(";");
+          else throw Rt(Mr);
         }, function() {
           Dr(rr);
         });
@@ -65326,14 +65335,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (je("="), Et = nt(), Et < 2023) throw Rt(Et, "syntax");
         je(";");
       }
-      function kr() {
+      function Tr() {
         if (je("="), Et = nt(), ![
           "2023",
           "2024"
         ].includes(Et)) throw Rt(Et, "edition");
         je(";");
       }
-      function vr(wt, mt) {
+      function Er(wt, mt) {
         switch (mt) {
           case "option":
             return fr(wt, mt), je(";"), true;
@@ -65343,9 +65352,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             return dr(wt, mt), true;
           case "export":
           case "local":
-            return Et < "2024" || (mt = Me(), mt === "export" || mt === "local") || mt !== "message" && mt !== "enum" ? false : vr(wt, mt);
+            return Et < "2024" || (mt = Me(), mt === "export" || mt === "local") || mt !== "message" && mt !== "enum" ? false : Er(wt, mt);
           case "service":
-            return Pr(wt, mt), true;
+            return Nr(wt, mt), true;
           case "extend":
             return Ar(wt, mt), true;
         }
@@ -65362,9 +65371,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (!be.test(mt = Me())) throw Rt(mt, "type name");
         var tt = new r(mt);
         Jr(tt, function(Mt) {
-          if (!vr(tt, Mt)) switch (Mt) {
+          if (!Er(tt, Mt)) switch (Mt) {
             case "map":
-              qt(tt);
+              Vt(tt);
               break;
             case "required":
               if (Et !== "proto2") throw Rt(Mt);
@@ -65382,10 +65391,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               gr(tt, Mt);
               break;
             case "extensions":
-              Yt(tt.extensions || (tt.extensions = []));
+              qt(tt.extensions || (tt.extensions = []));
               break;
             case "reserved":
-              Yt(tt.reserved || (tt.reserved = []), true);
+              qt(tt.reserved || (tt.reserved = []), true);
               break;
             default:
               if (Et === "proto2" || !Se.test(Mt)) throw Rt(Mt);
@@ -65445,7 +65454,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               dr(rr, lr);
               break;
             case "reserved":
-              Yt(rr.reserved || (rr.reserved = []), true);
+              qt(rr.reserved || (rr.reserved = []), true);
               break;
             case "export":
             case "local":
@@ -65466,7 +65475,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
         }), wt.add(rr).add(_t);
       }
-      function qt(wt) {
+      function Vt(wt) {
         je("<");
         var mt = Me();
         if (L.mapKey[mt] === void 0) throw Rt(mt, "type");
@@ -65501,7 +65510,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               fr(tt, Mt), je(";");
               break;
             case "reserved":
-              Yt(tt.reserved || (tt.reserved = []), true), tt.reserved === void 0 && (tt.reserved = []);
+              qt(tt.reserved || (tt.reserved = []), true), tt.reserved === void 0 && (tt.reserved = []);
               break;
             default:
               ar(tt, Mt);
@@ -65543,8 +65552,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           } else Bt = Bt ? Bt += mt : mt;
           mt = Me();
         }
-        var Nr = Bt ? tt.concat(Bt) : tt, lr = yr(wt, Nr);
-        Bt = Bt && Bt[0] === "." ? Bt.slice(1) : Bt, tt = tt && tt[tt.length - 1] === "." ? tt.slice(0, -1) : tt, Tr(wt, tt, lr, Bt);
+        var Mr = Bt ? tt.concat(Bt) : tt, lr = yr(wt, Mr);
+        Bt = Bt && Bt[0] === "." ? Bt.slice(1) : Bt, tt = tt && tt[tt.length - 1] === "." ? tt.slice(0, -1) : tt, wr(wt, tt, lr, Bt);
       }
       function yr(wt, mt) {
         if (je("{", true)) {
@@ -65568,8 +65577,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }
           return tt;
         }
-        var Nr = hr();
-        return St(wt, mt, Nr), Nr;
+        var Mr = hr();
+        return St(wt, mt, Mr), Mr;
       }
       function St(wt, mt, tt) {
         if (zt === wt && /^features\./.test(mt)) {
@@ -65578,7 +65587,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         wt.setOption && wt.setOption(mt, tt);
       }
-      function Tr(wt, mt, tt, Bt) {
+      function wr(wt, mt, tt, Bt) {
         wt.setParsedOption && wt.setParsedOption(mt, tt, Bt);
       }
       function Dr(wt) {
@@ -65590,25 +65599,25 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         return wt;
       }
-      function Pr(wt, mt) {
+      function Nr(wt, mt) {
         if (!be.test(mt = Me())) throw Rt(mt, "service name");
         var tt = new c(mt);
         Jr(tt, function(Mt) {
-          if (!vr(tt, Mt)) if (Mt === "rpc") sn(tt, Mt);
+          if (!Er(tt, Mt)) if (Mt === "rpc") sn(tt, Mt);
           else throw Rt(Mt);
         }), wt.add(tt), wt === zt && Ft.push(tt);
       }
       function sn(wt, mt) {
         var tt = Ge(), Bt = mt;
         if (!be.test(mt = Me())) throw Rt(mt, "name");
-        var Mt = mt, rr, _t, Nr, lr;
+        var Mt = mt, rr, _t, Mr, lr;
         if (je("("), je("stream", true) && (_t = true), !Se.test(mt = Me()) || (rr = mt, je(")"), je("returns"), je("("), je("stream", true) && (lr = true), !Se.test(mt = Me()))) throw Rt(mt);
-        Nr = mt, je(")");
-        var Er = new f(Mt, Bt, rr, Nr, _t, lr);
-        Er.comment = tt, Jr(Er, function(Br) {
-          if (Br === "option") fr(Er, Br), je(";");
+        Mr = mt, je(")");
+        var Sr = new f(Mt, Bt, rr, Mr, _t, lr);
+        Sr.comment = tt, Jr(Sr, function(Br) {
+          if (Br === "option") fr(Sr, Br), je(";");
           else throw Rt(Br);
-        }), wt.add(Er);
+        }), wt.add(Sr);
       }
       function Ar(wt, mt) {
         if (!Se.test(mt = Me())) throw Rt(mt, "reference");
@@ -65644,13 +65653,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           break;
         case "edition":
           if (!lt) throw Rt(Fr);
-          kr();
+          Tr();
           break;
         case "option":
           fr(zt, Fr), je(";", true);
           break;
         default:
-          if (vr(zt, Fr)) {
+          if (Er(zt, Fr)) {
             lt = false;
             continue;
           }
@@ -67551,8 +67560,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             o && c && ue > c && (dt(((Je, Et) => {
               let zt = 0;
               const Ft = [];
-              Je.t.forEach((hr, Yt) => {
-                hr !== -1 && (Ft.push(hr), Yt < Et && zt++);
+              Je.t.forEach((hr, qt) => {
+                hr !== -1 && (Ft.push(hr), qt < Et && zt++);
               }), Je.i = -1;
               const ut = p(Ft), yt = ut.length, Ht = yt / 2 | 0, Rt = yt % 2 == 0 ? (ut[Ht - 1] + ut[Ht]) / 2 : ut[Ht], nt = Je.o;
               return ((Je.o = Rt) - nt) * d(Et - zt, 0);
@@ -68236,7 +68245,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         const Kt = Ut + $t;
         return Math.min(Math.max(Kt, 0), Me.length - 1);
       });
-    }, nt = Me.length > 0 ? `${ke}-${Fe}` : void 0, hr = ($t) => $t.key === "Enter" || $t.code === "Enter" || $t.code === "NumpadEnter", Yt = ($t) => {
+    }, nt = Me.length > 0 ? `${ke}-${Fe}` : void 0, hr = ($t) => $t.key === "Enter" || $t.code === "Enter" || $t.code === "NumpadEnter", qt = ($t) => {
       if (hr($t)) {
         if ($t.nativeEvent.isComposing || $t.keyCode === 229) return;
         $t.preventDefault(), $t.stopPropagation(), Ht();
@@ -68268,7 +68277,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               ref: Pe,
               value: Re,
               onChange: ($t) => Qe($t.target.value),
-              onKeyDown: Yt,
+              onKeyDown: qt,
               placeholder: ee ? oe ? `${oe} \uC5D0\uC11C \uAC80\uC0C9\u2026` : "\uB514\uB809\uD1A0\uB9AC \uD0D0\uC0C9 \xB7 \uD3F4\uB354/\uD30C\uC77C \uC774\uB984\u2026" : le ? "\uCC44\uD305 \uADF8\uB8F9 \uC774\uB984\u2026" : pe ? "\uAE30\uC874 \uAC01\uC8FC \uB610\uB294 \uC9C1\uC811 \uC785\uB825\u2026" : ue ? "\uAC01\uC8FC \uBC88\uD638\xB7\uC81C\uBAA9\xB7URL\u2026" : fe ? "\uC6D0\uC22B\uC790 \uBC88\uD638\u2026" : "\uC124\uC815, \uCC44\uD305, \uD30C\uC77C\uBA85, \uACBD\uB85C\u2026",
               className: "min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400 dark:text-odp-fgStrong dark:placeholder:text-odp-muted",
               autoComplete: "off",
@@ -68467,7 +68476,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               asChild: true,
               "aria-describedby": void 0,
               onOpenAutoFocus: ($t) => $t.preventDefault(),
-              onKeyDown: Yt,
+              onKeyDown: qt,
               children: jsxRuntimeExports.jsx(motion.div, {
                 className: PANEL_CLASS,
                 "data-advanced-search": "",
@@ -68505,7 +68514,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             "data-advanced-search": "",
             "aria-describedby": void 0,
             onOpenAutoFocus: ($t) => $t.preventDefault(),
-            onKeyDown: Yt,
+            onKeyDown: qt,
             children: At
           })
         ]
@@ -68772,18 +68781,18 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       });
       if (le === "browse-directory") return listBrowseDirectoryHits(e(), ue, ut, 200);
       if (le === "chat-groups") {
-        let Yt = [];
+        let qt = [];
         if (o) try {
-          Yt = await o() || [];
+          qt = await o() || [];
         } catch (At) {
           console.warn("[advancedSearch] getChatGroups failed", At);
         }
-        return listChatGroupHits(Yt, ut, 80);
+        return listChatGroupHits(qt, ut, 80);
       }
       if (le === "footnote-insert") return listFootnoteInsertChoiceHits(ut);
       if (le === "footnote-existing") {
-        const Yt = getFootnoteInsertMarkdown() || f || "";
-        return listExistingFootnoteHits(Yt, ut, 80);
+        const qt = getFootnoteInsertMarkdown() || f || "";
+        return listExistingFootnoteHits(qt, ut, 80);
       }
       if (le === "circle-number") return listCircleNumberHits(ut, 80);
       const yt = await advancedSearchEngine.search(ut, e(), 50, {
@@ -68798,25 +68807,25 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         } : {}
       });
       if (!Pe) return yt;
-      const Ht = ut.trim().toLowerCase(), Rt = matchPrintTocEntries(ut, 40).map((Yt, At) => {
-        const $t = Yt.text, Ut = Ht ? scoreFuzzyRelevance($t, Ht) || 400 - At : 150 - At;
+      const Ht = ut.trim().toLowerCase(), Rt = matchPrintTocEntries(ut, 40).map((qt, At) => {
+        const $t = qt.text, Ut = Ht ? scoreFuzzyRelevance($t, Ht) || 400 - At : 150 - At;
         return {
-          docId: `print-toc:${Yt.id}`,
+          docId: `print-toc:${qt.id}`,
           kind: "command",
-          path: Yt.id,
+          path: qt.id,
           title: $t,
-          preview: `H${Yt.level} \xB7 \uBAA9\uCC28\uB85C \uC2A4\uD06C\uB864`,
+          preview: `H${qt.level} \xB7 \uBAA9\uCC28\uB85C \uC2A4\uD06C\uB864`,
           commandId: "print-scroll-heading",
           reasons: [
             "command"
           ],
           score: Ut
         };
-      }).sort((Yt, At) => At.score - Yt.score || Yt.title.localeCompare(At.title, "ko")), nt = /* @__PURE__ */ new Set(), hr = [];
-      for (const Yt of [
+      }).sort((qt, At) => At.score - qt.score || qt.title.localeCompare(At.title, "ko")), nt = /* @__PURE__ */ new Set(), hr = [];
+      for (const qt of [
         ...Rt,
         ...yt
-      ].sort((At, $t) => $t.score - At.score || At.title.localeCompare($t.title, "ko"))) if (!nt.has(Yt.docId) && (nt.add(Yt.docId), hr.push(Yt), hr.length >= 50)) break;
+      ].sort((At, $t) => $t.score - At.score || At.title.localeCompare($t.title, "ko"))) if (!nt.has(qt.docId) && (nt.add(qt.docId), hr.push(qt), hr.length >= 50)) break;
       return hr;
     }, [
       e,
@@ -70804,7 +70813,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
   getLocalAppBuildId = function() {
-    return "811f0a26e0fb8397f378be920839fb103754eb4e".trim();
+    return "8c480918631450bbda6b0d79f1fe1e52f2ddd9e5".trim();
   };
   function buildIdRequestUrl() {
     return `/DocuHaim/build-id.json?t=${Date.now()}`;
@@ -70943,11 +70952,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       updateServiceWorker: re
     };
   }
-  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-DTawJvHQ.js").then(async (m2) => {
+  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-wAuyyOSM.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([37,3,6,38,27,11,8,9,10,24,25,28,19,39,40,2,4,30,31,12,41])));
-  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-B4dpcAKV.js"), __vite__mapDeps([47,3,6,19,9,11,8,15,10,38,27,43,23,24,25,20,32,28,12,21]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-DbbUrudC.js"), __vite__mapDeps([48,3,18,6,19,16,9,11,8,20,21,10,12])));
+  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-7fbkmZCz.js"), __vite__mapDeps([47,3,6,19,9,11,8,15,10,38,27,43,23,24,25,20,32,28,12,21]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-DpLiQ480.js"), __vite__mapDeps([48,3,18,6,19,16,9,11,8,20,21,10,12])));
   function RouteSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted",
@@ -70999,24 +71008,24 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (typeof window > "u") return "light";
       const ae = window.localStorage.getItem("theme");
       return ae === "light" || ae === "dark" ? ae : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    }), [Pe, Le] = reactExports.useState(false), [Re, Qe] = reactExports.useState([]), [Me, dt] = reactExports.useState([]), [Fe, je] = reactExports.useState([]), [Ge, lt] = reactExports.useState(null), ze = reactExports.useRef(null), pt = reactExports.useRef(/* @__PURE__ */ new Map()), Je = reactExports.useRef(/* @__PURE__ */ Object.create(null)), Et = reactExports.useRef(null), [zt, Ft] = reactExports.useState(false), [ut, yt] = reactExports.useState(false), [Ht, Rt] = reactExports.useState(null), [nt, hr] = reactExports.useState(null), [Yt, At] = reactExports.useState(() => isDesktopApp() ? loadLocalVaultFsPath() : ""), [$t, Ut] = reactExports.useState(false), [Kt, Jt] = reactExports.useState(null), kr = reactExports.useRef(/* @__PURE__ */ new Set()), [vr, Jr] = reactExports.useState(false), [gn, Zr] = reactExports.useState(""), [Ie, qt] = reactExports.useState(null), [gr, dr] = reactExports.useState(""), ar = reactExports.useRef(""), [fr, yr] = reactExports.useState(() => emptyWorkspaceTabsState()), St = reactExports.useRef(fr);
+    }), [Pe, Le] = reactExports.useState(false), [Re, Qe] = reactExports.useState([]), [Me, dt] = reactExports.useState([]), [Fe, je] = reactExports.useState([]), [Ge, lt] = reactExports.useState(null), ze = reactExports.useRef(null), pt = reactExports.useRef(/* @__PURE__ */ new Map()), Je = reactExports.useRef(/* @__PURE__ */ Object.create(null)), Et = reactExports.useRef(null), [zt, Ft] = reactExports.useState(false), [ut, yt] = reactExports.useState(false), [Ht, Rt] = reactExports.useState(null), [nt, hr] = reactExports.useState(null), [qt, At] = reactExports.useState(() => isDesktopApp() ? loadLocalVaultFsPath() : ""), [$t, Ut] = reactExports.useState(false), [Kt, Jt] = reactExports.useState(null), Tr = reactExports.useRef(/* @__PURE__ */ new Set()), [Er, Jr] = reactExports.useState(false), [gn, Zr] = reactExports.useState(""), [Ie, Vt] = reactExports.useState(null), [gr, dr] = reactExports.useState(""), ar = reactExports.useRef(""), [fr, yr] = reactExports.useState(() => emptyWorkspaceTabsState()), St = reactExports.useRef(fr);
     St.current = fr;
-    const [Tr, Dr] = reactExports.useState(() => loadWorkspaceTabsEnabled()), Pr = reactExports.useRef(Tr);
-    Pr.current = Tr;
-    const sn = reactExports.useRef(loadWorkspaceTabsAutoSaveMode()), Ar = reactExports.useRef(""), [Fr, wt] = reactExports.useState(false), [mt, tt] = reactExports.useState(() => []), Bt = reactExports.useRef(/* @__PURE__ */ new Set()), [Mt, rr] = reactExports.useState(false), [_t, Nr] = reactExports.useState(false), [lr, Er] = reactExports.useState(null), [Mr, Br] = reactExports.useState(null), [cn, Xr] = reactExports.useState(false), [Gr, Vr] = reactExports.useState(null), [br, rn] = reactExports.useState(null), [xr, Or] = reactExports.useState(null), [xn, en] = reactExports.useState(() => loadShowHiddenFolders()), [un, kn] = reactExports.useState(() => loadShowTrashFolder()), [Vn, zn] = reactExports.useState(() => loadEditorType()), [xt, mn] = reactExports.useState(() => loadStorageMode()), [Zt, Qn] = reactExports.useState(() => loadWebdavConfig()), Tn = reactExports.useRef(null), ea = reactExports.useRef(null), Cn = reactExports.useRef(null), [Bn, jr] = reactExports.useState(null), [Cr, wn] = reactExports.useState(null), [yn, da] = reactExports.useState(false), [jt, Rr] = reactExports.useState(false), [wr, Ze] = reactExports.useState(""), [mr, Ur] = reactExports.useState(false), [tn, Kr] = reactExports.useState(false), [or, Yn] = reactExports.useState(false), [jn, Xn] = reactExports.useState(null), [vn, Ca] = reactExports.useState(null), [bi, ya] = reactExports.useState(false), [Sr, Hn] = reactExports.useState(null), [Oa, fa] = reactExports.useState(null), [Un, ta] = reactExports.useState(null), [ba, xa] = reactExports.useState(null), [ia, Pa] = reactExports.useState(false), [ai, Lr] = reactExports.useState(false), [xi, ii] = reactExports.useState(false), [Ua, Wr] = reactExports.useState(null), [_n, En] = reactExports.useState(false), [Wn, ra] = reactExports.useState(null), [wa, dn] = reactExports.useState(false), [pn, In] = reactExports.useState("");
+    const [wr, Dr] = reactExports.useState(() => loadWorkspaceTabsEnabled()), Nr = reactExports.useRef(wr);
+    Nr.current = wr;
+    const sn = reactExports.useRef(loadWorkspaceTabsAutoSaveMode()), Ar = reactExports.useRef(""), [Fr, wt] = reactExports.useState(false), [mt, tt] = reactExports.useState(() => []), Bt = reactExports.useRef(/* @__PURE__ */ new Set()), [Mt, rr] = reactExports.useState(false), [_t, Mr] = reactExports.useState(false), [lr, Sr] = reactExports.useState(null), [Or, Br] = reactExports.useState(null), [cn, Xr] = reactExports.useState(false), [Gr, Vr] = reactExports.useState(null), [br, rn] = reactExports.useState(null), [xr, Pr] = reactExports.useState(null), [xn, en] = reactExports.useState(() => loadShowHiddenFolders()), [un, kn] = reactExports.useState(() => loadShowTrashFolder()), [Vn, zn] = reactExports.useState(() => loadEditorType()), [xt, mn] = reactExports.useState(() => loadStorageMode()), [Zt, Qn] = reactExports.useState(() => loadWebdavConfig()), Tn = reactExports.useRef(null), ea = reactExports.useRef(null), Cn = reactExports.useRef(null), [Bn, jr] = reactExports.useState(null), [Cr, wn] = reactExports.useState(null), [yn, da] = reactExports.useState(false), [jt, Rr] = reactExports.useState(false), [vr, Ze] = reactExports.useState(""), [mr, Ur] = reactExports.useState(false), [tn, Kr] = reactExports.useState(false), [or, Yn] = reactExports.useState(false), [jn, Xn] = reactExports.useState(null), [vn, Ca] = reactExports.useState(null), [xi, ya] = reactExports.useState(false), [kr, Hn] = reactExports.useState(null), [Oa, fa] = reactExports.useState(null), [Un, ta] = reactExports.useState(null), [ba, xa] = reactExports.useState(null), [ia, Pa] = reactExports.useState(false), [ai, Lr] = reactExports.useState(false), [wi, ii] = reactExports.useState(false), [Ua, Wr] = reactExports.useState(null), [_n, En] = reactExports.useState(false), [Wn, ra] = reactExports.useState(null), [wa, dn] = reactExports.useState(false), [pn, In] = reactExports.useState("");
     Ar.current = pn;
-    const [ht, ct] = reactExports.useState(false), [It, Vt] = reactExports.useState("renameOnly"), [pr, zr] = reactExports.useState(false), [On, Sn] = reactExports.useState(null), [va, Ia] = reactExports.useState(false), [fo, oi] = reactExports.useState(false), ma = reactExports.useRef(null), [Wi, Ki] = reactExports.useState(null), [Da, Wa] = reactExports.useState(null), [wi, vi] = reactExports.useState(null), [oa, mo] = reactExports.useState(null), [Gi, Ei] = reactExports.useState([]), Ka = reactExports.useRef(null), An = reactExports.useRef(null), [Si, Ln] = reactExports.useState(false), [Ga, Ea] = reactExports.useState("default"), [qa, si] = reactExports.useState(false), [qi, ki] = reactExports.useState(null), [Vi, Pn] = reactExports.useState(false), [Fa, Nn] = reactExports.useState(0), [Yi, Jn] = reactExports.useState(false), [Ti, Ai] = reactExports.useState({
+    const [ht, ct] = reactExports.useState(false), [It, Yt] = reactExports.useState("renameOnly"), [pr, zr] = reactExports.useState(false), [On, Sn] = reactExports.useState(null), [va, Ia] = reactExports.useState(false), [mo, oi] = reactExports.useState(false), ma = reactExports.useRef(null), [Ki, Gi] = reactExports.useState(null), [Da, Wa] = reactExports.useState(null), [vi, Ei] = reactExports.useState(null), [oa, po] = reactExports.useState(null), [qi, Si] = reactExports.useState([]), Ka = reactExports.useRef(null), An = reactExports.useRef(null), [ki, Ln] = reactExports.useState(false), [Ga, Ea] = reactExports.useState("default"), [qa, si] = reactExports.useState(false), [Vi, Ti] = reactExports.useState(null), [Yi, Pn] = reactExports.useState(false), [Fa, Nn] = reactExports.useState(0), [Xi, Jn] = reactExports.useState(false), [Ai, Ri] = reactExports.useState({
       isOpen: false,
       title: "",
       message: ""
     }), Va = reactExports.useCallback(() => {
-      Ai({
+      Ri({
         isOpen: false,
         title: "",
         message: ""
       });
-    }, []), Ri = reactExports.useCallback(() => {
-      Ai({
+    }, []), Ci = reactExports.useCallback(() => {
+      Ri({
         isOpen: true,
         title: "\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC",
         message: "\uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC\uB294 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4"
@@ -71024,7 +71033,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, []), ja = reactExports.useCallback(() => typeof navigator > "u" ? false : /Android/i.test(navigator.userAgent || ""), []), Dn = reactExports.useCallback((ae, ie) => {
       const de = URL.createObjectURL(ae), ge = document.createElement("a");
       ge.href = de, ge.download = normalizeUnicodeNfc(String(ie || "download")), ge.click(), URL.revokeObjectURL(de);
-    }, []), Ci = reactExports.useCallback(async (ae, ie, de, ge) => {
+    }, []), Ii = reactExports.useCallback(async (ae, ie, de, ge) => {
       const he = [], xe = normalizeUnicodeNfc(String(de || "folder"));
       if (ae === "s3") {
         const we = createS3Client(ee);
@@ -71066,10 +71075,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ee,
       Dn,
       r
-    ]), [Ii, pa] = reactExports.useState(() => /* @__PURE__ */ new Set()), La = reactExports.useRef(null), [li, Ya] = reactExports.useState({
+    ]), [Ni, pa] = reactExports.useState(() => /* @__PURE__ */ new Set()), La = reactExports.useRef(null), [li, Ya] = reactExports.useState({
       snippets: []
-    }), [Xa, Xi] = reactExports.useState(false), [ci, Ni] = reactExports.useState(false), [Ji, Mi] = reactExports.useState(false), [Io, Zi] = reactExports.useState(false), [Qr, No] = reactExports.useState(() => typeof window < "u" ? window.matchMedia("(max-width: 768px)").matches : false), $a = fe.pathname === "/chat" || fe.pathname.endsWith("/chat"), ui = isSettingsAppPathname(fe.pathname), Oi = getActiveTab(fr), po = isChatTab(Oi), Ja = Tr ? po : $a, Qi = Qr && Ja;
-    useVisualViewportLock(Qi);
+    }), [Xa, Ji] = reactExports.useState(false), [ci, Mi] = reactExports.useState(false), [Zi, Oi] = reactExports.useState(false), [Io, Qi] = reactExports.useState(false), [Qr, No] = reactExports.useState(() => typeof window < "u" ? window.matchMedia("(max-width: 768px)").matches : false), $a = fe.pathname === "/chat" || fe.pathname.endsWith("/chat"), ui = isSettingsAppPathname(fe.pathname), Pi = getActiveTab(fr), ho = isChatTab(Pi), Ja = wr ? ho : $a, eo = Qr && Ja;
+    useVisualViewportLock(eo);
     const [Za, Fn] = reactExports.useState(false), Sa = reactExports.useCallback(() => Fn(false), []);
     useHistoryOverlayBack(Za, Sa, Qr, "main-sidebar");
     const [nn, Ba] = reactExports.useState(() => {
@@ -71078,7 +71087,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch {
         return false;
       }
-    }), [ha, Mo] = reactExports.useState(() => loadHideRecordingCompanions()), [di, ho] = reactExports.useState(() => loadTreeStickyFolderPathEnabled()), [ka, eo] = reactExports.useState(() => loadTreeShowModifiedDateEnabled()), [Ta, Na] = reactExports.useState(() => loadTreeHoverExpandSettings()), { isRecording: Pi, audioLevel: ne, startRecording: se, stopRecording: ce, captureSync: me } = useRecording(), [ye, ve] = reactExports.useState(""), [Te, _e] = reactExports.useState({
+    }), [ha, Mo] = reactExports.useState(() => loadHideRecordingCompanions()), [di, go] = reactExports.useState(() => loadTreeStickyFolderPathEnabled()), [ka, to] = reactExports.useState(() => loadTreeShowModifiedDateEnabled()), [Ta, Na] = reactExports.useState(() => loadTreeHoverExpandSettings()), { isRecording: Di, audioLevel: ne, startRecording: se, stopRecording: ce, captureSync: me } = useRecording(), [ye, ve] = reactExports.useState(""), [Te, _e] = reactExports.useState({
       pending: 0,
       uploading: 0,
       failed: 0
@@ -71090,9 +71099,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       onRegisterError(ae) {
         console.error("PWA service worker registration error:", ae);
       }
-    }), is = reactExports.useRef([]), os = reactExports.useRef([]), Dt = reactExports.useRef(null), go = reactExports.useRef(void 0), Oo = reactExports.useRef(false), Aa = reactExports.useRef(false), na = reactExports.useRef(false), ss = reactExports.useRef(false), ls = reactExports.useRef(false), [yo, bo] = reactExports.useState(false), to = reactExports.useRef(null), Di = reactExports.useRef(null), Po = reactExports.useRef(/* @__PURE__ */ new Map()), cs = reactExports.useRef(null), ro = reactExports.useRef(""), us = reactExports.useRef(false), xo = reactExports.useRef(false), ds = reactExports.useCallback(() => {
+    }), os = reactExports.useRef([]), ss = reactExports.useRef([]), Dt = reactExports.useRef(null), yo = reactExports.useRef(void 0), Oo = reactExports.useRef(false), Aa = reactExports.useRef(false), na = reactExports.useRef(false), ls = reactExports.useRef(false), cs = reactExports.useRef(false), [bo, xo] = reactExports.useState(false), ro = reactExports.useRef(null), Fi = reactExports.useRef(null), Po = reactExports.useRef(/* @__PURE__ */ new Map()), us = reactExports.useRef(null), no = reactExports.useRef(""), ds = reactExports.useRef(false), fi = reactExports.useRef(false), Do = reactExports.useRef(false), fs = reactExports.useCallback(() => {
       var _a3;
-      const ae = loadPersistedWorkspaceTabs();
+      const ae = pickWorkspaceTabsRestoreSource();
       if ((_a3 = ae == null ? void 0 : ae.tabs) == null ? void 0 : _a3.length) {
         const ie = ae.tabs.find((ge) => ge.kind === "chat" ? ae.activeId === CHAT_TAB_ID : ge.kind === "settings" ? ae.activeId === SETTINGS_TAB_ID : ae.activeId === `${ge.type}:${ge.path}` || !ae.activeId && ae.tabs[0] === ge);
         if ((ie == null ? void 0 : ie.kind) === "chat") return {
@@ -71128,7 +71137,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch {
       }
       return null;
-    }, []), fs = reactExports.useCallback(() => {
+    }, []), ms = reactExports.useCallback(() => {
       clearPersistedWorkspaceTabs();
     }, []), wo = reactExports.useCallback((ae, ie) => {
       if (!(ae == null ? void 0 : ae.type) || !(ae == null ? void 0 : ae.id) || ae.type === SESSION_STORAGE_TYPE || isEncMdPath(ae.id) || isEncMdPath(ae.name)) return;
@@ -71155,7 +71164,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             key: getDraftKey(ae.type, ae.id),
             content: ge,
             originalLastModified: Ce
-          }), await ((_a3 = to.current) == null ? void 0 : _a3.call(to, ae, {
+          }), await ((_a3 = ro.current) == null ? void 0 : _a3.call(ro, ae, {
             skipSuffixCheck: true,
             skipCoverChangeCheck: true,
             contentOverride: ge,
@@ -71170,11 +71179,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       })();
     }, []), Ra = reactExports.useCallback((ae, ie) => {
-      Pr.current && sn.current === "onFocusChange" && wo(ae, ie);
+      Nr.current && sn.current === "onFocusChange" && wo(ae, ie);
     }, [
       wo
-    ]), ms = reactExports.useCallback(() => {
-      if (!Pr.current || sn.current !== "onWindowChange") return;
+    ]), ps = reactExports.useCallback(() => {
+      if (!Nr.current || sn.current !== "onWindowChange") return;
       const ae = flushEditorIntoActiveFileTab(St.current, {
         editorContent: ar.current ?? "",
         currentFile: Dt.current,
@@ -71204,7 +71213,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           content: de.baselineContent
         },
         editorContent: ie
-      })), Pr.current || (we = retainOnlyFileTab(we, he)), St.current = we, yr(we), we.activeId === he && (qt(ae), Dt.current = ae, dr(ie), ar.current = ie, In(ae.name || ""), Ar.current = ae.name || ""), true);
+      })), Nr.current || (we = retainOnlyFileTab(we, he)), St.current = we, yr(we), we.activeId === he && (Vt(ae), Dt.current = ae, dr(ie), ar.current = ie, In(ae.name || ""), Ar.current = ae.name || ""), true);
     }, []), za = reactExports.useCallback((ae, ie = {}) => {
       const { navigateUrl: de = true } = ie, ge = flushEditorIntoActiveFileTab(St.current, {
         editorContent: ar.current ?? "",
@@ -71217,17 +71226,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const Ee = getActiveTab(xe);
       if (isFileTab(Ee)) {
         const we = Ee.currentFile;
-        if (qt(we), Dt.current = we, dr(Ee.editorContent), ar.current = Ee.editorContent, In(Ee.editedFileName || String((we == null ? void 0 : we.name) || "")), de) {
+        if (Vt(we), Dt.current = we, dr(Ee.editorContent), ar.current = Ee.editorContent, In(Ee.editedFileName || String((we == null ? void 0 : we.name) || "")), de) {
           const Ce = typeof (we == null ? void 0 : we.id) == "string" && we.id || Ee.path;
           ue(`/view/${Ce}`);
         }
-      } else isChatTab(Ee) ? (qt(null), Dt.current = null, de && ue("/chat")) : isSettingsTab(Ee) ? (qt(null), Dt.current = null, de && ue("/settings")) : de && ue("/");
+      } else isChatTab(Ee) ? (Vt(null), Dt.current = null, de && ue("/chat")) : isSettingsTab(Ee) ? (Vt(null), Dt.current = null, de && ue("/settings")) : de && ue("/");
     }, [
       ue,
       Ra
     ]), aa = reactExports.useCallback((ae = {}) => {
       const { navigateUrl: ie = true } = ae;
-      if (!Pr.current) {
+      if (!Nr.current) {
         const xe = flushEditorIntoActiveFileTab(St.current, {
           editorContent: ar.current ?? "",
           currentFile: Dt.current,
@@ -71235,7 +71244,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }), Ee = getActiveFileTab(xe);
         Ee && isFileTabDirty(Ee) && Ee.storageType !== SESSION_STORAGE_TYPE && Ra(Ee.currentFile, Ee.editorContent);
         const we = stripChatTab(xe);
-        St.current = we, yr(we), qt(null), Dt.current = null, ie && ue("/chat");
+        St.current = we, yr(we), Vt(null), Dt.current = null, ie && ue("/chat");
         return;
       }
       const de = flushEditorIntoActiveFileTab(St.current, {
@@ -71245,13 +71254,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }), ge = getActiveFileTab(de);
       ge && isFileTabDirty(ge) && ge.storageType !== SESSION_STORAGE_TYPE && Ra(ge.currentFile, ge.editorContent);
       const he = openOrActivateChat(de);
-      St.current = he, yr(he), qt(null), Dt.current = null, ie && ue("/chat");
+      St.current = he, yr(he), Vt(null), Dt.current = null, ie && ue("/chat");
     }, [
       ue,
       Ra
     ]), Gn = reactExports.useCallback((ae = {}) => {
       const { navigateUrl: ie = true, hash: de } = ae, ge = typeof de == "string" && de ? `/settings${de.startsWith("#") ? de : `#${de}`}` : "/settings";
-      if (!Pr.current) {
+      if (!Nr.current) {
         const we = flushEditorIntoActiveFileTab(St.current, {
           editorContent: ar.current ?? "",
           currentFile: Dt.current,
@@ -71259,7 +71268,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }), Ce = getActiveFileTab(we);
         Ce && isFileTabDirty(Ce) && Ce.storageType !== SESSION_STORAGE_TYPE && Ra(Ce.currentFile, Ce.editorContent);
         const Oe = stripSettingsTab(we);
-        St.current = Oe, yr(Oe), qt(null), Dt.current = null, ie && ue(ge);
+        St.current = Oe, yr(Oe), Vt(null), Dt.current = null, ie && ue(ge);
         return;
       }
       const he = flushEditorIntoActiveFileTab(St.current, {
@@ -71269,11 +71278,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }), xe = getActiveFileTab(he);
       xe && isFileTabDirty(xe) && xe.storageType !== SESSION_STORAGE_TYPE && Ra(xe.currentFile, xe.editorContent);
       const Ee = openOrActivateSettings(he);
-      St.current = Ee, yr(Ee), qt(null), Dt.current = null, ie && ue(ge);
+      St.current = Ee, yr(Ee), Vt(null), Dt.current = null, ie && ue(ge);
     }, [
       ue,
       Ra
-    ]), ps = reactExports.useCallback(() => {
+    ]), hs = reactExports.useCallback(() => {
       const ae = flushEditorIntoActiveFileTab(St.current, {
         editorContent: ar.current ?? "",
         currentFile: Dt.current,
@@ -71282,12 +71291,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       St.current = de, yr(de);
       const ge = getActiveTab(de);
       if (ie) {
-        qt(null), Dt.current = null;
+        Vt(null), Dt.current = null;
         return;
       }
       if (isFileTab(ge)) {
         const he = ge.currentFile;
-        qt(he), Dt.current = he, dr(ge.editorContent), ar.current = ge.editorContent, In(ge.editedFileName || String((he == null ? void 0 : he.name) || ""));
+        Vt(he), Dt.current = he, dr(ge.editorContent), ar.current = ge.editorContent, In(ge.editedFileName || String((he == null ? void 0 : he.name) || ""));
       }
     }, [
       $a
@@ -71307,15 +71316,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const Ee = getActiveTab(xe);
       if (isFileTab(Ee)) {
         const we = Ee.currentFile;
-        qt(we), Dt.current = we, dr(Ee.editorContent), ar.current = Ee.editorContent, In(Ee.editedFileName || String((we == null ? void 0 : we.name) || "")), ue(`/view/${typeof (we == null ? void 0 : we.id) == "string" && we.id || Ee.path}`);
-      } else isChatTab(Ee) ? (qt(null), Dt.current = null, ue("/chat")) : isSettingsTab(Ee) ? (qt(null), Dt.current = null, ue("/settings")) : (qt(null), Dt.current = null, dr(""), ar.current = "", In(""), ue("/"));
+        Vt(we), Dt.current = we, dr(Ee.editorContent), ar.current = Ee.editorContent, In(Ee.editedFileName || String((we == null ? void 0 : we.name) || "")), ue(`/view/${typeof (we == null ? void 0 : we.id) == "string" && we.id || Ee.path}`);
+      } else isChatTab(Ee) ? (Vt(null), Dt.current = null, ue("/chat")) : isSettingsTab(Ee) ? (Vt(null), Dt.current = null, ue("/settings")) : (Vt(null), Dt.current = null, dr(""), ar.current = "", In(""), ue("/"));
     }, [
       ue
-    ]), nl = reactExports.useCallback((ae, ie) => {
+    ]), al = reactExports.useCallback((ae, ie) => {
       const de = moveTab(St.current, ae, ie);
       St.current = de, yr(de);
-    }, []), hs = reactExports.useCallback((ae) => {
-      if (!Pr.current) return;
+    }, []), gs = reactExports.useCallback((ae) => {
+      if (!Nr.current) return;
       const { tabs: ie, activeId: de } = St.current;
       if (!ie.length) return;
       let ge = ie.findIndex((Ee) => Ee.id === de);
@@ -71324,15 +71333,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       xe && za(xe.id);
     }, [
       za
-    ]), al = reactExports.useCallback((ae) => {
+    ]), il = reactExports.useCallback((ae) => {
       saveEditorType(ae), zn(ae);
     }, []);
     reactExports.useEffect(() => {
-      is.current = Re;
+      os.current = Re;
     }, [
       Re
     ]), reactExports.useEffect(() => {
-      os.current = Fe;
+      ss.current = Fe;
     }, [
       Fe
     ]), reactExports.useEffect(() => {
@@ -71364,7 +71373,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ie,
       fe.pathname
     ]), reactExports.useEffect(() => {
-      saveStorageMode(xt), pa(/* @__PURE__ */ new Set()), qt(null), Dt.current = null, dr(""), ar.current = "";
+      saveStorageMode(xt), pa(/* @__PURE__ */ new Set()), Vt(null), Dt.current = null, dr(""), ar.current = "";
       let ae = St.current;
       for (const ie of [
         ...ae.tabs
@@ -71378,7 +71387,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ie == null ? void 0 : Ie.id,
       Ie == null ? void 0 : Ie.name
     ]);
-    const gs = reactExports.useCallback(() => {
+    const ys = reactExports.useCallback(() => {
       if (!(Ie == null ? void 0 : Ie.name)) return false;
       const ae = (pn ?? "").trim();
       return ae !== Ie.name && getExt(ae) !== getExt(Ie.name);
@@ -71415,7 +71424,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       $n,
       er
     ]);
-    const il = reactExports.useCallback(async () => {
+    const ol = reactExports.useCallback(async () => {
       try {
         vt(true), await Qa(true);
       } catch (ae) {
@@ -71423,7 +71432,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }, [
       Qa
-    ]), ol = reactExports.useCallback(async () => {
+    ]), sl = reactExports.useCallback(async () => {
       Pt(true);
       try {
         const ae = await checkAppBuildUpdate();
@@ -71444,7 +71453,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       $n,
       ot
-    ]), sl = reactExports.useCallback(async () => {
+    ]), ll = reactExports.useCallback(async () => {
       Qt(false), Wt(true);
       const ae = !!($r && cr && $r !== cr);
       try {
@@ -71480,13 +71489,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       Ta
     ]), reactExports.useEffect(() => subscribeSettingsToggles((ae, ie) => {
-      ae === "settings-show-trash" ? kn(ie) : ae === "settings-show-hidden" ? en(ie) : ae === "settings-hide-recording" ? Mo(ie) : ae === "settings-tree-sticky" ? ho(ie) : ae === "settings-tree-modified-date" ? eo(ie) : ae === "settings-workspace-tabs" && (Pr.current = ie, Dr(ie), ie ? $a ? aa({
+      ae === "settings-show-trash" ? kn(ie) : ae === "settings-show-hidden" ? en(ie) : ae === "settings-hide-recording" ? Mo(ie) : ae === "settings-tree-sticky" ? go(ie) : ae === "settings-tree-modified-date" ? to(ie) : ae === "settings-workspace-tabs" && (Nr.current = ie, Dr(ie), ie ? $a ? aa({
         navigateUrl: false
       }) : ui && Gn({
         navigateUrl: false
-      }) : ps());
+      }) : hs());
     }), [
-      ps,
+      hs,
       $a,
       ui,
       aa,
@@ -71502,7 +71511,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
     }, []), reactExports.useEffect(() => {
       const ae = () => {
-        ms();
+        ps();
       }, ie = () => {
         document.visibilityState === "hidden" && ae();
       };
@@ -71510,17 +71519,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         window.removeEventListener("blur", ae), document.removeEventListener("visibilitychange", ie);
       };
     }, [
-      ms
+      ps
     ]), reactExports.useEffect(() => {
       applyDocumentTheme(Ae), window.localStorage.setItem("theme", Ae);
     }, [
       Ae
     ]);
-    const [ys, ll] = reactExports.useState(false), [vo, cl] = reactExports.useState(true), [ul, bs] = reactExports.useState(null), [dl, ml] = reactExports.useState(null), xs = reactExports.useRef(null), pl = reactExports.useCallback((ae) => {
+    const [bs, cl] = reactExports.useState(false), [vo, ul] = reactExports.useState(true), [dl, xs] = reactExports.useState(null), [ml, pl] = reactExports.useState(null), ws = reactExports.useRef(null), hl = reactExports.useCallback((ae) => {
       var _a3;
-      (_a3 = xs.current) == null ? void 0 : _a3.call(xs, ae);
-    }, []), hl = reactExports.useCallback((ae) => {
-      xs.current = typeof ae == "function" ? ae : null;
+      (_a3 = ws.current) == null ? void 0 : _a3.call(ws, ae);
+    }, []), gl = reactExports.useCallback((ae) => {
+      ws.current = typeof ae == "function" ? ae : null;
     }, []);
     reactExports.useEffect(() => {
       if (Le(true), l) return;
@@ -71534,7 +71543,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }).catch((ge) => console.warn("WebDAV config decrypt on session restore failed:", ge));
           return;
         }
-        localStorage.getItem("s3NotesEncrypted") ? ll(true) : (pe(), ue("/settings"));
+        localStorage.getItem("s3NotesEncrypted") ? cl(true) : (pe(), ue("/settings"));
       })(), () => {
         ae = true;
       };
@@ -71544,10 +71553,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       pe,
       ue
     ]), reactExports.useEffect(() => {
-      l || !ys || vo || f(true);
+      l || !bs || vo || f(true);
     }, [
       l,
-      ys,
+      bs,
       vo,
       f
     ]), reactExports.useEffect(() => {
@@ -71558,7 +71567,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         Kr(ae), Yn(ae || ie);
       });
     }, []);
-    const Do = async (ae) => {
+    const Fo = async (ae) => {
       try {
         const ie = localStorage.getItem("s3NotesEncrypted");
         if (!ie) throw new Error("\uC800\uC7A5\uB41C \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
@@ -71580,15 +71589,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch (ie) {
         alert((ie == null ? void 0 : ie.message) || "\uBE44\uBC00\uBC88\uD638\uAC00 \uD2C0\uB838\uAC70\uB098 \uB370\uC774\uD130\uAC00 \uC190\uC0C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4."), console.error(ie);
       }
-    }, ws = async () => {
+    }, vs = async () => {
       if (isStoredWithWebAuthn()) {
         const ae = await loadCredsWithWebAuthn();
         le(ae, ""), Yr(ae), ue("/");
       } else {
         const ae = await unlockWithWebAuthn();
-        ae && await Do(ae);
+        ae && await Fo(ae);
       }
-    }, Fo = async (ae, ie, de = {}) => {
+    }, jo = async (ae, ie, de = {}) => {
       const { stayOnSettings: ge = false } = de;
       try {
         const he = window.crypto.getRandomValues(new Uint8Array(16)), xe = await deriveEntropyFromPassword(ie, he), Ee = await encryptWithEntropy(JSON.stringify(ae), xe), we = {
@@ -71608,7 +71617,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch (he) {
         alert("\uC124\uC815 \uC800\uC7A5 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4: " + he.message);
       }
-    }, vs = [
+    }, Es = [
       "accessKeyId",
       "secretAccessKey",
       "region",
@@ -71619,29 +71628,29 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       "openaiCompatibleApiKey",
       "llmProviderProfiles",
       "imgbbApiKey"
-    ], Es = (ae) => {
+    ], Ss = (ae) => {
       if (!ae || typeof ae != "object") return null;
       const ie = {};
-      for (const de of vs) de === "llmProviderProfiles" ? ie[de] = JSON.stringify(resolveLlmProviderProfiles(ae)) : ie[de] = ae[de] == null ? "" : String(ae[de]);
+      for (const de of Es) de === "llmProviderProfiles" ? ie[de] = JSON.stringify(resolveLlmProviderProfiles(ae)) : ie[de] = ae[de] == null ? "" : String(ae[de]);
       return ie;
-    }, gl = (ae, ie) => {
-      const de = Es(ae), ge = Es(ie);
-      return !de || !ge ? !!de != !!ge : vs.some((he) => de[he] !== ge[he]);
-    }, yl = (ae) => {
+    }, yl = (ae, ie) => {
+      const de = Ss(ae), ge = Ss(ie);
+      return !de || !ge ? !!de != !!ge : Es.some((he) => de[he] !== ge[he]);
+    }, bl = (ae) => {
       oe(ae), ra(ae), En(true);
-    }, bl = async (ae) => {
+    }, xl = async (ae) => {
       if (typeof localStorage < "u" && (localStorage.getItem("s3NotesEncrypted") || getStoredWebAuthn())) {
-        Ki(ae), Ia(true);
+        Gi(ae), Ia(true);
         return;
       }
       await saveCredsWithWebAuthn(ae), Yr(ae), En(false), ra(null), n({
         title: "\uC5F0\uACB0 \uC815\uBCF4",
         message: "\uC5F0\uACB0 \uC815\uBCF4 \uC5C5\uB370\uC774\uD2B8\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
       });
-    }, xl = () => {
+    }, wl = () => {
       En(false), ra(null), L(true);
-    }, wl = () => typeof localStorage < "u" && (!!localStorage.getItem("s3NotesEncrypted") || !!getStoredWebAuthn()), vl = (ae, ie, de = {}) => {
-      if (wl()) {
+    }, vl = () => typeof localStorage < "u" && (!!localStorage.getItem("s3NotesEncrypted") || !!getStoredWebAuthn()), El = (ae, ie, de = {}) => {
+      if (vl()) {
         Wa({
           creds: ae,
           password: ie,
@@ -71649,20 +71658,20 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }), Ia(true);
         return;
       }
-      Fo(ae, ie, de);
-    }, El = async () => {
+      jo(ae, ie, de);
+    }, Sl = async () => {
       try {
-        Wi ? (await saveCredsWithWebAuthn(Wi), Yr(Wi), En(false), ra(null), Ki(null), n({
+        Ki ? (await saveCredsWithWebAuthn(Ki), Yr(Ki), En(false), ra(null), Gi(null), n({
           title: "\uC5F0\uACB0 \uC815\uBCF4",
           message: "\uC5F0\uACB0 \uC815\uBCF4 \uC5C5\uB370\uC774\uD2B8\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
-        })) : Da && (await Fo(Da.creds, Da.password, Da.options), Wa(null));
+        })) : Da && (await jo(Da.creds, Da.password, Da.options), Wa(null));
       } finally {
         Ia(false);
       }
-    }, Sl = () => {
+    }, kl = () => {
       if (!(ee == null ? void 0 : ee.bucket) && !localStorage.getItem("s3NotesEncrypted")) return alert("\uB0B4\uBCF4\uB0BC \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
       Lr(true);
-    }, kl = async (ae) => {
+    }, Tl = async (ae) => {
       try {
         const ie = ee;
         if (!(ie == null ? void 0 : ie.bucket)) {
@@ -71678,7 +71687,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch (ie) {
         alert("\uB0B4\uBCF4\uB0B4\uAE30 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4: " + ((ie == null ? void 0 : ie.message) || ie));
       }
-    }, Tl = (ae) => {
+    }, Al = (ae) => {
       var _a3;
       const ie = (_a3 = ae.target.files) == null ? void 0 : _a3[0];
       if (!ie) return;
@@ -71695,36 +71704,36 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           alert("\uC798\uBABB\uB41C \uD30C\uC77C \uD615\uC2DD\uC785\uB2C8\uB2E4.");
         }
       }, de.readAsText(ie), ae.target.value = "";
-    }, Al = async (ae) => {
+    }, Rl = async (ae) => {
       try {
         const ie = JSON.parse(Ua), de = await decryptData(ae, ie), ge = JSON.parse(de);
-        Wr(null), ii(false), tn ? (await saveCredsWithWebAuthn(ge), oe(ge), re(""), Yr(ge), ue("/"), alert("\uBCF5\uC6D0\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774 \uAE30\uAE30\uC5D0\uC11C\uB294 \uBCF4\uC548 \uD0A4\uB85C \uC7A0\uAE08 \uD574\uC81C\uB429\uB2C8\uB2E4.")) : await Fo(ge, ae);
+        Wr(null), ii(false), tn ? (await saveCredsWithWebAuthn(ge), oe(ge), re(""), Yr(ge), ue("/"), alert("\uBCF5\uC6D0\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774 \uAE30\uAE30\uC5D0\uC11C\uB294 \uBCF4\uC548 \uD0A4\uB85C \uC7A0\uAE08 \uD574\uC81C\uB429\uB2C8\uB2E4.")) : await jo(ge, ae);
       } catch {
         alert("\uBE44\uBC00\uBC88\uD638\uAC00 \uD2C0\uB838\uAC70\uB098 \uD30C\uC77C\uC774 \uC190\uC0C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
       }
-    }, Rl = (ae) => {
+    }, Cl = (ae) => {
       if (!l && localStorage.getItem("s3NotesEncrypted")) {
         alert("\uC800\uC7A5\uC18C \uC7A0\uAE08 \uD574\uC81C \uD6C4 \uB2EB\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4.");
         return;
       }
-      if (ae != null && gl(ae, ee)) {
+      if (ae != null && yl(ae, ee)) {
         dn(true);
         return;
       }
-      if (Pr.current && St.current.tabs.some((de) => de.kind === "settings")) {
+      if (Nr.current && St.current.tabs.some((de) => de.kind === "settings")) {
         sa(SETTINGS_TAB_ID);
         return;
       }
       ue("/");
-    }, Cl = () => {
-      if (dn(false), Pr.current && St.current.tabs.some((ie) => ie.kind === "settings")) {
+    }, _l = () => {
+      if (dn(false), Nr.current && St.current.tabs.some((ie) => ie.kind === "settings")) {
         sa(SETTINGS_TAB_ID, {
           skipHistory: false
         });
         return;
       }
       ue("/");
-    }, _l = async () => {
+    }, Il = async () => {
       const ae = (pn ?? "").trim();
       if (!ae || !Ie) {
         ct(false);
@@ -71733,11 +71742,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ie = It === "renameAndSave";
       ct(false);
       try {
-        const de = await Ys(ae);
-        ie && de && await pi(de);
+        const de = await Xs(ae);
+        ie && de && await hi(de);
       } catch {
       }
-    }, Il = () => {
+    }, Nl = () => {
       ct(false), It === "renameOnly" && In((Ie == null ? void 0 : Ie.name) ?? "");
     }, Eo = reactExports.useCallback(() => {
       if (Oo.current) return false;
@@ -71755,8 +71764,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         "html",
         "svg"
       ].includes(ie.viewer || "markdown") && ie.content !== ar.current : false;
-    }, []), Nl = reactExports.useCallback(({ currentLocation: ae, nextLocation: ie }) => {
-      if (!Pr.current) return false;
+    }, []), Ml = reactExports.useCallback(({ currentLocation: ae, nextLocation: ie }) => {
+      if (!Nr.current) return false;
       const de = (ge) => {
         const he = String(ge || "");
         return he === "/" || he === "/chat" || he.endsWith("/chat") || he === "/settings" || he.endsWith("/settings") || he.startsWith("/view/");
@@ -71764,10 +71773,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       return de(ae.pathname) && de(ie.pathname);
     }, []), So = useUnsavedNavigationGuard({
       isDirty: Eo,
-      shouldAllowNavigation: Nl
-    }), Ss = (ae) => {
+      shouldAllowNavigation: Ml
+    }), ks = (ae) => {
       ae && (ae.viewer === "image" || ae.viewer === "pdf" || ae.viewer === "audio" || ae.viewer === "video") && ae.objectUrl && URL.revokeObjectURL(ae.objectUrl);
-    }, jo = reactExports.useCallback(() => {
+    }, Lo = reactExports.useCallback(() => {
       const ae = getActiveFileTab(St.current);
       if (ae) {
         sa(ae.id, {
@@ -71775,11 +71784,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
         return;
       }
-      qt((ie) => (Ss(ie), null)), Dt.current = null, dr(""), ar.current = "", fs();
+      Vt((ie) => (ks(ie), null)), Dt.current = null, dr(""), ar.current = "", ms();
     }, [
-      fs,
+      ms,
       sa
-    ]), Fi = reactExports.useCallback(() => {
+    ]), ji = reactExports.useCallback(() => {
       for (const ae of pt.current.values()) URL.revokeObjectURL(ae);
       pt.current.clear();
     }, []), ko = reactExports.useCallback((ae, ie, de) => {
@@ -71802,15 +71811,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ].includes(ae.viewer || "markdown")) return ie;
       const ge = updateSessionFileText(ie, ae.id, ar.current ?? "");
       return ze.current = ge, lt(ge), ge;
-    }, []), Ml = reactExports.useCallback(() => {
+    }, []), Ol = reactExports.useCallback(() => {
       var _a3, _b3;
-      ((_a3 = Dt.current) == null ? void 0 : _a3.type) === SESSION_STORAGE_TYPE && Eo() && !window.confirm("\uC800\uC7A5\uD558\uC9C0 \uC54A\uC740 \uBCC0\uACBD\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uC138\uC158\uC744 \uB2EB\uC73C\uBA74 \uC0AC\uB77C\uC9D1\uB2C8\uB2E4. \uB2EB\uC744\uAE4C\uC694?") || (Fi(), Je.current = /* @__PURE__ */ Object.create(null), ze.current = null, lt(null), ((_b3 = Dt.current) == null ? void 0 : _b3.type) === SESSION_STORAGE_TYPE && (jo(), ue("/")));
+      ((_a3 = Dt.current) == null ? void 0 : _a3.type) === SESSION_STORAGE_TYPE && Eo() && !window.confirm("\uC800\uC7A5\uD558\uC9C0 \uC54A\uC740 \uBCC0\uACBD\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uC138\uC158\uC744 \uB2EB\uC73C\uBA74 \uC0AC\uB77C\uC9D1\uB2C8\uB2E4. \uB2EB\uC744\uAE4C\uC694?") || (ji(), Je.current = /* @__PURE__ */ Object.create(null), ze.current = null, lt(null), ((_b3 = Dt.current) == null ? void 0 : _b3.type) === SESSION_STORAGE_TYPE && (Lo(), ue("/")));
     }, [
-      jo,
+      Lo,
       Eo,
       ue,
-      Fi
-    ]), fi = reactExports.useCallback((ae, ie, de = {}) => {
+      ji
+    ]), mi = reactExports.useCallback((ae, ie, de = {}) => {
       var _a3;
       const ge = (_a3 = ie == null ? void 0 : ie.files) == null ? void 0 : _a3[ae];
       if (!ge) return false;
@@ -71851,14 +71860,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ma
     ]), ei = reactExports.useCallback(async (ae) => {
       if (ze.current && !window.confirm("\uC774\uBBF8 \uC5F4\uB9B0 \uB2E4\uC6B4\uB85C\uB4DC \uC138\uC158\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uC0C8 \uD30C\uC77C\uB85C \uBC14\uAFB8\uBA74 \uD604\uC7AC \uC138\uC158\uC740 \uC0AC\uB77C\uC9D1\uB2C8\uB2E4. \uACC4\uC18D\uD560\uAE4C\uC694?")) return false;
-      Fi(), Je.current = /* @__PURE__ */ Object.create(null), ze.current = ae, lt(ae);
+      ji(), Je.current = /* @__PURE__ */ Object.create(null), ze.current = ae, lt(ae);
       const ie = pickDefaultSessionOpenPath(ae);
-      return ie ? (fi(ie, ae), Qr && Fn(false), true) : (alert("\uC5F4 \uC218 \uC788\uB294 \uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."), false);
+      return ie ? (mi(ie, ae), Qr && Fn(false), true) : (alert("\uC5F4 \uC218 \uC788\uB294 \uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."), false);
     }, [
-      fi,
+      mi,
       Qr,
-      Fi
-    ]), ks = reactExports.useCallback(async (ae, ie) => {
+      ji
+    ]), Ts = reactExports.useCallback(async (ae, ie) => {
       Ft(true);
       try {
         const de = await workspaceFromFileList(ae, ie);
@@ -71870,7 +71879,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }, [
       ei
-    ]), Ol = reactExports.useCallback(async () => {
+    ]), Pl = reactExports.useCallback(async () => {
       if (!("showDirectoryPicker" in window)) {
         alert("\uC774 \uBE0C\uB77C\uC6B0\uC800\uB294 \uD3F4\uB354 \uC120\uD0DD\uC744 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. ZIP \uB610\uB294 MD \uD30C\uC77C\uC744 \uC5F4\uC5B4 \uC8FC\uC138\uC694.");
         return;
@@ -71887,7 +71896,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }, [
       ei
-    ]), Pl = reactExports.useCallback(async (ae) => {
+    ]), Dl = reactExports.useCallback(async (ae) => {
       Ft(true);
       try {
         const ie = await workspaceFromDataTransfer(ae);
@@ -71899,7 +71908,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
     }, [
       ei
-    ]), Ts = reactExports.useCallback(async () => {
+    ]), As = reactExports.useCallback(async () => {
       const ae = qn() ?? ze.current;
       if (!ae) return;
       const { blob: ie, fileName: de } = await buildSessionDownload(ae);
@@ -71907,7 +71916,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ge = Dt.current;
       if ((ge == null ? void 0 : ge.type) === SESSION_STORAGE_TYPE && ge.id) {
         const he = ae.files[ge.id], xe = ar.current ?? "";
-        qt((Ee) => {
+        Vt((Ee) => {
           if (!Ee || Ee.type !== SESSION_STORAGE_TYPE || Ee.id !== ge.id) return Ee;
           const we = {
             ...Ee,
@@ -71927,7 +71936,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       qn,
       Dn
-    ]), Lo = () => {
+    ]), $o = () => {
       const ae = getActiveTab(St.current);
       if (ae) {
         sa(ae.id, {
@@ -71935,15 +71944,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
         return;
       }
-      qt((ie) => (Ss(ie), null)), Dt.current = null, dr(""), ar.current = "", ue("/");
-    }, Dl = () => {
+      Vt((ie) => (ks(ie), null)), Dt.current = null, dr(""), ar.current = "", ue("/");
+    }, Fl = () => {
       const ae = getActiveTab(St.current);
       if (ae) {
         sa(ae.id);
         return;
       }
-      Eo() ? (Sn(null), zr(true)) : Lo();
-    }, Fl = async () => {
+      Eo() ? (Sn(null), zr(true)) : $o();
+    }, jl = async () => {
       const ae = flushEditorIntoActiveFileTab(St.current, {
         editorContent: ar.current ?? "",
         currentFile: Dt.current,
@@ -71954,28 +71963,28 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...ae,
         activeId: null
       };
-      St.current = de, yr(de), qt(null), Dt.current = null, dr(""), ar.current = "", ue("/");
-    }, jl = async () => {
+      St.current = de, yr(de), Vt(null), Dt.current = null, dr(""), ar.current = "", ue("/");
+    }, Ll = async () => {
       var _a3, _b3, _c3;
       zr(false);
       const ae = On || ((_a3 = getActiveFileTab(St.current)) == null ? void 0 : _a3.id) || null;
       if (Sn(null), !ae) {
-        await pi(null, {
+        await hi(null, {
           skipSuffixCheck: true
-        }), Lo();
+        }), $o();
         return;
       }
       const ie = St.current.tabs.find((de) => de.id === ae);
-      isFileTab(ie) && (St.current.activeId === ae ? await ((_b3 = to.current) == null ? void 0 : _b3.call(to, null, {
+      isFileTab(ie) && (St.current.activeId === ae ? await ((_b3 = ro.current) == null ? void 0 : _b3.call(ro, null, {
         skipSuffixCheck: true
-      })) : await ((_c3 = to.current) == null ? void 0 : _c3.call(to, ie.currentFile, {
+      })) : await ((_c3 = ro.current) == null ? void 0 : _c3.call(ro, ie.currentFile, {
         skipSuffixCheck: true,
         skipCoverChangeCheck: true,
         contentOverride: ie.editorContent
       }))), sa(ae, {
         skipDirtyConfirm: true
       });
-    }, Ll = () => {
+    }, $l = () => {
       var _a3;
       zr(false);
       const ae = On || ((_a3 = getActiveTab(St.current)) == null ? void 0 : _a3.id) || null;
@@ -71985,13 +71994,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         });
         return;
       }
-      Lo();
-    }, $l = async () => {
+      $o();
+    }, Bl = async () => {
       var _a3;
-      await ((_a3 = to.current) == null ? void 0 : _a3.call(to, null, {
+      await ((_a3 = ro.current) == null ? void 0 : _a3.call(ro, null, {
         skipSuffixCheck: true
       })), So.proceed();
-    }, Bl = () => {
+    }, zl = () => {
       So.proceed();
     }, ir = reactExports.useCallback((ae = ee) => createS3Client(ae), [
       ee
@@ -71999,34 +72008,34 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       getS3Client: ir,
       s3Creds: ee,
       localRootHandle: nt,
-      localVaultFsPath: Yt,
+      localVaultFsPath: qt,
       webdavConfig: Zt
     }), [
       ir,
       ee,
       nt,
-      Yt,
+      qt,
       Zt
-    ]), $o = reactExports.useRef({
+    ]), Bo = reactExports.useRef({
       storageMode: xt,
       s3Tree: Re,
       localTree: Me,
       webdavTree: Fe,
       sessionWorkspace: Ge
     });
-    $o.current = {
+    Bo.current = {
       storageMode: xt,
       s3Tree: Re,
       localTree: Me,
       webdavTree: Fe,
       sessionWorkspace: Ge
     }, reactExports.useEffect(() => {
-      const ae = Mn(xt), ie = xt === STORAGE_MODE_LOCAL ? `local:${Yt || (nt == null ? void 0 : nt.name) || "default"}` : xt === STORAGE_MODE_WEBDAV ? `webdav:${(Zt == null ? void 0 : Zt.endpoint) || ""}:${(Zt == null ? void 0 : Zt.basePath) || ""}` : `s3:${(ee == null ? void 0 : ee.bucket) || ""}`;
+      const ae = Mn(xt), ie = xt === STORAGE_MODE_LOCAL ? `local:${qt || (nt == null ? void 0 : nt.name) || "default"}` : xt === STORAGE_MODE_WEBDAV ? `webdav:${(Zt == null ? void 0 : Zt.endpoint) || ""}:${(Zt == null ? void 0 : Zt.basePath) || ""}` : `s3:${(ee == null ? void 0 : ee.bucket) || ""}`;
       advancedSearchEngine.configure({
         backend: ae,
         storageKey: ie,
         getTree: () => {
-          const de = $o.current;
+          const de = Bo.current;
           return de.storageMode === STORAGE_MODE_LOCAL ? de.localTree || [] : de.storageMode === STORAGE_MODE_WEBDAV ? de.webdavTree || [] : de.s3Tree || [];
         }
       });
@@ -72051,14 +72060,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ee.bucket,
       Zt
     ]);
-    const zl = reactExports.useCallback(() => {
-      const ae = $o.current, ie = [];
+    const Hl = reactExports.useCallback(() => {
+      const ae = Bo.current, ie = [];
       return ae.storageMode === STORAGE_MODE_LOCAL ? ie.push(ae.localTree) : ae.storageMode === STORAGE_MODE_WEBDAV ? ie.push(ae.webdavTree) : ie.push(ae.s3Tree), ae.sessionWorkspace && ie.push(buildSessionTree(ae.sessionWorkspace)), ie;
     }, []), Ir = !!((Zt == null ? void 0 : Zt.endpoint) && (Zt == null ? void 0 : Zt.username)), To = reactExports.useCallback(async (ae) => {
       if (ae.kind !== "file") return null;
       const { storageType: ie, path: de } = ae, ge = ae.name || de.split("/").filter(Boolean).pop() || "file";
       if (ie === "local") {
-        if (Yt) {
+        if (qt) {
           const Ce = findFileNodeByPath(Me, de) || findNodeByPath(Me, de) || {
             type: "file",
             path: de,
@@ -72092,7 +72101,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } : null;
     }, [
       nt,
-      Yt,
+      qt,
       Me,
       Ir,
       Zt,
@@ -72100,9 +72109,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Re,
       ir,
       ee == null ? void 0 : ee.bucket
-    ]), As = reactExports.useCallback(async () => {
+    ]), Rs = reactExports.useCallback(async () => {
       var _a3;
-      if (Pr.current) for (; ; ) {
+      if (Nr.current) for (; ; ) {
         const ae = popClosedTab() || popTabsRestoreQueue();
         if (!ae) return;
         if (ae.kind === "chat") {
@@ -72116,7 +72125,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         try {
           const ie = await To(ae);
           if (!ie) continue;
-          await ((_a3 = Di.current) == null ? void 0 : _a3.call(Di, ae.storageType, ie));
+          await ((_a3 = Fi.current) == null ? void 0 : _a3.call(Fi, ae.storageType, ie));
           return;
         } catch (ie) {
           console.error("Reopen closed tab failed:", ie), pushClosedTab(ae);
@@ -72127,10 +72136,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       aa,
       Gn,
       To
-    ]), Rs = reactExports.useCallback(async (ae, ie = {}) => {
+    ]), Cs = reactExports.useCallback(async (ae, ie = {}) => {
       var _a3, _b3;
       const { activeId: de = null, navigateActiveUrl: ge = false } = ie;
-      if (!Pr.current || !((_a3 = ae == null ? void 0 : ae.tabs) == null ? void 0 : _a3.length)) return false;
+      if (!Nr.current || !((_a3 = ae == null ? void 0 : ae.tabs) == null ? void 0 : _a3.length)) return false;
       let he = false;
       for (const Ee of ae.tabs) {
         if (Ee.kind === "chat") {
@@ -72156,7 +72165,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             path: Ee.path
           });
           if ((we == null ? void 0 : we.type) !== "file") continue;
-          await ((_b3 = Di.current) == null ? void 0 : _b3.call(Di, Ee.type, we, {
+          await ((_b3 = Fi.current) == null ? void 0 : _b3.call(Fi, Ee.type, we, {
             skipNavigate: true
           })), he = true;
         } catch (we) {
@@ -72179,9 +72188,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]);
     reactExports.useEffect(() => {
       const ae = (ie) => {
-        if (!(!Pr.current || ie.defaultPrevented || ie.isComposing || !(ie.ctrlKey || ie.metaKey))) {
+        if (!(!Nr.current || ie.defaultPrevented || ie.isComposing || !(ie.ctrlKey || ie.metaKey))) {
           if (ie.shiftKey && (ie.key === "T" || ie.key === "t")) {
-            ie.preventDefault(), ie.stopPropagation(), As();
+            ie.preventDefault(), ie.stopPropagation(), Rs();
             return;
           }
           if (!ie.altKey && !ie.shiftKey && (ie.key === "w" || ie.key === "W")) {
@@ -72190,23 +72199,23 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             ge && sa(ge);
             return;
           }
-          ie.key === "Tab" && (ie.preventDefault(), ie.stopPropagation(), hs(ie.shiftKey ? -1 : 1));
+          ie.key === "Tab" && (ie.preventDefault(), ie.stopPropagation(), gs(ie.shiftKey ? -1 : 1));
         }
       };
       return window.addEventListener("keydown", ae, true), () => window.removeEventListener("keydown", ae, true);
     }, [
-      As,
+      Rs,
       sa,
-      hs
+      gs
     ]);
-    const { ready: ji, ctx: la } = useChatStorageCtx({
+    const { ready: Li, ctx: la } = useChatStorageCtx({
       storageMode: xt,
       getS3Client: ir,
       s3Bucket: ee.bucket,
       localRootHandle: nt,
       webdavConfig: Zt
-    }), Hl = reactExports.useCallback(async () => {
-      if (!ji || !la) return [];
+    }), Ul = reactExports.useCallback(async () => {
+      if (!Li || !la) return [];
       try {
         const ae = await readMeta(la);
         return sortGroupsKo(ae.groups || []);
@@ -72214,15 +72223,15 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return console.warn("[advancedSearch] read chat groups failed", ae), [];
       }
     }, [
-      ji,
+      Li,
       la
-    ]), Ul = reactExports.useCallback((ae) => {
-      cl(!!ae);
-    }, []), Wl = reactExports.useCallback((ae) => {
+    ]), Wl = reactExports.useCallback((ae) => {
+      ul(!!ae);
+    }, []), Kl = reactExports.useCallback((ae) => {
       var _a3;
-      ((ae == null ? void 0 : ae.body) || ((_a3 = ae == null ? void 0 : ae.files) == null ? void 0 : _a3.length)) && bs(ae);
-    }, []), Kl = reactExports.useCallback(() => {
-      bs(null);
+      ((ae == null ? void 0 : ae.body) || ((_a3 = ae == null ? void 0 : ae.files) == null ? void 0 : _a3.length)) && xs(ae);
+    }, []), Gl = reactExports.useCallback(() => {
+      xs(null);
     }, []), an = reactExports.useCallback(async () => {
       if (Ir) {
         yt(true);
@@ -72238,7 +72247,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       Ir,
       Zt
-    ]), no = reactExports.useCallback(async (ae) => {
+    ]), ao = reactExports.useCallback(async (ae) => {
       if (!(!(ae == null ? void 0 : ae.path) || ae.childrenLoaded === true || !Ir)) {
         Rt(ae.path);
         try {
@@ -72262,9 +72271,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       ir,
       ee
-    ]), Gl = reactExports.useCallback(async () => {
+    ]), ql = reactExports.useCallback(async () => {
       if (xt === STORAGE_MODE_LOCAL) {
-        if (isDesktopApp() && Yt) return readTauriLocalDirectoryTree(Yt);
+        if (isDesktopApp() && qt) return readTauriLocalDirectoryTree(qt);
         if (!nt) throw new Error("\uB85C\uCEEC \uD3F4\uB354\uAC00 \uC5F4\uB824 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
         return readLocalDirectoryTree(nt, "", nt);
       }
@@ -72279,12 +72288,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       xt,
       nt,
-      Yt,
+      qt,
       Ir,
       Zt,
       ir,
       ee.bucket
-    ]), Cs = xt === STORAGE_MODE_LOCAL && !!(nt || Yt) || xt === STORAGE_MODE_WEBDAV && Ir || xt !== STORAGE_MODE_LOCAL && xt !== STORAGE_MODE_WEBDAV && !!ee.bucket;
+    ]), _s = xt === STORAGE_MODE_LOCAL && !!(nt || qt) || xt === STORAGE_MODE_WEBDAV && Ir || xt !== STORAGE_MODE_LOCAL && xt !== STORAGE_MODE_WEBDAV && !!ee.bucket;
     reactExports.useEffect(() => {
       if (!l) return;
       if (xt === "local") {
@@ -72410,24 +72419,24 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ir,
       ee.bucket
     ]);
-    const _s = reactExports.useCallback(async (ae = ee) => {
+    const Is = reactExports.useCallback(async (ae = ee) => {
       const ie = ir(ae);
       if (!(!ie || !(ae == null ? void 0 : ae.bucket))) try {
         if (!await headObject(ie, ae.bucket, ".settings/snippets.json")) {
-          Xi(true);
+          Ji(true);
           return;
         }
         const { body: ge } = await getObjectBody(ie, ae.bucket, ".settings/snippets.json"), he = new TextDecoder("utf-8").decode(ge), xe = JSON.parse(he);
         xe && Array.isArray(xe.snippets) && Ya({
           snippets: xe.snippets
-        }), Xi(true);
+        }), Ji(true);
       } catch (de) {
-        console.error("Snippet settings load from S3 failed:", de), Xi(true);
+        console.error("Snippet settings load from S3 failed:", de), Ji(true);
       }
     }, [
       ir,
       ee
-    ]), Is = reactExports.useCallback(async () => {
+    ]), Ns = reactExports.useCallback(async () => {
       if (nt) try {
         const ge = await (await (await (await nt.getDirectoryHandle(".settings", {
           create: false
@@ -72436,32 +72445,32 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         })).getFile()).text(), he = JSON.parse(ge);
         he && Array.isArray(he.snippets) && Ya({
           snippets: he.snippets
-        }), Ni(true);
+        }), Mi(true);
       } catch {
-        Ni(true);
+        Mi(true);
       }
     }, [
       nt
-    ]), Ns = reactExports.useCallback(async () => {
+    ]), Ms = reactExports.useCallback(async () => {
       if (Ir) try {
         const ae = createWebdavBackend$1(Zt);
         if (!await ae.head(".settings/snippets.json")) {
-          Mi(true);
+          Oi(true);
           return;
         }
         const { text: de } = await ae.readText(".settings/snippets.json"), ge = JSON.parse(de);
         ge && Array.isArray(ge.snippets) && Ya({
           snippets: ge.snippets
-        }), Mi(true);
+        }), Oi(true);
       } catch (ae) {
-        console.error("Snippet settings load from WebDAV failed:", ae), Mi(true);
+        console.error("Snippet settings load from WebDAV failed:", ae), Oi(true);
       }
     }, [
       Zt,
       Ir
     ]);
     reactExports.useEffect(() => {
-      !Pe || !l || (xt === "local" && nt && !ci ? Is() : xt === "webdav" && Ir && !Ji ? Ns() : xt === "s3" && ee.bucket && !Xa && _s());
+      !Pe || !l || (xt === "local" && nt && !ci ? Ns() : xt === "webdav" && Ir && !Zi ? Ms() : xt === "s3" && ee.bucket && !Xa && Is());
     }, [
       Pe,
       l,
@@ -72471,14 +72480,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ir,
       Xa,
       ci,
-      Ji,
-      _s,
+      Zi,
       Is,
-      Ns
+      Ns,
+      Ms
     ]);
-    const ao = reactExports.useRef(false), io = reactExports.useRef(null), Ao = reactExports.useRef(false), [ql, Ms] = reactExports.useState(false), [Vl, Ro] = reactExports.useState(0), Bo = reactExports.useCallback(() => ao.current ? (Ao.current = true, io.current && io.current.abort(), true) : false, []), oo = reactExports.useCallback(() => ao.current ? window.confirm("\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC\uB97C \uCDE8\uC18C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?") ? (Bo(), true) : false : true, [
-      Bo
-    ]), Yl = reactExports.useCallback(async (ae) => {
+    const io = reactExports.useRef(false), oo = reactExports.useRef(null), Ao = reactExports.useRef(false), [Vl, Os] = reactExports.useState(false), [Yl, Ro] = reactExports.useState(0), zo = reactExports.useCallback(() => io.current ? (Ao.current = true, oo.current && oo.current.abort(), true) : false, []), so = reactExports.useCallback(() => io.current ? window.confirm("\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC\uB97C \uCDE8\uC18C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?") ? (zo(), true) : false : true, [
+      zo
+    ]), Xl = reactExports.useCallback(async (ae) => {
       var _a3;
       dbgClipboard("app:upload:start", {
         rawCount: (ae == null ? void 0 : ae.length) ?? 0,
@@ -72507,10 +72516,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }), !Ee.length) return dbgClipboard("app:upload:empty", {
         reason: "no image files after filter"
       }), [];
-      if (ao.current) return dbgClipboard("app:upload:skipped", {
+      if (io.current) return dbgClipboard("app:upload:skipped", {
         reason: "editorImageUploadInProgressRef"
       }), [];
-      ao.current = true, Ao.current = false, Ms(true), Ro(0);
+      io.current = true, Ao.current = false, Os(true), Ro(0);
       const we = e({
         id: "editor-image-upload",
         type: ActivityTypes.FILE_UPLOAD,
@@ -72528,7 +72537,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         for (const De of Ee) {
           if (Ao.current) break;
           const st = new AbortController();
-          io.current = st;
+          oo.current = st;
           let rt;
           if (ie) rt = await uploadLocalEditorImage(nt, De, {
             imagePathPrefix: Ce,
@@ -72563,7 +72572,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             signal: st.signal,
             onProgress: (Ct) => We(De, Ct)
           });
-          Be += De.size || 0, io.current = null;
+          Be += De.size || 0, oo.current = null;
           const kt = $e > 0 ? Math.round(Be / $e * 100) : 100;
           Ro(Math.max(0, Math.min(100, kt))), Oe.push(rt);
         }
@@ -72584,7 +72593,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           message: (De == null ? void 0 : De.message) ?? String(De)
         }), Ze("\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC2E4\uD328: " + (De.message || String(De))));
       } finally {
-        io.current = null, ao.current = false, Ao.current = false, Ms(false), Ro(0), t(we);
+        oo.current = null, io.current = false, Ao.current = false, Os(false), Ro(0), t(we);
       }
       return dbgClipboard("app:upload:return", {
         paths: Oe,
@@ -72602,7 +72611,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       t,
       r,
       qn
-    ]), Xl = reactExports.useCallback(async (ae) => {
+    ]), Jl = reactExports.useCallback(async (ae) => {
       var _a3;
       const ie = String(ae || "").trim();
       if (!ie) return null;
@@ -72662,7 +72671,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Ir,
       Mn,
       ko
-    ]), Os = reactExports.useCallback(async (ae) => {
+    ]), Ps = reactExports.useCallback(async (ae) => {
       if (xt === "local" && nt) return getLocalWikiImageObjectUrl(nt, ae);
       if (xt === "webdav") try {
         return await createChatBackend({
@@ -72716,32 +72725,32 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       e,
       t
     ]);
-    const zo = Ie == null ? void 0 : Ie.id, mi = Ie == null ? void 0 : Ie.type, Ps = Ie == null ? void 0 : Ie.viewer;
+    const Ho = Ie == null ? void 0 : Ie.id, pi = Ie == null ? void 0 : Ie.type, Ds = Ie == null ? void 0 : Ie.viewer;
     reactExports.useEffect(() => {
       const ae = [
         "s3",
         "local",
         "webdav"
       ];
-      if (zo == null || !ae.includes(mi) || Ps !== "markdown") {
+      if (Ho == null || !ae.includes(pi) || Ds !== "markdown") {
         it([]), He(null), Ye(""), Ue([]);
         return;
       }
-      const ge = getRecordingKeysFromTree(mi === "s3" ? Re : mi === "webdav" ? Fe : Me, zo);
+      const ge = getRecordingKeysFromTree(pi === "s3" ? Re : pi === "webdav" ? Fe : Me, Ho);
       it(ge), He(ge.length > 0 ? ge[0].key : null);
     }, [
-      zo,
-      mi,
-      Ps,
+      Ho,
+      pi,
+      Ds,
       Re,
       Me,
       Fe
     ]), reactExports.useEffect(() => {
-      if (!Ke || !mi) {
+      if (!Ke || !pi) {
         Ye(""), Ue([]);
         return;
       }
-      const ae = mi;
+      const ae = pi;
       if (![
         "s3",
         "local",
@@ -72779,7 +72788,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       };
     }, [
       Ke,
-      mi,
+      pi,
       Mn
     ]), reactExports.useEffect(() => {
       if (!Qr || !ee.bucket || !l) return;
@@ -72788,7 +72797,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ie = async () => {
         var _a3;
         try {
-          const ge = await listObjectsV2(ae, ee.bucket, ""), he = buildS3Tree(ge), xe = getFileLastModifiedMap(is.current), Ee = getFileLastModifiedMap(he), we = /* @__PURE__ */ new Set();
+          const ge = await listObjectsV2(ae, ee.bucket, ""), he = buildS3Tree(ge), xe = getFileLastModifiedMap(os.current), Ee = getFileLastModifiedMap(he), we = /* @__PURE__ */ new Set();
           for (const [st, rt] of Ee) {
             const kt = xe.get(st);
             (!kt || rt.getTime() > kt.getTime()) && we.add(st);
@@ -72799,7 +72808,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const Oe = findFileNodeByPath(he, Ce.id), $e = (Oe == null ? void 0 : Oe.lastModified) ? Oe.lastModified instanceof Date ? Oe.lastModified : new Date(Oe.lastModified) : null, { body: Be, ContentType: We } = await getObjectBody(ae, ee.bucket, Ce.id), De = (((_a3 = Ce.name) == null ? void 0 : _a3.split(".").pop()) || "").toLowerCase();
           if (Ce.viewer === "markdown" || De === "md" || De === "markdown" || De === "") {
             const st = new TextDecoder("utf-8").decode(Be);
-            qt((rt) => (rt == null ? void 0 : rt.id) === Ce.id ? {
+            Vt((rt) => (rt == null ? void 0 : rt.id) === Ce.id ? {
               ...rt,
               content: st,
               lastModified: $e
@@ -72815,7 +72824,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               rt = JSON.stringify(kt, null, 2);
             } catch {
             }
-            qt((kt) => (kt == null ? void 0 : kt.id) === Ce.id ? {
+            Vt((kt) => (kt == null ? void 0 : kt.id) === Ce.id ? {
               ...kt,
               content: rt,
               lastModified: $e
@@ -72825,7 +72834,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             });
           } else if (Ce.viewer === "html" || Ce.viewer === "svg" || De === "html" || De === "htm" || De === "svg") {
             const st = new TextDecoder("utf-8").decode(Be);
-            qt((rt) => (rt == null ? void 0 : rt.id) === Ce.id ? {
+            Vt((rt) => (rt == null ? void 0 : rt.id) === Ce.id ? {
               ...rt,
               content: st,
               lastModified: $e
@@ -72839,7 +72848,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             ], {
               type: st || void 0
             }), kt = URL.createObjectURL(rt);
-            qt((Ct) => (Ct == null ? void 0 : Ct.id) !== Ce.id ? Ct : (Ct.objectUrl && URL.revokeObjectURL(Ct.objectUrl), {
+            Vt((Ct) => (Ct == null ? void 0 : Ct.id) !== Ce.id ? Ct : (Ct.objectUrl && URL.revokeObjectURL(Ct.objectUrl), {
               ...Ct,
               objectUrl: kt,
               lastModified: $e
@@ -72859,7 +72868,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ae = async () => {
         var _a3;
         try {
-          const de = createWebdavBackend$1(Zt), ge = await de.listAll(), he = getFileLastModifiedMap(os.current), xe = getFileLastModifiedMap(ge), Ee = /* @__PURE__ */ new Set();
+          const de = createWebdavBackend$1(Zt), ge = await de.listAll(), he = getFileLastModifiedMap(ss.current), xe = getFileLastModifiedMap(ge), Ee = /* @__PURE__ */ new Set();
           for (const [We, De] of xe) {
             const st = he.get(We);
             (!st || De.getTime() > st.getTime()) && Ee.add(We);
@@ -72868,7 +72877,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           const we = Dt.current;
           if ((we == null ? void 0 : we.type) !== "webdav" || !Ee.has(we.id)) return;
           const Ce = findFileNodeByPath(ge, we.id), Oe = (Ce == null ? void 0 : Ce.lastModified) ? Ce.lastModified instanceof Date ? Ce.lastModified : new Date(Ce.lastModified) : null, { text: $e } = await de.readText(we.id), Be = (((_a3 = we.name) == null ? void 0 : _a3.split(".").pop()) || "").toLowerCase();
-          if (we.viewer === "markdown" || Be === "md" || Be === "markdown" || Be === "") qt((We) => (We == null ? void 0 : We.id) === we.id ? {
+          if (we.viewer === "markdown" || Be === "md" || Be === "markdown" || Be === "") Vt((We) => (We == null ? void 0 : We.id) === we.id ? {
             ...We,
             content: $e,
             lastModified: Oe
@@ -72882,7 +72891,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               We = JSON.stringify(JSON.parse($e), null, 2);
             } catch {
             }
-            qt((De) => (De == null ? void 0 : De.id) === we.id ? {
+            Vt((De) => (De == null ? void 0 : De.id) === we.id ? {
               ...De,
               content: We,
               lastModified: Oe
@@ -72890,7 +72899,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               var _a4;
               return ((_a4 = Dt.current) == null ? void 0 : _a4.id) === we.id ? We : De;
             });
-          } else (we.viewer === "html" || we.viewer === "svg" || Be === "html" || Be === "htm" || Be === "svg") && (qt((We) => (We == null ? void 0 : We.id) === we.id ? {
+          } else (we.viewer === "html" || we.viewer === "svg" || Be === "html" || Be === "htm" || Be === "svg") && (Vt((We) => (We == null ? void 0 : We.id) === we.id ? {
             ...We,
             content: $e,
             lastModified: Oe
@@ -72909,7 +72918,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Zt,
       l
     ]);
-    const Ds = reactExports.useCallback(async (ae, { fullScan: ie = false } = {}) => {
+    const Fs = reactExports.useCallback(async (ae, { fullScan: ie = false } = {}) => {
       if (!await ensureDirectoryReadWritePermission(ae)) throw new Error("\uC120\uD0DD\uD55C \uD3F4\uB354\uC5D0 \uC4F0\uAE30 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD3F4\uB354\uB97C \uB2E4\uC2DC \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.");
       Ut(true), hr(ae);
       try {
@@ -72919,19 +72928,19 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } finally {
         Ut(false);
       }
-    }, []), Li = reactExports.useCallback(async (ae) => {
+    }, []), $i = reactExports.useCallback(async (ae) => {
       if (!(ae == null ? void 0 : ae.handle) || ae.childrenLoaded === true) return;
       const ie = ae.path;
-      if (!(!ie || kr.current.has(ie))) {
-        kr.current.add(ie), Jt(ie);
+      if (!(!ie || Tr.current.has(ie))) {
+        Tr.current.add(ie), Jt(ie);
         try {
           const de = await readLocalDirectoryLevel(ae.handle, ie, ae.handle);
           dt((ge) => patchLocalTreeChildren(ge, ie, de));
         } finally {
-          kr.current.delete(ie), Jt((de) => de === ie ? null : de);
+          Tr.current.delete(ie), Jt((de) => de === ie ? null : de);
         }
       }
-    }, []), Fs = async () => {
+    }, []), js = async () => {
       try {
         if (isDesktopApp()) {
           const ie = await pickTauriLocalVaultDirectory();
@@ -72946,16 +72955,16 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           return;
         }
         const ae = await pickLocalRootDirectory();
-        clearLocalVaultFsPath(), At(""), mn(STORAGE_MODE_LOCAL), await Ds(ae);
+        clearLocalVaultFsPath(), At(""), mn(STORAGE_MODE_LOCAL), await Fs(ae);
       } catch (ae) {
         if ((ae == null ? void 0 : ae.name) === "AbortError") return;
         console.error("Local folder selection cancelled or failed:", ae), alert((ae == null ? void 0 : ae.message) || "\uB85C\uCEEC \uD3F4\uB354\uB97C \uC5F4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
       }
     }, Rn = async () => {
-      if (isDesktopApp() && Yt) {
+      if (isDesktopApp() && qt) {
         Ut(true);
         try {
-          const ae = await readTauriLocalDirectoryTree(Yt);
+          const ae = await readTauriLocalDirectoryTree(qt);
           dt(ae);
         } finally {
           Ut(false);
@@ -72971,35 +72980,35 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           Ut(false);
         }
       }
-    }, $i = reactExports.useCallback(() => createStorageBackend({
+    }, Bi = reactExports.useCallback(() => createStorageBackend({
       mode: xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3",
       getS3Client: ir,
       s3Creds: ee,
       localRootHandle: nt,
-      localVaultFsPath: Yt,
+      localVaultFsPath: qt,
       webdavConfig: Zt
     }), [
       xt,
       ir,
       ee,
       nt,
-      Yt,
+      qt,
       Zt
-    ]), Jl = reactExports.useCallback(async (ae) => {
-      const ie = $i(), { text: de } = await ie.readText(ae);
+    ]), Zl = reactExports.useCallback(async (ae) => {
+      const ie = Bi(), { text: de } = await ie.readText(ae);
       return de;
     }, [
-      $i
-    ]), Zl = reactExports.useCallback(async (ae) => {
-      const ie = $i(), { body: de } = await ie.readBytes(ae);
+      Bi
+    ]), Ql = reactExports.useCallback(async (ae) => {
+      const ie = Bi(), { body: de } = await ie.readBytes(ae);
       return de instanceof Uint8Array ? de : new Uint8Array(de);
     }, [
-      $i
-    ]), Ql = reactExports.useCallback(async (ae, ie) => {
+      Bi
+    ]), tc = reactExports.useCallback(async (ae, ie) => {
       var _a3;
       const de = (Array.isArray(ae) ? ae : []).filter(Boolean);
       if (!de.length) return;
-      const ge = $i();
+      const ge = Bi();
       for (const he of de) try {
         ie === "hard" ? await ge.delete(he) : await ge.trash(he);
       } catch (xe) {
@@ -73008,7 +73017,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       xt === STORAGE_MODE_LOCAL ? await Rn() : xt === STORAGE_MODE_WEBDAV ? await an() : Yr();
     }, [
-      $i,
+      Bi,
       xt,
       an,
       Yr,
@@ -73022,17 +73031,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       l,
       an
     ]);
-    const tc = async () => {
+    const rc = async () => {
       Jr(false);
       try {
         const ae = await tryRestoreLocalRootHandle();
         if (!ae) {
-          bo(true), alert("\uD3F4\uB354 \uC811\uADFC \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC0AC\uC774\uB4DC\uBC14\uC5D0\uC11C \uD3F4\uB354\uB97C \uB2E4\uC2DC \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.");
+          xo(true), alert("\uD3F4\uB354 \uC811\uADFC \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC0AC\uC774\uB4DC\uBC14\uC5D0\uC11C \uD3F4\uB354\uB97C \uB2E4\uC2DC \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.");
           return;
         }
-        mn(STORAGE_MODE_LOCAL), await Ds(ae);
+        mn(STORAGE_MODE_LOCAL), await Fs(ae);
       } catch (ae) {
-        bo(true), alert(`\uD3F4\uB354\uB97C \uB2E4\uC2DC \uC5F4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${(ae == null ? void 0 : ae.message) || ae}`);
+        xo(true), alert(`\uD3F4\uB354\uB97C \uB2E4\uC2DC \uC5F4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${(ae == null ? void 0 : ae.message) || ae}`);
       }
     }, ti = reactExports.useCallback(async (ae, ie, de = {}) => {
       var _a3, _b3;
@@ -73090,7 +73099,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           });
           St.current = kt, yr(kt);
           const Ct = getActiveFileTab(kt);
-          return Ct && Ct.id === rt.id && (qt(Ct.currentFile), Dt.current = Ct.currentFile, dr(Ct.editorContent), ar.current = Ct.editorContent, In(Ct.editedFileName || String(((_a4 = Ct.currentFile) == null ? void 0 : _a4.name) || "")), Ar.current = Ct.editedFileName || String(((_b4 = Ct.currentFile) == null ? void 0 : _b4.name) || "")), true;
+          return Ct && Ct.id === rt.id && (Vt(Ct.currentFile), Dt.current = Ct.currentFile, dr(Ct.editorContent), ar.current = Ct.editorContent, In(Ct.editedFileName || String(((_a4 = Ct.currentFile) == null ? void 0 : _a4.name) || "")), Ar.current = Ct.editedFileName || String(((_b4 = Ct.currentFile) == null ? void 0 : _b4.name) || "")), true;
         }
         const De = {
           type: ae,
@@ -73193,25 +73202,25 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
                 confirmMessage: "\uC11C\uBC84\uC5D0 \uB354 \uCD5C\uC2E0 \uBC84\uC804\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uAE30\uC874 \uB0B4\uC6A9\uC744 \uBC84\uB9AC\uACE0 \uC11C\uBC84 \uBC84\uC804\uC73C\uB85C \uAD50\uCCB4\uD560\uAE4C\uC694?",
                 deleteDraft: () => deleteMemoDraft(hn)
               });
-              let gi = ua.contentToUse, yi = ua.baselineContent;
+              let yi = ua.contentToUse, bi = ua.baselineContent;
               if (isEncMdPath(ie.path)) {
-                const as = await _o(ie.path, sr);
-                if (as == null) return;
-                gi = as, yi = as;
+                const is = await _o(ie.path, sr);
+                if (is == null) return;
+                yi = is, bi = is;
               }
               Be({
                 type: "s3",
                 id: ie.path,
                 name: ie.name,
-                content: yi,
+                content: bi,
                 viewer: "markdown",
                 size: typeof nr == "number" ? nr : null,
                 lastModified: ur ?? ie.lastModified,
                 ...isEncMdPath(ie.path) ? {
                   encMd: true
                 } : {}
-              }, gi, {
-                baselineContent: yi
+              }, yi, {
+                baselineContent: bi
               });
             } catch (Nt) {
               console.error("S3 Read Error:", Nt);
@@ -73325,7 +73334,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           }, "");
         } else if (ae === "local") {
           if (!We()) return;
-          if ((Yt || isDesktopApp()) && !ie.handle) {
+          if ((qt || isDesktopApp()) && !ie.handle) {
             const on = Mn("local");
             if (!((_a3 = on == null ? void 0 : on.isReady) == null ? void 0 : _a3.call(on))) {
               alert("\uB85C\uCEEC \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
@@ -73337,17 +73346,17 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               node: ie
             });
             if (!ga) return;
-            let { currentFile: ua, editorContent: gi } = ga;
+            let { currentFile: ua, editorContent: yi } = ga;
             if (ga.needsEncMdPassword) {
-              const yi = await _o(ie.path, ga.encMdCiphertext);
-              if (yi == null) return;
-              gi = yi, ua = {
+              const bi = await _o(ie.path, ga.encMdCiphertext);
+              if (bi == null) return;
+              yi = bi, ua = {
                 ...ua,
-                content: yi,
+                content: bi,
                 encMd: true
               };
             }
-            Be(ua, gi || "");
+            Be(ua, yi || "");
             return;
           }
           const rt = await ie.handle.getFile(), kt = rt.lastModified ?? 0, Ct = [
@@ -73374,13 +73383,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               rt
             ], {
               type: ga || rt.type || void 0
-            }), gi = URL.createObjectURL(ua);
+            }), yi = URL.createObjectURL(ua);
             Be({
               type: "local",
               id: ie.path,
               name: ie.name,
               viewer: on,
-              objectUrl: gi,
+              objectUrl: yi,
               handle: ie.handle,
               parentHandle: ie.parentHandle,
               size: typeof rt.size == "number" ? rt.size : null,
@@ -73490,7 +73499,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           qn();
           const st = ze.current;
           if (!st) return;
-          fi(ie.path, st, {
+          mi(ie.path, st, {
             skipNavigate: we
           });
         }
@@ -73519,13 +73528,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       ir,
       ee.bucket,
       qn,
-      fi,
+      mi,
       Ma,
       za,
       o,
-      Yt,
+      qt,
       Mn
-    ]), Co = (ae, ie) => `${ae}:${ie}`, so = reactExports.useCallback((ae, ie) => {
+    ]), Co = (ae, ie) => `${ae}:${ie}`, lo = reactExports.useCallback((ae, ie) => {
       const de = Dt.current;
       if (!(de == null ? void 0 : de.id) || de.type === ae && de.id === ie.path) return;
       const ge = de.viewer || "markdown";
@@ -73551,7 +73560,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       qn,
       Ra
-    ]), Ho = reactExports.useCallback(async (ae, ie, de = {}) => {
+    ]), Uo = reactExports.useCallback(async (ae, ie, de = {}) => {
       const { ctrlKey: ge = false, metaKey: he = false, shiftKey: xe = false } = de, Ee = xe, we = ae === "s3" ? Re : ae === "webdav" ? Fe : ae === SESSION_STORAGE_TYPE ? Ge ? buildSessionTree(Ge) : [] : Me, Ce = flattenTreeToPaths(we), Oe = ie.path, $e = Co(ae, Oe);
       if (Ee && La.current != null) {
         const Be = La.current, We = Be.indexOf(":"), De = We >= 0 ? Be.slice(0, We) : ae, st = We >= 0 ? Be.slice(We + 1) : Be;
@@ -73569,8 +73578,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               for (let Nt = bt; Nt <= Tt; Nt++) gt.add(Co(ae, Ce[Nt]));
               return gt;
             }), La.current = $e, ie.type === "file") {
-              if (!oo()) return;
-              Qr && Fn(false), so(ae, ie), await ti(ae, ie);
+              if (!so()) return;
+              Qr && Fn(false), lo(ae, ie), await ti(ae, ie);
             }
             return;
           }
@@ -73582,8 +73591,8 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }), La.current = $e) : (pa(/* @__PURE__ */ new Set([
         $e
       ])), La.current = $e), ie.type === "file") {
-        if (!oo()) return;
-        Qr && Fn(false), so(ae, ie), await ti(ae, ie);
+        if (!so()) return;
+        Qr && Fn(false), lo(ae, ie), await ti(ae, ie);
       }
     }, [
       Qr,
@@ -73592,73 +73601,73 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Fe,
       Ge,
       ti,
-      so,
-      oo
-    ]), Bi = reactExports.useCallback((ae, ie) => {
-      Ho(ae, ie, {});
+      lo,
+      so
+    ]), zi = reactExports.useCallback((ae, ie) => {
+      Uo(ae, ie, {});
     }, [
-      Ho
-    ]), js = reactExports.useCallback(async (ae) => {
+      Uo
+    ]), Ls = reactExports.useCallback(async (ae) => {
       var _a3;
       if (!ae) return;
       const ie = xt, de = ae.lastIndexOf("/"), ge = de >= 0 ? ae.slice(0, de + 1) : "", he = getParentPathsToExpand(ge);
       he.length && ((_a3 = An.current) == null ? void 0 : _a3.call(An, ie, he));
       let xe = null;
-      ie === STORAGE_MODE_LOCAL ? xe = findFileNodeByPath(Me, ae) || findNodeByPath(Me, ae) || (nt ? await resolveLocalFileNode(nt, ae) : null) : ie === STORAGE_MODE_WEBDAV ? xe = findFileNodeByPath(Fe, ae) || findNodeByPath(Fe, ae) : ie === STORAGE_MODE_S3 && (xe = findFileNodeByPath(Re, ae) || findNodeByPath(Re, ae)), (xe == null ? void 0 : xe.type) === "file" ? Bi(ie, xe) : ue(`/view/${ae}`);
+      ie === STORAGE_MODE_LOCAL ? xe = findFileNodeByPath(Me, ae) || findNodeByPath(Me, ae) || (nt ? await resolveLocalFileNode(nt, ae) : null) : ie === STORAGE_MODE_WEBDAV ? xe = findFileNodeByPath(Fe, ae) || findNodeByPath(Fe, ae) : ie === STORAGE_MODE_S3 && (xe = findFileNodeByPath(Re, ae) || findNodeByPath(Re, ae)), (xe == null ? void 0 : xe.type) === "file" ? zi(ie, xe) : ue(`/view/${ae}`);
     }, [
       xt,
       Me,
       Fe,
       Re,
       nt,
-      Bi,
+      zi,
       ue
-    ]), rc = reactExports.useCallback(async (ae) => {
+    ]), nc = reactExports.useCallback(async (ae) => {
       if (ae) {
         if (xt === STORAGE_MODE_LOCAL) {
           const ie = findNodeByPath(Me, ae) || findNodeByPath(Me, ae.replace(/\/$/, "")) || findNodeByPath(Me, `${ae.replace(/\/$/, "")}/`);
-          (ie == null ? void 0 : ie.type) === "folder" && await Li(ie);
+          (ie == null ? void 0 : ie.type) === "folder" && await $i(ie);
           return;
         }
         if (xt === STORAGE_MODE_WEBDAV) {
           const ie = findNodeByPath(Fe, ae) || findNodeByPath(Fe, ae.replace(/\/$/, "")) || findNodeByPath(Fe, `${ae.replace(/\/$/, "")}/`);
-          (ie == null ? void 0 : ie.type) === "folder" && await no(ie);
+          (ie == null ? void 0 : ie.type) === "folder" && await ao(ie);
         }
       }
     }, [
       xt,
       Me,
       Fe,
-      Li,
-      no
-    ]), nc = reactExports.useCallback(async (ae) => {
-      const ie = Sr == null ? void 0 : Sr.storageType;
+      $i,
+      ao
+    ]), ac = reactExports.useCallback(async (ae) => {
+      const ie = kr == null ? void 0 : kr.storageType;
       if (!(!ae || !ie)) {
         if (ie === "local") {
           const de = findNodeByPath(Me, ae) || findNodeByPath(Me, ae.replace(/\/$/, "")) || findNodeByPath(Me, `${ae.replace(/\/$/, "")}/`);
-          (de == null ? void 0 : de.type) === "folder" && await Li(de);
+          (de == null ? void 0 : de.type) === "folder" && await $i(de);
           return;
         }
         if (ie === "webdav") {
           const de = findNodeByPath(Fe, ae) || findNodeByPath(Fe, ae.replace(/\/$/, "")) || findNodeByPath(Fe, `${ae.replace(/\/$/, "")}/`);
-          (de == null ? void 0 : de.type) === "folder" && await no(de);
+          (de == null ? void 0 : de.type) === "folder" && await ao(de);
         }
       }
     }, [
-      Sr == null ? void 0 : Sr.storageType,
+      kr == null ? void 0 : kr.storageType,
       Me,
       Fe,
-      Li,
-      no
-    ]), ac = reactExports.useMemo(() => {
-      const ae = Sr == null ? void 0 : Sr.storageType;
+      $i,
+      ao
+    ]), ic = reactExports.useMemo(() => {
+      const ae = kr == null ? void 0 : kr.storageType;
       return ae === "local" ? Me : ae === "webdav" ? Fe : ae === "s3" ? Re : null;
     }, [
-      Sr == null ? void 0 : Sr.storageType,
+      kr == null ? void 0 : kr.storageType,
       Me,
       Fe,
       Re
-    ]), ic = reactExports.useCallback(async (ae, ie) => {
+    ]), oc = reactExports.useCallback(async (ae, ie) => {
       if ((ie == null ? void 0 : ie.type) !== "file" || !(ie == null ? void 0 : ie.path)) return;
       const de = ie.path, ge = (de.split(".").pop() || "").toLowerCase(), he = [
         "png",
@@ -73728,25 +73737,25 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       Zt
     ]);
     reactExports.useEffect(() => {
-      if (!l || ss.current) return;
+      if (!l || ls.current) return;
       const ae = consumePendingPrintReturnState();
-      if (ss.current = true, !ae) return;
+      if (ls.current = true, !ae) return;
       na.current = true, Aa.current = true;
       const ie = typeof ae.editorContent == "string" ? ae.editorContent : "";
-      ae.currentFile && typeof ae.currentFile == "object" && qt(ae.currentFile), ro.current = ie, ar.current = ie, dr(ie);
+      ae.currentFile && typeof ae.currentFile == "object" && Vt(ae.currentFile), no.current = ie, ar.current = ie, dr(ie);
     }, [
       l
     ]);
-    const Ls = reactExports.useRef(isExportPdfAppPathname(fe.pathname));
+    const $s = reactExports.useRef(isExportPdfAppPathname(fe.pathname));
     reactExports.useLayoutEffect(() => {
-      const ae = isExportPdfAppPathname(fe.pathname), ie = Ls.current && !ae;
-      if (Ls.current = ae, !ie || !l) return;
+      const ae = isExportPdfAppPathname(fe.pathname), ie = $s.current && !ae;
+      if ($s.current = ae, !ie || !l) return;
       const de = consumePendingPrintReturnState();
       if (!de) return;
       const ge = typeof de.editorContent == "string" ? de.editorContent : "";
-      ro.current = ge, ar.current = ge, dr(ge);
+      no.current = ge, ar.current = ge, dr(ge);
       const he = de.currentFile;
-      !he || typeof he != "object" || qt((xe) => xe && he.id && xe.id === he.id ? {
+      !he || typeof he != "object" || Vt((xe) => xe && he.id && xe.id === he.id ? {
         ...xe,
         name: he.name ?? xe.name,
         viewer: he.viewer ?? xe.viewer,
@@ -73758,7 +73767,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       fe.pathname,
       l
     ]), reactExports.useEffect(() => {
-      if (!l) return;
+      if (!l || Nr.current && !fi.current) return;
       const ae = flushEditorIntoActiveFileTab(fr, {
         editorContent: ar.current ?? "",
         currentFile: Dt.current,
@@ -73787,43 +73796,51 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     ]), reactExports.useEffect(() => {
       if (!l) return;
       const ae = () => {
-        if (!Pr.current) return;
-        const ie = flushEditorIntoActiveFileTab(St.current, {
+        if (!Nr.current) return;
+        const de = flushEditorIntoActiveFileTab(St.current, {
           editorContent: ar.current ?? "",
           currentFile: Dt.current,
           editedFileName: Ar.current ?? ""
-        }), de = toPersistedWorkspaceTabs(ie.tabs.map((ge) => ge.kind === "chat" ? {
+        }), ge = toPersistedWorkspaceTabs(de.tabs.map((he) => he.kind === "chat" ? {
           kind: "chat"
-        } : ge.kind === "settings" ? {
+        } : he.kind === "settings" ? {
           kind: "settings"
         } : {
           kind: "file",
-          storageType: ge.storageType,
-          path: ge.path
-        }), ie.activeId);
-        saveLastOpenTabsSnapshot(de);
+          storageType: he.storageType,
+          path: he.path
+        }), de.activeId);
+        saveLastOpenTabsSnapshot(ge);
+      }, ie = () => {
+        document.visibilityState === "hidden" && ae();
       };
-      return window.addEventListener("pagehide", ae), window.addEventListener("beforeunload", ae), () => {
-        window.removeEventListener("pagehide", ae), window.removeEventListener("beforeunload", ae);
+      return window.addEventListener("pagehide", ae), window.addEventListener("beforeunload", ae), document.addEventListener("visibilitychange", ie), () => {
+        window.removeEventListener("pagehide", ae), window.removeEventListener("beforeunload", ae), document.removeEventListener("visibilitychange", ie);
       };
     }, [
       l
     ]), reactExports.useEffect(() => {
       var _a3;
-      if (!l || !Tr || us.current) return;
-      us.current = true;
-      const ae = loadPersistedWorkspaceTabs(), ie = loadLastOpenTabsSnapshot(), de = ie && ae ? ie.tabs.length >= ae.tabs.length ? ie : ae : ie || ae;
-      if (!((_a3 = de == null ? void 0 : de.tabs) == null ? void 0 : _a3.length)) return;
-      const ge = /* @__PURE__ */ new Set();
-      if (typeof de.activeId == "string" && de.activeId) ge.add(de.activeId);
+      if (!l || !wr || ds.current) return;
+      ds.current = true;
+      const ae = pickWorkspaceTabsRestoreSource();
+      if (!((_a3 = ae == null ? void 0 : ae.tabs) == null ? void 0 : _a3.length)) return;
+      const ie = /* @__PURE__ */ new Set();
+      if (typeof ae.activeId == "string" && ae.activeId) ie.add(ae.activeId);
       else {
-        const he = de.tabs[0];
-        (he == null ? void 0 : he.kind) === "chat" ? ge.add(CHAT_TAB_ID) : (he == null ? void 0 : he.kind) === "settings" ? ge.add(SETTINGS_TAB_ID) : (he == null ? void 0 : he.kind) === "file" && ge.add(`${he.type}:${he.path}`);
+        const de = ae.tabs[0];
+        (de == null ? void 0 : de.kind) === "chat" ? ie.add(CHAT_TAB_ID) : (de == null ? void 0 : de.kind) === "settings" ? ie.add(SETTINGS_TAB_ID) : (de == null ? void 0 : de.kind) === "file" && ie.add(`${de.type}:${de.path}`);
       }
-      seedTabsRestoreQueueFromSnapshot(de, ge);
+      seedTabsRestoreQueueFromSnapshot(ae, ie);
     }, [
       l,
-      Tr
+      wr
+    ]), reactExports.useEffect(() => {
+      var _a3, _b3;
+      !l || !wr || fi.current || ((_b3 = (_a3 = pickWorkspaceTabsRestoreSource()) == null ? void 0 : _a3.tabs) == null ? void 0 : _b3.length) || (fi.current = true);
+    }, [
+      l,
+      wr
     ]), reactExports.useEffect(() => {
       if (!l || !isDesktopApp()) return;
       let ae = false;
@@ -73869,12 +73886,12 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         Ee = $e, we = Be;
       } else if (xe) Ee = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3", we = xe;
       else if (ae) {
-        Aa.current = true, na.current = true, Pr.current && aa({
+        Aa.current = true, na.current = true, Nr.current && aa({
           navigateUrl: false
         });
         return;
       } else if (ie) {
-        Aa.current = true, na.current = true, Pr.current && Gn({
+        Aa.current = true, na.current = true, Nr.current && Gn({
           navigateUrl: false
         });
         return;
@@ -73883,9 +73900,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         return;
       } else {
         if (Aa.current) return;
-        const Oe = loadPersistedWorkspaceTabs();
+        const Oe = pickWorkspaceTabsRestoreSource();
         if ((_a3 = Oe == null ? void 0 : Oe.tabs) == null ? void 0 : _a3.length) {
-          Aa.current = true, Pr.current && (Oe.tabs.some((We) => We.kind === "chat") && aa({
+          Aa.current = true, Nr.current && (Oe.tabs.some((We) => We.kind === "chat") && aa({
             navigateUrl: false
           }), Oe.tabs.some((We) => We.kind === "settings") && Gn({
             navigateUrl: false
@@ -73905,13 +73922,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             return;
           }
         } else {
-          const $e = ds();
+          const $e = fs();
           if (!$e || typeof $e != "object") {
             Aa.current = true;
             return;
           }
           if ($e.type === "chat") {
-            Aa.current = true, na.current = true, Pr.current ? aa() : ue("/chat");
+            Aa.current = true, na.current = true, Nr.current ? aa() : ue("/chat");
             return;
           }
           if ($e.type !== "s3" && $e.type !== "local" && $e.type !== "webdav") {
@@ -73924,7 +73941,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       if (!Ee || !we) return;
       if (Ee === "local") {
         if (!nt) {
-          yo && (na.current = true, Aa.current = true);
+          bo && (na.current = true, Aa.current = true);
           return;
         }
       } else if (Ee === "webdav") {
@@ -73946,9 +73963,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
               replace: true
             });
           }
-          (Oe == null ? void 0 : Oe.type) === "file" && (ge || isExportPdfAppPathname(fe.pathname) ? await ((_a4 = Di.current) == null ? void 0 : _a4.call(Di, Ee, Oe, {
+          (Oe == null ? void 0 : Oe.type) === "file" && (ge || isExportPdfAppPathname(fe.pathname) ? await ((_a4 = Fi.current) == null ? void 0 : _a4.call(Fi, Ee, Oe, {
             skipNavigate: true
-          })) : Bi(Ee, Oe));
+          })) : zi(Ee, Oe));
         }
       })(), () => {
         Ce = true;
@@ -73956,7 +73973,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       l,
       nt,
-      yo,
+      bo,
       Me,
       Ir,
       Fe,
@@ -73964,43 +73981,50 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       xt,
       fe.pathname,
       fe.search,
-      Bi,
-      ds,
+      zi,
+      fs,
       ue,
       aa,
       Gn
-    ]), Di.current = ti, reactExports.useEffect(() => {
+    ]), Fi.current = ti, reactExports.useEffect(() => {
       var _a3;
-      if (!l || !Tr || !na.current || xo.current) return;
-      const ae = loadPersistedWorkspaceTabs();
+      if (!l || !wr || !na.current || fi.current || Do.current) return;
+      const ae = pickWorkspaceTabsRestoreSource();
       if (!((_a3 = ae == null ? void 0 : ae.tabs) == null ? void 0 : _a3.length)) {
-        xo.current = true;
+        fi.current = true;
         return;
       }
-      if (ae.tabs.some((we) => we.kind === "file" && we.type === "local") && !nt) {
-        yo && (xo.current = true);
+      if (ae.tabs.some((we) => we.kind === "file" && we.type === "local") && !nt && !qt) {
+        bo && (fi.current = true);
         return;
       }
       if (ae.tabs.some((we) => we.kind === "file" && we.type === "webdav") && !Ir) return;
       const ge = parseOpenNotePathFromAppPathname(fe.pathname), he = ge ? xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3" : null, xe = isChatAppPathname(fe.pathname) ? CHAT_TAB_ID : isSettingsAppPathname(fe.pathname) ? SETTINGS_TAB_ID : ge && he ? `${he}:${ge}` : null, Ee = xe == null && !isExportPdfAppPathname(fe.pathname);
-      xo.current = true, Rs(ae, {
-        activeId: xe,
-        navigateActiveUrl: Ee
-      });
+      Do.current = true, (async () => {
+        try {
+          await Cs(ae, {
+            activeId: xe,
+            navigateActiveUrl: Ee
+          });
+        } finally {
+          Do.current = false, fi.current = true;
+        }
+      })();
     }, [
       l,
-      Tr,
+      wr,
       nt,
-      yo,
+      qt,
+      bo,
       Ir,
       fe.pathname,
       xt,
-      Rs
+      Cs
     ]);
-    const lo = reactExports.useCallback((ae) => {
-      Ei((ie) => upsertTreeTransferBusy(ie, ae));
+    const co = reactExports.useCallback((ae) => {
+      Si((ie) => upsertTreeTransferBusy(ie, ae));
     }, []), Ha = reactExports.useCallback((ae, ie) => {
-      Ei((de) => removeTreeTransferBusy(de, ae, ie));
+      Si((de) => removeTreeTransferBusy(de, ae, ie));
     }, []), ca = reactExports.useCallback(async (ae, ie) => {
       var _a3;
       const de = Dt.current;
@@ -74012,7 +74036,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         id: ie,
         name: String(ie).split("/").filter(Boolean).pop() || "file",
         type: "file"
-      }), await ((_a3 = Di.current) == null ? void 0 : _a3.call(Di, ae, he, {
+      }), await ((_a3 = Fi.current) == null ? void 0 : _a3.call(Fi, ae, he, {
         skipNavigate: true
       }));
     }, [
@@ -74022,7 +74046,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       nt
     ]);
     reactExports.useEffect(() => {
-      isSettingsAppPathname(fe.pathname) && Pr.current && Gn({
+      isSettingsAppPathname(fe.pathname) && Nr.current && Gn({
         navigateUrl: false
       });
     }, [
@@ -74032,7 +74056,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       var _a3;
       if (!l || !na.current) return;
       if (isChatAppPathname(fe.pathname) || isSettingsAppPathname(fe.pathname)) {
-        Pr.current && (isChatAppPathname(fe.pathname) ? aa({
+        Nr.current && (isChatAppPathname(fe.pathname) ? aa({
           navigateUrl: false
         }) : Gn({
           navigateUrl: false
@@ -74042,11 +74066,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       const ae = parseOpenNotePathFromAppPathname(fe.pathname);
       if (!ae) {
         if (isExportPdfAppPathname(fe.pathname)) return;
-        go.current = null;
+        yo.current = null;
         return;
       }
       if (((_a3 = Dt.current) == null ? void 0 : _a3.id) === ae) {
-        go.current = ae;
+        yo.current = ae;
         return;
       }
       const ie = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3";
@@ -74055,20 +74079,20 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } else if (ie === "webdav") {
         if (!Ir || !(Fe == null ? void 0 : Fe.length)) return;
       } else if (!(Re == null ? void 0 : Re.length)) return;
-      const de = go.current !== ae;
-      go.current = ae;
+      const de = yo.current !== ae;
+      yo.current = ae;
       let ge = false;
       return (async () => {
         var _a4;
         let he = null;
         if (ie === "local" ? he = findFileNodeByPath(Me, ae) || findNodeByPath(Me, ae) || await resolveLocalFileNode(nt, ae) : ie === "webdav" ? he = findFileNodeByPath(Fe, ae) || findNodeByPath(Fe, ae) : he = findFileNodeByPath(Re, ae) || findNodeByPath(Re, ae), !ge) {
           if ((he == null ? void 0 : he.type) === "file") {
-            await ((_a4 = Di.current) == null ? void 0 : _a4.call(Di, ie, he, {
+            await ((_a4 = Fi.current) == null ? void 0 : _a4.call(Fi, ie, he, {
               skipNavigate: true
             }));
             return;
           }
-          de && Dt.current && jo();
+          de && Dt.current && Lo();
         }
       })(), () => {
         ge = true;
@@ -74085,16 +74109,16 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       aa,
       Gn
     ]), reactExports.useEffect(() => {
-      if (!l || ls.current || xt !== STORAGE_MODE_LOCAL || nt) return;
+      if (!l || cs.current || xt !== STORAGE_MODE_LOCAL || nt) return;
       let ae = false;
       return (async () => {
         const ie = await hasStoredLocalRootHandle(), de = loadLastLocalFolderName();
         if (!ae) {
           if (!ie || !de) {
-            bo(true);
+            xo(true);
             return;
           }
-          ls.current = true, Zr(de), Jr(true);
+          cs.current = true, Zr(de), Jr(true);
         }
       })(), () => {
         ae = true;
@@ -74105,9 +74129,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       nt
     ]), reactExports.useEffect(() => {
       if (!l || !isDesktopApp() || xt !== STORAGE_MODE_LOCAL) return;
-      const ae = Yt || loadLocalVaultFsPath();
+      const ae = qt || loadLocalVaultFsPath();
       if (!ae) return;
-      Yt !== ae && At(ae);
+      qt !== ae && At(ae);
       let ie = false;
       return (async () => {
         Ut(true);
@@ -74125,9 +74149,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }, [
       l,
       xt,
-      Yt
+      qt
     ]);
-    const Uo = async (ae, ie, de) => {
+    const Wo = async (ae, ie, de) => {
       const ge = ir();
       if (!ge) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
       const he = ee.bucket, xe = de || ae.name, we = `${ie || ""}${xe}`, Ce = ae.id;
@@ -74136,7 +74160,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         id: we,
         name: xe
       });
-    }, Wo = async (ae, ie, de, ge) => {
+    }, Ko = async (ae, ie, de, ge) => {
       const he = ae.parentHandle || nt;
       if (!he) throw new Error("\uC6D0\uBCF8 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       if (!ie) throw new Error("\uB300\uC0C1 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
@@ -74158,7 +74182,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         parentHandle: ie,
         size: typeof Ce.size == "number" ? Ce.size : ae.size ?? null
       };
-    }, Ko = async (ae, ie, de) => {
+    }, Go = async (ae, ie, de) => {
       const ge = ir();
       if (!ge) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
       const he = ee.bucket, xe = ae.path;
@@ -74176,7 +74200,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }));
       }
       $e.length > 0 && await deleteObjects(ge, he, $e), await Yr();
-    }, Go = async (ae, ie, de, ge) => {
+    }, qo = async (ae, ie, de, ge) => {
       const he = ae.parentHandle || nt;
       if (!he) throw new Error("\uC6D0\uBCF8 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       if (!ie) throw new Error("\uB300\uC0C1 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
@@ -74201,14 +74225,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       await Ce(ae.handle, we), await he.removeEntry(ae.name, {
         recursive: true
       }), await Rn();
-    }, qo = async (ae, ie, de) => {
+    }, Vo = async (ae, ie, de) => {
       const ge = createWebdavBackend$1(Zt), he = de || ae.name, Ee = `${ie || ""}${he}`, we = ae.id;
       return Ee === we ? ae : (await ge.move(we, Ee), await an(), {
         ...ae,
         id: Ee,
         name: he
       });
-    }, Vo = async (ae, ie, de) => {
+    }, Yo = async (ae, ie, de) => {
       const ge = createWebdavBackend$1(Zt), he = ae.path;
       if (!he) return;
       const xe = de ?? ae.name, Ee = `${ie || ""}${xe}/`;
@@ -74224,7 +74248,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       } catch {
       }
       await an();
-    }, oc = async (ae, ie, de) => {
+    }, sc = async (ae, ie, de) => {
       const ge = ir();
       if (!ge) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
       const he = ee.bucket, xe = de || ae.name, Ee = `${ie || ""}${xe}`, we = ae.id;
@@ -74232,7 +74256,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         ...ae,
         id: Ee
       });
-    }, sc = async (ae, ie, de, ge) => {
+    }, cc = async (ae, ie, de, ge) => {
       if (!ie) throw new Error("\uB300\uC0C1 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       if (!ae.handle) throw new Error("\uC6D0\uBCF8 \uD30C\uC77C\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       const he = ge || ae.name, xe = ae.id ?? ae.path, Ee = `${de || ""}${he}`;
@@ -74248,7 +74272,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         parentHandle: ie,
         size: typeof we.size == "number" ? we.size : ae.size ?? null
       };
-    }, cc = async (ae, ie, de) => {
+    }, uc = async (ae, ie, de) => {
       const ge = ir();
       if (!ge) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
       const he = ee.bucket, xe = ae.path;
@@ -74267,7 +74291,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         !$e || Be === Oe || await copyObject(ge, he, Oe, Be);
       }
       await Yr();
-    }, uc = async (ae, ie, de, ge) => {
+    }, dc = async (ae, ie, de, ge) => {
       if (!ie) throw new Error("\uB300\uC0C1 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       if (!ae.handle) throw new Error("\uC6D0\uBCF8 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
       const he = ge ?? ae.name, xe = `${de || ""}${he}/`;
@@ -74289,13 +74313,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
       };
       await we(ae.handle, Ee), await Rn();
-    }, dc = async (ae, ie, de) => {
+    }, fc = async (ae, ie, de) => {
       const ge = createWebdavBackend$1(Zt), he = de || ae.name, xe = `${ie || ""}${he}`, Ee = ae.id;
       return xe === Ee ? ae : (await ge.copy(Ee, xe), await an(), {
         ...ae,
         id: xe
       });
-    }, fc = async (ae, ie, de) => {
+    }, mc = async (ae, ie, de) => {
       const ge = createWebdavBackend$1(Zt), he = ae.path;
       if (!he) return;
       const xe = de ?? ae.name, Ee = `${ie || ""}${xe}/`;
@@ -74311,14 +74335,14 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         await ge.copy(Oe, Ee + $e);
       }
       await an();
-    }, mc = async () => {
+    }, pc = async () => {
       var _a3, _b3;
       if (!(!Ie || Ie.viewer !== "unsupported")) {
         if (Ie.type === "s3") try {
           const ae = ir();
           if (!ae) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
           const { body: ie, ContentLength: de } = await getObjectBody(ae, ee.bucket, Ie.id), ge = new TextDecoder("utf-8").decode(ie);
-          qt((he) => ({
+          Vt((he) => ({
             ...he,
             content: ge,
             viewer: "raw",
@@ -74334,7 +74358,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
             return;
           }
           const ie = decodeSessionText(ae.bytes);
-          qt((de) => ({
+          Vt((de) => ({
             ...de,
             content: ie,
             viewer: "raw",
@@ -74342,7 +74366,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           })), dr(ie);
         } else if (Ie.type === "local" && Ie.handle) try {
           const ae = await Ie.handle.getFile().then((ie) => ie.text());
-          qt((ie) => ({
+          Vt((ie) => ({
             ...ie,
             content: ae,
             viewer: "raw",
@@ -74353,7 +74377,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         }
         else if (Ie.type === "webdav") try {
           const ae = createWebdavBackend$1(Zt), { text: ie, contentLength: de } = await ae.readText(Ie.id);
-          qt((ge) => ({
+          Vt((ge) => ({
             ...ge,
             content: ie,
             viewer: "raw",
@@ -74363,13 +74387,13 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
           console.error("WebDAV file load failed:", ae), alert("\uD30C\uC77C\uC744 \uD14D\uC2A4\uD2B8\uB85C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
         }
       }
-    }, pc = () => {
-      Ea("default"), Ln(true), Nn(0), Jn(false);
     }, hc = () => {
-      Ea("session-save"), Ln(true), Nn(0), Jn(false);
+      Ea("default"), Ln(true), Nn(0), Jn(false);
     }, gc = () => {
+      Ea("session-save"), Ln(true), Nn(0), Jn(false);
+    }, yc = () => {
       Ea("session-transform"), Ln(true), Nn(0), Jn(false);
-    }, Yo = async (ae) => {
+    }, Xo = async (ae) => {
       var _a3;
       const ie = ze.current, de = Dt.current, ge = [
         ae,
@@ -74381,9 +74405,9 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
         if (xe) return xe.bytes;
       }
       throw new Error(`\uC774\uBBF8\uC9C0\uB97C \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${ae}`);
-    }, Xo = () => xt === "local" ? "local" : xt === "webdav" ? "webdav" : "s3", $s = () => xt === "s3" ? !!ee.bucket : xt === "local" ? !!nt : xt === "webdav" ? !!Ir : false, Bs = async ({ destPath: ae, sessionFile: ie = null, content: de = null, confirmOverwrite: ge = false }) => {
+    }, Jo = () => xt === "local" ? "local" : xt === "webdav" ? "webdav" : "s3", Bs = () => xt === "s3" ? !!ee.bucket : xt === "local" ? !!nt : xt === "webdav" ? !!Ir : false, zs = async ({ destPath: ae, sessionFile: ie = null, content: de = null, confirmOverwrite: ge = false }) => {
       var _a3, _b3, _c3;
-      const he = Xo(), xe = ie || Dt.current;
+      const he = Jo(), xe = ie || Dt.current;
       if (!xe || xe.type !== SESSION_STORAGE_TYPE) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uC138\uC158 \uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
       const Ee = de != null ? String(de) : ar.current ?? "", we = ((_a3 = Dt.current) == null ? void 0 : _a3.type) === SESSION_STORAGE_TYPE && ((_b3 = Dt.current) == null ? void 0 : _b3.id) === xe.id;
       if (we) qn();
@@ -74403,7 +74427,7 @@ ${ae}`)) return {
           markdown: Ee,
           sessionNotePath: xe.id || $e,
           destNotePath: ae,
-          readBytes: Yo
+          readBytes: Xo
         });
         We = rt.markdown, await Ce.writeText(ae, rt.markdown, "text/markdown; charset=utf-8");
         for (const kt of rt.images) await Ce.writeBytes(kt.path, kt.data, mimeForSessionFileName(kt.path));
@@ -74417,7 +74441,7 @@ ${ae}`)) return {
         storageType: he
       });
       const De = new TextEncoder().encode(Ee).length;
-      we && (qt((rt) => {
+      we && (Vt((rt) => {
         if (!rt || rt.type !== SESSION_STORAGE_TYPE || rt.id !== xe.id) return rt;
         const kt = {
           ...rt,
@@ -74449,8 +74473,8 @@ ${ae}`)) return {
         destPath: ae
       };
     };
-    Et.current = Bs;
-    const zs = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
+    Et.current = zs;
+    const Hs = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
       qn();
       const he = Dt.current;
       if (!he || he.type !== SESSION_STORAGE_TYPE) return null;
@@ -74463,7 +74487,7 @@ ${ae}`)) return {
       let Ee = remapMarkdownHeadingLevels(ar.current ?? "", de);
       if (ge === "html") {
         const { convertHaimTablesToHtmlInMarkdown: Oe } = await __vitePreload(async () => {
-          const { convertHaimTablesToHtmlInMarkdown: $e } = await import("./toHtml-BHNOX-Mp.js");
+          const { convertHaimTablesToHtmlInMarkdown: $e } = await import("./toHtml-CWPzA8eW.js");
           return {
             convertHaimTablesToHtmlInMarkdown: $e
           };
@@ -74473,7 +74497,7 @@ ${ae}`)) return {
       const we = ae === "base64" ? "markdown" : ie, Ce = await bundleSessionMarkdownImages({
         markdown: Ee,
         notePath: he.id,
-        readBytes: Yo,
+        readBytes: Xo,
         imageSyntax: we
       });
       return {
@@ -74481,8 +74505,8 @@ ${ae}`)) return {
         fileName: xe,
         bundled: Ce
       };
-    }, Hs = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
-      const he = await zs({
+    }, Us = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
+      const he = await Hs({
         imageMode: ae,
         imageSyntax: ie,
         headingMax: de,
@@ -74491,7 +74515,7 @@ ${ae}`)) return {
       if (!he) return;
       const { fileName: xe, bundled: Ee } = he;
       if (!Ee) {
-        await Ts();
+        await As();
         return;
       }
       if (ae === "base64") {
@@ -74511,7 +74535,7 @@ ${ae}`)) return {
       }), xe);
       const we = formatMissingExportImagesMessage(Ee.missing);
       we && alert(we), Ze("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC");
-    }, yc = async (ae, ie, de) => {
+    }, bc = async (ae, ie, de) => {
       const ge = Object.values((ie == null ? void 0 : ie.files) || {}), he = Math.max(ge.length, 1);
       let xe = 0;
       for (const Ee of ge) {
@@ -74531,18 +74555,18 @@ ${ae}`)) return {
         }
         xe += 1, de == null ? void 0 : de(Math.min(100, Math.round(xe / he * 100)));
       }
-    }, Us = () => {
-      if (!$s()) {
+    }, Ws = () => {
+      if (!Bs()) {
         alert(xt === "local" ? "\uB85C\uCEEC \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4 \uC8FC\uC138\uC694." : "\uC800\uC7A5\uC18C\uB97C \uBA3C\uC800 \uC5F0\uACB0\uD574 \uC8FC\uC138\uC694.");
         return;
       }
       si(true);
-    }, bc = () => {
+    }, xc = () => {
       Ln(false), Ea("default");
       const ae = Dt.current;
       if (!ae || ae.type !== SESSION_STORAGE_TYPE) return;
       const ie = Je.current[ae.id];
-      if ((ie == null ? void 0 : ie.destPath) && ie.storageType === Xo() && $s()) {
+      if ((ie == null ? void 0 : ie.destPath) && ie.storageType === Jo() && Bs()) {
         (async () => {
           var _a3;
           try {
@@ -74556,8 +74580,8 @@ ${ae}`)) return {
         })();
         return;
       }
-      Us();
-    }, xc = async ({ path: ae, fileName: ie }) => {
+      Ws();
+    }, wc = async ({ path: ae, fileName: ie }) => {
       var _a3;
       let de = String(ie || "").trim() || "untitled.md";
       if (/\.[^./\\]+$/.test(de) || (de += ".md"), de.includes("/") || de.includes("\\")) {
@@ -74567,7 +74591,7 @@ ${ae}`)) return {
       const ge = `${ae || ""}${de}`;
       Pn(true);
       try {
-        if ((_a3 = await Bs({
+        if ((_a3 = await zs({
           destPath: ge,
           confirmOverwrite: true
         })) == null ? void 0 : _a3.cancelled) return;
@@ -74584,7 +74608,7 @@ ${ae}`)) return {
     }, ri = async (ae, ie) => {
       const de = Mn(ae), { body: ge } = await de.readBytes(ie);
       return ge instanceof Uint8Array ? ge : new Uint8Array(ge);
-    }, Ws = async (ae, ie, de, ge, he = "markdown") => {
+    }, Ks = async (ae, ie, de, ge, he = "markdown") => {
       const xe = planMarkdownImageExport(ge, ie, {
         syntax: he
       });
@@ -74593,8 +74617,8 @@ ${ae}`)) return {
       Dn(Ce, zipFileNameForMarkdown(de));
       const Oe = formatMissingExportImagesMessage(we);
       return Oe && alert(Oe), true;
-    }, wc = async (ae, ie, de, ge) => {
-      const he = await Ks(ae, ie, ge);
+    }, vc = async (ae, ie, de, ge) => {
+      const he = await Gs(ae, ie, ge);
       if (!he) return false;
       Dn(new Blob([
         he.markdown
@@ -74603,7 +74627,7 @@ ${ae}`)) return {
       }), de);
       const xe = formatMissingExportImagesMessage(he.missing);
       return xe && alert(xe), true;
-    }, Ks = async (ae, ie, de) => {
+    }, Gs = async (ae, ie, de) => {
       const ge = planMarkdownImageExport(de, ie, {
         syntax: "markdown"
       });
@@ -74616,10 +74640,10 @@ ${ae}`)) return {
         markdown: embedMarkdownImagesAsDataUris(ge.markdown, he),
         missing: xe
       };
-    }, Gs = async (ae) => await copyText(ae, {
+    }, qs = async (ae) => await copyText(ae, {
       message: "\uD30C\uC77C\uC774 \uD074\uB9BD\uBCF4\uB4DC\uC5D0 \uBCF5\uC0AC\uB418\uC5C8\uC2B5\uB2C8\uB2E4",
       icon: "copy"
-    }) ? true : (alert("\uD074\uB9BD\uBCF4\uB4DC \uBCF5\uC0AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."), false), vc = async ({ imageMode: ae = "base64", headingMax: ie = 1, tableFormat: de = "haim" } = {}) => {
+    }) ? true : (alert("\uD074\uB9BD\uBCF4\uB4DC \uBCF5\uC0AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."), false), Ec = async ({ imageMode: ae = "base64", headingMax: ie = 1, tableFormat: de = "haim" } = {}) => {
       var _a3;
       if (!Ie || ae !== "base64") return;
       const ge = Ie.type, he = Ie.name || ((_a3 = Ie.id) == null ? void 0 : _a3.split("/").filter(Boolean).pop()) || "download";
@@ -74631,10 +74655,10 @@ ${ae}`)) return {
           const De = await bundleSessionMarkdownImages({
             markdown: remapMarkdownHeadingLevels(ar.current ?? "", ie),
             notePath: We.id,
-            readBytes: Yo,
+            readBytes: Xo,
             imageSyntax: "markdown"
           }), st = De.images.length ? embedMarkdownImagesAsDataUris(De.markdown, De.images) : De.markdown;
-          if (!await Gs(st)) return;
+          if (!await qs(st)) return;
           const kt = formatMissingExportImagesMessage(De.missing);
           kt && alert(kt), Ze("\uD074\uB9BD\uBCF4\uB4DC\uC5D0 \uBCF5\uC0AC \uC644\uB8CC"), Ln(false), Ea("default");
           return;
@@ -74644,37 +74668,37 @@ ${ae}`)) return {
         let Ce = remapMarkdownHeadingLevels(we, ie);
         if (de === "html") {
           const { convertHaimTablesToHtmlInMarkdown: We } = await __vitePreload(async () => {
-            const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-BHNOX-Mp.js");
+            const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-CWPzA8eW.js");
             return {
               convertHaimTablesToHtmlInMarkdown: De
             };
           }, __vite__mapDeps([49,3,6,8,9,10,11,12]));
           Ce = We(Ce, (De) => getCachedTableStyleTemplate(De));
         }
-        const Oe = await Ks(ge, xe, Ce);
-        if (!await Gs(Oe.markdown)) return;
+        const Oe = await Gs(ge, xe, Ce);
+        if (!await qs(Oe.markdown)) return;
         const Be = formatMissingExportImagesMessage(Oe.missing);
         Be && alert(Be), Ln(false), Ea("default");
       } catch (xe) {
         console.error("\uD074\uB9BD\uBCF4\uB4DC \uBCF5\uC0AC \uC2E4\uD328:", xe), alert("\uD074\uB9BD\uBCF4\uB4DC \uBCF5\uC0AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((xe == null ? void 0 : xe.message) || xe));
       }
-    }, Ec = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
+    }, kc = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
       var _a3;
       if (!Ie) return;
       const he = Ie.type;
       if (he === SESSION_STORAGE_TYPE) {
         try {
-          Ga === "session-transform" ? await Hs({
+          Ga === "session-transform" ? await Us({
             imageMode: ae,
             imageSyntax: ie,
             headingMax: de,
             tableFormat: ge
-          }) : isMarkdownFileName$1(Ie.name || Ie.id) ? await Hs({
+          }) : isMarkdownFileName$1(Ie.name || Ie.id) ? await Us({
             imageMode: ae,
             imageSyntax: ie,
             headingMax: de,
             tableFormat: ge
-          }) : await Ts();
+          }) : await As();
         } catch (we) {
           console.error("\uC138\uC158 \uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328:", we), alert("\uB2E4\uC6B4\uB85C\uB4DC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((we == null ? void 0 : we.message) || we));
         }
@@ -74689,14 +74713,14 @@ ${ae}`)) return {
           let Oe = remapMarkdownHeadingLevels(Ce, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: We } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-BHNOX-Mp.js");
+              const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-CWPzA8eW.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: De
               };
             }, __vite__mapDeps([49,3,6,8,9,10,11,12]));
             Oe = We(Oe, (De) => getCachedTableStyleTemplate(De));
           }
-          (ae === "base64" ? await wc(he, Ee, xe, Oe) : await Ws(he, Ee, xe, Oe, ae === "base64" ? "markdown" : ie)) || Dn(new Blob([
+          (ae === "base64" ? await vc(he, Ee, xe, Oe) : await Ks(he, Ee, xe, Oe, ae === "base64" ? "markdown" : ie)) || Dn(new Blob([
             Oe
           ], {
             type: "text/markdown;charset=utf-8"
@@ -74711,7 +74735,7 @@ ${ae}`)) return {
         console.error("\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328:", we), alert("\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((we == null ? void 0 : we.message) || we));
       }
       Ln(false);
-    }, kc = reactExports.useCallback(async (ae) => {
+    }, Ac = reactExports.useCallback(async (ae) => {
       const ie = ir();
       if (!(!ie || !ee.bucket)) try {
         await putObject(ie, {
@@ -74729,7 +74753,7 @@ ${ae}`)) return {
     }, [
       ir,
       ee
-    ]), Ac = reactExports.useCallback(async (ae) => {
+    ]), Rc = reactExports.useCallback(async (ae) => {
       if (nt) try {
         const ge = await (await (await nt.getDirectoryHandle(".settings", {
           create: true
@@ -74744,11 +74768,11 @@ ${ae}`)) return {
       }
     }, [
       nt
-    ]), Rc = (ae) => {
+    ]), Cc = (ae) => {
       Ya(ae ?? {
         snippets: []
       });
-    }, Cc = reactExports.useCallback(async (ae) => {
+    }, _c = reactExports.useCallback(async (ae) => {
       if (Ir) try {
         await createWebdavBackend$1(Zt).writeText(".settings/snippets.json", JSON.stringify(ae ?? {
           snippets: []
@@ -74759,23 +74783,23 @@ ${ae}`)) return {
     }, [
       Zt,
       Ir
-    ]), _c = async (ae) => {
+    ]), Ic = async (ae) => {
       const ie = ae ?? li;
-      Zi(true);
+      Qi(true);
       try {
-        xt === "s3" ? await kc(ie) : xt === "local" ? await Ac(ie) : xt === "webdav" && await Cc(ie), Ze("\uC2A4\uB2C8\uD3AB \uC124\uC815\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+        xt === "s3" ? await Ac(ie) : xt === "local" ? await Rc(ie) : xt === "webdav" && await _c(ie), Ze("\uC2A4\uB2C8\uD3AB \uC124\uC815\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
       } catch (de) {
         alert("\uC2A4\uB2C8\uD3AB \uC124\uC815 \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((de == null ? void 0 : de.message) || de));
       } finally {
-        Zi(false);
+        Qi(false);
       }
-    }, Ic = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
+    }, Nc = async ({ imageMode: ae = "files", imageSyntax: ie = "markdown", headingMax: de = 1, tableFormat: ge = "haim" } = {}) => {
       var _a3, _b3, _c3;
       if (!Ie) return;
       const he = Ie.type;
       if (!(he !== "s3" && he !== "local" && he !== "webdav" && he !== SESSION_STORAGE_TYPE)) try {
         if (!("showDirectoryPicker" in window)) {
-          Ri(), Ln(false);
+          Ci(), Ln(false);
           return;
         }
         const xe = await window.showDirectoryPicker({
@@ -74785,7 +74809,7 @@ ${ae}`)) return {
         if (he === SESSION_STORAGE_TYPE) {
           const We = Ie.name || ((_a3 = Ie.id) == null ? void 0 : _a3.split("/").filter(Boolean).pop()) || "download";
           if (isMarkdownFileName$1(We)) {
-            const rt = (_b3 = await zs({
+            const rt = (_b3 = await Hs({
               imageMode: ae,
               imageSyntax: ie,
               headingMax: de,
@@ -74819,7 +74843,7 @@ ${ae}`)) return {
           }
           const De = qn() ?? ze.current;
           if (!De) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uC138\uC158\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
-          await yc(xe, De, (st) => Nn(st)), Jn(true);
+          await bc(xe, De, (st) => Nn(st)), Jn(true);
           return;
         }
         const we = Ie.name || ((_c3 = Ie.id) == null ? void 0 : _c3.split("/").filter(Boolean).pop()) || "download", Ce = Ie.id || "";
@@ -74828,7 +74852,7 @@ ${ae}`)) return {
           let st = remapMarkdownHeadingLevels(De, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: Xt } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: sr } = await import("./toHtml-BHNOX-Mp.js");
+              const { convertHaimTablesToHtmlInMarkdown: sr } = await import("./toHtml-CWPzA8eW.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: sr
               };
@@ -74899,10 +74923,10 @@ ${ae}`)) return {
         }
         console.error("\uD3F4\uB354\uC5D0 \uC800\uC7A5 \uC2E4\uD328:", xe), alert("\uD3F4\uB354\uC5D0 \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((xe == null ? void 0 : xe.message) || xe)), Ln(false);
       }
-    }, Nc = async (ae, ie) => {
+    }, Mc = async (ae, ie) => {
       var _a3, _b3;
       const de = normalizeUnicodeNfc((ie == null ? void 0 : ie.name) || ((_a3 = ie == null ? void 0 : ie.path) == null ? void 0 : _a3.split("/").filter(Boolean).pop()) || ((ie == null ? void 0 : ie.type) === "folder" ? "\uD3F4\uB354" : "\uD30C\uC77C")), ge = (xe, Ee) => {
-        Ai({
+        Ri({
           isOpen: true,
           title: xe,
           message: Ee
@@ -74918,7 +74942,7 @@ ${ae}`)) return {
             label: `\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC \uC911: ${Ce}`
           });
           try {
-            if (xe) await Ci(ae, ie, Ce, Oe);
+            if (xe) await Ii(ae, ie, Ce, Oe);
             else {
               const Be = await window.showDirectoryPicker({
                 mode: "readwrite"
@@ -74995,7 +75019,7 @@ ${ae}`)) return {
               label: `\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC \uC911: ${$e}`
             });
             try {
-              await Ci(ae, ie, $e, Be), Ze(`\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC: ${$e}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
+              await Ii(ae, ie, $e, Be), Ze(`\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC: ${$e}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uB300\uC0C1: ${$e}
 
 \uBE0C\uB77C\uC6B0\uC800 \uC81C\uD55C\uC73C\uB85C \uD3F4\uB354\uB97C ZIP \uD30C\uC77C\uB85C \uB300\uCCB4 \uB2E4\uC6B4\uB85C\uB4DC\uD588\uC2B5\uB2C8\uB2E4.`);
@@ -75004,7 +75028,7 @@ ${ae}`)) return {
             }
             return;
           } catch {
-            Ri();
+            Ci();
             return;
           }
           console.error("\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328:", we), alert("\uD3F4\uB354 \uB2E4\uC6B4\uB85C\uB4DC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((we == null ? void 0 : we.message) || we));
@@ -75015,7 +75039,7 @@ ${ae}`)) return {
       try {
         if (isMarkdownFileName$1(he)) {
           const xe = Mn(ae), { text: Ee } = await xe.readText(ie.path);
-          if (await Ws(ae, ie.path, he, Ee)) {
+          if (await Ks(ae, ie.path, he, Ee)) {
             const Ce = zipFileNameForMarkdown(he);
             Ze(`\uB2E4\uC6B4\uB85C\uB4DC: ${Ce}`), ge("\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC", `\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uB300\uC0C1: ${Ce}`);
@@ -75053,13 +75077,13 @@ ${ae}`)) return {
       } catch (xe) {
         console.error("\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328:", xe), alert("\uD30C\uC77C \uB2E4\uC6B4\uB85C\uB4DC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + ((xe == null ? void 0 : xe.message) || xe));
       }
-    }, Mc = (ae) => {
+    }, Oc = (ae) => {
       const de = (ae || "").replace(/\/$/, "").split("/").filter(Boolean);
       return de.pop(), de.length ? de.join("/") + "/" : "";
-    }, Oc = async (ae, ie) => {
+    }, Pc = async (ae, ie) => {
       var _a3, _b3;
-      const de = Mc(ie.path), ge = " (\uBCF5\uC0AC\uBCF8)";
-      lo({
+      const de = Oc(ie.path), ge = " (\uBCF5\uC0AC\uBCF8)";
+      co({
         storageType: ae,
         path: ie.path,
         nodeType: ie.type === "folder" ? "folder" : "file",
@@ -75182,12 +75206,12 @@ ${ae}`)) return {
       } finally {
         Ha(ae, ie.path);
       }
-    }, Pc = (ae, ie) => {
+    }, Fc = (ae, ie) => {
       Ca({
         node: ae,
         storageType: ie
       }), Ur(true);
-    }, Fc = async (ae) => {
+    }, jc = async (ae) => {
       var _a3, _b3, _c3;
       if (!vn || !ae) return;
       const { node: ie, storageType: de } = vn, ge = ae.path || "", he = ni(de), xe = new Set(getTreeChildNames(he, ge, findNodeByPath));
@@ -75203,8 +75227,8 @@ ${ae}`)) return {
             usedNames: xe,
             kind: "file",
             action: "move",
-            askConflict: zi,
-            loadCompare: () => rs({
+            askConflict: Hi,
+            loadCompare: () => ns({
               storageType: de,
               destFolderPath: ge,
               fileName: ie.name,
@@ -75218,7 +75242,7 @@ ${ae}`)) return {
           we = Oe;
         }
         const Ce = `${ge}${we}`;
-        lo({
+        co({
           storageType: de,
           path: ie.path,
           nodeType: "file",
@@ -75237,17 +75261,17 @@ ${ae}`)) return {
             handle: ie.handle,
             parentHandle: ie.parentHandle || nt
           };
-          if (de === "s3") await Uo(Oe, ge, we), ((_a3 = Dt.current) == null ? void 0 : _a3.type) === "s3" && Dt.current.id === ie.path ? qt(($e) => $e && $e.id === ie.path ? {
+          if (de === "s3") await Wo(Oe, ge, we), ((_a3 = Dt.current) == null ? void 0 : _a3.type) === "s3" && Dt.current.id === ie.path ? Vt(($e) => $e && $e.id === ie.path ? {
             ...$e,
             id: Ce,
             name: we
           } : $e) : await ca(de, Ce);
           else if (de === "webdav") {
-            const $e = await qo(Oe, ge, we);
-            ((_b3 = Dt.current) == null ? void 0 : _b3.type) === "webdav" && Dt.current.id === ie.path ? qt($e) : await ca(de, Ce);
+            const $e = await Vo(Oe, ge, we);
+            ((_b3 = Dt.current) == null ? void 0 : _b3.type) === "webdav" && Dt.current.id === ie.path ? Vt($e) : await ca(de, Ce);
           } else {
-            const $e = await Wo(Oe, ae.handle || nt, ge, we);
-            ((_c3 = Dt.current) == null ? void 0 : _c3.type) === "local" && Dt.current.id === ie.path ? qt($e) : await ca(de, Ce);
+            const $e = await Ko(Oe, ae.handle || nt, ge, we);
+            ((_c3 = Dt.current) == null ? void 0 : _c3.type) === "local" && Dt.current.id === ie.path ? Vt($e) : await ca(de, Ce);
           }
           Ca(null), Ur(false), Ze(`\uD30C\uC77C \uC774\uB3D9 \uC644\uB8CC: ${we}`);
         } finally {
@@ -75256,11 +75280,11 @@ ${ae}`)) return {
       } catch (Ce) {
         Ha(de, ie.path), alert("\uD30C\uC77C \uC774\uB3D9 \uC2E4\uD328: " + Ce.message), Ze(`\uD30C\uC77C \uC774\uB3D9 \uC2E4\uD328: ${Ce.message}`);
       }
-    }, qs = (ae) => {
+    }, Vs = (ae) => {
       if (!ae) return false;
       const ie = ((ae == null ? void 0 : ae.name) || "").toLowerCase(), de = ((ae == null ? void 0 : ae.message) || "").toLowerCase(), ge = (ae == null ? void 0 : ae.code) || "";
       return ie === "aborterror" || ie === "networkerror" || de.includes("abort") || de.includes("network") || de.includes("fetch") || de.includes("econnreset") || de.includes("econnrefused") || de.includes("timeout") || ge === "ECONNABORTED" || ge === "ETIMEDOUT" || ge === "ENOTFOUND";
-    }, Jo = reactExports.useCallback((ae = {}) => new Promise((ie, de) => {
+    }, Zo = reactExports.useCallback((ae = {}) => new Promise((ie, de) => {
       ta({
         title: ae.title || "\uC554\uD638\uD654\uB41C \uB178\uD2B8",
         message: ae.message || "\uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694.",
@@ -75299,12 +75323,12 @@ ${ae}`)) return {
           }
         });
       });
-    }, []), pi = reactExports.useCallback(async (ae = null, ie = {}) => {
+    }, []), hi = reactExports.useCallback(async (ae = null, ie = {}) => {
       var _a3, _b3, _c3;
       const { skipSuffixCheck: de = false, skipCoverChangeCheck: ge = false, lastInputAt: he, contentOverride: xe, background: Ee = false } = ie, we = ae ?? Ie;
       if (!we) return;
-      if (!de && !ae && gs()) {
-        Vt("renameAndSave"), ct(true);
+      if (!de && !ae && ys()) {
+        Yt("renameAndSave"), ct(true);
         return;
       }
       const Ce = we.viewer || "markdown";
@@ -75325,9 +75349,9 @@ ${ae}`)) return {
       }
       if (we.type === SESSION_STORAGE_TYPE) {
         const gt = Je.current[we.id];
-        if (!(!!(gt == null ? void 0 : gt.destPath) && gt.storageType === Xo())) {
+        if (!(!!(gt == null ? void 0 : gt.destPath) && gt.storageType === Jo())) {
           if (ae || Ee) return;
-          hc();
+          gc();
           return;
         }
       }
@@ -75346,7 +75370,7 @@ ${ae}`)) return {
       let kt = $e;
       if (isEncMdPath(we.id) || isEncMdPath(we.name)) try {
         let gt = getEncMdPassword(we.id);
-        gt || (gt = await Jo({
+        gt || (gt = await Zo({
           title: "\uC554\uD638\uD654\uB41C \uB178\uD2B8 \uC800\uC7A5",
           message: "\uC800\uC7A5\uD558\uB824\uBA74 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694.",
           confirmLabel: "\uC554\uD638\uD654 \uC800\uC7A5"
@@ -75383,7 +75407,7 @@ ${ae}`)) return {
             ContentType: rt
           }), await deleteMemoDraft(getDraftKey("s3", we.id)), Yr();
           const bt = new TextEncoder().encode(kt).length;
-          qt((Tt) => {
+          Vt((Tt) => {
             if ((Tt == null ? void 0 : Tt.id) !== we.id || (Tt == null ? void 0 : Tt.type) !== we.type) return Tt;
             const Nt = {
               ...Tt,
@@ -75402,7 +75426,7 @@ ${ae}`)) return {
           const gt = await we.handle.createWritable();
           await gt.write(kt), await gt.close(), await deleteMemoDraft(getDraftKey("local", we.id));
           const bt = await we.handle.getFile();
-          qt((Tt) => {
+          Vt((Tt) => {
             if ((Tt == null ? void 0 : Tt.id) !== we.id || (Tt == null ? void 0 : Tt.type) !== we.type) return Tt;
             const Nt = {
               ...Tt,
@@ -75432,7 +75456,7 @@ ${ae}`)) return {
         } else if (we.type === "webdav") {
           await createWebdavBackend$1(Zt).writeText(we.id, kt, rt), await deleteMemoDraft(getDraftKey("webdav", we.id)), await an();
           const bt = new TextEncoder().encode(kt).length;
-          qt((Tt) => {
+          Vt((Tt) => {
             if ((Tt == null ? void 0 : Tt.id) !== we.id || (Tt == null ? void 0 : Tt.type) !== we.type) return Tt;
             const Nt = {
               ...Tt,
@@ -75450,7 +75474,7 @@ ${ae}`)) return {
         }
       } catch (gt) {
         if (isEncMdPath(we.id) || isEncMdPath(we.name)) alert("\uC800\uC7A5 \uC2E4\uD328: " + ((gt == null ? void 0 : gt.message) || String(gt)));
-        else if (we.type === "s3" && qs(gt)) try {
+        else if (we.type === "s3" && Vs(gt)) try {
           await savePendingUpload({
             key: we.id,
             content: $e,
@@ -75460,7 +75484,7 @@ ${ae}`)) return {
         } catch (Tt) {
           console.error("\uC800\uC7A5 \uC2E4\uD328 \uBC0F IndexedDB \uC784\uC2DC \uC800\uC7A5 \uC2E4\uD328:", Tt), alert("\uC800\uC7A5 \uC2E4\uD328: " + gt.message);
         }
-        else if (we.type === "webdav" && qs(gt)) try {
+        else if (we.type === "webdav" && Vs(gt)) try {
           await saveMemoDraft({
             key: getDraftKey("webdav", we.id),
             content: $e,
@@ -75486,7 +75510,7 @@ ${ae}`)) return {
       }
     }, [
       Ie,
-      gs,
+      ys,
       ir,
       ee.bucket,
       Yr,
@@ -75494,14 +75518,14 @@ ${ae}`)) return {
       an,
       e,
       t,
-      Jo
+      Zo
     ]);
     reactExports.useEffect(() => {
-      to.current = pi;
+      ro.current = hi;
     }, [
-      pi
+      hi
     ]);
-    const jc = async () => {
+    const Lc = async () => {
       const ae = Dt.current;
       if (!ae || ae.type !== "local" || !ae.handle) return;
       const ie = ae.viewer || "markdown";
@@ -75535,7 +75559,7 @@ ${ae}`)) return {
           for (; await Be.head(`${st}${Ct}`); ) kt += 1, Ct = buildTimestampedCopyName(ae.name || "note", rt, kt);
           await Be.writeText(`${st}${Ct}`, we), $e = Ct, await Rn();
         } else Oe = Ce.text;
-        qt((Be) => {
+        Vt((Be) => {
           if ((Be == null ? void 0 : Be.id) !== ae.id) return Be;
           const We = {
             ...Be,
@@ -75557,7 +75581,7 @@ ${ae}`)) return {
       } finally {
         t(ge), rr(false);
       }
-    }, Lc = async () => {
+    }, $c = async () => {
       const ae = Dt.current;
       if (!ae || ae.type !== "s3" && ae.type !== "webdav" || isEncMdPath(ae.id) || isEncMdPath(ae.name)) return;
       const ie = ae.viewer || "markdown";
@@ -75570,7 +75594,7 @@ ${ae}`)) return {
       ].includes(ie)) return;
       const ge = Mn(ae.type);
       if (!ge) return;
-      Nr(true);
+      Mr(true);
       const he = e({
         id: "note-pull-remote",
         type: ActivityTypes.NOTE_PROCESSING,
@@ -75593,7 +75617,7 @@ ${ae}`)) return {
           We = `${Ct}${Tt}`, await ge.writeText(We, Ce), Be = Tt, ae.type === "s3" ? await Yr() : await an();
         } else $e = Oe.text;
         const De = new TextEncoder().encode(Ee).length;
-        qt((rt) => {
+        Vt((rt) => {
           if ((rt == null ? void 0 : rt.id) !== ae.id || (rt == null ? void 0 : rt.type) !== ae.type) return rt;
           const kt = {
             ...rt,
@@ -75601,7 +75625,7 @@ ${ae}`)) return {
             size: De
           };
           return Dt.current = kt, kt;
-        }), dr($e), ar.current = $e, await deleteMemoDraft(getDraftKey(ae.type, ae.id)), Or(Date.now());
+        }), dr($e), ar.current = $e, await deleteMemoDraft(getDraftKey(ae.type, ae.id)), Pr(Date.now());
         const st = getActiveFileTab(St.current);
         if (st) {
           const rt = {
@@ -75616,7 +75640,7 @@ ${ae}`)) return {
           const kt = patchFileTab(St.current, st.id, rt);
           St.current = kt, yr(kt);
         }
-        if (Be && We && Pr.current) {
+        if (Be && We && Nr.current) {
           const rt = new TextEncoder().encode(Ce).length, kt = {
             type: ae.type,
             id: We,
@@ -75645,9 +75669,9 @@ ${ae}`)) return {
           message: (xe == null ? void 0 : xe.message) || String(xe)
         });
       } finally {
-        t(he), Nr(false);
+        t(he), Mr(false);
       }
-    }, Vs = async (ae, ie, de = null) => {
+    }, Ys = async (ae, ie, de = null) => {
       const ge = ir();
       if (!ge) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
       const he = ae.id, xe = he.lastIndexOf("/"), we = (xe >= 0 ? he.slice(0, xe + 1) : "") + ie;
@@ -75668,7 +75692,7 @@ ${ae}`)) return {
         name: ie
       };
       return de != null && (Ce.content = de), Ce;
-    }, $c = async (ae, ie) => {
+    }, Bc = async (ae, ie) => {
       const de = ae.parentHandle || nt;
       if (!de) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
       const ge = ae.id, he = ge.lastIndexOf("/"), Ee = (he >= 0 ? ge.slice(0, he + 1) : "") + ie;
@@ -75685,7 +75709,7 @@ ${ae}`)) return {
         handle: we,
         content: gr
       };
-    }, hi = (ae, ie, de, ge = null) => {
+    }, gi = (ae, ie, de, ge = null) => {
       if (!ae || !ie || !de) return;
       const he = retargetFileTab(St.current, ae, ie, {
         path: de,
@@ -75695,14 +75719,14 @@ ${ae}`)) return {
         } : {}
       });
       he !== St.current && (St.current = he, yr(he));
-    }, co = (ae, ie, de) => {
+    }, uo = (ae, ie, de) => {
       if (!ae || !ie || !de || ie === de) return;
       const ge = ie.endsWith("/") ? ie : `${ie}/`, he = de.endsWith("/") ? de : `${de}/`, xe = retargetFileTabsByPathPrefix(St.current, ae, ge, he);
       xe !== St.current && (St.current = xe, yr(xe));
     }, Zn = (ae, ie = {}) => {
       if (!ae) return null;
       const { oldPath: de = null, retargetTabs: ge = true } = ie, he = Dt.current, xe = typeof de == "string" && de ? de : typeof (he == null ? void 0 : he.id) == "string" ? he.id : null, Ee = ae.type || (he == null ? void 0 : he.type), we = ae.id;
-      if (ge && Pr.current && Ee && xe && typeof we == "string" && we && hi(Ee, xe, we, ae), Dt.current = ae, qt(ae), typeof ae.name == "string" && ae.name && In(ae.name), typeof we != "string" || !we || parseOpenNotePathFromAppPathname(fe.pathname) === we) return ae;
+      if (ge && Nr.current && Ee && xe && typeof we == "string" && we && gi(Ee, xe, we, ae), Dt.current = ae, Vt(ae), typeof ae.name == "string" && ae.name && In(ae.name), typeof we != "string" || !we || parseOpenNotePathFromAppPathname(fe.pathname) === we) return ae;
       Oo.current = true;
       try {
         const Ce = isExportPdfAppPathname(fe.pathname);
@@ -75713,7 +75737,7 @@ ${ae}`)) return {
         Oo.current = false;
       }
       return ae;
-    }, Ys = async (ae) => {
+    }, Xs = async (ae) => {
       if (!Ie) return null;
       const ie = ae.trim();
       if (!ie) return null;
@@ -75721,8 +75745,8 @@ ${ae}`)) return {
         let de = null;
         if (Ie.type === "s3") {
           const he = Ie.content !== gr ? gr : null;
-          de = await Vs(Ie, ie, he);
-        } else if (Ie.type === "local") de = await $c(Ie, ie);
+          de = await Ys(Ie, ie, he);
+        } else if (Ie.type === "local") de = await Bc(Ie, ie);
         else if (Ie.type === SESSION_STORAGE_TYPE) {
           const ge = qn() ?? ze.current;
           if (!ge) return null;
@@ -75759,7 +75783,7 @@ ${ae}`)) return {
       } catch (de) {
         return alert("\uC774\uB984 \uBCC0\uACBD \uC2E4\uD328: " + de.message), null;
       }
-    }, Bc = async (ae, ie, de, ge, he) => {
+    }, zc = async (ae, ie, de, ge, he) => {
       var _a3, _b3, _c3, _d2, _e3, _f;
       const xe = resolveCreateItemPath(ie, he, ge === "folder" ? "folder" : "file");
       if (!xe.ok) {
@@ -75771,7 +75795,7 @@ ${ae}`)) return {
       if (ge !== "folder" && isEncMdPath(Ee)) {
         let st;
         try {
-          st = await Jo({
+          st = await Zo({
             title: "\uC554\uD638\uD654\uD574\uC11C \uB9CC\uB4E4\uAE30",
             message: `\uC774 \uB178\uD2B8\uB97C \uC554\uD638\uD654\uD560 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694.
 \uAC19\uC740 \uBE44\uBC00\uBC88\uD638\uB85C\uB9CC \uB2E4\uC2DC \uC5F4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`,
@@ -75874,95 +75898,95 @@ ${ae}`)) return {
       } catch (st) {
         throw alert("\uC0DD\uC131 \uC2E4\uD328: " + st.message), st;
       }
-    }, Xs = (ae, ie, de, ge) => {
+    }, Js = (ae, ie, de, ge) => {
       Hn({
         storageType: ae,
         parentPath: ie,
         parentDirHandle: de,
         type: ge
       }), ya(true);
-    }, Zo = reactExports.useCallback((ae, ie) => {
+    }, Qo = reactExports.useCallback((ae, ie) => {
       var _a3;
       const de = String(ie || "").replace(/^\/+/, "").replace(/\\/g, "/"), ge = de && !de.endsWith("/") ? `${de}/` : de;
       let he = null;
-      xt === STORAGE_MODE_LOCAL && (ge ? he = ((_a3 = findNodeByPath(Me, ge) || findNodeByPath(Me, ge.replace(/\/$/, "")) || findNodeByPath(Me, `${ge.replace(/\/$/, "")}/`)) == null ? void 0 : _a3.handle) || null : he = nt), Xs(xt, ge, he, ae);
+      xt === STORAGE_MODE_LOCAL && (ge ? he = ((_a3 = findNodeByPath(Me, ge) || findNodeByPath(Me, ge.replace(/\/$/, "")) || findNodeByPath(Me, `${ge.replace(/\/$/, "")}/`)) == null ? void 0 : _a3.handle) || null : he = nt), Js(xt, ge, he, ae);
     }, [
       xt,
       nt,
       Me
-    ]), Qo = reactExports.useMemo(() => resolveNewFileDefaultParentPath({
+    ]), es = reactExports.useMemo(() => resolveNewFileDefaultParentPath({
       pathname: fe.pathname,
       chatSurfaceActive: Ja,
-      workspaceTabsEnabled: Tr,
-      activeTab: Oi,
+      workspaceTabsEnabled: wr,
+      activeTab: Pi,
       currentFilePath: Ie == null ? void 0 : Ie.id
     }), [
       fe.pathname,
       Ja,
-      Tr,
-      Oi,
+      wr,
+      Pi,
       Ie == null ? void 0 : Ie.id
-    ]), Js = reactExports.useCallback(() => {
+    ]), Zs = reactExports.useCallback(() => {
       qn();
       const ae = ze.current;
       if (ae) {
         const { workspace: de, path: ge } = addEmptyUntitledSessionFile(ae);
-        ze.current = de, lt(de), fi(ge, de), Qr && Fn(false);
+        ze.current = de, lt(de), mi(ge, de), Qr && Fn(false);
         return;
       }
       const ie = createEmptyUntitledSessionWorkspace();
-      Fi(), Je.current = /* @__PURE__ */ Object.create(null), ze.current = ie, lt(ie), fi("untitled.md", ie), Qr && Fn(false);
+      ji(), Je.current = /* @__PURE__ */ Object.create(null), ze.current = ie, lt(ie), mi("untitled.md", ie), Qr && Fn(false);
     }, [
-      fi,
+      mi,
       qn,
       Qr,
-      Fi
-    ]), Zs = reactExports.useCallback(() => {
+      ji
+    ]), Qs = reactExports.useCallback(() => {
       if (loadNewFileAsTempEnabled()) {
-        Js();
+        Zs();
         return;
       }
-      Zo("file", Qo);
+      Qo("file", es);
     }, [
-      Zo,
       Qo,
-      Js
+      es,
+      Zs
     ]);
     usePwaNewFileShortcut({
-      enabled: l && Cs,
-      onNewFile: Zs
+      enabled: l && _s,
+      onNewFile: Qs
     });
-    const zc = (ae, ie, de) => {
+    const Hc = (ae, ie, de) => {
       var _a3;
       jr({
         storageType: ae,
         parentPath: ie,
         parentDirHandle: de
       }), ea.current.value = "", (_a3 = ea.current) == null ? void 0 : _a3.click();
-    }, Hc = (ae, ie, de) => {
+    }, Uc = (ae, ie, de) => {
       var _a3;
       jr({
         storageType: ae,
         parentPath: ie,
         parentDirHandle: de
       }), Cn.current.value = "", (_a3 = Cn.current) == null ? void 0 : _a3.click();
-    }, zi = reactExports.useCallback((ae) => new Promise((ie) => {
-      Ka.current = ie, mo(ae);
-    }), []), es = reactExports.useCallback((ae) => {
+    }, Hi = reactExports.useCallback((ae) => new Promise((ie) => {
+      Ka.current = ie, po(ae);
+    }), []), ts = reactExports.useCallback((ae) => {
       const ie = Ka.current;
-      Ka.current = null, mo(null), ie == null ? void 0 : ie(ae);
-    }, []), Hi = reactExports.useCallback((ae, ie) => zi({
+      Ka.current = null, po(null), ie == null ? void 0 : ie(ae);
+    }, []), Ui = reactExports.useCallback((ae, ie) => Hi({
       name: ae,
       renameAs: ie,
       kind: "file",
       action: "upload"
     }), [
-      zi
+      Hi
     ]), ni = reactExports.useCallback((ae) => ae === "s3" ? Re : ae === "webdav" ? Fe : Me, [
       Re,
       Fe,
       Me
-    ]), ts = reactExports.useCallback(async (ae, ie, de = null) => {
+    ]), rs = reactExports.useCallback(async (ae, ie, de = null) => {
       var _a3;
       const ge = String(ie || "");
       if (!ge) return null;
@@ -75982,10 +76006,10 @@ ${ae}`)) return {
       ee.bucket,
       Zt,
       Me
-    ]), rs = reactExports.useCallback(async ({ storageType: ae, destFolderPath: ie, fileName: de, incomingPath: ge, incomingNode: he, existingLabel: xe, incomingLabel: Ee }) => {
+    ]), ns = reactExports.useCallback(async ({ storageType: ae, destFolderPath: ie, fileName: de, incomingPath: ge, incomingNode: he, existingLabel: xe, incomingLabel: Ee }) => {
       const we = `${ie || ""}${de}`, Ce = findNodeByPath(ni(ae), we) || findFileNodeByPath(ni(ae), we), [Oe, $e] = await Promise.all([
-        ts(ae, we, Ce),
-        ts(ae, ge, he)
+        rs(ae, we, Ce),
+        rs(ae, ge, he)
       ]);
       return buildFileComparePayload({
         existingBytes: Oe,
@@ -75995,8 +76019,8 @@ ${ae}`)) return {
       });
     }, [
       ni,
-      ts
-    ]), Uc = async (ae) => {
+      rs
+    ]), Wc = async (ae) => {
       var _a3;
       const ie = ae.target.files;
       if (!(ie == null ? void 0 : ie.length) || !Bn) return;
@@ -76014,7 +76038,7 @@ ${ae}`)) return {
           const $e = ir();
           if (!$e) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
           for (let Be = 0; Be < ie.length; Be++) {
-            const We = ie[Be], De = await resolveUploadDestFileName(We.name, Ee, Hi);
+            const We = ie[Be], De = await resolveUploadDestFileName(We.name, Ee, Ui);
             if (!De) {
               Ce += 1;
               continue;
@@ -76032,7 +76056,7 @@ ${ae}`)) return {
           const $e = he || nt;
           if (!$e) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
           for (let Be = 0; Be < ie.length; Be++) {
-            const We = ie[Be], De = await resolveUploadDestFileName(We.name, Ee, Hi);
+            const We = ie[Be], De = await resolveUploadDestFileName(We.name, Ee, Ui);
             if (!De) {
               Ce += 1;
               continue;
@@ -76046,7 +76070,7 @@ ${ae}`)) return {
         } else if (de === "webdav") {
           const $e = createWebdavBackend$1(Zt);
           for (let Be = 0; Be < ie.length; Be++) {
-            const We = ie[Be], De = await resolveUploadDestFileName(We.name, Ee, Hi);
+            const We = ie[Be], De = await resolveUploadDestFileName(We.name, Ee, Ui);
             if (!De) {
               Ce += 1;
               continue;
@@ -76061,9 +76085,9 @@ ${ae}`)) return {
       } catch (Ee) {
         alert("\uC5C5\uB85C\uB4DC \uC2E4\uD328: " + Ee.message);
       } finally {
-        Ka.current && es("cancel"), t(xe), ae.target.value = "";
+        Ka.current && ts("cancel"), t(xe), ae.target.value = "";
       }
-    }, Wc = async (ae) => {
+    }, Kc = async (ae) => {
       var _a3;
       const ie = ae.target.files;
       if (!(ie == null ? void 0 : ie.length) || !Bn) return;
@@ -76120,27 +76144,27 @@ ${ae}`)) return {
       } finally {
         t(xe), ae.target.value = "";
       }
-    }, Kc = async (ae) => {
-      if (!Sr) return;
-      const { storageType: ie, parentPath: de, parentDirHandle: ge, type: he, fromMoveModal: xe, fromAddToNoteModal: Ee, fromSaveSessionModal: we } = Sr;
+    }, Gc = async (ae) => {
+      if (!kr) return;
+      const { storageType: ie, parentPath: de, parentDirHandle: ge, type: he, fromMoveModal: xe, fromAddToNoteModal: Ee, fromSaveSessionModal: we } = kr;
       Pa(true);
       try {
-        if (await Bc(ie, de, ge, he, ae), he === "folder") {
+        if (await zc(ie, de, ge, he, ae), he === "folder") {
           const Ce = resolveCreateItemPath(de, ae, "folder");
-          Ce.ok && (xe && fa(Ce.path), Ee && xa(Ce.path), we && ki(Ce.path));
+          Ce.ok && (xe && fa(Ce.path), Ee && xa(Ce.path), we && Ti(Ce.path));
         }
         ya(false), Hn(null);
       } catch {
       } finally {
         Pa(false);
       }
-    }, Gc = async () => {
+    }, qc = async () => {
       if (!nt) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uAC00 \uC5F4\uB824 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
       return nt.getDirectoryHandle(".trash", {
         create: true
       });
-    }, qc = async (ae) => {
-      const ie = await Gc(), ge = ae.path.replace(/\/$/, "").split("/"), he = ge.pop();
+    }, Vc = async (ae) => {
+      const ie = await qc(), ge = ae.path.replace(/\/$/, "").split("/"), he = ge.pop();
       let xe = ie;
       for (const Ee of ge) Ee && (xe = await xe.getDirectoryHandle(Ee, {
         create: true
@@ -76172,10 +76196,10 @@ ${ae}`)) return {
           recursive: true
         });
       }
-    }, Vc = async (ae, ie, de) => {
+    }, Yc = async (ae, ie, de) => {
       const ge = `.trash/${de}`;
       await copyObject(ae, ie, de, ge), await deleteObject(ae, ie, de);
-    }, Yc = async (ae, ie = []) => {
+    }, Xc = async (ae, ie = []) => {
       var _a3;
       const de = ir();
       if (!de) throw new Error("S3 \uD074\uB77C\uC774\uC5B8\uD2B8\uB97C \uCD08\uAE30\uD654\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
@@ -76200,11 +76224,11 @@ ${ae}`)) return {
         }
       }
       for (const he of ie) try {
-        await Vc(de, ge, he);
+        await Yc(de, ge, he);
       } catch (xe) {
         if (((_a3 = xe == null ? void 0 : xe.$metadata) == null ? void 0 : _a3.httpStatusCode) !== 404) throw xe;
       }
-    }, Xc = (() => {
+    }, Jc = (() => {
       const ae = normalizeDeleteTargets(lr);
       if (!ae.length) return [];
       const ie = /* @__PURE__ */ new Set(), de = [];
@@ -76218,11 +76242,11 @@ ${ae}`)) return {
         for (const xe of getRecordingKeysFromTree(he, ge.node.path)) ie.has(xe.key) || (ie.add(xe.key), de.push(xe));
       }
       return de;
-    })(), Jc = async (ae = {}) => {
+    })(), Zc = async (ae = {}) => {
       var _a3, _b3;
       const ie = normalizeDeleteTargets(lr);
       if (!ie.length) return;
-      const { deleteWithRecordings: de = false } = ae, ge = () => Er(null);
+      const { deleteWithRecordings: de = false } = ae, ge = () => Sr(null);
       let he = null;
       if (ie.length === 1 && ie[0].node.path === ".trash/") {
         ge();
@@ -76280,7 +76304,7 @@ ${ae}`)) return {
                   Key: Hr
                 })));
               }
-              else await Yc(bt, Xt);
+              else await Xc(bt, Xt);
               gt.add("s3");
             } else if (Tt === "local") {
               if (!nt) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
@@ -76299,7 +76323,7 @@ ${ae}`)) return {
                 await sr.trash(ur, {
                   additionalKeys: Xt
                 });
-              } else await qc(bt);
+              } else await Vc(bt);
               gt.add("local");
             } else if (Tt === "webdav") {
               const sr = createWebdavBackend$1(Zt);
@@ -76337,9 +76361,9 @@ ${ae}`)) return {
           const bt = getActiveFileTab(St.current);
           bt ? sa(bt.id, {
             skipDirtyConfirm: true
-          }) : (qt(null), Dt.current = null, dr(""), ar.current = "", Be || ue("/"));
+          }) : (Vt(null), Dt.current = null, dr(""), ar.current = "", Be || ue("/"));
         }
-        if (ji && la && De.length) try {
+        if (Li && la && De.length) try {
           for (const bt of De) {
             const Tt = deletedNoteScopeFromNode(bt), { dateStrs: Nt } = await unlinkChatNotesForDeletedPaths(la, Tt);
             for (const nr of Nt) postChatSyncEvent("day", {
@@ -76355,9 +76379,9 @@ ${ae}`)) return {
       } finally {
         he && clearTimeout(he), ge(), Rr(false), $e && (da(false), wn(null)), Ce === 0 && we > 0 ? Ze(Ee ? `${we}\uAC1C \uD56D\uBAA9 \uC0AD\uC81C \uC644\uB8CC` : `\uC0AD\uC81C \uC644\uB8CC: ${xe[0].node.path}`) : we === 0 && Oe ? (alert("\uC0AD\uC81C \uC2E4\uD328: " + Oe.message), Ze(`\uC0AD\uC81C \uC2E4\uD328: ${Oe.message}`)) : Ce > 0 && (alert(`${we}\uAC1C \uC0AD\uC81C \uC644\uB8CC, ${Ce}\uAC1C \uC2E4\uD328` + (Oe ? `: ${Oe.message}` : "")), Ze(`${we}\uAC1C \uC0AD\uC81C, ${Ce}\uAC1C \uC2E4\uD328`));
       }
-    }, Zc = async (ae) => {
-      if (!(Mr == null ? void 0 : Mr.storageType) || cn) return;
-      const ie = Mr.storageType;
+    }, Qc = async (ae) => {
+      if (!(Or == null ? void 0 : Or.storageType) || cn) return;
+      const ie = Or.storageType;
       Xr(true), Ze("\uC4F0\uB808\uAE30\uD1B5 \uBE44\uC6B0\uB294 \uC911\u2026");
       try {
         const { deletedCount: de } = await executeEmptyTrash({
@@ -76368,20 +76392,20 @@ ${ae}`)) return {
           localRootHandle: nt,
           webdavConfig: Zt
         });
-        ie === "s3" ? await Yr() : ie === "local" ? await Rn() : ie === "webdav" && await an(), (Ie == null ? void 0 : Ie.id) && (Ie.id === ".trash/" || Ie.id.startsWith(".trash/")) && (qt(null), dr("")), Br(null), Ze(de > 0 ? `\uC4F0\uB808\uAE30\uD1B5 \uC815\uB9AC \uC644\uB8CC (${de}\uAC1C \uC0AD\uC81C)` : "\uC4F0\uB808\uAE30\uD1B5 \uC815\uB9AC \uC644\uB8CC (\uC0AD\uC81C\uD560 \uD56D\uBAA9 \uC5C6\uC74C)");
+        ie === "s3" ? await Yr() : ie === "local" ? await Rn() : ie === "webdav" && await an(), (Ie == null ? void 0 : Ie.id) && (Ie.id === ".trash/" || Ie.id.startsWith(".trash/")) && (Vt(null), dr("")), Br(null), Ze(de > 0 ? `\uC4F0\uB808\uAE30\uD1B5 \uC815\uB9AC \uC644\uB8CC (${de}\uAC1C \uC0AD\uC81C)` : "\uC4F0\uB808\uAE30\uD1B5 \uC815\uB9AC \uC644\uB8CC (\uC0AD\uC81C\uD560 \uD56D\uBAA9 \uC5C6\uC74C)");
       } catch (de) {
         alert("\uC4F0\uB808\uAE30\uD1B5 \uBE44\uC6B0\uAE30 \uC2E4\uD328: " + ((de == null ? void 0 : de.message) || de)), Ze(`\uC4F0\uB808\uAE30\uD1B5 \uBE44\uC6B0\uAE30 \uC2E4\uD328: ${(de == null ? void 0 : de.message) || de}`);
       } finally {
         Xr(false);
       }
-    }, Qc = async (ae, ie, de) => {
+    }, eu = async (ae, ie, de) => {
       var _a3, _b3, _c3;
       const ge = de.trim();
       if (ge) try {
         if (ie.type === "folder") {
           if (ae === "s3") {
             const he = ie.path, xe = he.slice(0, he.length - (((_a3 = ie.name) == null ? void 0 : _a3.length) ?? 0) - 1), Ee = `${xe}${ge}/`;
-            if (await Ko(ie, xe, ge), await Yr(), co("s3", he, Ee), Ie && Ie.type === "s3" && Ie.id.startsWith(ie.path)) {
+            if (await Go(ie, xe, ge), await Yr(), uo("s3", he, Ee), Ie && Ie.type === "s3" && Ie.id.startsWith(ie.path)) {
               const we = Ie.id.replace(he, Ee);
               Zn({
                 ...Ie,
@@ -76395,7 +76419,7 @@ ${ae}`)) return {
             const he = ie.parentHandle || nt;
             if (!he) throw new Error("\uB8E8\uD2B8 \uD3F4\uB354\uB97C \uBA3C\uC800 \uC5F4\uC5B4\uC8FC\uC138\uC694.");
             const xe = ie.path.endsWith("/") ? ie.path : `${ie.path}/`, Ee = ie.path.slice(0, -(((_b3 = ie.name) == null ? void 0 : _b3.length) ?? 0) - 1) + ge + "/";
-            if (await Go(ie, he, "", ge), co("local", xe, Ee), Ie && Ie.type === "local" && (Ie.id === ie.path || Ie.id.startsWith(xe) || Ie.id.startsWith(ie.path))) {
+            if (await qo(ie, he, "", ge), uo("local", xe, Ee), Ie && Ie.type === "local" && (Ie.id === ie.path || Ie.id.startsWith(xe) || Ie.id.startsWith(ie.path))) {
               const we = Ie.id.startsWith(xe) ? Ee + Ie.id.slice(xe.length) : Ie.id.startsWith(ie.path) ? Ee + Ie.id.slice(ie.path.length) : Ie.id;
               Zn({
                 ...Ie,
@@ -76407,7 +76431,7 @@ ${ae}`)) return {
             }
           } else if (ae === "webdav") {
             const he = ie.path.endsWith("/") ? ie.path : `${ie.path}/`, xe = ie.path.slice(0, -(((_c3 = ie.name) == null ? void 0 : _c3.length) ?? 0) - 1) + ge + "/";
-            if (await Vo(ie, "", ge), co("webdav", he, xe), Ie && Ie.type === "webdav" && Ie.id.startsWith(ie.path)) {
+            if (await Yo(ie, "", ge), uo("webdav", he, xe), Ie && Ie.type === "webdav" && Ie.id.startsWith(ie.path)) {
               const Ee = Ie.id.startsWith(he) ? xe + Ie.id.slice(he.length) : xe + Ie.id.slice(ie.path.length);
               Zn({
                 ...Ie,
@@ -76427,10 +76451,10 @@ ${ae}`)) return {
           } : {
             id: ie.path,
             name: ie.name
-          }, We = Oe && Ie.content !== gr ? gr : null, De = await Vs($e, we, We);
+          }, We = Oe && Ie.content !== gr ? gr : null, De = await Ys($e, we, We);
           Oe ? Zn(De, {
             oldPath: Ce
-          }) : hi("s3", Ce, De.id, {
+          }) : gi("s3", Ce, De.id, {
             ...De,
             name: we
           });
@@ -76451,7 +76475,7 @@ ${ae}`)) return {
             handle: st
           }, {
             oldPath: xe
-          }) : hi("local", xe, We, {
+          }) : gi("local", xe, We, {
             id: We,
             name: Be,
             handle: st
@@ -76466,7 +76490,7 @@ ${ae}`)) return {
             name: Be
           }, {
             oldPath: xe
-          }) : hi("webdav", xe, We, {
+          }) : gi("webdav", xe, We, {
             id: We,
             name: Be
           });
@@ -76474,14 +76498,14 @@ ${ae}`)) return {
       } catch (he) {
         alert("\uC774\uB984 \uBCC0\uACBD \uC2E4\uD328: " + he.message);
       }
-    }, eu = async () => {
+    }, tu = async () => {
       Ie && (Ie.type === "s3" ? await Yr() : Ie.type === "local" && nt ? await Rn() : Ie.type === "webdav" && Ir && await an(), Ur(true));
-    }, Qs = (ae, ie) => {
+    }, el = (ae, ie) => {
       !ae || ae.type !== "folder" || Xn({
         node: ae,
         storageType: ie
       });
-    }, tu = async ({ message: ae, parentPath: ie = "", parentHandle: de, fileName: ge, includeReplyThread: he = false }) => {
+    }, ru = async ({ message: ae, parentPath: ie = "", parentHandle: de, fileName: ge, includeReplyThread: he = false }) => {
       let xe = String(ge || "").trim();
       if (!xe) throw new Error("\uD30C\uC77C\uBA85\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
       if (xe.endsWith(".md") || (xe += ".md"), xe.includes("/") || xe.includes("\\")) throw new Error("\uD30C\uC77C\uBA85\uC5D0 / \uB97C \uB123\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
@@ -76533,7 +76557,7 @@ ${ae}`)) return {
         }
       }
       return Ze(`\uB178\uD2B8 \uC0DD\uC131 \uC644\uB8CC: ${Ee}`), Ee;
-    }, el = reactExports.useCallback(async (ae) => {
+    }, tl = reactExports.useCallback(async (ae) => {
       if (!ae) return;
       const ie = String(ae), de = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3", ge = de === "s3" ? Re : de === "webdav" ? Fe : Me;
       let he = findNodeByPath(ge, ie) || findFileNodeByPath(ge, ie);
@@ -76545,16 +76569,16 @@ ${ae}`)) return {
         });
         return;
       }
-      await Bi(de, he);
+      await zi(de, he);
     }, [
       xt,
       Re,
       Fe,
       Me,
       nt,
-      Bi,
+      zi,
       n
-    ]), ru = reactExports.useCallback(async (ae) => {
+    ]), nu = reactExports.useCallback(async (ae) => {
       const ie = ae == null ? void 0 : ae.node, de = String((ae == null ? void 0 : ae.path) || (ie == null ? void 0 : ie.path) || "");
       if (!de) return;
       const ge = xt === STORAGE_MODE_LOCAL ? "local" : xt === STORAGE_MODE_WEBDAV ? "webdav" : "s3", he = ge === "s3" ? Re : ge === "webdav" ? Fe : Me, xe = findNodeByPath(he, de) || findFileNodeByPath(he, de), Ee = ge === "local" && (ie == null ? void 0 : ie.handle) ? ie : xe || ie;
@@ -76574,7 +76598,7 @@ ${ae}`)) return {
         });
         return;
       }
-      oo() && (so(ge, Ee), pa(/* @__PURE__ */ new Set([
+      so() && (lo(ge, Ee), pa(/* @__PURE__ */ new Set([
         Co(ge, de)
       ])), La.current = Co(ge, de), await ti(ge, Ee));
     }, [
@@ -76584,9 +76608,9 @@ ${ae}`)) return {
       Me,
       ti,
       n,
-      oo,
-      so
-    ]), ns = reactExports.useCallback(async (ae = null) => {
+      so,
+      lo
+    ]), as = reactExports.useCallback(async (ae = null) => {
       const ie = ae || Ie;
       if (!(ie == null ? void 0 : ie.id) && !(ie == null ? void 0 : ie.path)) return;
       const de = String(ie.id || ie.path || "");
@@ -76596,7 +76620,7 @@ ${ae}`)) return {
         name: ge
       });
       try {
-        if (ji && la) {
+        if (Li && la) {
           const { dateStr: xe } = await appendChatMessage(la, {
             body: he,
             group: SELF_GROUP,
@@ -76625,36 +76649,36 @@ ${ae}`)) return {
     }, [
       Ie,
       pn,
-      ji,
+      Li,
       la,
       ue
-    ]), nu = reactExports.useCallback(async (ae, ie) => {
+    ]), au = reactExports.useCallback(async (ae, ie) => {
       if (!ie || ie.type !== "file") return;
       const de = String(ie.path || ie.id || "");
-      de && (Qr && Fn(false), await ns({
+      de && (Qr && Fn(false), await as({
         id: de,
         path: de,
         name: ie.name
       }));
     }, [
-      ns,
+      as,
       Qr
-    ]), tl = async (ae, ie, de, ge) => {
+    ]), rl = async (ae, ie, de, ge) => {
       var _a3, _b3, _c3, _d2, _e3, _f, _g, _h, _i6, _j;
       if (de === "dragOver") {
         if (!ae) return;
-        vi({
+        Ei({
           folderPath: ae.path,
           storageType: ie
         });
         return;
       }
       if (de === "dragLeave") {
-        vi(null);
+        Ei(null);
         return;
       }
       if (de !== "drop" || !ae || ae.type !== "folder") return;
-      vi(null);
+      Ei(null);
       const he = ae.path || "";
       let xe = null;
       ie === "local" && (xe = ae.handle || null, xe || (he ? xe = ((_a3 = findNodeByPath(Me, he)) == null ? void 0 : _a3.handle) || nt : xe = nt));
@@ -76698,8 +76722,8 @@ ${ae}`)) return {
                 usedNames: Be,
                 kind: Nt ? "folder" : "file",
                 action: we ? "copy" : "move",
-                askConflict: zi,
-                loadCompare: Nt ? void 0 : () => rs({
+                askConflict: Hi,
+                loadCompare: Nt ? void 0 : () => ns({
                   storageType: Ct,
                   destFolderPath: he,
                   fileName: Tt.name,
@@ -76725,7 +76749,7 @@ ${ae}`)) return {
             }
             Be.add(Xt);
             const sr = `${he || ""}${Xt}`;
-            lo({
+            co({
               storageType: Ct,
               path: gt,
               nodeType: Nt ? "folder" : "file",
@@ -76742,8 +76766,8 @@ ${ae}`)) return {
                     ...Tt,
                     id: Tt.path
                   };
-                  Ct === "s3" ? await oc(ur, he, Xt) : Ct === "webdav" ? await dc(ur, he, Xt) : await sc(ur, xe, he, Xt), await ca(Ct, sr);
-                } else Ct === "s3" ? await cc(Tt, he, Xt) : Ct === "webdav" ? await fc(Tt, he, Xt) : await uc(Tt, xe, he, Xt);
+                  Ct === "s3" ? await sc(ur, he, Xt) : Ct === "webdav" ? await fc(ur, he, Xt) : await cc(ur, xe, he, Xt), await ca(Ct, sr);
+                } else Ct === "s3" ? await uc(Tt, he, Xt) : Ct === "webdav" ? await mc(Tt, he, Xt) : await dc(Tt, xe, he, Xt);
                 rt = Xt;
               } else if (bt === "file") {
                 const ur = Ct === "s3" ? {
@@ -76753,29 +76777,29 @@ ${ae}`)) return {
                   ...Tt,
                   id: Tt.path
                 };
-                if (Ct === "s3") await Uo(ur, he, Xt), ((_b3 = Dt.current) == null ? void 0 : _b3.type) === "s3" && Dt.current.id === gt ? Zn({
+                if (Ct === "s3") await Wo(ur, he, Xt), ((_b3 = Dt.current) == null ? void 0 : _b3.type) === "s3" && Dt.current.id === gt ? Zn({
                   ...Dt.current,
                   id: sr,
                   name: Xt
                 }, {
                   oldPath: gt
-                }) : (hi(Ct, gt, sr, {
+                }) : (gi(Ct, gt, sr, {
                   id: sr,
                   name: Xt
                 }), await ca(Ct, sr));
                 else if (Ct === "webdav") {
-                  const Hr = await qo(ur, he, Xt);
+                  const Hr = await Vo(ur, he, Xt);
                   ((_c3 = Dt.current) == null ? void 0 : _c3.type) === "webdav" && Dt.current.id === gt ? Zn(Hr, {
                     oldPath: gt
-                  }) : (hi(Ct, gt, sr, {
+                  }) : (gi(Ct, gt, sr, {
                     id: sr,
                     name: Xt
                   }), await ca(Ct, sr));
                 } else {
-                  const Hr = await Wo(ur, xe, he, Xt);
+                  const Hr = await Ko(ur, xe, he, Xt);
                   ((_d2 = Dt.current) == null ? void 0 : _d2.type) === "local" && Dt.current.id === gt ? Zn(Hr, {
                     oldPath: gt
-                  }) : (hi(Ct, gt, sr, {
+                  }) : (gi(Ct, gt, sr, {
                     id: sr,
                     name: Xt,
                     ...(Hr == null ? void 0 : Hr.handle) ? {
@@ -76785,9 +76809,9 @@ ${ae}`)) return {
                 }
                 rt = Xt;
               } else {
-                Ct === "s3" ? await Ko(Tt, he, Xt) : Ct === "webdav" ? await Vo(Tt, he, Xt) : await Go(Tt, xe, he, Xt);
+                Ct === "s3" ? await Go(Tt, he, Xt) : Ct === "webdav" ? await Yo(Tt, he, Xt) : await qo(Tt, xe, he, Xt);
                 const ur = Tt.path.endsWith("/") ? Tt.path : `${Tt.path}/`, Hr = `${he}${Xt}/`;
-                if (co(Ct, ur, Hr), Dt.current && Dt.current.type === Ct && (Dt.current.id.startsWith(ur) || Dt.current.id.startsWith(Tt.path))) {
+                if (uo(Ct, ur, Hr), Dt.current && Dt.current.type === Ct && (Dt.current.id.startsWith(ur) || Dt.current.id.startsWith(Tt.path))) {
                   const hn = Dt.current, on = hn.id.startsWith(ur) ? Hr + hn.id.slice(ur.length) : Hr + hn.id.slice(Tt.path.length);
                   Zn({
                     ...hn,
@@ -76845,7 +76869,7 @@ ${ae}`)) return {
               }
             };
             for (const gt of we) {
-              const bt = await resolveUploadDestFileName(gt.name, Be, Hi);
+              const bt = await resolveUploadDestFileName(gt.name, Be, Ui);
               if (!bt) {
                 De += 1;
                 continue;
@@ -76873,7 +76897,7 @@ ${ae}`)) return {
               }
             };
             for (const gt of we) {
-              const bt = await resolveUploadDestFileName(gt.name, Be, Hi);
+              const bt = await resolveUploadDestFileName(gt.name, Be, Ui);
               if (!bt) {
                 De += 1;
                 continue;
@@ -76910,7 +76934,7 @@ ${ae}`)) return {
               }
             };
             for (const gt of we) {
-              const bt = await resolveUploadDestFileName(gt.name, Be, Hi);
+              const bt = await resolveUploadDestFileName(gt.name, Be, Ui);
               if (!bt) {
                 De += 1;
                 continue;
@@ -76926,12 +76950,12 @@ ${ae}`)) return {
         } catch (Be) {
           alert("\uC5C5\uB85C\uB4DC \uC2E4\uD328: " + Be.message), Ze(`\uC5C5\uB85C\uB4DC \uC2E4\uD328: ${Be.message}`);
         } finally {
-          Ka.current && es("cancel"), t($e);
+          Ka.current && ts("cancel"), t($e);
         }
       }
-    }, au = () => {
-      vi(null);
-    }, iu = async (ae) => {
+    }, iu = () => {
+      Ei(null);
+    }, ou = async (ae) => {
       if (!jn || !ae) return;
       const { node: ie, storageType: de } = jn, ge = ae.path || "", he = ni(de), xe = new Set(getTreeChildNames(he, ge, findNodeByPath));
       if (`${ge}${ie.name}/` === ie.path) {
@@ -76946,12 +76970,12 @@ ${ae}`)) return {
             usedNames: xe,
             kind: "folder",
             action: "move",
-            askConflict: zi
+            askConflict: Hi
           });
           if (!Ce) return;
           we = Ce;
         }
-        lo({
+        co({
           storageType: de,
           path: ie.path,
           nodeType: "folder",
@@ -76959,15 +76983,15 @@ ${ae}`)) return {
           action: "move"
         });
         try {
-          if (de === "s3") await Ko(ie, ge, we);
-          else if (de === "webdav") await Vo(ie, ge, we);
+          if (de === "s3") await Go(ie, ge, we);
+          else if (de === "webdav") await Yo(ie, ge, we);
           else {
             const $e = ae.handle || nt;
             if (!$e) throw new Error("\uB300\uC0C1 \uD3F4\uB354\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
-            await Go(ie, $e, ge, we);
+            await qo(ie, $e, ge, we);
           }
           const Ce = ie.path.endsWith("/") ? ie.path : `${ie.path}/`, Oe = `${ge}${we}/`;
-          if (co(de, Ce, Oe), Dt.current && Dt.current.type === de && (Dt.current.id === ie.path || Dt.current.id.startsWith(Ce) || Dt.current.id.startsWith(ie.path))) {
+          if (uo(de, Ce, Oe), Dt.current && Dt.current.type === de && (Dt.current.id === ie.path || Dt.current.id.startsWith(Ce) || Dt.current.id.startsWith(ie.path))) {
             const $e = Dt.current, Be = $e.id.startsWith(Ce) ? Oe + $e.id.slice(Ce.length) : $e.id.startsWith(ie.path) ? Oe + $e.id.slice(ie.path.length) : $e.id;
             Zn({
               ...$e,
@@ -76984,7 +77008,7 @@ ${ae}`)) return {
       } catch (Ce) {
         Ha(de, ie.path), alert("\uD3F4\uB354 \uC774\uB3D9 \uC2E4\uD328: " + Ce.message), Ze(`\uD3F4\uB354 \uC774\uB3D9 \uC2E4\uD328: ${Ce.message}`);
       }
-    }, ou = async (ae) => {
+    }, su = async (ae) => {
       if (!Ie || !ae) return;
       const ie = ae.path || "", de = ni(Ie.type), ge = new Set(getTreeChildNames(de, ie, findNodeByPath)), he = Ie.name;
       if (`${ie}${he}` === Ie.id) {
@@ -76999,8 +77023,8 @@ ${ae}`)) return {
             usedNames: ge,
             kind: "file",
             action: "move",
-            askConflict: zi,
-            loadCompare: () => rs({
+            askConflict: Hi,
+            loadCompare: () => ns({
               storageType: Ie.type,
               destFolderPath: ie,
               fileName: he,
@@ -77014,7 +77038,7 @@ ${ae}`)) return {
           Ee = Oe;
         }
         const we = Ie.id, Ce = `${ie}${Ee}`;
-        lo({
+        co({
           storageType: Ie.type,
           path: we,
           nodeType: "file",
@@ -77023,7 +77047,7 @@ ${ae}`)) return {
         });
         try {
           if (Ie.type === "s3") {
-            const Oe = await Uo(Ie, ie, Ee);
+            const Oe = await Wo(Ie, ie, Ee);
             Oe && Zn({
               ...Ie,
               id: Oe.id,
@@ -77032,12 +77056,12 @@ ${ae}`)) return {
               oldPath: we
             });
           } else if (Ie.type === "webdav") {
-            const Oe = await qo(Ie, ie, Ee);
+            const Oe = await Vo(Ie, ie, Ee);
             Oe && Zn(Oe, {
               oldPath: we
             });
           } else if (Ie.type === "local") {
-            const Oe = await Wo(Ie, ae.handle, ie, Ee);
+            const Oe = await Ko(Ie, ae.handle, ie, Ee);
             Oe && Zn(Oe, {
               oldPath: we
             });
@@ -77059,7 +77083,7 @@ ${ae}`)) return {
       if (!Ie || !ae.includes(Ie.type) || Ie.viewer !== "markdown" || isEncMdPath(Ie.id) || isEncMdPath(Ie.name) || !Gr) return;
       const ie = Date.now(), de = setTimeout(async () => {
         if (Ie.content !== gr && !(!Ie || !ae.includes(Ie.type)) && !(isEncMdPath(Ie.id) || isEncMdPath(Ie.name))) try {
-          await pi(null, {
+          await hi(null, {
             lastInputAt: Gr
           }), rn(ie);
         } catch {
@@ -77077,10 +77101,10 @@ ${ae}`)) return {
         const de = Mn(Ie.type);
         if (de) try {
           const { text: ge } = await de.readText(Ie.id);
-          qt((he) => !he || he.type !== Ie.type || he.id !== Ie.id ? he : {
+          Vt((he) => !he || he.type !== Ie.type || he.id !== Ie.id ? he : {
             ...he,
             content: ge
-          }), dr((he) => he !== gr ? he : ge), Or(Date.now());
+          }), dr((he) => he !== gr ? he : ge), Pr(Date.now());
         } catch (ge) {
           console.error("Auto sync read error:", ge);
         }
@@ -77095,14 +77119,14 @@ ${ae}`)) return {
     }, [
       gr
     ]), reactExports.useEffect(() => {
-      (Ie == null ? void 0 : Ie.id) && (ro.current = gr);
+      (Ie == null ? void 0 : Ie.id) && (no.current = gr);
     }, [
       Ie == null ? void 0 : Ie.id,
       gr
     ]);
-    const su = (ae) => {
-      if (ar.current = ae, Pi && (Ie == null ? void 0 : Ie.viewer) === "markdown") {
-        const de = ro.current.split(`
+    const lu = (ae) => {
+      if (ar.current = ae, Di && (Ie == null ? void 0 : Ie.viewer) === "markdown") {
+        const de = no.current.split(`
 `), ge = ae.split(`
 `), he = ge.length - de.length;
         let xe = Math.max(0, ge.length - 1);
@@ -77116,7 +77140,7 @@ ${ae}`)) return {
           insert: he === 1
         });
       }
-      ro.current = ae, dr(ae), Vr(Date.now());
+      no.current = ae, dr(ae), Vr(Date.now());
       const ie = getActiveFileTab(St.current);
       if (ie) {
         const de = patchFileTab(St.current, ie.id, {
@@ -77124,13 +77148,13 @@ ${ae}`)) return {
         });
         St.current = de, yr(de);
       }
-    }, lu = async () => {
+    }, cu = async () => {
       const ie = [
         "s3",
         "local",
         "webdav"
       ].includes(Ie == null ? void 0 : Ie.type) && (Ie == null ? void 0 : Ie.viewer) === "markdown" ? Ie.id : "";
-      if (Pi) {
+      if (Di) {
         const de = await ce({
           noteKey: ie,
           markdown: gr
@@ -77172,18 +77196,18 @@ ${ae}`)) return {
           t(ge), ve("");
         }
       } else await se();
-    }, uo = (ae) => {
+    }, fo = (ae) => {
       if (!ae) return "\u2014";
       const ie = new Date(ae), de = `${ie.getHours()}`.padStart(2, "0"), ge = `${ie.getMinutes()}`.padStart(2, "0"), he = `${ie.getSeconds()}`.padStart(2, "0");
       return `${de}:${ge}:${he}`;
-    }, cu = (ae) => {
+    }, uu = (ae) => {
       if (ae == null || isNaN(ae)) return "\uC54C \uC218 \uC5C6\uC74C";
       if (ae < 1024) return `${ae} B`;
       const ie = ae / 1024;
       if (ie < 1024) return `${ie.toFixed(1)} KB`;
       const de = ie / 1024;
       return de < 1024 ? `${de.toFixed(1)} MB` : `${(de / 1024).toFixed(1)} GB`;
-    }, Ui = (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "local" || (Ie == null ? void 0 : Ie.type) === "webdav" || (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE, uu = Ui && Ie && Ie.content !== gr, du = Ui ? uu ? "bg-yellow-400 animate-pulse" : Ui && !!br ? "bg-green-500" : "bg-gray-400" : "bg-gray-300";
+    }, Wi = (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "local" || (Ie == null ? void 0 : Ie.type) === "webdav" || (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE, du = Wi && Ie && Ie.content !== gr, fu = Wi ? du ? "bg-yellow-400 animate-pulse" : Wi && !!br ? "bg-green-500" : "bg-gray-400" : "bg-gray-300";
     if (!Pe) return jsxRuntimeExports.jsx("div", {
       className: "flex h-screen items-center justify-center bg-gray-50 text-gray-500 dark:bg-odp-bgSofter dark:text-odp-fg",
       children: "\uB85C\uB529 \uC911..."
@@ -77212,27 +77236,27 @@ ${ae}`)) return {
             ] : [
               Re
             ],
-            onOpenFile: js,
+            onOpenFile: Ls,
             preferPrintActions: true,
             snippetConfig: li
           }),
           jsxRuntimeExports.jsx(AuthModal, {
             isOpen: c && !vo,
-            onUnlock: Do,
+            onUnlock: Fo,
             fileInputRef: Tn,
             onCloseWithoutUnlock: () => {
               pe(), Gn();
             },
             canUnlockWithWebAuthn: or && !!getStoredWebAuthn() && (isStoredWithWebAuthn() || !!((_a2 = getStoredWebAuthn()) == null ? void 0 : _a2.encryptedPassword)),
-            onUnlockWithWebAuthn: ws,
+            onUnlockWithWebAuthn: vs,
             isPasswordMode: !isStoredWithWebAuthn()
           })
         ]
       });
     }
     return jsxRuntimeExports.jsxs("div", {
-      className: `flex min-h-0 bg-gray-50 dark:bg-odp-bgSofter text-gray-800 dark:text-odp-fg font-sans ${Qi ? "fixed inset-x-0 z-0 flex-col overflow-hidden" : "relative h-screen"}`,
-      style: Qi ? {
+      className: `flex min-h-0 bg-gray-50 dark:bg-odp-bgSofter text-gray-800 dark:text-odp-fg font-sans ${eo ? "fixed inset-x-0 z-0 flex-col overflow-hidden" : "relative h-screen"}`,
+      style: eo ? {
         top: "var(--app-vv-top, 0px)",
         height: "var(--app-vv-height, 100dvh)",
         maxHeight: "var(--app-vv-height, 100dvh)"
@@ -77242,21 +77266,21 @@ ${ae}`)) return {
         jsxRuntimeExports.jsx("input", {
           type: "file",
           ref: Tn,
-          onChange: Tl,
+          onChange: Al,
           accept: ".json",
           className: "hidden"
         }),
         jsxRuntimeExports.jsx("input", {
           type: "file",
           ref: ea,
-          onChange: Uc,
+          onChange: Wc,
           multiple: true,
           className: "hidden"
         }),
         jsxRuntimeExports.jsx("input", {
           type: "file",
           ref: Cn,
-          onChange: Wc,
+          onChange: Kc,
           webkitdirectory: "",
           directory: "",
           className: "hidden"
@@ -77304,7 +77328,7 @@ ${ae}`)) return {
                 jsxRuntimeExports.jsx("button", {
                   type: "button",
                   className: "rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-600 dark:hover:bg-blue-700",
-                  onClick: il,
+                  onClick: ol,
                   disabled: at,
                   children: at ? "\uC5C5\uB370\uC774\uD2B8 \uC911..." : "\uC9C0\uAE08 \uC5C5\uB370\uC774\uD2B8"
                 })
@@ -77314,34 +77338,34 @@ ${ae}`)) return {
         }),
         jsxRuntimeExports.jsx(ShareTargetGate, {
           isUnlocked: l,
-          storageReady: ji,
+          storageReady: Li,
           chatCtx: la,
-          onBlockingChange: Ul,
-          onComposeClaimed: Wl,
-          onOpenAsSession: ks
+          onBlockingChange: Wl,
+          onComposeClaimed: Kl,
+          onOpenAsSession: Ts
         }),
         l ? jsxRuntimeExports.jsx(AdvancedSearchHost, {
-          getTrees: zl,
-          onOpenFile: js,
-          ensureBrowseFolderLoaded: rc,
-          onRequestCreateItem: Zo,
-          getChatGroups: Hl,
-          getPresignedUrl: Os,
+          getTrees: Hl,
+          onOpenFile: Ls,
+          ensureBrowseFolderLoaded: nc,
+          onRequestCreateItem: Qo,
+          getChatGroups: Ul,
+          getPresignedUrl: Ps,
           currentFile: Ie,
-          defaultCreateParentPath: Qo,
+          defaultCreateParentPath: es,
           editorContent: gr,
           snippetConfig: li,
           theme: Ae
         }) : null,
         jsxRuntimeExports.jsx(AuthModal, {
           isOpen: c && !vo,
-          onUnlock: Do,
+          onUnlock: Fo,
           fileInputRef: Tn,
           onCloseWithoutUnlock: () => {
             pe(), Gn();
           },
           canUnlockWithWebAuthn: or && !!getStoredWebAuthn() && (isStoredWithWebAuthn() || !!((_b2 = getStoredWebAuthn()) == null ? void 0 : _b2.encryptedPassword)),
-          onUnlockWithWebAuthn: ws,
+          onUnlockWithWebAuthn: vs,
           isPasswordMode: !isStoredWithWebAuthn()
         }),
         jsxRuntimeExports.jsxs("div", {
@@ -77375,9 +77399,9 @@ ${ae}`)) return {
                   }) : null,
                   children: jsxRuntimeExports.jsx(Sidebar, {
                     isMobileLayout: Qr,
-                    fileTabContextMenuRef: cs,
+                    fileTabContextMenuRef: us,
                     appName: fn,
-                    onBrandClick: Fl,
+                    onBrandClick: jl,
                     onStorageModeChange: mn,
                     storageMode: xt,
                     s3Tree: Re,
@@ -77390,24 +77414,24 @@ ${ae}`)) return {
                     webdavReady: Ir,
                     isWebdavTreeLoading: ut,
                     webdavFolderLoadingPath: Ht,
-                    onLoadWebdavFolderChildren: no,
+                    onLoadWebdavFolderChildren: ao,
                     onRefreshWebdav: an,
-                    onLoadLocalFolderChildren: Li,
+                    onLoadLocalFolderChildren: $i,
                     onRefreshLocal: Rn,
                     currentFile: Ie,
-                    selectedIds: Ii,
-                    onSelectFile: Ho,
+                    selectedIds: Ni,
+                    onSelectFile: Uo,
                     onClearSelection: () => pa(/* @__PURE__ */ new Set()),
-                    onCreateItem: Xs,
-                    onRequestUploadFile: zc,
-                    onRequestUploadFolder: Hc,
-                    onRequestMoveFolder: Qs,
-                    onDropOnFolder: tl,
-                    onDragEndNode: au,
-                    dropTarget: wi,
-                    transferBusyItems: Gi,
-                    onOpenLocalFolder: Fs,
-                    onSetDeleteTarget: Er,
+                    onCreateItem: Js,
+                    onRequestUploadFile: Hc,
+                    onRequestUploadFolder: Uc,
+                    onRequestMoveFolder: el,
+                    onDropOnFolder: rl,
+                    onDragEndNode: iu,
+                    dropTarget: vi,
+                    transferBusyItems: qi,
+                    onOpenLocalFolder: js,
+                    onSetDeleteTarget: Sr,
                     onRequestEmptyTrash: (ae, ie) => {
                       Br({
                         storageType: ie
@@ -77418,7 +77442,7 @@ ${ae}`)) return {
                     },
                     theme: Ae,
                     onToggleTheme: () => ke((ae) => ae === "dark" ? "light" : "dark"),
-                    onRenameItem: Qc,
+                    onRenameItem: eu,
                     showHiddenFolders: xn,
                     showTrashFolder: un,
                     hideRecordingCompanions: ha,
@@ -77430,20 +77454,20 @@ ${ae}`)) return {
                     isDeletingFolder: yn,
                     expandPathsRef: An,
                     onRefreshS3: Yr,
-                    onDownloadNode: Nc,
-                    onDuplicateNode: Oc,
-                    onRequestMoveFile: Pc,
-                    onOpenInNewWindow: ic,
-                    onShareToChatWithMyself: nu,
+                    onDownloadNode: Mc,
+                    onDuplicateNode: Pc,
+                    onRequestMoveFile: Fc,
+                    onOpenInNewWindow: oc,
+                    onShareToChatWithMyself: au,
                     onOpenChatWithMyself: () => {
-                      Qr && Fn(false), Tr ? aa() : ue("/chat");
+                      Qr && Fn(false), wr ? aa() : ue("/chat");
                     },
                     chatWithMyselfActive: Ja,
-                    chatAttachDropHost: dl,
-                    onDropToChatAttach: pl,
+                    chatAttachDropHost: ml,
+                    onDropToChatAttach: hl,
                     sessionWorkspace: Ge,
                     sessionTree: Ge ? buildSessionTree(Ge) : [],
-                    onCloseSessionWorkspace: Ml
+                    onCloseSessionWorkspace: Ol
                   })
                 }),
                 !Qr && jsxRuntimeExports.jsx("button", {
@@ -77468,7 +77492,7 @@ ${ae}`)) return {
                         tabs: fr.tabs,
                         activeId: fr.activeId,
                         savingTabIds: mt,
-                        tabsEnabled: Tr,
+                        tabsEnabled: wr,
                         isChatRoute: $a,
                         isSettingsRoute: ui,
                         isMobileLayout: Qr,
@@ -77476,10 +77500,10 @@ ${ae}`)) return {
                         onCloseTab: (ae) => {
                           sa(ae);
                         },
-                        onReorderTabs: nl,
+                        onReorderTabs: al,
                         onFileTabContextMenu: (ae, ie) => {
                           var _a3, _b3, _c3;
-                          (_c3 = (_a3 = cs.current) == null ? void 0 : _a3.open) == null ? void 0 : _c3.call(_a3, {
+                          (_c3 = (_a3 = us.current) == null ? void 0 : _a3.open) == null ? void 0 : _c3.call(_a3, {
                             storageType: ae.storageType,
                             path: ae.path,
                             name: ae.editedFileName || ((_b3 = ae.currentFile) == null ? void 0 : _b3.name),
@@ -77494,7 +77518,7 @@ ${ae}`)) return {
                           editorContent: gr,
                           editedFileName: pn,
                           setEditedFileName: In,
-                          onChangeEditor: su,
+                          onChangeEditor: lu,
                           onInactiveEditorChange: (ae, ie) => {
                             const de = patchFileTab(St.current, ae, {
                               editorContent: ie
@@ -77511,11 +77535,11 @@ ${ae}`)) return {
                         settingsPaneProps: {
                           s3Creds: ee,
                           masterPassword: V,
-                          onSaveS3Creds: yl,
+                          onSaveS3Creds: bl,
                           storageMode: xt,
                           onStorageModeChange: mn,
                           localFolderName: (nt == null ? void 0 : nt.name) || gn || loadLastLocalFolderName(),
-                          onOpenLocalFolder: Fs,
+                          onOpenLocalFolder: js,
                           webdavConfig: Zt,
                           onSaveWebdavConfig: async (ae) => {
                             Qn(ae), await saveWebdavConfig(ae, V || void 0), xt === STORAGE_MODE_WEBDAV && await an(), n({
@@ -77523,7 +77547,7 @@ ${ae}`)) return {
                               message: "\uC5F0\uACB0 \uC815\uBCF4 \uC5C5\uB370\uC774\uD2B8\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
                             });
                           },
-                          onExportCreds: Sl,
+                          onExportCreds: kl,
                           onImportClick: () => {
                             var _a3;
                             return (_a3 = Tn.current) == null ? void 0 : _a3.click();
@@ -77540,55 +77564,55 @@ ${ae}`)) return {
                           onToggleHideRecordingCompanions: () => setSettingsToggle("settings-hide-recording", !ha),
                           onToggleTreeStickyFolderPath: () => setSettingsToggle("settings-tree-sticky", !di),
                           onToggleShowTreeModifiedDate: () => setSettingsToggle("settings-tree-modified-date", !ka),
-                          onRequestClose: Rl,
+                          onRequestClose: Cl,
                           webauthnSupported: tn,
                           webauthnEnabled: isStoredWithWebAuthn() || !!((_c2 = getStoredWebAuthn()) == null ? void 0 : _c2.encryptedPassword),
                           webauthnStorageOnly: isStoredWithWebAuthn(),
                           onEnableWebAuthn: enableWebAuthnUnlock,
                           onDisableWebAuthn: disableWebAuthnUnlock,
                           snippetConfig: li,
-                          onChangeSnippetConfig: Rc,
-                          onSaveSnippetConfig: _c,
+                          onChangeSnippetConfig: Cc,
+                          onSaveSnippetConfig: Ic,
                           isSavingSnippets: Io,
-                          snippetConfigLoaded: Xa || ci || Ji,
+                          snippetConfigLoaded: Xa || ci || Zi,
                           editorType: Vn,
-                          onEditorTypeChange: al,
+                          onEditorTypeChange: il,
                           isMobileLayout: Qr,
                           sidebarOpen: Za,
                           sidebarCollapsed: nn,
                           onOpenSidebar: () => Fn(true),
-                          onCheckAppUpdate: ol,
+                          onCheckAppUpdate: sl,
                           isCheckingAppUpdate: Gt,
                           latestAppBuildId: cr,
-                          onScanStorageUsage: Gl,
-                          canScanStorageUsage: Cs,
-                          onOpenStorageUsageFile: ru,
-                          onReadUnusedImageText: Jl,
-                          onReadUnusedImageBytes: Zl,
-                          onDeleteUnusedImagePaths: Ql
+                          onScanStorageUsage: ql,
+                          canScanStorageUsage: _s,
+                          onOpenStorageUsageFile: nu,
+                          onReadUnusedImageText: Zl,
+                          onReadUnusedImageBytes: Ql,
+                          onDeleteUnusedImagePaths: tc
                         },
                         editorPaneProps: ({ currentFile: ae, editorContent: ie, editedFileName: de, setEditedFileName: ge, onChangeEditor: he, isActiveFile: xe }) => ({
                           currentFile: ae,
                           editorType: Vn,
                           editorContent: ie,
                           onChangeEditor: he,
-                          onSave: pi,
+                          onSave: hi,
                           isSaving: Fr,
-                          onRefreshFromDisk: (ae == null ? void 0 : ae.type) === "local" ? jc : void 0,
+                          onRefreshFromDisk: (ae == null ? void 0 : ae.type) === "local" ? Lc : void 0,
                           isRefreshingFromDisk: Mt,
-                          onPullFromRemote: ((ae == null ? void 0 : ae.type) === "s3" || (ae == null ? void 0 : ae.type) === "webdav") && !isEncMdPath(ae == null ? void 0 : ae.id) && !isEncMdPath(ae == null ? void 0 : ae.name) ? Lc : void 0,
+                          onPullFromRemote: ((ae == null ? void 0 : ae.type) === "s3" || (ae == null ? void 0 : ae.type) === "webdav") && !isEncMdPath(ae == null ? void 0 : ae.id) && !isEncMdPath(ae == null ? void 0 : ae.name) ? $c : void 0,
                           isPullingFromRemote: _t,
                           editedFileName: de,
                           setEditedFileName: ge,
-                          onRenameFullName: Ys,
+                          onRenameFullName: Xs,
                           onRequestSuffixChangeConfirmForBlur: () => {
-                            Vt("renameOnly"), ct(true);
+                            Yt("renameOnly"), ct(true);
                           },
-                          onRequestClose: Dl,
-                          onRequestMove: eu,
-                          onViewUnsupportedAsText: mc,
-                          onRequestDownload: pc,
-                          onShareToChatWithMyself: ae && ae.type !== SESSION_STORAGE_TYPE ? ns : void 0,
+                          onRequestClose: Fl,
+                          onRequestMove: tu,
+                          onViewUnsupportedAsText: pc,
+                          onRequestDownload: hc,
+                          onShareToChatWithMyself: ae && ae.type !== SESSION_STORAGE_TYPE ? as : void 0,
                           theme: Ae,
                           previewOnly: false,
                           isMobileLayout: Qr,
@@ -77597,36 +77621,36 @@ ${ae}`)) return {
                           onOpenSidebar: () => {
                             Qr ? Fn(true) : Ba(false);
                           },
-                          onRequestCreateFile: Zs,
+                          onRequestCreateFile: Qs,
                           onOpenChatWithMyself: () => {
-                            Pr.current ? aa() : ue("/chat");
+                            Nr.current ? aa() : ue("/chat");
                           },
-                          onSaveSessionToNote: Us,
-                          onRequestSessionTransformDownload: gc,
-                          onOpenSessionFiles: ks,
-                          onOpenSessionDirectory: typeof window < "u" && "showDirectoryPicker" in window ? Ol : void 0,
-                          onDropSessionTransfer: Pl,
+                          onSaveSessionToNote: Ws,
+                          onRequestSessionTransformDownload: yc,
+                          onOpenSessionFiles: Ts,
+                          onOpenSessionDirectory: typeof window < "u" && "showDirectoryPicker" in window ? Pl : void 0,
+                          onDropSessionTransfer: Dl,
                           isOpeningSession: zt,
                           hideRecordingCompanions: ha,
-                          isRecording: xe ? Pi : false,
+                          isRecording: xe ? Di : false,
                           audioLevel: xe ? ne : 0,
-                          onToggleRecording: !xe || (ae == null ? void 0 : ae.type) === SESSION_STORAGE_TYPE ? void 0 : lu,
+                          onToggleRecording: !xe || (ae == null ? void 0 : ae.type) === SESSION_STORAGE_TYPE ? void 0 : cu,
                           recordingPipelineStatus: ye,
                           recordingsList: xe ? qe : [],
                           selectedRecordingKey: xe ? Ke : "",
                           onSelectRecording: He,
                           recordingAudioUrl: xe ? Xe : "",
                           recordingSyncData: xe ? Ve : null,
-                          onUploadImage: Yl,
-                          isUploadingEditorImage: ql,
-                          uploadImagePercent: Vl,
-                          onCancelUploadImage: Bo,
-                          onResolveWikiImageUrl: Xl,
-                          onOpenViewPath: el,
+                          onUploadImage: Xl,
+                          isUploadingEditorImage: Vl,
+                          uploadImagePercent: Yl,
+                          onCancelUploadImage: zo,
+                          onResolveWikiImageUrl: Jl,
+                          onOpenViewPath: tl,
                           snippetConfig: li,
                           llmProviderProfiles: be,
                           getImgbbApiKey: Se,
-                          onRequestDelete: () => Er(ae ? {
+                          onRequestDelete: () => Sr(ae ? {
                             node: {
                               path: ae == null ? void 0 : ae.id,
                               name: ae == null ? void 0 : ae.name,
@@ -77650,9 +77674,9 @@ ${ae}`)) return {
                           s3Tree: Re,
                           localTree: Me,
                           webdavTree: Fe,
-                          shareGroupSend: ul,
-                          onShareGroupSendConsumed: Kl,
-                          onOpenNote: el,
+                          shareGroupSend: dl,
+                          onShareGroupSendConsumed: Gl,
+                          onOpenNote: tl,
                           selectPathAfterCreateFolder: ba,
                           onSelectPathAfterCreateFolderApplied: () => xa(null),
                           onRequestCreateFolderForNote: (ae, ie) => {
@@ -77664,15 +77688,15 @@ ${ae}`)) return {
                               fromAddToNoteModal: true
                             }), ya(true);
                           },
-                          onRequestMoveFolder: Qs,
-                          onCreateNoteFromMessage: tu,
-                          getPresignedUrlForPath: Os,
-                          onDropOnFolder: tl,
-                          dropTarget: wi,
-                          onLoadLocalFolderChildren: Li,
+                          onRequestMoveFolder: el,
+                          onCreateNoteFromMessage: ru,
+                          getPresignedUrlForPath: Ps,
+                          onDropOnFolder: rl,
+                          dropTarget: vi,
+                          onLoadLocalFolderChildren: $i,
                           localFolderLoadingPath: Kt,
-                          onAttachDropHostChange: ml,
-                          onRegisterTreeAttachDrop: hl
+                          onAttachDropHostChange: pl,
+                          onRegisterTreeAttachDrop: gl
                         }
                       })
                     })
@@ -77746,16 +77770,16 @@ ${ae}`)) return {
                               className: "hidden md:inline truncate text-gray-500 dark:text-odp-muted shrink-0",
                               children: [
                                 "\uD06C\uAE30: ",
-                                Ie.size != null ? cu(Ie.size) : "\uC54C \uC218 \uC5C6\uC74C"
+                                Ie.size != null ? uu(Ie.size) : "\uC54C \uC218 \uC5C6\uC74C"
                               ]
                             })
                           ]
                         }),
-                        wr && jsxRuntimeExports.jsxs("span", {
+                        vr && jsxRuntimeExports.jsxs("span", {
                           className: "truncate text-gray-500 dark:text-odp-muted hidden md:inline",
                           children: [
                             "\uC0C1\uD0DC: ",
-                            wr
+                            vr
                           ]
                         })
                       ]
@@ -77789,33 +77813,33 @@ ${ae}`)) return {
                     children: [
                       jsxRuntimeExports.jsxs("span", {
                         className: "flex items-center gap-1 md:gap-1.5",
-                        title: Ui ? br ? `\uC800\uC7A5 ${uo(br)}` : "\uB300\uAE30 \uC911" : "\uB300\uC0C1 \uC544\uB2D8",
+                        title: Wi ? br ? `\uC800\uC7A5 ${fo(br)}` : "\uB300\uAE30 \uC911" : "\uB300\uC0C1 \uC544\uB2D8",
                         children: [
                           jsxRuntimeExports.jsx("span", {
-                            className: `w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 ${du}`,
+                            className: `w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 ${fu}`,
                             "aria-hidden": "true"
                           }),
                           jsxRuntimeExports.jsx("span", {
                             className: "md:hidden",
-                            children: Ui ? br ? uo(br) : "\uB300\uAE30" : "-"
+                            children: Wi ? br ? fo(br) : "\uB300\uAE30" : "-"
                           }),
                           jsxRuntimeExports.jsxs("span", {
                             className: "hidden md:inline",
                             children: [
                               "\uC790\uB3D9\uC800\uC7A5:",
                               " ",
-                              Ui ? br ? `\uB9C8\uC9C0\uB9C9 ${uo(br)}` : "\uB300\uAE30 \uC911 (\uC785\uB825 \uD6C4 5\uCD08)" : "\uB300\uC0C1 \uC544\uB2D8"
+                              Wi ? br ? `\uB9C8\uC9C0\uB9C9 ${fo(br)}` : "\uB300\uAE30 \uC911 (\uC785\uB825 \uD6C4 5\uCD08)" : "\uB300\uC0C1 \uC544\uB2D8"
                             ]
                           })
                         ]
                       }),
                       jsxRuntimeExports.jsxs("span", {
                         className: "hidden md:inline",
-                        title: (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "webdav" ? xr ? `\uB3D9\uAE30\uD654 ${uo(xr)}` : "\uB300\uAE30 \uC911" : "\uB300\uC0C1 \uC544\uB2D8",
+                        title: (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "webdav" ? xr ? `\uB3D9\uAE30\uD654 ${fo(xr)}` : "\uB300\uAE30 \uC911" : "\uB300\uC0C1 \uC544\uB2D8",
                         children: [
                           "\uC790\uB3D9\uB3D9\uAE30\uD654:",
                           " ",
-                          (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "webdav" ? xr ? `\uB9C8\uC9C0\uB9C9 ${uo(xr)}` : "\uB300\uAE30 \uC911 (\uC785\uB825 \uD6C4 30\uCD08)" : "\uB300\uC0C1 \uC544\uB2D8"
+                          (Ie == null ? void 0 : Ie.type) === "s3" || (Ie == null ? void 0 : Ie.type) === "webdav" ? xr ? `\uB9C8\uC9C0\uB9C9 ${fo(xr)}` : "\uB300\uAE30 \uC911 (\uC785\uB825 \uD6C4 30\uCD08)" : "\uB300\uC0C1 \uC544\uB2D8"
                         ]
                       })
                     ]
@@ -77832,19 +77856,19 @@ ${ae}`)) return {
           },
           creds: Wn,
           webauthnSupported: tn,
-          onSaveWithWebAuthn: bl,
-          onSaveWithPassword: xl
+          onSaveWithWebAuthn: xl,
+          onSaveWithPassword: wl
         }),
         jsxRuntimeExports.jsx(SetPasswordModal, {
           isOpen: A,
           masterPassword: V,
           onCancel: () => L(false),
-          onSubmit: (ae) => vl(ee, ae, {
+          onSubmit: (ae) => El(ee, ae, {
             stayOnSettings: true
           })
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
-          isOpen: fo,
+          isOpen: mo,
           title: "\uD45C\uC9C0 \uC218\uC815 \uAC10\uC9C0",
           message: `\uD45C\uC9C0(note-cover) \uBD80\uBD84\uC774 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
 \uC758\uB3C4\uCE58 \uC54A\uC740 \uC218\uC815\uC774\uB77C\uBA74 \uD45C\uC9C0 \uBD80\uBD84\uB9CC \uB418\uB3CC\uB9B0 \uB4A4 \uB2E4\uC2DC \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`,
@@ -77853,7 +77877,7 @@ ${ae}`)) return {
           discardLabel: "\uD45C\uC9C0 \uBD80\uBD84 \uD3B8\uC9D1 \uB418\uB3CC\uB9AC\uAE30",
           onConfirm: () => {
             const ae = ma.current;
-            ma.current = null, oi(false), pi((ae == null ? void 0 : ae.fileOverride) ?? null, {
+            ma.current = null, oi(false), hi((ae == null ? void 0 : ae.fileOverride) ?? null, {
               ...(ae == null ? void 0 : ae.options) ?? {},
               skipCoverChangeCheck: true
             });
@@ -77872,16 +77896,16 @@ ${ae}`)) return {
           }
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
-          isOpen: vr,
+          isOpen: Er,
           title: "\uB85C\uCEEC \uD3F4\uB354 \uB2E4\uC2DC \uC5F4\uAE30",
           message: `\uC774\uC804\uC5D0 \uC5F4\uC5C8\uB358 \uB85C\uCEEC \uD3F4\uB354 "${gn}"\uC744(\uB97C) \uB2E4\uC2DC \uC5F4\uAE4C\uC694?`,
           confirmLabel: "\uB2E4\uC2DC \uC5F4\uAE30",
           cancelLabel: "\uB098\uC911\uC5D0",
           onConfirm: () => {
-            tc();
+            rc();
           },
           onCancel: () => {
-            Jr(false), bo(true);
+            Jr(false), xo(true);
           }
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
@@ -77913,7 +77937,7 @@ ${ae}`)) return {
           confirmLabel: at ? "\uC5C5\uB370\uC774\uD2B8 \uC911..." : Lt ? "\uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uC5C5\uB370\uC774\uD2B8" : "\uB2E4\uC2DC \uB85C\uB4DC",
           cancelLabel: "\uCDE8\uC18C",
           onConfirm: () => {
-            at || sl();
+            at || ll();
           },
           onCancel: () => {
             at || Qt(false);
@@ -77925,9 +77949,9 @@ ${ae}`)) return {
           message: "\uAE30\uC874\uC5D0 \uC800\uC7A5\uB41C \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uC788\uC2B5\uB2C8\uB2E4. \uC0C8\uB85C \uC800\uC7A5\uD558\uBA74 \uAE30\uC874 \uC815\uBCF4\uAC00 \uB300\uCCB4\uB429\uB2C8\uB2E4. \uACC4\uC18D\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?",
           confirmLabel: "\uACC4\uC18D",
           cancelLabel: "\uCDE8\uC18C",
-          onConfirm: El,
+          onConfirm: Sl,
           onCancel: () => {
-            Ia(false), Ki(null), Wa(null);
+            Ia(false), Gi(null), Wa(null);
           }
         }),
         jsxRuntimeExports.jsx(TreeNameConflictModal, {
@@ -77943,7 +77967,7 @@ ${ae}`)) return {
           binary: !!(oa == null ? void 0 : oa.binary),
           truncated: !!(oa == null ? void 0 : oa.truncated),
           theme: Ae === "dark" ? "dark" : "light",
-          onResolve: es
+          onResolve: ts
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
           isOpen: wa,
@@ -77951,7 +77975,7 @@ ${ae}`)) return {
           message: "\uC800\uC7A5\uD558\uC9C0 \uC54A\uC73C\uBA74 \uC785\uB825\uD55C \uC815\uBCF4\uAC00 \uC0AC\uB77C\uC9C8 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
           confirmLabel: "\uB098\uAC00\uAE30",
           cancelLabel: "\uCDE8\uC18C",
-          onConfirm: Cl,
+          onConfirm: _l,
           onCancel: () => dn(false)
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
@@ -77960,8 +77984,8 @@ ${ae}`)) return {
           message: "\uD655\uC7A5\uC790\uAC00 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC800\uC7A5 \uC2DC \uC0C8 \uD30C\uC77C\uBA85\uC73C\uB85C \uC800\uC7A5\uB429\uB2C8\uB2E4. \uACC4\uC18D\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?",
           confirmLabel: "\uACC4\uC18D",
           cancelLabel: "\uCDE8\uC18C",
-          onConfirm: _l,
-          onCancel: Il
+          onConfirm: Il,
+          onCancel: Nl
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
           isOpen: pr,
@@ -77973,11 +77997,11 @@ ${ae}`)) return {
           confirmLabel: "\uC800\uC7A5 \uD6C4 \uB2EB\uAE30",
           cancelLabel: "\uCDE8\uC18C",
           discardLabel: "\uC800\uC7A5 \uC548 \uD558\uACE0 \uB2EB\uAE30",
-          onConfirm: jl,
+          onConfirm: Ll,
           onCancel: () => {
             zr(false), Sn(null);
           },
-          onDiscard: Ll
+          onDiscard: $l
         }),
         jsxRuntimeExports.jsx(ConfirmModal, {
           isOpen: So.isBlocked,
@@ -77986,40 +78010,40 @@ ${ae}`)) return {
           confirmLabel: "\uC800\uC7A5 \uD6C4 \uC774\uB3D9",
           cancelLabel: "\uCDE8\uC18C",
           discardLabel: "\uC800\uC7A5 \uC548 \uD558\uACE0 \uC774\uB3D9",
-          onConfirm: $l,
+          onConfirm: Bl,
           onCancel: So.reset,
-          onDiscard: Bl
+          onDiscard: zl
         }),
         jsxRuntimeExports.jsx(ExportPasswordModal, {
           isOpen: ai,
-          onConfirm: kl,
+          onConfirm: Tl,
           onCancel: () => Lr(false)
         }),
         jsxRuntimeExports.jsx(ImportPasswordModal, {
-          isOpen: xi,
-          onConfirm: Al,
+          isOpen: wi,
+          onConfirm: Rl,
           onCancel: () => {
             ii(false), Wr(null);
           }
         }),
         jsxRuntimeExports.jsx(DownloadMethodModal, {
-          isOpen: Si,
+          isOpen: ki,
           title: Ga === "session-transform" ? "\uBCC0\uD615 \uB2E4\uC6B4\uB85C\uB4DC" : Ga === "session-save" ? "\uC800\uC7A5 \uBC29\uC2DD \uC120\uD0DD" : "\uB2E4\uC6B4\uB85C\uB4DC \uBC29\uC2DD \uC120\uD0DD",
           fileName: (Ie == null ? void 0 : Ie.name) || ((_d = Ie == null ? void 0 : Ie.id) == null ? void 0 : _d.split("/").filter(Boolean).pop()),
           markdownText: gr,
           showImageHandling: isMarkdownFileName$1((Ie == null ? void 0 : Ie.name) || ((_e2 = Ie == null ? void 0 : Ie.id) == null ? void 0 : _e2.split("/").filter(Boolean).pop())),
           showDeliveryMethods: Ga !== "session-transform",
           confirmLabel: "\uB2E4\uC6B4\uB85C\uB4DC",
-          onSelectLegacy: Ec,
-          onSelectStorageApi: Ic,
-          onSelectHaim: (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE && Ga !== "session-transform" ? bc : void 0,
-          onSelectClipboard: vc,
+          onSelectLegacy: kc,
+          onSelectStorageApi: Nc,
+          onSelectHaim: (Ie == null ? void 0 : Ie.type) === SESSION_STORAGE_TYPE && Ga !== "session-transform" ? xc : void 0,
+          onSelectClipboard: Ec,
           onCancel: () => {
             Ln(false), Ea("default");
           },
-          isDownloading: Fa > 0 && Fa < 100 && !Yi,
+          isDownloading: Fa > 0 && Fa < 100 && !Xi,
           downloadProgress: Fa,
-          downloadComplete: Yi,
+          downloadComplete: Xi,
           onCloseComplete: () => {
             Ln(false), Nn(0), Jn(false), Ea("default");
           }
@@ -78032,9 +78056,9 @@ ${ae}`)) return {
           webdavTree: Fe,
           localRootHandle: nt,
           defaultFileName: (Ie == null ? void 0 : Ie.name) || "untitled.md",
-          isSaving: Vi,
+          isSaving: Yi,
           onClose: () => si(false),
-          onConfirm: xc,
+          onConfirm: wc,
           onRequestCreateFolder: (ae, ie) => {
             Hn({
               storageType: xt,
@@ -78044,11 +78068,11 @@ ${ae}`)) return {
               fromSaveSessionModal: true
             }), ya(true);
           },
-          selectPathAfterCreate: qi,
-          onSelectPathAfterCreateApplied: () => ki(null)
+          selectPathAfterCreate: Vi,
+          onSelectPathAfterCreateApplied: () => Ti(null)
         }),
         jsxRuntimeExports.jsx(Modal, {
-          isOpen: Ti.isOpen,
+          isOpen: Ai.isOpen,
           onClose: Va,
           onConfirm: Va,
           children: jsxRuntimeExports.jsxs("div", {
@@ -78056,11 +78080,11 @@ ${ae}`)) return {
             children: [
               jsxRuntimeExports.jsx("h2", {
                 className: "text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2",
-                children: Ti.title || "\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC"
+                children: Ai.title || "\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC"
               }),
               jsxRuntimeExports.jsx("p", {
                 className: "text-sm whitespace-pre-line text-gray-600 dark:text-gray-400 mb-4",
-                children: Ti.message
+                children: Ai.message
               }),
               jsxRuntimeExports.jsx("div", {
                 className: "flex justify-end",
@@ -78076,19 +78100,19 @@ ${ae}`)) return {
         }),
         jsxRuntimeExports.jsx(DeleteConfirmModal, {
           target: lr,
-          associatedRecordings: Xc,
-          onCancel: () => Er(null),
-          onConfirm: Jc,
+          associatedRecordings: Jc,
+          onCancel: () => Sr(null),
+          onConfirm: Zc,
           isProcessing: jt
         }),
         jsxRuntimeExports.jsx(EmptyTrashConfirmModal, {
-          isOpen: !!Mr,
-          storageType: Mr == null ? void 0 : Mr.storageType,
+          isOpen: !!Or,
+          storageType: Or == null ? void 0 : Or.storageType,
           isProcessing: cn,
           onCancel: () => {
             cn || Br(null);
           },
-          onConfirm: Zc
+          onConfirm: Qc
         }),
         jsxRuntimeExports.jsx(MoveFileModal, {
           isOpen: mr,
@@ -78102,7 +78126,7 @@ ${ae}`)) return {
           onClose: () => {
             Ur(false), fa(null), Ca(null);
           },
-          onConfirm: vn ? Fc : ou,
+          onConfirm: vn ? jc : su,
           onRequestCreateFolder: vn || Ie ? (ae, ie) => {
             const de = vn ? vn.storageType : Ie.type;
             Hn({
@@ -78125,20 +78149,20 @@ ${ae}`)) return {
           localRootHandle: nt,
           folderNode: jn == null ? void 0 : jn.node,
           onClose: () => Xn(null),
-          onConfirm: iu
+          onConfirm: ou
         }),
         jsxRuntimeExports.jsx(CreateItemModal, {
-          isOpen: bi,
-          type: Sr == null ? void 0 : Sr.type,
-          storageType: Sr == null ? void 0 : Sr.storageType,
-          parentPath: (Sr == null ? void 0 : Sr.parentPath) || "",
-          tree: ac,
-          ensureFolderLoaded: nc,
-          parentLabel: Sr ? Sr.storageType === "s3" ? Sr.parentPath ? `S3: ${Sr.parentPath}` : "S3 \uB8E8\uD2B8" : Sr.storageType === "webdav" ? Sr.parentPath ? `WebDAV: ${Sr.parentPath}` : "WebDAV \uB8E8\uD2B8" : Sr.parentPath ? `\uB85C\uCEEC: ${Sr.parentPath}` : "\uB85C\uCEEC \uB8E8\uD2B8" : "",
+          isOpen: xi,
+          type: kr == null ? void 0 : kr.type,
+          storageType: kr == null ? void 0 : kr.storageType,
+          parentPath: (kr == null ? void 0 : kr.parentPath) || "",
+          tree: ic,
+          ensureFolderLoaded: ac,
+          parentLabel: kr ? kr.storageType === "s3" ? kr.parentPath ? `S3: ${kr.parentPath}` : "S3 \uB8E8\uD2B8" : kr.storageType === "webdav" ? kr.parentPath ? `WebDAV: ${kr.parentPath}` : "WebDAV \uB8E8\uD2B8" : kr.parentPath ? `\uB85C\uCEEC: ${kr.parentPath}` : "\uB85C\uCEEC \uB8E8\uD2B8" : "",
           onClose: () => {
             ia || (ya(false), Hn(null));
           },
-          onSubmit: Kc,
+          onSubmit: Gc,
           isSubmitting: ia
         }),
         jsxRuntimeExports.jsx(PromptModal, {

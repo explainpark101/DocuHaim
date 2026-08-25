@@ -1,12 +1,12 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-y7w1bGot.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-QBlKaQ6_.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
 import { _ as ir, __tla as __tla_0 } from "./vendor-md-editor-CyUZNHY0.js";
 import { r as a, j as e, f as cr, __tla as __tla_1 } from "./vendor-react-SY5QCjFA.js";
-import { dC as Qe, dD as xr, dE as br, dF as ur, dG as pr, as as xe, dH as gr, dI as mr, dJ as hr, dK as fr, dL as yr, dn as ft, d1 as yt, cZ as G, dM as kt, dN as jt, c_ as kr, c$ as jr, dO as vr, dP as Nr, dQ as vt, dR as Nt, dS as Re, dT as Sr, dU as wr, dV as Cr, dW as St, dX as Er, dY as Ir, dZ as de, d_ as he, d$ as wt, e0 as Ct, e1 as Or, e2 as Ar, a0 as Lr, e3 as $, e4 as ne, e5 as ce, e6 as ye, e7 as Pr, e8 as Ft, ac as $e, e9 as Et, ea as _r, eb as Dr, ec as zr, ed as Tr, ee as Rr, ef as $r, eg as Fr, eh as Br, ei as Mr, ej as It, ek as Kr, z as Wr, el as Ur, em as Ot, en as Gr, d2 as At, eo as Lt, ep as et, eq as Vr, er as Hr, es as Xr, et as Yr, eu as Jr, ev as qr, ew as me, ex as Zr, ey as Qr, ez as ea, eA as ta, eB as Pt, eC as ra, eD as aa, eE as sa, eF as da, eG as na, eH as oa, eI as Fe, eJ as _t, eK as Be, eL as la, eM as ia, __tla as __tla_2 } from "./index-y7w1bGot.js";
+import { dC as Qe, dD as xr, dE as br, dF as ur, dG as pr, as as xe, dH as gr, dI as mr, dJ as hr, dK as fr, dL as yr, dn as ft, d1 as yt, cZ as G, dM as kt, dN as jt, c_ as kr, c$ as jr, dO as vr, dP as Nr, dQ as vt, dR as Nt, dS as Re, dT as Sr, dU as wr, dV as Cr, dW as St, dX as Er, dY as Ir, dZ as de, d_ as he, d$ as wt, e0 as Ct, e1 as Or, e2 as Ar, a0 as Lr, e3 as $, e4 as ne, e5 as ce, e6 as ye, e7 as Pr, e8 as Ft, ac as $e, e9 as Et, ea as _r, eb as Dr, ec as zr, ed as Tr, ee as Rr, ef as $r, eg as Fr, eh as Br, ei as Mr, ej as It, ek as Kr, z as Wr, el as Ur, em as Ot, en as Gr, d2 as At, eo as Lt, ep as et, eq as Vr, er as Hr, es as Xr, et as Yr, eu as Jr, ev as qr, ew as me, ex as Zr, ey as Qr, ez as ea, eA as ta, eB as Pt, eC as ra, eD as aa, eE as sa, eF as da, eG as na, eH as oa, eI as Fe, eJ as _t, eK as Be, eL as la, eM as ia, __tla as __tla_2 } from "./index-QBlKaQ6_.js";
 import { W as Bt, ap as Mt, x as Kt, T as Ke, a as oe, b as le, X as Wt, a1 as ca, v as We, t as Ut, e as xa, G as ba } from "./vendor-lucide-DpPvFd8E.js";
-import { T as ua } from "./TableStyleTemplateEditor-TRl49243.js";
+import { T as ua } from "./TableStyleTemplateEditor-CrgyHUMn.js";
 import { S as Dt } from "./SliderWithScrubInput-B28d-DVd.js";
 import { K as Gt, M as Vt, G as ke, H as ie, J as Ue, D as pa, g as ga, h as ma, i as ha, j as fa, k as ya } from "./vendor-radix--fTcLYkF.js";
-import { G as ka, O as ja } from "./OpenAiCompatibleModelSelect-CdgiRmpo.js";
+import { G as ka, O as ja, __tla as __tla_3 } from "./OpenAiCompatibleModelSelect-Z7C6xzHM.js";
 import "./vendor-aws-BNw5jQBi.js";
 import "./vendor-motion-YU7ZxHqi.js";
 import "./vendor-zip-Bez6qchM.js";
@@ -28,6 +28,12 @@ let __tla = Promise.all([
   (() => {
     try {
       return __tla_2;
+    } catch {
+    }
+  })(),
+  (() => {
+    try {
+      return __tla_3;
     } catch {
     }
   })()
@@ -1280,7 +1286,7 @@ let __tla = Promise.all([
           children: [
             e.jsx("p", {
               className: "text-xs text-gray-600 dark:text-odp-muted",
-              children: "Gemini\uC640 OpenAI \uD638\uD658 endpoint\uB97C \uC5EC\uB7EC \uAC1C \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uC2E4\uC81C \uC0AC\uC6A9\uD560 \uC81C\uACF5\uC790\uB294 \uC5D0\uB514\uD130 AI \uB3C4\uC6B0\uBBF8\uC5D0\uC11C \uACE0\uB985\uB2C8\uB2E4. API \uD0A4\uB294 \uC5F0\uACB0 \uC815\uBCF4\uC640 \uD568\uAED8 \uC554\uD638\uD654\uB418\uBA70, \uC774 \uD654\uBA74\uC5D0\uC11C \uB2E4\uC2DC \uD45C\uC2DC\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uD638\uCD9C\uD558\uBBC0\uB85C \uCEE4\uC2A4\uD140 \uC11C\uBC84\uB294 CORS\uAC00 \uD5C8\uC6A9\uB418\uC5B4\uC57C \uD569\uB2C8\uB2E4."
+              children: "Gemini\uC640 OpenAI \uD638\uD658 endpoint\uB97C \uC5EC\uB7EC \uAC1C \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uC2E4\uC81C \uC0AC\uC6A9\uD560 \uC81C\uACF5\uC790\uB294 \uC5D0\uB514\uD130 AI \uB3C4\uC6B0\uBBF8\uC5D0\uC11C \uACE0\uB985\uB2C8\uB2E4. API \uD0A4\uB294 \uC5F0\uACB0 \uC815\uBCF4\uC640 \uD568\uAED8 \uC554\uD638\uD654\uB418\uBA70, \uC774 \uD654\uBA74\uC5D0\uC11C \uB2E4\uC2DC \uD45C\uC2DC\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. Gemini\uB294 \uC6F9\uC5D0\uC11C same-origin \uD504\uB85D\uC2DC(/api/gemini)\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4. OpenAI \uD638\uD658 endpoint\uB294 CORS\uAC00 \uD5C8\uC6A9\uB418\uC5B4\uC57C \uD569\uB2C8\uB2E4."
             }),
             t.length === 0 ? e.jsx("p", {
               className: "text-xs text-gray-500 dark:text-odp-muted",
@@ -3245,7 +3251,7 @@ let __tla = Promise.all([
                           onClick: async () => {
                             try {
                               const { createWebdavBackend: r } = await ir(async () => {
-                                const { createWebdavBackend: Q } = await import("./index-y7w1bGot.js").then(async (m2) => {
+                                const { createWebdavBackend: Q } = await import("./index-QBlKaQ6_.js").then(async (m2) => {
                                   await m2.__tla;
                                   return m2;
                                 }).then((Te) => Te.gb);
