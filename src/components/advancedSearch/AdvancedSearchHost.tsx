@@ -34,6 +34,9 @@ import {
   runChatAction,
   subscribeChatActions,
 } from '@/utils/advancedSearch/chatActions';
+import {
+  runAppLockAction,
+} from '@/utils/advancedSearch/appLockActions';
 import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 import { requestOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
 import {
@@ -594,6 +597,11 @@ export default function AdvancedSearchHost({
           window.setTimeout(() => {
             runChatAction(commandId);
           }, 0);
+          return;
+        }
+
+        if (commandId === 'app-lock') {
+          runAppLockAction();
           return;
         }
 

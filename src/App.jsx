@@ -346,8 +346,9 @@ import {
   savePasswordEncryptedCredsBlob,
   tryRestoreDesktopStrongholdSession,
 } from '@/utils/desktopStrongholdSecrets';
-import { decryptDesktopPasswordWebdav, refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
+import { decryptDesktopPasswordWebdav, hasDesktopAppEntryLock, refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
 import { unlockDesktopWithBiometricGate } from '@/utils/desktopBiometricUnlock';
+import { registerAppLockAction } from '@/utils/advancedSearch/appLockActions';
 import { applyDocumentTheme } from '@/utils/documentTheme';
 import {
   applyForcedAppUpdate,
@@ -407,6 +408,7 @@ function MainApp() {
     setS3Creds,
     unlock,
     proceedWithoutStoredCreds,
+    lock,
   } = auth;
   const navigate = useNavigate();
   const location = useLocation();
@@ -420,6 +422,13 @@ function MainApp() {
     () => (s3Creds?.imgbbApiKey || '').trim(),
     [s3Creds?.imgbbApiKey],
   );
+
+  useEffect(() => {
+    if (!isDesktopApp()) return;
+    return registerAppLockAction(() => {
+      lock();
+    });
+  }, [lock]);
 
   useEffect(() => {
     const onUnload = () => {
@@ -1491,6 +1500,12 @@ function MainApp() {
     (webauthnAvailable &&
       !!getStoredWebAuthn() &&
       (isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword));
+
+  const autoPromptWebAuthnForModal = !(
+    isDesktopApp() &&
+    hasDesktopAppEntryLock() &&
+    canUnlockWithWebAuthnForModal
+  );
 
   // 2. Auth Actions
   const handleUnlock = async (password) => {
@@ -9659,6 +9674,7 @@ function MainApp() {
           }}
           canUnlockWithWebAuthn={canUnlockWithWebAuthnForModal}
           onUnlockWithWebAuthn={handleUnlockWithWebAuthn}
+          autoPromptWebAuthn={autoPromptWebAuthnForModal}
           isPasswordMode={!isStoredWithWebAuthn()}
         />
       </div>
@@ -9782,6 +9798,7 @@ function MainApp() {
         }}
         canUnlockWithWebAuthn={canUnlockWithWebAuthnForModal}
         onUnlockWithWebAuthn={handleUnlockWithWebAuthn}
+        autoPromptWebAuthn={autoPromptWebAuthnForModal}
         isPasswordMode={!isStoredWithWebAuthn()}
       />
 

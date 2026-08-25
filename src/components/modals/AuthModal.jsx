@@ -4,14 +4,13 @@ import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import Modal from '@/components/modals/Modal';
 
-export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, fileInputRef }) {
+export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, autoPromptWebAuthn = true, fileInputRef }) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const webauthnLabel = getWebAuthnEncryptLabel();
 
-  // Auto-prompt on open. Desktop uses native biometry (no WebAuthn user-gesture requirement).
-  // On web, some platforms (Android) allow this; Safari-like browsers may cancel — user can tap the button.
+  // Auto-prompt on open (web / legacy). Tauri entry lock requires an explicit button tap.
   useEffect(() => {
-    if (!isOpen || !canUnlockWithWebAuthn || !onUnlockWithWebAuthn) return;
+    if (!autoPromptWebAuthn || !isOpen || !canUnlockWithWebAuthn || !onUnlockWithWebAuthn) return;
     const timer = setTimeout(() => {
       setWebauthnLoading(true);
       let promise;
@@ -33,7 +32,7 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
         .finally(() => setWebauthnLoading(false));
     }, isDesktopApp() ? 400 : 300);
     return () => clearTimeout(timer);
-  }, [isOpen, canUnlockWithWebAuthn, onUnlockWithWebAuthn, webauthnLabel]);
+  }, [autoPromptWebAuthn, isOpen, canUnlockWithWebAuthn, onUnlockWithWebAuthn, webauthnLabel]);
 
   // Safari: startAuthentication must run in native click context with no async work before it.
   // Call WebAuthn flow first (sync until credentials.get), then set loading and await.

@@ -33,6 +33,12 @@ import {
   isCircleNumberInsertCommandId,
   type CircleNumberInsertCommandId,
 } from './circleNumberInsert';
+import {
+  APP_LOCK_COMMAND,
+  hasAppLockAction,
+  type AppLockActionId,
+} from './appLockActions';
+import { hasDesktopAppEntryLock } from '@/utils/desktopAppEntryLock';
 import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
 
@@ -92,7 +98,8 @@ export type AppCommandId =
   | FootnoteDisplayModeCommandId
   | FootnoteInsertCommandId
   | CircleNumberInsertCommandId
-  | SnippetActionId;
+  | SnippetActionId
+  | AppLockActionId;
 
 export type AppCommand = {
   id: AppCommandId;
@@ -810,6 +817,15 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
         keywords: [...cmd.keywords],
       });
     }
+  }
+  if (hasAppLockAction() && hasDesktopAppEntryLock()) {
+    list.push({
+      id: APP_LOCK_COMMAND.id,
+      title: APP_LOCK_COMMAND.title,
+      description: APP_LOCK_COMMAND.description,
+      path: '',
+      keywords: [...APP_LOCK_COMMAND.keywords],
+    });
   }
 
   // Snippets: only show when query is non-empty (page actions path),
