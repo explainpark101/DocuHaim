@@ -18,7 +18,11 @@ function betterStrong(state: StateInline, silent: boolean): boolean {
   const end = src.indexOf('**', start + 2);
   if (end === -1 || end === start + 2) return false;
 
-  if (silent) return true;
+  if (silent) {
+    // markdown-it skipToken (e.g. sub/sup) requires silent rules to advance state.pos.
+    state.pos = end + 2;
+    return true;
+  }
 
   const open = state.push('strong_open', 'strong', 1);
   open.markup = '**';

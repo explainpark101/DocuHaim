@@ -157,10 +157,10 @@ export function createWebdavBackend(config) {
       return URL.createObjectURL(result.blob);
     },
 
-    /** Connection smoke test */
+    /** Connection smoke test — PROPFIND must succeed (listing may still be empty). */
     async testConnection() {
-      await webdavPropfind(cfg, '');
-      return true;
+      const entries = await webdavPropfind(cfg, '');
+      return Array.isArray(entries);
     },
   };
 }

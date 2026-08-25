@@ -72,6 +72,7 @@ import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBu
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 
 export default function SettingsPage({
   s3Creds,
@@ -107,6 +108,7 @@ export default function SettingsPage({
   storageMode = STORAGE_MODE_S3,
   onStorageModeChange,
   localFolderName = '',
+  localVaultFsPath = '',
   onOpenLocalFolder,
   webdavConfig,
   onSaveWebdavConfig,
@@ -170,10 +172,17 @@ export default function SettingsPage({
   const [webdavConnOpen, setWebdavConnOpen] = useState(false);
   const [imgbbConnOpen, setImgbbConnOpen] = useState(true);
   const location = useLocation();
+  const desktopApp = isDesktopApp();
+  const resolvedVaultFsPath = String(localVaultFsPath || '').trim();
   const resolvedLocalFolderName =
     String(localFolderName || '').trim() || loadLastLocalFolderName() || '';
+  const localFolderDisplay =
+    desktopApp && resolvedVaultFsPath
+      ? resolvedVaultFsPath
+      : resolvedLocalFolderName;
   const canPickLocalFolder =
-    typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+    desktopApp ||
+    (typeof window !== 'undefined' && 'showDirectoryPicker' in window);
 
   useEffect(() => {
     return subscribeSettingsToggles((id, enabled) => {
@@ -626,8 +635,9 @@ export default function SettingsPage({
           {localConnOpen ? (
             <>
               <p className="text-xs text-gray-600 dark:text-odp-muted">
-                Local Haim은 브라우저 File System Access API로 연 폴더를 사용합니다. 보안상 OS 전체
-                경로는 제공되지 않으며, 폴더 이름으로 열린 위치를 확인할 수 있습니다.
+                {desktopApp
+                  ? 'Local Haim은 OS 폴더 선택 대화상자로 vault 루트를 지정합니다. 선택한 폴더의 전체 경로가 저장되며, 앱을 다시 열면 같은 위치를 복원합니다.'
+                  : 'Local Haim은 브라우저 File System Access API로 연 폴더를 사용합니다. 보안상 OS 전체 경로는 제공되지 않으며, 폴더 이름으로 열린 위치를 확인할 수 있습니다.'}
               </p>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
@@ -638,11 +648,15 @@ export default function SettingsPage({
                   readOnly
                   className="w-full rounded border px-3 py-2 text-sm text-gray-800 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
                   value={
-                    resolvedLocalFolderName
-                      ? resolvedLocalFolderName
+                    localFolderDisplay
+                      ? localFolderDisplay
                       : '(폴더가 열려 있지 않음)'
                   }
-                  aria-label="현재 열린 로컬 폴더 이름"
+                  aria-label={
+                    desktopApp
+                      ? '현재 열린 로컬 폴더 경로'
+                      : '현재 열린 로컬 폴더 이름'
+                  }
                 />
               </div>
               {!canPickLocalFolder ? (
@@ -659,7 +673,7 @@ export default function SettingsPage({
                   className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <IconFolder size={16} />
-                  {resolvedLocalFolderName ? '다른 폴더 열기' : '폴더 선택'}
+                  {localFolderDisplay ? '다른 폴더 열기' : '폴더 선택'}
                 </button>
               </div>
             </>

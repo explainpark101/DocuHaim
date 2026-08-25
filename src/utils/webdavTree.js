@@ -13,19 +13,9 @@ export function buildWebdavTreeNodesFromPropfind(entries, parentPath = '') {
     let key = String(entry.key || '').replace(/^\/+/, '');
     if (!key) continue;
 
-    // Only direct children
-    const relative = parentNorm
-      ? key.startsWith(parentNorm + '/')
-        ? key.slice(parentNorm.length + 1)
-        : key === parentNorm
-          ? ''
-          : null
-      : key;
-    if (relative == null || relative === '') continue;
-    if (relative.includes('/')) continue;
-
-    const name = relative.replace(/\/$/, '');
-    if (!name) continue;
+    // Depth-1 PROPFIND keys are direct child names (folders may end with "/").
+    const name = key.replace(/\/$/, '');
+    if (!name || name.includes('/')) continue;
 
     if (entry.isCollection) {
       const path = parentNorm ? `${parentNorm}/${name}/` : `${name}/`;

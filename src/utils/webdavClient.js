@@ -1,6 +1,13 @@
 /**
  * Minimal WebDAV client for chat-with-myself (browser fetch + Basic Auth).
  */
+import {
+  collectDavResponses,
+  firstDavElement,
+  isDavCollection,
+  joinWebdavStorageKey,
+  webdavHrefToStorageKey,
+} from '@/utils/webdavHref';
 
 export class WebdavPreconditionFailedError extends Error {
   constructor(message = 'Precondition Failed') {
@@ -280,97 +287,33 @@ export async function webdavPropfind(config, dirKey = '') {
  * @param {WebdavConfig} config
  * @param {string} dirKey
  */
-function parsePropfindResponse(xml, config, dirKey) {
+function parsePropfindResponse(xml, config, dirKey, options = {}) {
   const results = [];
   if (typeof DOMParser === 'undefined') return results;
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  const responses = [
-    ...doc.getElementsByTagNameNS('DAV:', 'response'),
-    ...doc.getElementsByTagName('d:response'),
-    ...doc.getElementsByTagName('D:response'),
-    ...doc.getElementsByTagName('response'),
-  ];
-  // Deduplicate if multiple tag queries hit same nodes
-  const seen = new Set();
-  const baseUrl = webdavUrl(config, dirKey).replace(/\/?$/, '/');
-  const endpoint = String(config?.endpoint || '').replace(/\/+$/, '');
-  const basePath = String(config?.basePath || '')
-    .replace(/^\/+/, '')
-    .replace(/\/+$/, '');
+  const responses = collectDavResponses(doc);
+  const listingUrl = webdavUrl(config, dirKey).replace(/\/?$/, '/');
+  const directChildrenOnly = options.directChildrenOnly !== false;
 
   for (const node of responses) {
-    if (seen.has(node)) continue;
-    seen.add(node);
-    const hrefEl =
-      node.getElementsByTagNameNS('DAV:', 'href')[0] ||
-      node.getElementsByTagName('d:href')[0] ||
-      node.getElementsByTagName('D:href')[0] ||
-      node.getElementsByTagName('href')[0];
+    const hrefEl = firstDavElement(node, 'href');
     if (!hrefEl) continue;
-    let href = (hrefEl.textContent || '').trim();
+    const href = (hrefEl.textContent || '').trim();
     if (!href) continue;
-    try {
-      href = decodeURIComponent(href);
-    } catch {
-      /* keep raw href */
-    }
 
-    // Normalize to storage-relative key (under basePath)
-    let abs = href;
-    if (href.startsWith('/')) {
-      abs = `${endpoint}${href}`;
-    } else if (!/^https?:/i.test(href)) {
-      abs = `${baseUrl}${href.replace(/^\.\//, '')}`;
-    }
+    const key = webdavHrefToStorageKey(href, listingUrl, { directChildrenOnly });
+    if (key == null || key === '') continue;
 
-    let key = abs;
-    const prefix = basePath ? `${endpoint}/${basePath}/` : `${endpoint}/`;
-    if (key.startsWith(prefix)) {
-      key = key.slice(prefix.length);
-    } else if (key.startsWith(endpoint + '/')) {
-      key = key.slice(endpoint.length + 1);
-      if (basePath && key.startsWith(basePath + '/')) {
-        key = key.slice(basePath.length + 1);
-      } else if (basePath && key === basePath) {
-        key = '';
-      }
-    }
-    key = key.replace(/^\/+/, '');
-
-    const isCollection = Boolean(
-      node.getElementsByTagNameNS('DAV:', 'collection').length ||
-        node.getElementsByTagName('d:collection').length ||
-        node.getElementsByTagName('D:collection').length ||
-        node.getElementsByTagName('collection').length,
-    );
-    const etagEl =
-      node.getElementsByTagNameNS('DAV:', 'getetag')[0] ||
-      node.getElementsByTagName('d:getetag')[0] ||
-      node.getElementsByTagName('D:getetag')[0] ||
-      node.getElementsByTagName('getetag')[0];
-    const lmEl =
-      node.getElementsByTagNameNS('DAV:', 'getlastmodified')[0] ||
-      node.getElementsByTagName('d:getlastmodified')[0] ||
-      node.getElementsByTagName('D:getlastmodified')[0] ||
-      node.getElementsByTagName('getlastmodified')[0];
-    const sizeEl =
-      node.getElementsByTagNameNS('DAV:', 'getcontentlength')[0] ||
-      node.getElementsByTagName('d:getcontentlength')[0] ||
-      node.getElementsByTagName('D:getcontentlength')[0] ||
-      node.getElementsByTagName('getcontentlength')[0];
+    const isCollection = isDavCollection(node, href);
+    const etagEl = firstDavElement(node, 'getetag');
+    const lmEl = firstDavElement(node, 'getlastmodified');
+    const sizeEl = firstDavElement(node, 'getcontentlength');
     const etag = etagEl?.textContent?.trim() || null;
     const lm = lmEl?.textContent?.trim();
     const mtime = lm ? Date.parse(lm) || null : null;
     const sizeRaw = sizeEl?.textContent?.trim();
     const sizeParsed = sizeRaw != null && sizeRaw !== '' ? Number(sizeRaw) : NaN;
     const size = Number.isFinite(sizeParsed) ? sizeParsed : undefined;
-
-    // Skip the directory itself
-    const dirNorm = String(dirKey || '')
-      .replace(/^\/+/, '')
-      .replace(/\/?$/, '');
-    const keyNorm = key.replace(/\/?$/, '');
-    if (keyNorm === dirNorm) continue;
 
     results.push({ key, etag, mtime, isCollection, size });
   }
@@ -463,7 +406,7 @@ export async function webdavPropfindDeep(config, dirKey = '') {
     });
     if (response.ok || response.status === 207) {
       const xml = await response.text();
-      return parsePropfindResponse(xml, config, key);
+      return parsePropfindResponse(xml, config, key, { directChildrenOnly: false });
     }
   } catch {
     /* fall through to BFS */
@@ -478,9 +421,10 @@ export async function webdavPropfindDeep(config, dirKey = '') {
     seen.add(dir);
     const children = await webdavPropfind(config, dir);
     for (const child of children) {
-      all.push(child);
+      const fullKey = joinWebdavStorageKey(dir, child.key);
+      all.push({ ...child, key: fullKey });
       if (child.isCollection) {
-        const childDir = child.key.endsWith('/') ? child.key : `${child.key}/`;
+        const childDir = fullKey.endsWith('/') ? fullKey : `${fullKey}/`;
         queue.push(childDir);
       }
     }

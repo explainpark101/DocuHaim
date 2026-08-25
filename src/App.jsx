@@ -213,6 +213,9 @@ import {
   saveStorageMode,
   saveWebdavConfig,
   decryptWebdavConfig,
+  clearPlaintextWebdavConfig,
+  hasEncryptedWebdavConfig,
+  requiresEncryptedWebdavStorage,
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
@@ -255,6 +258,10 @@ import {
   saveLocalVaultFsPath,
   clearLocalVaultFsPath,
 } from '@/utils/localVaultPathStore';
+import {
+  basenameFromVaultPath,
+  isLocalVaultReady,
+} from '@/utils/localVaultReady';
 import {
   pickTauriLocalVaultDirectory,
   readTauriLocalDirectoryTree,
@@ -336,7 +343,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import { clearAllLlmApiKeySessions } from '@/utils/llmApiKeySession';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
-import { tryRestoreAuthSession } from '@/utils/authSession';
+import { clearAuthSession, saveAuthSession, tryRestoreAuthSession } from '@/utils/authSession';
 import {
   hasDesktopBiometricLockMarker,
   hasDesktopStoredCredsMarker,
@@ -428,13 +435,6 @@ function MainApp() {
   );
 
   useEffect(() => {
-    if (!isDesktopApp()) return;
-    return registerAppLockAction(() => {
-      lock();
-    });
-  }, [lock]);
-
-  useEffect(() => {
     const onUnload = () => {
       clearAllLlmApiKeySessions();
     };
@@ -511,6 +511,42 @@ function MainApp() {
   const [editorType, setEditorType] = useState(() => loadEditorType());
   const [storageMode, setStorageMode] = useState(() => loadStorageMode());
   const [webdavConfig, setWebdavConfig] = useState(() => ({ ...DEFAULT_WEBDAV_CONFIG }));
+
+  const lockApp = useCallback(() => {
+    clearPlaintextWebdavConfig();
+    setWebdavConfig({ ...DEFAULT_WEBDAV_CONFIG });
+    lock();
+  }, [lock]);
+
+  useEffect(() => {
+    if (!isDesktopApp()) return;
+    return registerAppLockAction(() => {
+      lockApp();
+    });
+  }, [lockApp]);
+
+  useEffect(() => {
+    if (!isUnlocked) return;
+    if (
+      isDesktopApp() &&
+      (hasDesktopBiometricLockMarker() || getDesktopAppEntryLockModeSync() === 'password')
+    ) {
+      clearAuthSession();
+      return;
+    }
+    void saveAuthSession({
+      creds: s3Creds,
+      password: masterPassword,
+      webdavConfig,
+    });
+  }, [isUnlocked, s3Creds, masterPassword, webdavConfig]);
+
+  const loadPlainWebdavIfAllowed = useCallback(async () => {
+    const cfg = await loadWebdavConfig();
+    if (cfg?.endpoint || cfg?.username || cfg?.password) {
+      setWebdavConfig(cfg);
+    }
+  }, []);
 
   const fileInputRef = useRef(null);
   const uploadFileInputRef = useRef(null);
@@ -1421,10 +1457,6 @@ function MainApp() {
   }, []);
 
   useEffect(() => {
-    void loadWebdavConfig().then(setWebdavConfig);
-  }, []);
-
-  useEffect(() => {
     setScriptsLoaded(true);
     if (isUnlocked) return;
 
@@ -1434,7 +1466,9 @@ function MainApp() {
       if (cancelled) return;
       if (session) {
         unlock(session.creds, session.password);
-        if (session.password) {
+        if (session.webdavConfig?.endpoint || session.webdavConfig?.username) {
+          setWebdavConfig(session.webdavConfig);
+        } else if (session.password) {
           decryptWebdavConfig(session.password)
             .then((decryptedWebdav) => {
               if (decryptedWebdav) setWebdavConfig(decryptedWebdav);
@@ -1472,6 +1506,7 @@ function MainApp() {
         }
         if (!cancelled && hasDesktopStoredCredsMarker()) {
           proceedWithoutStoredCreds();
+          void loadPlainWebdavIfAllowed();
           navigate('/settings');
           return;
         }
@@ -1481,10 +1516,11 @@ function MainApp() {
         setAuthWanted(true);
       } else {
         const stored = localStorage.getItem('s3NotesEncrypted');
-        if (stored) {
+        if (stored || hasEncryptedWebdavConfig()) {
           setAuthWanted(true);
         } else {
           proceedWithoutStoredCreds();
+          void loadPlainWebdavIfAllowed();
           navigate('/settings');
         }
       }
@@ -1493,7 +1529,7 @@ function MainApp() {
     return () => {
       cancelled = true;
     };
-  }, [isUnlocked, unlock, proceedWithoutStoredCreds, navigate]);
+  }, [isUnlocked, unlock, proceedWithoutStoredCreds, navigate, loadPlainWebdavIfAllowed]);
 
   useEffect(() => {
     if (isUnlocked || !authWanted) return;
@@ -1644,6 +1680,10 @@ function MainApp() {
         cipher: encrypted.cipher,
       };
       localStorage.setItem('s3NotesEncrypted', JSON.stringify(stored));
+      if (webdavConfig?.endpoint || webdavConfig?.username || webdavConfig?.password) {
+        await saveWebdavConfig(webdavConfig, password);
+      }
+      clearPlaintextWebdavConfig();
       setS3Creds(creds);
       setMasterPassword(password);
       setShowSetPasswordModal(false);
@@ -1789,7 +1829,9 @@ function MainApp() {
     }
     return (
       typeof localStorage !== 'undefined' &&
-      (!!localStorage.getItem('s3NotesEncrypted') || !!getStoredWebAuthn())
+      (!!localStorage.getItem('s3NotesEncrypted') ||
+        !!getStoredWebAuthn() ||
+        hasEncryptedWebdavConfig())
     );
   };
 
@@ -2826,12 +2868,12 @@ function MainApp() {
   useEffect(() => {
     if (!isUnlocked) return;
     const ready =
-      (storageMode === 'local' && localRootHandle) ||
+      (storageMode === 'local' && isLocalVaultReady(localRootHandle, localVaultFsPath)) ||
       (storageMode === 'webdav' && webdavReady) ||
       (storageMode === 's3' && s3Creds.bucket);
     if (!ready) return;
     syncLlmPromptTemplatesToRemote();
-  }, [isUnlocked, storageMode, localRootHandle, webdavReady, s3Creds.bucket]);
+  }, [isUnlocked, storageMode, localRootHandle, localVaultFsPath, webdavReady, s3Creds.bucket]);
 
   const loadSnippetConfigFromS3 = useCallback(
     async (creds = s3Creds) => {
@@ -2954,7 +2996,9 @@ function MainApp() {
         currentFileId: currentFile?.id ?? null,
         currentFileType: currentFile?.type ?? null,
       });
-      const isLocalUpload = currentFile?.type === 'local' && localRootHandle;
+      const isLocalUpload =
+        currentFile?.type === 'local' &&
+        isLocalVaultReady(localRootHandle, localVaultFsPath);
       const isWebdavUpload = currentFile?.type === 'webdav' && webdavReady;
       const isSessionUpload = currentFile?.type === SESSION_STORAGE_TYPE;
       const client = getS3Client();
@@ -2971,8 +3015,8 @@ function MainApp() {
         );
         return [];
       }
-      if (isLocalUpload && !localRootHandle) {
-        dbgClipboard('app:upload:abort', { reason: 'no local root handle' });
+      if (isLocalUpload && !isLocalVaultReady(localRootHandle, localVaultFsPath)) {
+        dbgClipboard('app:upload:abort', { reason: 'no local vault ready' });
         setOperationStatus('이미지 업로드는 로컬 폴더를 연 뒤 사용할 수 있습니다.');
         return [];
       }
@@ -3037,11 +3081,33 @@ function MainApp() {
           editorImageUploadAbortControllerRef.current = uploadController;
           let path;
           if (isLocalUpload) {
-            path = await uploadLocalEditorImage(localRootHandle, file, {
-              imagePathPrefix,
-              signal: uploadController.signal,
-              onProgress: (percent) => reportProgress(file, percent),
-            });
+            if (localVaultFsPath && !localRootHandle) {
+              const backend = getBackendForType('local');
+              const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
+              const uuid =
+                typeof crypto !== 'undefined' && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+              let mime = file.type;
+              if (!mime || mime === 'application/octet-stream') {
+                mime = (await sniffImageMimeFromFile(file)) || mime;
+              }
+              const ext = getExtensionFromMime(mime);
+              path = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
+              reportProgress(file, 0);
+              const body = new Uint8Array(await file.arrayBuffer());
+              if (uploadController.signal.aborted) {
+                throw new DOMException('Aborted', 'AbortError');
+              }
+              await backend.writeBytes(path, body, mime || 'application/octet-stream');
+              reportProgress(file, 100);
+            } else {
+              path = await uploadLocalEditorImage(localRootHandle, file, {
+                imagePathPrefix,
+                signal: uploadController.signal,
+                onProgress: (percent) => reportProgress(file, percent),
+              });
+            }
           } else if (isWebdavUpload) {
             const backend = getBackendForType('webdav');
             const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
@@ -3105,13 +3171,23 @@ function MainApp() {
           setEditorImageUploadPercent(Math.max(0, Math.min(100, committedPercent)));
           paths.push(path);
         }
-        if (isLocalUpload && paths.length > 0 && localRootHandle) {
-          setIsLocalTreeLoading(true);
-          try {
-            const tree = await readLocalDirectoryTree(localRootHandle, '', localRootHandle);
-            setLocalTree(tree);
-          } finally {
-            setIsLocalTreeLoading(false);
+        if (isLocalUpload && paths.length > 0) {
+          if (localVaultFsPath && !localRootHandle) {
+            setIsLocalTreeLoading(true);
+            try {
+              const tree = await readTauriLocalDirectoryTree(localVaultFsPath);
+              setLocalTree(tree);
+            } finally {
+              setIsLocalTreeLoading(false);
+            }
+          } else if (localRootHandle) {
+            setIsLocalTreeLoading(true);
+            try {
+              const tree = await readLocalDirectoryTree(localRootHandle, '', localRootHandle);
+              setLocalTree(tree);
+            } finally {
+              setIsLocalTreeLoading(false);
+            }
           }
         }
         if (isWebdavUpload && paths.length > 0) {
@@ -3136,7 +3212,7 @@ function MainApp() {
       dbgClipboard('app:upload:return', { paths, pathCount: paths.length });
       return paths;
     },
-    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType, refreshWebdavTree, addIndicator, removeIndicator, updateIndicator, flushSessionEditorToWorkspace]
+    [getS3Client, s3Creds, currentFile, localRootHandle, localVaultFsPath, webdavReady, getBackendForType, refreshWebdavTree, addIndicator, removeIndicator, updateIndicator, flushSessionEditorToWorkspace]
   );
 
   /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬/WebDAV: blob URL) */
@@ -3162,7 +3238,19 @@ function MainApp() {
         console.warn('[wiki-image] getPresignedUrlForPath: session failed', { path: trimmed });
         return null;
       }
-      if (currentFile?.type === 'local' && localRootHandle) {
+      if (currentFile?.type === 'local' && isLocalVaultReady(localRootHandle, localVaultFsPath)) {
+        if (localVaultFsPath && !localRootHandle) {
+          try {
+            const backend = getBackendForType('local');
+            return await backend.getObjectUrl(trimmed);
+          } catch (err) {
+            console.warn('[wiki-image] getPresignedUrlForPath: local vault failed', {
+              path: trimmed,
+              err,
+            });
+            return null;
+          }
+        }
         const url = await getLocalWikiImageObjectUrl(localRootHandle, trimmed);
         if (url) {
           console.log('[wiki-image] getPresignedUrlForPath: local ok', { path: trimmed, urlLength: url.length });
@@ -3194,13 +3282,21 @@ function MainApp() {
         return null;
       }
     },
-    [getS3Client, s3Creds, currentFile, localRootHandle, webdavReady, getBackendForType, getSessionObjectUrl]
+    [getS3Client, s3Creds, currentFile, localRootHandle, localVaultFsPath, webdavReady, getBackendForType, getSessionObjectUrl]
   );
 
   /** Chat with Myself: resolve by storageMode (not current editor file). */
   const getChatImageUrlForPath = useCallback(
     async (path) => {
-      if (storageMode === 'local' && localRootHandle) {
+      if (storageMode === 'local' && isLocalVaultReady(localRootHandle, localVaultFsPath)) {
+        if (localVaultFsPath && !localRootHandle) {
+          try {
+            const backend = getBackendForType('local');
+            return await backend.getObjectUrl(path);
+          } catch {
+            return null;
+          }
+        }
         return getLocalWikiImageObjectUrl(localRootHandle, path);
       }
       if (storageMode === 'webdav') {
@@ -3222,7 +3318,7 @@ function MainApp() {
         return null;
       }
     },
-    [storageMode, localRootHandle, getS3Client, s3Creds.bucket, webdavConfig],
+    [storageMode, localRootHandle, localVaultFsPath, getBackendForType, getS3Client, s3Creds.bucket, webdavConfig],
   );
 
   useEffect(() => {
@@ -5045,6 +5141,11 @@ function MainApp() {
   useEffect(() => {
     if (!isUnlocked || hasPromptedLocalFolderRestoreRef.current) return;
     if (storageMode !== STORAGE_MODE_LOCAL || localRootHandle) return;
+    // Tauri shells persist an absolute vault path — no FSA handle restore.
+    if (isDesktopApp() || localVaultFsPath) {
+      setLocalFolderRestoreSettled(true);
+      return;
+    }
 
     let cancelled = false;
     (async () => {
@@ -5063,7 +5164,7 @@ function MainApp() {
     return () => {
       cancelled = true;
     };
-  }, [isUnlocked, storageMode, localRootHandle]);
+  }, [isUnlocked, storageMode, localRootHandle, localVaultFsPath]);
 
   // Restore Tauri local vault tree from persisted absolute path
   // (Android: ensure app-private LocalHaim default when none is set).
@@ -6938,31 +7039,54 @@ function MainApp() {
           content: isEncMdPath(fileToSave.id) ? '' : textToSave,
         });
       } else if (fileToSave.type === 'local') {
-        const writable = await fileToSave.handle.createWritable();
-        await writable.write(vaultBody);
-        await writable.close();
-        await deleteMemoDraft(getDraftKey('local', fileToSave.id));
-        const file = await fileToSave.handle.getFile();
-        setCurrentFile((prev) => {
-          if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
-          const next = {
-            ...prev,
-            content: textToSave,
-            size: typeof file.size === 'number' ? file.size : prev?.size ?? null,
+        if (localVaultFsPath && !fileToSave.handle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) {
+            throw new Error('로컬 폴더를 먼저 열어주세요.');
+          }
+          await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
+          await deleteMemoDraft(getDraftKey('local', fileToSave.id));
+          await refreshLocalTree();
+          const savedByteLength = new TextEncoder().encode(vaultBody).length;
+          setCurrentFile((prev) => {
+            if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
+            const next = { ...prev, content: textToSave, size: savedByteLength };
+            currentFileRef.current = next;
+            return next;
+          });
+          applySavedContentToTab({ size: savedByteLength });
+          notifyAdvancedSearchChange({
+            type: 'file',
+            path: fileToSave.id,
+            content: isEncMdPath(fileToSave.id) ? '' : textToSave,
+          });
+        } else {
+          const writable = await fileToSave.handle.createWritable();
+          await writable.write(vaultBody);
+          await writable.close();
+          await deleteMemoDraft(getDraftKey('local', fileToSave.id));
+          const file = await fileToSave.handle.getFile();
+          setCurrentFile((prev) => {
+            if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
+            const next = {
+              ...prev,
+              content: textToSave,
+              size: typeof file.size === 'number' ? file.size : prev?.size ?? null,
+              lastModified: file.lastModified,
+            };
+            currentFileRef.current = next;
+            return next;
+          });
+          applySavedContentToTab({
+            ...(typeof file.size === 'number' ? { size: file.size } : {}),
             lastModified: file.lastModified,
-          };
-          currentFileRef.current = next;
-          return next;
-        });
-        applySavedContentToTab({
-          ...(typeof file.size === 'number' ? { size: file.size } : {}),
-          lastModified: file.lastModified,
-        });
-        notifyAdvancedSearchChange({
-          type: 'file',
-          path: fileToSave.id,
-          content: isEncMdPath(fileToSave.id) ? '' : textToSave,
-        });
+          });
+          notifyAdvancedSearchChange({
+            type: 'file',
+            path: fileToSave.id,
+            content: isEncMdPath(fileToSave.id) ? '' : textToSave,
+          });
+        }
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
         const binding = sessionVaultBindingsRef.current[fileToSave.id];
         if (!binding?.destPath) {
@@ -7562,38 +7686,62 @@ function MainApp() {
           openCreatedFile({ type: 's3', id: newPath, name: finalName, content: openContent });
         }
       } else if (storageType === 'local') {
-        if (!localRootHandle && !parentDirHandle) {
+        if (!isLocalVaultReady(localRootHandle, localVaultFsPath) && !parentDirHandle) {
           return alert('루트 폴더를 먼저 열어주세요.');
         }
 
-        const targetDirHandle = localRootHandle
-          ? await ensureLocalDir(parentDirPath)
-          : parentDirHandle;
-
-        if (!targetDirHandle) return alert('루트 폴더를 먼저 열어주세요.');
-
-        if (type === 'folder') {
-          await targetDirHandle.getDirectoryHandle(finalName, { create: true });
-          const parentPaths = getParentPathsToExpand(expandParent);
-          expandPathsRef.current?.(storageType, parentPaths);
-        } else {
-          const newFileHandle = await targetDirHandle.getFileHandle(finalName, { create: true });
-          if (initialBody) {
-            const writable = await newFileHandle.createWritable();
-            await writable.write(initialBody);
-            await writable.close();
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) {
+            return alert('루트 폴더를 먼저 열어주세요.');
           }
-          const parentPaths = getParentPathsToExpand(expandParent);
-          expandPathsRef.current?.(storageType, parentPaths);
-          openCreatedFile({
-            type: 'local',
-            id: newPath,
-            name: finalName,
-            content: openContent,
-            handle: newFileHandle,
-          });
+          if (type === 'folder') {
+            await backend.mkdir(newPath);
+            const parentPaths = getParentPathsToExpand(expandParent);
+            expandPathsRef.current?.(storageType, parentPaths);
+          } else {
+            await backend.writeText(newPath, initialBody, 'text/markdown');
+            const parentPaths = getParentPathsToExpand(expandParent);
+            expandPathsRef.current?.(storageType, parentPaths);
+            openCreatedFile({
+              type: 'local',
+              id: newPath,
+              name: finalName,
+              content: openContent,
+              viewer: 'markdown',
+            });
+          }
+          await refreshLocalTree();
+        } else {
+          const targetDirHandle = localRootHandle
+            ? await ensureLocalDir(parentDirPath)
+            : parentDirHandle;
+
+          if (!targetDirHandle) return alert('루트 폴더를 먼저 열어주세요.');
+
+          if (type === 'folder') {
+            await targetDirHandle.getDirectoryHandle(finalName, { create: true });
+            const parentPaths = getParentPathsToExpand(expandParent);
+            expandPathsRef.current?.(storageType, parentPaths);
+          } else {
+            const newFileHandle = await targetDirHandle.getFileHandle(finalName, { create: true });
+            if (initialBody) {
+              const writable = await newFileHandle.createWritable();
+              await writable.write(initialBody);
+              await writable.close();
+            }
+            const parentPaths = getParentPathsToExpand(expandParent);
+            expandPathsRef.current?.(storageType, parentPaths);
+            openCreatedFile({
+              type: 'local',
+              id: newPath,
+              name: finalName,
+              content: openContent,
+              handle: newFileHandle,
+            });
+          }
+          refreshLocalTree();
         }
-        refreshLocalTree();
       } else if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         if (type === 'folder') {
@@ -7853,28 +8001,52 @@ function MainApp() {
         }
         loadS3Files();
       } else if (storageType === 'local') {
-        const targetDirHandle = parentDirHandle || localRootHandle;
-        if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const destName = await resolveUploadDestFileName(
-            file.name,
-            usedNames,
-            askUploadNameConflict,
-          );
-          if (!destName) {
-            skippedCount += 1;
-            continue;
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            const key = (parentPath || '') + destName;
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+            usedNames.add(destName);
+            uploadedCount += 1;
+            await reloadOpenFileIfPath(storageType, key);
           }
-          const newFileHandle = await targetDirHandle.getFileHandle(destName, { create: true });
-          const writable = await newFileHandle.createWritable();
-          await writable.write(await file.arrayBuffer());
-          await writable.close();
-          usedNames.add(destName);
-          uploadedCount += 1;
-          await reloadOpenFileIfPath(storageType, `${parentPath || ''}${destName}`);
+          await refreshLocalTree();
+        } else {
+          const targetDirHandle = parentDirHandle || localRootHandle;
+          if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            const newFileHandle = await targetDirHandle.getFileHandle(destName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(await file.arrayBuffer());
+            await writable.close();
+            usedNames.add(destName);
+            uploadedCount += 1;
+            await reloadOpenFileIfPath(storageType, `${parentPath || ''}${destName}`);
+          }
+          refreshLocalTree();
         }
-        refreshLocalTree();
       } else if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         for (let i = 0; i < files.length; i++) {
@@ -7956,23 +8128,36 @@ function MainApp() {
         }
         loadS3Files();
       } else if (storageType === 'local') {
-        const targetDirHandle = parentDirHandle || localRootHandle;
-        if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
-          const parts = relPath.replace(/\/$/, '').split('/');
-          let dir = targetDirHandle;
-          for (let j = 0; j < parts.length - 1; j++) {
-            dir = await dir.getDirectoryHandle(parts[j], { create: true });
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
+            const key = (parentPath || '') + relPath;
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
           }
-          const fileName = parts[parts.length - 1];
-          const newFileHandle = await dir.getFileHandle(fileName, { create: true });
-          const writable = await newFileHandle.createWritable();
-          await writable.write(await file.arrayBuffer());
-          await writable.close();
+          await refreshLocalTree();
+        } else {
+          const targetDirHandle = parentDirHandle || localRootHandle;
+          if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
+            const parts = relPath.replace(/\/$/, '').split('/');
+            let dir = targetDirHandle;
+            for (let j = 0; j < parts.length - 1; j++) {
+              dir = await dir.getDirectoryHandle(parts[j], { create: true });
+            }
+            const fileName = parts[parts.length - 1];
+            const newFileHandle = await dir.getFileHandle(fileName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(await file.arrayBuffer());
+            await writable.close();
+          }
+          refreshLocalTree();
         }
-        refreshLocalTree();
       } else if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         for (let i = 0; i < files.length; i++) {
@@ -8244,13 +8429,15 @@ function MainApp() {
             }
             storagesTouched.add('s3');
           } else if (type === 'local') {
-            if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
-
-            if (isInTrash) {
-              const pHandle = node.parentHandle || localRootHandle;
-              await pHandle.removeEntry(node.name, { recursive: true });
-              if (additionalKeys.length > 0) {
-                const backend = createLocalBackend(localRootHandle);
+            if (localVaultFsPath && !localRootHandle) {
+              const backend = getBackendForType('local');
+              if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+              if (isInTrash) {
+                if (node.type === 'folder') {
+                  await backend.deletePrefix(node.path);
+                } else {
+                  await backend.delete(node.path);
+                }
                 for (const key of additionalKeys) {
                   try {
                     await backend.delete(key);
@@ -8258,16 +8445,39 @@ function MainApp() {
                     /* missing companion ok */
                   }
                 }
+              } else {
+                const trashPath =
+                  node.type === 'folder'
+                    ? `${String(node.path || '').replace(/\/+$/, '')}/`
+                    : node.path;
+                await backend.trash(trashPath, { additionalKeys });
               }
-            } else if (additionalKeys.length > 0) {
-              const backend = createLocalBackend(localRootHandle);
-              const trashPath =
-                node.type === 'folder'
-                  ? `${String(node.path || '').replace(/\/+$/, '')}/`
-                  : node.path;
-              await backend.trash(trashPath, { additionalKeys });
             } else {
-              await moveLocalEntryToTrash(node);
+              if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+
+              if (isInTrash) {
+                const pHandle = node.parentHandle || localRootHandle;
+                await pHandle.removeEntry(node.name, { recursive: true });
+                if (additionalKeys.length > 0) {
+                  const backend = createLocalBackend(localRootHandle);
+                  for (const key of additionalKeys) {
+                    try {
+                      await backend.delete(key);
+                    } catch {
+                      /* missing companion ok */
+                    }
+                  }
+                }
+              } else if (additionalKeys.length > 0) {
+                const backend = createLocalBackend(localRootHandle);
+                const trashPath =
+                  node.type === 'folder'
+                    ? `${String(node.path || '').replace(/\/+$/, '')}/`
+                    : node.path;
+                await backend.trash(trashPath, { additionalKeys });
+              } else {
+                await moveLocalEntryToTrash(node);
+              }
             }
             storagesTouched.add('local');
           } else if (type === 'webdav') {
@@ -8440,23 +8650,47 @@ function MainApp() {
             );
           }
         } else if (storageType === 'local') {
-          const parentHandle = node.parentHandle || localRootHandle;
-          if (!parentHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
-          const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
-          const newPrefix =
-            node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
-          await moveLocalFolderToFolder(node, parentHandle, '', trimmed);
-          applyWorkspaceFolderPathRetarget('local', oldPrefix, newPrefix);
-          if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
-            const newPathForFile = currentFile.id.startsWith(oldPrefix)
-              ? newPrefix + currentFile.id.slice(oldPrefix.length)
-              : currentFile.id.startsWith(node.path)
-                ? newPrefix + currentFile.id.slice(node.path.length)
-                : currentFile.id;
-            applyOpenFileIdentityChange(
-              { ...currentFile, id: newPathForFile },
-              { oldPath: currentFile.id, retargetTabs: false },
-            );
+          if (localVaultFsPath && !localRootHandle) {
+            const backend = getBackendForType('local');
+            if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+            const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
+            const newPrefix =
+              node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
+            const fromRel = String(node.path || '').replace(/\/+$/, '');
+            const toRel = String(newPrefix || '').replace(/\/+$/, '');
+            await backend.move(fromRel, toRel);
+            await refreshLocalTree();
+            applyWorkspaceFolderPathRetarget('local', oldPrefix, newPrefix);
+            if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
+              const newPathForFile = currentFile.id.startsWith(oldPrefix)
+                ? newPrefix + currentFile.id.slice(oldPrefix.length)
+                : currentFile.id.startsWith(node.path)
+                  ? newPrefix + currentFile.id.slice(node.path.length)
+                  : currentFile.id;
+              applyOpenFileIdentityChange(
+                { ...currentFile, id: newPathForFile },
+                { oldPath: currentFile.id, retargetTabs: false },
+              );
+            }
+          } else {
+            const parentHandle = node.parentHandle || localRootHandle;
+            if (!parentHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+            const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
+            const newPrefix =
+              node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
+            await moveLocalFolderToFolder(node, parentHandle, '', trimmed);
+            applyWorkspaceFolderPathRetarget('local', oldPrefix, newPrefix);
+            if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
+              const newPathForFile = currentFile.id.startsWith(oldPrefix)
+                ? newPrefix + currentFile.id.slice(oldPrefix.length)
+                : currentFile.id.startsWith(node.path)
+                  ? newPrefix + currentFile.id.slice(node.path.length)
+                  : currentFile.id;
+              applyOpenFileIdentityChange(
+                { ...currentFile, id: newPathForFile },
+                { oldPath: currentFile.id, retargetTabs: false },
+              );
+            }
           }
         } else if (storageType === 'webdav') {
           const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
@@ -8497,46 +8731,82 @@ function MainApp() {
           });
         }
       } else if (storageType === 'local') {
-        const pHandle = node.parentHandle || localRootHandle;
-        if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
 
-        const oldPath = node.path;
-        const lastSlash = oldPath.lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-        const originalName = node.name || '';
-        const nameLastDot = originalName.lastIndexOf('.');
-        const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-        const newName = `${trimmed}${ext}`;
-        const newPath = dirPrefix + newName;
+          const oldPath = node.path;
+          const lastSlash = oldPath.lastIndexOf('/');
+          const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
+          const originalName = node.name || '';
+          const nameLastDot = originalName.lastIndexOf('.');
+          const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
+          const newName = `${trimmed}${ext}`;
+          const newPath = dirPrefix + newName;
+          if (newPath === oldPath) return;
 
-        if (newPath === oldPath) return;
+          const isCurrentFile = currentFile?.type === 'local' && currentFile?.id === node.path;
+          const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
+          if (hasUnsaved) {
+            await backend.writeText(newPath, editorContent, 'text/markdown');
+            await backend.delete(oldPath);
+          } else {
+            await backend.move(oldPath, newPath);
+          }
+          await refreshLocalTree();
+          if (isCurrentFile) {
+            applyOpenFileIdentityChange(
+              { ...currentFile, id: newPath, name: newName },
+              { oldPath },
+            );
+          } else {
+            applyWorkspaceFilePathRetarget('local', oldPath, newPath, {
+              id: newPath,
+              name: newName,
+            });
+          }
+        } else {
+          const pHandle = node.parentHandle || localRootHandle;
+          if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
 
-        const file = await node.handle.getFile();
-        const newFileHandle = await pHandle.getFileHandle(newName, { create: true });
-        const writable = await newFileHandle.createWritable();
-        await writable.write(await file.arrayBuffer());
-        await writable.close();
+          const oldPath = node.path;
+          const lastSlash = oldPath.lastIndexOf('/');
+          const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
+          const originalName = node.name || '';
+          const nameLastDot = originalName.lastIndexOf('.');
+          const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
+          const newName = `${trimmed}${ext}`;
+          const newPath = dirPrefix + newName;
 
-        await pHandle.removeEntry(node.name, { recursive: false });
+          if (newPath === oldPath) return;
 
-        await refreshLocalTree();
+          const file = await node.handle.getFile();
+          const newFileHandle = await pHandle.getFileHandle(newName, { create: true });
+          const writable = await newFileHandle.createWritable();
+          await writable.write(await file.arrayBuffer());
+          await writable.close();
 
-        if (currentFile && currentFile.type === 'local' && currentFile.id === node.path) {
-          applyOpenFileIdentityChange(
-            {
-              ...currentFile,
+          await pHandle.removeEntry(node.name, { recursive: false });
+
+          await refreshLocalTree();
+
+          if (currentFile && currentFile.type === 'local' && currentFile.id === node.path) {
+            applyOpenFileIdentityChange(
+              {
+                ...currentFile,
+                id: newPath,
+                name: newName,
+                handle: newFileHandle,
+              },
+              { oldPath },
+            );
+          } else {
+            applyWorkspaceFilePathRetarget('local', oldPath, newPath, {
               id: newPath,
               name: newName,
               handle: newFileHandle,
-            },
-            { oldPath },
-          );
-        } else {
-          applyWorkspaceFilePathRetarget('local', oldPath, newPath, {
-            id: newPath,
-            name: newName,
-            handle: newFileHandle,
-          });
+            });
+          }
         }
       } else if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
@@ -9910,6 +10180,7 @@ function MainApp() {
               s3Bucket={s3Creds.bucket}
               localTree={localTree}
               localRootHandle={localRootHandle}
+              localVaultFsPath={localVaultFsPath}
               isLocalTreeLoading={isLocalTreeLoading}
               localFolderLoadingPath={localFolderLoadingPath}
               webdavTree={webdavTree}
@@ -10053,12 +10324,35 @@ function MainApp() {
                     storageMode,
                     onStorageModeChange: setStorageMode,
                     localFolderName:
-                      localRootHandle?.name || pendingLocalFolderName || loadLastLocalFolderName(),
+                      localRootHandle?.name ||
+                      basenameFromVaultPath(localVaultFsPath) ||
+                      pendingLocalFolderName ||
+                      loadLastLocalFolderName(),
+                    localVaultFsPath: isDesktopApp() ? localVaultFsPath : '',
                     onOpenLocalFolder: openLocalFolder,
                     webdavConfig,
                     onSaveWebdavConfig: async (next) => {
                       setWebdavConfig(next);
-                      await saveWebdavConfig(next, masterPassword || undefined);
+                      if (isDesktopApp()) {
+                        if (getDesktopAppEntryLockModeSync() === 'password' && masterPassword) {
+                          await refreshDesktopPasswordEntryLockSecrets(
+                            masterPassword,
+                            s3Creds,
+                            next,
+                          );
+                        } else {
+                          await saveDesktopWebdavConfig(next);
+                          clearPlaintextWebdavConfig();
+                        }
+                      } else if (masterPassword) {
+                        await saveWebdavConfig(next, masterPassword);
+                        clearPlaintextWebdavConfig();
+                      } else if (
+                        !requiresEncryptedWebdavStorage() &&
+                        !hasEncryptedWebdavConfig()
+                      ) {
+                        await saveWebdavConfig(next);
+                      }
                       if (storageMode === STORAGE_MODE_WEBDAV) {
                         await refreshWebdavTree();
                       }

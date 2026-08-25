@@ -64,6 +64,7 @@ import {
   STORAGE_MODE_WEBDAV,
   getAppNameByStorageMode,
 } from '@/utils/storageSettings';
+import { isLocalVaultReady } from '@/utils/localVaultReady';
 
 const EMPTY_SELECTED_IDS = new Set();
 
@@ -218,6 +219,7 @@ export default function Sidebar({
   s3Bucket,
   localTree,
   localRootHandle,
+  localVaultFsPath = '',
   isLocalTreeLoading = false,
   localFolderLoadingPath = null,
   onLoadLocalFolderChildren,
@@ -898,6 +900,7 @@ export default function Sidebar({
   const isS3Mode = storageMode === 's3';
   const isLocalMode = storageMode === 'local';
   const isWebdavMode = storageMode === 'webdav';
+  const localVaultReady = isLocalVaultReady(localRootHandle, localVaultFsPath);
 
   const activateTreeNode = useCallback((storageType, node) => {
     setLastActivatedNode({ storageType, node });
@@ -1561,7 +1564,7 @@ export default function Sidebar({
             <span className="flex items-center gap-1">
               <IconFolder /> Local Folder
             </span>
-            {localRootHandle && (
+            {localVaultReady && (
               <div className="flex gap-1">
                 {onRefreshLocal && (
                   <button
@@ -1623,7 +1626,7 @@ export default function Sidebar({
               </div>
             )}
           </div>
-          {!localRootHandle && (
+          {!localVaultReady && (
             <div className="px-3 mb-2">
               <button
                 onClick={onOpenLocalFolder}
@@ -1661,7 +1664,7 @@ export default function Sidebar({
             {isLocalTreeLoading && !filteredLocalTree.length && (
               <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
             )}
-            {localRootHandle ? (
+            {localVaultReady ? (
               filteredLocalTree.length > 0 ? (
                 filteredLocalTree.map((node) => (
                   <TreeNode
@@ -1671,7 +1674,9 @@ export default function Sidebar({
                     rootDropNode={
                       localRootHandle
                         ? { path: '', type: 'folder', handle: localRootHandle }
-                        : null
+                        : localVaultFsPath
+                          ? { path: '', type: 'folder', handle: null }
+                          : null
                     }
                     onSelect={onSelectFile}
                     storageType="local"

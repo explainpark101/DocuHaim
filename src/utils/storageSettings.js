@@ -12,6 +12,8 @@ export const STORAGE_MODE_WEBDAV = 'webdav';
 const STORAGE_MODE_KEY = 's3haim_storage_mode';
 const WEBDAV_CONFIG_KEY = 's3haim_webdav_config';
 const WEBDAV_ENCRYPTED_KEY = 's3haim_webdav_encrypted';
+const S3_ENCRYPTED_KEY = 's3NotesEncrypted';
+const WEB_AUTHN_STORAGE_KEY = 's3NotesWebAuthn';
 
 export const DEFAULT_STORAGE_MODE = STORAGE_MODE_S3;
 
@@ -57,8 +59,24 @@ function normalizeWebdavConfig(parsed) {
   };
 }
 
+/** True when WebDAV must not be kept in plaintext localStorage (encrypted S3/WebDAV/WebAuthn). */
+export function requiresEncryptedWebdavStorage() {
+  try {
+    if (typeof window === 'undefined') return false;
+    if (isDesktopApp()) return false;
+    return Boolean(
+      window.localStorage.getItem(WEBDAV_ENCRYPTED_KEY) ||
+        window.localStorage.getItem(S3_ENCRYPTED_KEY) ||
+        window.localStorage.getItem(WEB_AUTHN_STORAGE_KEY),
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Load plaintext WebDAV config (legacy). Prefer decryptWebdavConfig when password available.
+ * Load plaintext WebDAV config (legacy / no master password yet).
+ * Prefer decryptWebdavConfig when password available.
  * On desktop, reads from Stronghold when available.
  */
 export async function loadWebdavConfig() {
@@ -67,6 +85,9 @@ export async function loadWebdavConfig() {
     if (isDesktopApp()) {
       const fromStronghold = await loadDesktopWebdavConfig();
       if (fromStronghold) return fromStronghold;
+    }
+    if (requiresEncryptedWebdavStorage() || window.localStorage.getItem(WEBDAV_ENCRYPTED_KEY)) {
+      return { ...DEFAULT_WEBDAV_CONFIG };
     }
     const raw = window.localStorage.getItem(WEBDAV_CONFIG_KEY);
     if (!raw) return { ...DEFAULT_WEBDAV_CONFIG };
@@ -78,6 +99,7 @@ export async function loadWebdavConfig() {
 
 /**
  * Save WebDAV config. If password is provided, encrypt and clear plaintext key.
+ * Without password, persists plaintext only when no encrypted storage is in use.
  * @param {object} config
  * @param {string} [password]
  */
@@ -97,15 +119,11 @@ export async function saveWebdavConfig(config, password) {
       window.localStorage.removeItem(WEBDAV_CONFIG_KEY);
       return;
     }
-    // Session / unlocked save without re-encrypt: keep in-memory via caller; still write plaintext
-    // only when no encrypted blob exists (first-time / migration pending).
-    if (!window.localStorage.getItem(WEBDAV_ENCRYPTED_KEY)) {
-      window.localStorage.setItem(WEBDAV_CONFIG_KEY, JSON.stringify(safe));
-    } else {
-      // Update encrypted blob is not possible without password; store plaintext temporarily
-      // for current session restore after reload until next password unlock migrates again.
-      window.localStorage.setItem(WEBDAV_CONFIG_KEY, JSON.stringify(safe));
+    if (requiresEncryptedWebdavStorage() || window.localStorage.getItem(WEBDAV_ENCRYPTED_KEY)) {
+      // Encrypted storage active — keep config in session/memory only until unlock password save.
+      return;
     }
+    window.localStorage.setItem(WEBDAV_CONFIG_KEY, JSON.stringify(safe));
   } catch {
     /* ignore */
   }

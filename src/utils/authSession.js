@@ -19,19 +19,21 @@ export function clearAuthSession() {
 }
 
 /**
- * @param {{ creds: object, password?: string }} payload
+ * @param {{ creds: object, password?: string, webdavConfig?: object | null }} payload
  */
-export async function saveAuthSession({ creds, password = '' }) {
+export async function saveAuthSession({ creds, password = '', webdavConfig = null }) {
   if (!creds || typeof creds !== 'object') {
     clearAuthSession();
     return;
   }
 
+  const sessionPayload = { creds, password: password || '' };
+  if (webdavConfig && typeof webdavConfig === 'object') {
+    sessionPayload.webdavConfig = webdavConfig;
+  }
+
   const entropy = crypto.getRandomValues(new Uint8Array(32));
-  const encrypted = await encryptWithEntropy(
-    JSON.stringify({ creds, password: password || '' }),
-    entropy,
-  );
+  const encrypted = await encryptWithEntropy(JSON.stringify(sessionPayload), entropy);
 
   try {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(encrypted));
@@ -42,7 +44,7 @@ export async function saveAuthSession({ creds, password = '' }) {
 }
 
 /**
- * @returns {Promise<{ creds: object, password: string } | null>}
+ * @returns {Promise<{ creds: object, password: string, webdavConfig: object | null } | null>}
  */
 export async function tryRestoreAuthSession() {
   try {
@@ -57,9 +59,14 @@ export async function tryRestoreAuthSession() {
       clearAuthSession();
       return null;
     }
+    const webdavConfig =
+      parsed.webdavConfig && typeof parsed.webdavConfig === 'object'
+        ? parsed.webdavConfig
+        : null;
     return {
       creds: parsed.creds,
       password: typeof parsed.password === 'string' ? parsed.password : '',
+      webdavConfig,
     };
   } catch {
     clearAuthSession();
