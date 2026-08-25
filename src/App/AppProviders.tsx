@@ -4,6 +4,7 @@ import { AppBootstrapStateProvider } from '@/App/providers/AppBootstrapStateProv
 import { AppVaultStateProvider } from '@/App/providers/AppVaultStateProvider';
 import { VaultProvider } from '@/App/providers/VaultProvider';
 import { AppFileSessionStateProvider } from '@/App/providers/AppFileSessionStateProvider';
+import { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 import { AppTreeOpsStateProvider } from '@/App/providers/AppTreeOpsStateProvider';
 import { AppPwaSnippetsStateProvider } from '@/App/providers/AppPwaSnippetsStateProvider';
 import { RecordingProvider } from '@/App/providers/RecordingProvider';
@@ -12,10 +13,6 @@ import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
 export { APP_PROVIDER_ORDER };
 
-/**
- * VaultProvider (handlers) wraps AppLogic so the controller uses useVault().
- * Conceptual order: Bootstrap → Vault → Tabs → File → Tree → AutoSave.
- */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <AppBootstrapStateProvider>
@@ -23,13 +20,15 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <VaultProvider>
           <WorkspaceTabsProvider>
             <AppFileSessionStateProvider>
-              <AppTreeOpsStateProvider>
-                <AppPwaSnippetsStateProvider>
-                  <RecordingProvider>
-                    <AppLogicProvider>{children}</AppLogicProvider>
-                  </RecordingProvider>
-                </AppPwaSnippetsStateProvider>
-              </AppTreeOpsStateProvider>
+              <FileSessionProvider>
+                <AppTreeOpsStateProvider>
+                  <AppPwaSnippetsStateProvider>
+                    <RecordingProvider>
+                      <AppLogicProvider>{children}</AppLogicProvider>
+                    </RecordingProvider>
+                  </AppPwaSnippetsStateProvider>
+                </AppTreeOpsStateProvider>
+              </FileSessionProvider>
             </AppFileSessionStateProvider>
           </WorkspaceTabsProvider>
         </VaultProvider>

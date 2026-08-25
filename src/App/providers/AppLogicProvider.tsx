@@ -1,6 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
 import { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
-import { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppModalsProvider } from '@/App/providers/AppModalsProvider';
@@ -50,33 +49,6 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
       proceedWithoutStoredCreds: c.proceedWithoutStoredCreds,
       fileInputRef: c.fileInputRef,
       openSettingsWorkspaceTab: c.openSettingsWorkspaceTab,
-    }),
-    [c],
-  );
-
-  const fileSession = useMemo(
-    () => ({
-      currentFile: c.currentFile,
-      setCurrentFile: c.setCurrentFile,
-      editorContent: c.editorContent,
-      setEditorContent: c.setEditorContent,
-      editorContentRef: c.editorContentRef,
-      prevEditorContentRef: c.prevEditorContentRef,
-      currentFileRef: c.currentFileRef,
-      editedFileName: c.editedFileName,
-      setEditedFileName: c.setEditedFileName,
-      saveFile: c.saveFile,
-      isSaving: c.isSaving,
-      savingTabIds: c.savingTabIds,
-      editorType: c.editorType,
-      handleEditorTypeChange: c.handleEditorTypeChange,
-      isRefreshingFromDisk: c.isRefreshingFromDisk,
-      isPullingFromRemote: c.isPullingFromRemote,
-      refreshLocalFileFromDisk: c.refreshLocalFileFromDisk,
-      refreshRemoteFile: c.refreshRemoteFile,
-      handleRequestCloseEditor: c.handleRequestCloseEditor,
-      openAdvancedSearchFile: c.openAdvancedSearchFile,
-      encMdPrompt: c.encMdPrompt,
     }),
     [c],
   );
@@ -218,15 +190,13 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppBootstrapProvider logic={bootstrapLogic}>
-      <FileSessionProvider value={fileSession}>
-        <TreeOpsProvider value={treeOps}>
-          <AppModalsProvider value={modals}>
-            <AutoSaveProvider>
-              <AppShellMerge controller={c}>{children}</AppShellMerge>
-            </AutoSaveProvider>
-          </AppModalsProvider>
-        </TreeOpsProvider>
-      </FileSessionProvider>
+      <TreeOpsProvider value={treeOps}>
+        <AppModalsProvider value={modals}>
+          <AutoSaveProvider>
+            <AppShellMerge controller={c}>{children}</AppShellMerge>
+          </AutoSaveProvider>
+        </AppModalsProvider>
+      </TreeOpsProvider>
     </AppBootstrapProvider>
   );
 }

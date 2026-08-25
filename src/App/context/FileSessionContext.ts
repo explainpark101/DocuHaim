@@ -1,29 +1,40 @@
 import { createContext } from 'react';
 
-/** §5 file open/save / editor bridge. */
+/** §5 file open/save / editor bridge (owned by FileSessionProvider). */
 export type FileSessionValue = {
   currentFile: any;
   setCurrentFile: (...args: any[]) => any;
   editorContent: string;
   setEditorContent: (...args: any[]) => any;
   editorContentRef: { current: string };
-  /** Shared with AutoSave for recording line-diff / restore handoff. */
   prevEditorContentRef: { current: string };
   currentFileRef: { current: any };
   editedFileName: string;
   setEditedFileName: (name: string) => void;
   saveFile: (...args: any[]) => any;
   isSaving: boolean;
+  setIsSaving: (...args: any[]) => any;
   savingTabIds: string[];
+  setSavingTabIds: (...args: any[]) => any;
   editorType: string;
   handleEditorTypeChange: (...args: any[]) => any;
   isRefreshingFromDisk: boolean;
+  setIsRefreshingFromDisk: (...args: any[]) => any;
   isPullingFromRemote: boolean;
+  setIsPullingFromRemote: (...args: any[]) => any;
   refreshLocalFileFromDisk: (...args: any[]) => any;
   refreshRemoteFile: (...args: any[]) => any;
   handleRequestCloseEditor: (...args: any[]) => any;
   openAdvancedSearchFile: (...args: any[]) => any;
   encMdPrompt: any;
+  setEncMdPrompt: (...args: any[]) => any;
+  registerFileSessionActions: (actions: {
+    saveFile?: (...args: any[]) => any;
+    refreshLocalFileFromDisk?: (...args: any[]) => any;
+    refreshRemoteFile?: (...args: any[]) => any;
+    handleRequestCloseEditor?: (...args: any[]) => any;
+    openAdvancedSearchFile?: (...args: any[]) => any;
+  }) => void;
 };
 
 export const FileSessionContext = createContext<FileSessionValue | null>(null);

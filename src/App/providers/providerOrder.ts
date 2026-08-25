@@ -1,17 +1,10 @@
 /**
  * Domain provider dependency order (fixed — no reverse imports):
  *
- * Owned state (wrap AppLogic):
- *   AppBootstrapStateProvider → AppVaultStateProvider → WorkspaceTabsProvider
- *     → AppFileSessionStateProvider → AppTreeOpsStateProvider
- *     → AppPwaSnippetsStateProvider → RecordingProvider
- *
- * Fan-out inside AppLogic:
- *   AppBootstrapProvider → VaultProvider → FileSessionProvider → TreeOpsProvider
- *     → AppModalsProvider → AutoSaveProvider → AppShellView
- *
- * Existing app-wide contexts stay outside App/:
- *   AuthProvider, ActivityIndicatorProvider, Toast, AlertModal
+ *   AppBootstrapStateProvider → AppVaultStateProvider → VaultProvider
+ *     → WorkspaceTabsProvider → AppFileSessionStateProvider → FileSessionProvider
+ *     → AppTreeOpsStateProvider → AppPwaSnippetsStateProvider → RecordingProvider
+ *     → AppLogic (AppBootstrapProvider → TreeOpsProvider → AppModals → AutoSave)
  */
 export const APP_PROVIDER_ORDER = [
   'AppBootstrapStateProvider',
@@ -19,11 +12,11 @@ export const APP_PROVIDER_ORDER = [
   'VaultProvider',
   'WorkspaceTabsProvider',
   'AppFileSessionStateProvider',
+  'FileSessionProvider',
   'AppTreeOpsStateProvider',
   'AppPwaSnippetsStateProvider',
   'RecordingProvider',
   'AppBootstrapProvider',
-  'FileSessionProvider',
   'TreeOpsProvider',
   'AppModalsProvider',
   'AutoSaveProvider',

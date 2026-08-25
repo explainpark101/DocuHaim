@@ -9,6 +9,7 @@ import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import { useFileSession } from '@/App/hooks/useFileSession';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
@@ -429,6 +430,7 @@ export function useMainAppController() {
     isPullingFromRemote,
     setIsPullingFromRemote,
   } = useFileSessionOwned();
+  const fileSessionApi = useFileSession();
   const {
     selectedIds,
     setSelectedIds,
@@ -1231,10 +1233,7 @@ export function useMainAppController() {
     [activateWorkspaceTab],
   );
 
-  const handleEditorTypeChange = useCallback((next) => {
-    saveEditorType(next);
-    setEditorType(next);
-  }, []);
+  const handleEditorTypeChange = fileSessionApi.handleEditorTypeChange;
 
   useEffect(() => {
     s3TreeRef.current = s3Tree;
@@ -7272,6 +7271,23 @@ export function useMainAppController() {
       setIsPullingFromRemote(false);
     }
   };
+
+  useLayoutEffect(() => {
+    fileSessionApi.registerFileSessionActions({
+      saveFile,
+      refreshLocalFileFromDisk,
+      refreshRemoteFile,
+      handleRequestCloseEditor,
+      openAdvancedSearchFile,
+    });
+  }, [
+    fileSessionApi,
+    saveFile,
+    refreshLocalFileFromDisk,
+    refreshRemoteFile,
+    handleRequestCloseEditor,
+    openAdvancedSearchFile,
+  ]);
 
   const renameS3File = async (file, newName, contentOverride = null) => {
     const client = getS3Client();
