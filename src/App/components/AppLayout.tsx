@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
-import Sidebar from '@/components/Sidebar';
+import SidebarConnected from '@/App/components/SidebarConnected';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
 import DesktopTitlebar from '@/components/desktop/DesktopTitlebar';
@@ -21,7 +21,7 @@ import { treeHoverExpandSettingsToMs } from '@/utils/treeHoverExpandSettings';
 import { isEncMdPath } from '@/utils/encMd';
 import { STORAGE_MODE_WEBDAV, clearPlaintextWebdavConfig, hasEncryptedWebdavConfig, requiresEncryptedWebdavStorage, saveWebdavConfig } from '@/utils/storageSettings';
 import { basenameFromVaultPath } from '@/utils/localVaultReady';
-import { buildSessionTree, SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
+import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 import { getDesktopAppEntryLockModeSync, saveDesktopWebdavConfig } from '@/utils/desktopStrongholdSecrets';
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
@@ -447,54 +447,16 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               ) : null
             }
           >
-            <Sidebar
+            <SidebarConnected
               isMobileLayout={isMobile}
               fileTabContextMenuRef={fileTabContextMenuRef}
               appName={appName}
               onBrandClick={handleBrandClick}
-              onStorageModeChange={setStorageMode}
-              storageMode={storageMode}
-              s3Tree={s3Tree}
               s3Bucket={s3Creds.bucket}
-              localTree={localTree}
-              localRootHandle={localRootHandle}
-              localVaultFsPath={localVaultFsPath}
-              isLocalTreeLoading={isLocalTreeLoading}
-              localFolderLoadingPath={localFolderLoadingPath}
-              webdavTree={webdavTree}
-              webdavReady={webdavReady}
-              isWebdavTreeLoading={isWebdavTreeLoading}
-              webdavFolderLoadingPath={webdavFolderLoadingPath}
-              onLoadWebdavFolderChildren={loadWebdavFolderChildren}
-              onRefreshWebdav={refreshWebdavTree}
-              onLoadLocalFolderChildren={loadLocalFolderChildren}
-              onRefreshLocal={refreshLocalTree}
-              currentFile={currentFile}
-              selectedIds={selectedIds}
-              onSelectFile={handleTreeNodeSelect}
-              onClearSelection={() => setSelectedIds(new Set())}
-              onCreateItem={requestCreateItem}
-              onRequestUploadFile={requestUploadFile}
-              onRequestUploadFolder={requestUploadFolder}
-              onRequestMoveFolder={handleRequestMoveFolder}
-              onDropOnFolder={handleDropOnFolder}
-              onDragEndNode={handleDragEndNode}
-              dropTarget={dropTarget}
-              transferBusyItems={treeTransferBusy}
-              onOpenLocalFolder={openLocalFolder}
-              onSetDeleteTarget={setDeleteTarget}
-              onRequestEmptyTrash={(_node, storageType) => {
-                setEmptyTrashTarget({ storageType });
-              }}
               onOpenSettings={() => {
                 if (isMobile) setSidebarOpen(false);
                 openSettingsWorkspaceTab();
               }}
-              theme={theme}
-              onToggleTheme={() =>
-                setTheme(theme === 'dark' ? 'light' : 'dark')
-              }
-              onRenameItem={renameTreeItem}
               showHiddenFolders={showHiddenFolders}
               showTrashFolder={showTrashFolder}
               hideRecordingCompanions={hideRecordingCompanions}
@@ -502,12 +464,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               showTreeModifiedDate={showTreeModifiedDate}
               hoverExpandDelayMs={treeHoverExpandSettingsToMs(treeHoverExpandSettings)}
               onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
-              deletingFolderPath={deletingFolderPath}
-              isDeletingFolder={isDeletingFolder}
               expandPathsRef={expandPathsRef}
-              onRefreshS3={loadS3Files}
-              onDownloadNode={handleDownloadNode}
-              onDuplicateNode={handleDuplicateNode}
               onRequestMoveFile={handleRequestMoveFileFromSidebar}
               onOpenInNewWindow={handleOpenInNewWindow}
               onShareToChatWithMyself={handleShareNodeToChatWithMyself}
@@ -519,8 +476,6 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               chatSurfaceActive={chatSurfaceActive}
               chatAttachDropHost={chatAttachDropHost}
               onDropToChatAttach={handleDropToChatAttach}
-              sessionWorkspace={sessionWorkspace}
-              sessionTree={sessionWorkspace ? buildSessionTree(sessionWorkspace) : []}
               onCloseSessionWorkspace={closeSessionWorkspace}
             />
           </ResizableSidebarPanel>
