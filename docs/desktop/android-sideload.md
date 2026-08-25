@@ -43,7 +43,7 @@ bun run tauri:android:dev
 bun run tauri:android:build
 ```
 
-Project files live under [`src-tauri/gen/android/`](../../src-tauri/gen/android/). Intent filters for markdown are generated from [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) `bundle.fileAssociations` on build.
+Project files live under `src-tauri/gen/android/`. Intent filters for markdown are generated from [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) `bundle.fileAssociations` on build.
 
 ## Signing
 
