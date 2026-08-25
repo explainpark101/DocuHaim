@@ -6907,6 +6907,7 @@ function MainApp() {
 
       let nextEditorText = remoteText;
       let backupName = null;
+      let backupPath = null;
       if (merge.status === 'conflict') {
         const fileId = String(fileToRefresh.id || '');
         const lastSlash = fileId.lastIndexOf('/');
@@ -6918,7 +6919,8 @@ function MainApp() {
           disambiguator += 1;
           candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
         }
-        await backend.writeText(`${dirPrefix}${candidate}`, ours);
+        backupPath = `${dirPrefix}${candidate}`;
+        await backend.writeText(backupPath, ours);
         backupName = candidate;
         if (fileToRefresh.type === 's3') await loadS3Files();
         else await refreshWebdavTree();
@@ -6944,12 +6946,40 @@ function MainApp() {
 
       const active = getActiveFileTab(workspaceTabsRef.current);
       if (active) {
-        const nextTabs = patchFileTab(workspaceTabsRef.current, active.id, {
+        const tabPatch = {
           editorContent: nextEditorText,
-          size: remoteByteLength,
-        });
+          currentFile: {
+            ...active.currentFile,
+            content: remoteText,
+            size: remoteByteLength,
+          },
+        };
+        if (backupName) {
+          tabPatch.baselineContent = remoteText;
+        }
+        const nextTabs = patchFileTab(workspaceTabsRef.current, active.id, tabPatch);
         workspaceTabsRef.current = nextTabs;
         setWorkspaceTabs(nextTabs);
+      }
+
+      if (backupName && backupPath && workspaceTabsEnabledRef.current) {
+        const backupByteLength = new TextEncoder().encode(ours).length;
+        const backupFile = {
+          type: fileToRefresh.type,
+          id: backupPath,
+          name: backupName,
+          content: ours,
+          viewer,
+          size: backupByteLength,
+          lastModified: Date.now(),
+        };
+        const opened = commitOpenFile(backupFile, ours, {
+          activate: false,
+          baselineContent: ours,
+        });
+        if (opened) {
+          showToast({ message: `「${backupName}」 백업 탭 열림`, durationMs: 2200 });
+        }
       }
 
       if (backupName) {
