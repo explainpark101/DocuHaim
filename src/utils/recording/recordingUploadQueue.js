@@ -1,5 +1,5 @@
 import { runEncodeAndWritePipeline } from './recordingPipeline';
-import { putObject } from './s3Client';
+import { putObject } from '@/utils/s3Client';
 import {
   deleteRecordingById,
   getRecordingById,
