@@ -24,7 +24,12 @@ describe('Vault domain types', () => {
       s3Creds: { bucket: 'b' },
       localRootHandle: null,
       localVaultFsPath: '/tmp/vault',
-      webdavConfig: { endpoint: 'https://example.com', username: 'u' },
+      webdavConfig: {
+        endpoint: 'https://example.com',
+        username: 'u',
+        password: 'p',
+        basePath: '/',
+      },
     };
     for (const type of VAULT_PATH_STORAGE_TYPES) {
       expect(createStorageBackendForType(type, deps)).toBeTruthy();

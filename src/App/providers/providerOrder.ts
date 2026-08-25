@@ -1,10 +1,5 @@
 /**
- * Domain provider dependency order (fixed — no reverse imports):
- *
- *   AppBootstrapStateProvider → AppVaultStateProvider → VaultProvider
- *     → WorkspaceTabsProvider → AppFileSessionStateProvider → FileSessionProvider
- *     → AppTreeOpsStateProvider → AppPwaSnippetsStateProvider → RecordingProvider
- *     → AppLogic (AppBootstrapProvider → TreeOpsProvider → AppModals → AutoSave)
+ * Domain provider dependency order (fixed — no reverse imports).
  */
 export const APP_PROVIDER_ORDER = [
   'AppBootstrapStateProvider',
@@ -14,10 +9,10 @@ export const APP_PROVIDER_ORDER = [
   'AppFileSessionStateProvider',
   'FileSessionProvider',
   'AppTreeOpsStateProvider',
+  'TreeOpsProvider',
   'AppPwaSnippetsStateProvider',
   'RecordingProvider',
   'AppBootstrapProvider',
-  'TreeOpsProvider',
   'AppModalsProvider',
   'AutoSaveProvider',
 ] as const;

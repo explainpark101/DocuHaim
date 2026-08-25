@@ -6,6 +6,7 @@ import { VaultProvider } from '@/App/providers/VaultProvider';
 import { AppFileSessionStateProvider } from '@/App/providers/AppFileSessionStateProvider';
 import { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 import { AppTreeOpsStateProvider } from '@/App/providers/AppTreeOpsStateProvider';
+import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AppPwaSnippetsStateProvider } from '@/App/providers/AppPwaSnippetsStateProvider';
 import { RecordingProvider } from '@/App/providers/RecordingProvider';
 import { AppLogicProvider } from '@/App/providers/AppLogicProvider';
@@ -22,11 +23,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
             <AppFileSessionStateProvider>
               <FileSessionProvider>
                 <AppTreeOpsStateProvider>
-                  <AppPwaSnippetsStateProvider>
-                    <RecordingProvider>
-                      <AppLogicProvider>{children}</AppLogicProvider>
-                    </RecordingProvider>
-                  </AppPwaSnippetsStateProvider>
+                  <TreeOpsProvider>
+                    <AppPwaSnippetsStateProvider>
+                      <RecordingProvider>
+                        <AppLogicProvider>{children}</AppLogicProvider>
+                      </RecordingProvider>
+                    </AppPwaSnippetsStateProvider>
+                  </TreeOpsProvider>
                 </AppTreeOpsStateProvider>
               </FileSessionProvider>
             </AppFileSessionStateProvider>

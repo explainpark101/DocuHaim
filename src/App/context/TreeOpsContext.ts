@@ -40,6 +40,20 @@ export type TreeOpsValue = {
   moveModalSelectPath: any;
   setMoveModalSelectPath: (...args: any[]) => any;
   handleRequestMoveFolder: (...args: any[]) => any;
+  registerTreeOpsActions: (actions: Partial<{
+    requestCreateItem: (...args: any[]) => any;
+    requestNewFile: (...args: any[]) => any;
+    requestUploadFile: (...args: any[]) => any;
+    requestUploadFolder: (...args: any[]) => any;
+    handleTreeNodeSelect: (...args: any[]) => any;
+    handleDragEndNode: (...args: any[]) => any;
+    handleDropOnFolder: (...args: any[]) => any;
+    handleDownloadNode: (...args: any[]) => any;
+    handleDuplicateNode: (...args: any[]) => any;
+    renameTreeItem: (...args: any[]) => any;
+    settleTreeNameConflict: (...args: any[]) => any;
+    handleRequestMoveFolder: (...args: any[]) => any;
+  }>) => void;
 };
 
 export const TreeOpsContext = createContext<TreeOpsValue | null>(null);

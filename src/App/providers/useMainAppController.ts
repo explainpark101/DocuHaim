@@ -11,6 +11,7 @@ import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
+import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
 import { useNavigate, useLocation } from 'react-router';
@@ -467,6 +468,7 @@ export function useMainAppController() {
     treeTransferBusy,
     setTreeTransferBusy,
   } = useTreeOpsOwned();
+  const treeOpsApi = useTreeOps();
   const {
     isRecording,
     audioLevel,
@@ -9680,6 +9682,37 @@ export function useMainAppController() {
     currentFile?.type === 'local' ||
     currentFile?.type === 'webdav' ||
     currentFile?.type === SESSION_STORAGE_TYPE;
+
+  useLayoutEffect(() => {
+    treeOpsApi.registerTreeOpsActions({
+      requestCreateItem,
+      requestNewFile,
+      requestUploadFile,
+      requestUploadFolder,
+      handleTreeNodeSelect,
+      handleDragEndNode,
+      handleDropOnFolder,
+      handleDownloadNode,
+      handleDuplicateNode,
+      renameTreeItem,
+      settleTreeNameConflict,
+      handleRequestMoveFolder,
+    });
+  }, [
+    treeOpsApi,
+    requestCreateItem,
+    requestNewFile,
+    requestUploadFile,
+    requestUploadFolder,
+    handleTreeNodeSelect,
+    handleDragEndNode,
+    handleDropOnFolder,
+    handleDownloadNode,
+    handleDuplicateNode,
+    renameTreeItem,
+    settleTreeNameConflict,
+    handleRequestMoveFolder,
+  ]);
 
   return {
     activateWorkspaceTab,

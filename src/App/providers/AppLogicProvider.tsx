@@ -1,6 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
 import { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
-import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppModalsProvider } from '@/App/providers/AppModalsProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
@@ -49,50 +48,6 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
       proceedWithoutStoredCreds: c.proceedWithoutStoredCreds,
       fileInputRef: c.fileInputRef,
       openSettingsWorkspaceTab: c.openSettingsWorkspaceTab,
-    }),
-    [c],
-  );
-
-  const treeOps = useMemo(
-    () => ({
-      selectedIds: c.selectedIds,
-      setSelectedIds: c.setSelectedIds,
-      deleteTarget: c.deleteTarget,
-      setDeleteTarget: c.setDeleteTarget,
-      emptyTrashTarget: c.emptyTrashTarget,
-      setEmptyTrashTarget: c.setEmptyTrashTarget,
-      createModalOpen: c.createModalOpen,
-      setCreateModalOpen: c.setCreateModalOpen,
-      createModalContext: c.createModalContext,
-      setCreateModalContext: c.setCreateModalContext,
-      requestCreateItem: c.requestCreateItem,
-      requestNewFile: c.requestNewFile,
-      requestUploadFile: c.requestUploadFile,
-      requestUploadFolder: c.requestUploadFolder,
-      handleTreeNodeSelect: c.handleTreeNodeSelect,
-      handleDragEndNode: c.handleDragEndNode,
-      handleDropOnFolder: c.handleDropOnFolder,
-      handleDownloadNode: c.handleDownloadNode,
-      handleDuplicateNode: c.handleDuplicateNode,
-      renameTreeItem: c.renameTreeItem,
-      dropTarget: c.dropTarget,
-      treeNameConflict: c.treeNameConflict,
-      settleTreeNameConflict: c.settleTreeNameConflict,
-      treeTransferBusy: c.treeTransferBusy,
-      isDeleting: c.isDeleting,
-      isDeletingFolder: c.isDeletingFolder,
-      deletingFolderPath: c.deletingFolderPath,
-      isEmptyingTrash: c.isEmptyingTrash,
-      isCreateSubmitting: c.isCreateSubmitting,
-      isMoveModalOpen: c.isMoveModalOpen,
-      setIsMoveModalOpen: c.setIsMoveModalOpen,
-      moveFileTarget: c.moveFileTarget,
-      setMoveFileTarget: c.setMoveFileTarget,
-      moveFolderTarget: c.moveFolderTarget,
-      setMoveFolderTarget: c.setMoveFolderTarget,
-      moveModalSelectPath: c.moveModalSelectPath,
-      setMoveModalSelectPath: c.setMoveModalSelectPath,
-      handleRequestMoveFolder: c.handleRequestMoveFolder,
     }),
     [c],
   );
@@ -190,13 +145,11 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppBootstrapProvider logic={bootstrapLogic}>
-      <TreeOpsProvider value={treeOps}>
-        <AppModalsProvider value={modals}>
-          <AutoSaveProvider>
-            <AppShellMerge controller={c}>{children}</AppShellMerge>
-          </AutoSaveProvider>
-        </AppModalsProvider>
-      </TreeOpsProvider>
+      <AppModalsProvider value={modals}>
+        <AutoSaveProvider>
+          <AppShellMerge controller={c}>{children}</AppShellMerge>
+        </AutoSaveProvider>
+      </AppModalsProvider>
     </AppBootstrapProvider>
   );
 }

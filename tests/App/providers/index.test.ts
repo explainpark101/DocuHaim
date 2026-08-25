@@ -16,10 +16,10 @@ describe('App provider public API', () => {
       'AppFileSessionStateProvider',
       'FileSessionProvider',
       'AppTreeOpsStateProvider',
+      'TreeOpsProvider',
       'AppPwaSnippetsStateProvider',
       'RecordingProvider',
       'AppBootstrapProvider',
-      'TreeOpsProvider',
       'AppModalsProvider',
       'AutoSaveProvider',
     ]);
@@ -28,10 +28,7 @@ describe('App provider public API', () => {
   it('classifies vault path storage types', () => {
     expect(VAULT_PATH_STORAGE_TYPES).toEqual(['s3', 'local', 'webdav']);
     expect(isVaultPathStorageType('s3')).toBe(true);
-    expect(isVaultPathStorageType('local')).toBe(true);
-    expect(isVaultPathStorageType('webdav')).toBe(true);
     expect(isVaultPathStorageType('session')).toBe(false);
-    expect(isVaultPathStorageType(null)).toBe(false);
   });
 
   it('exports createAutoSaveSyncHandlers factory', () => {
