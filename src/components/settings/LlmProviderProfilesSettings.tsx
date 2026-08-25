@@ -163,7 +163,8 @@ export default function LlmProviderProfilesSettings({
           <p className="text-xs text-gray-600 dark:text-odp-muted">
             Gemini와 OpenAI 호환 endpoint를 여러 개 저장할 수 있습니다. 실제 사용할 제공자는
             에디터 AI 도우미에서 고릅니다. API 키는 연결 정보와 함께 암호화되며, 이 화면에서 다시
-            표시되지 않습니다. 브라우저에서 호출하므로 커스텀 서버는 CORS가 허용되어야 합니다.
+            표시되지 않습니다. Gemini는 웹에서 same-origin 프록시(/api/gemini)를 사용합니다.
+            OpenAI 호환 endpoint는 CORS가 허용되어야 합니다.
           </p>
 
           {profiles.length === 0 ? (

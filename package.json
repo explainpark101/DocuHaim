@@ -17,6 +17,7 @@
     "build:image": "bun scripts/generate-og-image.ts",
     "llms": "bun scripts/generate-llms.ts",
     "preview": "VITE_BASE_PATH=/DocuHaim bun run build && VITE_BASE_PATH=/DocuHaim vite preview",
+    "start": "bun server/serve.mjs",
     "build:tauri": "bun run sync:tauri-version && bun run llms && cross-env VITE_ELECTRON=true VITE_BASE_PATH=/ NODE_OPTIONS=--max-old-space-size=8192 vite build",
     "tauri": "tauri",
     "tauri:dev": "bun run sync:tauri-version && tauri dev",

@@ -436,6 +436,14 @@ const CROSS_ORIGIN_ISOLATION_HEADERS = {
   'Cross-Origin-Embedder-Policy': 'credentialless',
 } as const;
 
+/** Same-origin proxy for Google Gemini API (browser CORS blocks direct calls). */
+const GEMINI_DEV_PROXY = {
+  target: 'https://generativelanguage.googleapis.com',
+  changeOrigin: true,
+  secure: true,
+  rewrite: (path: string) => path.replace(/^\/api\/gemini/, ''),
+} as const;
+
 export default defineConfig({
   // Avoid wiping Rust/Tauri compile logs when Vite restarts under `tauri dev`.
   clearScreen: false,
@@ -463,12 +471,18 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     headers: { ...CROSS_ORIGIN_ISOLATION_HEADERS },
+    proxy: {
+      '/api/gemini': GEMINI_DEV_PROXY,
+    },
     watch: {
       ignored: ['**/.vitepress/**', '**/src-tauri/**'],
     },
   },
   preview: {
     headers: { ...CROSS_ORIGIN_ISOLATION_HEADERS },
+    proxy: {
+      '/api/gemini': GEMINI_DEV_PROXY,
+    },
   },
   resolve: {
     alias: {

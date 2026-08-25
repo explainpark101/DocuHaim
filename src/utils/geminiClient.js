@@ -5,8 +5,7 @@ import {
   sleep,
 } from '@/utils/geminiError';
 import { buildLlmTransformPrompt } from '@/utils/llmTransformPrompt';
-
-const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+import { fetchGeminiApi, GEMINI_API_PATH_PREFIX } from '@/utils/geminiApiTransport';
 const MAX_RATE_LIMIT_RETRIES = 1;
 
 function parseModelId(name) {
@@ -33,13 +32,11 @@ export async function listGeminiModels(apiKey) {
   let pageToken;
 
   do {
-    const url = new URL(`${API_BASE}/models`);
-    url.searchParams.set('pageSize', '100');
-    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    const params = new URLSearchParams({ pageSize: '100' });
+    if (pageToken) params.set('pageToken', pageToken);
+    const path = `${GEMINI_API_PATH_PREFIX}/models?${params.toString()}`;
 
-    const res = await fetch(url.toString(), {
-      headers: { 'x-goog-api-key': apiKey },
-    });
+    const res = await fetchGeminiApi(path, { apiKey });
 
     if (!res.ok) {
       const detail = await readGeminiErrorDetail(res);
@@ -62,13 +59,10 @@ export async function listGeminiModels(apiKey) {
 }
 
 async function postGenerateContent(apiKey, modelId, parts) {
-  const url = `${API_BASE}/models/${encodeURIComponent(modelId)}:generateContent`;
-  const res = await fetch(url, {
+  const path = `${GEMINI_API_PATH_PREFIX}/models/${encodeURIComponent(modelId)}:generateContent`;
+  const res = await fetchGeminiApi(path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
+    apiKey,
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
