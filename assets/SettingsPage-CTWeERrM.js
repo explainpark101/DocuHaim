@@ -1,17 +1,17 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-DmaSghxP.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-D4hOzNKK.js","assets/vendor-aws-bxAUTq4h.js","assets/vendor-lucide-DyPOSMSJ.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix-BgY9OwZN.js","assets/vendor-zip-Bez6qchM.js","assets/index-Bh7eEuJ6.css"])))=>i.map(i=>d[i]);
-import { _ as or, __tla as __tla_0 } from "./vendor-md-editor-D4hOzNKK.js";
-import { r as a, j as e, f as lr, __tla as __tla_1 } from "./vendor-react-SY5QCjFA.js";
-import { dC as Qe, dD as ir, dE as cr, dF as xr, dG as br, as as ue, dH as ur, dI as pr, dJ as gr, dK as mr, dL as hr, dn as mt, d1 as ht, cZ as V, dM as ft, dN as yt, c_ as fr, c$ as yr, dO as kr, dP as jr, dQ as kt, dR as jt, dS as ze, dT as vr, dU as Nr, dV as Sr, dW as vt, dX as wr, dY as Cr, dZ as ne, d_ as ye, d$ as Nt, e0 as St, e1 as Er, e2 as Ir, a0 as Or, e3 as R, e4 as oe, e5 as be, e6 as je, e7 as Ar, e8 as Rt, ac as Re, e9 as wt, ea as Lr, eb as Pr, ec as _r, ed as Dr, ee as Tr, ef as zr, eg as Rr, eh as $r, ei as Fr, ej as Ct, ek as Br, z as Mr, el as Kr, em as Et, en as Wr, d2 as It, eo as Ot, ep as et, eq as Ur, er as Gr, es as Vr, et as Hr, eu as Xr, ev as Yr, ew as fe, ex as Jr, ey as qr, ez as Zr, eA as Qr, eB as At, eC as ea, eD as ta, eE as ra, eF as aa, eG as sa, eH as da, eI as $e, eJ as Lt, eK as Fe, eL as na, eM as oa, __tla as __tla_2 } from "./index-DmaSghxP.js";
-import { W as $t, ao as Ft, x as Bt, T as Me, a as le, b as ie, X as Mt, a1 as la, v as Ke, t as Kt, e as ia, G as ca } from "./vendor-lucide-DyPOSMSJ.js";
-import { T as xa } from "./TableStyleTemplateEditor-BJWR3_Ni.js";
-import { S as Pt } from "./SliderWithScrubInput-B28d-DVd.js";
-import { K as Wt, M as Ut, G as ve, H as ce, J as We, D as ba, g as ua, h as pa, i as ga, j as ma, k as ha } from "./vendor-radix-BgY9OwZN.js";
-import { G as fa, O as ya } from "./OpenAiCompatibleModelSelect-CMrQvRKw.js";
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-BFoGIzMz.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-D4hOzNKK.js","assets/vendor-aws-bxAUTq4h.js","assets/vendor-lucide-DyPOSMSJ.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix-BgY9OwZN.js","assets/vendor-zip-Bez6qchM.js","assets/index-Dp4c5d4f.css"])))=>i.map(i=>d[i]);
+import { _ as ir, __tla as __tla_0 } from "./vendor-md-editor-D4hOzNKK.js";
+import { r as a, j as e, f as cr, __tla as __tla_1 } from "./vendor-react-SY5QCjFA.js";
+import { dC as Qe, dD as xr, dE as br, dF as ur, dG as pr, as as xe, dH as gr, dI as mr, dJ as hr, dK as fr, dL as yr, dn as ft, d1 as yt, cZ as G, dM as kt, dN as jt, c_ as kr, c$ as jr, dO as vr, dP as Nr, dQ as vt, dR as Nt, dS as Re, dT as Sr, dU as wr, dV as Cr, dW as St, dX as Er, dY as Ir, dZ as de, d_ as he, d$ as wt, e0 as Ct, e1 as Or, e2 as Ar, a0 as Lr, e3 as $, e4 as ne, e5 as ce, e6 as ye, e7 as Pr, e8 as Ft, ac as $e, e9 as Et, ea as _r, eb as Dr, ec as zr, ed as Tr, ee as Rr, ef as $r, eg as Fr, eh as Br, ei as Mr, ej as It, ek as Kr, z as Wr, el as Ur, em as Ot, en as Gr, d2 as At, eo as Lt, ep as et, eq as Vr, er as Hr, es as Xr, et as Yr, eu as Jr, ev as qr, ew as me, ex as Zr, ey as Qr, ez as ea, eA as ta, eB as Pt, eC as ra, eD as aa, eE as sa, eF as da, eG as na, eH as oa, eI as Fe, eJ as _t, eK as Be, eL as la, eM as ia, __tla as __tla_2 } from "./index-BFoGIzMz.js";
+import { W as Bt, ao as Mt, x as Kt, T as Ke, a as oe, b as le, X as Wt, a1 as ca, v as We, t as Ut, e as xa, G as ba } from "./vendor-lucide-DyPOSMSJ.js";
+import { T as ua } from "./TableStyleTemplateEditor-CP4I5i5w.js";
+import { S as Dt } from "./SliderWithScrubInput-B28d-DVd.js";
+import { K as Gt, M as Vt, G as ke, H as ie, J as Ue, D as pa, g as ga, h as ma, i as ha, j as fa, k as ya } from "./vendor-radix-BgY9OwZN.js";
+import { G as ka, O as ja } from "./OpenAiCompatibleModelSelect-JPyfxl6w.js";
 import "./vendor-aws-bxAUTq4h.js";
 import "./vendor-motion-YU7ZxHqi.js";
 import "./vendor-zip-Bez6qchM.js";
 import "./index-CG4BSG42.js";
-let xs;
+let us;
 let __tla = Promise.all([
   (() => {
     try {
@@ -40,110 +40,110 @@ let __tla = Promise.all([
     const s = d / 1024;
     return s < 1024 ? `${s.toFixed(1)} MB` : `${(s / 1024).toFixed(1)} GB`;
   }
-  function ka(t) {
+  function va(t) {
     const d = String(t || "").toLowerCase(), s = d.lastIndexOf(".");
     return s <= 0 || s === d.length - 1 ? "(none)" : d.slice(s + 1);
   }
-  function ja(t) {
+  function Na(t) {
     const d = String(t || "").replace(/^\/+/, "");
     return d === Qe || d === `${Qe}/` || d.startsWith(`${Qe}/`);
   }
-  function Gt(t) {
+  function Ht(t) {
     var _a2;
     if (t.type === "file") return typeof t.size == "number" && Number.isFinite(t.size) ? t.size : 0;
     if (!((_a2 = t.children) == null ? void 0 : _a2.length)) return 0;
     let d = 0;
-    for (const s of t.children) d += Gt(s);
+    for (const s of t.children) d += Ht(s);
     return d;
   }
-  function Vt(t) {
+  function Xt(t) {
     var _a2;
     if (t.type === "file") return 1;
     if (!((_a2 = t.children) == null ? void 0 : _a2.length)) return 0;
     let d = 0;
-    for (const s of t.children) d += Vt(s);
+    for (const s of t.children) d += Xt(s);
     return d;
   }
-  function va(t) {
+  function Sa(t) {
     const d = Array.isArray(t) ? t : [];
-    let s = 0, u = 0, n = 0, i = 0, g = 0, k = 0, N = 0;
+    let s = 0, u = 0, n = 0, c = 0, m = 0, y = 0, N = 0;
     const v = /* @__PURE__ */ new Map(), O = (x) => {
       var _a2;
-      for (const m of x) {
-        if (m.type === "folder") {
-          u += 1, ((_a2 = m.children) == null ? void 0 : _a2.length) && O(m.children);
+      for (const p of x) {
+        if (p.type === "folder") {
+          u += 1, ((_a2 = p.children) == null ? void 0 : _a2.length) && O(p.children);
           continue;
         }
-        if (m.type !== "file") continue;
+        if (p.type !== "file") continue;
         s += 1;
-        const C = typeof m.size == "number" && Number.isFinite(m.size), A = C ? m.size : 0;
-        C ? A === 0 && (n += 1) : i += 1, g += A;
-        const o = m.path || m.name;
-        ja(o) && (k += A, N += 1);
-        const b = ka(m.name), l = v.get(b) ?? {
+        const w = typeof p.size == "number" && Number.isFinite(p.size), A = w ? p.size : 0;
+        w ? A === 0 && (n += 1) : c += 1, m += A;
+        const o = p.path || p.name;
+        Na(o) && (y += A, N += 1);
+        const b = va(p.name), l = v.get(b) ?? {
           count: 0,
           size: 0,
           files: []
         };
         l.count += 1, l.size += A, l.files.push({
           path: o,
-          name: m.name,
-          size: C ? A : null,
-          node: m
+          name: p.name,
+          size: w ? A : null,
+          node: p
         }), v.set(b, l);
       }
     };
     O(d);
-    const E = [
+    const C = [
       ...v.entries()
-    ].map(([x, { count: m, size: C, files: A }]) => ({
+    ].map(([x, { count: p, size: w, files: A }]) => ({
       ext: x,
       label: x === "(none)" ? "(\uD655\uC7A5\uC790 \uC5C6\uC74C)" : `.${x}`,
-      count: m,
-      size: C,
-      percent: g > 0 ? C / g * 100 : 0,
+      count: p,
+      size: w,
+      percent: m > 0 ? w / m * 100 : 0,
       files: [
         ...A
       ].sort((o, b) => (b.size ?? -1) - (o.size ?? -1) || o.path.localeCompare(b.path))
-    })).sort((x, m) => m.size - x.size || m.count - x.count || x.label.localeCompare(m.label)), I = [], p = (x, m, C) => {
+    })).sort((x, p) => p.size - x.size || p.count - x.count || x.label.localeCompare(p.label)), I = [], g = (x, p, w) => {
       var _a2;
       const A = x.filter((o) => o.type === "folder").map((o) => ({
         node: o,
-        size: Gt(o),
-        fileCount: Vt(o)
+        size: Ht(o),
+        fileCount: Xt(o)
       })).sort((o, b) => b.size - o.size || o.node.name.localeCompare(b.node.name));
       for (const { node: o, size: b, fileCount: l } of A) {
-        const j = o.path || `${o.name}/`, T = (o.children ?? []).some((z) => z.type === "folder");
+        const j = o.path || `${o.name}/`, T = (o.children ?? []).some((R) => R.type === "folder");
         I.push({
           path: j,
           name: o.name,
-          depth: m,
-          parentPath: C,
+          depth: p,
+          parentPath: w,
           hasChildFolders: T,
           size: b,
           fileCount: l,
-          percent: g > 0 ? b / g * 100 : 0
-        }), ((_a2 = o.children) == null ? void 0 : _a2.length) && p(o.children, m + 1, j);
+          percent: m > 0 ? b / m * 100 : 0
+        }), ((_a2 = o.children) == null ? void 0 : _a2.length) && g(o.children, p + 1, j);
       }
     };
-    return p(d, 0, null), {
+    return g(d, 0, null), {
       summary: {
-        totalSize: g,
+        totalSize: m,
         fileCount: s,
         folderCount: u,
         zeroByteCount: n,
-        unknownSizeCount: i,
-        indexSize: k,
+        unknownSizeCount: c,
+        indexSize: y,
         indexFileCount: N
       },
-      byExtension: E,
+      byExtension: C,
       folders: I
     };
   }
-  function Na(t) {
+  function wa(t) {
     return !t || typeof t != "string" ? "" : t.toLowerCase().replace(/\bctrl\b/g, "mod").replace(/\bmeta\b/g, "mod").trim();
   }
-  function Sa(t) {
+  function Ca(t) {
     const d = typeof navigator < "u" && /Mac|iPod|iPhone|iPad/.test(navigator.platform), s = [];
     (d ? t.metaKey : t.ctrlKey) && s.push("mod"), t.altKey && s.push("alt"), t.shiftKey && s.push("shift");
     const u = (t.key || "").toLowerCase();
@@ -154,7 +154,7 @@ let __tla = Promise.all([
     const s = typeof navigator < "u" && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? "Cmd" : "Ctrl";
     return t.toLowerCase().replace(/\bmod\b/g, s).split("+").map((u) => u.trim().charAt(0).toUpperCase() + u.trim().slice(1)).join(" + ");
   }
-  function wa() {
+  function Ea() {
     return {
       id: String(Date.now()) + "-" + Math.random().toString(36).slice(2),
       name: "",
@@ -163,81 +163,81 @@ let __tla = Promise.all([
       description: ""
     };
   }
-  function Ca({ value: t, onChange: d, onSave: s, isSaving: u = false, isLoaded: n = true }) {
-    const [i, g] = a.useState(() => t || {
+  function Ia({ value: t, onChange: d, onSave: s, isSaving: u = false, isLoaded: n = true }) {
+    const [c, m] = a.useState(() => t || {
       snippets: []
-    }), [k, N] = a.useState(null), [v, O] = a.useState(null);
+    }), [y, N] = a.useState(null), [v, O] = a.useState(null);
     a.useEffect(() => {
-      g(t || {
+      m(t || {
         snippets: []
       });
     }, [
       t
     ]), a.useEffect(() => {
-      if (!k) return;
+      if (!y) return;
       const l = (j) => {
         j.preventDefault(), j.stopPropagation();
-        const T = Sa(j);
+        const T = Ca(j);
         T && O(T);
       };
       return window.addEventListener("keydown", l, true), () => window.removeEventListener("keydown", l, true);
     }, [
-      k
+      y
     ]);
-    const E = (l) => {
+    const C = (l) => {
       const j = {
         snippets: l
       };
-      g(j), d == null ? void 0 : d(j);
+      m(j), d == null ? void 0 : d(j);
     }, I = () => {
-      E([
-        ...i.snippets || [],
-        wa()
+      C([
+        ...c.snippets || [],
+        Ea()
       ]);
-    }, p = (l, j, T) => {
-      const z = (i.snippets || []).map((D) => D.id === l ? {
-        ...D,
+    }, g = (l, j, T) => {
+      const R = (c.snippets || []).map((_) => _.id === l ? {
+        ..._,
         [j]: T
-      } : D);
-      E(z);
+      } : _);
+      C(R);
     }, x = (l) => {
-      const j = (i.snippets || []).filter((T) => T.id !== l);
-      E(j);
-    }, m = (l) => {
+      const j = (c.snippets || []).filter((T) => T.id !== l);
+      C(j);
+    }, p = (l) => {
       N(l), O(null);
-    }, C = () => {
+    }, w = () => {
       N(null), O(null);
     }, A = () => {
-      !k || !v || (p(k, "prefix", v), C());
+      !y || !v || (g(y, "prefix", v), w());
     }, o = () => {
-      const j = (i.snippets || []).map((L) => {
-        const $ = (L.prefix || "").trim(), te = Na($) || $;
+      const j = (c.snippets || []).map((P) => {
+        const M = (P.prefix || "").trim(), te = wa(M) || M;
         return {
-          ...L,
-          name: (L.name || "").trim(),
+          ...P,
+          name: (P.name || "").trim(),
           prefix: te,
-          body: (L.body || "").replace(/\r\n/g, `
+          body: (P.body || "").replace(/\r\n/g, `
 `),
-          description: (L.description || "").trim()
+          description: (P.description || "").trim()
         };
       });
-      if (j.find((L) => !L.prefix || !L.body)) {
+      if (j.find((P) => !P.prefix || !P.body)) {
         alert("\uAC01 \uC2A4\uB2C8\uD3AB\uC5D0\uB294 \uB2E8\uCD95\uD0A4(shortcut)\uC640 body\uAC00 \uBAA8\uB450 \uD544\uC694\uD569\uB2C8\uB2E4.");
         return;
       }
-      const z = /* @__PURE__ */ new Set();
-      for (const L of j) {
-        if (z.has(L.prefix)) {
-          alert(`\uC911\uBCF5\uB41C \uB2E8\uCD95\uD0A4 "${L.prefix}" \uC774(\uAC00) \uC788\uC2B5\uB2C8\uB2E4. \uAC01 \uB2E8\uCD95\uD0A4\uB294 \uACE0\uC720\uD574\uC57C \uD569\uB2C8\uB2E4.`);
+      const R = /* @__PURE__ */ new Set();
+      for (const P of j) {
+        if (R.has(P.prefix)) {
+          alert(`\uC911\uBCF5\uB41C \uB2E8\uCD95\uD0A4 "${P.prefix}" \uC774(\uAC00) \uC788\uC2B5\uB2C8\uB2E4. \uAC01 \uB2E8\uCD95\uD0A4\uB294 \uACE0\uC720\uD574\uC57C \uD569\uB2C8\uB2E4.`);
           return;
         }
-        z.add(L.prefix);
+        R.add(P.prefix);
       }
-      const D = {
+      const _ = {
         snippets: j
       };
-      g(D), d == null ? void 0 : d(D), s == null ? void 0 : s(D);
-    }, b = i.snippets || [];
+      m(_), d == null ? void 0 : d(_), s == null ? void 0 : s(_);
+    }, b = c.snippets || [];
     return e.jsxs("section", {
       className: "bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong space-y-4",
       children: [
@@ -308,7 +308,7 @@ let __tla = Promise.all([
                           type: "text",
                           className: "w-full border rounded px-2 py-1 text-xs bg-white dark:bg-odp-bgSofter border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong",
                           value: l.name || "",
-                          onChange: (j) => p(l.id, "name", j.target.value),
+                          onChange: (j) => g(l.id, "name", j.target.value),
                           placeholder: "\uC608: TODO \uBE14\uB85D"
                         })
                       ]
@@ -331,7 +331,7 @@ let __tla = Promise.all([
                             e.jsx("button", {
                               type: "button",
                               className: "shrink-0 px-2 py-1 text-[11px] rounded border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-focusBg transition",
-                              onClick: () => m(l.id),
+                              onClick: () => p(l.id),
                               children: "\uD0A4 \uC785\uB825"
                             })
                           ]
@@ -349,7 +349,7 @@ let __tla = Promise.all([
                     e.jsx("textarea", {
                       className: "w-full border rounded px-2 py-1 text-xs bg-white dark:bg-odp-bgSofter border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong resize-y min-h-[60px]",
                       value: l.body || "",
-                      onChange: (j) => p(l.id, "body", j.target.value),
+                      onChange: (j) => g(l.id, "body", j.target.value),
                       placeholder: "\uC608: - [ ] ${1:\uC791\uC5C5 \uB0B4\uC6A9}"
                     })
                   ]
@@ -368,7 +368,7 @@ let __tla = Promise.all([
                           type: "text",
                           className: "w-full border rounded px-2 py-1 text-xs bg-white dark:bg-odp-bgSofter border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong",
                           value: l.description || "",
-                          onChange: (j) => p(l.id, "description", j.target.value),
+                          onChange: (j) => g(l.id, "description", j.target.value),
                           placeholder: "\uC608: TODO \uCCB4\uD06C\uB9AC\uC2A4\uD2B8 \uC2A4\uB2C8\uD3AB"
                         })
                       ]
@@ -405,12 +405,12 @@ let __tla = Promise.all([
             })
           ]
         }),
-        k != null && e.jsx("div", {
+        y != null && e.jsx("div", {
           className: "fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4",
           role: "dialog",
           "aria-modal": "true",
           "aria-labelledby": "snippet-shortcut-modal-title",
-          onClick: C,
+          onClick: w,
           children: e.jsxs("div", {
             className: "bg-white dark:bg-odp-surface rounded-lg shadow-xl border border-gray-200 dark:border-odp-borderStrong p-5 w-full max-w-sm",
             onClick: (l) => l.stopPropagation(),
@@ -440,7 +440,7 @@ let __tla = Promise.all([
                 children: [
                   e.jsx("button", {
                     type: "button",
-                    onClick: C,
+                    onClick: w,
                     className: "px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-odp-borderStrong text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-focusBg transition",
                     children: "\uCDE8\uC18C"
                   }),
@@ -459,14 +459,14 @@ let __tla = Promise.all([
       ]
     });
   }
-  function Ea() {
-    const [t, d] = a.useState([]), [s, u] = a.useState(false), [n, i] = a.useState(false), [g, k] = a.useState(null), [N, v] = a.useState(false), [O, E] = a.useState(null), [I, p] = a.useState(null), x = a.useCallback(async () => {
-      k(null);
+  function Oa() {
+    const [t, d] = a.useState([]), [s, u] = a.useState(false), [n, c] = a.useState(false), [m, y] = a.useState(null), [N, v] = a.useState(false), [O, C] = a.useState(null), [I, g] = a.useState(null), x = a.useCallback(async () => {
+      y(null);
       try {
-        const o = await ir();
+        const o = await xr();
         d(o.files), u(true);
       } catch (o) {
-        k(o instanceof Error ? o.message : String(o)), u(true);
+        y(o instanceof Error ? o.message : String(o)), u(true);
       }
     }, []);
     a.useEffect(() => {
@@ -474,20 +474,20 @@ let __tla = Promise.all([
     }, [
       x
     ]);
-    const m = () => {
-      E(null), v(true);
-    }, C = (o) => {
-      E(o), v(true);
+    const p = () => {
+      C(null), v(true);
+    }, w = (o) => {
+      C(o), v(true);
     }, A = async () => {
       if (I) {
-        i(true), k(null);
+        c(true), y(null);
         try {
-          const o = await ur(I.id);
-          d(o.files), p(null);
+          const o = await gr(I.id);
+          d(o.files), g(null);
         } catch (o) {
-          k(o instanceof Error ? o.message : String(o));
+          y(o instanceof Error ? o.message : String(o));
         } finally {
-          i(false);
+          c(false);
         }
       }
     };
@@ -535,10 +535,10 @@ let __tla = Promise.all([
             "\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
           ]
         }),
-        g ? e.jsx("p", {
+        m ? e.jsx("p", {
           className: "mb-2 text-xs text-red-600 dark:text-red-400",
           role: "alert",
-          children: g
+          children: m
         }) : null,
         e.jsxs("div", {
           className: "mb-4",
@@ -549,7 +549,7 @@ let __tla = Promise.all([
             }),
             e.jsx("ul", {
               className: "space-y-1.5",
-              children: cr.map((o) => e.jsxs("li", {
+              children: br.map((o) => e.jsxs("li", {
                 className: "flex items-center justify-between rounded border border-gray-200 bg-white px-3 py-2 dark:border-odp-borderStrong dark:bg-odp-bgSoft",
                 children: [
                   e.jsxs("div", {
@@ -589,10 +589,10 @@ let __tla = Promise.all([
                 e.jsxs("button", {
                   type: "button",
                   disabled: !s || n,
-                  onClick: m,
+                  onClick: p,
                   className: "inline-flex items-center gap-1 rounded bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50",
                   children: [
-                    e.jsx($t, {
+                    e.jsx(Bt, {
                       className: "h-3.5 w-3.5",
                       "aria-hidden": true
                     }),
@@ -607,7 +607,7 @@ let __tla = Promise.all([
                   },
                   className: "inline-flex items-center gap-1 rounded border border-gray-300 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-odp-borderStrong dark:text-odp-fg dark:hover:bg-odp-focusBg",
                   children: [
-                    e.jsx(Ft, {
+                    e.jsx(Mt, {
                       className: "h-3.5 w-3.5",
                       "aria-hidden": true
                     }),
@@ -624,7 +624,7 @@ let __tla = Promise.all([
         }) : e.jsx("ul", {
           className: "space-y-2",
           children: t.map((o) => {
-            const b = xr(o.css);
+            const b = ur(o.css);
             return e.jsxs("li", {
               className: "flex flex-wrap items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-odp-borderStrong dark:bg-odp-bgSoft",
               children: [
@@ -657,10 +657,10 @@ let __tla = Promise.all([
                 e.jsxs("button", {
                   type: "button",
                   disabled: n,
-                  onClick: () => C(o),
+                  onClick: () => w(o),
                   className: "inline-flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-focusBg",
                   children: [
-                    e.jsx(Bt, {
+                    e.jsx(Kt, {
                       className: "h-3 w-3",
                       "aria-hidden": true
                     }),
@@ -670,10 +670,10 @@ let __tla = Promise.all([
                 e.jsxs("button", {
                   type: "button",
                   disabled: n,
-                  onClick: () => p(o),
+                  onClick: () => g(o),
                   className: "inline-flex items-center gap-1 rounded border border-red-200 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40",
                   children: [
-                    e.jsx(Me, {
+                    e.jsx(Ke, {
                       className: "h-3 w-3",
                       "aria-hidden": true
                     }),
@@ -687,17 +687,17 @@ let __tla = Promise.all([
           className: "text-xs text-gray-500 dark:text-odp-muted",
           children: "\uBD88\uB7EC\uC624\uB294 \uC911\u2026"
         }),
-        e.jsx(br, {
+        e.jsx(pr, {
           isOpen: N,
           initialFile: O,
           onClose: () => {
-            v(false), E(null);
+            v(false), C(null);
           },
           onSaved: () => {
             x();
           }
         }),
-        e.jsx(ue, {
+        e.jsx(xe, {
           isOpen: !!I,
           title: "\uC6F9\uD3F0\uD2B8 \uC0AD\uC81C",
           message: I ? `"${I.name}" (${I.filename}) \uD30C\uC77C\uC744 \uC0AD\uC81C\uD560\uAE4C\uC694\uAE4C\uC694?` : "",
@@ -707,19 +707,19 @@ let __tla = Promise.all([
           onConfirm: () => {
             A();
           },
-          onCancel: () => p(null)
+          onCancel: () => g(null)
         })
       ]
     });
   }
-  function Ia() {
-    const [t, d] = a.useState([]), [s, u] = a.useState(false), [n, i] = a.useState(false), [g, k] = a.useState(null), [N, v] = a.useState(null), [O, E] = a.useState(false), I = a.useCallback(async () => {
-      k(null);
+  function Aa() {
+    const [t, d] = a.useState([]), [s, u] = a.useState(false), [n, c] = a.useState(false), [m, y] = a.useState(null), [N, v] = a.useState(null), [O, C] = a.useState(false), I = a.useCallback(async () => {
+      y(null);
       try {
-        const x = await pr();
+        const x = await mr();
         d(x.templates), u(true);
       } catch (x) {
-        k(x instanceof Error ? x.message : String(x)), d(gr().templates), u(true);
+        y(x instanceof Error ? x.message : String(x)), d(hr().templates), u(true);
       }
     }, []);
     a.useEffect(() => {
@@ -727,17 +727,17 @@ let __tla = Promise.all([
     }, [
       I
     ]);
-    const p = async (x) => {
-      i(true), k(null);
+    const g = async (x) => {
+      c(true), y(null);
       try {
-        await mr({
-          ...hr,
+        await fr({
+          ...yr,
           templates: x
         }), d(x);
-      } catch (m) {
-        k(m instanceof Error ? m.message : String(m));
+      } catch (p) {
+        y(p instanceof Error ? p.message : String(p));
       } finally {
-        i(false);
+        c(false);
       }
     };
     return e.jsxs("div", {
@@ -761,9 +761,9 @@ let __tla = Promise.all([
             "\uC5D0 \uB3D9\uAE30\uD654\uB429\uB2C8\uB2E4."
           ]
         }),
-        g ? e.jsx("p", {
+        m ? e.jsx("p", {
           className: "mb-2 text-xs text-red-600",
-          children: g
+          children: m
         }) : null,
         e.jsxs("div", {
           className: "mb-3 flex gap-2",
@@ -783,7 +783,7 @@ let __tla = Promise.all([
                       bg: "#f5f5f5"
                     }
                   ]
-                }), E(true);
+                }), C(true);
               },
               className: "rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50",
               children: "\uC0C8 \uD15C\uD50C\uB9BF"
@@ -825,7 +825,7 @@ let __tla = Promise.all([
                       type: "button",
                       className: "rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-odp-surface",
                       onClick: () => {
-                        v(x), E(true);
+                        v(x), C(true);
                       },
                       children: "\uD3B8\uC9D1"
                     }),
@@ -833,7 +833,7 @@ let __tla = Promise.all([
                       type: "button",
                       className: "rounded px-2 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30",
                       onClick: () => {
-                        p(t.filter((m) => m.id !== x.id));
+                        g(t.filter((p) => p.id !== x.id));
                       },
                       children: "\uC0AD\uC81C"
                     })
@@ -847,30 +847,30 @@ let __tla = Promise.all([
             }) : null
           ]
         }),
-        e.jsx(xa, {
+        e.jsx(ua, {
           isOpen: O,
           template: N,
           onClose: () => {
-            E(false), v(null);
+            C(false), v(null);
           },
           onSave: (x) => {
-            const m = t.filter((C) => C.id !== (N == null ? void 0 : N.id) && C.id !== x.id);
-            p([
-              ...m,
+            const p = t.filter((w) => w.id !== (N == null ? void 0 : N.id) && w.id !== x.id);
+            g([
+              ...p,
               x
             ]).then(() => {
-              E(false), v(null);
+              C(false), v(null);
             });
           }
         })
       ]
     });
   }
-  const Oa = (t) => [
+  const La = (t) => [
     "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400",
     t ? "border-blue-500 bg-blue-500 shadow-sm dark:border-blue-500 dark:bg-blue-500" : "border-transparent bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong"
-  ].join(" "), Aa = "block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]";
-  function Be({ label: t, description: d, checked: s, onCheckedChange: u, ariaLabel: n }) {
+  ].join(" "), Pa = "block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]";
+  function Me({ label: t, description: d, checked: s, onCheckedChange: u, ariaLabel: n }) {
     return e.jsxs("div", {
       className: "flex items-start justify-between gap-3",
       children: [
@@ -887,23 +887,23 @@ let __tla = Promise.all([
             })
           ]
         }),
-        e.jsx(Wt, {
-          className: Oa(s),
+        e.jsx(Gt, {
+          className: La(s),
           checked: s,
           onCheckedChange: u,
           "aria-label": n,
-          children: e.jsx(Ut, {
-            className: Aa
+          children: e.jsx(Vt, {
+            className: Pa
           })
         })
       ]
     });
   }
-  function La() {
-    const [t, d] = a.useState(() => mt());
+  function _a() {
+    const [t, d] = a.useState(() => ft());
     return a.useEffect(() => {
-      const s = () => d(mt());
-      return s(), window.addEventListener(ht, s), () => window.removeEventListener(ht, s);
+      const s = () => d(ft());
+      return s(), window.addEventListener(yt, s), () => window.removeEventListener(yt, s);
     }, []), e.jsxs("div", {
       id: "settings-cover",
       tabIndex: -1,
@@ -931,11 +931,11 @@ let __tla = Promise.all([
             e.jsxs("div", {
               className: "space-y-2 rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderSoft dark:bg-odp-bgSoft/60",
               children: [
-                e.jsx(Be, {
+                e.jsx(Me, {
                   label: "\uAC00\uC6B4\uB370 \uC2A4\uB0C5",
                   description: "\uB4DC\uB798\uADF8 \uC2DC \uD398\uC774\uC9C0 \uAC00\uB85C\xB7\uC138\uB85C \uC911\uC559\uC120\uC5D0 \uB9DE\uCDA4",
                   checked: t.centerSnapEnabled,
-                  onCheckedChange: (s) => V("settings-cover-center-snap", s),
+                  onCheckedChange: (s) => G("settings-cover-center-snap", s),
                   ariaLabel: "\uAC00\uC6B4\uB370 \uC2A4\uB0C5"
                 }),
                 e.jsxs("label", {
@@ -945,15 +945,15 @@ let __tla = Promise.all([
                       className: "text-[10px] text-gray-400",
                       children: "\uD5C8\uC6A9 \uC624\uCC28"
                     }),
-                    e.jsx(Pt, {
+                    e.jsx(Dt, {
                       unit: "css",
                       suffix: "px",
-                      min: yt,
-                      max: ft,
+                      min: jt,
+                      max: kt,
                       step: 0.1,
                       value: t.centerSnapTolerancePx,
                       "aria-label": "\uAC00\uC6B4\uB370 \uC2A4\uB0C5 \uD5C8\uC6A9 \uC624\uCC28",
-                      onChange: (s) => fr(s)
+                      onChange: (s) => kr(s)
                     })
                   ]
                 })
@@ -962,11 +962,11 @@ let __tla = Promise.all([
             e.jsxs("div", {
               className: "space-y-2 rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderSoft dark:bg-odp-bgSoft/60",
               children: [
-                e.jsx(Be, {
+                e.jsx(Me, {
                   label: "\uAC1C\uCCB4 \uC2A4\uB0C5",
                   description: "\uB2E4\uB978 \uAC1C\uCCB4\uC758 \uD14C\uB450\uB9AC\xB7\uAC00\uC6B4\uB370\uC120\uC5D0 \uB9DE\uCDA4 (\uADF8\uB8F9\uC740 \uD1B5\uC9F8\uB85C)",
                   checked: t.objectSnapEnabled,
-                  onCheckedChange: (s) => V("settings-cover-object-snap", s),
+                  onCheckedChange: (s) => G("settings-cover-object-snap", s),
                   ariaLabel: "\uAC1C\uCCB4 \uC2A4\uB0C5"
                 }),
                 e.jsxs("label", {
@@ -976,15 +976,15 @@ let __tla = Promise.all([
                       className: "text-[10px] text-gray-400",
                       children: "\uD5C8\uC6A9 \uC624\uCC28"
                     }),
-                    e.jsx(Pt, {
+                    e.jsx(Dt, {
                       unit: "css",
                       suffix: "px",
-                      min: yt,
-                      max: ft,
+                      min: jt,
+                      max: kt,
                       step: 0.1,
                       value: t.objectSnapTolerancePx,
                       "aria-label": "\uAC1C\uCCB4 \uC2A4\uB0C5 \uD5C8\uC6A9 \uC624\uCC28",
-                      onChange: (s) => yr(s)
+                      onChange: (s) => jr(s)
                     })
                   ]
                 })
@@ -992,21 +992,21 @@ let __tla = Promise.all([
             }),
             e.jsx("div", {
               className: "rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderSoft dark:bg-odp-bgSoft/60",
-              children: e.jsx(Be, {
+              children: e.jsx(Me, {
                 label: "\uD14D\uC2A4\uD2B8 \uC0C1\uC790 \uD45C\uC2DC",
                 description: "\uC120\uD0DD\uACFC \uBB34\uAD00\uD558\uAC8C \uBAA8\uB4E0 \uD14D\uC2A4\uD2B8 \uC0C1\uC790\uB97C \uC605\uC740 \uBD89\uC740 \uC2E4\uC120\uC73C\uB85C \uD45C\uC2DC",
                 checked: t.textContainerOutlineEnabled,
-                onCheckedChange: (s) => V("settings-cover-text-outline", s),
+                onCheckedChange: (s) => G("settings-cover-text-outline", s),
                 ariaLabel: "\uD14D\uC2A4\uD2B8 \uC0C1\uC790 \uD45C\uC2DC"
               })
             }),
             e.jsx("div", {
               className: "rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderSoft dark:bg-odp-bgSoft/60",
-              children: e.jsx(Be, {
+              children: e.jsx(Me, {
                 label: "\uC0BD\uC785 \uBBF8\uB9AC\uBCF4\uAE30",
                 description: "\uD14D\uC2A4\uD2B8\xB7\uC774\uBBF8\uC9C0\xB7\uB3C4\uD615 \uC0BD\uC785 \uC2DC \uBC18\uD22C\uBA85 \uACE0\uC2A4\uD2B8 \uBBF8\uB9AC\uBCF4\uAE30",
                 checked: t.placePreviewEnabled,
-                onCheckedChange: (s) => V("settings-cover-place-preview", s),
+                onCheckedChange: (s) => G("settings-cover-place-preview", s),
                 ariaLabel: "\uC0BD\uC785 \uBBF8\uB9AC\uBCF4\uAE30"
               })
             }),
@@ -1014,7 +1014,7 @@ let __tla = Promise.all([
               className: "text-[11px] text-gray-500 dark:text-odp-muted",
               children: [
                 "\uC2A4\uB0C5 \uD5C8\uC6A9 \uC624\uCC28 \uAE30\uBCF8\uAC12 ",
-                kr,
+                vr,
                 "px \xB7 0.1px \uB2E8\uC704"
               ]
             })
@@ -1023,40 +1023,40 @@ let __tla = Promise.all([
       ]
     });
   }
-  function Pa() {
-    const [t, d] = a.useState(""), [s, u] = a.useState(""), [n, i] = a.useState(null), [g, k] = a.useState(false);
+  function Da() {
+    const [t, d] = a.useState(""), [s, u] = a.useState(""), [n, c] = a.useState(null), [m, y] = a.useState(false);
     a.useEffect(() => {
-      const p = () => {
-        const m = Sr();
-        d(m), u(m);
+      const g = () => {
+        const p = Cr();
+        d(p), u(p);
       };
-      p(), jr().then((m) => {
-        d(m.url), u(m.url);
+      g(), Nr().then((p) => {
+        d(p.url), u(p.url);
       });
-      const x = () => p();
-      return window.addEventListener(kt, x), () => window.removeEventListener(kt, x);
+      const x = () => g();
+      return window.addEventListener(vt, x), () => window.removeEventListener(vt, x);
     }, []);
-    const N = jt(t) !== s, v = jt(t), O = !!String(t || "").trim() && !v, E = async () => {
-      const p = String(t || "").trim();
-      if (p && !v) {
-        i("https:// \uB85C \uC2DC\uC791\uD558\uB294 Worker \uC8FC\uC18C\uB97C \uC785\uB825\uD558\uC138\uC694.");
+    const N = Nt(t) !== s, v = Nt(t), O = !!String(t || "").trim() && !v, C = async () => {
+      const g = String(t || "").trim();
+      if (g && !v) {
+        c("https:// \uB85C \uC2DC\uC791\uD558\uB294 Worker \uC8FC\uC18C\uB97C \uC785\uB825\uD558\uC138\uC694.");
         return;
       }
-      k(true), i(null);
+      y(true), c(null);
       try {
-        const x = await vt(p);
-        d(x), u(x), i(x ? `\uC800\uC7A5\uB428 \u2014 ${ze}\uC5D0 \uAE30\uB85D\uD588\uACE0, OG \uC694\uCCAD \uC2DC \uC774 Worker\uB97C \uAC00\uC7A5 \uBA3C\uC800 \uC0AC\uC6A9\uD569\uB2C8\uB2E4.` : `Worker URL\uC744 \uBE44\uC6E0\uC2B5\uB2C8\uB2E4 (${ze}).`);
+        const x = await St(g);
+        d(x), u(x), c(x ? `\uC800\uC7A5\uB428 \u2014 ${Re}\uC5D0 \uAE30\uB85D\uD588\uACE0, OG \uC694\uCCAD \uC2DC \uC774 Worker\uB97C \uAC00\uC7A5 \uBA3C\uC800 \uC0AC\uC6A9\uD569\uB2C8\uB2E4.` : `Worker URL\uC744 \uBE44\uC6E0\uC2B5\uB2C8\uB2E4 (${Re}).`);
       } finally {
-        k(false);
+        y(false);
       }
     }, I = async () => {
-      k(true), i(null);
+      y(true), c(null);
       try {
         d("");
-        const p = await vt("");
-        u(p), i(`Worker URL\uC744 \uBE44\uC6E0\uC2B5\uB2C8\uB2E4 (${ze}).`);
+        const g = await St("");
+        u(g), c(`Worker URL\uC744 \uBE44\uC6E0\uC2B5\uB2C8\uB2E4 (${Re}).`);
       } finally {
-        k(false);
+        y(false);
       }
     };
     return e.jsxs("div", {
@@ -1084,7 +1084,7 @@ let __tla = Promise.all([
             " ",
             e.jsx("code", {
               className: "rounded bg-gray-100 px-1 text-[11px] dark:bg-odp-bgSoft",
-              children: ze
+              children: Re
             }),
             "\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4. API:",
             " ",
@@ -1098,12 +1098,12 @@ let __tla = Promise.all([
           className: "mb-3",
           children: [
             e.jsx("a", {
-              href: vr,
+              href: Sr,
               target: "_blank",
               rel: "noreferrer noopener",
               className: "inline-block",
               children: e.jsx("img", {
-                src: Nr,
+                src: wr,
                 alt: "Deploy to Cloudflare Workers",
                 width: 184,
                 height: 39,
@@ -1137,12 +1137,12 @@ let __tla = Promise.all([
           placeholder: "https://your-worker.workers.dev",
           className: "w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fgStrong",
           value: t,
-          disabled: g,
-          onChange: (p) => {
-            d(p.target.value), i(null);
+          disabled: m,
+          onChange: (g) => {
+            d(g.target.value), c(null);
           },
-          onKeyDown: (p) => {
-            p.key === "Enter" && (p.preventDefault(), E());
+          onKeyDown: (g) => {
+            g.key === "Enter" && (g.preventDefault(), C());
           }
         }),
         O ? e.jsx("p", {
@@ -1155,18 +1155,18 @@ let __tla = Promise.all([
             e.jsx("button", {
               type: "button",
               onClick: () => {
-                E();
+                C();
               },
-              disabled: g || !N && !O,
+              disabled: m || !N && !O,
               className: "rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50",
-              children: g ? "\uC800\uC7A5 \uC911\u2026" : "\uC800\uC7A5"
+              children: m ? "\uC800\uC7A5 \uC911\u2026" : "\uC800\uC7A5"
             }),
             e.jsx("button", {
               type: "button",
               onClick: () => {
                 I();
               },
-              disabled: g || !s && !t,
+              disabled: m || !s && !t,
               className: "rounded px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-odp-muted dark:hover:bg-odp-focusBg",
               children: "\uC9C0\uC6B0\uAE30"
             }),
@@ -1189,21 +1189,21 @@ let __tla = Promise.all([
       ]
     });
   }
-  const _t = "size-3.5 rounded-full border border-gray-400 bg-white data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft", Dt = "relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white";
-  function _a(t) {
-    return t === ye ? "Google Gemini" : "OpenAI \uD638\uD658";
+  const zt = "size-3.5 rounded-full border border-gray-400 bg-white data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft", Tt = "relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white";
+  function za(t) {
+    return t === he ? "Google Gemini" : "OpenAI \uD638\uD658";
   }
-  function Da() {
+  function Ta() {
     return {
-      id: Ir(),
+      id: Ar(),
       name: "",
-      kind: ne,
+      kind: de,
       baseUrl: "",
       keyInput: "",
       hasStoredKey: false
     };
   }
-  function Ta(t) {
+  function Ra(t) {
     return {
       id: t.id,
       name: t.name,
@@ -1213,19 +1213,19 @@ let __tla = Promise.all([
       hasStoredKey: !!t.apiKey.trim()
     };
   }
-  function za({ profiles: t, onSaveProfiles: d }) {
-    const [s, u] = a.useState(true), [n, i] = a.useState(null), [g, k] = a.useState(null), [N, v] = a.useState(null), [O, E] = a.useState(0), I = a.useMemo(() => g ? t.find((b) => b.id === g) ?? null : null, [
-      g,
+  function $a({ profiles: t, onSaveProfiles: d }) {
+    const [s, u] = a.useState(true), [n, c] = a.useState(null), [m, y] = a.useState(null), [N, v] = a.useState(null), [O, C] = a.useState(0), I = a.useMemo(() => m ? t.find((b) => b.id === m) ?? null : null, [
+      m,
       t
-    ]), p = n ? wr(n.id, n.kind) || Cr(n.kind) : "", x = () => {
-      k(null), i(Da());
-    }, m = (b) => {
-      k(b.id), i(Ta(b));
-    }, C = () => {
-      i(null), k(null);
+    ]), g = n ? Er(n.id, n.kind) || Ir(n.kind) : "", x = () => {
+      y(null), c(Ta());
+    }, p = (b) => {
+      y(b.id), c(Ra(b));
+    }, w = () => {
+      c(null), y(null);
     }, A = () => {
       if (!n) return;
-      const b = Er({
+      const b = Or({
         name: n.name,
         kind: n.kind,
         baseUrl: n.baseUrl,
@@ -1240,17 +1240,17 @@ let __tla = Promise.all([
         id: n.id,
         name: n.name.trim(),
         kind: n.kind,
-        baseUrl: n.kind === ne ? St(n.baseUrl) : "",
+        baseUrl: n.kind === de ? Ct(n.baseUrl) : "",
         apiKey: l
-      }, z = t.some((D) => D.id === j.id) ? t.map((D) => D.id === j.id ? j : D) : [
+      }, R = t.some((_) => _.id === j.id) ? t.map((_) => _.id === j.id ? j : _) : [
         ...t,
         j
       ];
-      d(z), C();
+      d(R), w();
     }, o = () => {
       if (!N) return;
       const b = t.filter((l) => l.id !== N.id);
-      d(b), (n == null ? void 0 : n.id) === N.id && C(), v(null);
+      d(b), (n == null ? void 0 : n.id) === N.id && w(), v(null);
     };
     return e.jsxs("div", {
       id: "settings-llm-providers",
@@ -1263,10 +1263,10 @@ let __tla = Promise.all([
           className: "flex w-full items-center gap-2 text-left",
           "aria-expanded": s,
           children: [
-            s ? e.jsx(le, {
+            s ? e.jsx(oe, {
               size: 16,
               className: "shrink-0 text-gray-500 dark:text-odp-muted"
-            }) : e.jsx(ie, {
+            }) : e.jsx(le, {
               size: 16,
               className: "shrink-0 text-gray-500 dark:text-odp-muted"
             }),
@@ -1300,8 +1300,8 @@ let __tla = Promise.all([
                       e.jsxs("div", {
                         className: "truncate text-[11px] text-gray-500 dark:text-odp-muted",
                         children: [
-                          _a(b.kind),
-                          b.kind === ne && b.baseUrl ? ` \xB7 ${b.baseUrl}` : ""
+                          za(b.kind),
+                          b.kind === de && b.baseUrl ? ` \xB7 ${b.baseUrl}` : ""
                         ]
                       })
                     ]
@@ -1311,10 +1311,10 @@ let __tla = Promise.all([
                     children: [
                       e.jsxs("button", {
                         type: "button",
-                        onClick: () => m(b),
+                        onClick: () => p(b),
                         className: "inline-flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-focusBg",
                         children: [
-                          e.jsx(Bt, {
+                          e.jsx(Kt, {
                             className: "h-3 w-3",
                             "aria-hidden": true
                           }),
@@ -1326,7 +1326,7 @@ let __tla = Promise.all([
                         onClick: () => v(b),
                         className: "inline-flex items-center gap-1 rounded border border-red-200 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40",
                         children: [
-                          e.jsx(Me, {
+                          e.jsx(Ke, {
                             className: "h-3 w-3",
                             "aria-hidden": true
                           }),
@@ -1343,7 +1343,7 @@ let __tla = Promise.all([
               children: [
                 e.jsx("p", {
                   className: "text-xs font-semibold text-gray-700 dark:text-odp-fgStrong",
-                  children: g ? "\uC81C\uACF5\uC790 \uD3B8\uC9D1" : "\uC81C\uACF5\uC790 \uCD94\uAC00"
+                  children: m ? "\uC81C\uACF5\uC790 \uD3B8\uC9D1" : "\uC81C\uACF5\uC790 \uCD94\uAC00"
                 }),
                 e.jsxs("div", {
                   children: [
@@ -1356,7 +1356,7 @@ let __tla = Promise.all([
                       autoComplete: "off",
                       className: "w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bg",
                       value: n.name,
-                      onChange: (b) => i((l) => l && {
+                      onChange: (b) => c((l) => l && {
                         ...l,
                         name: b.target.value
                       }),
@@ -1370,25 +1370,25 @@ let __tla = Promise.all([
                       className: "mb-1.5 text-xs font-semibold text-gray-600 dark:text-odp-muted",
                       children: "\uC885\uB958"
                     }),
-                    e.jsxs(ve, {
+                    e.jsxs(ke, {
                       className: "flex flex-wrap items-center gap-4",
                       value: n.kind,
                       onValueChange: (b) => {
-                        b !== ye && b !== ne || (i((l) => l && {
+                        b !== he && b !== de || (c((l) => l && {
                           ...l,
                           kind: b
-                        }), E((l) => l + 1));
+                        }), C((l) => l + 1));
                       },
                       "aria-label": "\uC81C\uACF5\uC790 \uC885\uB958",
                       children: [
                         e.jsxs("label", {
                           className: "flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg",
                           children: [
-                            e.jsx(ce, {
-                              value: ye,
-                              className: _t,
-                              children: e.jsx(We, {
-                                className: Dt
+                            e.jsx(ie, {
+                              value: he,
+                              className: zt,
+                              children: e.jsx(Ue, {
+                                className: Tt
                               })
                             }),
                             e.jsx("span", {
@@ -1399,11 +1399,11 @@ let __tla = Promise.all([
                         e.jsxs("label", {
                           className: "flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg",
                           children: [
-                            e.jsx(ce, {
-                              value: ne,
-                              className: _t,
-                              children: e.jsx(We, {
-                                className: Dt
+                            e.jsx(ie, {
+                              value: de,
+                              className: zt,
+                              children: e.jsx(Ue, {
+                                className: Tt
                               })
                             }),
                             e.jsx("span", {
@@ -1415,7 +1415,7 @@ let __tla = Promise.all([
                     })
                   ]
                 }),
-                n.kind === ne ? e.jsxs("div", {
+                n.kind === de ? e.jsxs("div", {
                   children: [
                     e.jsx("label", {
                       className: "mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted",
@@ -1426,7 +1426,7 @@ let __tla = Promise.all([
                       autoComplete: "off",
                       className: "w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bg",
                       value: n.baseUrl,
-                      onChange: (b) => i((l) => l && {
+                      onChange: (b) => c((l) => l && {
                         ...l,
                         baseUrl: b.target.value
                       }),
@@ -1444,7 +1444,7 @@ let __tla = Promise.all([
                       className: "mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted",
                       children: [
                         "API Key",
-                        n.kind === ne ? " (\uC120\uD0DD)" : ""
+                        n.kind === de ? " (\uC120\uD0DD)" : ""
                       ]
                     }),
                     e.jsx("input", {
@@ -1452,11 +1452,11 @@ let __tla = Promise.all([
                       autoComplete: "off",
                       className: "w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bg",
                       value: n.keyInput,
-                      onChange: (b) => i((l) => l && {
+                      onChange: (b) => c((l) => l && {
                         ...l,
                         keyInput: b.target.value
                       }),
-                      placeholder: n.hasStoredKey ? "\uC800\uC7A5\uB428 \u2014 \uBCC0\uACBD \uC2DC \uC0C8 \uD0A4 \uC785\uB825" : n.kind === ye ? "AI Studio API \uD0A4 \uC785\uB825" : "Bearer \uD1A0\uD070 (\uB85C\uCEEC \uC11C\uBC84\uB294 \uBE44\uC6CC \uB450\uC138\uC694)"
+                      placeholder: n.hasStoredKey ? "\uC800\uC7A5\uB428 \u2014 \uBCC0\uACBD \uC2DC \uC0C8 \uD0A4 \uC785\uB825" : n.kind === he ? "AI Studio API \uD0A4 \uC785\uB825" : "Bearer \uD1A0\uD070 (\uB85C\uCEEC \uC11C\uBC84\uB294 \uBE44\uC6CC \uB450\uC138\uC694)"
                     })
                   ]
                 }),
@@ -1466,22 +1466,22 @@ let __tla = Promise.all([
                       className: "mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted",
                       children: "\uAE30\uBCF8 \uBAA8\uB378"
                     }),
-                    n.kind === ye ? e.jsx(fa, {
+                    n.kind === he ? e.jsx(ka, {
                       getGeminiApiKey: () => n.keyInput.trim() || (I == null ? void 0 : I.apiKey) || "",
                       profileId: n.id,
-                      value: p,
+                      value: g,
                       onChange: (b) => {
-                        Nt(n.id, b), E((l) => l + 1);
+                        wt(n.id, b), C((l) => l + 1);
                       },
                       autoLoad: n.hasStoredKey || !!n.keyInput.trim()
-                    }, `${n.id}-${O}`) : e.jsx(ya, {
+                    }, `${n.id}-${O}`) : e.jsx(ja, {
                       getBaseUrl: () => n.baseUrl,
                       getApiKey: () => n.keyInput.trim() || (I == null ? void 0 : I.apiKey) || "",
-                      value: p,
+                      value: g,
                       onChange: (b) => {
-                        Nt(n.id, b), E((l) => l + 1);
+                        wt(n.id, b), C((l) => l + 1);
                       },
-                      autoLoad: !!St(n.baseUrl)
+                      autoLoad: !!Ct(n.baseUrl)
                     }, `${n.id}-${O}`)
                   ]
                 }),
@@ -1490,7 +1490,7 @@ let __tla = Promise.all([
                   children: [
                     e.jsx("button", {
                       type: "button",
-                      onClick: C,
+                      onClick: w,
                       className: "rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 dark:text-odp-muted dark:hover:bg-odp-focusBg",
                       children: "\uCDE8\uC18C"
                     }),
@@ -1508,7 +1508,7 @@ let __tla = Promise.all([
               onClick: x,
               className: "inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs hover:bg-gray-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:hover:bg-odp-focusBg",
               children: [
-                e.jsx($t, {
+                e.jsx(Bt, {
                   className: "h-3.5 w-3.5",
                   "aria-hidden": true
                 }),
@@ -1523,7 +1523,7 @@ let __tla = Promise.all([
             "\uAC1C \uC800\uC7A5\uB428"
           ]
         }),
-        e.jsx(ue, {
+        e.jsx(xe, {
           isOpen: !!N,
           title: "\uC81C\uACF5\uC790 \uC0AD\uC81C",
           message: N ? `"${N.name}" \uC81C\uACF5\uC790\uB97C \uC0AD\uC81C\uD560\uAE4C\uC694?` : "",
@@ -1536,17 +1536,17 @@ let __tla = Promise.all([
       ]
     });
   }
-  function Ra({ open: t, extension: d, onOpenChange: s, onOpenFile: u }) {
-    const n = (d == null ? void 0 : d.files) ?? [], i = d ? `${d.label} \uD30C\uC77C` : "\uD30C\uC77C \uBAA9\uB85D";
-    return e.jsx(ba, {
+  function Fa({ open: t, extension: d, onOpenChange: s, onOpenFile: u }) {
+    const n = (d == null ? void 0 : d.files) ?? [], c = d ? `${d.label} \uD30C\uC77C` : "\uD30C\uC77C \uBAA9\uB85D";
+    return e.jsx(pa, {
       open: t,
       onOpenChange: s,
-      children: e.jsxs(ua, {
+      children: e.jsxs(ga, {
         children: [
-          e.jsx(pa, {
+          e.jsx(ma, {
             className: "fixed inset-0 z-100000 bg-black/40"
           }),
-          e.jsxs(ga, {
+          e.jsxs(ha, {
             className: "fixed top-1/2 left-1/2 z-100001 flex max-h-[min(90vh,40rem)] w-[min(92vw,36rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft",
             "aria-describedby": void 0,
             children: [
@@ -1556,9 +1556,9 @@ let __tla = Promise.all([
                   e.jsxs("div", {
                     className: "min-w-0",
                     children: [
-                      e.jsx(ma, {
+                      e.jsx(fa, {
                         className: "truncate text-sm font-semibold text-gray-800 dark:text-odp-fgStrong",
-                        children: i
+                        children: c
                       }),
                       d ? e.jsxs("p", {
                         className: "mt-0.5 text-[11px] text-gray-500 dark:text-odp-muted",
@@ -1570,13 +1570,13 @@ let __tla = Promise.all([
                       }) : null
                     ]
                   }),
-                  e.jsx(ha, {
+                  e.jsx(ya, {
                     asChild: true,
                     children: e.jsx("button", {
                       type: "button",
                       className: "inline-flex shrink-0 items-center justify-center rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-odp-focusBg dark:hover:text-odp-fg",
                       "aria-label": "\uB2EB\uAE30",
-                      children: e.jsx(Mt, {
+                      children: e.jsx(Wt, {
                         size: 16
                       })
                     })
@@ -1590,15 +1590,15 @@ let __tla = Promise.all([
                   children: "\uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
                 }) : e.jsx("ul", {
                   className: "divide-y divide-gray-100 dark:divide-odp-borderSoft",
-                  children: n.map((g) => e.jsx("li", {
+                  children: n.map((m) => e.jsx("li", {
                     children: e.jsxs("button", {
                       type: "button",
                       onClick: () => {
-                        u(g);
+                        u(m);
                       },
                       className: "flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition hover:bg-gray-50 dark:hover:bg-odp-focusBg/40",
                       children: [
-                        e.jsx(la, {
+                        e.jsx(ca, {
                           size: 14,
                           className: "shrink-0 text-gray-400 dark:text-odp-muted",
                           "aria-hidden": true
@@ -1608,22 +1608,22 @@ let __tla = Promise.all([
                           children: [
                             e.jsx("span", {
                               className: "block truncate text-xs font-medium text-gray-800 dark:text-odp-fgStrong",
-                              children: g.name
+                              children: m.name
                             }),
                             e.jsx("span", {
                               className: "mt-0.5 block truncate font-mono text-[10px] text-gray-500 dark:text-odp-muted",
-                              title: g.path,
-                              children: g.path
+                              title: m.path,
+                              children: m.path
                             })
                           ]
                         }),
                         e.jsx("span", {
                           className: "shrink-0 tabular-nums text-[11px] text-gray-600 dark:text-odp-muted",
-                          children: ee(g.size)
+                          children: ee(m.size)
                         })
                       ]
                     })
-                  }, g.path))
+                  }, m.path))
                 })
               })
             ]
@@ -1632,11 +1632,11 @@ let __tla = Promise.all([
       })
     });
   }
-  const $a = 160;
-  function Fa(t) {
+  const Ba = 160;
+  function Ma(t) {
     return t === "error" ? "text-red-600 dark:text-red-400" : t === "warn" ? "text-amber-700 dark:text-amber-300" : t === "ok" ? "text-emerald-700 dark:text-emerald-300" : "text-gray-600 dark:text-odp-muted";
   }
-  function Ht({ logs: t, building: d = false, progress: s = null, className: u = "" }) {
+  function Yt({ logs: t, building: d = false, progress: s = null, className: u = "" }) {
     const n = a.useRef(null);
     return a.useEffect(() => {
       var _a2;
@@ -1680,31 +1680,31 @@ let __tla = Promise.all([
         t.length === 0 ? e.jsx("p", {
           className: "px-2.5 py-1.5 font-mono text-[10px] text-gray-400 dark:text-odp-muted",
           children: "\uB300\uAE30 \uC911\u2026"
-        }) : e.jsx(Or, {
+        }) : e.jsx(Lr, {
           ref: n,
           className: "overscroll-contain px-2.5 py-1.5 font-mono text-[10px] leading-relaxed",
           style: {
-            height: $a
+            height: Ba
           },
           data: t,
           "aria-live": "polite",
           "aria-relevant": "additions",
-          children: (i) => e.jsxs("div", {
-            className: `whitespace-pre-wrap break-all ${Fa(i.level)}`,
+          children: (c) => e.jsxs("div", {
+            className: `whitespace-pre-wrap break-all ${Ma(c.level)}`,
             children: [
               e.jsx("span", {
                 className: "text-gray-400 dark:text-odp-muted",
-                children: Ba(i.at)
+                children: Ka(c.at)
               }),
               " ",
-              i.message
+              c.message
             ]
-          }, i.id)
+          }, c.id)
         })
       ]
     });
   }
-  function Ba(t) {
+  function Ka(t) {
     try {
       return new Date(t).toLocaleTimeString(void 0, {
         hour12: false,
@@ -1716,13 +1716,13 @@ let __tla = Promise.all([
       return "";
     }
   }
-  function Xt({ isOpen: t, info: d, onResume: s, onStartFresh: u, onCancel: n }) {
-    const i = (d == null ? void 0 : d.processedFileCount) ?? 0, g = (d == null ? void 0 : d.processedChatCount) ?? 0, k = i + g, N = (d == null ? void 0 : d.updatedAt) && d.updatedAt > 0 ? new Date(d.updatedAt).toLocaleString() : null;
-    return e.jsx(ue, {
+  function Jt({ isOpen: t, info: d, onResume: s, onStartFresh: u, onCancel: n }) {
+    const c = (d == null ? void 0 : d.processedFileCount) ?? 0, m = (d == null ? void 0 : d.processedChatCount) ?? 0, y = c + m, N = (d == null ? void 0 : d.updatedAt) && d.updatedAt > 0 ? new Date(d.updatedAt).toLocaleString() : null;
+    return e.jsx(xe, {
       isOpen: t,
       title: "\uC911\uC9C0\uB41C \uC0C9\uC778 \uCCB4\uD06C\uD3EC\uC778\uD2B8",
-      message: k > 0 ? `\uC774\uC804\uC5D0 \uC911\uC9C0\xB7\uC911\uB2E8\uB41C \uC0C9\uC778\uC774 \uC788\uC2B5\uB2C8\uB2E4.
-\uCC98\uB9AC\uB428: \uD30C\uC77C ${i} \xB7 \uCC44\uD305 day ${g}${N ? `
+      message: y > 0 ? `\uC774\uC804\uC5D0 \uC911\uC9C0\xB7\uC911\uB2E8\uB41C \uC0C9\uC778\uC774 \uC788\uC2B5\uB2C8\uB2E4.
+\uCC98\uB9AC\uB428: \uD30C\uC77C ${c} \xB7 \uCC44\uD305 day ${m}${N ? `
 \uC800\uC7A5 \uC2DC\uAC01: ${N}` : ""}
 
 \uC774\uC5B4\uC11C \uC9C4\uD589\uD560\uAE4C\uC694, \uC544\uB2C8\uBA74 \uCC98\uC74C\uBD80\uD130 \uB2E4\uC2DC \uB9CC\uB4E4\uAE4C\uC694?` : `\uC774\uC804\uC5D0 \uC911\uC9C0\xB7\uC911\uB2E8\uB41C \uC0C9\uC778 \uCCB4\uD06C\uD3EC\uC778\uD2B8\uAC00 \uC788\uC2B5\uB2C8\uB2E4.
@@ -1735,7 +1735,7 @@ let __tla = Promise.all([
       onCancel: n
     });
   }
-  const ke = [
+  const fe = [
     {
       t: 0,
       rgb: [
@@ -1752,22 +1752,22 @@ let __tla = Promise.all([
         0
       ]
     }
-  ], Ma = `linear-gradient(90deg, ${ke.map((t) => `rgb(${t.rgb.join(" ")}) ${(t.t * 100).toFixed(2)}%`).join(", ")})`;
-  function Tt(t) {
+  ], Wa = `linear-gradient(90deg, ${fe.map((t) => `rgb(${t.rgb.join(" ")}) ${(t.t * 100).toFixed(2)}%`).join(", ")})`;
+  function Rt(t) {
     return Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0;
   }
   function rt(t, d, s) {
     return Math.round(t + (d - t) * s);
   }
-  function Ka(t) {
-    const d = Tt(t / 100);
+  function Ua(t) {
+    const d = Rt(t / 100);
     let s = 0;
-    for (; s < ke.length - 2 && d > ke[s + 1].t; ) s += 1;
-    const u = ke[s], n = ke[s + 1], i = n.t - u.t || 1, g = Tt((d - u.t) / i), k = rt(u.rgb[0], n.rgb[0], g), N = rt(u.rgb[1], n.rgb[1], g), v = rt(u.rgb[2], n.rgb[2], g);
-    return `rgb(${k} ${N} ${v})`;
+    for (; s < fe.length - 2 && d > fe[s + 1].t; ) s += 1;
+    const u = fe[s], n = fe[s + 1], c = n.t - u.t || 1, m = Rt((d - u.t) / c), y = rt(u.rgb[0], n.rgb[0], m), N = rt(u.rgb[1], n.rgb[1], m), v = rt(u.rgb[2], n.rgb[2], m);
+    return `rgb(${y} ${N} ${v})`;
   }
-  function zt({ percent: t }) {
-    const d = Ka(t);
+  function $t({ percent: t }) {
+    const d = Ua(t);
     return e.jsxs("span", {
       className: "inline-flex items-center justify-end gap-1.5",
       children: [
@@ -1788,7 +1788,7 @@ let __tla = Promise.all([
       ]
     });
   }
-  function Wa() {
+  function Ga() {
     return e.jsxs("div", {
       className: "space-y-0.5",
       "aria-label": "\uC6A9\uB7C9 \uBE44\uC728 \uC0C9\uC0C1 \uBC94\uB840",
@@ -1796,7 +1796,7 @@ let __tla = Promise.all([
         e.jsx("div", {
           className: "h-1.5 w-full rounded-full border border-gray-200 dark:border-odp-borderStrong",
           style: {
-            backgroundImage: Ma
+            backgroundImage: Wa
           }
         }),
         e.jsxs("div", {
@@ -1813,16 +1813,16 @@ let __tla = Promise.all([
       ]
     });
   }
-  function Ua(t) {
-    return t === be ? "Local Haim" : t === je ? "WebDAV Haim" : t === oe ? "S3 Haim" : "\uC800\uC7A5\uC18C";
+  function Va(t) {
+    return t === ce ? "Local Haim" : t === ye ? "WebDAV Haim" : t === ne ? "S3 Haim" : "\uC800\uC7A5\uC18C";
   }
-  function Ga() {
+  function Ha() {
     return e.jsx("div", {
       className: "flex h-40 min-h-40 w-full items-center justify-center rounded-md border border-dashed border-gray-300 bg-white text-xs text-gray-500 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-muted md:h-full md:min-h-48",
       children: "\uADF8\uB798\uD504 \uC900\uBE44\uC911"
     });
   }
-  function Va({ depth: t, expandable: d, expanded: s, label: u }) {
+  function Xa({ depth: t, expandable: d, expanded: s, label: u }) {
     return e.jsxs("span", {
       className: "inline-flex min-w-0 items-center gap-0.5 font-mono text-[11px]",
       children: [
@@ -1836,9 +1836,9 @@ let __tla = Promise.all([
         d ? e.jsx("span", {
           className: "inline-flex size-4 shrink-0 items-center justify-center text-gray-500 dark:text-odp-muted",
           "aria-hidden": true,
-          children: s ? e.jsx(le, {
+          children: s ? e.jsx(oe, {
             size: 14
-          }) : e.jsx(ie, {
+          }) : e.jsx(le, {
             size: 14
           })
         }) : e.jsx("span", {
@@ -1861,10 +1861,10 @@ let __tla = Promise.all([
           e.jsx("thead", {
             className: "text-gray-600 dark:text-odp-muted",
             children: e.jsx("tr", {
-              children: t.map((i) => e.jsx("th", {
-                className: `sticky top-0 z-10 border-b border-gray-200 bg-gray-100 px-3 py-2 font-semibold whitespace-nowrap dark:border-odp-borderStrong dark:bg-odp-bgSoft ${i.align === "right" ? "text-right" : "text-left"} ${i.className ?? ""}`,
-                children: i.header
-              }, i.key))
+              children: t.map((c) => e.jsx("th", {
+                className: `sticky top-0 z-10 border-b border-gray-200 bg-gray-100 px-3 py-2 font-semibold whitespace-nowrap dark:border-odp-borderStrong dark:bg-odp-bgSoft ${c.align === "right" ? "text-right" : "text-left"} ${c.className ?? ""}`,
+                children: c.header
+              }, c.key))
             })
           }),
           e.jsx("tbody", {
@@ -1875,46 +1875,46 @@ let __tla = Promise.all([
                 className: "px-3 py-6 text-center text-gray-500 dark:text-odp-muted",
                 children: s
               })
-            }) : d.map((i, g) => {
+            }) : d.map((c, m) => {
               var _a2, _b, _c, _d;
-              const k = typeof i._onClick == "function", N = ((_a2 = i._tree) == null ? void 0 : _a2.expandable) ? i._tree.expanded : void 0, v = (_c = (_b = d[g - 1]) == null ? void 0 : _b._tree) == null ? void 0 : _c.depth, O = (_d = i._tree) == null ? void 0 : _d.depth, E = g > 0 && typeof v == "number" && typeof O == "number" && O < v, I = (p) => {
+              const y = typeof c._onClick == "function", N = ((_a2 = c._tree) == null ? void 0 : _a2.expandable) ? c._tree.expanded : void 0, v = (_c = (_b = d[m - 1]) == null ? void 0 : _b._tree) == null ? void 0 : _c.depth, O = (_d = c._tree) == null ? void 0 : _d.depth, C = m > 0 && typeof v == "number" && typeof O == "number" && O < v, I = (g) => {
                 var _a3;
-                k && (p.key !== "Enter" && p.key !== " " || (p.preventDefault(), (_a3 = i._onClick) == null ? void 0 : _a3.call(i)));
+                y && (g.key !== "Enter" && g.key !== " " || (g.preventDefault(), (_a3 = c._onClick) == null ? void 0 : _a3.call(c)));
               };
               return e.jsx("tr", {
-                onClick: k ? i._onClick : void 0,
+                onClick: y ? c._onClick : void 0,
                 onKeyDown: I,
-                tabIndex: k ? 0 : void 0,
+                tabIndex: y ? 0 : void 0,
                 "aria-expanded": N,
-                className: `hover:bg-gray-50 dark:hover:bg-odp-focusBg/40 ${k ? "cursor-pointer" : ""}`,
-                children: t.map((p) => {
-                  const x = p.tree ? i._tree : void 0;
+                className: `hover:bg-gray-50 dark:hover:bg-odp-focusBg/40 ${y ? "cursor-pointer" : ""}`,
+                children: t.map((g) => {
+                  const x = g.tree ? c._tree : void 0;
                   return e.jsx("td", {
-                    className: `px-3 py-1.5 text-gray-700 dark:text-odp-fg ${E ? "border-t-2 border-gray-300 dark:border-odp-borderStrong" : "border-t border-gray-100 dark:border-odp-borderSoft"} ${p.align === "right" ? "text-right tabular-nums" : ""} ${p.className ?? ""}`,
-                    children: x ? e.jsx(Va, {
+                    className: `px-3 py-1.5 text-gray-700 dark:text-odp-fg ${C ? "border-t-2 border-gray-300 dark:border-odp-borderStrong" : "border-t border-gray-100 dark:border-odp-borderSoft"} ${g.align === "right" ? "text-right tabular-nums" : ""} ${g.className ?? ""}`,
+                    children: x ? e.jsx(Xa, {
                       depth: x.depth,
                       expandable: x.expandable,
                       expanded: x.expanded,
                       label: x.label
-                    }) : i[p.key]
-                  }, p.key);
+                    }) : c[g.key]
+                  }, g.key);
                 })
-              }, i._key ?? g);
+              }, c._key ?? m);
             })
           }),
           n ? e.jsx("tfoot", {
             children: e.jsx("tr", {
-              children: t.map((i) => e.jsx("td", {
+              children: t.map((c) => e.jsx("td", {
                 className: "sticky bottom-0 border-t border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                children: i.key === n ? e.jsx(Wa, {}) : null
-              }, i.key))
+                children: c.key === n ? e.jsx(Ga, {}) : null
+              }, c.key))
             })
           }) : null
         ]
       })
     });
   }
-  function Ha(t, d) {
+  function Ya(t, d) {
     const s = /* @__PURE__ */ new Set(), u = [];
     for (const n of t) (n.parentPath == null || s.has(n.parentPath) && d.has(n.parentPath)) && (u.push(n), s.add(n.path));
     return u;
@@ -1929,10 +1929,10 @@ let __tla = Promise.all([
           "aria-expanded": d,
           className: "flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:text-odp-fgStrong dark:hover:bg-odp-focusBg/40",
           children: [
-            d ? e.jsx(le, {
+            d ? e.jsx(oe, {
               size: 14,
               className: "shrink-0 text-gray-500"
-            }) : e.jsx(ie, {
+            }) : e.jsx(le, {
               size: 14,
               className: "shrink-0 text-gray-500"
             }),
@@ -1946,7 +1946,7 @@ let __tla = Promise.all([
           children: [
             e.jsx("div", {
               className: "min-w-0",
-              children: e.jsx(Ga, {})
+              children: e.jsx(Ha, {})
             }),
             e.jsx("div", {
               className: "min-w-0",
@@ -1957,18 +1957,18 @@ let __tla = Promise.all([
       ]
     });
   }
-  function Xa({ storageMode: t = oe, onScanTree: d, canScan: s = true, onOpenFile: u }) {
-    const [n, i] = a.useState(false), [g, k] = a.useState(null), [N, v] = a.useState(null), [O, E] = a.useState(() => /* @__PURE__ */ new Set()), [I, p] = a.useState(null), [x, m] = a.useState({
+  function Ja({ storageMode: t = ne, onScanTree: d, canScan: s = true, onOpenFile: u }) {
+    const [n, c] = a.useState(false), [m, y] = a.useState(null), [N, v] = a.useState(null), [O, C] = a.useState(() => /* @__PURE__ */ new Set()), [I, g] = a.useState(null), [x, p] = a.useState({
       summary: true,
       extension: false,
       folder: false
-    }), [C, A] = a.useState(false), [o, b] = a.useState(() => R.getStatus()), [l, j] = a.useState(false), [T, z] = a.useState(null), [D, L] = a.useState(false);
-    a.useEffect(() => R.subscribe(() => {
-      b(R.getStatus());
+    }), [w, A] = a.useState(false), [o, b] = a.useState(() => $.getStatus()), [l, j] = a.useState(false), [T, R] = a.useState(null), [_, P] = a.useState(false);
+    a.useEffect(() => $.subscribe(() => {
+      b($.getStatus());
     }), []), a.useEffect(() => {
-      R.refreshCheckpointStatus();
+      $.refreshCheckpointStatus();
     }, []), a.useEffect(() => {
-      v(null), k(null), E(/* @__PURE__ */ new Set()), p(null), m({
+      v(null), y(null), C(/* @__PURE__ */ new Set()), g(null), p({
         summary: true,
         extension: false,
         folder: false
@@ -1976,80 +1976,80 @@ let __tla = Promise.all([
     }, [
       t
     ]);
-    const $ = (f) => {
-      m((B) => ({
-        ...B,
-        [f]: !B[f]
+    const M = (h) => {
+      p((K) => ({
+        ...K,
+        [h]: !K[h]
       }));
-    }, te = (f) => {
-      E((B) => {
-        const W = new Set(B);
-        return W.has(f) ? W.delete(f) : W.add(f), W;
+    }, te = (h) => {
+      C((K) => {
+        const W = new Set(K);
+        return W.has(h) ? W.delete(h) : W.add(h), W;
       });
-    }, G = async () => {
+    }, Y = async () => {
       if (!(!d || !s || n)) {
-        i(true), k(null);
+        c(true), y(null);
         try {
-          const f = await d();
-          v(va(f)), E(/* @__PURE__ */ new Set()), p(null);
-        } catch (f) {
-          const B = f instanceof Error ? f.message : String(f);
-          k(B || "\uC6A9\uB7C9 \uBD84\uC11D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."), v(null), E(/* @__PURE__ */ new Set()), p(null);
+          const h = await d();
+          v(Sa(h)), C(/* @__PURE__ */ new Set()), g(null);
+        } catch (h) {
+          const K = h instanceof Error ? h.message : String(h);
+          y(K || "\uC6A9\uB7C9 \uBD84\uC11D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."), v(null), C(/* @__PURE__ */ new Set()), g(null);
         } finally {
-          i(false);
+          c(false);
         }
       }
-    }, K = (f) => {
-      C || o.building || !o.enabled || !o.isolationReady || (A(true), R.rebuild({
-        resume: f
+    }, V = (h) => {
+      w || o.building || !o.enabled || !o.isolationReady || (A(true), $.rebuild({
+        resume: h
       }).finally(() => A(false)));
-    }, xe = () => {
-      C || o.building || !o.enabled || !o.isolationReady || (async () => {
-        const f = await R.getRebuildCheckpointInfo();
-        if (f) {
-          z(f), j(true);
+    }, H = () => {
+      w || o.building || !o.enabled || !o.isolationReady || (async () => {
+        const h = await $.getRebuildCheckpointInfo();
+        if (h) {
+          R(h), j(true);
           return;
         }
         if (o.hasIndex) {
-          L(true);
+          P(true);
           return;
         }
-        K(false);
+        V(false);
       })();
     }, re = () => {
-      R.cancelRebuild();
-    }, P = N == null ? void 0 : N.summary, ae = P && P.totalSize > 0 ? P.indexSize / P.totalSize * 100 : 0, Y = P ? [
+      $.cancelRebuild();
+    }, D = N == null ? void 0 : N.summary, ae = D && D.totalSize > 0 ? D.indexSize / D.totalSize * 100 : 0, X = D ? [
       {
         label: "\uCD1D \uC6A9\uB7C9",
-        value: ee(P.totalSize)
+        value: ee(D.totalSize)
       },
       {
         label: "\uC0C9\uC778 \uB370\uC774\uD130 (.advanced-search)",
-        value: `${ee(P.indexSize)} \xB7 ${P.indexFileCount.toLocaleString()}\uAC1C \uD30C\uC77C${P.totalSize > 0 ? ` \xB7 ${ae.toFixed(1)}%` : ""}`
+        value: `${ee(D.indexSize)} \xB7 ${D.indexFileCount.toLocaleString()}\uAC1C \uD30C\uC77C${D.totalSize > 0 ? ` \xB7 ${ae.toFixed(1)}%` : ""}`
       },
       {
         label: "\uC0C9\uC778 \uC81C\uC678 \uC6A9\uB7C9",
-        value: ee(Math.max(0, P.totalSize - P.indexSize))
+        value: ee(Math.max(0, D.totalSize - D.indexSize))
       },
       {
         label: "\uD30C\uC77C \uC218",
-        value: P.fileCount.toLocaleString()
+        value: D.fileCount.toLocaleString()
       },
       {
         label: "\uD3F4\uB354 \uC218",
-        value: P.folderCount.toLocaleString()
+        value: D.folderCount.toLocaleString()
       },
       {
         label: "0 byte \uD30C\uC77C",
-        value: P.zeroByteCount.toLocaleString()
+        value: D.zeroByteCount.toLocaleString()
       },
-      ...P.unknownSizeCount > 0 ? [
+      ...D.unknownSizeCount > 0 ? [
         {
           label: "\uD06C\uAE30 \uBBF8\uD655\uC778 \uD30C\uC77C",
-          value: P.unknownSizeCount.toLocaleString()
+          value: D.unknownSizeCount.toLocaleString()
         }
       ] : []
-    ] : [], se = Ha((N == null ? void 0 : N.folders) ?? [], O);
+    ] : [], se = Ya((N == null ? void 0 : N.folders) ?? [], O);
     return e.jsxs("div", {
       className: "space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface",
       children: [
@@ -2069,7 +2069,7 @@ let __tla = Promise.all([
                     "\uD604\uC7AC \uC120\uD0DD: ",
                     e.jsx("span", {
                       className: "font-semibold",
-                      children: Ua(t)
+                      children: Va(t)
                     }),
                     ". \uC804\uCCB4 \uD2B8\uB9AC\uB97C \uC2A4\uCE94\uD574 \uC6A9\uB7C9 \uC0AC\uC6A9\uB7C9\uC744 \uC9D1\uACC4\uD569\uB2C8\uB2E4."
                   ]
@@ -2081,18 +2081,18 @@ let __tla = Promise.all([
               children: [
                 e.jsxs("button", {
                   type: "button",
-                  onClick: xe,
-                  disabled: !s || C || o.building || !o.enabled || !o.isolationReady,
+                  onClick: H,
+                  disabled: !s || w || o.building || !o.enabled || !o.isolationReady,
                   className: "inline-flex items-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60",
                   title: o.enabled ? o.isolationReady ? "Advanced Search \uC5ED\uC0C9\uC778\uC744 \uBC31\uADF8\uB77C\uC6B4\uB4DC\uB85C \uC0DD\uC131\uD569\uB2C8\uB2E4" : "\uAC80\uC0C9 \uACA9\uB9AC(COOP/COEP)\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4. \uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD558\uC138\uC694" : "\uC124\uC815\uC5D0\uC11C \uC5ED\uC0C9\uC778\uC744 \uCF20 \uB4A4 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4",
                   children: [
-                    C || o.building ? e.jsx(Ke, {
+                    w || o.building ? e.jsx(We, {
                       size: 14,
                       className: "animate-spin"
-                    }) : e.jsx(Kt, {
+                    }) : e.jsx(Ut, {
                       size: 14
                     }),
-                    C || o.building ? typeof o.buildProgress == "number" ? `\uC0C9\uC778 \uC911 ${Math.round(o.buildProgress * 100)}%` : "\uC0C9\uC778 \uC911\u2026" : o.hasCheckpoint ? "\uC0C9\uC778 \uC7AC\uAC1C/\uB2E4\uC2DC \uC2DC\uC791" : o.hasIndex ? "\uC5ED\uC0C9\uC778 \uB2E4\uC2DC \uC0DD\uC131" : "\uC5ED\uC0C9\uC778 \uC0DD\uC131"
+                    w || o.building ? typeof o.buildProgress == "number" ? `\uC0C9\uC778 \uC911 ${Math.round(o.buildProgress * 100)}%` : "\uC0C9\uC778 \uC911\u2026" : o.hasCheckpoint ? "\uC0C9\uC778 \uC7AC\uAC1C/\uB2E4\uC2DC \uC2DC\uC791" : o.hasIndex ? "\uC5ED\uC0C9\uC778 \uB2E4\uC2DC \uC0DD\uC131" : "\uC5ED\uC0C9\uC778 \uC0DD\uC131"
                   ]
                 }),
                 o.building ? e.jsxs("button", {
@@ -2101,7 +2101,7 @@ let __tla = Promise.all([
                   className: "inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60",
                   title: "\uC0C9\uC778\uC744 \uC911\uC9C0\uD569\uB2C8\uB2E4. \uCCB4\uD06C\uD3EC\uC778\uD2B8\uB294 \uC720\uC9C0\uB418\uC5B4 \uC774\uC5B4\uC11C \uC7AC\uAC1C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
                   children: [
-                    e.jsx(ia, {
+                    e.jsx(xa, {
                       size: 14
                     }),
                     "\uC911\uC9C0"
@@ -2109,14 +2109,14 @@ let __tla = Promise.all([
                 }) : null,
                 e.jsxs("button", {
                   type: "button",
-                  onClick: G,
+                  onClick: Y,
                   disabled: !s || n || typeof d != "function",
                   className: "inline-flex items-center gap-1.5 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg dark:hover:bg-odp-focusBg",
                   children: [
-                    n ? e.jsx(Ke, {
+                    n ? e.jsx(We, {
                       size: 14,
                       className: "animate-spin"
-                    }) : e.jsx(Ft, {
+                    }) : e.jsx(Mt, {
                       size: 14
                     }),
                     n ? "\uBD84\uC11D \uC911\u2026" : N ? "\uB2E4\uC2DC \uBD84\uC11D" : "\uBD84\uC11D \uC2DC\uC791"
@@ -2130,38 +2130,38 @@ let __tla = Promise.all([
           className: "text-xs text-amber-700 dark:text-amber-300",
           children: "\uC120\uD0DD\uD55C \uC800\uC7A5\uC18C\uAC00 \uC544\uC9C1 \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC5F0\uACB0 \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694."
         }),
-        e.jsx(Ht, {
+        e.jsx(Yt, {
           logs: o.buildLogs || [],
           building: o.building,
           progress: o.buildProgress
         }),
-        e.jsx(Xt, {
+        e.jsx(Jt, {
           isOpen: l,
           info: T,
           onCancel: () => {
-            j(false), z(null);
+            j(false), R(null);
           },
           onResume: () => {
-            j(false), z(null), K(true);
+            j(false), R(null), V(true);
           },
           onStartFresh: () => {
-            j(false), z(null), K(false);
+            j(false), R(null), V(false);
           }
         }),
-        e.jsx(ue, {
-          isOpen: D,
+        e.jsx(xe, {
+          isOpen: _,
           title: "\uC5ED\uC0C9\uC778 \uB2E4\uC2DC \uC0DD\uC131",
           message: "\uAE30\uC874 \uC5ED\uC0C9\uC778\uC744 \uC9C0\uC6B0\uACE0 \uC804\uCCB4 \uBCFC\uD2B8\uB97C \uB2E4\uC2DC \uC0C9\uC778\uD560\uAE4C\uC694? \uBC31\uADF8\uB77C\uC6B4\uB4DC\uC5D0\uC11C \uC9C4\uD589\uB429\uB2C8\uB2E4.",
           confirmLabel: "\uB2E4\uC2DC \uC0DD\uC131",
           cancelLabel: "\uCDE8\uC18C",
           onConfirm: () => {
-            L(false), K(false);
+            P(false), V(false);
           },
-          onCancel: () => L(false)
+          onCancel: () => P(false)
         }),
-        g && e.jsx("p", {
+        m && e.jsx("p", {
           className: "whitespace-pre-wrap text-xs text-red-600 dark:text-red-400",
-          children: g
+          children: m
         }),
         e.jsxs("div", {
           className: "space-y-2",
@@ -2169,7 +2169,7 @@ let __tla = Promise.all([
             e.jsx(st, {
               title: "\uC6A9\uB7C9 \uC0AC\uC6A9\uB7C9",
               open: x.summary,
-              onToggle: () => $("summary"),
+              onToggle: () => M("summary"),
               children: e.jsx(at, {
                 columns: [
                   {
@@ -2182,9 +2182,9 @@ let __tla = Promise.all([
                     align: "right"
                   }
                 ],
-                rows: Y.map((f) => ({
-                  label: f.label,
-                  value: f.value
+                rows: X.map((h) => ({
+                  label: h.label,
+                  value: h.value
                 })),
                 emptyText: "\uBD84\uC11D\uC744 \uC2DC\uC791\uD558\uBA74 \uC6A9\uB7C9 \uC0AC\uC6A9\uB7C9\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4."
               })
@@ -2192,7 +2192,7 @@ let __tla = Promise.all([
             e.jsx(st, {
               title: "\uD30C\uC77C \uD615\uC2DD\uBCC4 \uC6A9\uB7C9 \uC0AC\uC6A9\uB7C9",
               open: x.extension,
-              onToggle: () => $("extension"),
+              onToggle: () => M("extension"),
               children: e.jsx(at, {
                 columns: [
                   {
@@ -2215,15 +2215,15 @@ let __tla = Promise.all([
                     align: "right"
                   }
                 ],
-                rows: ((N == null ? void 0 : N.byExtension) ?? []).map((f) => ({
-                  _key: f.ext,
-                  label: f.label,
-                  count: f.count.toLocaleString(),
-                  size: ee(f.size),
-                  percent: e.jsx(zt, {
-                    percent: f.percent
+                rows: ((N == null ? void 0 : N.byExtension) ?? []).map((h) => ({
+                  _key: h.ext,
+                  label: h.label,
+                  count: h.count.toLocaleString(),
+                  size: ee(h.size),
+                  percent: e.jsx($t, {
+                    percent: h.percent
                   }),
-                  _onClick: () => p(f)
+                  _onClick: () => g(h)
                 })),
                 emptyText: "\uBD84\uC11D\uC744 \uC2DC\uC791\uD558\uBA74 \uD615\uC2DD\uBCC4 \uC6A9\uB7C9\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4.",
                 legendColumnKey: "percent"
@@ -2232,7 +2232,7 @@ let __tla = Promise.all([
             e.jsx(st, {
               title: "\uD3F4\uB354\uBCC4 \uC6A9\uB7C9 (Tree Size)",
               open: x.folder,
-              onToggle: () => $("folder"),
+              onToggle: () => M("folder"),
               children: e.jsx(at, {
                 maxHeightClass: "max-h-80",
                 columns: [
@@ -2257,25 +2257,25 @@ let __tla = Promise.all([
                     align: "right"
                   }
                 ],
-                rows: se.map((f) => {
-                  const B = O.has(f.path);
+                rows: se.map((h) => {
+                  const K = O.has(h.path);
                   return {
-                    _key: f.path,
-                    fileCount: f.fileCount.toLocaleString(),
-                    size: ee(f.size),
-                    percent: e.jsx(zt, {
-                      percent: f.percent
+                    _key: h.path,
+                    fileCount: h.fileCount.toLocaleString(),
+                    size: ee(h.size),
+                    percent: e.jsx($t, {
+                      percent: h.percent
                     }),
-                    ...f.hasChildFolders ? {
-                      _onClick: () => te(f.path)
+                    ...h.hasChildFolders ? {
+                      _onClick: () => te(h.path)
                     } : {},
                     _tree: {
-                      depth: f.depth,
-                      expandable: f.hasChildFolders,
-                      expanded: B,
+                      depth: h.depth,
+                      expandable: h.hasChildFolders,
+                      expanded: K,
                       label: e.jsx("span", {
-                        title: f.path,
-                        children: f.name
+                        title: h.path,
+                        children: h.name
                       })
                     }
                   };
@@ -2286,146 +2286,146 @@ let __tla = Promise.all([
             })
           ]
         }),
-        e.jsx(Ra, {
+        e.jsx(Fa, {
           open: I != null,
           extension: I,
-          onOpenChange: (f) => {
-            f || p(null);
+          onOpenChange: (h) => {
+            h || g(null);
           },
-          onOpenFile: async (f) => {
-            p(null), await (u == null ? void 0 : u(f));
+          onOpenFile: async (h) => {
+            g(null), await (u == null ? void 0 : u(h));
           }
         })
       ]
     });
   }
-  const Ya = (t) => [
+  const qa = (t) => [
     "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400",
     t ? "border-blue-500 bg-blue-500 shadow-sm dark:border-blue-500 dark:bg-blue-500" : "border-transparent bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong"
-  ].join(" "), Ja = "block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]";
-  function qa(t) {
-    return t === be ? "Local Haim" : t === je ? "WebDAV Haim" : t === oe ? "S3 Haim" : "\uC800\uC7A5\uC18C";
+  ].join(" "), Za = "block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]";
+  function Qa(t) {
+    return t === ce ? "Local Haim" : t === ye ? "WebDAV Haim" : t === ne ? "S3 Haim" : "\uC800\uC7A5\uC18C";
   }
-  function Za({ storageMode: t, canScan: d = false, onScanTree: s, onReadText: u, onReadBytes: n, onDeletePaths: i }) {
-    const [g, k] = a.useState(() => Ar()), [N, v] = a.useState("notes"), [O, E] = a.useState("trash"), [I, p] = a.useState(false), [x, m] = a.useState(false), [C, A] = a.useState(null), [o, b] = a.useState(null), [l, j] = a.useState(""), [T, z] = a.useState([]), [D, L] = a.useState(() => /* @__PURE__ */ new Set()), [$, te] = a.useState([]), [G, K] = a.useState(() => /* @__PURE__ */ new Set()), [xe, re] = a.useState({}), [P, ae] = a.useState(false), [Y, se] = a.useState([]), [f, B] = a.useState(false), W = a.useRef(null);
-    a.useEffect(() => Rt((c, y) => {
-      c === "settings-orphan-image-auto" && k(y);
+  function es({ storageMode: t, canScan: d = false, onScanTree: s, onReadText: u, onReadBytes: n, onDeletePaths: c }) {
+    const [m, y] = a.useState(() => Pr()), [N, v] = a.useState("notes"), [O, C] = a.useState("trash"), [I, g] = a.useState(false), [x, p] = a.useState(false), [w, A] = a.useState(null), [o, b] = a.useState(null), [l, j] = a.useState(""), [T, R] = a.useState([]), [_, P] = a.useState(() => /* @__PURE__ */ new Set()), [M, te] = a.useState([]), [Y, V] = a.useState(() => /* @__PURE__ */ new Set()), [H, re] = a.useState({}), [D, ae] = a.useState(false), [X, se] = a.useState([]), [h, K] = a.useState(false), W = a.useRef(null);
+    a.useEffect(() => Ft((i, k) => {
+      i === "settings-orphan-image-auto" && y(k);
     }), []), a.useEffect(() => () => {
       var _a2;
       (_a2 = W.current) == null ? void 0 : _a2.abort();
     }, []);
-    const Z = I || x || f, Ne = async () => {
+    const Z = I || x || h, je = async () => {
       var _a2;
       if (!d || !s || !u || Z) return;
       (_a2 = W.current) == null ? void 0 : _a2.abort();
-      const c = new AbortController();
-      W.current = c, p(true), j(""), A(null);
+      const i = new AbortController();
+      W.current = i, g(true), j(""), A(null);
       try {
-        const y = await s();
-        if (c.signal.aborted) return;
-        const w = wt(y, N), _ = Lr(y), F = /* @__PURE__ */ new Set();
-        if (await Pr(_, 6, async (M) => {
+        const k = await s();
+        if (i.signal.aborted) return;
+        const E = Et(k, N), L = _r(k), z = /* @__PURE__ */ new Set();
+        if (await Dr(L, 6, async (B) => {
           try {
-            const X = await u(M);
-            for (const Ce of _r(X)) F.add(Ce);
+            const J = await u(B);
+            for (const Ve of zr(J)) z.add(Ve);
           } catch {
           }
         }, {
-          signal: c.signal,
-          onProgress: (M, X) => A({
-            done: M,
-            total: X
+          signal: i.signal,
+          onProgress: (B, J) => A({
+            done: B,
+            total: J
           })
-        }), c.signal.aborted) return;
-        const U = Dr({
-          images: w,
-          referencedPaths: F
+        }), i.signal.aborted) return;
+        const F = Tr({
+          images: E,
+          referencedPaths: z
         });
-        z(U), L(new Set(U.map((M) => M.path)));
-      } catch (y) {
-        if ((y == null ? void 0 : y.name) === "AbortError") return;
-        j(y instanceof Error ? y.message : String(y));
+        R(F), P(new Set(F.map((B) => B.path)));
+      } catch (k) {
+        if ((k == null ? void 0 : k.name) === "AbortError") return;
+        j(k instanceof Error ? k.message : String(k));
       } finally {
-        p(false), A(null);
+        g(false), A(null);
       }
-    }, Se = async () => {
+    }, ve = async () => {
       var _a2;
       if (!d || !s || !n || Z) return;
       (_a2 = W.current) == null ? void 0 : _a2.abort();
-      const c = new AbortController();
-      W.current = c, m(true), j(""), b(null);
+      const i = new AbortController();
+      W.current = i, p(true), j(""), b(null);
       try {
-        const y = await s();
-        if (c.signal.aborted) return;
-        const w = wt(y, N), _ = await Tr(w, n, {
-          signal: c.signal,
-          onProgress: (M, X) => b({
-            done: M,
-            total: X
+        const k = await s();
+        if (i.signal.aborted) return;
+        const E = Et(k, N), L = await Rr(E, n, {
+          signal: i.signal,
+          onProgress: (B, J) => b({
+            done: B,
+            total: J
           })
         });
-        if (c.signal.aborted) return;
-        te(_);
-        const F = {}, U = /* @__PURE__ */ new Set();
-        for (const M of _) {
-          F[M.hash] = M.keepPath;
-          for (const X of M.files) X.path !== M.keepPath && U.add(X.path);
+        if (i.signal.aborted) return;
+        te(L);
+        const z = {}, F = /* @__PURE__ */ new Set();
+        for (const B of L) {
+          z[B.hash] = B.keepPath;
+          for (const J of B.files) J.path !== B.keepPath && F.add(J.path);
         }
-        re(F), K(U);
-      } catch (y) {
-        if ((y == null ? void 0 : y.name) === "AbortError") return;
-        j(y instanceof Error ? y.message : String(y));
+        re(z), V(F);
+      } catch (k) {
+        if ((k == null ? void 0 : k.name) === "AbortError") return;
+        j(k instanceof Error ? k.message : String(k));
       } finally {
-        m(false), b(null);
+        p(false), b(null);
       }
-    }, pe = (c) => {
-      L((y) => {
-        const w = new Set(y);
-        return w.has(c) ? w.delete(c) : w.add(c), w;
+    }, Ne = (i) => {
+      P((k) => {
+        const E = new Set(k);
+        return E.has(i) ? E.delete(i) : E.add(i), E;
       });
-    }, Ue = (c, y) => {
-      const w = xe[y];
-      c !== w && K((_) => {
-        const F = new Set(_);
-        return F.has(c) ? F.delete(c) : F.add(c), F;
+    }, Se = (i, k) => {
+      const E = H[k];
+      i !== E && V((L) => {
+        const z = new Set(L);
+        return z.has(i) ? z.delete(i) : z.add(i), z;
       });
-    }, Ge = (c, y) => {
-      re((w) => ({
-        ...w,
-        [c]: y
-      })), K((w) => {
-        const _ = new Set(w), F = $.find((U) => U.hash === c);
-        if (!F) return _;
-        for (const U of F.files) U.path === y ? _.delete(U.path) : _.add(U.path);
-        return _;
+    }, be = (i, k) => {
+      re((E) => ({
+        ...E,
+        [i]: k
+      })), V((E) => {
+        const L = new Set(E), z = M.find((F) => F.hash === i);
+        if (!z) return L;
+        for (const F of z.files) F.path === k ? L.delete(F.path) : L.add(F.path);
+        return L;
       });
-    }, we = (c) => {
-      !c.length || !i || (se(c), ae(true));
-    }, Ve = async () => {
-      if (!(!i || !Y.length)) {
-        B(true), j("");
+    }, we = (i) => {
+      !i.length || !c || (se(i), ae(true));
+    }, Ge = async () => {
+      if (!(!c || !X.length)) {
+        K(true), j("");
         try {
-          await i(Y, O);
-          const c = new Set(Y);
-          z((y) => y.filter((w) => !c.has(w.path))), L((y) => {
-            const w = new Set(y);
-            for (const _ of c) w.delete(_);
-            return w;
-          }), te((y) => y.map((w) => ({
-            ...w,
-            files: w.files.filter((_) => !c.has(_.path))
-          })).filter((w) => w.files.length >= 2)), K((y) => {
-            const w = new Set(y);
-            for (const _ of c) w.delete(_);
-            return w;
+          await c(X, O);
+          const i = new Set(X);
+          R((k) => k.filter((E) => !i.has(E.path))), P((k) => {
+            const E = new Set(k);
+            for (const L of i) E.delete(L);
+            return E;
+          }), te((k) => k.map((E) => ({
+            ...E,
+            files: E.files.filter((L) => !i.has(L.path))
+          })).filter((E) => E.files.length >= 2)), V((k) => {
+            const E = new Set(k);
+            for (const L of i) E.delete(L);
+            return E;
           }), ae(false), se([]);
-        } catch (c) {
-          j(c instanceof Error ? c.message : String(c));
+        } catch (i) {
+          j(i instanceof Error ? i.message : String(i));
         } finally {
-          B(false);
+          K(false);
         }
       }
-    }, H = D.size, J = G.size, de = O === "hard";
+    }, Ce = _.size, Ee = Y.size, U = O === "hard";
     return e.jsxs("div", {
       id: "settings-unused-images",
       tabIndex: -1,
@@ -2440,7 +2440,7 @@ let __tla = Promise.all([
             e.jsxs("p", {
               className: "mt-1 text-xs leading-relaxed text-gray-600 dark:text-odp-muted",
               children: [
-                qa(t),
+                Qa(t),
                 "\uC758 wiki \uC774\uBBF8\uC9C0(",
                 e.jsx("code", {
                   className: "rounded bg-gray-200/80 px-1 dark:bg-odp-bgSoft",
@@ -2475,13 +2475,13 @@ let __tla = Promise.all([
                 })
               ]
             }),
-            e.jsx(Wt, {
-              className: Ya(g),
-              checked: g,
-              onCheckedChange: (c) => V("settings-orphan-image-auto", c),
+            e.jsx(Gt, {
+              className: qa(m),
+              checked: m,
+              onCheckedChange: (i) => G("settings-orphan-image-auto", i),
               "aria-label": "\uB178\uD2B8 \uC0AD\uC81C \uC2DC \uC774\uBBF8\uC9C0 \uC790\uB3D9 \uC815\uB9AC",
-              children: e.jsx(Ut, {
-                className: Ja
+              children: e.jsx(Vt, {
+                className: Za
               })
             })
           ]
@@ -2496,10 +2496,10 @@ let __tla = Promise.all([
                   className: "text-[11px] font-semibold text-gray-600 dark:text-odp-muted",
                   children: "\uB300\uC0C1"
                 }),
-                e.jsx(ve, {
+                e.jsx(ke, {
                   className: "flex flex-col gap-1.5",
                   value: N,
-                  onValueChange: (c) => v(c),
+                  onValueChange: (i) => v(i),
                   "aria-label": "\uC2A4\uCE94 \uB300\uC0C1",
                   children: [
                     {
@@ -2510,17 +2510,17 @@ let __tla = Promise.all([
                       value: "notes+chat",
                       label: "\uB178\uD2B8 + \uCC44\uD305"
                     }
-                  ].map((c) => {
-                    const y = N === c.value;
-                    return e.jsx(ce, {
-                      value: c.value,
+                  ].map((i) => {
+                    const k = N === i.value;
+                    return e.jsx(ie, {
+                      value: i.value,
                       className: [
                         "rounded-md border-2 px-2.5 py-2 text-left text-xs outline-none transition-all",
                         "focus-visible:ring-2 focus-visible:ring-blue-500/40",
-                        y ? "border-blue-600 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30" : "border-gray-300 opacity-70 dark:border-odp-borderStrong"
+                        k ? "border-blue-600 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30" : "border-gray-300 opacity-70 dark:border-odp-borderStrong"
                       ].join(" "),
-                      children: c.label
-                    }, c.value);
+                      children: i.label
+                    }, i.value);
                   })
                 })
               ]
@@ -2532,10 +2532,10 @@ let __tla = Promise.all([
                   className: "text-[11px] font-semibold text-gray-600 dark:text-odp-muted",
                   children: "\uC0AD\uC81C \uBC29\uC2DD"
                 }),
-                e.jsx(ve, {
+                e.jsx(ke, {
                   className: "flex flex-col gap-1.5",
                   value: O,
-                  onValueChange: (c) => E(c),
+                  onValueChange: (i) => C(i),
                   "aria-label": "\uC0AD\uC81C \uBC29\uC2DD",
                   children: [
                     {
@@ -2546,17 +2546,17 @@ let __tla = Promise.all([
                       value: "hard",
                       label: "\uC601\uAD6C \uC0AD\uC81C"
                     }
-                  ].map((c) => {
-                    const y = O === c.value;
-                    return e.jsx(ce, {
-                      value: c.value,
+                  ].map((i) => {
+                    const k = O === i.value;
+                    return e.jsx(ie, {
+                      value: i.value,
                       className: [
                         "rounded-md border-2 px-2.5 py-2 text-left text-xs outline-none transition-all",
                         "focus-visible:ring-2 focus-visible:ring-blue-500/40",
-                        y ? "border-blue-600 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30" : "border-gray-300 opacity-70 dark:border-odp-borderStrong"
+                        k ? "border-blue-600 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30" : "border-gray-300 opacity-70 dark:border-odp-borderStrong"
                       ].join(" "),
-                      children: c.label
-                    }, c.value);
+                      children: i.label
+                    }, i.value);
                   })
                 })
               ]
@@ -2566,35 +2566,35 @@ let __tla = Promise.all([
         e.jsxs("div", {
           className: "flex flex-wrap gap-2",
           children: [
-            e.jsxs(Re, {
+            e.jsxs($e, {
               type: "button",
               variant: "secondary",
               disabled: !d || Z,
               onClick: () => {
-                Ne();
+                je();
               },
               children: [
-                I ? e.jsx(Ke, {
+                I ? e.jsx(We, {
                   size: 14,
                   className: "animate-spin"
-                }) : e.jsx(Kt, {
+                }) : e.jsx(Ut, {
                   size: 14
                 }),
                 "\uBBF8\uC0AC\uC6A9 \uC2A4\uCE94"
               ]
             }),
-            e.jsxs(Re, {
+            e.jsxs($e, {
               type: "button",
               variant: "secondary",
               disabled: !d || Z,
               onClick: () => {
-                Se();
+                ve();
               },
               children: [
-                x ? e.jsx(Ke, {
+                x ? e.jsx(We, {
                   size: 14,
                   className: "animate-spin"
-                }) : e.jsx(ca, {
+                }) : e.jsx(ba, {
                   size: 14
                 }),
                 "\uC911\uBCF5 \uC2A4\uCE94"
@@ -2602,11 +2602,11 @@ let __tla = Promise.all([
             })
           ]
         }),
-        (C || o) && e.jsxs("p", {
+        (w || o) && e.jsxs("p", {
           className: "text-[11px] text-gray-500 dark:text-odp-muted",
           children: [
-            C ? `Markdown ${C.done}/${C.total}` : null,
-            C && o ? " \xB7 " : null,
+            w ? `Markdown ${w.done}/${w.total}` : null,
+            w && o ? " \xB7 " : null,
             o ? `\uD574\uC2DC ${o.done}/${o.total}` : null
           ]
         }),
@@ -2633,19 +2633,19 @@ let __tla = Promise.all([
                     ")"
                   ]
                 }),
-                e.jsxs(Re, {
+                e.jsxs($e, {
                   type: "button",
                   variant: "danger",
-                  disabled: H === 0 || Z,
+                  disabled: Ce === 0 || Z,
                   onClick: () => we([
-                    ...D
+                    ..._
                   ]),
                   children: [
-                    e.jsx(Me, {
+                    e.jsx(Ke, {
                       size: 14
                     }),
                     "\uC120\uD0DD \uC0AD\uC81C (",
-                    H,
+                    Ce,
                     ")"
                   ]
                 })
@@ -2653,31 +2653,31 @@ let __tla = Promise.all([
             }),
             e.jsx("ul", {
               className: "max-h-56 space-y-1 overflow-y-auto rounded-md border border-gray-200 bg-white p-2 dark:border-odp-borderSoft dark:bg-odp-bgSofter",
-              children: T.map((c) => e.jsx("li", {
+              children: T.map((i) => e.jsx("li", {
                 children: e.jsxs("label", {
                   className: "flex cursor-pointer items-start gap-2 text-xs text-gray-700 dark:text-odp-fg",
                   children: [
                     e.jsx("input", {
                       type: "checkbox",
                       className: "mt-0.5",
-                      checked: D.has(c.path),
-                      onChange: () => pe(c.path)
+                      checked: _.has(i.path),
+                      onChange: () => Ne(i.path)
                     }),
                     e.jsx("span", {
                       className: "min-w-0 flex-1 break-all",
-                      children: c.path
+                      children: i.path
                     }),
                     e.jsx("span", {
                       className: "shrink-0 tabular-nums text-gray-500 dark:text-odp-muted",
-                      children: ee(c.size)
+                      children: ee(i.size)
                     })
                   ]
                 })
-              }, c.path))
+              }, i.path))
             })
           ]
         }) : null,
-        $.length > 0 ? e.jsxs("div", {
+        M.length > 0 ? e.jsxs("div", {
           className: "space-y-3",
           children: [
             e.jsxs("div", {
@@ -2687,44 +2687,44 @@ let __tla = Promise.all([
                   className: "text-xs font-bold text-gray-700 dark:text-odp-fg",
                   children: [
                     "\uC911\uBCF5 (",
-                    $.length,
+                    M.length,
                     " \uADF8\uB8F9)"
                   ]
                 }),
-                e.jsxs(Re, {
+                e.jsxs($e, {
                   type: "button",
                   variant: "danger",
-                  disabled: J === 0 || Z,
+                  disabled: Ee === 0 || Z,
                   onClick: () => we([
-                    ...G
+                    ...Y
                   ]),
                   children: [
-                    e.jsx(Me, {
+                    e.jsx(Ke, {
                       size: 14
                     }),
                     "\uC120\uD0DD \uC0AD\uC81C (",
-                    J,
+                    Ee,
                     ")"
                   ]
                 })
               ]
             }),
-            $.map((c) => e.jsxs("div", {
+            M.map((i) => e.jsxs("div", {
               className: "space-y-1 rounded-md border border-gray-200 bg-white p-2 dark:border-odp-borderSoft dark:bg-odp-bgSofter",
               children: [
                 e.jsxs("div", {
                   className: "text-[10px] text-gray-500 dark:text-odp-muted",
                   children: [
-                    ee(c.size),
+                    ee(i.size),
                     " \xB7 ",
-                    c.hash.slice(0, 12),
+                    i.hash.slice(0, 12),
                     "\u2026"
                   ]
                 }),
                 e.jsx("ul", {
                   className: "space-y-1",
-                  children: c.files.map((y) => {
-                    const w = xe[c.hash] === y.path;
+                  children: i.files.map((k) => {
+                    const E = H[i.hash] === k.path;
                     return e.jsx("li", {
                       children: e.jsxs("label", {
                         className: "flex cursor-pointer items-start gap-2 text-xs text-gray-700 dark:text-odp-fg",
@@ -2732,84 +2732,84 @@ let __tla = Promise.all([
                           e.jsx("input", {
                             type: "checkbox",
                             className: "mt-0.5",
-                            checked: G.has(y.path),
-                            disabled: w,
-                            onChange: () => Ue(y.path, c.hash)
+                            checked: Y.has(k.path),
+                            disabled: E,
+                            onChange: () => Se(k.path, i.hash)
                           }),
                           e.jsxs("span", {
                             className: "min-w-0 flex-1 break-all",
                             children: [
-                              y.path,
-                              w ? e.jsx("span", {
+                              k.path,
+                              E ? e.jsx("span", {
                                 className: "ml-1 text-[10px] text-blue-600 dark:text-blue-400",
                                 children: "(\uC720\uC9C0)"
                               }) : null
                             ]
                           }),
-                          w ? null : e.jsx("button", {
+                          E ? null : e.jsx("button", {
                             type: "button",
                             className: "shrink-0 text-[10px] text-blue-600 underline dark:text-blue-400",
-                            onClick: () => Ge(c.hash, y.path),
+                            onClick: () => be(i.hash, k.path),
                             children: "\uC774 \uD30C\uC77C \uC720\uC9C0"
                           })
                         ]
                       })
-                    }, y.path);
+                    }, k.path);
                   })
                 })
               ]
-            }, c.hash))
+            }, i.hash))
           ]
         }) : null,
-        e.jsx(ue, {
-          isOpen: P,
-          title: de ? "\uC774\uBBF8\uC9C0\uB97C \uC601\uAD6C \uC0AD\uC81C\uD560\uAE4C\uC694?" : "\uC774\uBBF8\uC9C0\uB97C \uD734\uC9C0\uD1B5\uC73C\uB85C \uBCF4\uB0BC\uAE4C\uC694?",
-          message: de ? `${Y.length}\uAC1C \uD30C\uC77C\uC744 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC774 \uC0AD\uC81C\uD569\uB2C8\uB2E4.` : `${Y.length}\uAC1C \uD30C\uC77C\uC744 .trash/ \uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4.`,
+        e.jsx(xe, {
+          isOpen: D,
+          title: U ? "\uC774\uBBF8\uC9C0\uB97C \uC601\uAD6C \uC0AD\uC81C\uD560\uAE4C\uC694?" : "\uC774\uBBF8\uC9C0\uB97C \uD734\uC9C0\uD1B5\uC73C\uB85C \uBCF4\uB0BC\uAE4C\uC694?",
+          message: U ? `${X.length}\uAC1C \uD30C\uC77C\uC744 \uBCF5\uAD6C\uD560 \uC218 \uC5C6\uC774 \uC0AD\uC81C\uD569\uB2C8\uB2E4.` : `${X.length}\uAC1C \uD30C\uC77C\uC744 .trash/ \uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4.`,
           variant: "danger",
-          confirmLabel: de ? "\uC601\uAD6C \uC0AD\uC81C" : "\uD734\uC9C0\uD1B5\uC73C\uB85C \uC774\uB3D9",
+          confirmLabel: U ? "\uC601\uAD6C \uC0AD\uC81C" : "\uD734\uC9C0\uD1B5\uC73C\uB85C \uC774\uB3D9",
           cancelLabel: "\uCDE8\uC18C",
-          confirmDisabled: f,
+          confirmDisabled: h,
           onConfirm: () => {
-            Ve();
+            Ge();
           },
           onCancel: () => {
-            f || (ae(false), se([]));
+            h || (ae(false), se([]));
           }
         })
       ]
     });
   }
-  xs = function({ s3Creds: t, masterPassword: d, onSaveS3Creds: s, onExportCreds: u, onImportClick: n, showHiddenFolders: i, onToggleHiddenFolders: g, showTrashFolder: k = false, onToggleTrashFolder: N, hideRecordingCompanions: v = false, onToggleHideRecordingCompanions: O, treeStickyFolderPathEnabled: E = true, onToggleTreeStickyFolderPath: I, treeHoverExpandSettings: p = aa, onTreeHoverExpandSettingsChange: x, onRequestClose: m, webauthnSupported: C = false, webauthnEnabled: A = false, webauthnStorageOnly: o = false, onEnableWebAuthn: b, onDisableWebAuthn: l, snippetConfig: j, onChangeSnippetConfig: T, onSaveSnippetConfig: z, isSavingSnippets: D = false, snippetConfigLoaded: L = false, editorType: $, onEditorTypeChange: te, storageMode: G = oe, onStorageModeChange: K, localFolderName: xe = "", onOpenLocalFolder: re, webdavConfig: P, onSaveWebdavConfig: ae, isMobileLayout: Y = false, sidebarOpen: se = true, sidebarCollapsed: f = false, onOpenSidebar: B, onCheckAppUpdate: W, isCheckingAppUpdate: Z = false, latestAppBuildId: Ne = "", onScanStorageUsage: Se, canScanStorageUsage: pe = false, onOpenStorageUsageFile: Ue, onReadUnusedImageText: Ge, onReadUnusedImageBytes: we, onDeleteUnusedImagePaths: Ve }) {
-    const [H, J] = a.useState(t), [de, c] = a.useState(""), [y, w] = a.useState(P ?? {
+  us = function({ s3Creds: t, masterPassword: d, onSaveS3Creds: s, onExportCreds: u, onImportClick: n, showHiddenFolders: c, onToggleHiddenFolders: m, showTrashFolder: y = false, onToggleTrashFolder: N, hideRecordingCompanions: v = false, onToggleHideRecordingCompanions: O, treeStickyFolderPathEnabled: C = true, onToggleTreeStickyFolderPath: I, showTreeModifiedDate: g = false, onToggleShowTreeModifiedDate: x, treeHoverExpandSettings: p = da, onTreeHoverExpandSettingsChange: w, onRequestClose: A, webauthnSupported: o = false, webauthnEnabled: b = false, webauthnStorageOnly: l = false, onEnableWebAuthn: j, onDisableWebAuthn: T, snippetConfig: R, onChangeSnippetConfig: _, onSaveSnippetConfig: P, isSavingSnippets: M = false, snippetConfigLoaded: te = false, editorType: Y, onEditorTypeChange: V, storageMode: H = ne, onStorageModeChange: re, localFolderName: D = "", onOpenLocalFolder: ae, webdavConfig: X, onSaveWebdavConfig: se, isMobileLayout: h = false, sidebarOpen: K = true, sidebarCollapsed: W = false, onOpenSidebar: Z, onCheckAppUpdate: je, isCheckingAppUpdate: ve = false, latestAppBuildId: Ne = "", onScanStorageUsage: Se, canScanStorageUsage: be = false, onOpenStorageUsageFile: we, onReadUnusedImageText: Ge, onReadUnusedImageBytes: Ce, onDeleteUnusedImagePaths: Ee }) {
+    const [U, i] = a.useState(t), [k, E] = a.useState(""), [L, z] = a.useState(X ?? {
       endpoint: "",
       username: "",
       password: "",
       basePath: ""
-    }), [_, F] = a.useState(false), [U, M] = a.useState(C), [X, Ce] = a.useState(() => zr()), [Yt, dt] = a.useState(() => $ ?? Rr()), [Ee, Jt] = a.useState(() => $r()), [ge, qt] = a.useState(() => Fr()), [nt, ot] = a.useState(() => Ct()), [Ie, Zt] = a.useState(() => Br()), [Oe, Qt] = a.useState(() => Mr()), [S, lt] = a.useState(() => R.getStatus()), [Ae, er] = a.useState(() => Kr()), [tr, it] = a.useState(() => Et()), [ct, q] = a.useState(false), [rr, Le] = a.useState(false), [ar, Pe] = a.useState(null), [sr, He] = a.useState(false), [Xe, xt] = a.useState(true), [_e, bt] = a.useState(() => G === be), [De, ut] = a.useState(false), [Ye, pt] = a.useState(true), Je = lr(), qe = String(xe || "").trim() || Wr() || "", gt = typeof window < "u" && "showDirectoryPicker" in window;
-    a.useEffect(() => Rt((r, h) => {
-      r === "settings-alt-vim" ? Jt(h) : r === "settings-workspace-tabs" ? qt(h) : r === "settings-new-file-temp" ? Zt(h) : r === "settings-composer-helper" ? Qt(h) : r === "settings-as-animation" ? er(h) : (r === "settings-as-index" || r === "settings-as-include-other") && lt(R.getStatus());
+    }), [F, B] = a.useState(false), [J, Ve] = a.useState(o), [dt, nt] = a.useState(() => $r()), [qt, ot] = a.useState(() => Y ?? Fr()), [Ie, Zt] = a.useState(() => Br()), [ue, Qt] = a.useState(() => Mr()), [lt, it] = a.useState(() => It()), [Oe, er] = a.useState(() => Kr()), [Ae, tr] = a.useState(() => Wr()), [S, ct] = a.useState(() => $.getStatus()), [Le, rr] = a.useState(() => Ur()), [ar, xt] = a.useState(() => Ot()), [bt, q] = a.useState(false), [sr, Pe] = a.useState(false), [dr, _e] = a.useState(null), [nr, He] = a.useState(false), [Xe, ut] = a.useState(true), [De, pt] = a.useState(() => H === ce), [ze, gt] = a.useState(false), [Ye, mt] = a.useState(true), Je = cr(), qe = String(D || "").trim() || Gr() || "", ht = typeof window < "u" && "showDirectoryPicker" in window;
+    a.useEffect(() => Ft((r, f) => {
+      r === "settings-alt-vim" ? Zt(f) : r === "settings-workspace-tabs" ? Qt(f) : r === "settings-new-file-temp" ? er(f) : r === "settings-composer-helper" ? tr(f) : r === "settings-as-animation" ? rr(f) : (r === "settings-as-index" || r === "settings-as-include-other") && ct($.getStatus());
     }), []), a.useEffect(() => {
-      const r = (h) => {
+      const r = (f) => {
         var _a2;
-        const Q = ((_a2 = h == null ? void 0 : h.detail) == null ? void 0 : _a2.mode) ?? Et();
-        it(Q);
+        const Q = ((_a2 = f == null ? void 0 : f.detail) == null ? void 0 : _a2.mode) ?? Ot();
+        xt(Q);
       };
-      return window.addEventListener(It, r), () => {
-        window.removeEventListener(It, r);
+      return window.addEventListener(At, r), () => {
+        window.removeEventListener(At, r);
       };
     }, []), a.useEffect(() => {
-      const r = (h) => {
+      const r = (f) => {
         var _a2;
-        const Q = ((_a2 = h == null ? void 0 : h.detail) == null ? void 0 : _a2.mode) ?? Ct();
-        ot(Q);
+        const Q = ((_a2 = f == null ? void 0 : f.detail) == null ? void 0 : _a2.mode) ?? It();
+        it(Q);
       };
-      return window.addEventListener(Ot, r), () => {
-        window.removeEventListener(Ot, r);
+      return window.addEventListener(Lt, r), () => {
+        window.removeEventListener(Lt, r);
       };
     }, []), a.useEffect(() => {
       const r = String(Je.hash || "").replace(/^#/, "");
       if (!r.startsWith("settings-")) return;
-      r === "settings-s3" && xt(true), r === "settings-local" && bt(true), r === "settings-webdav" && ut(true), r === "settings-imgbb" && pt(true);
+      r === "settings-s3" && ut(true), r === "settings-local" && pt(true), r === "settings-webdav" && gt(true), r === "settings-imgbb" && mt(true);
       const Q = (/* @__PURE__ */ new Set([
         "settings-llm-providers",
         "settings-llm-provider",
@@ -2817,14 +2817,14 @@ let __tla = Promise.all([
         "settings-openai-compat"
       ])).has(r) ? "settings-llm-providers" : r, Te = window.setTimeout(() => {
         var _a2;
-        const he = document.getElementById(Q);
-        if (he) {
-          he.scrollIntoView({
+        const ge = document.getElementById(Q);
+        if (ge) {
+          ge.scrollIntoView({
             behavior: "smooth",
             block: "start"
           });
           try {
-            (_a2 = he.focus) == null ? void 0 : _a2.call(he, {
+            (_a2 = ge.focus) == null ? void 0 : _a2.call(ge, {
               preventScroll: true
             });
           } catch {
@@ -2835,69 +2835,69 @@ let __tla = Promise.all([
     }, [
       Je.hash,
       Je.pathname
-    ]), a.useEffect(() => R.subscribe(() => {
-      lt(R.getStatus());
+    ]), a.useEffect(() => $.subscribe(() => {
+      ct($.getStatus());
     }), []), a.useEffect(() => {
-      J({
+      i({
         ...t,
         llmProviderProfiles: et(t)
-      }), c("");
+      }), E("");
     }, [
       t
     ]);
-    const Ze = !!((t == null ? void 0 : t.imgbbApiKey) || "").trim(), me = (r) => {
-      const h = r !== void 0 ? r : et(H), Q = oa(h), he = de.trim() || (Ze ? t.imgbbApiKey : "");
+    const Ze = !!((t == null ? void 0 : t.imgbbApiKey) || "").trim(), pe = (r) => {
+      const f = r !== void 0 ? r : et(U), Q = ia(f), ge = k.trim() || (Ze ? t.imgbbApiKey : "");
       return {
-        ...H,
-        llmProviderProfiles: h,
+        ...U,
+        llmProviderProfiles: f,
         ...Q,
-        imgbbApiKey: he
+        imgbbApiKey: ge
       };
     };
     a.useEffect(() => {
-      w(P ?? {
+      z(X ?? {
         endpoint: "",
         username: "",
         password: "",
         basePath: ""
       });
     }, [
-      P
+      X
     ]), a.useEffect(() => {
-      $ !== void 0 && dt($);
+      Y !== void 0 && ot(Y);
     }, [
-      $
+      Y
     ]), a.useEffect(() => {
       let r = false;
-      return Ur().then((h) => {
-        r || M(h);
+      return Vr().then((f) => {
+        r || Ve(f);
       }), () => {
         r = true;
       };
     }, []);
-    const dr = U && (d || o), nr = !Y && f ? "md:pl-14" : "";
+    const or = J && (d || l), lr = !h && W ? "md:pl-14" : "";
     return e.jsxs("div", {
       className: "flex-1 flex flex-col bg-white dark:bg-odp-bgSofter min-w-0 max-h-full",
       children: [
         e.jsxs("div", {
-          className: `px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0 transition-[padding] duration-300 ease-in-out ${nr}`,
+          className: `px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0 transition-[padding] duration-300 ease-in-out ${lr}`,
           children: [
             e.jsxs("div", {
               className: "flex min-w-0 flex-1 items-center gap-2",
               children: [
-                Y && !se && typeof B == "function" && e.jsx("button", {
+                h && !K && typeof Z == "function" && e.jsx("button", {
                   type: "button",
                   "aria-label": "\uC0AC\uC774\uB4DC\uBC14 \uC5F4\uAE30",
-                  onClick: B,
+                  onClick: Z,
                   className: "inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg",
-                  children: e.jsx(Gr, {
+                  children: e.jsx(Hr, {
                     size: 22
                   })
                 }),
                 e.jsxs("h2", {
                   className: "font-bold text-gray-700 dark:text-odp-fgStrong flex min-w-0 items-center gap-2",
                   children: [
-                    e.jsx(Vr, {}),
+                    e.jsx(Xr, {}),
                     " \uC124\uC815 \uBC0F \uC554\uD638\uD654"
                   ]
                 })
@@ -2905,9 +2905,9 @@ let __tla = Promise.all([
             }),
             e.jsx("button", {
               type: "button",
-              onClick: () => m == null ? void 0 : m(me()),
+              onClick: () => A == null ? void 0 : A(pe()),
               className: "text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition",
-              children: e.jsx(Mt, {
+              children: e.jsx(Wt, {
                 size: 16
               })
             })
@@ -2938,9 +2938,9 @@ let __tla = Promise.all([
                         e.jsx("input", {
                           type: "radio",
                           name: "storageMode",
-                          value: oe,
-                          checked: G === oe,
-                          onChange: () => K == null ? void 0 : K(oe)
+                          value: ne,
+                          checked: H === ne,
+                          onChange: () => re == null ? void 0 : re(ne)
                         }),
                         e.jsx("span", {
                           className: "font-semibold",
@@ -2954,9 +2954,9 @@ let __tla = Promise.all([
                         e.jsx("input", {
                           type: "radio",
                           name: "storageMode",
-                          value: be,
-                          checked: G === be,
-                          onChange: () => K == null ? void 0 : K(be)
+                          value: ce,
+                          checked: H === ce,
+                          onChange: () => re == null ? void 0 : re(ce)
                         }),
                         e.jsx("span", {
                           className: "font-semibold",
@@ -2970,9 +2970,9 @@ let __tla = Promise.all([
                         e.jsx("input", {
                           type: "radio",
                           name: "storageMode",
-                          value: je,
-                          checked: G === je,
-                          onChange: () => K == null ? void 0 : K(je)
+                          value: ye,
+                          checked: H === ye,
+                          onChange: () => re == null ? void 0 : re(ye)
                         }),
                         e.jsx("span", {
                           className: "font-semibold",
@@ -2988,20 +2988,20 @@ let __tla = Promise.all([
               id: "settings-s3",
               tabIndex: -1,
               onSubmit: (r) => {
-                r.preventDefault(), s(me());
+                r.preventDefault(), s(pe());
               },
               className: "scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface",
               children: [
                 e.jsxs("button", {
                   type: "button",
-                  onClick: () => xt((r) => !r),
+                  onClick: () => ut((r) => !r),
                   className: "flex w-full items-center gap-2 text-left",
                   "aria-expanded": Xe,
                   children: [
-                    Xe ? e.jsx(le, {
+                    Xe ? e.jsx(oe, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
-                    }) : e.jsx(ie, {
+                    }) : e.jsx(le, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
                     }),
@@ -3026,9 +3026,9 @@ let __tla = Promise.all([
                               type: "text",
                               required: true,
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: H.accessKeyId,
-                              onChange: (r) => J((h) => ({
-                                ...h,
+                              value: U.accessKeyId,
+                              onChange: (r) => i((f) => ({
+                                ...f,
                                 accessKeyId: r.target.value
                               }))
                             })
@@ -3044,9 +3044,9 @@ let __tla = Promise.all([
                               type: "password",
                               required: true,
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: H.secretAccessKey,
-                              onChange: (r) => J((h) => ({
-                                ...h,
+                              value: U.secretAccessKey,
+                              onChange: (r) => i((f) => ({
+                                ...f,
                                 secretAccessKey: r.target.value
                               }))
                             })
@@ -3062,9 +3062,9 @@ let __tla = Promise.all([
                               type: "text",
                               required: true,
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: H.region,
-                              onChange: (r) => J((h) => ({
-                                ...h,
+                              value: U.region,
+                              onChange: (r) => i((f) => ({
+                                ...f,
                                 region: r.target.value
                               }))
                             })
@@ -3080,9 +3080,9 @@ let __tla = Promise.all([
                               type: "text",
                               required: true,
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: H.bucket,
-                              onChange: (r) => J((h) => ({
-                                ...h,
+                              value: U.bucket,
+                              onChange: (r) => i((f) => ({
+                                ...f,
                                 bucket: r.target.value
                               }))
                             })
@@ -3098,9 +3098,9 @@ let __tla = Promise.all([
                               type: "text",
                               placeholder: "https://...",
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: H.endpoint || "",
-                              onChange: (r) => J((h) => ({
-                                ...h,
+                              value: U.endpoint || "",
+                              onChange: (r) => i((f) => ({
+                                ...f,
                                 endpoint: r.target.value
                               }))
                             })
@@ -3113,7 +3113,7 @@ let __tla = Promise.all([
                       children: [
                         e.jsx("button", {
                           type: "button",
-                          onClick: () => m == null ? void 0 : m(me()),
+                          onClick: () => A == null ? void 0 : A(pe()),
                           className: "px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition dark:text-odp-muted dark:hover:bg-odp-focusBg",
                           children: "\uCDE8\uC18C"
                         }),
@@ -3132,20 +3132,20 @@ let __tla = Promise.all([
               id: "settings-webdav",
               tabIndex: -1,
               onSubmit: (r) => {
-                r.preventDefault(), ae == null ? void 0 : ae(y);
+                r.preventDefault(), se == null ? void 0 : se(L);
               },
               className: "scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface",
               children: [
                 e.jsxs("button", {
                   type: "button",
-                  onClick: () => ut((r) => !r),
+                  onClick: () => gt((r) => !r),
                   className: "flex w-full items-center gap-2 text-left",
-                  "aria-expanded": De,
+                  "aria-expanded": ze,
                   children: [
-                    De ? e.jsx(le, {
+                    ze ? e.jsx(oe, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
-                    }) : e.jsx(ie, {
+                    }) : e.jsx(le, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
                     }),
@@ -3153,13 +3153,13 @@ let __tla = Promise.all([
                       className: "text-sm font-bold text-gray-700 dark:text-odp-fgStrong",
                       children: "WebDAV \uC5F0\uACB0 \uC815\uBCF4"
                     }),
-                    De ? null : e.jsx("span", {
+                    ze ? null : e.jsx("span", {
                       className: "ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted",
                       children: "\uC811\uD798"
                     })
                   ]
                 }),
-                De ? e.jsxs(e.Fragment, {
+                ze ? e.jsxs(e.Fragment, {
                   children: [
                     e.jsxs("div", {
                       className: "space-y-3",
@@ -3174,9 +3174,9 @@ let __tla = Promise.all([
                               type: "text",
                               placeholder: "https://webdav.example.com",
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: y.endpoint,
-                              onChange: (r) => w((h) => ({
-                                ...h,
+                              value: L.endpoint,
+                              onChange: (r) => z((f) => ({
+                                ...f,
                                 endpoint: r.target.value
                               }))
                             })
@@ -3191,9 +3191,9 @@ let __tla = Promise.all([
                             e.jsx("input", {
                               type: "text",
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: y.username,
-                              onChange: (r) => w((h) => ({
-                                ...h,
+                              value: L.username,
+                              onChange: (r) => z((f) => ({
+                                ...f,
                                 username: r.target.value
                               }))
                             })
@@ -3208,9 +3208,9 @@ let __tla = Promise.all([
                             e.jsx("input", {
                               type: "password",
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: y.password,
-                              onChange: (r) => w((h) => ({
-                                ...h,
+                              value: L.password,
+                              onChange: (r) => z((f) => ({
+                                ...f,
                                 password: r.target.value
                               }))
                             })
@@ -3226,9 +3226,9 @@ let __tla = Promise.all([
                               type: "text",
                               placeholder: "/remote.php/dav/files/username/",
                               className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                              value: y.basePath,
-                              onChange: (r) => w((h) => ({
-                                ...h,
+                              value: L.basePath,
+                              onChange: (r) => z((f) => ({
+                                ...f,
                                 basePath: r.target.value
                               }))
                             })
@@ -3244,20 +3244,20 @@ let __tla = Promise.all([
                           className: "px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition dark:border-odp-borderStrong dark:hover:bg-odp-focusBg",
                           onClick: async () => {
                             try {
-                              const { createWebdavBackend: r } = await or(async () => {
-                                const { createWebdavBackend: Q } = await import("./index-DmaSghxP.js").then(async (m2) => {
+                              const { createWebdavBackend: r } = await ir(async () => {
+                                const { createWebdavBackend: Q } = await import("./index-BFoGIzMz.js").then(async (m2) => {
                                   await m2.__tla;
                                   return m2;
                                 }).then((Te) => Te.ga);
                                 return {
                                   createWebdavBackend: Q
                                 };
-                              }, __vite__mapDeps([0,1,2,3,4,5,6,7,8])), h = r(y);
-                              if (!h.isReady()) {
+                              }, __vite__mapDeps([0,1,2,3,4,5,6,7,8])), f = r(L);
+                              if (!f.isReady()) {
                                 alert("Endpoint\uC640 Username\uC744 \uC785\uB825\uD558\uC138\uC694.");
                                 return;
                               }
-                              await h.testConnection(), alert("WebDAV \uC5F0\uACB0\uC5D0 \uC131\uACF5\uD588\uC2B5\uB2C8\uB2E4.");
+                              await f.testConnection(), alert("WebDAV \uC5F0\uACB0\uC5D0 \uC131\uACF5\uD588\uC2B5\uB2C8\uB2E4.");
                             } catch (r) {
                               alert("WebDAV \uC5F0\uACB0 \uC2E4\uD328: " + ((r == null ? void 0 : r.message) || r) + `
 
@@ -3284,14 +3284,14 @@ let __tla = Promise.all([
               children: [
                 e.jsxs("button", {
                   type: "button",
-                  onClick: () => bt((r) => !r),
+                  onClick: () => pt((r) => !r),
                   className: "flex w-full items-center gap-2 text-left",
-                  "aria-expanded": _e,
+                  "aria-expanded": De,
                   children: [
-                    _e ? e.jsx(le, {
+                    De ? e.jsx(oe, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
-                    }) : e.jsx(ie, {
+                    }) : e.jsx(le, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
                     }),
@@ -3299,13 +3299,13 @@ let __tla = Promise.all([
                       className: "text-sm font-bold text-gray-700 dark:text-odp-fgStrong",
                       children: "Local \uC5F0\uACB0 \uC815\uBCF4"
                     }),
-                    _e ? null : e.jsx("span", {
+                    De ? null : e.jsx("span", {
                       className: "ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted",
                       children: "\uC811\uD798"
                     })
                   ]
                 }),
-                _e ? e.jsxs(e.Fragment, {
+                De ? e.jsxs(e.Fragment, {
                   children: [
                     e.jsx("p", {
                       className: "text-xs text-gray-600 dark:text-odp-muted",
@@ -3326,7 +3326,7 @@ let __tla = Promise.all([
                         })
                       ]
                     }),
-                    gt ? null : e.jsx("p", {
+                    ht ? null : e.jsx("p", {
                       className: "text-xs text-amber-700 dark:text-amber-300",
                       children: "\uC774 \uBE0C\uB77C\uC6B0\uC800\uB294 \uD3F4\uB354 \uC120\uD0DD\uC744 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. Chromium \uACC4\uC5F4 \uBE0C\uB77C\uC6B0\uC800\uB97C \uC0AC\uC6A9\uD574 \uC8FC\uC138\uC694."
                     }),
@@ -3334,11 +3334,11 @@ let __tla = Promise.all([
                       className: "flex justify-end gap-2 pt-2",
                       children: e.jsxs("button", {
                         type: "button",
-                        disabled: !gt || typeof re != "function",
-                        onClick: () => re == null ? void 0 : re(),
+                        disabled: !ht || typeof ae != "function",
+                        onClick: () => ae == null ? void 0 : ae(),
                         className: "inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50",
                         children: [
-                          e.jsx(Hr, {
+                          e.jsx(Yr, {
                             size: 16
                           }),
                           qe ? "\uB2E4\uB978 \uD3F4\uB354 \uC5F4\uAE30" : "\uD3F4\uB354 \uC120\uD0DD"
@@ -3365,7 +3365,7 @@ let __tla = Promise.all([
                       onClick: u,
                       className: "flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition",
                       children: [
-                        e.jsx(Xr, {}),
+                        e.jsx(Jr, {}),
                         " S3 \uC5F0\uACB0\uC815\uBCF4 \uB0B4\uBCF4\uB0B4\uAE30"
                       ]
                     }),
@@ -3373,7 +3373,7 @@ let __tla = Promise.all([
                       onClick: n,
                       className: "flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition",
                       children: [
-                        e.jsx(Yr, {}),
+                        e.jsx(qr, {}),
                         " S3 \uC5F0\uACB0\uC815\uBCF4 \uBD88\uB7EC\uC624\uAE30"
                       ]
                     })
@@ -3381,7 +3381,7 @@ let __tla = Promise.all([
                 })
               ]
             }),
-            dr && e.jsxs("div", {
+            or && e.jsxs("div", {
               id: "settings-webauthn",
               tabIndex: -1,
               className: "scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong",
@@ -3392,12 +3392,12 @@ let __tla = Promise.all([
                 }),
                 e.jsx("p", {
                   className: "text-xs text-gray-600 dark:text-odp-muted mb-2",
-                  children: o ? "S3 \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uBCF4\uC548 \uD0A4\uB85C\uB9CC \uC554\uD638\uD654\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4. \uB370\uC774\uD130 \uBC31\uC5C5/\uBCF5\uC6D0 \uC2DC\uC5D0\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4." : "\uC9C0\uBB38, Windows Hello, Touch ID \uB4F1\uC73C\uB85C \uC571 \uC7A0\uAE08 \uD574\uC81C\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uB370\uC774\uD130 \uBC31\uC5C5/\uBCF5\uC6D0 \uC2DC\uC5D0\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+                  children: l ? "S3 \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uBCF4\uC548 \uD0A4\uB85C\uB9CC \uC554\uD638\uD654\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4. \uB370\uC774\uD130 \uBC31\uC5C5/\uBCF5\uC6D0 \uC2DC\uC5D0\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4." : "\uC9C0\uBB38, Windows Hello, Touch ID \uB4F1\uC73C\uB85C \uC571 \uC7A0\uAE08 \uD574\uC81C\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uB370\uC774\uD130 \uBC31\uC5C5/\uBCF5\uC6D0 \uC2DC\uC5D0\uB294 \uBE44\uBC00\uBC88\uD638\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
                 }),
-                o ? e.jsx("p", {
+                l ? e.jsx("p", {
                   className: "text-xs text-gray-600 dark:text-odp-muted",
                   children: "\uC800\uC7A5\uC18C: \uBCF4\uC548 \uD0A4\uB85C \uBCF4\uD638\uB428"
-                }) : A ? e.jsxs("div", {
+                }) : b ? e.jsxs("div", {
                   className: "flex items-center gap-2 flex-wrap",
                   children: [
                     e.jsx("span", {
@@ -3406,7 +3406,7 @@ let __tla = Promise.all([
                     }),
                     e.jsx("button", {
                       type: "button",
-                      onClick: () => l == null ? void 0 : l(),
+                      onClick: () => T == null ? void 0 : T(),
                       className: "text-xs text-red-600 dark:text-red-400 hover:underline",
                       children: "\uC0AC\uC6A9 \uD574\uC81C"
                     })
@@ -3415,82 +3415,82 @@ let __tla = Promise.all([
                   className: "flex flex-col gap-2",
                   children: e.jsx("button", {
                     type: "button",
-                    disabled: _,
+                    disabled: F,
                     onClick: async () => {
-                      if (_ || !b) return;
+                      if (F || !j) return;
                       let r;
                       try {
-                        r = b(d);
-                      } catch (h) {
-                        alert((h == null ? void 0 : h.message) || "\uBCF4\uC548 \uD0A4 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+                        r = j(d);
+                      } catch (f) {
+                        alert((f == null ? void 0 : f.message) || "\uBCF4\uC548 \uD0A4 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
                         return;
                       }
-                      F(true);
+                      B(true);
                       try {
                         await r;
-                      } catch (h) {
-                        alert((h == null ? void 0 : h.message) || "\uBCF4\uC548 \uD0A4 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+                      } catch (f) {
+                        alert((f == null ? void 0 : f.message) || "\uBCF4\uC548 \uD0A4 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
                       } finally {
-                        F(false);
+                        B(false);
                       }
                     },
                     className: "text-left text-xs py-2 px-3 rounded border border-gray-300 dark:border-odp-borderStrong hover:bg-gray-100 dark:hover:bg-odp-surface transition",
                     "aria-label": "\uC9C0\uBB38/\uBCF4\uC548 \uD0A4\uB85C \uC7A0\uAE08 \uD574\uC81C \uB4F1\uB85D",
-                    children: _ ? "\uB4F1\uB85D \uC911\u2026" : "\uC9C0\uBB38/\uBCF4\uC548 \uD0A4\uB85C \uC7A0\uAE08 \uD574\uC81C \uC0AC\uC6A9 (\uB4F1\uB85D)"
+                    children: F ? "\uB4F1\uB85D \uC911\u2026" : "\uC9C0\uBB38/\uBCF4\uC548 \uD0A4\uB85C \uC7A0\uAE08 \uD574\uC81C \uC0AC\uC6A9 (\uB4F1\uB85D)"
                   })
                 })
               ]
             }),
-            pe && e.jsx("div", {
+            be && e.jsx("div", {
               id: "settings-storage-usage",
               tabIndex: -1,
               className: "scroll-mt-4",
-              children: e.jsx(Xa, {
-                storageMode: G,
+              children: e.jsx(Ja, {
+                storageMode: H,
                 onScanTree: Se,
-                canScan: pe,
-                onOpenFile: Ue
+                canScan: be,
+                onOpenFile: we
               })
             }),
-            e.jsx(za, {
-              profiles: et(H),
+            e.jsx($a, {
+              profiles: et(U),
               onSaveProfiles: (r) => {
-                J((h) => ({
-                  ...h,
+                i((f) => ({
+                  ...f,
                   llmProviderProfiles: r
-                })), s(me(r));
+                })), s(pe(r));
               }
             }),
-            e.jsx(Za, {
-              storageMode: G,
-              canScan: pe,
+            e.jsx(es, {
+              storageMode: H,
+              canScan: be,
               onScanTree: Se,
               onReadText: Ge,
-              onReadBytes: we,
-              onDeletePaths: Ve
+              onReadBytes: Ce,
+              onDeletePaths: Ee
             }),
             e.jsxs("form", {
               id: "settings-imgbb",
               tabIndex: -1,
               onSubmit: (r) => {
-                if (r.preventDefault(), !de.trim() && !Ze) {
+                if (r.preventDefault(), !k.trim() && !Ze) {
                   alert("API \uD0A4\uB97C \uC785\uB825\uD558\uC138\uC694.");
                   return;
                 }
-                s(me());
+                s(pe());
               },
               className: "scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface",
               children: [
                 e.jsxs("button", {
                   type: "button",
-                  onClick: () => pt((r) => !r),
+                  onClick: () => mt((r) => !r),
                   className: "flex w-full items-center gap-2 text-left",
                   "aria-expanded": Ye,
                   children: [
-                    Ye ? e.jsx(le, {
+                    Ye ? e.jsx(oe, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
-                    }) : e.jsx(ie, {
+                    }) : e.jsx(le, {
                       size: 16,
                       className: "shrink-0 text-gray-500 dark:text-odp-muted"
                     }),
@@ -3527,8 +3527,8 @@ let __tla = Promise.all([
                           type: "password",
                           autoComplete: "off",
                           className: "w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
-                          value: de,
-                          onChange: (r) => c(r.target.value),
+                          value: k,
+                          onChange: (r) => E(r.target.value),
                           placeholder: Ze ? "\uC800\uC7A5\uB428 \u2014 \uBCC0\uACBD \uC2DC \uC0C8 \uD0A4 \uC785\uB825" : "ImgBB API \uD0A4 \uC785\uB825"
                         })
                       ]
@@ -3567,10 +3567,10 @@ let __tla = Promise.all([
                         e.jsx("input", {
                           type: "radio",
                           name: "editorType",
-                          value: fe,
-                          checked: Yt === fe,
+                          value: me,
+                          checked: qt === me,
                           onChange: () => {
-                            dt(fe), Jr(fe), te == null ? void 0 : te(fe);
+                            ot(me), Zr(me), V == null ? void 0 : V(me);
                           },
                           className: "mt-0.5 shrink-0"
                         }),
@@ -3606,7 +3606,7 @@ let __tla = Promise.all([
                         e.jsx("input", {
                           type: "radio",
                           name: "editorType",
-                          value: qr,
+                          value: Qr,
                           checked: false,
                           disabled: true,
                           className: "mt-0.5 shrink-0"
@@ -3652,16 +3652,16 @@ let __tla = Promise.all([
                     }),
                     e.jsx("div", {
                       className: "space-y-2 text-xs text-gray-700 dark:text-odp-fg",
-                      children: Zr.map((r) => e.jsxs("label", {
+                      children: ea.map((r) => e.jsxs("label", {
                         className: "flex items-start gap-2 cursor-pointer",
                         children: [
                           e.jsx("input", {
                             type: "radio",
                             name: "footnoteDisplayMode",
                             value: r.value,
-                            checked: tr === r.value,
+                            checked: ar === r.value,
                             onChange: () => {
-                              Qr(r.value), it(r.value);
+                              ta(r.value), xt(r.value);
                             },
                             className: "mt-0.5 shrink-0"
                           }),
@@ -3720,13 +3720,13 @@ let __tla = Promise.all([
                     e.jsx("button", {
                       type: "button",
                       onClick: () => {
-                        V("settings-as-animation", !Ae);
+                        G("settings-as-animation", !Le);
                       },
-                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${Ae ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                      "aria-pressed": Ae,
+                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${Le ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                      "aria-pressed": Le,
                       "aria-label": "\uC5F4\uAE30/\uB2EB\uAE30 \uC560\uB2C8\uBA54\uC774\uC158",
                       children: e.jsx("span", {
-                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Ae ? "translate-x-4" : "translate-x-0.5"}`
+                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Le ? "translate-x-4" : "translate-x-0.5"}`
                       })
                     }),
                     e.jsxs("span", {
@@ -3747,7 +3747,7 @@ let __tla = Promise.all([
                     e.jsx("button", {
                       type: "button",
                       onClick: () => {
-                        V("settings-as-index", !S.enabled);
+                        G("settings-as-index", !S.enabled);
                       },
                       className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${S.enabled ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
                       "aria-pressed": S.enabled,
@@ -3774,7 +3774,7 @@ let __tla = Promise.all([
                     e.jsx("button", {
                       type: "button",
                       onClick: () => {
-                        V("settings-as-include-other", !S.includeOtherFiles);
+                        G("settings-as-include-other", !S.includeOtherFiles);
                       },
                       disabled: !S.enabled,
                       className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 disabled:opacity-50 ${S.includeOtherFiles ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
@@ -3827,26 +3827,26 @@ let __tla = Promise.all([
                   children: [
                     e.jsxs("button", {
                       type: "button",
-                      disabled: ct || !S.enabled || S.building || !S.isolationReady,
+                      disabled: bt || !S.enabled || S.building || !S.isolationReady,
                       onClick: () => {
                         (async () => {
-                          const r = await R.getRebuildCheckpointInfo();
+                          const r = await $.getRebuildCheckpointInfo();
                           if (r) {
-                            Pe(r), Le(true);
+                            _e(r), Pe(true);
                             return;
                           }
                           if (S.hasIndex) {
                             He(true);
                             return;
                           }
-                          q(true), R.rebuild({
+                          q(true), $.rebuild({
                             resume: false
                           }).finally(() => q(false));
                         })();
                       },
                       className: "inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60",
                       children: [
-                        e.jsx(At, {
+                        e.jsx(Pt, {
                           size: 14
                         }),
                         S.hasCheckpoint ? "\uC0C9\uC778 \uC7AC\uAC1C/\uB2E4\uC2DC \uC2DC\uC791" : S.hasIndex ? "\uB2E4\uC2DC \uC0C9\uC778" : "\uC0C9\uC778"
@@ -3854,11 +3854,11 @@ let __tla = Promise.all([
                     }),
                     S.building ? e.jsxs("button", {
                       type: "button",
-                      onClick: () => R.cancelRebuild(),
+                      onClick: () => $.cancelRebuild(),
                       className: "inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60",
                       title: "\uC0C9\uC778\uC744 \uC911\uC9C0\uD569\uB2C8\uB2E4. \uCCB4\uD06C\uD3EC\uC778\uD2B8\uB294 \uC720\uC9C0\uB418\uC5B4 \uC774\uC5B4\uC11C \uC7AC\uAC1C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
                       children: [
-                        e.jsx(ea, {
+                        e.jsx(ra, {
                           size: 14
                         }),
                         "\uC911\uC9C0"
@@ -3866,46 +3866,46 @@ let __tla = Promise.all([
                     }) : null,
                     e.jsx("button", {
                       type: "button",
-                      disabled: ct || S.building || !S.hasIndex,
+                      disabled: bt || S.building || !S.hasIndex,
                       onClick: () => {
-                        window.confirm("\uC5ED\uC0C9\uC778 \uCE90\uC2DC(.advanced-search/)\uB97C \uC0AD\uC81C\uD560\uAE4C\uC694? \uC0AD\uC81C \uD6C4\uC5D0\uB294 \u300C\uC0C9\uC778\u300D\uC73C\uB85C \uB2E4\uC2DC \uC0DD\uC131\uD574\uC57C \uD569\uB2C8\uB2E4.") && (q(true), R.clearCache().finally(() => q(false)));
+                        window.confirm("\uC5ED\uC0C9\uC778 \uCE90\uC2DC(.advanced-search/)\uB97C \uC0AD\uC81C\uD560\uAE4C\uC694? \uC0AD\uC81C \uD6C4\uC5D0\uB294 \u300C\uC0C9\uC778\u300D\uC73C\uB85C \uB2E4\uC2DC \uC0DD\uC131\uD574\uC57C \uD569\uB2C8\uB2E4.") && (q(true), $.clearCache().finally(() => q(false)));
                       },
                       className: "inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:bg-odp-bgSoft dark:text-red-300 dark:hover:bg-red-950/30",
                       children: "\uC5ED\uC0C9\uC778 \uCE90\uC2DC \uC0AD\uC81C"
                     })
                   ]
                 }),
-                e.jsx(Xt, {
-                  isOpen: rr,
-                  info: ar,
+                e.jsx(Jt, {
+                  isOpen: sr,
+                  info: dr,
                   onCancel: () => {
-                    Le(false), Pe(null);
+                    Pe(false), _e(null);
                   },
                   onResume: () => {
-                    Le(false), Pe(null), q(true), R.rebuild({
+                    Pe(false), _e(null), q(true), $.rebuild({
                       resume: true
                     }).finally(() => q(false));
                   },
                   onStartFresh: () => {
-                    Le(false), Pe(null), q(true), R.rebuild({
+                    Pe(false), _e(null), q(true), $.rebuild({
                       resume: false
                     }).finally(() => q(false));
                   }
                 }),
-                e.jsx(ue, {
-                  isOpen: sr,
+                e.jsx(xe, {
+                  isOpen: nr,
                   title: "\uC5ED\uC0C9\uC778 \uB2E4\uC2DC \uC0DD\uC131",
                   message: "\uAE30\uC874 \uC5ED\uC0C9\uC778\uC744 \uC9C0\uC6B0\uACE0 \uC804\uCCB4 \uBCFC\uD2B8\uB97C \uB2E4\uC2DC \uC0C9\uC778\uD560\uAE4C\uC694? \uBC31\uADF8\uB77C\uC6B4\uB4DC\uC5D0\uC11C \uC9C4\uD589\uB429\uB2C8\uB2E4.",
                   confirmLabel: "\uB2E4\uC2DC \uC0DD\uC131",
                   cancelLabel: "\uCDE8\uC18C",
                   onConfirm: () => {
-                    He(false), q(true), R.rebuild({
+                    He(false), q(true), $.rebuild({
                       resume: false
                     }).finally(() => q(false));
                   },
                   onCancel: () => He(false)
                 }),
-                e.jsx(Ht, {
+                e.jsx(Yt, {
                   className: "mt-3",
                   logs: S.buildLogs || [],
                   building: S.building,
@@ -3935,13 +3935,13 @@ let __tla = Promise.all([
                         e.jsx("button", {
                           type: "button",
                           onClick: () => {
-                            V("settings-alt-vim", !Ee);
+                            G("settings-alt-vim", !Ie);
                           },
-                          className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${Ee ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                          "aria-pressed": Ee,
+                          className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${Ie ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                          "aria-pressed": Ie,
                           "aria-label": "Alt+Vim \uCEE4\uC11C \uC774\uB3D9",
                           children: e.jsx("span", {
-                            className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Ee ? "translate-x-4" : "translate-x-0.5"}`
+                            className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Ie ? "translate-x-4" : "translate-x-0.5"}`
                           })
                         }),
                         e.jsxs("span", {
@@ -3962,13 +3962,13 @@ let __tla = Promise.all([
                         e.jsx("button", {
                           type: "button",
                           onClick: () => {
-                            V("settings-workspace-tabs", !ge);
+                            G("settings-workspace-tabs", !ue);
                           },
-                          className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${ge ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                          "aria-pressed": ge,
+                          className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${ue ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                          "aria-pressed": ue,
                           "aria-label": "\uD0ED \uAE30\uB2A5",
                           children: e.jsx("span", {
-                            className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${ge ? "translate-x-4" : "translate-x-0.5"}`
+                            className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${ue ? "translate-x-4" : "translate-x-0.5"}`
                           })
                         }),
                         e.jsxs("span", {
@@ -3989,13 +3989,13 @@ let __tla = Promise.all([
                         e.jsx("button", {
                           type: "button",
                           onClick: () => {
-                            V("settings-new-file-temp", !Ie);
+                            G("settings-new-file-temp", !Oe);
                           },
-                          className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${Ie ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                          "aria-pressed": Ie,
+                          className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${Oe ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                          "aria-pressed": Oe,
                           "aria-label": "\uC0C8 \uD30C\uC77C \uC784\uC2DC(\uBA54\uBAA8\uB9AC) \uC0DD\uC131",
                           children: e.jsx("span", {
-                            className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Ie ? "translate-x-4" : "translate-x-0.5"}`
+                            className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Oe ? "translate-x-4" : "translate-x-0.5"}`
                           })
                         }),
                         e.jsxs("span", {
@@ -4010,31 +4010,31 @@ let __tla = Promise.all([
                         })
                       ]
                     }),
-                    ge ? e.jsxs("div", {
+                    ue ? e.jsxs("div", {
                       className: "pl-12 space-y-2",
                       children: [
                         e.jsx("p", {
                           className: "text-xs font-medium text-gray-700 dark:text-odp-fg",
                           children: "\uD0ED \uC790\uB3D9 \uC800\uC7A5 \uC124\uC815"
                         }),
-                        e.jsx(ve, {
+                        e.jsx(ke, {
                           className: "flex flex-col gap-2",
-                          value: nt,
+                          value: lt,
                           onValueChange: (r) => {
-                            r !== "off" && r !== "onFocusChange" && r !== "onWindowChange" || (ra(r), ot(r));
+                            r !== "off" && r !== "onFocusChange" && r !== "onWindowChange" || (sa(r), it(r));
                           },
                           "aria-label": "\uD0ED \uC790\uB3D9 \uC800\uC7A5",
-                          children: ta.map((r) => {
-                            const h = nt === r.value;
-                            return e.jsx(ce, {
+                          children: aa.map((r) => {
+                            const f = lt === r.value;
+                            return e.jsx(ie, {
                               value: r.value,
                               className: [
                                 "rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200 origin-left w-90",
                                 "focus-visible:ring-2 focus-visible:ring-blue-500/40",
-                                h ? "scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30" : "scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400"
+                                f ? "scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30" : "scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400"
                               ].join(" "),
                               children: e.jsxs("div", {
-                                className: h ? "" : "opacity-50",
+                                className: f ? "" : "opacity-50",
                                 children: [
                                   e.jsx("div", {
                                     className: "font-medium text-sm text-gray-800 dark:text-odp-fgStrong",
@@ -4070,11 +4070,11 @@ let __tla = Promise.all([
                     e.jsx("button", {
                       type: "button",
                       onClick: N,
-                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${k ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                      "aria-pressed": k,
+                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${y ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                      "aria-pressed": y,
                       "aria-label": "\uC4F0\uB808\uAE30\uD1B5 \uBCF4\uAE30 \uD1A0\uAE00",
                       children: e.jsx("span", {
-                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${k ? "translate-x-4" : "translate-x-0.5"}`
+                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${y ? "translate-x-4" : "translate-x-0.5"}`
                       })
                     }),
                     e.jsx("span", {
@@ -4088,12 +4088,12 @@ let __tla = Promise.all([
                   children: [
                     e.jsx("button", {
                       type: "button",
-                      onClick: g,
-                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${i ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                      "aria-pressed": i,
+                      onClick: m,
+                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${c ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                      "aria-pressed": c,
                       "aria-label": "\uC228\uAE40 \uD3F4\uB354 \uBCF4\uAE30 \uD1A0\uAE00",
                       children: e.jsx("span", {
-                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${i ? "translate-x-4" : "translate-x-0.5"}`
+                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${c ? "translate-x-4" : "translate-x-0.5"}`
                       })
                     }),
                     e.jsx("span", {
@@ -4127,11 +4127,11 @@ let __tla = Promise.all([
                     e.jsx("button", {
                       type: "button",
                       onClick: I,
-                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${E ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                      "aria-pressed": E,
+                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${C ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                      "aria-pressed": C,
                       "aria-label": "\uD2B8\uB9AC \uD3F4\uB354 \uACBD\uB85C sticky \uD45C\uC2DC",
                       children: e.jsx("span", {
-                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${E ? "translate-x-4" : "translate-x-0.5"}`
+                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${C ? "translate-x-4" : "translate-x-0.5"}`
                       })
                     }),
                     e.jsx("span", {
@@ -4140,7 +4140,26 @@ let __tla = Promise.all([
                     })
                   ]
                 }),
-                typeof x == "function" && e.jsxs("div", {
+                typeof x == "function" && e.jsxs("label", {
+                  className: "flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4",
+                  children: [
+                    e.jsx("button", {
+                      type: "button",
+                      onClick: x,
+                      className: `relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${g ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                      "aria-pressed": g,
+                      "aria-label": "\uD2B8\uB9AC \uC218\uC815 \uB0A0\uC9DC \uD45C\uC2DC",
+                      children: e.jsx("span", {
+                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${g ? "translate-x-4" : "translate-x-0.5"}`
+                      })
+                    }),
+                    e.jsx("span", {
+                      className: "select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong",
+                      children: "\uD2B8\uB9AC \uD30C\uC77C\uBA85 \uC544\uB798 \uC218\uC815 \uB0A0\uC9DC \uD45C\uC2DC (yy-MM-dd hh:mm:ss, \uACF5\uAC04\uC5D0 \uB530\uB77C \uCD95\uC57D)"
+                    })
+                  ]
+                }),
+                typeof w == "function" && e.jsxs("div", {
                   className: "mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft",
                   children: [
                     e.jsx("p", {
@@ -4167,10 +4186,10 @@ let __tla = Promise.all([
                               step: p.unit === "ms" ? 1 : 0.1,
                               value: p.value,
                               onChange: (r) => {
-                                const h = Number(r.target.value);
-                                x({
+                                const f = Number(r.target.value);
+                                w({
                                   ...p,
-                                  value: Number.isFinite(h) && h >= 0 ? h : 0
+                                  value: Number.isFinite(f) && f >= 0 ? f : 0
                                 });
                               },
                               className: "w-24 border border-gray-300 dark:border-odp-borderSoft rounded px-2 py-1.5 text-sm bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg",
@@ -4180,13 +4199,13 @@ let __tla = Promise.all([
                         }),
                         e.jsx("div", {
                           className: "flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg",
-                          children: e.jsxs(ve, {
+                          children: e.jsxs(ke, {
                             className: "flex items-center gap-3",
                             value: p.unit,
                             onValueChange: (r) => {
-                              r !== "s" && r !== "ms" || p.unit !== r && x({
+                              r !== "s" && r !== "ms" || p.unit !== r && w({
                                 unit: r,
-                                value: sa(p.value, p.unit, r)
+                                value: na(p.value, p.unit, r)
                               });
                             },
                             "aria-label": "\uB300\uAE30 \uC2DC\uAC04 \uB2E8\uC704",
@@ -4194,10 +4213,10 @@ let __tla = Promise.all([
                               e.jsxs("label", {
                                 className: "flex items-center gap-1.5 cursor-pointer",
                                 children: [
-                                  e.jsx(ce, {
+                                  e.jsx(ie, {
                                     value: "s",
                                     className: "size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500",
-                                    children: e.jsx(We, {
+                                    children: e.jsx(Ue, {
                                       className: "relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white"
                                     })
                                   }),
@@ -4209,10 +4228,10 @@ let __tla = Promise.all([
                               e.jsxs("label", {
                                 className: "flex items-center gap-1.5 cursor-pointer",
                                 children: [
-                                  e.jsx(ce, {
+                                  e.jsx(ie, {
                                     value: "ms",
                                     className: "size-3.5 rounded-full border border-gray-400 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500",
-                                    children: e.jsx(We, {
+                                    children: e.jsx(Ue, {
                                       className: "relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white"
                                     })
                                   }),
@@ -4228,7 +4247,7 @@ let __tla = Promise.all([
                           className: "text-[11px] text-gray-500 dark:text-odp-muted",
                           children: [
                             "= ",
-                            da(p),
+                            oa(p),
                             " ms"
                           ]
                         })
@@ -4273,10 +4292,10 @@ let __tla = Promise.all([
                         e.jsx("input", {
                           type: "radio",
                           name: "wikiImageCacheMode",
-                          value: $e,
-                          checked: X === $e,
+                          value: Fe,
+                          checked: dt === Fe,
                           onChange: () => {
-                            Ce($e), Lt($e);
+                            nt(Fe), _t(Fe);
                           }
                         }),
                         e.jsx("span", {
@@ -4295,10 +4314,10 @@ let __tla = Promise.all([
                         e.jsx("input", {
                           type: "radio",
                           name: "wikiImageCacheMode",
-                          value: Fe,
-                          checked: X === Fe,
+                          value: Be,
+                          checked: dt === Be,
                           onChange: () => {
-                            Ce(Fe), Lt(Fe);
+                            nt(Be), _t(Be);
                           }
                         }),
                         e.jsx("span", {
@@ -4319,17 +4338,17 @@ let __tla = Promise.all([
               id: "settings-snippets",
               tabIndex: -1,
               className: "scroll-mt-4",
-              children: e.jsx(Ca, {
-                value: j,
-                onChange: T,
-                onSave: z,
-                isSaving: D,
-                isLoaded: L
+              children: e.jsx(Ia, {
+                value: R,
+                onChange: _,
+                onSave: P,
+                isSaving: M,
+                isLoaded: te
               })
             }),
-            e.jsx(Ia, {}),
-            e.jsx(La, {}),
-            e.jsx(Ea, {}),
+            e.jsx(Aa, {}),
+            e.jsx(_a, {}),
+            e.jsx(Oa, {}),
             e.jsxs("div", {
               id: "settings-chat",
               tabIndex: -1,
@@ -4349,13 +4368,13 @@ let __tla = Promise.all([
                     e.jsx("button", {
                       type: "button",
                       onClick: () => {
-                        V("settings-composer-helper", !Oe);
+                        G("settings-composer-helper", !Ae);
                       },
-                      className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${Oe ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
-                      "aria-pressed": Oe,
+                      className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${Ae ? "bg-blue-500 border-blue-500 shadow-sm" : "bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft"} group-hover:brightness-105 group-hover:border-blue-400`,
+                      "aria-pressed": Ae,
                       "aria-label": "\uC785\uB825\uCC3D \uB2E8\uCD95\uD0A4 \uC548\uB0B4 \uD45C\uC2DC",
                       children: e.jsx("span", {
-                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Oe ? "translate-x-4" : "translate-x-0.5"}`
+                        className: `inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${Ae ? "translate-x-4" : "translate-x-0.5"}`
                       })
                     }),
                     e.jsxs("span", {
@@ -4372,7 +4391,7 @@ let __tla = Promise.all([
                 })
               ]
             }),
-            e.jsx(Pa, {}),
+            e.jsx(Da, {}),
             e.jsxs("div", {
               id: "settings-app-update",
               tabIndex: -1,
@@ -4398,7 +4417,7 @@ let __tla = Promise.all([
                         }),
                         e.jsx("dd", {
                           className: "min-w-0 break-all font-mono",
-                          children: na() || "\uC54C \uC218 \uC5C6\uC74C"
+                          children: la() || "\uC54C \uC218 \uC5C6\uC74C"
                         })
                       ]
                     }),
@@ -4419,14 +4438,14 @@ let __tla = Promise.all([
                 }),
                 e.jsxs("button", {
                   type: "button",
-                  onClick: () => W == null ? void 0 : W(),
-                  disabled: Z || typeof W != "function",
+                  onClick: () => je == null ? void 0 : je(),
+                  disabled: ve || typeof je != "function",
                   className: "inline-flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-60",
                   children: [
-                    e.jsx(At, {
+                    e.jsx(Pt, {
                       size: 16
                     }),
-                    Z ? "\uCD5C\uC2E0 \uBC84\uC804 \uD655\uC778 \uC911..." : "\uCD5C\uC2E0 \uBC84\uC804 \uD655\uC778 \uBC0F \uC989\uC2DC \uC5C5\uB370\uC774\uD2B8"
+                    ve ? "\uCD5C\uC2E0 \uBC84\uC804 \uD655\uC778 \uC911..." : "\uCD5C\uC2E0 \uBC84\uC804 \uD655\uC778 \uBC0F \uC989\uC2DC \uC5C5\uB370\uC774\uD2B8"
                   ]
                 })
               ]
@@ -4439,5 +4458,5 @@ let __tla = Promise.all([
 });
 export {
   __tla,
-  xs as default
+  us as default
 };
