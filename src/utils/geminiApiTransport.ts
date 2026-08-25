@@ -1,6 +1,10 @@
 import { isDesktopApp } from '@/utils/isDesktopApp';
 
-const GEMINI_PROXY_PREFIX = '/api/gemini';
+/** Google AI Studio / Generative Language API origin (web calls this directly). */
+export const GEMINI_API_ORIGIN = 'https://generativelanguage.googleapis.com';
+
+/** Same-origin path used only by the Tauri @google/genai fetch shim (not web). */
+const GEMINI_TAURI_SHIM_PREFIX = '/api/gemini';
 
 export const GEMINI_API_PATH_PREFIX = '/v1beta';
 
@@ -31,11 +35,14 @@ function assertAllowedGeminiPath(path: string): void {
 function formatGeminiNetworkError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (/failed to fetch|networkerror|load failed|cors/i.test(msg)) {
+    if (isDesktopApp()) {
+      return ['Gemini API에 연결할 수 없습니다.', '', '네트워크 연결을 확인하세요.'].join('\n');
+    }
     return [
       'Gemini API에 연결할 수 없습니다.',
       '',
-      '웹 배포에서는 /api/gemini 프록시가 필요합니다.',
-      'Render 등 Node 서버(start 스크립트)로 실행 중인지 확인하세요.',
+      'Google AI Studio API 키와 네트워크 연결을 확인하세요.',
+      '브라우저 보안 정책(CORS)으로 차단된 경우 Google API 문서를 확인하세요.',
     ].join('\n');
   }
   return msg || 'Gemini API 네트워크 오류';
@@ -61,15 +68,17 @@ function readRequestHeader(init: RequestInit | undefined, name: string): string 
   return undefined;
 }
 
-function isGeminiProxyRequest(url: string): boolean {
+function isGeminiTauriShimRequest(url: string): boolean {
   try {
     const parsed = new URL(url, globalThis.location?.origin ?? 'http://localhost');
     return (
-      parsed.pathname === GEMINI_PROXY_PREFIX ||
-      parsed.pathname.startsWith(`${GEMINI_PROXY_PREFIX}/`)
+      parsed.pathname === GEMINI_TAURI_SHIM_PREFIX ||
+      parsed.pathname.startsWith(`${GEMINI_TAURI_SHIM_PREFIX}/`)
     );
   } catch {
-    return url.startsWith(`${GEMINI_PROXY_PREFIX}/`) || url.startsWith(`${GEMINI_PROXY_PREFIX}?`);
+    return (
+      url.startsWith(`${GEMINI_TAURI_SHIM_PREFIX}/`) || url.startsWith(`${GEMINI_TAURI_SHIM_PREFIX}?`)
+    );
   }
 }
 
@@ -80,7 +89,7 @@ async function readRequestBody(init?: RequestInit): Promise<string | undefined> 
   return undefined;
 }
 
-function resolveGeminiProxyOrigin(): string {
+function resolveLocalOrigin(): string {
   const origin = globalThis.location?.origin;
   if (typeof origin === 'string' && origin.length > 0) return origin;
   return 'http://localhost';
@@ -89,15 +98,19 @@ function resolveGeminiProxyOrigin(): string {
 /**
  * Base URL for @google/genai httpOptions.
  * SDK requires an absolute URL (relative paths fail in constructUrl).
- * Web proxy or Tauri fetch shim still routes by /api/gemini pathname.
+ * Web: direct Google AI Studio origin.
+ * Tauri: same-origin shim path; ensureGeminiFetchShim routes to Rust HTTP.
  */
 export function resolveGeminiHttpBaseUrl(): string {
-  return `${resolveGeminiProxyOrigin()}${GEMINI_PROXY_PREFIX}`;
+  if (isDesktopApp()) {
+    return `${resolveLocalOrigin()}${GEMINI_TAURI_SHIM_PREFIX}`;
+  }
+  return GEMINI_API_ORIGIN;
 }
 
 /**
- * Routes @google/genai SDK fetch calls through fetchGeminiApi on desktop.
- * Web requests still use the same-origin /api/gemini proxy via native fetch.
+ * Routes @google/genai SDK fetch calls through fetchGeminiApi on Tauri desktop.
+ * Web uses native fetch to generativelanguage.googleapis.com (no backend proxy).
  */
 export function ensureGeminiFetchShim(): void {
   if (geminiFetchShimInstalled || !isDesktopApp()) return;
@@ -105,7 +118,7 @@ export function ensureGeminiFetchShim(): void {
 
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = resolveRequestUrl(input);
-    if (!isGeminiProxyRequest(url)) {
+    if (!isGeminiTauriShimRequest(url)) {
       return nativeFetch(input, init);
     }
 
@@ -124,8 +137,8 @@ export function ensureGeminiFetchShim(): void {
 }
 
 /**
- * Browser/web: same-origin /api/gemini proxy (avoids Google CORS).
- * Tauri desktop: native HTTP via Rust command (no browser CORS).
+ * Tauri: native HTTP via Rust command (no browser CORS).
+ * Web: browser fetch directly to Google AI Studio (fetchGeminiApi is shim-only on web).
  */
 export async function fetchGeminiApi(path: string, init: GeminiFetchInit): Promise<Response> {
   assertAllowedGeminiPath(path);
@@ -155,7 +168,7 @@ export async function fetchGeminiApi(path: string, init: GeminiFetchInit): Promi
       headers,
     };
     if (init.body) requestInit.body = init.body;
-    return await nativeFetch(`${GEMINI_PROXY_PREFIX}${path}`, requestInit);
+    return await nativeFetch(`${GEMINI_API_ORIGIN}${path}`, requestInit);
   } catch (err) {
     throw new Error(formatGeminiNetworkError(err));
   }
