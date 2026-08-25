@@ -4,6 +4,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
+import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
 import {
   applyForcedAppUpdate,
   checkAppBuildUpdate,
@@ -12,7 +13,6 @@ import {
 } from '@/utils/pwaUpdate';
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage';
-import type { AppLogicGlue } from '@/App/hooks/appLogicGlue';
 
 /** Owned setters/state passed from AppPwaSnippetsStateProvider (avoids circular import). */
 export type PwaSnippetsOwnedForDomain = {
@@ -36,14 +36,12 @@ export type PwaSnippetsOwnedForDomain = {
 
 /**
  * Owns PWA update handlers + snippet load/save.
- * Call from AppPwaSnippetsStateProvider (below Vault, above AppLogic).
+ * Call from AppPwaSnippetsStateProvider (below Chrome, above AppLogic).
  */
-export function usePwaSnippetsDomain(
-  owned: PwaSnippetsOwnedForDomain,
-  glueRef?: { current: AppLogicGlue },
-) {
+export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   const { isUnlocked, s3Creds } = useAuth();
   const { scriptsLoaded } = useBootstrapOwned();
+  const { setOperationStatus } = useChromeOwned();
   const {
     storageMode,
     localRootHandle,
@@ -377,7 +375,7 @@ export function usePwaSnippetsDomain(
         } else if (storageMode === 'webdav') {
           await saveSnippetConfigToWebdav(toSave);
         }
-        glueRef?.current?.setOperationStatus?.('스니펫 설정이 저장되었습니다.');
+        setOperationStatus('스니펫 설정이 저장되었습니다.');
       } catch (e) {
         alert('스니펫 설정 저장에 실패했습니다: ' + (e?.message || e));
       } finally {
@@ -390,7 +388,7 @@ export function usePwaSnippetsDomain(
       saveSnippetConfigToS3,
       saveSnippetConfigToLocal,
       saveSnippetConfigToWebdav,
-      glueRef,
+      setOperationStatus,
     ],
   );
 

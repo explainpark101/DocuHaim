@@ -61,6 +61,29 @@ export type FileSessionOwnedApi = {
     ((file: any, content: string) => void) | null
   >;
   requestEncMdPasswordRef: MutableRefObject<((opts?: any) => Promise<string>) | null>;
+  /** Late-bound bootstrap / session / routing helpers filled by AppLogic domains. */
+  clearOpenFileStateRef: MutableRefObject<(() => void) | null>;
+  revokeOpenFileObjectUrlRef: MutableRefObject<((file: any) => void) | null>;
+  openSessionWorkspaceRef: MutableRefObject<((...args: any[]) => any) | null>;
+  downloadSessionWorkspaceRef: MutableRefObject<(() => Promise<void>) | null>;
+  getSessionObjectUrlRef: MutableRefObject<
+    ((path: string, bytes: Uint8Array, mime?: string) => string) | null
+  >;
+  revokeSessionObjectUrlsRef: MutableRefObject<(() => void) | null>;
+  navGuardRef: MutableRefObject<any>;
+  restorePersistedWorkspaceTabsRef: MutableRefObject<((...args: any[]) => any) | null>;
+  loadLastOpenedFileRef: MutableRefObject<(() => any) | null>;
+  clearLastOpenedFileRef: MutableRefObject<(() => void) | null>;
+  /** Shared orchestration flags / tree mirrors (owned here so domains + setup share). */
+  s3TreeRef: MutableRefObject<any[]>;
+  webdavTreeRef: MutableRefObject<any[]>;
+  prevHistoryViewPathRef: MutableRefObject<string | undefined>;
+  hasRestoredLastFileRef: MutableRefObject<boolean>;
+  hasProcessedOpenFromUrlRef: MutableRefObject<boolean>;
+  hasRestoredFromPrintRef: MutableRefObject<boolean>;
+  hasPromptedLocalFolderRestoreRef: MutableRefObject<boolean>;
+  hasSeededTabsRestoreQueueRef: MutableRefObject<boolean>;
+  restoringWorkspaceTabsRef: MutableRefObject<boolean>;
 };
 
 const FileSessionOwnedContext = createContext<FileSessionOwnedApi | null>(null);
@@ -109,6 +132,27 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
     ((file: any, content: string) => void) | null
   >(null);
   const requestEncMdPasswordRef = useRef<((opts?: any) => Promise<string>) | null>(null);
+  const clearOpenFileStateRef = useRef<(() => void) | null>(null);
+  const revokeOpenFileObjectUrlRef = useRef<((file: any) => void) | null>(null);
+  const openSessionWorkspaceRef = useRef<((...args: any[]) => any) | null>(null);
+  const downloadSessionWorkspaceRef = useRef<(() => Promise<void>) | null>(null);
+  const getSessionObjectUrlRef = useRef<
+    ((path: string, bytes: Uint8Array, mime?: string) => string) | null
+  >(null);
+  const revokeSessionObjectUrlsRef = useRef<(() => void) | null>(null);
+  const navGuardRef = useRef<any>(null);
+  const restorePersistedWorkspaceTabsRef = useRef<((...args: any[]) => any) | null>(null);
+  const loadLastOpenedFileRef = useRef<(() => any) | null>(null);
+  const clearLastOpenedFileRef = useRef<(() => void) | null>(null);
+  const s3TreeRef = useRef<any[]>([]);
+  const webdavTreeRef = useRef<any[]>([]);
+  const prevHistoryViewPathRef = useRef<string | undefined>(undefined);
+  const hasRestoredLastFileRef = useRef(false);
+  const hasProcessedOpenFromUrlRef = useRef(false);
+  const hasRestoredFromPrintRef = useRef(false);
+  const hasPromptedLocalFolderRestoreRef = useRef(false);
+  const hasSeededTabsRestoreQueueRef = useRef(false);
+  const restoringWorkspaceTabsRef = useRef(false);
 
   editedFileNameRef.current = editedFileName;
 
@@ -156,6 +200,25 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
       closeCurrentFileRef,
       maybeAutoSaveOnFocusChangeRef,
       requestEncMdPasswordRef,
+      clearOpenFileStateRef,
+      revokeOpenFileObjectUrlRef,
+      openSessionWorkspaceRef,
+      downloadSessionWorkspaceRef,
+      getSessionObjectUrlRef,
+      revokeSessionObjectUrlsRef,
+      navGuardRef,
+      restorePersistedWorkspaceTabsRef,
+      loadLastOpenedFileRef,
+      clearLastOpenedFileRef,
+      s3TreeRef,
+      webdavTreeRef,
+      prevHistoryViewPathRef,
+      hasRestoredLastFileRef,
+      hasProcessedOpenFromUrlRef,
+      hasRestoredFromPrintRef,
+      hasPromptedLocalFolderRestoreRef,
+      hasSeededTabsRestoreQueueRef,
+      restoringWorkspaceTabsRef,
     }),
     [
       currentFile,

@@ -1,14 +1,18 @@
 /**
  * App logic setup: autosave helpers, document title, auth session restore,
- * settings-toggle sync. Owns routing restore refs; pulls other state from ctx.
+ * settings-toggle sync. Context-owned (no bag / glueRef).
  */
-import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
-import type { Location, NavigateFunction } from 'react-router';
-import type { WorkspaceTabsCtxValue } from '@/App/context/WorkspaceTabsContext';
-import type { FileSessionValue } from '@/App/context/FileSessionContext';
-import type { AuthS3Creds } from '@/contexts/AuthContext';
-import type { WorkspaceTabsState } from '@/utils/workspaceTabs/types';
-import type { WorkspaceTabsAutoSaveMode } from '@/utils/workspaceTabsSettings';
+import { useCallback, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router';
+import { useAuth, type AuthS3Creds } from '@/contexts/AuthContext';
+import { useVault } from '@/App/hooks/useVault';
+import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import { useFileSession } from '@/App/hooks/useFileSession';
+import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
+import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
+import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
+import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
+import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { getExt } from '@/App/helpers';
 import { clearAllLlmApiKeySessions } from '@/utils/llmApiKeySession';
 import {
@@ -40,6 +44,7 @@ import {
 import {
   loadWorkspaceTabsAutoSaveMode,
   WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
+  type WorkspaceTabsAutoSaveMode,
 } from '@/utils/workspaceTabsSettings';
 import { isEncMdPath } from '@/utils/encMd';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
@@ -77,80 +82,88 @@ type BackgroundTabSaveFile = {
   lastModified?: Date | number;
 };
 
-export type AppLogicSetupDomainCtx = {
-  s3Creds: AuthS3Creds;
-  setWebdavConfig: (cfg: WebdavConfig | ((prev: WebdavConfig) => WebdavConfig)) => void;
-  lock: () => void;
-  unlock: (creds: AuthS3Creds, password?: string) => void;
-  proceedWithoutStoredCreds: () => void;
-  isUnlocked: boolean;
-  masterPassword: string;
-  webdavConfig: WebdavConfig;
-  navigate: NavigateFunction;
-  location: Location;
-  setSelectedIds: (ids: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
-  setCurrentFile: (
-    file: BackgroundTabSaveFile | null | ((prev: BackgroundTabSaveFile | null) => BackgroundTabSaveFile | null),
-  ) => void;
-  currentFileRef: MutableRefObject<BackgroundTabSaveFile | null>;
-  setEditorContent: (content: string | ((prev: string) => string)) => void;
-  editorContentRef: MutableRefObject<string>;
-  setEditedFileName: (name: string | ((prev: string) => string)) => void;
-  editedFileName: string;
-  currentFile: BackgroundTabSaveFile | null;
-  editedFileNameRef: MutableRefObject<string>;
-  workspaceTabsApi: WorkspaceTabsCtxValue;
-  workspaceTabsRef: MutableRefObject<WorkspaceTabsState>;
-  workspaceTabsEnabledRef: MutableRefObject<boolean>;
-  setWorkspaceTabs: WorkspaceTabsCtxValue['setState'];
-  setWorkspaceTabsEnabled: (enabled: boolean) => void;
-  setSavingTabIds: (ids: string[] | ((prev: string[]) => string[])) => void;
-  savingTabIdsRef: MutableRefObject<Set<string>>;
-  saveFileRef: MutableRefObject<FileSessionValue['saveFile'] | undefined>;
-  s3Tree: unknown[];
-  webdavTree: unknown[];
-  sessionWorkspace: unknown;
-  sessionWorkspaceRef: MutableRefObject<unknown>;
-  storageMode: string;
-  fileSessionApi: FileSessionValue;
-  appLockPromptManual: boolean;
-  setAuthWanted: (wanted: boolean) => void;
-  authWanted: boolean;
-  shareBlockingAuth: boolean;
-  setShowAuthModal: (show: boolean) => void;
-  setWebauthnPRFSupported: (supported: boolean) => void;
-  setWebauthnAvailable: (available: boolean) => void;
-  webauthnAvailable: boolean;
-  isChatRoute: boolean;
-  isSettingsRoute: boolean;
-  setShowTrashFolder: (show: boolean) => void;
-  setShowHiddenFolders: (show: boolean) => void;
-  setHideRecordingCompanions: (hide: boolean) => void;
-  setTreeStickyFolderPathEnabled: (enabled: boolean) => void;
-  setShowTreeModifiedDate: (show: boolean) => void;
-  suppressUnsavedNavGuardRef?: MutableRefObject<boolean>;
-};
-
-export function useAppLogicSetupDomain(ctx: AppLogicSetupDomainCtx) {
+export function useAppLogicSetupDomain() {
   const {
-    s3Creds, setWebdavConfig, lock, unlock, proceedWithoutStoredCreds,
-    isUnlocked, masterPassword, webdavConfig, navigate, location,
-    setSelectedIds, setCurrentFile, currentFileRef, setEditorContent, editorContentRef,
-    setEditedFileName, editedFileName, currentFile, editedFileNameRef,
-    workspaceTabsApi, workspaceTabsRef, workspaceTabsEnabledRef, setWorkspaceTabs,
-    setWorkspaceTabsEnabled, setSavingTabIds, savingTabIdsRef, saveFileRef,
-    s3Tree, webdavTree, sessionWorkspace, sessionWorkspaceRef,
-    storageMode, fileSessionApi, appLockPromptManual,
-    setAuthWanted, authWanted, shareBlockingAuth, setShowAuthModal,
-    setWebauthnPRFSupported, setWebauthnAvailable, webauthnAvailable,
-    isChatRoute, isSettingsRoute,
-    setShowTrashFolder, setShowHiddenFolders, setHideRecordingCompanions,
-    setTreeStickyFolderPathEnabled, setShowTreeModifiedDate,
-  } = ctx;
-
-  const fallbackSuppressUnsavedNavGuardRef = useRef(false);
-  const suppressUnsavedNavGuardRef =
-    ctx.suppressUnsavedNavGuardRef ?? fallbackSuppressUnsavedNavGuardRef;
+    s3Creds,
+    lock,
+    unlock,
+    proceedWithoutStoredCreds,
+    isUnlocked,
+    masterPassword,
+    setShowAuthModal,
+    appLockPromptManual,
+  } = useAuth();
+  const {
+    setWebdavConfig,
+    webdavConfig,
+    s3Tree,
+    webdavTree,
+    sessionWorkspace,
+    storageMode,
+  } = useVault();
+  const fileOwned = useFileSessionOwned();
+  const {
+    setCurrentFile,
+    currentFileRef,
+    setEditorContent,
+    editorContentRef,
+    setEditedFileName,
+    editedFileName,
+    currentFile,
+    editedFileNameRef,
+    setSavingTabIds,
+    savingTabIdsRef,
+    saveFileRef,
+    sessionWorkspaceRef,
+    suppressUnsavedNavGuardRef,
+    s3TreeRef,
+    webdavTreeRef,
+    prevHistoryViewPathRef,
+    hasRestoredLastFileRef,
+    hasProcessedOpenFromUrlRef,
+    hasRestoredFromPrintRef,
+    hasPromptedLocalFolderRestoreRef,
+    hasSeededTabsRestoreQueueRef,
+    restoringWorkspaceTabsRef,
+    loadLastOpenedFileRef,
+    clearLastOpenedFileRef,
+    maybeAutoSaveOnFocusChangeRef,
+  } = fileOwned;
+  const fileSessionApi = useFileSession();
+  const { setSelectedIds } = useTreeOpsOwned();
+  const {
+    setAuthWanted,
+    authWanted,
+    isChatRoute,
+    isSettingsRoute,
+    setShowTrashFolder,
+    setShowHiddenFolders,
+    setHideRecordingCompanions,
+    setTreeStickyFolderPathEnabled,
+    setShowTreeModifiedDate,
+  } = useChromeOwned();
+  const {
+    setWebauthnPRFSupported,
+    setWebauthnAvailable,
+    webauthnAvailable,
+  } = useModalsOwned();
+  const { shareBlockingAuth } = useBootstrapOwned();
+  const workspaceTabsApi = useWorkspaceTabsCtx();
+  const {
+    workspaceTabsRef,
+    workspaceTabsEnabledRef,
+    setState: setWorkspaceTabs,
+    setWorkspaceTabsEnabled,
+    activateWorkspaceTab,
+    closeWorkspaceTabById,
+    openChatWorkspaceTab,
+    openSettingsWorkspaceTab,
+    reorderWorkspaceTabs,
+    collapseToLegacyWorkspace,
+    cycleWorkspaceTab,
+  } = workspaceTabsApi;
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
   const appName = getAppNameByStorageMode(storageMode || DEFAULT_STORAGE_MODE);
@@ -202,17 +215,6 @@ export function useAppLogicSetupDomain(ctx: AppLogicSetupDomainCtx) {
       setWebdavConfig(cfg);
     }
   }, []);
-
-  const s3TreeRef = useRef<unknown[]>([]);
-  const webdavTreeRef = useRef<unknown[]>([]);
-  const prevHistoryViewPathRef = useRef<string | undefined>(undefined);
-  const hasRestoredLastFileRef = useRef(false);
-  const hasProcessedOpenFromUrlRef = useRef(false);
-  const hasRestoredFromPrintRef = useRef(false);
-  const hasPromptedLocalFolderRestoreRef = useRef(false);
-
-  const hasSeededTabsRestoreQueueRef = useRef(false);
-  const restoringWorkspaceTabsRef = useRef(false);
 
   const loadLastOpenedFile = useCallback(() => {
     const persisted = pickWorkspaceTabsRestoreSource();
@@ -333,16 +335,6 @@ export function useAppLogicSetupDomain(ctx: AppLogicSetupDomainCtx) {
       queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
     }
   }, [queueBackgroundTabSave]);
-
-  const {
-    activateWorkspaceTab,
-    closeWorkspaceTabById,
-    openChatWorkspaceTab,
-    openSettingsWorkspaceTab,
-    reorderWorkspaceTabs,
-    collapseToLegacyWorkspace,
-    cycleWorkspaceTab,
-  } = workspaceTabsApi;
 
   useEffect(() => {
     s3TreeRef.current = s3Tree;
@@ -561,6 +553,9 @@ export function useAppLogicSetupDomain(ctx: AppLogicSetupDomainCtx) {
 
   // 2. Auth Actions
 
+  loadLastOpenedFileRef.current = loadLastOpenedFile;
+  clearLastOpenedFileRef.current = clearLastOpenedFile;
+  maybeAutoSaveOnFocusChangeRef.current = maybeAutoSaveOnFocusChange;
 
   return {
     lockApp,
