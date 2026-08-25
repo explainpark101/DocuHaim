@@ -264,6 +264,29 @@ App section PR을 열 때 **해당 utils 이동을 같은 PR 또는 직전 PR**�
 
 **이미 feature 폴더에 있는 것** (`chatWithMyself`, `advancedSearch` 등)은 건드리지 않음 — 루트 산재분만 정리.
 
+### Phase C — Provider thin shell (별도 계획, PR12 이후)
+
+PR1–12로 **파일·폴더·factory 경계**가 안정된 뒤, [**app_provider_thin_shell.plan.md**](app_provider_thin_shell.plan.md)를 실행합니다.
+
+| Phase | 계획 파일 | 결과물 |
+|-------|-----------|--------|
+| A–B | 이 파일 (PR1–12) | `App/sections/*`, taxonomy, `MainApp` <600줄 |
+| **C** | [app_provider_thin_shell.plan.md](app_provider_thin_shell.plan.md) | `AppProviders` + `AppShellView` <150줄, `sections/` 제거 |
+
+Phase C 핵심:
+
+- 도메인 Provider 5–6개 (`Vault`, `WorkspaceTabs`, `FileSession`, `TreeOps`, `AutoSave`, `Bootstrap`)
+- `useWorkspaceTabs` + `workspaceTabsStore` 단일 소스
+- `components/shell/*`가 context hook으로 props 의존 축소
+- `MainApp.tsx` 삭제 → `AppShellView.tsx` 조립만
+
+**Phase C 착수 조건** (handoff checklist):
+
+- [ ] PR10 완료 — `MainApp.tsx` <600줄, section §1–8 대응
+- [ ] PR11 shim 정리 또는 추적 이슈 등록
+- [ ] cluster split 스모크 전체 통과
+- [ ] `app_provider_thin_shell.plan.md` Provider 경계·PR 순서 최종 확인
+
 ---
 
 ## PR별 검증
@@ -293,6 +316,8 @@ App 스모크 (기존과 동일):
 
 ## 완료 기준
 
+### Phase A–B (이 계획)
+
 **App**
 
 - `src/App.jsx` 없음; `MainApp.tsx` < 600줄
@@ -304,8 +329,17 @@ App 스모크 (기존과 동일):
 - 신규 코드는 taxonomy 준수 (shell / editor / shared / feature)
 - shim 제거 완료 또는 shim 목록 이슈로 추적
 
-**후속 (이번 범위 밖)**
+**Handoff**
 
-- `useWorkspaceTabs` 채택
+- [app_provider_thin_shell.plan.md](app_provider_thin_shell.plan.md) 착수 조건 충족
+
+### Phase C (별도 계획 — 전체 리팩터 완료 시점)
+
+- `MainApp.tsx` 없음; `AppShellView.tsx` < 150줄
+- `App/sections/` 제거, domain Provider가 state 소유
+- `useWorkspaceTabs` 단일 탭 소스
+
+### 후속 (Phase C 이후)
+
 - `src/features/` 단일 트리로의 전면 재배치
 - `hooks/`를 feature 옆으로 이관
