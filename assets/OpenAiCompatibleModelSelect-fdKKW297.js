@@ -1,7 +1,7 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-k2zzlr12.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-BGTd31p3.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
 import { r as p, j as d, __tla as __tla_0 } from "./vendor-react-SY5QCjFA.js";
 import { A as V, G as Y } from "./vendor-google-genai-Dw3BcYJd.js";
-import { fW as $, g0 as Z, g1 as Q, g2 as ee, e5 as te, f2 as re, g3 as M, f0 as ne, f1 as se, __tla as __tla_1 } from "./index-k2zzlr12.js";
+import { fW as $, g0 as Z, g1 as Q, g2 as ee, e5 as te, f2 as re, g3 as M, f0 as ne, f1 as se, __tla as __tla_1 } from "./index-BGTd31p3.js";
 import { _ as oe, __tla as __tla_2 } from "./vendor-md-editor-CyUZNHY0.js";
 import { v as O, ap as P } from "./vendor-lucide-DpPvFd8E.js";
 import { a0 as ie, a1 as ae, a2 as ce, a3 as le, a4 as G } from "./vendor-radix--fTcLYkF.js";
@@ -132,7 +132,7 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
     const r = t.method ?? "GET";
     if ($()) {
       const { invoke: s } = await oe(async () => {
-        const { invoke: i } = await import("./index-k2zzlr12.js").then(async (m) => {
+        const { invoke: i } = await import("./index-BGTd31p3.js").then(async (m) => {
           await m.__tla;
           return m;
         }).then((c) => c.gh);

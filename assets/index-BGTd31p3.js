@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-CszXVL8k.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-DXiO85YG.js","assets/lucivyBackend-cDet42ID.js","assets/vendor-mermaid-zeoujO6K.js","assets/MarkdownEditor-BJcuVFJv.js","assets/previewFootnoteScroll-CozlPkEs.js","assets/OpenAiCompatibleModelSelect-B5cCAPmZ.js","assets/vendor-google-genai-Dw3BcYJd.js","assets/clipboardImageFiles-DOKqT8TB.js","assets/LlmAssistPanel-O8jxv5K6.js","assets/useLazyMermaidRender-Clq2I54A.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BHjN1VVl.css","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/useTocTitleWrap-BEO7A3iS.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-D5ivCA5T.js","assets/TableStyleTemplateEditor-Cwth8Fhp.js","assets/index-CG4BSG42.js","assets/useWikiImageHydration-BmaEUSyM.js","assets/NovelMarkdownEditor-DY74pwkm.js","assets/vendor-novel-DkYdzD6u.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-MuWRrlP6.js","assets/ChatWithMyselfPane-CpLNwx11.js","assets/ChatImageBackgroundPicker-C07IHeuD.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-U5-dFdCq.js","assets/ChatWithMyselfPane-DAmWMq_1.css","assets/SettingsPage-CbRTf5J0.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-BiC2ukf7.js","assets/index-DMd0iJAf.js","assets/event-DltHeBaN.js","assets/ExportPDFPage-Dbi7KOJs.js","assets/LlmAssistPopoutPage-BfELJgNa.js","assets/toHtml-CKFnlKK2.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-qzNP0LsM.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-DXiO85YG.js","assets/lucivyBackend-CpnOSbN1.js","assets/vendor-mermaid-B46Qaj0H.js","assets/MarkdownEditor-CVNcU_tl.js","assets/previewFootnoteScroll-ZkejlDKi.js","assets/OpenAiCompatibleModelSelect-fdKKW297.js","assets/vendor-google-genai-Dw3BcYJd.js","assets/clipboardImageFiles-DRgQZHSt.js","assets/LlmAssistPanel-CGDpQKwx.js","assets/useLazyMermaidRender-BWu3UBZS.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BHjN1VVl.css","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/useTocTitleWrap-CrQIaCCj.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-Dv8YJDkk.js","assets/TableStyleTemplateEditor-D1Hsfpem.js","assets/index-CG4BSG42.js","assets/useWikiImageHydration-z0b51vI8.js","assets/NovelMarkdownEditor-fKA3JuNQ.js","assets/vendor-novel-D0j53cet.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-Cq88-wUA.js","assets/ChatWithMyselfPane-BzcaqUtz.js","assets/ChatImageBackgroundPicker-B1Xavsvc.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-Dog-bOLY.js","assets/ChatWithMyselfPane-DAmWMq_1.css","assets/SettingsPage-D309spGG.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-Dc9h9D0I.js","assets/index-CgweQjZj.js","assets/event-DpukrPt0.js","assets/ExportPDFPage-DhZ4fttp.js","assets/LlmAssistPopoutPage-Dzr95Qth.js","assets/toHtml-yLIRAFUu.js"])))=>i.map(i=>d[i]);
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key2, value) => key2 in obj ? __defProp(obj, key2, { enumerable: true, configurable: true, writable: true, value }) : obj[key2] = value;
 var __publicField = (obj, key2, value) => __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value);
@@ -11679,7 +11679,7 @@ ${L}`;
   };
   const BIOMETRY_DOMAIN = "com.docuhaim.app", NAME_UNLOCK_PASSWORD = "unlock-password", NAME_CREDS_ENTROPY = "creds-entropy", MARKER_KEY = "s3NotesWebAuthn";
   async function loadBiometryApi() {
-    return __vitePreload(() => import("./index-CszXVL8k.js"), __vite__mapDeps([0,1,2,3,4,5,6,7]));
+    return __vitePreload(() => import("./index-qzNP0LsM.js"), __vite__mapDeps([0,1,2,3,4,5,6,7]));
   }
   function isDesktopBiometryMarker(e) {
     return !!e && typeof e == "object" && e.desktopBiometry === true && (e.mode === "password" || e.mode === "creds");
@@ -22857,7 +22857,7 @@ ${t}${r}`;
     };
   }
   async function lucivyApi() {
-    return __vitePreload(() => import("./lucivyBackend-cDet42ID.js").then(async (m2) => {
+    return __vitePreload(() => import("./lucivyBackend-CpnOSbN1.js").then(async (m2) => {
       await m2.__tla;
       return m2;
     }), __vite__mapDeps([11,2,1,3,4,5,6,7]));
@@ -26998,7 +26998,7 @@ ${t}
       this.backend = t.backend, t.getTree && (this.getTree = t.getTree), typeof t.storageKey == "string" && (this.storageKey = t.storageKey, this.refreshCheckpointStatus());
     }
     async loadLucivyApi() {
-      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-cDet42ID.js").then(async (m2) => {
+      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-CpnOSbN1.js").then(async (m2) => {
         await m2.__tla;
         return m2;
       }), __vite__mapDeps([11,2,1,3,4,5,6,7])), this.lucivyApi);
@@ -57660,7 +57660,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return renderSeq += 1, `haim-mermaid-${Date.now().toString(36)}-${renderSeq}`;
   }
   async function getMermaidInstance() {
-    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-zeoujO6K.js").then(async (m2) => {
+    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-B46Qaj0H.js").then(async (m2) => {
       await m2.__tla;
       return m2;
     }), __vite__mapDeps([12,2,1])).then((e) => {
@@ -58116,7 +58116,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const r = await e.text(), n = t || (e.name ? e.name.replace(/\.svg$/i, ".png") : `clipboard-${Date.now()}.png`);
     return rasterizeSvgTextToPngFile(r, n);
   };
-  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-BJcuVFJv.js"), __vite__mapDeps([13,1,2,14,5,6,3,15,16,4,17,18,19,20,21,22,23,24,25,26,27,28,7]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-DY74pwkm.js"), __vite__mapDeps([29,1,30,2,8,9,6,3,31,17,4,32,23,24,25,5,7,33]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([34,1,35]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-MuWRrlP6.js"), __vite__mapDeps([36,1,34,35,4,2,3,5,6,7])));
+  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-CVNcU_tl.js"), __vite__mapDeps([13,1,2,14,5,6,3,15,16,4,17,18,19,20,21,22,23,24,25,26,27,28,7]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-fKA3JuNQ.js"), __vite__mapDeps([29,1,30,2,8,9,6,3,31,17,4,32,23,24,25,5,7,33]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([34,1,35]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-Cq88-wUA.js"), __vite__mapDeps([36,1,34,35,4,2,3,5,6,7])));
   function EditorPaneSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted",
@@ -59836,10 +59836,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       children: t
     });
   }
-  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-CpLNwx11.js").then(async (m2) => {
+  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-BzcaqUtz.js").then(async (m2) => {
     await m2.__tla;
     return m2;
-  }), __vite__mapDeps([37,1,2,38,27,6,3,4,5,24,25,28,19,39,40,8,9,30,31,7,41]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-CbRTf5J0.js").then(async (m2) => {
+  }), __vite__mapDeps([37,1,2,38,27,6,3,4,5,24,25,28,19,39,40,8,9,30,31,7,41]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-D309spGG.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([42,2,1,4,26,27,6,3,43,15,16,5,7])));
@@ -67044,7 +67044,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     };
   }
   async function fsApi() {
-    return __vitePreload(() => import("./index-BiC2ukf7.js"), __vite__mapDeps([44,1,2,3,4,5,6,7]));
+    return __vitePreload(() => import("./index-Dc9h9D0I.js"), __vite__mapDeps([44,1,2,3,4,5,6,7]));
   }
   function createTauriLocalBackend(e) {
     const t = String(e || "").trim();
@@ -67197,7 +67197,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   async function pickTauriLocalVaultDirectory() {
     const { open: e } = await __vitePreload(async () => {
-      const { open: r } = await import("./index-DMd0iJAf.js");
+      const { open: r } = await import("./index-CgweQjZj.js");
       return {
         open: r
       };
@@ -70057,7 +70057,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       }
       try {
         const { listen: e } = await __vitePreload(async () => {
-          const { listen: t } = await import("./event-DltHeBaN.js");
+          const { listen: t } = await import("./event-DpukrPt0.js");
           return {
             listen: t
           };
@@ -70075,7 +70075,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   async function resolveDesktopOpenPaths(e) {
     const { readFile: t } = await __vitePreload(async () => {
-      const { readFile: o } = await import("./index-BiC2ukf7.js");
+      const { readFile: o } = await import("./index-Dc9h9D0I.js");
       return {
         readFile: o
       };
@@ -71284,7 +71284,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
   getLocalAppBuildId = function() {
-    return "64e8064fb12624616b0a06d705e52e0a66b98182".trim();
+    return "4c673ca1ef000de1bc900d01dcf4e812b031cc27".trim();
   };
   function buildIdRequestUrl() {
     return `/DocuHaim/build-id.json?t=${Date.now()}`;
@@ -71423,11 +71423,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       updateServiceWorker: re
     };
   }
-  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-CpLNwx11.js").then(async (m2) => {
+  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-BzcaqUtz.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([37,1,2,38,27,6,3,4,5,24,25,28,19,39,40,8,9,30,31,7,41])));
-  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-Dbi7KOJs.js"), __vite__mapDeps([47,1,2,19,4,6,3,14,5,38,27,43,23,24,25,20,32,28,7,21]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-BfELJgNa.js"), __vite__mapDeps([48,1,18,2,19,15,16,4,6,3,20,21,5,7])));
+  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-DhZ4fttp.js"), __vite__mapDeps([47,1,2,19,4,6,3,14,5,38,27,43,23,24,25,20,32,28,7,21]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-Dzr95Qth.js"), __vite__mapDeps([48,1,18,2,19,15,16,4,6,3,20,21,5,7])));
   function RouteSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted",
@@ -75027,7 +75027,7 @@ ${ae}`)) return {
       let Ee = remapMarkdownHeadingLevels(ar.current ?? "", de);
       if (he === "html") {
         const { convertHaimTablesToHtmlInMarkdown: Pe } = await __vitePreload(async () => {
-          const { convertHaimTablesToHtmlInMarkdown: $e } = await import("./toHtml-CKFnlKK2.js");
+          const { convertHaimTablesToHtmlInMarkdown: $e } = await import("./toHtml-yLIRAFUu.js");
           return {
             convertHaimTablesToHtmlInMarkdown: $e
           };
@@ -75208,7 +75208,7 @@ ${ae}`)) return {
         let Re = remapMarkdownHeadingLevels(we, ie);
         if (de === "html") {
           const { convertHaimTablesToHtmlInMarkdown: We } = await __vitePreload(async () => {
-            const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-CKFnlKK2.js");
+            const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-yLIRAFUu.js");
             return {
               convertHaimTablesToHtmlInMarkdown: De
             };
@@ -75253,7 +75253,7 @@ ${ae}`)) return {
           let Pe = remapMarkdownHeadingLevels(Re, de);
           if (he === "html") {
             const { convertHaimTablesToHtmlInMarkdown: We } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-CKFnlKK2.js");
+              const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-yLIRAFUu.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: De
               };
@@ -75392,7 +75392,7 @@ ${ae}`)) return {
           let st = remapMarkdownHeadingLevels(De, de);
           if (he === "html") {
             const { convertHaimTablesToHtmlInMarkdown: Xt } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: sr } = await import("./toHtml-CKFnlKK2.js");
+              const { convertHaimTablesToHtmlInMarkdown: sr } = await import("./toHtml-yLIRAFUu.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: sr
               };

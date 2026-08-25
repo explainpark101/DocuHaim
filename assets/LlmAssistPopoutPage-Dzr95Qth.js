@@ -1,10 +1,10 @@
 import { r as s, j as a } from "./vendor-react-SY5QCjFA.js";
-import { p as x, L as r, a as E, i as L } from "./LlmAssistPanel-O8jxv5K6.js";
-import { dr as S, ds as I } from "./index-k2zzlr12.js";
+import { p as x, L as r, a as E, i as L } from "./LlmAssistPanel-CGDpQKwx.js";
+import { dr as S, ds as I } from "./index-BGTd31p3.js";
 import { a7 as P, X as V } from "./vendor-lucide-DpPvFd8E.js";
 import "./vendor-md-editor-CyUZNHY0.js";
-import "./useLazyMermaidRender-Clq2I54A.js";
-import "./OpenAiCompatibleModelSelect-B5cCAPmZ.js";
+import "./useLazyMermaidRender-BWu3UBZS.js";
+import "./OpenAiCompatibleModelSelect-fdKKW297.js";
 import "./vendor-google-genai-Dw3BcYJd.js";
 import "./vendor-radix--fTcLYkF.js";
 import "./vendor-aws-BNw5jQBi.js";
