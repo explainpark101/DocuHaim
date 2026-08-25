@@ -1,2 +1,2 @@
-export * from './vault/treeCopy';
-export type * from './vault/treeCopy';
+export * from '@/utils/vault/treeCopy';
+export type * from '@/utils/vault/treeCopy';

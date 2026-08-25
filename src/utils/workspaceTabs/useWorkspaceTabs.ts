@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { FileWorkspaceTab, WorkspaceTabsState } from './types';
+import type { FileWorkspaceTab, WorkspaceTabsState } from '@/utils/workspaceTabs/types';
 import {
   activateTab,
   closeTab,
@@ -12,7 +12,7 @@ import {
   openOrReplaceFileTab,
   patchFileTab,
   type OpenFileTabInput,
-} from './workspaceTabsStore';
+} from '@/utils/workspaceTabs/workspaceTabsStore';
 
 export function useWorkspaceTabs(initial?: WorkspaceTabsState) {
   const [state, setState] = useState<WorkspaceTabsState>(

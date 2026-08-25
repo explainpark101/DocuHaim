@@ -1,1 +1,1 @@
-export { default } from '../shared/modals/ImageLinkModal';
+export { default } from '@/components/shared/modals/ImageLinkModal';

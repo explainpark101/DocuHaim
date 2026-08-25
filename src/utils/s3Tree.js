@@ -1,1 +1,1 @@
-export * from './vault/s3Tree.js';
+export * from '@/utils/vault/s3Tree.js';

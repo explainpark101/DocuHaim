@@ -1,9 +1,9 @@
 // @ts-nocheck — thin shell; logic in sections/useMainAppController
-import { AppModals } from './components/AppModals';
-import { AppLayout } from './components/AppLayout';
-import { ExportPdfGate } from './components/ExportPdfGate';
+import { AppModals } from '@/App/components/AppModals';
+import { AppLayout } from '@/App/components/AppLayout';
+import { ExportPdfGate } from '@/App/components/ExportPdfGate';
 import { isExportPdfAppPathname, parseExportPdfPathFromAppPathname } from '@/utils/appHref';
-import { useMainAppController } from './sections/useMainAppController';
+import { useMainAppController } from '@/App/sections/useMainAppController';
 
 export function MainApp() {
   const c = useMainAppController();

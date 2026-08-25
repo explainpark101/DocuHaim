@@ -3,8 +3,8 @@
  */
 
 import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
-import type { AdvancedSearchHit } from './query';
-import { fuzzyMatchText, scoreFuzzyRelevance } from './fuzzyMatch';
+import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
+import { fuzzyMatchText, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 
 export type ChatGroupEntry = {
   id: string;

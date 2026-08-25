@@ -1,1 +1,1 @@
-export * from './vault/webdavClient.js';
+export * from '@/utils/vault/webdavClient.js';

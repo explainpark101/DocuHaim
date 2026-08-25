@@ -1,1 +1,1 @@
-export { default } from './print/TocResizeHandle.jsx';
+export { default } from '@/components/print/TocResizeHandle.jsx';

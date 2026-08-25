@@ -2,7 +2,7 @@
 import { isEncMdPath } from '@/utils/encMd';
 import { getActiveFileTab } from '@/utils/workspaceTabs';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
-import { isVaultPathStorageType } from './appStorageBackend';
+import { isVaultPathStorageType } from '@/App/sections/appStorageBackend';
 
 /** §7–8 Auto save / sync + editor change bridge (factory). */
 export function createAutoSaveSyncHandlers(deps: Record<string, any>) {

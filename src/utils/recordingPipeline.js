@@ -1,1 +1,1 @@
-export * from './recording/recordingPipeline.js';
+export * from '@/utils/recording/recordingPipeline.js';

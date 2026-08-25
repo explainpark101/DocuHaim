@@ -1,2 +1,2 @@
-export type { DownloadMethodChoice } from '../shared/modals/DownloadMethodModal';
-export { DownloadMethodModal } from '../shared/modals/DownloadMethodModal';
+export type { DownloadMethodChoice } from '@/components/shared/modals/DownloadMethodModal';
+export { DownloadMethodModal } from '@/components/shared/modals/DownloadMethodModal';

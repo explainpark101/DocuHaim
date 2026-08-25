@@ -6,8 +6,8 @@ import {
   type FileStorageType,
   type PersistedWorkspaceTabs,
   type PersistedWorkspaceTab,
-} from './types';
-import { fileTabId } from './helpers';
+} from '@/utils/workspaceTabs/types';
+import { fileTabId } from '@/utils/workspaceTabs/helpers';
 
 function readJson(storage: Storage, key: string): unknown {
   try {

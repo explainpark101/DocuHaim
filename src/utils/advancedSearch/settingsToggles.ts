@@ -48,7 +48,7 @@ import {
 import {
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
-} from './settings';
+} from '@/utils/advancedSearch/settings';
 import {
   FOOTNOTE_DISPLAY_MODE_OPTIONS,
   loadFootnoteDisplayMode,
@@ -59,7 +59,7 @@ import {
   loadOrphanImageAutoDeleteEnabled,
   saveOrphanImageAutoDeleteEnabled,
 } from '@/utils/orphanImageCleanupSettings';
-import { advancedSearchEngine } from './engine';
+import { advancedSearchEngine } from '@/utils/advancedSearch/engine';
 
 export type SettingsToggleId =
   | 'settings-alt-vim'

@@ -1,1 +1,1 @@
-export * from './shared/crypto.js';
+export * from '@/utils/shared/crypto.js';

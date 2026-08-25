@@ -1,1 +1,1 @@
-export { CreateItemModal } from '../shared/modals/CreateItemModal.jsx';
+export { CreateItemModal } from '@/components/shared/modals/CreateItemModal.jsx';

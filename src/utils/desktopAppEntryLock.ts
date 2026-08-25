@@ -1,2 +1,2 @@
-export * from './shared/desktopAppEntryLock';
-export type * from './shared/desktopAppEntryLock';
+export * from '@/utils/shared/desktopAppEntryLock';
+export type * from '@/utils/shared/desktopAppEntryLock';

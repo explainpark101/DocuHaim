@@ -1,1 +1,1 @@
-export * from './recording/recordingVisibilitySettings.js';
+export * from '@/utils/recording/recordingVisibilitySettings.js';

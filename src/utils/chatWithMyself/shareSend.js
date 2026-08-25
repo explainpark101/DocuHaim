@@ -1,9 +1,9 @@
 import {
   chatAttachmentsToMarkdown,
   uploadChatAttachment,
-} from './attachments.js';
-import { appendChatMessage } from './storage.js';
-import { SELF_GROUP } from './paths.js';
+} from '@/utils/chatWithMyself/attachments.js';
+import { appendChatMessage } from '@/utils/chatWithMyself/storage.js';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 
 /**
  * @param {unknown} value
@@ -49,7 +49,7 @@ export function normalizeShareFiles(items) {
 
 /**
  * Upload share attachments and append one chat message.
- * @param {import('./pendingShares').ChatStorageCtxLike} ctx
+ * @param {import('@/utils/chatWithMyself/pendingShares').ChatStorageCtxLike} ctx
  * @param {{ body?: string, files?: unknown[], group?: string }} payload
  */
 export async function appendShareChatMessage(ctx, payload = {}) {

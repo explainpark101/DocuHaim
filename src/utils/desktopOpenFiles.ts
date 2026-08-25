@@ -1,2 +1,2 @@
-export * from './shared/desktopOpenFiles';
-export type * from './shared/desktopOpenFiles';
+export * from '@/utils/shared/desktopOpenFiles';
+export type * from '@/utils/shared/desktopOpenFiles';

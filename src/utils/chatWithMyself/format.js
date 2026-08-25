@@ -1,8 +1,8 @@
-import { SELF_GROUP } from './paths.js';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 import {
   parseReactionsAttr,
   serializeReactionsAttr,
-} from './reactions.js';
+} from '@/utils/chatWithMyself/reactions.js';
 
 const MSG_START =
   /<!--\s*chat-msg\s+([^>]*?)-->\s*/g;
@@ -67,7 +67,7 @@ function unescapeAttr(value) {
  * @property {string} [pinnedAt]
  * @property {string} [notePath]
  * @property {string} [collapsed] - "1" when folded; empty when expanded
- * @property {import('./reactions.js').ChatReaction[]} [reactions]
+ * @property {import('@/utils/chatWithMyself/reactions.js').ChatReaction[]} [reactions]
  * @property {string} [reactionsAt] - ISO when reactions last changed (merge)
  * @property {{ at: string, body: string, group: string }[]} [editHistory]
  */

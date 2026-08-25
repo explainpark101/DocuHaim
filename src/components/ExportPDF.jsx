@@ -1,1 +1,1 @@
-export { default } from './print/ExportPDF.jsx';
+export { default } from '@/components/print/ExportPDF.jsx';

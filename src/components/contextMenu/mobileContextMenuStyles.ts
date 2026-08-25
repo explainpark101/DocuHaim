@@ -5,4 +5,4 @@ export {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_DISMISS_GUARD_MS,
   MOBILE_CONTEXT_MENU_POINTER_BLOCK_MS,
-} from '../shared/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';

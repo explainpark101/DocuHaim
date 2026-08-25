@@ -4,7 +4,7 @@ import {
   getLocalWikiImageObjectUrl,
 } from '@/utils/localEditorImage';
 import { readLocalDirectoryLevel } from '@/utils/localTree';
-import { STORAGE_CAPABILITIES } from './capabilities.js';
+import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 
 /**
  * @param {FileSystemDirectoryHandle | null} rootHandle

@@ -1,2 +1,2 @@
-export * from './print/printMarkdownVisibleText';
-export type * from './print/printMarkdownVisibleText';
+export * from '@/utils/print/printMarkdownVisibleText';
+export type * from '@/utils/print/printMarkdownVisibleText';

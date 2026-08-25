@@ -1,1 +1,1 @@
-export * from './llm/llmAssistBridge.js';
+export * from '@/utils/llm/llmAssistBridge.js';

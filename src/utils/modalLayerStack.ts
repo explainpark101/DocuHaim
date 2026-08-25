@@ -1,2 +1,2 @@
-export * from './shared/modalLayerStack';
-export type * from './shared/modalLayerStack';
+export * from '@/utils/shared/modalLayerStack';
+export type * from '@/utils/shared/modalLayerStack';

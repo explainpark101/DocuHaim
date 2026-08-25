@@ -1,2 +1,2 @@
-export * from './print/printPgbrInsert';
-export type * from './print/printPgbrInsert';
+export * from '@/utils/print/printPgbrInsert';
+export type * from '@/utils/print/printPgbrInsert';

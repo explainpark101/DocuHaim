@@ -1,1 +1,1 @@
-export { default } from '../shared/modals/NoteImageCropPanel';
+export { default } from '@/components/shared/modals/NoteImageCropPanel';

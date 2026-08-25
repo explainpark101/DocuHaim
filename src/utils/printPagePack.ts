@@ -1,2 +1,2 @@
-export * from './print/printPagePack';
-export type * from './print/printPagePack';
+export * from '@/utils/print/printPagePack';
+export type * from '@/utils/print/printPagePack';

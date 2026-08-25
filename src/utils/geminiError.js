@@ -1,1 +1,1 @@
-export * from './llm/geminiError.js';
+export * from '@/utils/llm/geminiError.js';

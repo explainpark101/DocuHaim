@@ -1,2 +1,2 @@
-export * from './vault/localVaultReady';
-export type * from './vault/localVaultReady';
+export * from '@/utils/vault/localVaultReady';
+export type * from '@/utils/vault/localVaultReady';

@@ -1,1 +1,1 @@
-export * from './print/printSettingsStore.js';
+export * from '@/utils/print/printSettingsStore.js';

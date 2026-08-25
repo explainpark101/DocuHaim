@@ -5,4 +5,4 @@ export {
   boxFromCornerDrag,
   useModalCornerResize,
   ModalCornerResizeHandles,
-} from '../shared/modals/modalCornerResize.jsx';
+} from '@/components/shared/modals/modalCornerResize.jsx';

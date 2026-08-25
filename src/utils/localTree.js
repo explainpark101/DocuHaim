@@ -1,1 +1,1 @@
-export * from './vault/localTree.js';
+export * from '@/utils/vault/localTree.js';

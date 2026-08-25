@@ -1,8 +1,8 @@
 /**
  * Advanced Search nested picker: insert footnote (existing vs compose).
  */
-import type { AdvancedSearchHit } from './query';
-import { scoreFuzzyRelevance } from './fuzzyMatch';
+import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
+import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 import { listExistingFootnoteEntries } from '@/utils/footnoteInsertApply';
 
 export const FOOTNOTE_INSERT_COMMAND_ID = 'editor-insert-footnote' as const;

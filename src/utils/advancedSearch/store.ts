@@ -5,7 +5,7 @@ import {
   manifestKey,
   postingsKey,
   advancedSearchFolderPrefix,
-} from './paths';
+} from '@/utils/advancedSearch/paths';
 import {
   emptyIndex,
   emptyManifest,
@@ -13,7 +13,7 @@ import {
   type DocMeta,
   type IndexManifest,
   type InMemoryIndex,
-} from './types';
+} from '@/utils/advancedSearch/types';
 
 /** Minimal storage backend surface used by Advanced Search. */
 export type AdvancedSearchBackend = {

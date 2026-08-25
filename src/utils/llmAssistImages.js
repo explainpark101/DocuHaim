@@ -1,1 +1,1 @@
-export * from './llm/llmAssistImages.js';
+export * from '@/utils/llm/llmAssistImages.js';

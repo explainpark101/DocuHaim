@@ -10,7 +10,7 @@ import {
   putS3FolderMarkers,
 } from '@/utils/s3Client';
 import { buildS3Tree } from '@/utils/s3Tree';
-import { STORAGE_CAPABILITIES } from './capabilities.js';
+import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 
 /**
  * @param {{ getClient: () => import('@aws-sdk/client-s3').S3Client | null, bucket: string }} deps

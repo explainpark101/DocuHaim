@@ -1,2 +1,2 @@
-export * from './llm/llmAssistEditorBounds';
-export type * from './llm/llmAssistEditorBounds';
+export * from '@/utils/llm/llmAssistEditorBounds';
+export type * from '@/utils/llm/llmAssistEditorBounds';

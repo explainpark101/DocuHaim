@@ -1,12 +1,12 @@
-import { tokenizeForIndexAsync } from './tokenize';
-import type { DocMeta, InMemoryIndex } from './types';
-import { collectSearchableFileEntries } from './collectSources';
+import { tokenizeForIndexAsync } from '@/utils/advancedSearch/tokenize';
+import type { DocMeta, InMemoryIndex } from '@/utils/advancedSearch/types';
+import { collectSearchableFileEntries } from '@/utils/advancedSearch/collectSources';
 import {
   matchAppCommandsRanked,
   type AppCommandContext,
   type AppCommandId,
-} from './commands';
-import { fuzzyMatchText, scoreFuzzyRelevance } from './fuzzyMatch';
+} from '@/utils/advancedSearch/commands';
+import { fuzzyMatchText, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 
 export type MatchReason = 'command' | 'name' | 'path' | 'content';
 

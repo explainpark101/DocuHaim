@@ -1,1 +1,1 @@
-export { default } from './editor/MonacoTextEditor.jsx';
+export { default } from '@/components/editor/MonacoTextEditor.jsx';

@@ -1,2 +1,2 @@
-export * from './llm/openaiCompatibleClient';
-export type * from './llm/openaiCompatibleClient';
+export * from '@/utils/llm/openaiCompatibleClient';
+export type * from '@/utils/llm/openaiCompatibleClient';

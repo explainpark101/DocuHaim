@@ -4,4 +4,4 @@ export {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
   AdaptiveMenuSeparator,
-} from '../shared/contextMenu/AdaptiveContextMenu';
+} from '@/components/shared/contextMenu/AdaptiveContextMenu';

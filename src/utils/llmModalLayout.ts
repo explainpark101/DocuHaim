@@ -1,2 +1,2 @@
-export * from './llm/llmModalLayout';
-export type * from './llm/llmModalLayout';
+export * from '@/utils/llm/llmModalLayout';
+export type * from '@/utils/llm/llmModalLayout';

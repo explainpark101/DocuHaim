@@ -1,1 +1,1 @@
-export * from './recording/recordingDb.js';
+export * from '@/utils/recording/recordingDb.js';

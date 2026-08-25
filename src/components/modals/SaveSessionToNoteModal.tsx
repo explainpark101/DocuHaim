@@ -1,1 +1,1 @@
-export { default } from '../shared/modals/SaveSessionToNoteModal';
+export { default } from '@/components/shared/modals/SaveSessionToNoteModal';

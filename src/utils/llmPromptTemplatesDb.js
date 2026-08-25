@@ -1,1 +1,1 @@
-export * from './llm/llmPromptTemplatesDb.js';
+export * from '@/utils/llm/llmPromptTemplatesDb.js';

@@ -1,6 +1,6 @@
-import type { FileWorkspaceTab, WorkspaceTabsState } from './types';
-import { closedTabEntryFromWorkspaceTab, pushClosedTab } from './closedTabHistory';
-import { tabDisplayTitle } from './helpers';
+import type { FileWorkspaceTab, WorkspaceTabsState } from '@/utils/workspaceTabs/types';
+import { closedTabEntryFromWorkspaceTab, pushClosedTab } from '@/utils/workspaceTabs/closedTabHistory';
+import { tabDisplayTitle } from '@/utils/workspaceTabs/helpers';
 import {
   activateTab,
   closeTab,
@@ -14,7 +14,7 @@ import {
   patchFileTab,
   retargetFileTab,
   retargetFileTabsByPathPrefix,
-} from './workspaceTabsStore';
+} from '@/utils/workspaceTabs/workspaceTabsStore';
 
 export function flushEditorIntoActiveFileTab(
   state: WorkspaceTabsState,

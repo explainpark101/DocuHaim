@@ -1,4 +1,4 @@
-import { createChatBackend } from './backends/index.js';
+import { createChatBackend } from '@/utils/chatWithMyself/backends/index.js';
 import {
   getLocalDirectoryHandleForPath,
   getLocalFileHandleForPath,
@@ -8,8 +8,8 @@ import {
   chatFilePathPrefix,
   detectTimeZone,
   localDateString,
-} from './paths.js';
-import { uploadChatImage } from './images.js';
+} from '@/utils/chatWithMyself/paths.js';
+import { uploadChatImage } from '@/utils/chatWithMyself/images.js';
 import { parseWikiImageInner, wikiImageMarkupFromAttrs } from '@/utils/wikiImageSyntax';
 
 const MAX_CHAT_FILE_BYTES = 50 * 1024 * 1024;

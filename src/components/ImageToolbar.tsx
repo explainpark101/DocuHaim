@@ -1,1 +1,1 @@
-export { default } from './editor/ImageToolbar';
+export { default } from '@/components/editor/ImageToolbar';

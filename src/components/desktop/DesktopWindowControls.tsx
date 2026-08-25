@@ -1,1 +1,1 @@
-export { default } from '../shell/desktop/DesktopWindowControls';
+export { default } from '@/components/shell/desktop/DesktopWindowControls';

@@ -1,2 +1,2 @@
-export * from './llm/llmTransformPrompt';
-export type * from './llm/llmTransformPrompt';
+export * from '@/utils/llm/llmTransformPrompt';
+export type * from '@/utils/llm/llmTransformPrompt';

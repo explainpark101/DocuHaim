@@ -4,5 +4,5 @@ export type {
   WikiImageSizeCropPayload,
   WikiImageSizeConvertToWikiPayload,
   WikiImageSizeConvertToImgbbPayload,
-} from '../shared/modals/WikiImageSizeModal';
-export { default } from '../shared/modals/WikiImageSizeModal';
+} from '@/components/shared/modals/WikiImageSizeModal';
+export { default } from '@/components/shared/modals/WikiImageSizeModal';

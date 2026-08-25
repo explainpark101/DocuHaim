@@ -1,1 +1,1 @@
-export * from './shared/webauthn.js';
+export * from '@/utils/shared/webauthn.js';

@@ -1,2 +1,2 @@
-export * from './llm/geminiApiTransport';
-export type * from './llm/geminiApiTransport';
+export * from '@/utils/llm/geminiApiTransport';
+export type * from '@/utils/llm/geminiApiTransport';

@@ -1,1 +1,1 @@
-export { default } from './editor/NovelMarkdownEditor.jsx';
+export { default } from '@/components/editor/NovelMarkdownEditor.jsx';

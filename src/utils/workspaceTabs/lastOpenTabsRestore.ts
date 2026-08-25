@@ -1,8 +1,8 @@
-import type { FileStorageType, PersistedWorkspaceTab, PersistedWorkspaceTabs } from './types';
-import { CHAT_TAB_ID, SETTINGS_TAB_ID } from './types';
-import { fileTabId } from './helpers';
-import type { ClosedTabEntry } from './closedTabHistory';
-import { loadPersistedWorkspaceTabs } from './persistence';
+import type { FileStorageType, PersistedWorkspaceTab, PersistedWorkspaceTabs } from '@/utils/workspaceTabs/types';
+import { CHAT_TAB_ID, SETTINGS_TAB_ID } from '@/utils/workspaceTabs/types';
+import { fileTabId } from '@/utils/workspaceTabs/helpers';
+import type { ClosedTabEntry } from '@/utils/workspaceTabs/closedTabHistory';
+import { loadPersistedWorkspaceTabs } from '@/utils/workspaceTabs/persistence';
 
 /**
  * Last non-empty open-tab list from the previous session (localStorage).

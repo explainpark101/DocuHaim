@@ -25,7 +25,7 @@ import {
   webdavPut,
   WebdavPreconditionFailedError,
 } from '@/utils/webdavClient';
-import { CHAT_FOLDER, chatFolderPrefix } from '../paths.js';
+import { CHAT_FOLDER, chatFolderPrefix } from '@/utils/chatWithMyself/paths.js';
 
 export class ChatPreconditionFailedError extends Error {
   constructor(message = 'Precondition Failed') {
@@ -66,7 +66,7 @@ function normalizeEtag(etag) {
  */
 
 /**
- * @param {import('../storage.js').ChatStorageCtx} ctx
+ * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
  * @returns {ChatBackend}
  */
 export function createChatBackend(ctx) {

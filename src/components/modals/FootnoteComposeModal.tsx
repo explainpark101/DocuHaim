@@ -1,1 +1,1 @@
-export { default } from '../shared/modals/FootnoteComposeModal';
+export { default } from '@/components/shared/modals/FootnoteComposeModal';

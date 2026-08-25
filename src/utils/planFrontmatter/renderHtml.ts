@@ -1,4 +1,4 @@
-import type { PlanFrontmatter, PlanTodo, PlanTodoStatus } from './parse';
+import type { PlanFrontmatter, PlanTodo, PlanTodoStatus } from '@/utils/planFrontmatter/parse';
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '')

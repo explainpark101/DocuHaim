@@ -1,1 +1,1 @@
-export { default } from './editor/MirrorEditToolbar';
+export { default } from '@/components/editor/MirrorEditToolbar';

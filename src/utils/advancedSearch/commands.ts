@@ -5,16 +5,16 @@
 import {
   EDITOR_ACTION_COMMANDS,
   type EditorActionId,
-} from './editorActions';
+} from '@/utils/advancedSearch/editorActions';
 import {
   PRINT_ACTION_COMMANDS,
   PRINT_PAPER_SIZE_COMMANDS,
   type PrintActionId,
-} from './printActions';
+} from '@/utils/advancedSearch/printActions';
 import {
   CHAT_ACTION_COMMANDS,
   type ChatActionId,
-} from './chatActions';
+} from '@/utils/advancedSearch/chatActions';
 import {
   SETTINGS_TOGGLE_DEFS,
   getWorkspaceTabsAutoSaveCommands,
@@ -22,24 +22,24 @@ import {
   type SettingsToggleId,
   type WorkspaceTabsAutoSaveCommandId,
   type FootnoteDisplayModeCommandId,
-} from './settingsToggles';
+} from '@/utils/advancedSearch/settingsToggles';
 import {
   FOOTNOTE_INSERT_COMMAND_ID,
   isFootnoteRelatedCommandId,
   type FootnoteInsertCommandId,
-} from './footnoteInsert';
+} from '@/utils/advancedSearch/footnoteInsert';
 import {
   CIRCLE_NUMBER_INSERT_COMMAND_ID,
   isCircleNumberInsertCommandId,
   type CircleNumberInsertCommandId,
-} from './circleNumberInsert';
+} from '@/utils/advancedSearch/circleNumberInsert';
 import {
   APP_LOCK_COMMAND,
   hasAppLockAction,
   type AppLockActionId,
-} from './appLockActions';
+} from '@/utils/advancedSearch/appLockActions';
 import { hasDesktopAppEntryLock } from '@/utils/desktopAppEntryLock';
-import { scoreFuzzyFields, scoreFuzzyRelevance } from './fuzzyMatch';
+import { scoreFuzzyFields, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
 
 /** Dynamic snippet command (created from snippetConfig). */

@@ -1,1 +1,1 @@
-export { default } from '../shell/desktop/DesktopTitlebar';
+export { default } from '@/components/shell/desktop/DesktopTitlebar';

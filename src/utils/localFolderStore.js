@@ -1,1 +1,1 @@
-export * from './vault/localFolderStore.js';
+export * from '@/utils/vault/localFolderStore.js';

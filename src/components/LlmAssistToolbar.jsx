@@ -1,1 +1,1 @@
-export { default } from './llm/LlmAssistToolbar.jsx';
+export { default } from '@/components/llm/LlmAssistToolbar.jsx';

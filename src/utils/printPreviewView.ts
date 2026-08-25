@@ -1,2 +1,2 @@
-export * from './print/printPreviewView';
-export type * from './print/printPreviewView';
+export * from '@/utils/print/printPreviewView';
+export type * from '@/utils/print/printPreviewView';

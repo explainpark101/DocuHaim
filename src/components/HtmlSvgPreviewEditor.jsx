@@ -1,1 +1,1 @@
-export { default } from './editor/HtmlSvgPreviewEditor.jsx';
+export { default } from '@/components/editor/HtmlSvgPreviewEditor.jsx';

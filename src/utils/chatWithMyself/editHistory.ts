@@ -1,4 +1,4 @@
-import { SELF_GROUP } from './paths.js';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 
 const VERSION_START = /<!--\s*chat-edit-version\s+([^>]*?)-->\s*/;
 

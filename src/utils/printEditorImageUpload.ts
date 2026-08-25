@@ -1,2 +1,2 @@
-export * from './print/printEditorImageUpload';
-export type * from './print/printEditorImageUpload';
+export * from '@/utils/print/printEditorImageUpload';
+export type * from '@/utils/print/printEditorImageUpload';

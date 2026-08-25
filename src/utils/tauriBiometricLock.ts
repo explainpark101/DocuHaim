@@ -1,2 +1,2 @@
-export * from './shared/tauriBiometricLock';
-export type * from './shared/tauriBiometricLock';
+export * from '@/utils/shared/tauriBiometricLock';
+export type * from '@/utils/shared/tauriBiometricLock';

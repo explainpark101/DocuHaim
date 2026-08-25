@@ -7,7 +7,7 @@ import {
   SHARE_TARGET_FLAG,
   isChatShareTargetPath,
   storeShareTargetFiles,
-} from './utils/chatWithMyself/shareTargetCache';
+} from '@/utils/chatWithMyself/shareTargetCache';
 
 declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<string | { url: string; revision: string | null }>;

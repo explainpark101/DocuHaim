@@ -1,1 +1,1 @@
-export { ImportPasswordModal } from '../shared/modals/ImportPasswordModal.jsx';
+export { ImportPasswordModal } from '@/components/shared/modals/ImportPasswordModal.jsx';

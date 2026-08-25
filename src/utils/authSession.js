@@ -1,1 +1,1 @@
-export * from './shared/authSession.js';
+export * from '@/utils/shared/authSession.js';

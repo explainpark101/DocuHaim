@@ -1,2 +1,2 @@
-export * from './vault/treeNameConflict';
-export type * from './vault/treeNameConflict';
+export * from '@/utils/vault/treeNameConflict';
+export type * from '@/utils/vault/treeNameConflict';

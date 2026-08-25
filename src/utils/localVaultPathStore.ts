@@ -1,2 +1,2 @@
-export * from './vault/localVaultPathStore';
-export type * from './vault/localVaultPathStore';
+export * from '@/utils/vault/localVaultPathStore';
+export type * from '@/utils/vault/localVaultPathStore';

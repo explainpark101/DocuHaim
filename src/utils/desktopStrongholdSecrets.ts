@@ -1,2 +1,2 @@
-export * from './shared/desktopStrongholdSecrets';
-export type * from './shared/desktopStrongholdSecrets';
+export * from '@/utils/shared/desktopStrongholdSecrets';
+export type * from '@/utils/shared/desktopStrongholdSecrets';

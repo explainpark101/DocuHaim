@@ -1,1 +1,1 @@
-export { CssCodeMirrorEditor } from './editor/CssCodeMirrorEditor';
+export { CssCodeMirrorEditor } from '@/components/editor/CssCodeMirrorEditor';

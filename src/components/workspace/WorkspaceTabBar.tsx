@@ -1,1 +1,1 @@
-export { default } from '../shell/workspace/WorkspaceTabBar';
+export { default } from '@/components/shell/workspace/WorkspaceTabBar';

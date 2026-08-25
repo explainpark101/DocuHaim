@@ -1,19 +1,19 @@
 import { parseDayFile } from '@/utils/chatWithMyself/format.js';
-import { hashText } from './hash';
-import { chatDocId, fileDocId } from './paths';
-import { recountManifest, type DocMeta, type InMemoryIndex } from './types';
-import { chatDateFromPath } from './collectSources';
+import { hashText } from '@/utils/advancedSearch/hash';
+import { chatDocId, fileDocId } from '@/utils/advancedSearch/paths';
+import { recountManifest, type DocMeta, type InMemoryIndex } from '@/utils/advancedSearch/types';
+import { chatDateFromPath } from '@/utils/advancedSearch/collectSources';
 import {
   allocateNumericId,
   getNumericId,
   releaseDocId,
   type DocIdMapState,
-} from './docIdMap';
-import type { LucivyDocFields } from './lucivyBackend';
+} from '@/utils/advancedSearch/docIdMap';
+import type { LucivyDocFields } from '@/utils/advancedSearch/lucivyBackend';
 import {
   prepareChatLucivyFields,
   prepareFileLucivyFields,
-} from './prepareDocument';
+} from '@/utils/advancedSearch/prepareDocument';
 
 export type UpsertOptions = {
   /** Skip recountManifest (bulk rebuild should recount once at the end). */
@@ -26,7 +26,7 @@ export type UpsertOptions = {
 };
 
 async function lucivyApi() {
-  return import('./lucivyBackend');
+  return import('@/utils/advancedSearch/lucivyBackend');
 }
 
 async function removeLucivyNumericId(n: number) {

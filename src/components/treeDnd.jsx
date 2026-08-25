@@ -1,1 +1,1 @@
-export { treeCollisionDetection, RootDropZone, TreeDragOverlayPreview } from './shell/treeDnd.jsx';
+export { treeCollisionDetection, RootDropZone, TreeDragOverlayPreview } from '@/components/shell/treeDnd.jsx';

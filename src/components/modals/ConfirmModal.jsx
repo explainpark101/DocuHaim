@@ -1,1 +1,1 @@
-export { ConfirmModal } from '../shared/modals/ConfirmModal.jsx';
+export { ConfirmModal } from '@/components/shared/modals/ConfirmModal.jsx';

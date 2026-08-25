@@ -1,1 +1,1 @@
-export * from './vault/treeMove.js';
+export * from '@/utils/vault/treeMove.js';

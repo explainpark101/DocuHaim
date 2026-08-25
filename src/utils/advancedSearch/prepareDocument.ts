@@ -1,9 +1,9 @@
 /** Prepare scrubbed + Korean-enriched body text for Lucivy indexing. */
 
-import { pathBasename, scrubTextForIndex } from './scrubText';
-import { ensureGaru, tokenizeForIndexAsync } from './tokenize';
-import type { DocKind } from './types';
-import type { LucivyDocFields } from './lucivyBackend';
+import { pathBasename, scrubTextForIndex } from '@/utils/advancedSearch/scrubText';
+import { ensureGaru, tokenizeForIndexAsync } from '@/utils/advancedSearch/tokenize';
+import type { DocKind } from '@/utils/advancedSearch/types';
+import type { LucivyDocFields } from '@/utils/advancedSearch/lucivyBackend';
 
 function previewFromText(text: string, max = 120): string {
   const t = String(text || '').replace(/\s+/g, ' ').trim();

@@ -1,1 +1,1 @@
-export { default } from '../shared/modals/ImageClipCropModal';
+export { default } from '@/components/shared/modals/ImageClipCropModal';

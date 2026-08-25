@@ -1,13 +1,13 @@
 import {
   collectIndexablePathsFromTree,
   isIndexableFilePath,
-} from './collectSources';
+} from '@/utils/advancedSearch/collectSources';
 import { indexableEncMdBody } from '@/utils/encMd';
 import {
   pruneIndexToPaths,
   upsertChatDayDocuments,
   upsertFileDocument,
-} from './buildIndex';
+} from '@/utils/advancedSearch/buildIndex';
 import {
   clearIndexInVault,
   docsToObject,
@@ -16,37 +16,37 @@ import {
   loadDocsAndManifestFromVault,
   saveIndexToVault,
   type AdvancedSearchBackend,
-} from './store';
+} from '@/utils/advancedSearch/store';
 import {
   loadAdvancedSearchIndexEnabled,
   loadAdvancedSearchIncludeOtherFiles,
   saveAdvancedSearchIndexEnabled,
   saveAdvancedSearchIncludeOtherFiles,
-} from './settings';
+} from '@/utils/advancedSearch/settings';
 import {
   emptyIndex,
   isIndexInitialized,
   recountManifest,
   type InMemoryIndex,
-} from './types';
+} from '@/utils/advancedSearch/types';
 import {
   subscribeAdvancedSearchChanges,
   type AdvancedSearchChangeEvent,
-} from './notify';
-import { runAdvancedSearch, type AdvancedSearchHit } from './query';
+} from '@/utils/advancedSearch/notify';
+import { runAdvancedSearch, type AdvancedSearchHit } from '@/utils/advancedSearch/query';
 import {
   deleteRebuildCheckpoint,
   getRebuildCheckpoint,
   isCheckpointCompatible,
   saveRebuildCheckpoint,
   type RebuildCheckpointRecord,
-} from './rebuildCheckpointDb';
+} from '@/utils/advancedSearch/rebuildCheckpointDb';
 import {
   emptyDocIdMap,
   hydrateDocIdMapFromDocs,
   type DocIdMapState,
-} from './docIdMap';
-import { isSearchIsolationReady, searchIsolationBlockedReason } from './isolation';
+} from '@/utils/advancedSearch/docIdMap';
+import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
 import { gzip, gunzipSync, strFromU8 } from 'fflate';
 
 export type BuildLogLevel = 'info' | 'ok' | 'warn' | 'error';
@@ -132,7 +132,7 @@ function gzipBytes(input: Uint8Array): Promise<Uint8Array> {
   });
 }
 
-type LucivyApi = typeof import('./lucivyBackend');
+type LucivyApi = typeof import('@/utils/advancedSearch/lucivyBackend');
 
 class AdvancedSearchEngine {
   private index: InMemoryIndex = emptyIndex();
@@ -288,7 +288,7 @@ class AdvancedSearchEngine {
 
   private async loadLucivyApi(): Promise<LucivyApi> {
     if (this.lucivyApi) return this.lucivyApi;
-    this.lucivyApi = await import('./lucivyBackend');
+    this.lucivyApi = await import('@/utils/advancedSearch/lucivyBackend');
     return this.lucivyApi;
   }
 
@@ -676,14 +676,14 @@ class AdvancedSearchEngine {
       );
       this.emit();
       const snapshot = gunzipBytes(checkpoint.luceGz);
-      let docsMap = new Map<string, import('./types').DocMeta>();
+      let docsMap = new Map<string, import('@/utils/advancedSearch/types').DocMeta>();
       try {
         const raw = gunzipSync(checkpoint.docsGz);
         docsMap = new Map(
           Object.entries(
             JSON.parse(strFromU8(raw)) as Record<
               string,
-              import('./types').DocMeta
+              import('@/utils/advancedSearch/types').DocMeta
             >,
           ),
         );
@@ -895,7 +895,7 @@ class AdvancedSearchEngine {
     query: string,
     trees: Array<TreeNode[] | null | undefined>,
     limit = 50,
-    commandContext?: import('./commands').AppCommandContext,
+    commandContext?: import('@/utils/advancedSearch/commands').AppCommandContext,
   ): Promise<AdvancedSearchHit[]> {
     if (this.enabled) await this.ensureLoaded();
     const useIndex = this.enabled && this.hasIndex();
@@ -939,6 +939,6 @@ class AdvancedSearchEngine {
 
 export const advancedSearchEngine = new AdvancedSearchEngine();
 
-export { notifyAdvancedSearchChange } from './notify';
-export { chatDateFromPath } from './collectSources';
+export { notifyAdvancedSearchChange } from '@/utils/advancedSearch/notify';
+export { chatDateFromPath } from '@/utils/advancedSearch/collectSources';
 export type { AdvancedSearchHit };

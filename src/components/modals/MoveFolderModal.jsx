@@ -1,1 +1,1 @@
-export { MoveFolderModal } from '../shared/modals/MoveFolderModal.jsx';
+export { MoveFolderModal } from '@/components/shared/modals/MoveFolderModal.jsx';

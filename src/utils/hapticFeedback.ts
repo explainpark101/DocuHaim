@@ -1,2 +1,2 @@
-export * from './shared/hapticFeedback';
-export type * from './shared/hapticFeedback';
+export * from '@/utils/shared/hapticFeedback';
+export type * from '@/utils/shared/hapticFeedback';

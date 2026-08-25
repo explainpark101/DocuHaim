@@ -1,1 +1,1 @@
-export { SetPasswordModal } from '../shared/modals/SetPasswordModal.jsx';
+export { SetPasswordModal } from '@/components/shared/modals/SetPasswordModal.jsx';

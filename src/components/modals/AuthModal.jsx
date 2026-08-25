@@ -1,1 +1,1 @@
-export { AuthModal } from '../shared/modals/AuthModal.jsx';
+export { AuthModal } from '@/components/shared/modals/AuthModal.jsx';

@@ -1,1 +1,1 @@
-export { default } from './editor/PreviewFootnoteTooltips';
+export { default } from '@/components/editor/PreviewFootnoteTooltips';

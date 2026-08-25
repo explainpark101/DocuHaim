@@ -1,1 +1,1 @@
-export { default } from './editor/UserWebfontStyles';
+export { default } from '@/components/editor/UserWebfontStyles';

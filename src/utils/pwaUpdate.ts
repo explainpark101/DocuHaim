@@ -1,2 +1,2 @@
-export * from './shared/pwaUpdate';
-export type * from './shared/pwaUpdate';
+export * from '@/utils/shared/pwaUpdate';
+export type * from '@/utils/shared/pwaUpdate';

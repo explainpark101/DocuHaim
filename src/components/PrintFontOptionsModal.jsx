@@ -1,1 +1,1 @@
-export { default, DEFAULT_PRINT_FONTS } from './print/PrintFontOptionsModal.jsx';
+export { default, DEFAULT_PRINT_FONTS } from '@/components/print/PrintFontOptionsModal.jsx';

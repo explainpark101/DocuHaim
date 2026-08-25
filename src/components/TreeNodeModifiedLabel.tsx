@@ -1,1 +1,1 @@
-export { default } from './shell/TreeNodeModifiedLabel';
+export { default } from '@/components/shell/TreeNodeModifiedLabel';

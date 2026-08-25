@@ -1,8 +1,8 @@
-import { createS3Backend } from './s3Backend.js';
-import { createLocalBackend } from './localBackend.js';
-import { createWebdavBackend } from './webdavBackend.js';
-import { createTauriLocalBackend } from './tauriLocalBackend';
-import { getStorageCapabilities } from './capabilities.js';
+import { createS3Backend } from '@/utils/storage/s3Backend.js';
+import { createLocalBackend } from '@/utils/storage/localBackend.js';
+import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createTauriLocalBackend } from '@/utils/storage/tauriLocalBackend';
+import { getStorageCapabilities } from '@/utils/storage/capabilities.js';
 
 /**
  * @typedef {Object} StorageBackendDeps
@@ -45,4 +45,4 @@ export function createStorageBackendForType(storageType, deps) {
 }
 
 export { getStorageCapabilities };
-export { supportsRemoteSync } from './capabilities.js';
+export { supportsRemoteSync } from '@/utils/storage/capabilities.js';

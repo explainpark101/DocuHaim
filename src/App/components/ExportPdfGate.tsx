@@ -4,8 +4,8 @@ import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
 import UserWebfontStyles from '@/components/UserWebfontStyles';
 import { isStoredWithWebAuthn } from '@/utils/webauthn';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
-import { RouteSuspenseFallback } from '../RouteSuspenseFallback';
-import type { ExportPdfGateProps } from '../types';
+import { RouteSuspenseFallback } from '@/App/RouteSuspenseFallback';
+import type { ExportPdfGateProps } from '@/App/types';
 
 const ExportPDFPage = lazy(() => import('@/pages/ExportPDFPage'));
 

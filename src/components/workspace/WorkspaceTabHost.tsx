@@ -1,1 +1,1 @@
-export { default, WorkspaceKeepAlivePanel } from '../shell/workspace/WorkspaceTabHost';
+export { default, WorkspaceKeepAlivePanel } from '@/components/shell/workspace/WorkspaceTabHost';

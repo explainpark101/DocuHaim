@@ -9,6 +9,7 @@
       "@/*": ["./src/*"]
     },
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "strict": true,

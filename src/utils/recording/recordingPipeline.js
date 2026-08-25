@@ -3,7 +3,7 @@
  * FFmpeg 없이 MediaRecorder 출력(webm/mp4)을 그대로 저장
  */
 import { putObject } from '@/utils/s3Client';
-import { updateRecordingStatus } from './recordingDb';
+import { updateRecordingStatus } from '@/utils/recording/recordingDb';
 import { encodeSyncData } from '@/utils/syncProto';
 import { compileSyncData } from '@/utils/compileSyncData';
 

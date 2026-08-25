@@ -1,1 +1,1 @@
-export { SettingsModal } from '../shared/modals/SettingsModal.jsx';
+export { SettingsModal } from '@/components/shared/modals/SettingsModal.jsx';

@@ -1,2 +1,2 @@
-export * from './shared/tauriPlatform';
-export type * from './shared/tauriPlatform';
+export * from '@/utils/shared/tauriPlatform';
+export type * from '@/utils/shared/tauriPlatform';

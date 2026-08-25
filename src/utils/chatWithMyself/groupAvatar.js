@@ -1,4 +1,4 @@
-import { SELF_GROUP } from './paths.js';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 
 /** Hash-based HSL background for a stable group key (prefer id). */
 export function groupColor(key) {

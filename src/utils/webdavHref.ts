@@ -1,2 +1,2 @@
-export * from './vault/webdavHref';
-export type * from './vault/webdavHref';
+export * from '@/utils/vault/webdavHref';
+export type * from '@/utils/vault/webdavHref';

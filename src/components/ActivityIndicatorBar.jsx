@@ -1,1 +1,1 @@
-export { default } from './shell/ActivityIndicatorBar.jsx';
+export { default } from '@/components/shell/ActivityIndicatorBar.jsx';

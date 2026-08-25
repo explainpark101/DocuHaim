@@ -1,1 +1,1 @@
-export { SaveMethodModal } from '../shared/modals/SaveMethodModal.jsx';
+export { SaveMethodModal } from '@/components/shared/modals/SaveMethodModal.jsx';

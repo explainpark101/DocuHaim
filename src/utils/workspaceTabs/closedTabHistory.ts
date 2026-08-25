@@ -1,5 +1,5 @@
-import type { FileStorageType, WorkspaceTab } from './types';
-import { isFileTab } from './helpers';
+import type { FileStorageType, WorkspaceTab } from '@/utils/workspaceTabs/types';
+import { isFileTab } from '@/utils/workspaceTabs/helpers';
 
 export const CLOSED_TAB_HISTORY_KEY = 's3haim_closedTabHistory';
 

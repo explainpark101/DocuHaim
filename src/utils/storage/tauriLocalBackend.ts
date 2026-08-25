@@ -3,7 +3,7 @@
  * Plugin APIs are loaded lazily so plain web Vite never eagerly imports @tauri-apps/*.
  */
 
-import { STORAGE_CAPABILITIES } from './capabilities.js';
+import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 
 function joinVault(root: string, rel: string): string {
   const base = String(root || '').replace(/[/\\]+$/, '');

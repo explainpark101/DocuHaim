@@ -1,2 +1,2 @@
-export * from './print/printVisualLinePgbr';
-export type * from './print/printVisualLinePgbr';
+export * from '@/utils/print/printVisualLinePgbr';
+export type * from '@/utils/print/printVisualLinePgbr';

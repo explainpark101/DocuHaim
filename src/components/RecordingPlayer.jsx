@@ -1,1 +1,1 @@
-export { default } from './recording/RecordingPlayer.jsx';
+export { default } from '@/components/recording/RecordingPlayer.jsx';

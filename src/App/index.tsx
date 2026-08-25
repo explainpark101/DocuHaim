@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useLocation } from 'react-router';
-import { RouteSuspenseFallback } from './RouteSuspenseFallback';
-import { MainApp } from './MainApp';
+import { RouteSuspenseFallback } from '@/App/RouteSuspenseFallback';
+import { MainApp } from '@/App/MainApp';
 
 const LlmAssistPopoutPage = lazy(() => import('@/pages/LlmAssistPopoutPage'));
 

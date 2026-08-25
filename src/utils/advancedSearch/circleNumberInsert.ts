@@ -1,8 +1,8 @@
 /**
  * Advanced Search nested picker: insert Unicode circled numbers (①, ②, …).
  */
-import type { AdvancedSearchHit } from './query';
-import { scoreFuzzyRelevance } from './fuzzyMatch';
+import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
+import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 import {
   CIRCLE_NUMBER_PICKER_MAX,
   CIRCLE_NUMBER_PICKER_MIN,

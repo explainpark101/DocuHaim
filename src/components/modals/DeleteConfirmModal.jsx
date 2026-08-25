@@ -1,1 +1,1 @@
-export { normalizeDeleteTargets, DeleteConfirmModal } from '../shared/modals/DeleteConfirmModal.jsx';
+export { normalizeDeleteTargets, DeleteConfirmModal } from '@/components/shared/modals/DeleteConfirmModal.jsx';

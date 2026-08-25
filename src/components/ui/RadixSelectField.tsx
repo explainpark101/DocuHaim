@@ -5,5 +5,5 @@ export {
   selectContentClassName,
   selectItemClassName,
   RadixSelectField,
-} from '../shared/ui/RadixSelectField';
-export type { RadixSelectOption } from '../shared/ui/RadixSelectField';
+} from '@/components/shared/ui/RadixSelectField';
+export type { RadixSelectOption } from '@/components/shared/ui/RadixSelectField';

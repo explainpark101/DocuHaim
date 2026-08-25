@@ -1,1 +1,1 @@
-export { default } from './editor/MdEditorToolbarToggle';
+export { default } from '@/components/editor/MdEditorToolbarToggle';

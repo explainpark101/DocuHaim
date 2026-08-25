@@ -1,1 +1,1 @@
-export { default } from './shell/EditorPane.jsx';
+export { default } from '@/components/shell/EditorPane.jsx';

@@ -1,1 +1,1 @@
-export { MoveFileModal } from '../shared/modals/MoveFileModal.jsx';
+export { MoveFileModal } from '@/components/shared/modals/MoveFileModal.jsx';

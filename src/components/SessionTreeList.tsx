@@ -1,1 +1,1 @@
-export { default } from './shell/SessionTreeList';
+export { default } from '@/components/shell/SessionTreeList';

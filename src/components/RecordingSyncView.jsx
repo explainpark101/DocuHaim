@@ -1,1 +1,1 @@
-export { default } from './recording/RecordingSyncView.jsx';
+export { default } from '@/components/recording/RecordingSyncView.jsx';

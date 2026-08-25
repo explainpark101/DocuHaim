@@ -1,1 +1,1 @@
-export { default } from './shell/SessionOpenPanel';
+export { default } from '@/components/shell/SessionOpenPanel';

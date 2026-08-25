@@ -1,1 +1,1 @@
-export { default } from './editor/MarkdownHeadingRemapToolbar';
+export { default } from '@/components/editor/MarkdownHeadingRemapToolbar';

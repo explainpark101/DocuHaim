@@ -1,2 +1,2 @@
-export * from './shared/copyText';
-export type * from './shared/copyText';
+export * from '@/utils/shared/copyText';
+export type * from '@/utils/shared/copyText';

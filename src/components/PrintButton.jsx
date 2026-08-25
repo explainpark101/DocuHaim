@@ -1,1 +1,1 @@
-export { default } from './print/PrintButton.jsx';
+export { default } from '@/components/print/PrintButton.jsx';

@@ -1,4 +1,4 @@
-import { runEncodeAndWritePipeline } from './recordingPipeline';
+import { runEncodeAndWritePipeline } from '@/utils/recording/recordingPipeline';
 import { putObject } from '@/utils/s3Client';
 import {
   deleteRecordingById,
@@ -6,7 +6,7 @@ import {
   listUploadableRecordings,
   updateRecordingStatus,
   deleteRecordingFragments,
-} from './recordingDb';
+} from '@/utils/recording/recordingDb';
 
 const DEFAULT_MAX_PER_DRAIN = 5;
 

@@ -1,4 +1,4 @@
-import { isFileTabDirty, type FileWorkspaceTab } from './index';
+import { isFileTabDirty, type FileWorkspaceTab } from '@/utils/workspaceTabs/index';
 
 function lastModToTs(value: unknown): number {
   if (value instanceof Date) return value.getTime();

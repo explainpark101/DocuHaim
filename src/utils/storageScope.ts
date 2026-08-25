@@ -1,2 +1,2 @@
-export * from './vault/storageScope';
-export type * from './vault/storageScope';
+export * from '@/utils/vault/storageScope';
+export type * from '@/utils/vault/storageScope';

@@ -1,5 +1,5 @@
 import { CHAT_FOLDER } from '@/utils/chatWithMyself/paths.js';
-import { ADVANCED_SEARCH_FOLDER } from './paths';
+import { ADVANCED_SEARCH_FOLDER } from '@/utils/advancedSearch/paths';
 
 /** Always indexed when Advanced Search index is built. */
 export const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown']);

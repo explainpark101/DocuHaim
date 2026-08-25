@@ -1,2 +1,2 @@
-export * from './noteCover/coverSettingsStore';
-export type * from './noteCover/coverSettingsStore';
+export * from '@/utils/noteCover/coverSettingsStore';
+export type * from '@/utils/noteCover/coverSettingsStore';

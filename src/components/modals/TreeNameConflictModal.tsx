@@ -1,2 +1,2 @@
-export type { TreeNameConflictModalProps } from '../shared/modals/TreeNameConflictModal';
-export { default } from '../shared/modals/TreeNameConflictModal';
+export type { TreeNameConflictModalProps } from '@/components/shared/modals/TreeNameConflictModal';
+export { default } from '@/components/shared/modals/TreeNameConflictModal';

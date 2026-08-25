@@ -1,1 +1,1 @@
-export { default } from './editor/FontFamilyInput';
+export { default } from '@/components/editor/FontFamilyInput';

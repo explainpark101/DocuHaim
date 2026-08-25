@@ -1,2 +1,2 @@
-export * from './vault/sessionWorkspace';
-export type * from './vault/sessionWorkspace';
+export * from '@/utils/vault/sessionWorkspace';
+export type * from '@/utils/vault/sessionWorkspace';

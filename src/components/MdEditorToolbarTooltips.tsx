@@ -1,1 +1,1 @@
-export { default } from './editor/MdEditorToolbarTooltips';
+export { default } from '@/components/editor/MdEditorToolbarTooltips';

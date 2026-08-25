@@ -1,1 +1,1 @@
-export { default } from './recording/RecordingDropdownButton.jsx';
+export { default } from '@/components/recording/RecordingDropdownButton.jsx';

@@ -1,2 +1,2 @@
-export * from './llm/llmProviderProfiles';
-export type * from './llm/llmProviderProfiles';
+export * from '@/utils/llm/llmProviderProfiles';
+export type * from '@/utils/llm/llmProviderProfiles';
