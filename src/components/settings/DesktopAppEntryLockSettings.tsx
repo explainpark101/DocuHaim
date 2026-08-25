@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RadioGroup } from 'radix-ui';
 import { IconFingerprint, IconKey, IconLock } from '@/components/icons';
+import Button from '@/components/Button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
@@ -15,6 +18,8 @@ import { isDesktopBiometricAvailable } from '@/utils/desktopBiometricUnlock';
 import { isBiometricUserCancelError } from '@/utils/tauriBiometricLock';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+
+const ENTRY_LOCK_LOADING_TOAST = '암호설정 불러오는 중';
 
 type DesktopAppEntryLockSettingsProps = {
   s3Creds: Record<string, unknown>;
@@ -58,6 +63,8 @@ export default function DesktopAppEntryLockSettings({
   webdavConfig,
   onModeChanged,
 }: DesktopAppEntryLockSettingsProps) {
+  const { lock: lockApp } = useAuth() as { lock: () => void };
+  const { showToast, dismissToast } = useToast();
   const [mode, setMode] = useState<DesktopAppEntryLockMode>('off');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -65,22 +72,40 @@ export default function DesktopAppEntryLockSettings({
   const [disableConfirmOpen, setDisableConfirmOpen] = useState(false);
   const biometricLabel = getWebAuthnEncryptLabel();
 
+  const withLoadingToast = useCallback(
+    async <T,>(task: () => Promise<T>): Promise<T> => {
+      showToast({ message: ENTRY_LOCK_LOADING_TOAST, icon: 'loading', durationMs: 0 });
+      try {
+        return await task();
+      } finally {
+        dismissToast();
+      }
+    },
+    [dismissToast, showToast],
+  );
+
   useEffect(() => {
     if (!isDesktopApp()) return;
     let cancelled = false;
     void (async () => {
-      const [resolved, bio] = await Promise.all([
-        resolveDesktopAppEntryLockMode(),
-        isDesktopBiometricAvailable(),
-      ]);
-      if (cancelled) return;
-      setMode(resolved);
-      setBiometricAvailable(bio);
+      try {
+        const [resolved, bio] = await withLoadingToast(() =>
+          Promise.all([resolveDesktopAppEntryLockMode(), isDesktopBiometricAvailable()]),
+        );
+        if (cancelled) return;
+        setMode(resolved);
+        setBiometricAvailable(bio);
+      } catch {
+        if (!cancelled) {
+          setMode('off');
+          setBiometricAvailable(false);
+        }
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [withLoadingToast]);
 
   if (!isDesktopApp()) return null;
 
@@ -89,12 +114,12 @@ export default function DesktopAppEntryLockSettings({
     setBusy(true);
     try {
       if (next === 'off') {
-        await disableDesktopAppEntryLock(s3Creds, webdavConfig);
+        await withLoadingToast(() => disableDesktopAppEntryLock(s3Creds, webdavConfig));
       } else if (next === 'password') {
         setPasswordModalOpen(true);
         return;
       } else {
-        await enableDesktopBiometricEntryLock(s3Creds);
+        await withLoadingToast(() => enableDesktopBiometricEntryLock(s3Creds));
       }
       setMode(next);
       onModeChanged?.(next);
@@ -109,7 +134,9 @@ export default function DesktopAppEntryLockSettings({
   const handlePasswordSubmit = async (password: string) => {
     setBusy(true);
     try {
-      await enableDesktopPasswordEntryLock(password, s3Creds, webdavConfig);
+      await withLoadingToast(() =>
+        enableDesktopPasswordEntryLock(password, s3Creds, webdavConfig),
+      );
       setMode('password');
       onModeChanged?.('password');
       setPasswordModalOpen(false);
@@ -124,7 +151,7 @@ export default function DesktopAppEntryLockSettings({
     setDisableConfirmOpen(false);
     setBusy(true);
     try {
-      await disableDesktopAppEntryLock(s3Creds, webdavConfig);
+      await withLoadingToast(() => disableDesktopAppEntryLock(s3Creds, webdavConfig));
       setMode('off');
       onModeChanged?.('off');
     } catch (err) {
@@ -134,6 +161,11 @@ export default function DesktopAppEntryLockSettings({
     }
   };
 
+  const handleManualLock = () => {
+    if (mode !== 'password' || busy) return;
+    lockApp();
+  };
+
   return (
     <>
       <div
@@ -141,13 +173,29 @@ export default function DesktopAppEntryLockSettings({
         tabIndex={-1}
         className="scroll-mt-4 rounded-lg border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900/60 dark:bg-blue-950/30"
       >
-        <h3 className="mb-1 flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-          <IconLock size={16} />
-          앱 입장 잠금 (Tauri)
-        </h3>
+        <div className="mb-1 flex items-start justify-between gap-3">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+            <IconLock size={16} />
+            앱 입장 잠금 (Tauri)
+          </h3>
+          {mode === 'password' ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+              disabled={busy}
+              onClick={handleManualLock}
+              aria-label="앱 잠금"
+            >
+              <IconLock size={14} />
+              잠금
+            </Button>
+          ) : null}
+        </div>
         <p className="mb-3 text-xs leading-relaxed text-gray-600 dark:text-odp-muted">
-          데스크톱 앱을 열 때 비밀번호 또는 {biometricLabel}로 잠금 해제할 수 있습니다. 백그라운드
-          전환 후에도 다시 인증이 필요합니다.
+          데스크톱 앱을 열 때 비밀번호 또는 {biometricLabel}로 잠금 해제할 수 있습니다. 앱을
+          새로 켜거나 잠금 버튼을 눌렀을 때만 인증이 필요합니다.
         </p>
 
         <RadioGroup.Root

@@ -348,7 +348,6 @@ import {
 } from '@/utils/desktopStrongholdSecrets';
 import { decryptDesktopPasswordWebdav, refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
 import { unlockDesktopWithBiometricGate } from '@/utils/desktopBiometricUnlock';
-import { useTauriAppLock } from '@/hooks/useTauriAppLock';
 import { applyDocumentTheme } from '@/utils/documentTheme';
 import {
   applyForcedAppUpdate,
@@ -408,12 +407,9 @@ function MainApp() {
     setS3Creds,
     unlock,
     proceedWithoutStoredCreds,
-    lock,
   } = auth;
   const navigate = useNavigate();
   const location = useLocation();
-
-  useTauriAppLock({ isUnlocked, onLock: lock });
 
   const llmProviderProfiles = useMemo(
     () => resolveLlmProviderProfiles(s3Creds),

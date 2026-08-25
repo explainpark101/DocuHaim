@@ -1,5 +1,5 @@
 /**
- * Tauri desktop app entry lock — password or biometrics on launch / refocus.
+ * Tauri desktop app entry lock — password or biometrics on launch / manual lock.
  */
 
 import { deriveEntropyFromPassword, encryptData, encryptWithEntropy, decryptData } from '@/utils/crypto';

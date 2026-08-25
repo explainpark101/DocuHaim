@@ -9,20 +9,21 @@ import {
   type ReactNode,
 } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
-import { Check, ClipboardCheck, Link2 } from 'lucide-react';
+import { Check, ClipboardCheck, Link2, Loader2 } from 'lucide-react';
 import { bindCopyTextToast } from '@/utils/copyText';
 
-export type ToastIcon = 'check' | 'copy' | 'link';
+export type ToastIcon = 'check' | 'copy' | 'link' | 'loading';
 
 export type ToastOptions = {
   message: string;
   icon?: ToastIcon;
-  /** Auto-dismiss ms (default 1800). */
+  /** Auto-dismiss ms (default 1800). Use 0 to keep visible until dismissToast(). */
   durationMs?: number;
 };
 
 type ToastContextValue = {
   showToast: (options: ToastOptions | string) => void;
+  dismissToast: () => void;
 };
 
 type ToastItem = {
@@ -37,6 +38,9 @@ const DEFAULT_DURATION_MS = 1800;
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 function ToastGlyph({ icon }: { icon: ToastIcon }) {
+  if (icon === 'loading') {
+    return <Loader2 size={16} className="shrink-0 animate-spin" aria-hidden />;
+  }
   if (icon === 'link') {
     return <Link2 size={16} className="shrink-0" aria-hidden />;
   }
@@ -87,13 +91,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const id = idRef.current;
       clearHideTimer();
       setToast({ id, message, icon });
-      hideTimerRef.current = setTimeout(() => {
-        setToast((prev) => (prev?.id === id ? null : prev));
-        hideTimerRef.current = null;
-      }, durationMs);
+      if (durationMs > 0) {
+        hideTimerRef.current = setTimeout(() => {
+          setToast((prev) => (prev?.id === id ? null : prev));
+          hideTimerRef.current = null;
+        }, durationMs);
+      }
     },
     [clearHideTimer],
   );
+
+  const dismissToast = useCallback(() => {
+    clearHideTimer();
+    setToast(null);
+  }, [clearHideTimer]);
 
   useEffect(() => () => clearHideTimer(), [clearHideTimer]);
 
@@ -127,7 +138,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('copy', onCopy);
   }, [showToast]);
 
-  const value = useMemo(() => ({ showToast }), [showToast]);
+  const value = useMemo(() => ({ showToast, dismissToast }), [showToast, dismissToast]);
 
   return (
     <ToastContext.Provider value={value}>
@@ -148,7 +159,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               exit={{ opacity: 0, y: -16, scale: 0.98 }}
               transition={TOAST_TRANSITION}
             >
-              <span className="inline-flex size-6 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400">
+              <span
+                className={
+                  toast.icon === 'loading'
+                    ? 'inline-flex size-6 items-center justify-center rounded-full bg-blue-500/15 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400'
+                    : 'inline-flex size-6 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400'
+                }
+              >
                 <ToastGlyph icon={toast.icon} />
               </span>
               <span className="min-w-0 truncate">{toast.message}</span>
