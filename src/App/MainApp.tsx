@@ -1,4 +1,10 @@
+// @ts-nocheck — migrated from App.jsx; typed gradually in later PRs
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import { getParentPathsToExpand, getExt } from './helpers';
+import { RouteSuspenseFallback } from './RouteSuspenseFallback';
+import { AppModals } from './components/AppModals';
+import { AppLayout } from './components/AppLayout';
+import { ExportPdfGate } from './components/ExportPdfGate';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
@@ -154,15 +160,6 @@ import {
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
 const ExportPDFPage = lazy(() => import('@/pages/ExportPDFPage'));
-const LlmAssistPopoutPage = lazy(() => import('@/pages/LlmAssistPopoutPage'));
-
-function RouteSuspenseFallback() {
-  return (
-    <div className="flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted">
-      로딩 중…
-    </div>
-  );
-}
 import { useRecording } from '@/hooks/useRecording';
 import { getSyncKeyForRecording, runEncodeAndWritePipeline } from '@/utils/recordingPipeline';
 import {
@@ -337,7 +334,6 @@ import {
 } from '@/utils/sessionNoteImport';
 import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
 import { copyText } from '@/utils/copyText';
-import SaveSessionToNoteModal from '@/components/modals/SaveSessionToNoteModal';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -368,40 +364,8 @@ import {
 } from '@/utils/pwaUpdate';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-/** Ancestor folder paths (with trailing `/`) to expand so a file under `parentPath` is visible. */
-function getParentPathsToExpand(parentPath) {
-  if (!parentPath || parentPath === '') return [];
-  const parts = parentPath.replace(/\/$/, '').split('/').filter(Boolean);
-  const result = [];
-  let acc = '';
-  for (const p of parts) {
-    acc += p + '/';
-    result.push(acc);
-  }
-  return result;
-}
 
-export default function App() {
-  const location = useLocation();
-  if (location.pathname === '/llm-assist-popout') {
-    return (
-      <div className="llm-assist-popout-layout min-h-screen max-w-screen bg-white dark:bg-odp-bgSofter">
-        <Suspense fallback={<RouteSuspenseFallback />}>
-          <LlmAssistPopoutPage />
-        </Suspense>
-      </div>
-    );
-  }
-  return <MainApp />;
-}
-
-function getExt(fileName) {
-  if (!fileName || typeof fileName !== 'string') return '';
-  const lastDot = fileName.lastIndexOf('.');
-  return lastDot > 0 ? fileName.slice(lastDot) : '';
-}
-
-function MainApp() {
+export function MainApp() {
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
   const { showAlert } = useAlertModal();
   const { showToast } = useToast();
@@ -9941,1238 +9905,359 @@ function MainApp() {
       && documentFile?.id !== routeExportPath;
 
     return (
-      <div className="export-pdf-layout h-dvh min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white">
-        <UserWebfontStyles />
-        <Suspense fallback={<RouteSuspenseFallback />}>
-          <ExportPDFPage
-            documentValue={documentValue}
-            documentFile={documentFile}
-            openCoverEdit={Boolean(navState?.openCoverEdit)}
-            isDocumentLoading={waitingForRouteDoc}
-            hasNavigationSession={Boolean(navState) || Boolean(routeExportPath)}
-          />
-        </Suspense>
-        <AdvancedSearchHost
-          getTrees={() =>
-            storageMode === STORAGE_MODE_LOCAL
-              ? [localTree]
-              : storageMode === STORAGE_MODE_WEBDAV
-                ? [webdavTree]
-                : [s3Tree]
-          }
-          onOpenFile={openAdvancedSearchFile}
-          preferPrintActions
-          snippetConfig={snippetConfig}
-        />
-        <AuthModal
-          isOpen={showAuthModal && !shareBlockingAuth}
-          onUnlock={handleUnlock}
-          fileInputRef={fileInputRef}
-          onCloseWithoutUnlock={() => {
-            proceedWithoutStoredCreds();
-            openSettingsWorkspaceTab();
-          }}
-          canUnlockWithWebAuthn={canUnlockWithWebAuthnForModal}
-          onUnlockWithWebAuthn={handleUnlockWithWebAuthn}
-          autoPromptWebAuthn={autoPromptWebAuthnForModal}
-          isPasswordMode={!isStoredWithWebAuthn()}
-        />
-      </div>
+      <ExportPdfGate
+        documentValue={documentValue}
+        documentFile={documentFile}
+        openCoverEdit={Boolean(navState?.openCoverEdit)}
+        isDocumentLoading={waitingForRouteDoc}
+        hasNavigationSession={Boolean(navState) || Boolean(routeExportPath)}
+        storageMode={storageMode}
+        localTree={localTree}
+        webdavTree={webdavTree}
+        s3Tree={s3Tree}
+        openAdvancedSearchFile={openAdvancedSearchFile}
+        snippetConfig={snippetConfig}
+        showAuthModal={showAuthModal}
+        shareBlockingAuth={shareBlockingAuth}
+        handleUnlock={handleUnlock}
+        fileInputRef={fileInputRef}
+        proceedWithoutStoredCreds={proceedWithoutStoredCreds}
+        openSettingsWorkspaceTab={openSettingsWorkspaceTab}
+        canUnlockWithWebAuthnForModal={canUnlockWithWebAuthnForModal}
+        handleUnlockWithWebAuthn={handleUnlockWithWebAuthn}
+        autoPromptWebAuthnForModal={autoPromptWebAuthnForModal}
+      />
     );
   }
 
   return (
-    <div
-      className={`flex min-h-0 bg-gray-50 dark:bg-odp-bgSofter text-gray-800 dark:text-odp-fg font-sans ${
-        lockChatViewport
-          ? 'fixed inset-x-0 z-0 flex-col overflow-hidden'
-          : isTauriDesktopPlatform()
-            ? 'relative h-screen flex-col'
-            : 'relative h-screen'
-      }`}
-      style={
-        lockChatViewport
-          ? {
-              top: 'var(--app-vv-top, 0px)',
-              height: 'var(--app-vv-height, 100dvh)',
-              maxHeight: 'var(--app-vv-height, 100dvh)',
-            }
-          : undefined
-      }
+    <AppLayout
+      {...{
+        activateWorkspaceTab,
+        addToNoteSelectPath,
+        appBuildRemoteId,
+        appName,
+        audioLevel,
+        autoPromptWebAuthnForModal,
+        autoSaveIndicatorClass,
+        canScanStorageUsage,
+        canUnlockWithWebAuthnForModal,
+        cancelEditorImageUpload,
+        chatAttachDropHost,
+        chatStorageCtx,
+        chatStorageReady,
+        chatSurfaceActive,
+        closeSessionWorkspace,
+        closeWorkspaceTabById,
+        currentFile,
+        deletingFolderPath,
+        disableWebAuthnUnlock,
+        dropTarget,
+        editedFileName,
+        editorContent,
+        editorImageUploadPercent,
+        editorType,
+        enableWebAuthnUnlock,
+        ensureAdvancedSearchBrowseFolder,
+        expandPathsRef,
+        fileInputRef,
+        fileTabContextMenuRef,
+        formatFileSize,
+        formatTime,
+        getAdvancedSearchChatGroups,
+        getAdvancedSearchTrees,
+        getChatImageUrlForPath,
+        getImgbbApiKey,
+        getPresignedUrlForPath,
+        getS3Client,
+        handleApplyPwaUpdate,
+        handleBrandClick,
+        handleChangeSnippetConfig,
+        handleCheckAppUpdate,
+        handleCreateNoteFromChatMessage,
+        handleDeleteUnusedImagePaths,
+        handleDownloadNode,
+        handleDragEndNode,
+        handleDropOnFolder,
+        handleDropSessionTransfer,
+        handleDropToChatAttach,
+        handleDuplicateNode,
+        handleEditorChange,
+        handleEditorTypeChange,
+        handleExportCreds,
+        handleImportCreds,
+        handleOpenInNewWindow,
+        handleOpenNoteFromChat,
+        handleOpenSessionDirectory,
+        handleOpenSessionFiles,
+        handleOpenStorageUsageFile,
+        handleReadUnusedImageBytes,
+        handleReadUnusedImageText,
+        handleRegisterChatAttachDrop,
+        handleRequestCloseEditor,
+        handleRequestDownload,
+        handleRequestMove,
+        handleRequestMoveFileFromSidebar,
+        handleRequestMoveFolder,
+        handleRequestSaveSessionToNote,
+        handleRequestSessionTransformDownload,
+        handleSaveS3Creds,
+        handleSaveSnippetConfig,
+        handleSettingsClose,
+        handleShareBlockingChange,
+        handleShareComposeClaimed,
+        handleShareGroupSendConsumed,
+        handleShareNodeToChatWithMyself,
+        handleShareNoteToChatWithMyself,
+        handleToggleRecording,
+        handleTreeNodeSelect,
+        handleUnlock,
+        handleUnlockWithWebAuthn,
+        handleUploadEditorImage,
+        handleUploadFileSelect,
+        handleUploadFolderSelect,
+        handleViewUnsupportedAsText,
+        hidePwaUpdateToast,
+        hideRecordingCompanions,
+        isApplyingPwaUpdate,
+        isChatRoute,
+        isCheckingAppUpdate,
+        isDeletingFolder,
+        isEditableStorage,
+        isLocalTreeLoading,
+        isMobile,
+        isOpeningSession,
+        isPullingFromRemote,
+        isRecording,
+        isRefreshingFromDisk,
+        isSaving,
+        isSavingSnippets,
+        isSettingsRoute,
+        isUnlocked,
+        isUploadingEditorImage,
+        isWebdavTreeLoading,
+        lastAutoSaveAt,
+        lastAutoSyncAt,
+        llmProviderProfiles,
+        loadLocalFolderChildren,
+        loadS3Files,
+        loadWebdavFolderChildren,
+        localFolderLoadingPath,
+        localRootHandle,
+        localTree,
+        localVaultFsPath,
+        location,
+        lockChatViewport,
+        masterPassword,
+        navigate,
+        needRefresh,
+        newFileDefaultParentPath,
+        openAdvancedSearchFile,
+        openChatWorkspaceTab,
+        openLocalFolder,
+        openSettingsWorkspaceTab,
+        operationStatus,
+        pendingLocalFolderName,
+        proceedWithoutStoredCreds,
+        recordingAudioUrl,
+        recordingPipelineStatus,
+        recordingQueueStats,
+        recordingSyncData,
+        recordingsList,
+        refreshLocalFileFromDisk,
+        refreshLocalTree,
+        refreshRemoteFile,
+        refreshWebdavTree,
+        renameCurrentFileFullName,
+        renameTreeItem,
+        reorderWorkspaceTabs,
+        requestAdvancedSearchCreateItem,
+        requestCreateItem,
+        requestNewFile,
+        requestNewTempFile,
+        requestUploadFile,
+        requestUploadFolder,
+        s3Creds,
+        s3Tree,
+        saveFile,
+        savingTabIds,
+        scanActiveStorageUsageTree,
+        selectedIds,
+        selectedRecordingKey,
+        sessionWorkspace,
+        setAddToNoteSelectPath,
+        setChatAttachDropHost,
+        setCreateModalContext,
+        setCreateModalOpen,
+        setDeleteTarget,
+        setEditedFileName,
+        setEmptyTrashTarget,
+        setHidePwaUpdateToast,
+        setSelectedIds,
+        setSelectedRecordingKey,
+        setShowSuffixChangeConfirmModal,
+        setSidebarCollapsed,
+        setSidebarOpen,
+        setStorageMode,
+        setSuffixConfirmAction,
+        setTheme,
+        setTreeHoverExpandSettings,
+        setWebdavConfig,
+        setWorkspaceTabs,
+        shareBlockingAuth,
+        shareGroupSend,
+        showAlert,
+        showAuthModal,
+        showHiddenFolders,
+        showTrashFolder,
+        showTreeModifiedDate,
+        sidebarCollapsed,
+        sidebarOpen,
+        snippetConfig,
+        snippetLoadedFromLocal,
+        snippetLoadedFromS3,
+        snippetLoadedFromWebdav,
+        storageMode,
+        theme,
+        treeHoverExpandSettings,
+        treeStickyFolderPathEnabled,
+        treeTransferBusy,
+        uploadFileInputRef,
+        uploadFolderInputRef,
+        webauthnPRFSupported,
+        webdavConfig,
+        webdavFolderLoadingPath,
+        webdavReady,
+        webdavTree,
+        workspaceTabs,
+        workspaceTabsEnabled,
+        workspaceTabsEnabledRef,
+        workspaceTabsRef,
+      }}
     >
-      <UserWebfontStyles />
-      {isTauriDesktopPlatform() ? (
-        <DesktopTitlebar
-          tabs={workspaceTabs.tabs}
-          activeId={workspaceTabs.activeId}
-          savingTabIds={savingTabIds}
-          tabsEnabled={workspaceTabsEnabled}
-          appName={appName}
-          isMobileLayout={isMobile}
-          onActivateTab={(id) => activateWorkspaceTab(id)}
-          onCloseTab={(id) => {
-            closeWorkspaceTabById(id);
-          }}
-          onReorderTabs={reorderWorkspaceTabs}
-          onFileTabContextMenu={(tab, point) => {
-            fileTabContextMenuRef.current?.open?.({
-              storageType: tab.storageType,
-              path: tab.path,
-              name: tab.editedFileName || tab.currentFile?.name,
-              currentFile: tab.currentFile,
-              clientX: point.clientX,
-              clientY: point.clientY,
-              onCloseTab: () => closeWorkspaceTabById(tab.id),
-            });
-          }}
-        />
-      ) : null}
-      {/* Hidden file input for import */}
-      <input type="file" ref={fileInputRef} onChange={handleImportCreds} accept=".json" className="hidden" />
-
-      {/* Hidden file input for upload */}
-      <input
-        type="file"
-        ref={uploadFileInputRef}
-        onChange={handleUploadFileSelect}
-        multiple
-        className="hidden"
-      />
-      {/* Hidden folder input for upload */}
-      <input
-        type="file"
-        ref={uploadFolderInputRef}
-        onChange={handleUploadFolderSelect}
-        webkitdirectory=""
-        directory=""
-        className="hidden"
-      />
-
-      {needRefresh && !hidePwaUpdateToast && (
-        <div className="fixed right-3 bottom-10 z-11000 w-[min(92vw,360px)] rounded-xl border border-blue-200 bg-white p-3 shadow-xl dark:border-blue-900/60 dark:bg-odp-bgSoft md:right-4 md:bottom-12">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-odp-fgStrong">
-                새 버전이 준비되었습니다
-              </p>
-              <p className="mt-1 text-xs text-gray-600 dark:text-odp-muted">
-                저장 중인 작업을 확인한 뒤 업데이트를 적용하세요.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fg"
-              aria-label="업데이트 토스트 닫기"
-              onClick={() => setHidePwaUpdateToast(true)}
-            >
-              <IconX size={16} />
-            </button>
-          </div>
-          <div className="mt-3 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg"
-              onClick={() => setHidePwaUpdateToast(true)}
-              disabled={isApplyingPwaUpdate}
-            >
-              나중에
-            </button>
-            <button
-              type="button"
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-600 dark:hover:bg-blue-700"
-              onClick={handleApplyPwaUpdate}
-              disabled={isApplyingPwaUpdate}
-            >
-              {isApplyingPwaUpdate ? '업데이트 중...' : '지금 업데이트'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Share target chooser — above lock blur; defers AuthModal while open */}
-      <ShareTargetGate
-        isUnlocked={isUnlocked}
-        storageReady={chatStorageReady}
-        chatCtx={chatStorageCtx}
-        onBlockingChange={handleShareBlockingChange}
-        onComposeClaimed={handleShareComposeClaimed}
-        onOpenAsSession={handleOpenSessionFiles}
-      />
-
-      {isUnlocked ? (
-        <AdvancedSearchHost
-          getTrees={getAdvancedSearchTrees}
-          onOpenFile={openAdvancedSearchFile}
-          ensureBrowseFolderLoaded={ensureAdvancedSearchBrowseFolder}
-          onRequestCreateItem={requestAdvancedSearchCreateItem}
-          onRequestCreateTempFile={requestNewTempFile}
-          getChatGroups={getAdvancedSearchChatGroups}
-          getPresignedUrl={getChatImageUrlForPath}
-          currentFile={currentFile}
-          defaultCreateParentPath={newFileDefaultParentPath}
-          editorContent={editorContent}
-          snippetConfig={snippetConfig}
-          theme={theme}
-        />
-      ) : null}
-
-      {/* Auth Modal (Lock Screen) */}
-      <AuthModal
-        isOpen={showAuthModal && !shareBlockingAuth}
-        onUnlock={handleUnlock}
-        fileInputRef={fileInputRef}
-        onCloseWithoutUnlock={() => {
-          proceedWithoutStoredCreds();
-          openSettingsWorkspaceTab();
-        }}
-        canUnlockWithWebAuthn={canUnlockWithWebAuthnForModal}
-        onUnlockWithWebAuthn={handleUnlockWithWebAuthn}
-        autoPromptWebAuthn={autoPromptWebAuthnForModal}
-        isPasswordMode={!isStoredWithWebAuthn()}
-      />
-
-      {/* Main UI (Blurred if locked) */}
-      <div
-        className={`flex min-h-0 flex-1 w-full flex-col overflow-hidden transition-all duration-300 ${
-          !isUnlocked ? 'blur-md pointer-events-none select-none' : ''
-        }`}
-      >
-        <div className="relative flex min-h-0 flex-1">
-          {/* Mobile: backdrop when sidebar open */}
-          {isMobile && sidebarOpen && (
-            <button
-              type="button"
-              aria-label="사이드바 닫기"
-              className="fixed inset-0 z-55 bg-black/30 md:hidden"
-              onClick={() => setSidebarOpen(false)}
-            />
-          )}
-
-          {/* Sidebar: mobile open z-60 above main z-50; closed z-40 + pointer-events-none */}
-          <ResizableSidebarPanel
-            isMobile={isMobile}
-            collapsed={sidebarCollapsed}
-            open={sidebarOpen}
-            onRequestCollapse={() => setSidebarCollapsed(true)}
-            mobileHeader={
-              isMobile ? (
-                <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
-                  <button
-                    type="button"
-                    aria-label="사이드바 닫기"
-                    onClick={() => setSidebarOpen(false)}
-                    className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
-                  >
-                    <IconX size={22} />
-                  </button>
-                </div>
-              ) : null
-            }
-          >
-            <Sidebar
-              isMobileLayout={isMobile}
-              fileTabContextMenuRef={fileTabContextMenuRef}
-              appName={appName}
-              onBrandClick={handleBrandClick}
-              onStorageModeChange={setStorageMode}
-              storageMode={storageMode}
-              s3Tree={s3Tree}
-              s3Bucket={s3Creds.bucket}
-              localTree={localTree}
-              localRootHandle={localRootHandle}
-              localVaultFsPath={localVaultFsPath}
-              isLocalTreeLoading={isLocalTreeLoading}
-              localFolderLoadingPath={localFolderLoadingPath}
-              webdavTree={webdavTree}
-              webdavReady={webdavReady}
-              isWebdavTreeLoading={isWebdavTreeLoading}
-              webdavFolderLoadingPath={webdavFolderLoadingPath}
-              onLoadWebdavFolderChildren={loadWebdavFolderChildren}
-              onRefreshWebdav={refreshWebdavTree}
-              onLoadLocalFolderChildren={loadLocalFolderChildren}
-              onRefreshLocal={refreshLocalTree}
-              currentFile={currentFile}
-              selectedIds={selectedIds}
-              onSelectFile={handleTreeNodeSelect}
-              onClearSelection={() => setSelectedIds(new Set())}
-              onCreateItem={requestCreateItem}
-              onRequestUploadFile={requestUploadFile}
-              onRequestUploadFolder={requestUploadFolder}
-              onRequestMoveFolder={handleRequestMoveFolder}
-              onDropOnFolder={handleDropOnFolder}
-              onDragEndNode={handleDragEndNode}
-              dropTarget={dropTarget}
-              transferBusyItems={treeTransferBusy}
-              onOpenLocalFolder={openLocalFolder}
-              onSetDeleteTarget={setDeleteTarget}
-              onRequestEmptyTrash={(_node, storageType) => {
-                setEmptyTrashTarget({ storageType });
-              }}
-              onOpenSettings={() => {
-                if (isMobile) setSidebarOpen(false);
-                openSettingsWorkspaceTab();
-              }}
-              theme={theme}
-              onToggleTheme={() =>
-                setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
-              }
-              onRenameItem={renameTreeItem}
-              showHiddenFolders={showHiddenFolders}
-              showTrashFolder={showTrashFolder}
-              hideRecordingCompanions={hideRecordingCompanions}
-              treeStickyFolderPathEnabled={treeStickyFolderPathEnabled}
-              showTreeModifiedDate={showTreeModifiedDate}
-              hoverExpandDelayMs={treeHoverExpandSettingsToMs(treeHoverExpandSettings)}
-              onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
-              deletingFolderPath={deletingFolderPath}
-              isDeletingFolder={isDeletingFolder}
-              expandPathsRef={expandPathsRef}
-              onRefreshS3={loadS3Files}
-              onDownloadNode={handleDownloadNode}
-              onDuplicateNode={handleDuplicateNode}
-              onRequestMoveFile={handleRequestMoveFileFromSidebar}
-              onOpenInNewWindow={handleOpenInNewWindow}
-              onShareToChatWithMyself={handleShareNodeToChatWithMyself}
-              onOpenChatWithMyself={() => {
-                if (isMobile) setSidebarOpen(false);
-                if (workspaceTabsEnabled) openChatWorkspaceTab();
-                else navigate('/chat');
-              }}
-              chatWithMyselfActive={chatSurfaceActive}
-              chatAttachDropHost={chatAttachDropHost}
-              onDropToChatAttach={handleDropToChatAttach}
-              sessionWorkspace={sessionWorkspace}
-              sessionTree={sessionWorkspace ? buildSessionTree(sessionWorkspace) : []}
-              onCloseSessionWorkspace={closeSessionWorkspace}
-            />
-          </ResizableSidebarPanel>
-
-          {!isMobile && (
-            <button
-              type="button"
-              aria-label="사이드바 펼치기"
-              title="사이드바 펼치기"
-              onClick={() => setSidebarCollapsed(false)}
-              className={`hidden md:inline-flex absolute left-3 top-3 z-55 p-1.5 shrink-0 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition-all duration-300 ease-in-out ${
-                sidebarCollapsed
-                  ? 'opacity-100 translate-x-0 pointer-events-auto'
-                  : 'opacity-0 -translate-x-2 pointer-events-none'
-              }`}
-              tabIndex={sidebarCollapsed ? 0 : -1}
-              aria-hidden={!sidebarCollapsed}
-            >
-              <ChevronsRight size={18} aria-hidden />
-            </button>
-          )}
-
-                    {/* Main Content Routes (z-50: above closed mobile sidebar z-40 so toolbar buttons receive taps) */}
-          <div className="relative z-50 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <Routes>
-            <Route
-              path="*"
-              element={
-                <WorkspaceMainPanels
-                  tabs={workspaceTabs.tabs}
-                  activeId={workspaceTabs.activeId}
-                  savingTabIds={savingTabIds}
-                  tabsEnabled={workspaceTabsEnabled}
-                  tabBarPlacement={isTauriDesktopPlatform() ? 'titlebar' : 'inline'}
-                  isChatRoute={isChatRoute}
-                  isSettingsRoute={isSettingsRoute}
-                  isMobileLayout={isMobile}
-                  onActivateTab={(id) => activateWorkspaceTab(id)}
-                  onCloseTab={(id) => {
-                    closeWorkspaceTabById(id);
-                  }}
-                  onReorderTabs={reorderWorkspaceTabs}
-                  onFileTabContextMenu={(tab, point) => {
-                    fileTabContextMenuRef.current?.open?.({
-                      storageType: tab.storageType,
-                      path: tab.path,
-                      name: tab.editedFileName || tab.currentFile?.name,
-                      currentFile: tab.currentFile,
-                      clientX: point.clientX,
-                      clientY: point.clientY,
-                      onCloseTab: () => closeWorkspaceTabById(tab.id),
-                    });
-                  }}
-                  mirrors={{
-                    currentFile,
-                    editorContent,
-                    editedFileName,
-                    setEditedFileName,
-                    onChangeEditor: handleEditorChange,
-                    onInactiveEditorChange: (tabId, value) => {
-                      const next = patchFileTab(workspaceTabsRef.current, tabId, {
-                        editorContent: value,
-                      });
-                      workspaceTabsRef.current = next;
-                      setWorkspaceTabs(next);
-                    },
-                    onInactiveEditedFileName: (tabId, name) => {
-                      const next = patchFileTab(workspaceTabsRef.current, tabId, {
-                        editedFileName: name,
-                      });
-                      workspaceTabsRef.current = next;
-                      setWorkspaceTabs(next);
-                    },
-                  }}
-                  settingsPaneProps={{
-                    s3Creds,
-                    masterPassword,
-                    onSaveS3Creds: handleSaveS3Creds,
-                    storageMode,
-                    onStorageModeChange: setStorageMode,
-                    localFolderName:
-                      localRootHandle?.name ||
-                      basenameFromVaultPath(localVaultFsPath) ||
-                      pendingLocalFolderName ||
-                      loadLastLocalFolderName(),
-                    localVaultFsPath: isDesktopApp() ? localVaultFsPath : '',
-                    onOpenLocalFolder: openLocalFolder,
-                    webdavConfig,
-                    onSaveWebdavConfig: async (next) => {
-                      setWebdavConfig(next);
-                      if (isDesktopApp()) {
-                        if (getDesktopAppEntryLockModeSync() === 'password' && masterPassword) {
-                          await refreshDesktopPasswordEntryLockSecrets(
-                            masterPassword,
-                            s3Creds,
-                            next,
-                          );
-                        } else {
-                          await saveDesktopWebdavConfig(next);
-                          clearPlaintextWebdavConfig();
-                        }
-                      } else if (masterPassword) {
-                        await saveWebdavConfig(next, masterPassword);
-                        clearPlaintextWebdavConfig();
-                      } else if (
-                        !requiresEncryptedWebdavStorage() &&
-                        !hasEncryptedWebdavConfig()
-                      ) {
-                        await saveWebdavConfig(next);
-                      }
-                      if (storageMode === STORAGE_MODE_WEBDAV) {
-                        await refreshWebdavTree();
-                      }
-                      showAlert({
-                        title: '연결 정보',
-                        message: '연결 정보 업데이트가 완료되었습니다.',
-                      });
-                    },
-                    onExportCreds: handleExportCreds,
-                    onImportClick: () => fileInputRef.current?.click(),
-                    showHiddenFolders,
-                    onToggleHiddenFolders: () =>
-                      setSettingsToggle('settings-show-hidden', !showHiddenFolders),
-                    showTrashFolder,
-                    onToggleTrashFolder: () =>
-                      setSettingsToggle('settings-show-trash', !showTrashFolder),
-                    hideRecordingCompanions,
-                    treeStickyFolderPathEnabled,
-                    showTreeModifiedDate,
-                    treeHoverExpandSettings,
-                    onTreeHoverExpandSettingsChange: setTreeHoverExpandSettings,
-                    onToggleHideRecordingCompanions: () =>
-                      setSettingsToggle('settings-hide-recording', !hideRecordingCompanions),
-                    onToggleTreeStickyFolderPath: () =>
-                      setSettingsToggle('settings-tree-sticky', !treeStickyFolderPathEnabled),
-                    onToggleShowTreeModifiedDate: () =>
-                      setSettingsToggle('settings-tree-modified-date', !showTreeModifiedDate),
-                    onRequestClose: handleSettingsClose,
-                    webauthnSupported: webauthnPRFSupported,
-                    webauthnEnabled: isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword,
-                    webauthnStorageOnly: isStoredWithWebAuthn(),
-                    onEnableWebAuthn: enableWebAuthnUnlock,
-                    onDisableWebAuthn: disableWebAuthnUnlock,
-                    snippetConfig,
-                    onChangeSnippetConfig: handleChangeSnippetConfig,
-                    onSaveSnippetConfig: handleSaveSnippetConfig,
-                    isSavingSnippets,
-                    snippetConfigLoaded:
-                      snippetLoadedFromS3 || snippetLoadedFromLocal || snippetLoadedFromWebdav,
-                    editorType,
-                    onEditorTypeChange: handleEditorTypeChange,
-                    isMobileLayout: isMobile,
-                    sidebarOpen,
-                    sidebarCollapsed,
-                    onOpenSidebar: () => setSidebarOpen(true),
-                    onCheckAppUpdate: handleCheckAppUpdate,
-                    isCheckingAppUpdate,
-                    latestAppBuildId: appBuildRemoteId,
-                    onScanStorageUsage: scanActiveStorageUsageTree,
-                    canScanStorageUsage,
-                    onOpenStorageUsageFile: handleOpenStorageUsageFile,
-                    onReadUnusedImageText: handleReadUnusedImageText,
-                    onReadUnusedImageBytes: handleReadUnusedImageBytes,
-                    onDeleteUnusedImagePaths: handleDeleteUnusedImagePaths,
-                  }}
-                  editorPaneProps={({
-                    currentFile: paneFile,
-                    editorContent: paneContent,
-                    editedFileName: paneEditedName,
-                    setEditedFileName: paneSetEditedName,
-                    onChangeEditor,
-                    isActiveFile,
-                  }) => ({
-                    currentFile: paneFile,
-                    editorType,
-                    editorContent: paneContent,
-                    onChangeEditor,
-                    onSave: saveFile,
-                    isSaving,
-                    onRefreshFromDisk:
-                      paneFile?.type === 'local' ? refreshLocalFileFromDisk : undefined,
-                    isRefreshingFromDisk,
-                    onPullFromRemote:
-                      (paneFile?.type === 's3' || paneFile?.type === 'webdav') &&
-                      !isEncMdPath(paneFile?.id) &&
-                      !isEncMdPath(paneFile?.name)
-                        ? refreshRemoteFile
-                        : undefined,
-                    isPullingFromRemote,
-                    editedFileName: paneEditedName,
-                    setEditedFileName: paneSetEditedName,
-                    onRenameFullName: renameCurrentFileFullName,
-                    onRequestSuffixChangeConfirmForBlur: () => {
-                      setSuffixConfirmAction('renameOnly');
-                      setShowSuffixChangeConfirmModal(true);
-                    },
-                    onRequestClose: handleRequestCloseEditor,
-                    onRequestMove: handleRequestMove,
-                    onViewUnsupportedAsText: handleViewUnsupportedAsText,
-                    onRequestDownload: handleRequestDownload,
-                    onShareToChatWithMyself:
-                      paneFile && paneFile.type !== SESSION_STORAGE_TYPE
-                        ? handleShareNoteToChatWithMyself
-                        : undefined,
-                    theme,
-                    previewOnly: false,
-                    isMobileLayout: isMobile,
-                    sidebarOpen,
-                    sidebarCollapsed,
-                    onOpenSidebar: () => {
-                      if (isMobile) setSidebarOpen(true);
-                      else setSidebarCollapsed(false);
-                    },
-                    onRequestCreateFile: requestNewFile,
-                    onOpenChatWithMyself: () => {
-                      if (workspaceTabsEnabledRef.current) openChatWorkspaceTab();
-                      else navigate('/chat');
-                    },
-                    onSaveSessionToNote: handleRequestSaveSessionToNote,
-                    onRequestSessionTransformDownload: handleRequestSessionTransformDownload,
-                    onOpenSessionFiles: handleOpenSessionFiles,
-                    onOpenSessionDirectory:
-                      typeof window !== 'undefined' && 'showDirectoryPicker' in window
-                        ? handleOpenSessionDirectory
-                        : undefined,
-                    onDropSessionTransfer: handleDropSessionTransfer,
-                    isOpeningSession,
-                    hideRecordingCompanions,
-                    isRecording: isActiveFile ? isRecording : false,
-                    audioLevel: isActiveFile ? audioLevel : 0,
-                    onToggleRecording:
-                      !isActiveFile || paneFile?.type === SESSION_STORAGE_TYPE
-                        ? undefined
-                        : handleToggleRecording,
-                    recordingPipelineStatus,
-                    recordingsList: isActiveFile ? recordingsList : [],
-                    selectedRecordingKey: isActiveFile ? selectedRecordingKey : '',
-                    onSelectRecording: setSelectedRecordingKey,
-                    recordingAudioUrl: isActiveFile ? recordingAudioUrl : '',
-                    recordingSyncData: isActiveFile ? recordingSyncData : null,
-                    onUploadImage: handleUploadEditorImage,
-                    isUploadingEditorImage,
-                    uploadImagePercent: editorImageUploadPercent,
-                    onCancelUploadImage: cancelEditorImageUpload,
-                    onResolveWikiImageUrl: getPresignedUrlForPath,
-                    onOpenViewPath: handleOpenNoteFromChat,
-                    snippetConfig,
-                    llmProviderProfiles,
-                    getImgbbApiKey,
-                    onRequestDelete: () =>
-                      setDeleteTarget(
-                        paneFile
-                          ? {
-                              node: {
-                                path: paneFile?.id,
-                                name: paneFile?.name,
-                                type: 'file',
-                                handle: paneFile?.handle,
-                                parentHandle: paneFile?.parentHandle,
-                              },
-                              type: paneFile?.type,
-                            }
-                          : null,
-                      ),
-                  })}
-                  chatPaneProps={{
-                    storageMode,
-                    getS3Client,
-                    s3Bucket: s3Creds.bucket,
-                    localRootHandle,
-                    webdavConfig,
-                    theme,
-                    isMobileLayout: isMobile,
-                    sidebarOpen,
-                    onOpenSidebar: () => setSidebarOpen(true),
-                    s3Tree,
-                    localTree,
-                    webdavTree,
-                    shareGroupSend,
-                    onShareGroupSendConsumed: handleShareGroupSendConsumed,
-                    onOpenNote: handleOpenNoteFromChat,
-                    selectPathAfterCreateFolder: addToNoteSelectPath,
-                    onSelectPathAfterCreateFolderApplied: () => setAddToNoteSelectPath(null),
-                    onRequestCreateFolderForNote: (parentPath, parentDirHandle) => {
-                      setCreateModalContext({
-                        storageType:
-                          storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'
-                            ? storageMode
-                            : 's3',
-                        parentPath,
-                        parentDirHandle,
-                        type: 'folder',
-                        fromAddToNoteModal: true,
-                      });
-                      setCreateModalOpen(true);
-                    },
-                    onRequestMoveFolder: handleRequestMoveFolder,
-                    onCreateNoteFromMessage: handleCreateNoteFromChatMessage,
-                    getPresignedUrlForPath: getChatImageUrlForPath,
-                    onDropOnFolder: handleDropOnFolder,
-                    dropTarget,
-                    onLoadLocalFolderChildren: loadLocalFolderChildren,
-                    localFolderLoadingPath,
-                    onAttachDropHostChange: setChatAttachDropHost,
-                    onRegisterTreeAttachDrop: handleRegisterChatAttachDrop,
-                  }}
-                />
-              }
-            />
-          </Routes>
-          </div>
-        </div>
-
-        {/* Status Bar — z above editor chrome (z-10100) so novel/md layers do not cover it on mobile */}
-        <div
-          data-app-status-bar=""
-          className="relative z-10200 flex h-6 shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white/90 px-2 pb-[max(0px,env(safe-area-inset-bottom))] text-[10px] dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 md:h-7 md:gap-3 md:px-3 md:text-[11px]"
-        >
-          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 overflow-hidden">
-            <ActivityIndicatorBar />
-            {!hideRecordingCompanions &&
-              (recordingQueueStats.pending > 0 ||
-                recordingQueueStats.uploading > 0 ||
-                recordingQueueStats.failed > 0) && (
-              <span
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-100 dark:bg-odp-bgSofter text-gray-700 dark:text-odp-fgStrong text-[10px] md:text-[11px] shrink-0"
-                title={`녹음 업로드 큐 - 대기 ${recordingQueueStats.pending}, 업로드중 ${recordingQueueStats.uploading}, 실패 ${recordingQueueStats.failed}`}
-              >
-                <span className="truncate max-w-40 md:max-w-55">
-                  녹음 업로드:{" "}
-                  {recordingQueueStats.uploading > 0 || recordingPipelineStatus === '업로드 중'
-                    ? "업로드 중"
-                    : recordingQueueStats.pending > 0
-                      ? `대기 ${recordingQueueStats.pending}`
-                      : "재시도 대기"}
-                </span>
-                <span className="text-gray-500 dark:text-odp-muted shrink-0">
-                  실패 {recordingQueueStats.failed}
-                </span>
-              </span>
-            )}
-            {!chatSurfaceActive ? (
-              <>
-                <span className="truncate shrink-0 max-w-12 md:max-w-none" title={
-                  currentFile?.type === 's3'
-                    ? `S3 (${s3Creds.bucket || '-'})`
-                    : currentFile?.type === 'local'
-                      ? '로컬'
-                    : currentFile?.type === 'webdav'
-                      ? 'WebDAV'
-                      : currentFile?.type === SESSION_STORAGE_TYPE
-                        ? '다운로드 세션'
-                        : '없음'
-                }>
-                  <span className="md:hidden">
-                    {currentFile?.type === 's3'
-                      ? 'S3'
-                      : currentFile?.type === 'local'
-                        ? '로컬'
-                        : currentFile?.type === 'webdav'
-                          ? 'WebDAV'
-                          : currentFile?.type === SESSION_STORAGE_TYPE
-                            ? '세션'
-                            : '없음'}
-                  </span>
-                  <span className="hidden md:inline">
-                    저장소:{' '}
-                    {currentFile?.type === 's3'
-                      ? `S3 (${s3Creds.bucket || '-'})`
-                      : currentFile?.type === 'local'
-                        ? '로컬'
-                        : currentFile?.type === 'webdav'
-                          ? 'WebDAV'
-                          : currentFile?.type === SESSION_STORAGE_TYPE
-                            ? '다운로드 세션'
-                            : '없음'}
-                  </span>
-                </span>
-                {currentFile && (
-                  <>
-                    <span className="truncate min-w-0" title={currentFile.type === 's3' ? currentFile.id : currentFile.id || currentFile.name}>
-                      {currentFile.type === 's3' ? currentFile.id : currentFile.id || currentFile.name}
-                    </span>
-                    <span className="hidden md:inline truncate text-gray-500 dark:text-odp-muted shrink-0">
-                      크기: {currentFile.size != null ? formatFileSize(currentFile.size) : '알 수 없음'}
-                    </span>
-                  </>
-                )}
-                {operationStatus && (
-                  <span className="truncate text-gray-500 dark:text-odp-muted hidden md:inline">
-                    상태: {operationStatus}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="truncate text-gray-500 dark:text-odp-muted shrink-0">
-                나와의 채팅
-                {storageMode === 's3'
-                  ? ` · S3${s3Creds.bucket ? ` (${s3Creds.bucket})` : ''}`
-                  : storageMode === 'local'
-                    ? ' · 로컬'
-                    : storageMode === 'webdav'
-                      ? ' · WebDAV'
-                      : ''}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 md:gap-4 shrink-0">
-            {location.pathname === '/chat' || location.pathname.endsWith('/chat') ? (
-              <span
-                className="flex items-center gap-1 md:gap-1.5"
-                title={
-                  storageMode === 's3'
-                    ? '채팅 메시지는 S3에 저장·동기화됩니다'
-                    : storageMode === 'local'
-                      ? '채팅 메시지는 로컬 폴더에 저장됩니다'
-                      : storageMode === 'webdav'
-                        ? '채팅 메시지는 WebDAV에 저장·동기화됩니다'
-                        : '저장소 미연결'
-                }
-              >
-                <span
-                  className={`h-2 w-2 shrink-0 rounded-full md:h-2.5 md:w-2.5 ${
-                    (storageMode === 's3' && s3Creds.bucket) ||
-                    (storageMode === 'local' && localRootHandle) ||
-                    (storageMode === 'webdav' && webdavReady)
-                      ? 'bg-emerald-500'
-                      : 'bg-amber-400'
-                  }`}
-                  aria-hidden="true"
-                />
-                <span className="md:hidden">
-                  {(storageMode === 's3' && s3Creds.bucket) ||
-                  (storageMode === 'local' && localRootHandle) ||
-                  (storageMode === 'webdav' && webdavReady)
-                    ? '동기화'
-                    : '대기'}
-                </span>
-                <span className="hidden md:inline">
-                  채팅 동기화:{' '}
-                  {(storageMode === 's3' && s3Creds.bucket) ||
-                  (storageMode === 'local' && localRootHandle) ||
-                  (storageMode === 'webdav' && webdavReady)
-                    ? storageMode === 's3'
-                      ? 'S3 연결됨'
-                      : storageMode === 'webdav'
-                        ? 'WebDAV 연결됨'
-                        : '로컬 준비됨'
-                    : '연결 필요'}
-                </span>
-              </span>
-            ) : (
-              <>
-                <span className="flex items-center gap-1 md:gap-1.5" title={isEditableStorage ? (lastAutoSaveAt ? `저장 ${formatTime(lastAutoSaveAt)}` : '대기 중') : '대상 아님'}>
-                  <span
-                    className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 ${autoSaveIndicatorClass}`}
-                    aria-hidden="true"
-                  />
-                  <span className="md:hidden">
-                    {isEditableStorage
-                      ? lastAutoSaveAt
-                        ? formatTime(lastAutoSaveAt)
-                        : '대기'
-                      : '-'}
-                  </span>
-                  <span className="hidden md:inline">
-                    자동저장:{' '}
-                    {isEditableStorage
-                      ? lastAutoSaveAt
-                        ? `마지막 ${formatTime(lastAutoSaveAt)}`
-                        : '대기 중 (입력 후 5초)'
-                      : '대상 아님'}
-                  </span>
-                </span>
-                <span
-                  className="hidden md:inline"
-                  title={
-                    currentFile?.type === 's3' || currentFile?.type === 'webdav'
-                      ? lastAutoSyncAt
-                        ? `동기화 ${formatTime(lastAutoSyncAt)}`
-                        : '대기 중'
-                      : '대상 아님'
-                  }
-                >
-                  자동동기화:{' '}
-                  {currentFile?.type === 's3' || currentFile?.type === 'webdav'
-                    ? lastAutoSyncAt
-                      ? `마지막 ${formatTime(lastAutoSyncAt)}`
-                      : '대기 중 (입력 후 30초)'
-                    : '대상 아님'}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Set Password Modal */}
-      <SaveMethodModal
-        isOpen={showSaveMethodModal}
-        onClose={() => {
-          setShowSaveMethodModal(false);
-          setSaveMethodModalCreds(null);
-        }}
-        creds={saveMethodModalCreds}
-        webauthnSupported={webauthnPRFSupported}
-        onSaveWithWebAuthn={handleSaveWithWebAuthn}
-        onSaveWithPassword={handleSaveWithPasswordFromModal}
-      />
-
-      <SetPasswordModal
-        isOpen={showSetPasswordModal}
+      <AppModals
+        showSaveMethodModal={showSaveMethodModal}
+        setShowSaveMethodModal={setShowSaveMethodModal}
+        saveMethodModalCreds={saveMethodModalCreds}
+        setSaveMethodModalCreds={setSaveMethodModalCreds}
+        webauthnPRFSupported={webauthnPRFSupported}
+        handleSaveWithWebAuthn={handleSaveWithWebAuthn}
+        handleSaveWithPasswordFromModal={handleSaveWithPasswordFromModal}
+        showSetPasswordModal={showSetPasswordModal}
+        setShowSetPasswordModal={setShowSetPasswordModal}
         masterPassword={masterPassword}
-        onCancel={() => setShowSetPasswordModal(false)}
-        onSubmit={(password) => requestSaveEncryptedSettings(s3Creds, password, { stayOnSettings: true })}
-      />
-
-      <ConfirmModal
-        isOpen={showCoverChangeConfirmModal}
-        title="표지 수정 감지"
-        message={
-          '표지(note-cover) 부분이 변경되었습니다.\n의도치 않은 수정이라면 표지 부분만 되돌린 뒤 다시 저장할 수 있습니다.'
-        }
-        confirmLabel="그대로 저장"
-        cancelLabel="취소"
-        discardLabel="표지 부분 편집 되돌리기"
-        onConfirm={() => {
-          const pending = pendingCoverSaveRef.current;
-          pendingCoverSaveRef.current = null;
-          setShowCoverChangeConfirmModal(false);
-          void saveFile(pending?.fileOverride ?? null, {
-            ...(pending?.options ?? {}),
-            skipCoverChangeCheck: true,
-          });
-        }}
-        onCancel={() => {
-          pendingCoverSaveRef.current = null;
-          setShowCoverChangeConfirmModal(false);
-        }}
-        onDiscard={() => {
-          const file = currentFileRef.current;
-          if (!file) {
-            pendingCoverSaveRef.current = null;
-            setShowCoverChangeConfirmModal(false);
-            return;
-          }
-          const next = revertNoteCoverComment(
-            String(editorContentRef.current ?? ''),
-            String(file.content ?? ''),
-          );
-          editorContentRef.current = next;
-          setEditorContent(next);
-          pendingCoverSaveRef.current = null;
-          setShowCoverChangeConfirmModal(false);
-        }}
-      />
-
-      <ConfirmModal
-        isOpen={showRestoreLocalFolderModal}
-        title="로컬 폴더 다시 열기"
-        message={`이전에 열었던 로컬 폴더 "${pendingLocalFolderName}"을(를) 다시 열까요?`}
-        confirmLabel="다시 열기"
-        cancelLabel="나중에"
-        onConfirm={() => {
-          void handleConfirmRestoreLocalFolder();
-        }}
-        onCancel={() => {
-          setShowRestoreLocalFolderModal(false);
-          setLocalFolderRestoreSettled(true);
-        }}
-      />
-
-      <ConfirmModal
-        isOpen={showAppUpdateConfirmModal}
-        title="앱 업데이트"
-        message={(() => {
-          const localLabel = appBuildLocalId || '알 수 없음';
-          const remoteLabel = appBuildRemoteId;
-          if (appUpdateCheckError && !appUpdateAvailable) {
-            return [
-              '최신 버전을 확인할 수 없습니다.',
-              `현재 버전: ${localLabel}`,
-              `사유: ${appUpdateCheckError}`,
-              '',
-              '그래도 앱을 다시 로드해 최신 상태를 적용할 수 있습니다.',
-            ].join('\n');
-          }
-          if (appUpdateAvailable) {
-            return [
-              '새 버전이 준비되었습니다. 저장 중인 작업을 확인한 뒤 최신 버전으로 업데이트하세요.',
-              `현재 버전: ${localLabel}`,
-              remoteLabel ? `최신 버전: ${remoteLabel}` : null,
-            ].filter(Boolean).join('\n');
-          }
-          return [
-            '현재 최신 버전입니다.',
-            `현재 버전: ${localLabel}`,
-            remoteLabel ? `확인된 버전: ${remoteLabel}` : null,
-            '',
-            '그래도 앱을 다시 로드할 수 있습니다.',
-          ].filter(Boolean).join('\n');
-        })()}
-        confirmLabel={
-          isApplyingPwaUpdate
-            ? '업데이트 중...'
-            : appUpdateAvailable
-              ? '최신 버전으로 업데이트'
-              : '다시 로드'
-        }
-        cancelLabel="취소"
-        onConfirm={() => {
-          if (isApplyingPwaUpdate) return;
-          void handleConfirmAppUpdate();
-        }}
-        onCancel={() => {
-          if (isApplyingPwaUpdate) return;
-          setShowAppUpdateConfirmModal(false);
-        }}
-      />
-
-      <ConfirmModal
-        isOpen={showOverwriteCredsConfirmModal}
-        title="기존 연결 정보 대체"
-        message="기존에 저장된 연결 정보가 있습니다. 새로 저장하면 기존 정보가 대체됩니다. 계속하시겠습니까?"
-        confirmLabel="계속"
-        cancelLabel="취소"
-        onConfirm={handleOverwriteCredsConfirm}
-        onCancel={() => {
-          setShowOverwriteCredsConfirmModal(false);
-          setPendingWebAuthnSave(null);
-          setPendingPasswordSave(null);
-        }}
-      />
-
-      <TreeNameConflictModal
-        isOpen={Boolean(treeNameConflict)}
-        name={treeNameConflict?.name || ''}
-        renameAs={treeNameConflict?.renameAs || ''}
-        kind={treeNameConflict?.kind || 'file'}
-        action={treeNameConflict?.action || 'move'}
-        existingText={treeNameConflict?.existingText}
-        incomingText={treeNameConflict?.incomingText}
-        existingLabel={treeNameConflict?.existingLabel}
-        incomingLabel={treeNameConflict?.incomingLabel}
-        binary={Boolean(treeNameConflict?.binary)}
-        truncated={Boolean(treeNameConflict?.truncated)}
-        theme={theme === 'dark' ? 'dark' : 'light'}
-        onResolve={settleTreeNameConflict}
-      />
-
-      <ConfirmModal
-        isOpen={showUnsavedConfirmModal}
-        title="설정을 나가시겠습니까?"
-        message="저장하지 않으면 입력한 정보가 사라질 수 있습니다."
-        confirmLabel="나가기"
-        cancelLabel="취소"
-        onConfirm={handleUnsavedConfirmLeave}
-        onCancel={() => setShowUnsavedConfirmModal(false)}
-      />
-
-      <ConfirmModal
-        isOpen={showSuffixChangeConfirmModal}
-        title="확장자 변경"
-        message="확장자가 변경되었습니다. 저장 시 새 파일명으로 저장됩니다. 계속하시겠습니까?"
-        confirmLabel="계속"
-        cancelLabel="취소"
-        onConfirm={handleSuffixChangeConfirm}
-        onCancel={handleSuffixChangeCancel}
-      />
-
-      <ConfirmModal
-        isOpen={showCloseFileConfirmModal}
-        title="파일 닫기"
-        message={(() => {
-          const tab =
-            (pendingCloseTabId &&
-              workspaceTabs.tabs.find((t) => t.id === pendingCloseTabId)) ||
-            getActiveFileTab(workspaceTabs);
-          const name = isFileTab(tab)
-            ? tab.editedFileName || tab.path
-            : '';
-          return name
-            ? `「${name}」에 저장하지 않은 변경사항이 있습니다. 저장 후 닫으시겠습니까?`
-            : '저장하지 않은 변경사항이 있습니다. 저장 후 닫으시겠습니까?';
-        })()}
-        confirmLabel="저장 후 닫기"
-        cancelLabel="취소"
-        discardLabel="저장 안 하고 닫기"
-        onConfirm={handleCloseFileConfirmSave}
-        onCancel={() => {
-          setShowCloseFileConfirmModal(false);
-          setPendingCloseTabId(null);
-        }}
-        onDiscard={handleCloseFileConfirmDiscard}
-      />
-
-      <ConfirmModal
-        isOpen={navGuard.isBlocked}
-        title="저장하지 않은 변경사항"
-        message="저장하지 않은 변경사항이 있습니다. 이동하면 변경사항이 사라집니다."
-        confirmLabel="저장 후 이동"
-        cancelLabel="취소"
-        discardLabel="저장 안 하고 이동"
-        onConfirm={handleNavGuardConfirmSave}
-        onCancel={navGuard.reset}
-        onDiscard={handleNavGuardConfirmDiscard}
-      />
-
-      <ExportPasswordModal
-        isOpen={showExportPasswordModal}
-        onConfirm={handleExportConfirm}
-        onCancel={() => setShowExportPasswordModal(false)}
-      />
-
-      <ImportPasswordModal
-        isOpen={showImportPasswordModal}
-        onConfirm={handleImportConfirm}
-        onCancel={() => {
-          setShowImportPasswordModal(false);
-          setImportFileContent(null);
-        }}
-      />
-
-      <DownloadMethodModal
-        isOpen={showDownloadMethodModal}
-        title={
-          downloadModalMode === 'session-transform'
-            ? '변형 다운로드'
-            : downloadModalMode === 'session-save'
-              ? '저장 방식 선택'
-              : '다운로드 방식 선택'
-        }
-        fileName={currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop()}
-        markdownText={editorContent}
-        showImageHandling={isMarkdownFileName(
-          currentFile?.name || currentFile?.id?.split('/').filter(Boolean).pop(),
-        )}
-        showDeliveryMethods={downloadModalMode !== 'session-transform'}
-        confirmLabel="다운로드"
-        onSelectLegacy={handleDownloadCurrentFile}
-        onSelectStorageApi={handleDownloadToFolder}
-        onSelectHaim={
-          currentFile?.type === SESSION_STORAGE_TYPE && downloadModalMode !== 'session-transform'
-            ? handleSelectHaimFromDownload
-            : undefined
-        }
-        onSelectClipboard={handleCopyCurrentFileToClipboard}
-        onCancel={() => {
-          setShowDownloadMethodModal(false);
-          setDownloadModalMode('default');
-        }}
-        isDownloading={downloadProgress > 0 && downloadProgress < 100 && !downloadComplete}
+        requestSaveEncryptedSettings={requestSaveEncryptedSettings}
+        s3Creds={s3Creds}
+        showCoverChangeConfirmModal={showCoverChangeConfirmModal}
+        setShowCoverChangeConfirmModal={setShowCoverChangeConfirmModal}
+        pendingCoverSaveRef={pendingCoverSaveRef}
+        saveFile={saveFile}
+        currentFileRef={currentFileRef}
+        editorContentRef={editorContentRef}
+        setEditorContent={setEditorContent}
+        showRestoreLocalFolderModal={showRestoreLocalFolderModal}
+        setShowRestoreLocalFolderModal={setShowRestoreLocalFolderModal}
+        pendingLocalFolderName={pendingLocalFolderName}
+        handleConfirmRestoreLocalFolder={handleConfirmRestoreLocalFolder}
+        setLocalFolderRestoreSettled={setLocalFolderRestoreSettled}
+        showAppUpdateConfirmModal={showAppUpdateConfirmModal}
+        setShowAppUpdateConfirmModal={setShowAppUpdateConfirmModal}
+        appBuildLocalId={appBuildLocalId}
+        appBuildRemoteId={appBuildRemoteId}
+        appUpdateCheckError={appUpdateCheckError}
+        appUpdateAvailable={appUpdateAvailable}
+        isApplyingPwaUpdate={isApplyingPwaUpdate}
+        handleConfirmAppUpdate={handleConfirmAppUpdate}
+        showOverwriteCredsConfirmModal={showOverwriteCredsConfirmModal}
+        setShowOverwriteCredsConfirmModal={setShowOverwriteCredsConfirmModal}
+        handleOverwriteCredsConfirm={handleOverwriteCredsConfirm}
+        setPendingWebAuthnSave={setPendingWebAuthnSave}
+        setPendingPasswordSave={setPendingPasswordSave}
+        treeNameConflict={treeNameConflict}
+        settleTreeNameConflict={settleTreeNameConflict}
+        theme={theme}
+        showUnsavedConfirmModal={showUnsavedConfirmModal}
+        setShowUnsavedConfirmModal={setShowUnsavedConfirmModal}
+        handleUnsavedConfirmLeave={handleUnsavedConfirmLeave}
+        showSuffixChangeConfirmModal={showSuffixChangeConfirmModal}
+        handleSuffixChangeConfirm={handleSuffixChangeConfirm}
+        handleSuffixChangeCancel={handleSuffixChangeCancel}
+        showCloseFileConfirmModal={showCloseFileConfirmModal}
+        setShowCloseFileConfirmModal={setShowCloseFileConfirmModal}
+        pendingCloseTabId={pendingCloseTabId}
+        setPendingCloseTabId={setPendingCloseTabId}
+        workspaceTabs={workspaceTabs}
+        handleCloseFileConfirmSave={handleCloseFileConfirmSave}
+        handleCloseFileConfirmDiscard={handleCloseFileConfirmDiscard}
+        navGuard={navGuard}
+        handleNavGuardConfirmSave={handleNavGuardConfirmSave}
+        handleNavGuardConfirmDiscard={handleNavGuardConfirmDiscard}
+        showExportPasswordModal={showExportPasswordModal}
+        setShowExportPasswordModal={setShowExportPasswordModal}
+        handleExportConfirm={handleExportConfirm}
+        showImportPasswordModal={showImportPasswordModal}
+        setShowImportPasswordModal={setShowImportPasswordModal}
+        handleImportConfirm={handleImportConfirm}
+        setImportFileContent={setImportFileContent}
+        showDownloadMethodModal={showDownloadMethodModal}
+        setShowDownloadMethodModal={setShowDownloadMethodModal}
+        downloadModalMode={downloadModalMode}
+        setDownloadModalMode={setDownloadModalMode}
+        currentFile={currentFile}
+        editorContent={editorContent}
+        handleDownloadCurrentFile={handleDownloadCurrentFile}
+        handleDownloadToFolder={handleDownloadToFolder}
+        handleSelectHaimFromDownload={handleSelectHaimFromDownload}
+        handleCopyCurrentFileToClipboard={handleCopyCurrentFileToClipboard}
         downloadProgress={downloadProgress}
+        setDownloadProgress={setDownloadProgress}
         downloadComplete={downloadComplete}
-        onCloseComplete={() => {
-          setShowDownloadMethodModal(false);
-          setDownloadProgress(0);
-          setDownloadComplete(false);
-          setDownloadModalMode('default');
-        }}
-      />
-
-      <SaveSessionToNoteModal
-        isOpen={showSaveSessionToNoteModal}
-        storageType={storageMode}
+        setDownloadComplete={setDownloadComplete}
+        showSaveSessionToNoteModal={showSaveSessionToNoteModal}
+        setShowSaveSessionToNoteModal={setShowSaveSessionToNoteModal}
+        storageMode={storageMode}
         s3Tree={s3Tree}
         localTree={localTree}
         webdavTree={webdavTree}
         localRootHandle={localRootHandle}
-        defaultFileName={currentFile?.name || 'untitled.md'}
-        defaultParentPath={newFileDefaultParentPath}
-        isSaving={isSavingSessionToNote}
-        onClose={() => setShowSaveSessionToNoteModal(false)}
-        onConfirm={handleConfirmSaveSessionToNote}
-        onRequestCreateFolder={(parentPath, parentDirHandle) => {
-          setCreateModalContext({
-            storageType: storageMode,
-            parentPath,
-            parentDirHandle,
-            type: 'folder',
-            fromSaveSessionModal: true,
-          });
-          setCreateModalOpen(true);
-        }}
-        selectPathAfterCreate={saveSessionToNoteSelectPath}
-        onSelectPathAfterCreateApplied={() => setSaveSessionToNoteSelectPath(null)}
-      />
-
-      <Modal
-        isOpen={downloadResultModal.isOpen}
-        onClose={closeDownloadResultModal}
-        onConfirm={closeDownloadResultModal}
-      >
-        <div className="p-6">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2">
-            {downloadResultModal.title || '다운로드 완료'}
-          </h2>
-          <p className="text-sm whitespace-pre-line text-gray-600 dark:text-gray-400 mb-4">
-            {downloadResultModal.message}
-          </p>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={closeDownloadResultModal}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 rounded transition"
-            >
-              확인
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Delete Modal */}
-      <DeleteConfirmModal
-        target={deleteTarget}
+        newFileDefaultParentPath={newFileDefaultParentPath}
+        isSavingSessionToNote={isSavingSessionToNote}
+        handleConfirmSaveSessionToNote={handleConfirmSaveSessionToNote}
+        setCreateModalContext={setCreateModalContext}
+        setCreateModalOpen={setCreateModalOpen}
+        saveSessionToNoteSelectPath={saveSessionToNoteSelectPath}
+        setSaveSessionToNoteSelectPath={setSaveSessionToNoteSelectPath}
+        downloadResultModal={downloadResultModal}
+        closeDownloadResultModal={closeDownloadResultModal}
+        deleteTarget={deleteTarget}
+        setDeleteTarget={setDeleteTarget}
         associatedRecordings={associatedRecordings}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={confirmDelete}
-        isProcessing={isDeleting}
+        confirmDelete={confirmDelete}
+        isDeleting={isDeleting}
+        emptyTrashTarget={emptyTrashTarget}
+        setEmptyTrashTarget={setEmptyTrashTarget}
+        isEmptyingTrash={isEmptyingTrash}
+        confirmEmptyTrash={confirmEmptyTrash}
+        isMoveModalOpen={isMoveModalOpen}
+        setIsMoveModalOpen={setIsMoveModalOpen}
+        moveFileTarget={moveFileTarget}
+        setMoveFileTarget={setMoveFileTarget}
+        moveModalSelectPath={moveModalSelectPath}
+        setMoveModalSelectPath={setMoveModalSelectPath}
+        handleConfirmMoveFileFromSidebar={handleConfirmMoveFileFromSidebar}
+        handleConfirmMove={handleConfirmMove}
+        moveFolderTarget={moveFolderTarget}
+        setMoveFolderTarget={setMoveFolderTarget}
+        handleConfirmMoveFolder={handleConfirmMoveFolder}
+        createModalOpen={createModalOpen}
+        createModalContext={createModalContext}
+        createModalTree={createModalTree}
+        ensureCreateModalFolderLoaded={ensureCreateModalFolderLoaded}
+        isCreateSubmitting={isCreateSubmitting}
+        handleCreateItemSubmit={handleCreateItemSubmit}
+        encMdPrompt={encMdPrompt}
       />
 
-      <EmptyTrashConfirmModal
-        isOpen={Boolean(emptyTrashTarget)}
-        storageType={emptyTrashTarget?.storageType}
-        isProcessing={isEmptyingTrash}
-        onCancel={() => {
-          if (isEmptyingTrash) return;
-          setEmptyTrashTarget(null);
-        }}
-        onConfirm={confirmEmptyTrash}
-      />
-
-      {/* Move File Modal (editor current file or sidebar-selected file) */}
-      <MoveFileModal
-        isOpen={isMoveModalOpen}
-        storageType={moveFileTarget ? moveFileTarget.storageType : currentFile?.type}
-        s3Tree={s3Tree}
-        localTree={localTree}
-        webdavTree={webdavTree}
-        localRootHandle={localRootHandle}
-        currentFile={moveFileTarget ? null : currentFile}
-        fileToMove={moveFileTarget?.node}
-        onClose={() => {
-          setIsMoveModalOpen(false);
-          setMoveModalSelectPath(null);
-          setMoveFileTarget(null);
-        }}
-        onConfirm={moveFileTarget ? handleConfirmMoveFileFromSidebar : handleConfirmMove}
-        onRequestCreateFolder={
-          (moveFileTarget || currentFile)
-            ? (parentPath, parentDirHandle) => {
-                const st = moveFileTarget ? moveFileTarget.storageType : currentFile.type;
-                setCreateModalContext({
-                  storageType: st,
-                  parentPath,
-                  parentDirHandle,
-                  type: 'folder',
-                  fromMoveModal: true,
-                });
-                setCreateModalOpen(true);
-              }
-            : undefined
-        }
-        selectPathAfterCreate={moveModalSelectPath}
-        onSelectPathAfterCreateApplied={() => setMoveModalSelectPath(null)}
-      />
-
-      {/* Move Folder Modal */}
-      <MoveFolderModal
-        isOpen={!!moveFolderTarget}
-        storageType={moveFolderTarget?.storageType}
-        s3Tree={s3Tree}
-        localTree={localTree}
-        webdavTree={webdavTree}
-        localRootHandle={localRootHandle}
-        folderNode={moveFolderTarget?.node}
-        onClose={() => setMoveFolderTarget(null)}
-        onConfirm={handleConfirmMoveFolder}
-      />
-
-      {/* Create File/Folder Modal */}
-      <CreateItemModal
-        isOpen={createModalOpen}
-        type={createModalContext?.type}
-        storageType={createModalContext?.storageType}
-        parentPath={createModalContext?.parentPath || ''}
-        tree={createModalTree}
-        ensureFolderLoaded={ensureCreateModalFolderLoaded}
-        parentLabel={
-          createModalContext
-            ? createModalContext.storageType === 's3'
-              ? createModalContext.parentPath
-                ? `S3: ${createModalContext.parentPath}`
-                : 'S3 루트'
-              : createModalContext.storageType === 'webdav'
-                ? createModalContext.parentPath
-                  ? `WebDAV: ${createModalContext.parentPath}`
-                  : 'WebDAV 루트'
-                : createModalContext.parentPath
-                  ? `로컬: ${createModalContext.parentPath}`
-                  : '로컬 루트'
-            : ''
-        }
-        onClose={() => {
-          if (!isCreateSubmitting) {
-            setCreateModalOpen(false);
-            setCreateModalContext(null);
-          }
-        }}
-        onSubmit={handleCreateItemSubmit}
-        isSubmitting={isCreateSubmitting}
-      />
-
-      <PromptModal
-        isOpen={Boolean(encMdPrompt)}
-        title={encMdPrompt?.title || '비밀번호'}
-        message={encMdPrompt?.message || ''}
-        placeholder="비밀번호"
-        confirmLabel={encMdPrompt?.confirmLabel || '확인'}
-        cancelLabel="취소"
-        inputType="password"
-        error={encMdPrompt?.error || ''}
-        onCancel={() => {
-          encMdPrompt?.reject?.();
-        }}
-        onConfirm={(password) => {
-          encMdPrompt?.resolve?.(password);
-        }}
-      />
-
-    </div>
+    </AppLayout>
   );
 }

@@ -54,6 +54,8 @@ next_plan: app_provider_thin_shell.plan.md
 3. **여러 페이지/기능에 걸치는 코드** → `shared/` 공통 폴더
 4. Phase A–B: 동작 변경 없음, **점진 PR**, import는 re-export로 하위 호환 유지 후 제거
 5. **Phase C**: [Provider thin shell 계획](app_provider_thin_shell.plan.md) — state를 domain Provider로 이전, `MainApp` → `AppShellView` (<150줄)
+6. **커밋 필수**: 각 PR(또는 Track 단계) 완료 시 **로컬 git commit을 반드시 생성**한다. Conventional Commits + Udacity style. **push는 하지 않는다** (사용자가 요청할 때까지).
+6. 각 PR 마다 반드시 commit하고 넘어갈 것.
 
 ## 현황 요약
 
@@ -238,6 +240,8 @@ App section PR을 열 때 **해당 utils 이동을 같은 PR 또는 직전 PR**�
 ## 통합 PR 로드맵
 
 ### Track A — App.jsx (PR1–10)
+
+**각 PR 완료 시 로컬 `git commit` 필수. `git push`는 하지 않음.**
 
 | PR | App 작업 | 연동 폴더 정리 |
 |----|----------|----------------|
