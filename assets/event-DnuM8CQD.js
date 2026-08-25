@@ -1,4 +1,4 @@
-import { dD as a, f4 as l } from "./index-DZXxTXv9.js";
+import { dC as a, dD as l } from "./index-hy8f_bYF.js";
 import "./vendor-react-SY5QCjFA.js";
 import "./vendor-md-editor-CyUZNHY0.js";
 import "./vendor-aws-BNw5jQBi.js";
@@ -15,8 +15,8 @@ async function _(t, r) {
 }
 async function o(t, r, e) {
   var i;
-  const D = typeof (e == null ? void 0 : e.target) == "string" ? { kind: "AnyLabel", label: e.target } : (i = e == null ? void 0 : e.target) !== null && i !== void 0 ? i : { kind: "Any" };
-  return a("plugin:event|listen", { event: t, target: D, handler: l(r) }).then((d) => async () => _(t, d));
+  const d = typeof (e == null ? void 0 : e.target) == "string" ? { kind: "AnyLabel", label: e.target } : (i = e == null ? void 0 : e.target) !== null && i !== void 0 ? i : { kind: "Any" };
+  return a("plugin:event|listen", { event: t, target: d, handler: l(r) }).then((D) => async () => _(t, D));
 }
 async function m(t, r, e) {
   return o(t, (i) => {

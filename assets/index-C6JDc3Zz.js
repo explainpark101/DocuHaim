@@ -1,4 +1,4 @@
-import { dD as a } from "./index-DZXxTXv9.js";
+import { dC as a } from "./index-hy8f_bYF.js";
 import "./vendor-react-SY5QCjFA.js";
 import "./vendor-md-editor-CyUZNHY0.js";
 import "./vendor-aws-BNw5jQBi.js";
@@ -13,11 +13,11 @@ var i;
 async function p() {
   return await a("plugin:biometric|status");
 }
-async function D(t, n) {
+async function f(t, n) {
   await a("plugin:biometric|authenticate", { reason: t, ...n });
 }
 export {
   i as BiometryType,
-  D as authenticate,
+  f as authenticate,
   p as checkStatus
 };

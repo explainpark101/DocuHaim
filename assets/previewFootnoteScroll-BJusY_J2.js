@@ -1,7 +1,7 @@
-import { r as E, j as T, a as qt } from "./vendor-react-SY5QCjFA.js";
+import { r as E, j as T, a as zt } from "./vendor-react-SY5QCjFA.js";
 import { A as Vt, m as Xt } from "./vendor-motion-YU7ZxHqi.js";
 import { b as Yt, d as Kt, T as Gt, e as Ut, f as Jt, A as Qt } from "./vendor-radix--fTcLYkF.js";
-import { dt as Zt, fz as te, fN as ee, g1 as ne, g2 as St, r as re, bY as oe, g3 as ie } from "./index-DZXxTXv9.js";
+import { dt as Zt, fy as te, fM as ee, g0 as ne, g1 as St, r as re, bY as oe, g2 as ie } from "./index-hy8f_bYF.js";
 import { A as I } from "./vendor-md-editor-CyUZNHY0.js";
 function se(t) {
   return { leftPct: 0, widthPct: 100 };
@@ -139,7 +139,7 @@ function Ce(t, e) {
     return null;
   }
 }
-function z(t, e, n) {
+function q(t, e, n) {
   const r = t.state.doc;
   let o = R(r, n), i = null;
   if (o && (n <= o.from ? i = "before" : n >= o.to ? i = "after" : i = n - o.from <= o.to - n ? "before" : "after"), !o || !i) return null;
@@ -333,7 +333,7 @@ function k(t, e, n) {
   }
   return o;
 }
-function q(t, e, n) {
+function z(t, e, n) {
   const r = t.state.doc.lineAt(n), o = r.text;
   if (!A(o) || J(o)) return null;
   const i = r.number - 1, s = n - r.from, u = At(o);
@@ -501,10 +501,10 @@ function Bt(t, e) {
   if (!(t == null ? void 0 : t.state) || !e) return null;
   const n = t.state.selection.main, r = n.from, o = n.to;
   if (r === o) {
-    const l = z(t, e, r);
+    const l = q(t, e, r);
     if (l) return l;
   } else {
-    const l = z(t, e, r), d = z(t, e, o);
+    const l = q(t, e, r), d = q(t, e, o);
     if (l && d) try {
       const h = document.createRange();
       return h.setStart(l.startContainer, l.startOffset), h.setEnd(d.startContainer, d.startOffset), h;
@@ -512,10 +512,10 @@ function Bt(t, e) {
     }
   }
   if (r === o) {
-    const l = q(t, e, r);
+    const l = z(t, e, r);
     if (l) return l;
   } else {
-    const l = q(t, e, r), d = q(t, e, o);
+    const l = z(t, e, r), d = z(t, e, o);
     if (l && d) try {
       const h = document.createRange();
       return h.setStart(l.startContainer, l.startOffset), h.setEnd(d.startContainer, d.startOffset), h;
@@ -1028,8 +1028,8 @@ function Sn({ containerRef: t, getMarkdown: e, setMarkdown: n, enabled: r = true
       (Math.abs(P) > 1 || Math.abs(W) > 1) && (w = true);
       let S = b, M = x;
       if (d.includes("e") && (S = b + P), d.includes("w") && (S = b - P), d.includes("s") && (M = x + W), d.includes("n") && (M = x - W), S = Math.max(48, S), M = Math.max(32, M), C || v.shiftKey) {
-        const Wt = Math.abs((S - b) / Math.max(1, b)), zt = Math.abs((M - x) / Math.max(1, x));
-        Wt >= zt ? M = Math.max(32, S / Math.max(1e-4, y)) : S = Math.max(48, M * y);
+        const Wt = Math.abs((S - b) / Math.max(1, b)), qt = Math.abs((M - x) / Math.max(1, x));
+        Wt >= qt ? M = Math.max(32, S / Math.max(1e-4, y)) : S = Math.max(48, M * y);
       }
       S = Math.max(48, Math.round(S)), M = Math.max(32, Math.round(M)), ne(h.table, S, M);
       const ft = { ...h, widthPx: S, heightPx: M };
@@ -1043,7 +1043,7 @@ function Sn({ containerRef: t, getMarkdown: e, setMarkdown: n, enabled: r = true
     };
     document.addEventListener("pointermove", O, true), document.addEventListener("pointerup", F, true), document.addEventListener("pointercancel", F, true);
   }, [e, n]);
-  return !r || !o || !s || typeof document > "u" ? null : qt.createPortal(T.jsx("div", { className: "pointer-events-none fixed z-100040 border-2 border-blue-500 print:hidden", style: { left: s.left, top: s.top, width: s.width, height: s.height }, "data-haim-table-resize-overlay": "", children: De.map((l) => T.jsx("button", { type: "button", "aria-label": `\uD45C \uD06C\uAE30 \uC870\uC808 ${l}`, "data-haim-table-resize-handle": l, className: "pointer-events-auto absolute h-3.5 w-3.5 rounded-sm border-2 border-blue-500 bg-white shadow-sm dark:bg-odp-surface", style: $e[l], onPointerDown: (d) => m(d, l) }, l)) }), document.body);
+  return !r || !o || !s || typeof document > "u" ? null : zt.createPortal(T.jsx("div", { className: "pointer-events-none fixed z-100040 border-2 border-blue-500 print:hidden", style: { left: s.left, top: s.top, width: s.width, height: s.height }, "data-haim-table-resize-overlay": "", children: De.map((l) => T.jsx("button", { type: "button", "aria-label": `\uD45C \uD06C\uAE30 \uC870\uC808 ${l}`, "data-haim-table-resize-handle": l, className: "pointer-events-auto absolute h-3.5 w-3.5 rounded-sm border-2 border-blue-500 bg-white shadow-sm dark:bg-odp-surface", style: $e[l], onPointerDown: (d) => m(d, l) }, l)) }), document.body);
 }
 function We(t) {
   const e = String(t ?? "").trim();
@@ -1068,11 +1068,11 @@ function $t(t, e) {
     };
   }, [n, e]), r || o;
 }
-function ze({ cover: t }) {
+function qe({ cover: t }) {
   const e = E.useMemo(() => ie(t.webfonts), [t.webfonts]);
   return e ? T.jsx("style", { "data-note-cover-webfonts": "1", children: e }) : null;
 }
-function qe({ path: t, getPresignedUrl: e }) {
+function ze({ path: t, getPresignedUrl: e }) {
   const n = $t(t, e);
   return n ? T.jsx("img", { src: n, alt: "", className: "pointer-events-none absolute inset-0 h-full w-full object-cover", draggable: false }) : null;
 }
@@ -1091,7 +1091,7 @@ function Mn({ cover: t, getPresignedUrl: e, className: n = "", style: r, showFra
   const u = se(t.layout), f = t.bg.color || "#ffffff";
   return T.jsxs("div", { className: `export-pdf-cover relative z-2 overflow-hidden bg-white text-gray-900 ${n}`, style: { width: "var(--print-page-width)", height: "var(--print-page-height)", backgroundColor: f, ...r }, "data-note-cover": "1", onContextMenu: (a) => {
     a.stopPropagation();
-  }, children: [T.jsx(ze, { cover: t }), t.bg.imagePath ? T.jsx(qe, { path: t.bg.imagePath, getPresignedUrl: e }) : null, T.jsxs("div", { className: `absolute top-0 bottom-0 ${o ? "outline outline-1 outline-dashed outline-blue-400/70" : ""}`, style: { left: `${u.leftPct}%`, width: `${u.widthPct}%` }, "data-cover-frame": "1", children: [i ? t.elements.map((a) => a.type === "text" ? T.jsx("div", { "data-cover-el": a.id, style: { ...Y(a), ...ce(a) }, children: a.text }, a.id) : oe(a) ? T.jsx("div", { "data-cover-el": a.id, style: Y(a), children: T.jsx(Xe, { el: a }) }, a.id) : T.jsx("div", { "data-cover-el": a.id, style: Y(a), children: T.jsx(Ve, { path: a.path, getPresignedUrl: e }) }, a.id)) : null, s] })] });
+  }, children: [T.jsx(qe, { cover: t }), t.bg.imagePath ? T.jsx(ze, { path: t.bg.imagePath, getPresignedUrl: e }) : null, T.jsxs("div", { className: `absolute top-0 bottom-0 ${o ? "outline outline-1 outline-dashed outline-blue-400/70" : ""}`, style: { left: `${u.leftPct}%`, width: `${u.widthPct}%` }, "data-cover-frame": "1", children: [i ? t.elements.map((a) => a.type === "text" ? T.jsx("div", { "data-cover-el": a.id, style: { ...Y(a), ...ce(a) }, children: a.text }, a.id) : oe(a) ? T.jsx("div", { "data-cover-el": a.id, style: Y(a), children: T.jsx(Xe, { el: a }) }, a.id) : T.jsx("div", { "data-cover-el": a.id, style: Y(a), children: T.jsx(Ve, { path: a.path, getPresignedUrl: e }) }, a.id)) : null, s] })] });
 }
 const Ye = "data-md-footnote-to", jt = "data-md-footnote-back-button", Ke = 2, Ge = "is-hidden";
 let ct = null;

@@ -1,22 +1,22 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/ChatComposerMdEditor-DWVqVQUY.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-aws-BNw5jQBi.js","assets/useLazyMermaidRender-CQDO5wEr.js","assets/index-DZXxTXv9.js","assets/vendor-lucide-CLhpI-Mc.js","assets/vendor-zip-Bez6qchM.js","assets/index-BvvKIy6_.css","assets/style-BHjN1VVl.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/ChatComposerMdEditor-S11_3NQ4.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-aws-BNw5jQBi.js","assets/useLazyMermaidRender-C0EQW-1g.js","assets/index-hy8f_bYF.js","assets/vendor-lucide-CLhpI-Mc.js","assets/vendor-zip-Bez6qchM.js","assets/index-DVFcg950.css","assets/style-BHjN1VVl.css"])))=>i.map(i=>d[i]);
 import { j as e, r as n, L as cc, f as dc, __tla as __tla_0 } from "./vendor-react-SY5QCjFA.js";
-import { f as tr, e as fn, a as uc, d as fc, b as Pn, n as Gn, i as Ir, g as pc, l as hc, c as mc, p as xc, h as gc, A as Vt, C as qt, j as Ar, k as bc, r as Xs, m as Zs, u as Uo, o as yc, q as Go, M as Qs, s as wc, t as kc, v as vc, w as jc, x as Sc, y as Ga, z as Wa, B as Ur, D as Xe, E as Gr, F as _n, S as ve, G as Wr, H as Cc, I as Nc, J as cn, K as Bt, L as Ec, P as Wo, N as Mc, O as Rc, Q as Dc, R as Wt, T as Lc, U as Ic, V as Yt, W as Ko, X as Ac, Y as Js, Z as on, _ as Pc, $ as kt, a0 as _c, a1 as zc, a2 as Tc, a3 as $c, a4 as Dn, a5 as Oc, a6 as qo, a7 as Bc, a8 as Fc, a9 as ea, aa as ta, ab as Pt, ac as Ka, ad as Hc, ae as Uc, af as Gc, ag as Wc, ah as At, ai as qa, aj as Kc, ak as Va, al as qc, am as Vc, an as Yc, ao as Xc, ap as Zc, aq as Qc, ar as Jc, as as Pr, at as ed, au as td, av as nd, aw as rd, ax as It, ay as sd, az as $s, aA as ad, aB as Ya, aC as od, aD as id, aE as ld, aF as Wn, aG as cd, aH as Xa, aI as dd, aJ as ud, aK as bs, aL as Za, aM as fd, aN as pd, aO as vr, aP as hd, aQ as md, aR as xd, aS as gd, aT as bd, aU as yd, aV as wd, aW as jr, aX as kd, aY as vd, aZ as jd, a_ as Sd, a$ as Cd, b0 as Nd, b1 as Ed, b2 as Os, b3 as Bs, b4 as Md, b5 as Ft, b6 as Rd, b7 as Dd, b8 as Ld, b9 as Ct, ba as _r, bb as Id, bc as Qa, bd as ys, be as Ad, bf as Pd, bg as _d, bh as zd, bi as Td, bj as Ja, bk as eo, bl as $d, bm as Od, bn as Bd, bo as Fd, bp as Hd, bq as Ud, br as ws, bs as Gd, bt as Wd, bu as Kd, bv as qd, bw as Vd, bx as to, by as Yd, __tla as __tla_1 } from "./index-DZXxTXv9.js";
+import { f as tr, e as fn, a as uc, d as fc, b as Pn, n as Gn, i as Ir, g as pc, l as hc, c as mc, p as xc, h as gc, A as Vt, C as qt, j as Ar, k as bc, r as Xs, m as Zs, u as Uo, o as yc, q as Go, M as Qs, s as wc, t as kc, v as vc, w as jc, x as Sc, y as Ga, z as Wa, B as Ur, D as Xe, E as Gr, F as _n, S as ve, G as Wr, H as Cc, I as Nc, J as cn, K as Bt, L as Ec, P as Wo, N as Mc, O as Rc, Q as Dc, R as Wt, T as Lc, U as Ic, V as Yt, W as Ko, X as Ac, Y as Js, Z as on, _ as Pc, $ as kt, a0 as _c, a1 as zc, a2 as Tc, a3 as $c, a4 as Dn, a5 as Oc, a6 as qo, a7 as Bc, a8 as Fc, a9 as ea, aa as ta, ab as Pt, ac as Ka, ad as Hc, ae as Uc, af as Gc, ag as Wc, ah as At, ai as qa, aj as Kc, ak as Va, al as qc, am as Vc, an as Yc, ao as Xc, ap as Zc, aq as Qc, ar as Jc, as as Pr, at as ed, au as td, av as nd, aw as rd, ax as It, ay as sd, az as $s, aA as ad, aB as Ya, aC as od, aD as id, aE as ld, aF as Wn, aG as cd, aH as Xa, aI as dd, aJ as ud, aK as bs, aL as Za, aM as fd, aN as pd, aO as vr, aP as hd, aQ as md, aR as xd, aS as gd, aT as bd, aU as yd, aV as wd, aW as jr, aX as kd, aY as vd, aZ as jd, a_ as Sd, a$ as Cd, b0 as Nd, b1 as Ed, b2 as Os, b3 as Bs, b4 as Md, b5 as Ft, b6 as Rd, b7 as Dd, b8 as Ld, b9 as Ct, ba as _r, bb as Id, bc as Qa, bd as ys, be as Ad, bf as Pd, bg as _d, bh as zd, bi as Td, bj as Ja, bk as eo, bl as $d, bm as Od, bn as Bd, bo as Fd, bp as Hd, bq as Ud, br as ws, bs as Gd, bt as Wd, bu as Kd, bv as qd, bw as Vd, bx as to, by as Yd, __tla as __tla_1 } from "./index-hy8f_bYF.js";
 import { E as ks, C as Xd, S as Zd, l as Qd, _ as Jd, o as eu, v as tu, K as nu, __tla as __tla_2 } from "./vendor-md-editor-CyUZNHY0.js";
-import { c as ru, a as su, b as au, C as Vo, d as Fs, e as zn, f as Kr, g as Yo, h as nr, i as nt, j as Xo } from "./ChatImageBackgroundPicker-BfKO4Ebq.js";
+import { c as ru, a as su, b as au, C as Vo, d as Fs, e as zn, f as Kr, g as Yo, h as nr, i as nt, j as Xo } from "./ChatImageBackgroundPicker-N4hNaaXA.js";
 import { a as Zo, C as ln, X as bt, g as Rt, v as zt, D as ou, t as Yn, d as Hs, ae as Xn, s as iu, x as rr, af as zr, a2 as Qo, ag as qr, e as Jo, ah as lu, _ as cu, a3 as ei, W as ti, ai as Vr, aj as Yr, ak as sr, al as Xt, am as ni, an as na, z as ra, G as Xr, ao as ri, ap as Zr, y as si, aq as ai, T as ar, ar as oi, as as ii, at as du, au as uu, av as no, aw as li, b as ci, ax as fu, h as pu, a1 as hu, ay as mu, az as xu, M as gu, aA as bu, S as ro } from "./vendor-lucide-CLhpI-Mc.js";
 import { p as yu, q as wu, r as so, s as ku, t as vu, v as ju, w as Su, x as Cu, y as Nu, z as ao, K as or, M as ir, D as pn, g as hn, h as mn, i as xn, j as gn, N as Eu, k as Tn, b as sa, d as aa, T as oa, e as ia, f as la, A as ca, Q as Mu, U as Ru, V as Du, W as Lu, X as Iu, Y as di, Z as ui, _ as Us, $ as oo, l as Au, m as Pu, n as _u, o as zu, I as Tu, a0 as $u, a1 as Ou, a2 as Bu, a3 as Fu, a4 as Hu, B as Uu, F as io, E as Gu, L as Wu } from "./vendor-radix--fTcLYkF.js";
 import { m as pt, A as dn } from "./vendor-motion-YU7ZxHqi.js";
 import { g as Ku, s as qu } from "./vendor-image-crop-Loz3ogoo.js";
-import { g as Vu, o as Yu, i as da, s as Xu, c as Zu, a as Qu, b as Ju } from "./storageImageHydration-uRXJYwux.js";
-import { u as ef } from "./useWikiImageHydration-CKg7ARQw.js";
-import { u as tf, M as nf } from "./useLazyMermaidRender-CQDO5wEr.js";
+import { g as Vu, o as Yu, i as da, s as Xu, c as Zu, a as Qu, b as Ju } from "./storageImageHydration-BsFsdqxE.js";
+import { u as ef } from "./useWikiImageHydration-nBRlNaU7.js";
+import { u as tf, M as nf } from "./useLazyMermaidRender-C0EQW-1g.js";
 import { d as fi, $ as lo, a as co, b as rf } from "./vendor-emoji-DK7KBAQp.js";
-import { $ as pi, a as hi, b as mi, c as xi, d as gi, e as Ln, f as bi, g as yi, h as wi, i as ki, j as vi, k as ji, l as Si, m as Ci, n as Ni, o as sf, p as af } from "./vendor-react-aria-DYv2lyyo.js";
+import { $ as pi, a as hi, b as mi, c as xi, d as gi, e as Ln, f as bi, g as yi, h as wi, i as ki, j as vi, k as ji, l as Si, m as Ci, n as Ni, o as sf, p as af } from "./vendor-react-aria-CtdR66SM.js";
 import "./vendor-aws-BNw5jQBi.js";
 import "./vendor-zip-Bez6qchM.js";
 import "./index-CG4BSG42.js";
 import "./vendor-git-diff-view-CtfFh0fN.js";
-import "./vendor-novel-B463Q8rj.js";
+import "./vendor-novel-CC3DvXaV.js";
 let um;
 let __tla = Promise.all([
   (() => {
@@ -1748,7 +1748,7 @@ let __tla = Promise.all([
       }), () => i.disconnect();
     }, []), t;
   }
-  const Uf = n.lazy(() => Jd(() => import("./ChatComposerMdEditor-DWVqVQUY.js"), __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12]))), _t = 40, Ws = 200, Gf = "height 0.28s cubic-bezier(0.22, 1, 0.36, 1)";
+  const Uf = n.lazy(() => Jd(() => import("./ChatComposerMdEditor-S11_3NQ4.js"), __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12]))), _t = 40, Ws = 200, Gf = "height 0.28s cubic-bezier(0.22, 1, 0.36, 1)";
   function go(t) {
     const r = {};
     for (const s of t || []) !(s == null ? void 0 : s.id) || !s.background || (r[s.id] = s.background);

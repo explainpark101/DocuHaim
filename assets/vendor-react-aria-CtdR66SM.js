@@ -8,7 +8,7 @@ var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "
 var _e2, _e3, _e4, _e5, _e6;
 import { b as S, r as c, $ as pd, a as yd } from "./vendor-react-SY5QCjFA.js";
 import "./vendor-git-diff-view-CtfFh0fN.js";
-import { c as Dd } from "./vendor-novel-B463Q8rj.js";
+import { c as Dd } from "./vendor-novel-CC3DvXaV.js";
 function $t(...e) {
   return (...t) => {
     for (let a of e) typeof a == "function" && a(...t);

@@ -1,9 +1,9 @@
-import { fE as ae, g4 as j, fa as oe, g5 as T, g6 as $, ek as se, e1 as de, Q as ne } from "./index-DZXxTXv9.js";
+import { fD as ae, g3 as j, f9 as oe, g4 as T, g5 as D, el as se, e2 as de, Q as ne } from "./index-hy8f_bYF.js";
 import { r as o, j as e } from "./vendor-react-SY5QCjFA.js";
 import { o as le } from "./vendor-md-editor-CyUZNHY0.js";
-import { u as ie, M as pe } from "./useLazyMermaidRender-CQDO5wEr.js";
-import { O as ce, G as xe } from "./OpenAiCompatibleModelSelect-CwjqAyem.js";
-import { r as D, L, e as be } from "./llmAssistImages-Ca7ILDRO.js";
+import { u as ie, M as pe } from "./useLazyMermaidRender-C0EQW-1g.js";
+import { O as ce, G as xe } from "./OpenAiCompatibleModelSelect-Ch28Ub1E.js";
+import { r as $, L, e as be } from "./llmAssistImages-Ca7ILDRO.js";
 import { ap as ge, v as M, _ as ue, X as me, a7 as fe, g as he, E as ye, bt as ve } from "./vendor-lucide-CLhpI-Mc.js";
 function Ae(a) {
   const [s, d] = o.useState(() => j()), n = o.useMemo(() => {
@@ -16,7 +16,7 @@ function Ae(a) {
   }, []);
   return o.useEffect(() => {
     const l = () => d(j());
-    return window.addEventListener($, l), () => window.removeEventListener($, l);
+    return window.addEventListener(D, l), () => window.removeEventListener(D, l);
   }, []), o.useEffect(() => {
     n && n !== s && (T(n), d(n));
   }, [s, n]), [n, t, x];
@@ -39,7 +39,7 @@ function Te() {
   const s = `${"/DocuHaim/".replace(/\/$/, "") || "/"}/llm-assist-popout`.replace(/\/+/g, "/");
   return new URL(s, window.location.origin).toString();
 }
-const $e = "s3haim-llm-assist", De = "popup=yes,width=480,height=820,menubar=no,toolbar=no,location=no,status=no,resizable=yes";
+const De = "s3haim-llm-assist", $e = "popup=yes,width=480,height=820,menubar=no,toolbar=no,location=no,status=no,resizable=yes";
 function Me(a, s, d = {}) {
   !a || a.closed || a.postMessage({ type: s, ...d }, window.location.origin);
 }
@@ -54,7 +54,7 @@ function Pe({ theme: a = "light", profiles: s = [], selectedProfileId: d = "", o
     if (!(!(r == null ? void 0 : r.length) || !b)) {
       y(""), k(true);
       try {
-        const c = await D(r, h.current);
+        const c = await $(r, h.current);
         await b(c);
       } catch (c) {
         y((c == null ? void 0 : c.message) || "\uC774\uBBF8\uC9C0\uB97C \uCD94\uAC00\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
@@ -73,7 +73,7 @@ function Pe({ theme: a = "light", profiles: s = [], selectedProfileId: d = "", o
       if (O.length) {
         c.preventDefault(), y(""), k(true);
         try {
-          const w = await D(O, h.current);
+          const w = await $(O, h.current);
           await b(w);
         } catch (w) {
           y((w == null ? void 0 : w.message) || "\uD074\uB9BD\uBCF4\uB4DC \uC774\uBBF8\uC9C0\uB97C \uBD99\uC5EC\uB123\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
@@ -93,8 +93,8 @@ function Pe({ theme: a = "light", profiles: s = [], selectedProfileId: d = "", o
 export {
   Ie as L,
   Pe as a,
-  $e as b,
-  De as c,
+  De as b,
+  $e as c,
   Te as g,
   Oe as i,
   Me as p,
