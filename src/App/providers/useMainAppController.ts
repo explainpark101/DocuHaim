@@ -5,6 +5,7 @@ import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
 import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useNavigate, useLocation } from 'react-router';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -414,6 +415,42 @@ export function useMainAppController() {
     setIsPullingFromRemote,
   } = useFileSessionOwned();
   const {
+    selectedIds,
+    setSelectedIds,
+    deleteTarget,
+    setDeleteTarget,
+    emptyTrashTarget,
+    setEmptyTrashTarget,
+    isEmptyingTrash,
+    setIsEmptyingTrash,
+    deletingFolderPath,
+    setDeletingFolderPath,
+    isDeletingFolder,
+    setIsDeletingFolder,
+    isDeleting,
+    setIsDeleting,
+    isMoveModalOpen,
+    setIsMoveModalOpen,
+    moveFolderTarget,
+    setMoveFolderTarget,
+    moveFileTarget,
+    setMoveFileTarget,
+    createModalOpen,
+    setCreateModalOpen,
+    createModalContext,
+    setCreateModalContext,
+    moveModalSelectPath,
+    setMoveModalSelectPath,
+    isCreateSubmitting,
+    setIsCreateSubmitting,
+    dropTarget,
+    setDropTarget,
+    treeNameConflict,
+    setTreeNameConflict,
+    treeTransferBusy,
+    setTreeTransferBusy,
+  } = useTreeOpsOwned();
+  const {
     isUnlocked,
     showAuthModal,
     setShowAuthModal,
@@ -479,9 +516,7 @@ export function useMainAppController() {
   const editedFileNameRef = useRef('');
   /** Tab ids (`type:path`) currently writing in the background. */
   const savingTabIdsRef = useRef(new Set());
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [emptyTrashTarget, setEmptyTrashTarget] = useState(null);
-  const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
+  // Tree ops state owned by AppTreeOpsStateProvider (useTreeOpsOwned).
   const [showHiddenFolders, setShowHiddenFolders] = useState(() => loadShowHiddenFolders());
   const [showTrashFolder, setShowTrashFolder] = useState(() => loadShowTrashFolder());
 
@@ -525,20 +560,10 @@ export function useMainAppController() {
   const uploadFileInputRef = useRef(null);
   const uploadFolderInputRef = useRef(null);
   const [uploadTarget, setUploadTarget] = useState(null);
-  const [deletingFolderPath, setDeletingFolderPath] = useState(null);
-  const [isDeletingFolder, setIsDeletingFolder] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [operationStatus, setOperationStatus] = useState('');
-  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [webauthnPRFSupported, setWebauthnPRFSupported] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(false);
-  const [moveFolderTarget, setMoveFolderTarget] = useState(null);
-  const [moveFileTarget, setMoveFileTarget] = useState(null);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createModalContext, setCreateModalContext] = useState(null);
-  const [moveModalSelectPath, setMoveModalSelectPath] = useState(null);
   const [addToNoteSelectPath, setAddToNoteSelectPath] = useState(null);
-  const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const [showExportPasswordModal, setShowExportPasswordModal] = useState(false);
   const [showImportPasswordModal, setShowImportPasswordModal] = useState(false);
   const [importFileContent, setImportFileContent] = useState(null);
@@ -556,9 +581,6 @@ export function useMainAppController() {
   const pendingCoverSaveRef = useRef(null);
   const [pendingWebAuthnSave, setPendingWebAuthnSave] = useState(null);
   const [pendingPasswordSave, setPendingPasswordSave] = useState(null);
-  const [dropTarget, setDropTarget] = useState(null);
-  const [treeNameConflict, setTreeNameConflict] = useState(null);
-  const [treeTransferBusy, setTreeTransferBusy] = useState([]);
   const treeNameConflictResolverRef = useRef(null);
   const expandPathsRef = useRef(null);
   const [showDownloadMethodModal, setShowDownloadMethodModal] = useState(false);
@@ -654,7 +676,6 @@ export function useMainAppController() {
     const zipBlob = await buildZipBlob(entries);
     triggerBlobDownload(zipBlob, `${nfcFolderName}.zip`);
   }, [localRootHandle, s3Creds, triggerBlobDownload, updateIndicator]);
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const lastSelectedIdRef = useRef(null);
 
   // Snippet settings (VSCode-style JSON, synced to .settings/snippets.json)
