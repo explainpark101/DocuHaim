@@ -7,7 +7,6 @@ import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppModalsProvider } from '@/App/providers/AppModalsProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
-import { RecordingSyncContext } from '@/App/context/RecordingSyncContext';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useMainAppController } from '@/App/providers/useMainAppController';
@@ -151,14 +150,6 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
     [c],
   );
 
-  const recordingSync = useMemo(
-    () => ({
-      isRecording: c.isRecording,
-      captureSync: c.captureSync,
-    }),
-    [c.isRecording, c.captureSync],
-  );
-
   const modals = useMemo(
     () => ({
       showSaveMethodModal: c.showSaveMethodModal,
@@ -256,11 +247,9 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
         <FileSessionProvider value={fileSession}>
           <TreeOpsProvider value={treeOps}>
             <AppModalsProvider value={modals}>
-              <RecordingSyncContext.Provider value={recordingSync}>
-                <AutoSaveProvider>
-                  <AppShellMerge controller={c}>{children}</AppShellMerge>
-                </AutoSaveProvider>
-              </RecordingSyncContext.Provider>
+              <AutoSaveProvider>
+                <AppShellMerge controller={c}>{children}</AppShellMerge>
+              </AutoSaveProvider>
             </AppModalsProvider>
           </TreeOpsProvider>
         </FileSessionProvider>

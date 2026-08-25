@@ -6,6 +6,8 @@ import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
 import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
+import { useRecordingOwned } from '@/App/providers/RecordingProvider';
+import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
 import { useNavigate, useLocation } from 'react-router';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -150,7 +152,6 @@ import {
   tryUnlockEncMdContent,
 } from '@/utils/encMd';
 
-import { useRecording } from '@/hooks/useRecording';
 import { getSyncKeyForRecording, runEncodeAndWritePipeline } from '@/utils/recordingPipeline';
 import {
   deleteRecordingById,
@@ -451,6 +452,47 @@ export function useMainAppController() {
     setTreeTransferBusy,
   } = useTreeOpsOwned();
   const {
+    isRecording,
+    audioLevel,
+    startRecording,
+    stopRecording,
+    captureSync,
+    recordingPipelineStatus,
+    setRecordingPipelineStatus,
+    recordingQueueStats,
+    setRecordingQueueStats,
+    recordingsList,
+    setRecordingsList,
+    selectedRecordingKey,
+    setSelectedRecordingKey,
+    recordingAudioUrl,
+    setRecordingAudioUrl,
+    recordingSyncData,
+    setRecordingSyncData,
+  } = useRecordingOwned();
+  const {
+    snippetConfig,
+    setSnippetConfig,
+    swRegistration,
+    setSwRegistration,
+    isApplyingPwaUpdate,
+    setIsApplyingPwaUpdate,
+    hidePwaUpdateToast,
+    setHidePwaUpdateToast,
+    isCheckingAppUpdate,
+    setIsCheckingAppUpdate,
+    showAppUpdateConfirmModal,
+    setShowAppUpdateConfirmModal,
+    appUpdateAvailable,
+    setAppUpdateAvailable,
+    appBuildLocalId,
+    setAppBuildLocalId,
+    appBuildRemoteId,
+    setAppBuildRemoteId,
+    appUpdateCheckError,
+    setAppUpdateCheckError,
+  } = usePwaSnippetsOwned();
+  const {
     isUnlocked,
     showAuthModal,
     setShowAuthModal,
@@ -679,7 +721,7 @@ export function useMainAppController() {
   const lastSelectedIdRef = useRef(null);
 
   // Snippet settings (VSCode-style JSON, synced to .settings/snippets.json)
-  const [snippetConfig, setSnippetConfig] = useState({ snippets: [] });
+  // snippetConfig owned by AppPwaSnippetsStateProvider
   const [snippetLoadedFromS3, setSnippetLoadedFromS3] = useState(false);
   const [snippetLoadedFromLocal, setSnippetLoadedFromLocal] = useState(false);
   const [snippetLoadedFromWebdav, setSnippetLoadedFromWebdav] = useState(false);
@@ -722,29 +764,7 @@ export function useMainAppController() {
     loadTreeHoverExpandSettings(),
   );
 
-  const {
-    isRecording,
-    audioLevel,
-    startRecording,
-    stopRecording,
-    captureSync,
-  } = useRecording();
-
-  const [recordingPipelineStatus, setRecordingPipelineStatus] = useState('');
-  const [recordingQueueStats, setRecordingQueueStats] = useState({ pending: 0, uploading: 0, failed: 0 });
-  const [recordingsList, setRecordingsList] = useState([]);
-  const [selectedRecordingKey, setSelectedRecordingKey] = useState(null);
-  const [recordingAudioUrl, setRecordingAudioUrl] = useState('');
-  const [recordingSyncData, setRecordingSyncData] = useState([]);
-  const [swRegistration, setSwRegistration] = useState(null);
-  const [isApplyingPwaUpdate, setIsApplyingPwaUpdate] = useState(false);
-  const [hidePwaUpdateToast, setHidePwaUpdateToast] = useState(false);
-  const [isCheckingAppUpdate, setIsCheckingAppUpdate] = useState(false);
-  const [showAppUpdateConfirmModal, setShowAppUpdateConfirmModal] = useState(false);
-  const [appUpdateAvailable, setAppUpdateAvailable] = useState(false);
-  const [appBuildLocalId, setAppBuildLocalId] = useState(() => getLocalAppBuildId());
-  const [appBuildRemoteId, setAppBuildRemoteId] = useState('');
-  const [appUpdateCheckError, setAppUpdateCheckError] = useState('');
+  // Recording + PWA/snippets owned by RecordingProvider / AppPwaSnippetsStateProvider
   const appName = getAppNameByStorageMode(storageMode || DEFAULT_STORAGE_MODE);
   const {
     needRefresh: [needRefresh],

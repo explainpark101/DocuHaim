@@ -4,6 +4,8 @@ import { AppBootstrapStateProvider } from '@/App/providers/AppBootstrapStateProv
 import { AppVaultStateProvider } from '@/App/providers/AppVaultStateProvider';
 import { AppFileSessionStateProvider } from '@/App/providers/AppFileSessionStateProvider';
 import { AppTreeOpsStateProvider } from '@/App/providers/AppTreeOpsStateProvider';
+import { AppPwaSnippetsStateProvider } from '@/App/providers/AppPwaSnippetsStateProvider';
+import { RecordingProvider } from '@/App/providers/RecordingProvider';
 import { AppLogicProvider } from '@/App/providers/AppLogicProvider';
 import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
@@ -16,7 +18,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <WorkspaceTabsProvider>
           <AppFileSessionStateProvider>
             <AppTreeOpsStateProvider>
-              <AppLogicProvider>{children}</AppLogicProvider>
+              <AppPwaSnippetsStateProvider>
+                <RecordingProvider>
+                  <AppLogicProvider>{children}</AppLogicProvider>
+                </RecordingProvider>
+              </AppPwaSnippetsStateProvider>
             </AppTreeOpsStateProvider>
           </AppFileSessionStateProvider>
         </WorkspaceTabsProvider>

@@ -1,8 +1,9 @@
 import { createContext } from 'react';
 
 /**
- * Full shell bag for presentational components still migrating off prop drilling.
- * Prefer domain hooks (useVault, useFileSession, …) when adding new consumers.
+ * Remaining chrome bag for AppLayout (sidebar chrome, settings handlers, chat bridge).
+ * Prefer domain hooks (useVault, useFileSession, useRecordingOwned, …) for new work.
+ * Domain-owned keys are still merged for back-compat until AppLayout finishes migrating.
  */
 export type AppShellBag = Record<string, any>;
 
