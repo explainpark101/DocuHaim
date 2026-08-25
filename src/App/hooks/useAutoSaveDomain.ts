@@ -40,6 +40,10 @@ export function useAutoSaveDomain(): AutoSaveValue {
     currentFile: file.currentFile,
   });
 
+  useEffect(() => {
+    file.registerFileSessionBridgeDeps?.({ setLastAutoSyncAt });
+  }, [file, setLastAutoSyncAt]);
+
   useEffect(
     () =>
       runAutoSaveEffect({

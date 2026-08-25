@@ -6,23 +6,19 @@ import {
 } from 'react';
 import { FileSessionContext } from '@/App/context/FileSessionContext';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import {
+  useFileSessionDomain,
+  type FileSessionBridgeDeps,
+} from '@/App/hooks/useFileSessionDomain';
 import { saveEditorType } from '@/utils/editorTypeSettings';
 
-type FileSessionActions = {
-  saveFile: (...args: any[]) => any;
-  refreshLocalFileFromDisk: (...args: any[]) => any;
-  refreshRemoteFile: (...args: any[]) => any;
-  handleRequestCloseEditor: (...args: any[]) => any;
-  openAdvancedSearchFile: (...args: any[]) => any;
-};
-
-const noop = async (..._args: any[]) => {};
+type Props = { children: ReactNode };
 
 /**
- * Owns file-session context. Lightweight handlers live here; heavy open/save
- * bodies register via registerFileSessionActions from orchestration (H2 bridge).
+ * Owns file-session context + open/save/refresh actions (useFileSessionDomain).
+ * Bridge deps (modals, session write, tree select) inject from orchestration.
  */
-export function FileSessionProvider({ children }: { children: ReactNode }) {
+export function FileSessionProvider({ children }: Props) {
   const owned = useFileSessionOwned();
   const {
     currentFile,
@@ -48,20 +44,16 @@ export function FileSessionProvider({ children }: { children: ReactNode }) {
     setIsPullingFromRemote,
   } = owned;
 
-  const actionsRef = useRef<FileSessionActions>({
-    saveFile: noop,
-    refreshLocalFileFromDisk: noop,
-    refreshRemoteFile: noop,
-    handleRequestCloseEditor: noop,
-    openAdvancedSearchFile: noop,
-  });
+  const bridgeDepsRef = useRef<FileSessionBridgeDeps>({});
 
-  const registerFileSessionActions = useCallback(
-    (actions: Partial<FileSessionActions>) => {
-      actionsRef.current = { ...actionsRef.current, ...actions };
+  const registerFileSessionBridgeDeps = useCallback(
+    (deps: Partial<FileSessionBridgeDeps>) => {
+      bridgeDepsRef.current = { ...bridgeDepsRef.current, ...deps };
     },
     [],
   );
+
+  const domain = useFileSessionDomain({ bridgeDepsRef });
 
   const handleEditorTypeChange = useCallback((next: string) => {
     saveEditorType(next);
@@ -91,22 +83,26 @@ export function FileSessionProvider({ children }: { children: ReactNode }) {
       setIsPullingFromRemote,
       encMdPrompt,
       setEncMdPrompt,
-      registerFileSessionActions,
-      saveFile: (...args: any[]) => actionsRef.current.saveFile(...args),
-      refreshLocalFileFromDisk: (...args: any[]) =>
-        actionsRef.current.refreshLocalFileFromDisk(...args),
-      refreshRemoteFile: (...args: any[]) =>
-        actionsRef.current.refreshRemoteFile(...args),
-      handleRequestCloseEditor: (...args: any[]) =>
-        actionsRef.current.handleRequestCloseEditor(...args),
-      openAdvancedSearchFile: (...args: any[]) =>
-        actionsRef.current.openAdvancedSearchFile(...args),
+      registerFileSessionBridgeDeps,
+      saveFile: domain.saveFile,
+      refreshLocalFileFromDisk: domain.refreshLocalFileFromDisk,
+      refreshRemoteFile: domain.refreshRemoteFile,
+      handleRequestCloseEditor: domain.handleRequestCloseEditor,
+      openAdvancedSearchFile: domain.openAdvancedSearchFile,
+      selectFileRaw: domain.selectFileRaw,
+      commitOpenFile: domain.commitOpenFile,
+      saveCurrentMarkdownBeforeSwitch: domain.saveCurrentMarkdownBeforeSwitch,
+      applyOpenFileIdentityChange: domain.applyOpenFileIdentityChange,
+      renameCurrentFileFullName: domain.renameCurrentFileFullName,
     }),
     [
       currentFile,
       setCurrentFile,
       editorContent,
       setEditorContent,
+      editorContentRef,
+      prevEditorContentRef,
+      currentFileRef,
       editedFileName,
       setEditedFileName,
       isSaving,
@@ -121,7 +117,8 @@ export function FileSessionProvider({ children }: { children: ReactNode }) {
       setIsPullingFromRemote,
       encMdPrompt,
       setEncMdPrompt,
-      registerFileSessionActions,
+      registerFileSessionBridgeDeps,
+      domain,
     ],
   );
 

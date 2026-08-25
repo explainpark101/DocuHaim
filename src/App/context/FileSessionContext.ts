@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { FileSessionBridgeDeps } from '@/App/hooks/useFileSessionDomain';
 
 /** §5 file open/save / editor bridge (owned by FileSessionProvider). */
 export type FileSessionValue = {
@@ -26,15 +27,14 @@ export type FileSessionValue = {
   refreshRemoteFile: (...args: any[]) => any;
   handleRequestCloseEditor: (...args: any[]) => any;
   openAdvancedSearchFile: (...args: any[]) => any;
+  selectFileRaw: (...args: any[]) => any;
+  commitOpenFile: (...args: any[]) => any;
+  saveCurrentMarkdownBeforeSwitch: (...args: any[]) => any;
+  applyOpenFileIdentityChange: (...args: any[]) => any;
+  renameCurrentFileFullName: (...args: any[]) => any;
   encMdPrompt: any;
   setEncMdPrompt: (...args: any[]) => any;
-  registerFileSessionActions: (actions: {
-    saveFile?: (...args: any[]) => any;
-    refreshLocalFileFromDisk?: (...args: any[]) => any;
-    refreshRemoteFile?: (...args: any[]) => any;
-    handleRequestCloseEditor?: (...args: any[]) => any;
-    openAdvancedSearchFile?: (...args: any[]) => any;
-  }) => void;
+  registerFileSessionBridgeDeps: (deps: Partial<FileSessionBridgeDeps>) => void;
 };
 
 export const FileSessionContext = createContext<FileSessionValue | null>(null);
