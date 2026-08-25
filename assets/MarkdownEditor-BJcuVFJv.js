@@ -3,24 +3,25 @@ var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { en
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 import { r as a, j as o, u as Ho, a as Oo, c as Ws } from "./vendor-react-SY5QCjFA.js";
 import { p as Us, C as pr, q as Bo, E as Ot, S as Vo, D as Sr, W as qs, r as Ko, u as Ut, w as xt, x as zo, y as hr, V as Wo, z as Uo, A as Je, F as Xs, B as Ys, l as Gs, G as Js, I as Zs, T as Mn, J as Cr, L as Qs, O as ei, P as ti, Q as ni, i as qo, v as ri, R as oi, U as si, K as ii, X as ai, Y as li, Z as ci, f as ui, d as di, $ as fi, c as mi, a as pi, a0 as hi, a1 as gi, a2 as xi, a3 as bi, a4 as wi, a5 as yi, a6 as vi, a7 as ki, a8 as Ei, a9 as Si, aa as Ci, ab as Ni } from "./vendor-md-editor-CyUZNHY0.js";
-import { i as St, j as tr, k as ji, l as Mi, a as Ti, s as Li, m as Ri, o as Dt, h as Ai, P as Pi, H as Di, p as Tn, q as Nr, t as jr, v as Mr, x as Ii, y as Tr, z as ct, A as Ln, B as Rn } from "./previewFootnoteScroll-Bkq_GauU.js";
-import { dt as $i, eP as Xo, eQ as wn, eR as Ze, eS as Yo, eT as _i, eU as Fi, dX as Lr, eV as Hi, eW as Rr, d$ as An, d_ as Oi, eX as Ar, eY as Pr, dZ as Bi, eZ as Dr, e_ as Vi, e$ as Ki, f0 as zi, cW as Go, f1 as Jo, f2 as Ir, f3 as Wi, M as qt, f4 as Ui, f5 as $r, ac as _r, f6 as qi, f7 as Xi, f8 as Yi, f9 as Fr, fa as Zo, fb as Gi, fc as Ji, fd as Zi, fe as Qi, ff as ea, fg as Qo, fh as pn, _ as es, dI as ta, dD as na, fi as ra, du as oa, fj as Hr, fk as sa, fl as ia, dz as aa, fm as Pn, fn as la, fo as Dn, fp as ca, dA as In, dy as ua, T as ts, X as nr, dK as da, as as hn, fq as Or, dJ as fa, fr as ma, a3 as pa, fs as ha, U as ga, ft as xa, fu as rr, fv as ba, cx as gr, cw as xr, fw as wa, fx as ya, fy as va, cH as ka, bV as Ea, di as Sa, cC as ns, u as Ca, cV as Na, N as rs, fz as ja, fA as Ma, fB as Br, fC as Ta, fD as La, au as Ra, cS as Aa, dh as rn, d2 as Vr, d4 as $n, d5 as _n, d6 as Pa, d7 as Kr, d8 as Da, d9 as Ia, da as $a, db as _a, dc as Fa, fE as Ha, fF as Oa, av as Ba, Q as Va, fG as Ka, dk as za, dl as Wa, dm as Ua, fH as qa, fI as Xa, fJ as Ya, fK as Ga, eh as Ja } from "./index-QBlKaQ6_.js";
-import { g as Za, i as Qa, a as el } from "./OpenAiCompatibleModelSelect-Z7C6xzHM.js";
-import { T as tl, c as nl } from "./clipboardImageFiles-C90I9L5e.js";
-import { u as rl, p as Fn, L as It, a as ol, i as sl, g as il, b as al, c as ll } from "./LlmAssistPanel-DXbsWqLz.js";
+import { i as St, j as tr, k as ji, l as Mi, a as Ti, s as Li, m as Ri, o as Dt, h as Ai, P as Pi, H as Di, p as Tn, q as Nr, t as jr, v as Mr, x as Ii, y as Tr, z as ct, A as Ln, B as Rn } from "./previewFootnoteScroll-CozlPkEs.js";
+import { dt as $i, eU as Xo, eV as wn, eW as Ze, eX as Yo, eY as _i, eZ as Fi, e0 as Lr, e_ as Hi, e$ as Rr, e4 as An, e3 as Oi, f0 as Ar, f1 as Pr, e2 as Bi, f2 as Dr, f3 as Vi, f4 as Ki, f5 as zi, cW as Go, f6 as Jo, f7 as Ir, f8 as Wi, M as qt, f9 as Ui, fa as $r, ac as _r, fb as qi, fc as Xi, fd as Yi, fe as Fr, ff as Zo, fg as Gi, fh as Ji, fi as Zi, fj as Qi, fk as ea, fl as Qo, fm as pn, _ as es, dN as ta, dI as na, fn as ra, du as oa, fo as Hr, fp as sa, fq as ia, dz as aa, fr as Pn, fs as la, ft as Dn, fu as ca, dA as In, dy as ua, T as ts, X as nr, dP as da, as as hn, fv as Or, dO as fa, fw as ma, a3 as pa, fx as ha, U as ga, fy as xa, fz as rr, fA as ba, cx as gr, cw as xr, fB as wa, fC as ya, fD as va, cH as ka, bV as Ea, di as Sa, cC as ns, u as Ca, cV as Na, N as rs, fE as ja, fF as Ma, fG as Br, fH as Ta, fI as La, au as Ra, cS as Aa, dh as rn, d2 as Vr, d4 as $n, d5 as _n, d6 as Pa, d7 as Kr, d8 as Da, d9 as Ia, da as $a, db as _a, dc as Fa, fJ as Ha, fK as Oa, av as Ba, Q as Va, fL as Ka, dk as za, dl as Wa, dm as Ua, fM as qa, fN as Xa, fO as Ya, fP as Ga, em as Ja } from "./index-k2zzlr12.js";
+import { g as Za, i as Qa, a as el } from "./OpenAiCompatibleModelSelect-B5cCAPmZ.js";
+import { T as tl, c as nl } from "./clipboardImageFiles-DOKqT8TB.js";
+import { u as rl, p as Fn, L as It, a as ol, i as sl, g as il, b as al, c as ll } from "./LlmAssistPanel-O8jxv5K6.js";
 import { L as cl, n as ul } from "./llmAssistImages-Ca7ILDRO.js";
 import { a7 as or, b8 as os, B as dl, b9 as fl, X as Xt, ba as ml, bb as zr, bc as Hn, ac as On, bd as pl, t as hl, be as br, bf as gl, a as ss, ap as xl, J as bl, bg as wl, bh as yl, C as yn, bi as vl, bj as kl, a8 as is, a9 as El, g as Sl, bk as gn, U as Cl, a$ as Nl, b7 as Wr, bl as Bn, bm as Ur, bn as jl, aY as Ml, aW as Tl, bo as qr, bp as Ll, bq as Rl, br as Al, bs as Pl, T as Ct, W as Dl, v as Il } from "./vendor-lucide-DpPvFd8E.js";
 import { b as as, G as Vn, H as Kn, p as $l, q as _l, r as Fl, s as Hl, t as Ol, v as Bl, w as Vl, x as Kl, y as zl, z as Wl, K as wr, M as yr, d as sr, T as ir, e as ar, f as lr, A as cr, B as Ul, F as ut, L as ht, E as on, l as ql, m as Xl, n as Yl, o as Gl, I as Xr, a0 as Jl, a1 as Zl, a2 as Ql, a3 as ec, a4 as Yr } from "./vendor-radix--fTcLYkF.js";
 import { M as tc } from "./MdEditorToolbarTooltips-DK-y1YT1.js";
-import { N as nc, u as rc, W as oc } from "./useTocTitleWrap-CTkUkgjy.js";
-import { u as sc, M as ic } from "./useLazyMermaidRender-Du53WTD5.js";
-import { H as zn, T as ac } from "./TableStyleTemplateEditor-CrgyHUMn.js";
+import { N as nc, u as rc, W as oc } from "./useTocTitleWrap-BEO7A3iS.js";
+import { u as sc, M as ic } from "./useLazyMermaidRender-Clq2I54A.js";
+import { H as zn, T as ac } from "./TableStyleTemplateEditor-Cwth8Fhp.js";
 import { b as vn } from "./vendor-motion-YU7ZxHqi.js";
-import { u as lc } from "./useWikiImageHydration-Cx8ybZm2.js";
+import { u as lc } from "./useWikiImageHydration-BmaEUSyM.js";
 import "./vendor-aws-BNw5jQBi.js";
 import "./vendor-zip-Bez6qchM.js";
+import "./vendor-google-genai-Dw3BcYJd.js";
 import "./vendor-image-crop-Loz3ogoo.js";
-import "./storageImageHydration-pBX2zXtK.js";
+import "./storageImageHydration-D5ivCA5T.js";
 import "./index-CG4BSG42.js";
 function ls(e, t, n) {
   const r = $i(e);
@@ -3156,7 +3157,7 @@ ri({ editorConfig: { languageUserDefined: { "ko-KR": ii }, renderDelay: rs() ? 5
 }, markdownItPlugins(e) {
   return Ya(e);
 } });
-function Nm({ value: e, onChange: t, onSave: n, theme: r = "light", currentFile: i = null, previewOnly: s = false, isMobileLayout: l = false, onUploadImage: u, isUploadingEditorImage: m = false, uploadImagePercent: p = 0, onCancelUploadImage: g, onResolveWikiImageUrl: R, snippetConfig: E = { snippets: [] }, llmProviderProfiles: L = [], getImgbbApiKey: C, onOpenViewPath: T, onRequestConvertAllImagesToWiki: O, onRegisterConvertAllImagesToWiki: B }) {
+function jm({ value: e, onChange: t, onSave: n, theme: r = "light", currentFile: i = null, previewOnly: s = false, isMobileLayout: l = false, onUploadImage: u, isUploadingEditorImage: m = false, uploadImagePercent: p = 0, onCancelUploadImage: g, onResolveWikiImageUrl: R, snippetConfig: E = { snippets: [] }, llmProviderProfiles: L = [], getImgbbApiKey: C, onOpenViewPath: T, onRequestConvertAllImagesToWiki: O, onRegisterConvertAllImagesToWiki: B }) {
   var _a2, _b;
   const Y = Ho(), { showAlert: re } = Ca(), v = a.useId(), I = a.useMemo(() => Nc(v), [v]), G = a.useMemo(() => jc(I), [I]), S = a.useRef(null), A = a.useRef(null), z = a.useRef(null), Z = a.useRef(null), oe = a.useRef(E), se = a.useRef(e), le = a.useRef(i), ae = a.useRef(r), Ce = a.useRef("");
   a.useEffect(() => {
@@ -3948,5 +3949,5 @@ ${h}` }));
   }, llmProviderProfiles: L, open: De, onOpenChange: Ke, theme: r }), o.jsx(iu, { editorRef: S, onChange: K, open: $, onOpenChange: J })] });
 }
 export {
-  Nm as default
+  jm as default
 };

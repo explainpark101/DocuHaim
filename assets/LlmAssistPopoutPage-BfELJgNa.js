@@ -1,10 +1,11 @@
 import { r as s, j as a } from "./vendor-react-SY5QCjFA.js";
-import { p as x, L as r, a as E, i as L } from "./LlmAssistPanel-DXbsWqLz.js";
-import { dr as S, ds as I } from "./index-QBlKaQ6_.js";
+import { p as x, L as r, a as E, i as L } from "./LlmAssistPanel-O8jxv5K6.js";
+import { dr as S, ds as I } from "./index-k2zzlr12.js";
 import { a7 as P, X as V } from "./vendor-lucide-DpPvFd8E.js";
 import "./vendor-md-editor-CyUZNHY0.js";
-import "./useLazyMermaidRender-Du53WTD5.js";
-import "./OpenAiCompatibleModelSelect-Z7C6xzHM.js";
+import "./useLazyMermaidRender-Clq2I54A.js";
+import "./OpenAiCompatibleModelSelect-B5cCAPmZ.js";
+import "./vendor-google-genai-Dw3BcYJd.js";
 import "./vendor-radix--fTcLYkF.js";
 import "./vendor-aws-BNw5jQBi.js";
 import "./llmAssistImages-Ca7ILDRO.js";
@@ -15,7 +16,7 @@ const w = { selectedText: "", selectionRange: { from: 0, to: 0 }, attachedImages
 function _(o, i = {}) {
   !window.opener || window.opener.closed || x(window.opener, r.ACTION, { action: o, payload: i });
 }
-function U() {
+function W() {
   const [o, i] = s.useState(w), [T, d] = s.useState(""), [b, m] = s.useState(""), [C, c] = s.useState(""), [N, p] = s.useState("text"), [v, u] = s.useState(""), [f, g] = s.useState(""), [R, k] = s.useState(false), h = s.useRef(false);
   s.useEffect(() => {
     S(o.theme);
@@ -61,5 +62,5 @@ function U() {
   }, loading: o.loading, error: o.error, templates: o.templates, selectedTemplateId: o.selectedTemplateId, onLoadTemplate: (e) => t("load-template", { id: e }), templateName: b, onTemplateNameChange: M, editingTemplateId: o.editingTemplateId, onSaveTemplate: () => t("save-template"), onNewTemplate: () => t("new-template"), onDeleteTemplate: () => t("delete-template"), onRun: () => t("run"), onApplyResult: () => t("apply-result"), remoteMode: true, modelSelectAutoLoad: false }) })] });
 }
 export {
-  U as default
+  W as default
 };

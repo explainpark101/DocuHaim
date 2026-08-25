@@ -1,11 +1,11 @@
 import { j as d, r as m, u as Se } from "./vendor-react-SY5QCjFA.js";
-import { N as se, m as Y, P as Le, T as Me, t as Ce, p as He, u as oe, H as Pe, v as je, U as Ie, a as Re, C as De, z as $e, S as qe, A as We, L as _e, V as Be, b as ze, d as Oe, e as Fe, l as Ve, f as Ge, I as Ke, g as Je, B as Xe, O as Qe, h as Ye, K as Ze, i as Ue, F as et } from "./vendor-novel-BMhEiQO8.js";
-import { T as tt, c as ce } from "./clipboardImageFiles-C90I9L5e.js";
-import { f$ as le, g0 as V, f4 as nt, g1 as rt, g2 as p, k as it, au as at, av as st, cW as ot, f1 as ct, fE as lt, fF as ut, d4 as re, d6 as dt, d9 as mt, da as ht, db as pt, dc as ft, g3 as gt, dl as bt, g4 as kt, eT as ue } from "./index-QBlKaQ6_.js";
+import { N as se, m as Q, P as Le, T as Me, t as Ce, p as He, u as oe, H as Pe, v as je, U as Ie, a as Re, C as De, z as $e, S as qe, A as We, L as _e, V as Be, b as ze, d as Oe, e as Fe, l as Ve, f as Ge, I as Ke, g as Je, B as Xe, O as Ye, h as Qe, K as Ze, i as Ue, F as et } from "./vendor-novel-DkYdzD6u.js";
+import { T as tt, c as ce } from "./clipboardImageFiles-DOKqT8TB.js";
+import { g4 as le, g5 as V, f9 as nt, g6 as rt, g7 as p, k as it, au as at, av as st, cW as ot, f6 as ct, fJ as lt, fK as ut, d4 as re, d6 as dt, d9 as mt, da as ht, db as pt, dc as ft, g8 as gt, dl as bt, g9 as kt, eY as ue } from "./index-k2zzlr12.js";
 import { aW as wt, aB as xt, bA as ie, bB as yt, bC as vt, bD as Tt, bE as Nt, bF as Et, bG as _, bH as At, bI as St, bJ as Lt, bK as Mt, aE as Ct, J as Ht, q as Pt, g as jt, bL as It, v as Rt } from "./vendor-lucide-DpPvFd8E.js";
 import { T as Dt } from "./TocTitleWrapToggle-CQlKMMuI.js";
-import { u as $t, t as qt, W as Wt } from "./useTocTitleWrap-CTkUkgjy.js";
-import { h as X, m as _t } from "./storageImageHydration-pBX2zXtK.js";
+import { u as $t, t as qt, W as Wt } from "./useTocTitleWrap-BEO7A3iS.js";
+import { h as X, m as _t } from "./storageImageHydration-D5ivCA5T.js";
 import "./vendor-md-editor-CyUZNHY0.js";
 import "./vendor-git-diff-view-CtfFh0fN.js";
 import "./vendor-radix--fTcLYkF.js";
@@ -26,7 +26,7 @@ const Bt = se.create({ name: "wikiImage", group: "inline", inline: true, atom: t
   const i = {};
   e.attrs.width && (i["data-wiki-width"] = e.attrs.width), e.attrs.height && (i["data-wiki-height"] = e.attrs.height), e.attrs.background && (i["data-wiki-bg"] = e.attrs.background);
   const t = le({ width: e.attrs.width, height: e.attrs.height, background: e.attrs.background });
-  return t && (i.style = t), ["img", Y(this.options.HTMLAttributes, r, { "data-wiki-path": e.attrs.path, ...i, alt: "", class: "novel-wiki-image" })];
+  return t && (i.style = t), ["img", Q(this.options.HTMLAttributes, r, { "data-wiki-path": e.attrs.path, ...i, alt: "", class: "novel-wiki-image" })];
 } }), zt = "novel-wiki-caption-line", Ot = Le.extend({ addAttributes() {
   return { class: { default: null, parseHTML: (e) => e.getAttribute("class"), renderHTML: (e) => e.class ? { class: e.class } : {} } };
 }, addKeyboardShortcuts() {
@@ -85,7 +85,7 @@ const Gt = se.create({ name: "heading", addOptions() {
   const e = this.options.levels.filter((i) => i > V).flatMap((i) => [{ tag: `h6[data-heading-level="${i}"]`, attrs: { level: i } }, { tag: `h${i}`, attrs: { level: i } }]), r = this.options.levels.filter((i) => i <= V).map((i) => ({ tag: `h${i}`, attrs: { level: i } }));
   return [...e, ...r];
 }, renderHTML({ node: e, HTMLAttributes: r }) {
-  const t = this.options.levels.includes(e.attrs.level) ? Number(e.attrs.level) : this.options.levels[0] ?? 1, n = t > V ? Y(this.options.HTMLAttributes, r, { "data-heading-level": String(t), class: `md-heading md-heading-${t}` }) : Y(this.options.HTMLAttributes, r);
+  const t = this.options.levels.includes(e.attrs.level) ? Number(e.attrs.level) : this.options.levels[0] ?? 1, n = t > V ? Q(this.options.HTMLAttributes, r, { "data-heading-level": String(t), class: `md-heading md-heading-${t}` }) : Q(this.options.HTMLAttributes, r);
   return [Vt(t), n, 0];
 }, addCommands() {
   return { setHeading: (e) => ({ commands: r }) => this.options.levels.includes(e.level) ? r.setNode(this.name, e) : false, toggleHeading: (e) => ({ commands: r }) => this.options.levels.includes(e.level) ? r.toggleNode(this.name, "paragraph", e) : false };
@@ -128,7 +128,7 @@ function Xt(e) {
     return c && s.push(`style="${B(c)}"`), `<img ${s.join(" ")} />`;
   });
 }
-function Qt(e) {
+function Yt(e) {
   if (!e || typeof e != "string" || typeof document > "u") return e;
   const r = document.createElement("div");
   r.innerHTML = e, r.querySelectorAll("p").forEach((t) => {
@@ -191,7 +191,7 @@ function ae(e) {
   }
   return r.innerHTML;
 }
-function Yt(e) {
+function Qt(e) {
   if (typeof document > "u" || !e || typeof e != "string") return e;
   try {
     const r = document.createElement("div");
@@ -236,10 +236,10 @@ function Zt(e) {
   }
   return null;
 }
-function Q(e) {
+function Y(e) {
   try {
-    const r = rt(e ?? "", "novel"), i = Yt(r);
-    return Qt(Xt(i));
+    const r = rt(e ?? "", "novel"), i = Qt(r);
+    return Yt(Xt(i));
   } catch {
     return "<p></p>";
   }
@@ -415,7 +415,7 @@ function on({ previewOnly: e, onUploadImage: r, isUploadingEditorImage: i, paste
   }, [s, e, r, n, i, t]), null;
 }
 function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile: n = null, previewOnly: s = false, tocVisible: c = true, onTocRequestClose: w, mobileTocOverlayTopPx: x = null, onRegisterFlushBeforeSave: y, onUploadImage: o, isUploadingEditorImage: b = false, uploadImagePercent: S = 0, onCancelUploadImage: A, documentKey: L, onResolveWikiImageUrl: M, onRegisterConvertAllImagesToWiki: D, getImgbbApiKey: P }) {
-  const z = Se(), j = m.useRef(null), N = m.useRef(null), $ = m.useRef(true), H = m.useRef(null), he = m.useRef(false), [Z, q] = m.useState(0), [E, U] = m.useState(null), [pe, fe] = m.useState(me), [ge, be] = m.useState(() => Q(e ?? "")), ee = m.useCallback((a) => {
+  const z = Se(), j = m.useRef(null), N = m.useRef(null), $ = m.useRef(true), H = m.useRef(null), he = m.useRef(false), [Z, q] = m.useState(0), [E, U] = m.useState(null), [pe, fe] = m.useState(me), [ge, be] = m.useState(() => Y(e ?? "")), ee = m.useCallback((a) => {
     let u = "";
     try {
       const l = ae(a.getHTML());
@@ -426,7 +426,7 @@ function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile:
     ot({ currentFile: n, editorContent: u }), z(ct(n == null ? void 0 : n.id), { state: { value: u, theme: t, currentFile: n } });
   }, [z, t, n]), G = m.useMemo(() => tn({ onUploadImage: o, onExportPdf: ee, onSave: i }), [o, ee, i]);
   m.useEffect(() => {
-    be(Q(e ?? ""));
+    be(Y(e ?? ""));
   }, [L]);
   const ke = m.useMemo(() => [qe.configure({ horizontalRule: false, paragraph: false, heading: false, dropcursor: { color: "#3b82f6", width: 3 } }), Gt, Ot, Bt, Pe, We.configure({ placeholder: ({ node: a }) => a.type.name === "heading" ? `\uC81C\uBAA9 ${a.attrs.level}` : "\uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694\u2026", includeChildren: true }), _e.configure({ openOnClick: false, HTMLAttributes: { class: "text-blue-600 underline underline-offset-2 dark:text-blue-400" } }), Be.configure({ allowBase64: true, HTMLAttributes: { class: "rounded-lg border border-gray-200 dark:border-odp-borderSoft max-w-full" } }), ze.configure({ HTMLAttributes: { class: "not-prose pl-2" } }), Ft.configure({ nested: true, HTMLAttributes: { class: "novel-task-item" } }), je, Oe.configure(), Ie, Re, De, $e, Fe.configure({ suggestion: { items: () => G, render: Ve } })], [G]), O = m.useCallback((a) => {
     let u = "";
@@ -466,7 +466,7 @@ function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile:
       if (u.markdown !== a) {
         N.current = u.markdown, $.current = true;
         const l = H.current;
-        l && !l.isDestroyed && (l.commands.setContent(Q(u.markdown)), q((h) => h + 1)), r == null ? void 0 : r(u.markdown);
+        l && !l.isDestroyed && (l.commands.setContent(Y(u.markdown)), q((h) => h + 1)), r == null ? void 0 : r(u.markdown);
       }
       return u;
     }), () => D(null);
@@ -642,7 +642,7 @@ function Tn({ value: e, onChange: r, onSave: i, theme: t = "light", currentFile:
   }, [C, P, r, e, E]);
   return d.jsxs("div", { ref: W, className: "relative flex h-full min-h-0 w-full flex-1 flex-col", children: [b && d.jsxs("div", { className: "absolute top-0 left-0 right-0 bottom-0 z-10 flex items-center justify-center gap-2 py-2 text-sm bg-blue-300/40 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 border-b border-blue-500/20", "aria-live": "polite", children: [d.jsx(Rt, { size: 16, className: "animate-spin shrink-0" }), d.jsxs("span", { children: ["\uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC911\u2026 ", Math.max(0, Math.min(100, Math.round(S))), "%"] }), typeof A == "function" && d.jsx("button", { type: "button", onClick: A, className: "ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950", children: "\uCDE8\uC18C" })] }), d.jsx(Ge, { children: d.jsxs(Ke, { className: "relative flex h-full min-h-0 w-full flex-1 flex-col", editorContainerProps: { className: ["flex min-h-0 flex-1 flex-col overflow-y-auto novel-editor-scroll-area", c ? an : "md:pr-0"].join(" "), style: { "--novel-toc-width": `${pe}px` } }, initialContent: ge, extensions: ke, editable: !s, onUpdate: we, onCreate: ({ editor: a }) => {
     H.current = a;
-  }, editorProps: { handleDrop: ye, handleDOMEvents: { keydown: (a, u) => !!Ue(u) }, attributes: { class: ve } }, children: [d.jsx(sn, { theme: t, open: c, onRequestClose: w, mobileOverlayTopPx: x, onWidthChange: fe }), d.jsx(on, { previewOnly: s, onUploadImage: o, isUploadingEditorImage: b, pasteImageUploadLockRef: he, insertWikiImagesFromPaths: J }), d.jsxs(Je, { className: "z-50 h-auto max-h-[min(330px,70vh)] w-[min(100%,18rem)] shrink-0 overflow-y-auto rounded-lg border border-gray-200 bg-white px-1 py-2 shadow-lg dark:border-odp-borderStrong dark:bg-odp-surface", children: [d.jsx(Xe, { className: "px-2 py-1.5 text-sm text-gray-500 dark:text-odp-muted", children: "\uACB0\uACFC \uC5C6\uC74C" }), d.jsx(Qe, { children: G.map((a) => d.jsxs(Ye, { value: a.title, keywords: a.searchTerms ?? [], onCommand: (u) => {
+  }, editorProps: { handleDrop: ye, handleDOMEvents: { keydown: (a, u) => !!Ue(u) }, attributes: { class: ve } }, children: [d.jsx(sn, { theme: t, open: c, onRequestClose: w, mobileOverlayTopPx: x, onWidthChange: fe }), d.jsx(on, { previewOnly: s, onUploadImage: o, isUploadingEditorImage: b, pasteImageUploadLockRef: he, insertWikiImagesFromPaths: J }), d.jsxs(Je, { className: "z-50 h-auto max-h-[min(330px,70vh)] w-[min(100%,18rem)] shrink-0 overflow-y-auto rounded-lg border border-gray-200 bg-white px-1 py-2 shadow-lg dark:border-odp-borderStrong dark:bg-odp-surface", children: [d.jsx(Xe, { className: "px-2 py-1.5 text-sm text-gray-500 dark:text-odp-muted", children: "\uACB0\uACFC \uC5C6\uC74C" }), d.jsx(Ye, { children: G.map((a) => d.jsxs(Qe, { value: a.title, keywords: a.searchTerms ?? [], onCommand: (u) => {
     var _a;
     return (_a = a.command) == null ? void 0 : _a.call(a, u);
   }, className: "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-100 aria-selected:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-bgSoft dark:aria-selected:bg-odp-bgSoft", children: [d.jsx("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft", children: a.icon }), d.jsxs("div", { className: "min-w-0 flex-1", children: [d.jsx("p", { className: "font-medium leading-snug", children: a.title }), d.jsx("p", { className: "text-xs text-gray-500 dark:text-odp-muted", children: a.description })] })] }, a.title)) })] }), d.jsx(Ze, {})] }) }, L ?? "novel"), d.jsx(Wt, { isOpen: !!E, onClose: () => U(null), path: (E == null ? void 0 : E.path) ?? "", initialWidth: (E == null ? void 0 : E.width) ?? "", initialHeight: (E == null ? void 0 : E.height) ?? "", imageSrc: (E == null ? void 0 : E.imageSrc) ?? "", onApply: Te, onCrop: Ne, onConvertToImgbb: Ee }, E ? `${E.path}|${E.width ?? ""}|${E.height ?? ""}|${E.occurrence ?? 0}|${E.nodePos ?? -1}` : "wiki-image-size-modal")] });

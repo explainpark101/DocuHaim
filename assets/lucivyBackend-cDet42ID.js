@@ -1,12 +1,12 @@
 import { _ as s, __tla as __tla_0 } from "./vendor-md-editor-CyUZNHY0.js";
-import { eN as y, eO as m, __tla as __tla_1 } from "./index-QBlKaQ6_.js";
+import { eS as y, eT as m, __tla as __tla_1 } from "./index-k2zzlr12.js";
 import { __tla as __tla_2 } from "./vendor-react-SY5QCjFA.js";
 import "./vendor-aws-BNw5jQBi.js";
 import "./vendor-lucide-DpPvFd8E.js";
 import "./vendor-motion-YU7ZxHqi.js";
 import "./vendor-radix--fTcLYkF.js";
 import "./vendor-zip-Bez6qchM.js";
-let f, l, H, N, v, U, g, k, O, P, E, D, C, x, c, V;
+let f, l, H, T, v, U, g, k, O, P, E, D, C, x, c, V;
 let __tla = Promise.all([
   (() => {
     try {
@@ -144,7 +144,7 @@ let __tla = Promise.all([
       }))
     };
   };
-  N = async function() {
+  T = async function() {
     if (e) {
       try {
         await e.destroy();
@@ -168,7 +168,7 @@ export {
   l as LUCIVY_OPFS_PATH,
   __tla,
   H as buildContainsAndQuery,
-  N as destroyLucivyIndex,
+  T as destroyLucivyIndex,
   v as ensureLucivyRuntime,
   U as getLucivyIndex,
   g as isLucivyOpen,
