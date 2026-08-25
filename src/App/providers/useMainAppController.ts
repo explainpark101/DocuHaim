@@ -4,6 +4,7 @@ import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
 import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
+import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useNavigate, useLocation } from 'react-router';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -390,6 +391,29 @@ export function useMainAppController() {
     setWebdavFolderLoadingPath,
   } = useVaultOwned();
   const {
+    currentFile,
+    setCurrentFile,
+    editorContent,
+    setEditorContent,
+    editorContentRef,
+    prevEditorContentRef,
+    currentFileRef,
+    editedFileName,
+    setEditedFileName,
+    isSaving,
+    setIsSaving,
+    savingTabIds,
+    setSavingTabIds,
+    editorType,
+    setEditorType,
+    encMdPrompt,
+    setEncMdPrompt,
+    isRefreshingFromDisk,
+    setIsRefreshingFromDisk,
+    isPullingFromRemote,
+    setIsPullingFromRemote,
+  } = useFileSessionOwned();
+  const {
     isUnlocked,
     showAuthModal,
     setShowAuthModal,
@@ -440,11 +464,7 @@ export function useMainAppController() {
   const [showRestoreLocalFolderModal, setShowRestoreLocalFolderModal] = useState(false);
   const [pendingLocalFolderName, setPendingLocalFolderName] = useState('');
   
-  // Editor State (mirrors of the active file tab)
-  const [currentFile, setCurrentFile] = useState(null);
-  const [editorContent, setEditorContent] = useState('');
-  /** 저장 시점의 최신 문자열 (Novel 디바운스 onChange 직후에도 동기 반영) */
-  const editorContentRef = useRef('');
+  // File/editor session owned by AppFileSessionStateProvider (useFileSessionOwned).
   // Workspace tab state: sole source is WorkspaceTabsProvider → useWorkspaceTabs.
   const workspaceTabsApi = useWorkspaceTabsCtx();
   const workspaceTabs = workspaceTabsApi.state;
@@ -457,18 +477,13 @@ export function useMainAppController() {
   workspaceTabsEnabledRef.current = workspaceTabsEnabled;
   const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
   const editedFileNameRef = useRef('');
-  const [isSaving, setIsSaving] = useState(false);
   /** Tab ids (`type:path`) currently writing in the background. */
-  const [savingTabIds, setSavingTabIds] = useState(() => []);
   const savingTabIdsRef = useRef(new Set());
-  const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
-  const [isPullingFromRemote, setIsPullingFromRemote] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [emptyTrashTarget, setEmptyTrashTarget] = useState(null);
   const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
   const [showHiddenFolders, setShowHiddenFolders] = useState(() => loadShowHiddenFolders());
   const [showTrashFolder, setShowTrashFolder] = useState(() => loadShowTrashFolder());
-  const [editorType, setEditorType] = useState(() => loadEditorType());
 
   const lockApp = useCallback(() => {
     clearPlaintextWebdavConfig();
@@ -522,8 +537,6 @@ export function useMainAppController() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalContext, setCreateModalContext] = useState(null);
   const [moveModalSelectPath, setMoveModalSelectPath] = useState(null);
-  /** @type {[{ title: string, message: string, error: string, resolve: Function, reject: Function } | null, Function]} */
-  const [encMdPrompt, setEncMdPrompt] = useState(null);
   const [addToNoteSelectPath, setAddToNoteSelectPath] = useState(null);
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const [showExportPasswordModal, setShowExportPasswordModal] = useState(false);
@@ -532,7 +545,6 @@ export function useMainAppController() {
   const [showSaveMethodModal, setShowSaveMethodModal] = useState(false);
   const [saveMethodModalCreds, setSaveMethodModalCreds] = useState(null);
   const [showUnsavedConfirmModal, setShowUnsavedConfirmModal] = useState(false);
-  const [editedFileName, setEditedFileName] = useState('');
   editedFileNameRef.current = editedFileName;
   const [showSuffixChangeConfirmModal, setShowSuffixChangeConfirmModal] = useState(false);
   const [suffixConfirmAction, setSuffixConfirmAction] = useState('renameOnly'); // 'renameOnly' | 'renameAndSave'
@@ -728,7 +740,6 @@ export function useMainAppController() {
 
   const s3TreeRef = useRef([]);
   const webdavTreeRef = useRef([]);
-  const currentFileRef = useRef(null);
   const prevHistoryViewPathRef = useRef(undefined);
   const suppressUnsavedNavGuardRef = useRef(false);
   const hasRestoredLastFileRef = useRef(false);
@@ -742,7 +753,6 @@ export function useMainAppController() {
   const openFileRequestSeqByKeyRef = useRef(new Map());
   /** Sidebar fills `{ open }` so file tabs can reuse TreeNode context menu. */
   const fileTabContextMenuRef = useRef(null);
-  const prevEditorContentRef = useRef('');
 
   const hasSeededTabsRestoreQueueRef = useRef(false);
   const hasRestoredPersistedWorkspaceTabsRef = useRef(false);
