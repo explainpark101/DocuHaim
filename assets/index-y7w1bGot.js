@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-D1QYVGAQ.js","assets/core-DhEqZVGG.js","assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-DXiO85YG.js","assets/vendor-md-editor-CyUZNHY0.js","assets/lucivyBackend-BetS4llo.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-mermaid-DRUnZ-RH.js","assets/MarkdownEditor-BGYDFITf.js","assets/previewFootnoteScroll-CqMOlxFp.js","assets/OpenAiCompatibleModelSelect-rwZl9wOj.js","assets/clipboardImageFiles-2uxCUyDT.js","assets/LlmAssistPanel-mnaP1EJs.js","assets/useLazyMermaidRender-BbixrJMl.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BHjN1VVl.css","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/useTocTitleWrap-BGnEItsT.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-DoFM0YQd.js","assets/TableStyleTemplateEditor-ylK5CGfN.js","assets/index-CG4BSG42.js","assets/useWikiImageHydration-BPPMsXhF.js","assets/NovelMarkdownEditor-BfGG9uV9.js","assets/vendor-novel-BLdKFIB7.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-DGzJwuRb.js","assets/ChatWithMyselfPane-C4XNS44-.js","assets/ChatImageBackgroundPicker-DISCUxsW.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-CWsk1xl8.js","assets/ChatWithMyselfPane-DAmWMq_1.css","assets/SettingsPage-Do-FIbUI.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-SjkZxWiK.js","assets/LlmAssistPopoutPage-DuSJ4ID_.js","assets/toHtml-DDpKvHPe.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-D1QYVGAQ.js","assets/core-DhEqZVGG.js","assets/vendor-git-diff-view-CtfFh0fN.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-git-diff-view-BNT5CNYT.css","assets/vendor-garu-ko-DXiO85YG.js","assets/vendor-md-editor-CyUZNHY0.js","assets/lucivyBackend-tW7DBbQL.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/vendor-mermaid-BoSnlBZK.js","assets/MarkdownEditor-9cTkelTJ.js","assets/previewFootnoteScroll-UiV4HE5u.js","assets/OpenAiCompatibleModelSelect-CdgiRmpo.js","assets/clipboardImageFiles-CyK7TYHr.js","assets/LlmAssistPanel-D-A_Sqen.js","assets/useLazyMermaidRender-CfDNDV81.js","assets/llmAssistImages-Ca7ILDRO.js","assets/style-BHjN1VVl.css","assets/MdEditorToolbarTooltips-DK-y1YT1.js","assets/useTocTitleWrap-BDEgpnhw.js","assets/vendor-image-crop-Loz3ogoo.js","assets/storageImageHydration-B4Qb4fqq.js","assets/TableStyleTemplateEditor-TRl49243.js","assets/index-CG4BSG42.js","assets/useWikiImageHydration-CX7nkgec.js","assets/NovelMarkdownEditor-CmEMV2J0.js","assets/vendor-novel-CGBuPPZ7.js","assets/vendor-novel-DQEnM3TT.css","assets/TocTitleWrapToggle-CQlKMMuI.js","assets/NovelMarkdownEditor-B-Raj9F-.css","assets/MonacoTextEditor-DBaA6JQu.js","assets/vendor-monaco-KBbFQb8S.js","assets/HtmlSvgPreviewEditor-Cz5vXOUB.js","assets/ChatWithMyselfPane-DTawJvHQ.js","assets/ChatImageBackgroundPicker-ymVSU-9A.js","assets/vendor-emoji-DK7KBAQp.js","assets/vendor-react-aria-BTFRsK0o.js","assets/ChatWithMyselfPane-DAmWMq_1.css","assets/SettingsPage-CDJAfcg6.js","assets/SliderWithScrubInput-B28d-DVd.js","assets/index-DlvtXhSC.js","assets/index-C4lDuuOm.js","assets/event-BK_86lmQ.js","assets/ExportPDFPage-B4dpcAKV.js","assets/LlmAssistPopoutPage-DbbUrudC.js","assets/toHtml-BHNOX-Mp.js"])))=>i.map(i=>d[i]);
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key2, value) => key2 in obj ? __defProp(obj, key2, { enumerable: true, configurable: true, writable: true, value }) : obj[key2] = value;
 var __publicField = (obj, key2, value) => __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value);
@@ -22848,7 +22848,7 @@ ${t}${r}`;
     };
   }
   async function lucivyApi() {
-    return __vitePreload(() => import("./lucivyBackend-BetS4llo.js").then(async (m2) => {
+    return __vitePreload(() => import("./lucivyBackend-tW7DBbQL.js").then(async (m2) => {
       await m2.__tla;
       return m2;
     }), __vite__mapDeps([7,6,3,8,9,10,11,12]));
@@ -26989,7 +26989,7 @@ ${t}
       this.backend = t.backend, t.getTree && (this.getTree = t.getTree), typeof t.storageKey == "string" && (this.storageKey = t.storageKey, this.refreshCheckpointStatus());
     }
     async loadLucivyApi() {
-      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-BetS4llo.js").then(async (m2) => {
+      return this.lucivyApi ? this.lucivyApi : (this.lucivyApi = await __vitePreload(() => import("./lucivyBackend-tW7DBbQL.js").then(async (m2) => {
         await m2.__tla;
         return m2;
       }), __vite__mapDeps([7,6,3,8,9,10,11,12])), this.lucivyApi);
@@ -57187,7 +57187,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     return renderSeq += 1, `haim-mermaid-${Date.now().toString(36)}-${renderSeq}`;
   }
   async function getMermaidInstance() {
-    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-DRUnZ-RH.js").then(async (m2) => {
+    return mermaidPromise || (mermaidPromise = __vitePreload(() => import("./vendor-mermaid-BoSnlBZK.js").then(async (m2) => {
       await m2.__tla;
       return m2;
     }), __vite__mapDeps([13,6,3])).then((e) => {
@@ -57643,7 +57643,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     const r = await e.text(), n = t || (e.name ? e.name.replace(/\.svg$/i, ".png") : `clipboard-${Date.now()}.png`);
     return rasterizeSvgTextToPngFile(r, n);
   };
-  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-BGYDFITf.js"), __vite__mapDeps([14,3,6,15,10,11,8,16,9,17,18,19,20,21,22,23,24,25,26,27,28,12]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-BfGG9uV9.js"), __vite__mapDeps([29,3,30,6,2,4,11,8,31,17,9,32,23,24,25,10,12,33]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([34,3,35]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-DGzJwuRb.js"), __vite__mapDeps([36,3,34,35,9,6,8,10,11,12])));
+  const MarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./MarkdownEditor-9cTkelTJ.js"), __vite__mapDeps([14,3,6,15,10,11,8,16,9,17,18,19,20,21,22,23,24,25,26,27,28,12]))), NovelMarkdownEditor = reactExports.lazy(() => __vitePreload(() => import("./NovelMarkdownEditor-CmEMV2J0.js"), __vite__mapDeps([29,3,30,6,2,4,11,8,31,17,9,32,23,24,25,10,12,33]))), MonacoTextEditor = reactExports.lazy(() => __vitePreload(() => import("./MonacoTextEditor-DBaA6JQu.js"), __vite__mapDeps([34,3,35]))), HtmlSvgPreviewEditor = reactExports.lazy(() => __vitePreload(() => import("./HtmlSvgPreviewEditor-Cz5vXOUB.js"), __vite__mapDeps([36,3,34,35,9,6,8,10,11,12])));
   function EditorPaneSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted",
@@ -59363,10 +59363,10 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       children: t
     });
   }
-  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-C4XNS44-.js").then(async (m2) => {
+  const ChatWithMyselfPane = reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-DTawJvHQ.js").then(async (m2) => {
     await m2.__tla;
     return m2;
-  }), __vite__mapDeps([37,3,6,38,27,11,8,9,10,24,25,28,19,39,40,2,4,30,31,12,41]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-Do-FIbUI.js").then(async (m2) => {
+  }), __vite__mapDeps([37,3,6,38,27,11,8,9,10,24,25,28,19,39,40,2,4,30,31,12,41]))), SettingsPage = reactExports.lazy(() => __vitePreload(() => import("./SettingsPage-CDJAfcg6.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([42,6,3,9,26,27,11,8,43,16,10,12])));
@@ -69904,7 +69904,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
   }
   function usePwaNewFileShortcut({ enabled: e = true, onNewFile: t }) {
     reactExports.useEffect(() => {
-      if (!e || !isPwaStandalone() || isDesktopApp()) return;
+      if (!e || !isPwaStandalone() && !isDesktopApp()) return;
       const r = (n) => {
         n.defaultPrevented || n.isComposing || !(n.ctrlKey || n.metaKey) || n.altKey || n.shiftKey || n.key !== "n" && n.key !== "N" || (n.preventDefault(), n.stopPropagation(), t());
       };
@@ -70804,7 +70804,7 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
     }
   }
   getLocalAppBuildId = function() {
-    return "139f777aa8577d8bd7227cce079a5bb9c0a463f0".trim();
+    return "811f0a26e0fb8397f378be920839fb103754eb4e".trim();
   };
   function buildIdRequestUrl() {
     return `/DocuHaim/build-id.json?t=${Date.now()}`;
@@ -70943,11 +70943,11 @@ l0,-` + (r + 144) + `c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
       updateServiceWorker: re
     };
   }
-  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-C4XNS44-.js").then(async (m2) => {
+  reactExports.lazy(() => __vitePreload(() => import("./ChatWithMyselfPane-DTawJvHQ.js").then(async (m2) => {
     await m2.__tla;
     return m2;
   }), __vite__mapDeps([37,3,6,38,27,11,8,9,10,24,25,28,19,39,40,2,4,30,31,12,41])));
-  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-SjkZxWiK.js"), __vite__mapDeps([47,3,6,19,9,11,8,15,10,38,27,43,23,24,25,20,32,28,12,21]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-DuSJ4ID_.js"), __vite__mapDeps([48,3,18,6,19,16,9,11,8,20,21,10,12])));
+  const ExportPDFPage = reactExports.lazy(() => __vitePreload(() => import("./ExportPDFPage-B4dpcAKV.js"), __vite__mapDeps([47,3,6,19,9,11,8,15,10,38,27,43,23,24,25,20,32,28,12,21]))), LlmAssistPopoutPage = reactExports.lazy(() => __vitePreload(() => import("./LlmAssistPopoutPage-DbbUrudC.js"), __vite__mapDeps([48,3,18,6,19,16,9,11,8,20,21,10,12])));
   function RouteSuspenseFallback() {
     return jsxRuntimeExports.jsx("div", {
       className: "flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted",
@@ -74463,7 +74463,7 @@ ${ae}`)) return {
       let Ee = remapMarkdownHeadingLevels(ar.current ?? "", de);
       if (ge === "html") {
         const { convertHaimTablesToHtmlInMarkdown: Oe } = await __vitePreload(async () => {
-          const { convertHaimTablesToHtmlInMarkdown: $e } = await import("./toHtml-DDpKvHPe.js");
+          const { convertHaimTablesToHtmlInMarkdown: $e } = await import("./toHtml-BHNOX-Mp.js");
           return {
             convertHaimTablesToHtmlInMarkdown: $e
           };
@@ -74644,7 +74644,7 @@ ${ae}`)) return {
         let Ce = remapMarkdownHeadingLevels(we, ie);
         if (de === "html") {
           const { convertHaimTablesToHtmlInMarkdown: We } = await __vitePreload(async () => {
-            const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-DDpKvHPe.js");
+            const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-BHNOX-Mp.js");
             return {
               convertHaimTablesToHtmlInMarkdown: De
             };
@@ -74689,7 +74689,7 @@ ${ae}`)) return {
           let Oe = remapMarkdownHeadingLevels(Ce, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: We } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-DDpKvHPe.js");
+              const { convertHaimTablesToHtmlInMarkdown: De } = await import("./toHtml-BHNOX-Mp.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: De
               };
@@ -74828,7 +74828,7 @@ ${ae}`)) return {
           let st = remapMarkdownHeadingLevels(De, de);
           if (ge === "html") {
             const { convertHaimTablesToHtmlInMarkdown: Xt } = await __vitePreload(async () => {
-              const { convertHaimTablesToHtmlInMarkdown: sr } = await import("./toHtml-DDpKvHPe.js");
+              const { convertHaimTablesToHtmlInMarkdown: sr } = await import("./toHtml-BHNOX-Mp.js");
               return {
                 convertHaimTablesToHtmlInMarkdown: sr
               };
