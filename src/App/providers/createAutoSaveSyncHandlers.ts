@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted auto-save factory; tighten types later
 import { isEncMdPath } from '@/utils/encMd';
 import { getActiveFileTab } from '@/utils/workspaceTabs';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
