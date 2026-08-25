@@ -1,0 +1,77 @@
+/* Collapsible Mermaid fences that embed base64 chart exports (Mermaid![](data:…)). */
+
+.md-editor-preview .haim-mermaid-embed {
+  margin: var(--md-theme-block-margin-y, 1em) 0;
+}
+
+.md-editor-preview .haim-mermaid-embed-source {
+  margin: 0;
+}
+
+.md-editor-preview .haim-mermaid-embed-source .md-editor-code-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.md-editor-preview .haim-mermaid-embed-source .md-editor-code-head::-webkit-details-marker {
+  display: none;
+}
+
+.md-editor-preview .haim-mermaid-embed-summary {
+  font-size: 0.8125rem;
+  opacity: 0.78;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.md-editor-preview .haim-mermaid-embed-pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+  max-height: min(52vh, 28rem);
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+  border-end-start-radius: var(--md-theme-code-block-radius, 0.375rem);
+  border-end-end-radius: var(--md-theme-code-block-radius, 0.375rem);
+}
+
+.md-editor-preview .haim-mermaid-embed-pre code {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.md-editor-preview .haim-mermaid-embed-render {
+  margin-top: 0.75rem;
+}
+
+.md-editor-preview .haim-mermaid-embed-render .md-editor-mermaid,
+.md-editor-preview .haim-mermaid-embed-render .haim-mermaid-image-embed {
+  margin: 0;
+}
+
+.md-editor-preview .haim-mermaid-embed-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.md-editor-preview details.haim-mermaid-embed-source:not([open]) .md-editor-code-head {
+  border-end-start-radius: var(--md-theme-code-block-radius, 0.375rem);
+  border-end-end-radius: var(--md-theme-code-block-radius, 0.375rem);
+}
+
+.md-editor-preview details.haim-mermaid-embed-source[open] .md-editor-code-head {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+#export-pdf-preview .md-editor-preview .haim-mermaid-embed-pre,
+.export-pdf-modal .md-editor-preview .haim-mermaid-embed-pre,
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .haim-mermaid-embed-pre {
+  max-height: none;
+}

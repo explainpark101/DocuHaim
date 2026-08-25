@@ -159,6 +159,7 @@ export function collectImgbbCopyCandidates(scope: ParentNode = document): ImgbbC
 
   for (const node of root.querySelectorAll('.md-editor-mermaid')) {
     if (!(node instanceof HTMLElement)) continue;
+    if (node.getAttribute('data-haim-mermaid-image') === '1') continue;
     const source = (
       (node.getAttribute('data-content') || '').trim()
       || getMermaidSourceFromElement(node)

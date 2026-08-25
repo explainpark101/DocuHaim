@@ -15,6 +15,7 @@ import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import '@/styles/md-editor-rt/plan-frontmatter.css';
 import '@/styles/md-editor-rt/preview-heading-fold.css';
+import '@/styles/md-editor-rt/mermaid-base64-fold.css';
 import '@/styles/md-editor-rt/footnotes.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';

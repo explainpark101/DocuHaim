@@ -313,7 +313,7 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     id: 'editor-heading-remap',
     title: '제목 단계 일괄 변경',
     description: '헤딩 리맵 도구 열기',
-    keywords: ['heading remap', '제목 변경', '헤딩'],
+    keywords: ['heading remap', '제목 변경', '헤딩', 'heading change', 'headingchange', '제목리맵', '헤딩리맵', '헤딩리매핑', '제목리매핑'],
   },
   {
     id: 'editor-checklist-progress',

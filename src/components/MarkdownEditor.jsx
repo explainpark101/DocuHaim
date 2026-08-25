@@ -54,6 +54,10 @@ import {
   applyBase64ImageFoldEnabled,
   base64ImageFoldExtension,
 } from '@/utils/base64ImageFoldExtension';
+import {
+  applyMermaidBase64FoldEnabled,
+  mermaidBase64FoldExtension,
+} from '@/utils/mermaidBase64FoldExtension';
 import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
@@ -528,6 +532,10 @@ config({
         extension: base64ImageFoldExtension(loadBase64ImageFoldEnabled()),
       },
       {
+        type: 'mermaidBase64Fold',
+        extension: mermaidBase64FoldExtension(loadBase64ImageFoldEnabled()),
+      },
+      {
         // md-editor-rt re-injects built-in completions; close them when preference is off.
         type: 'autocompleteGate',
         extension: EditorView.updateListener.of((update) => {
@@ -956,6 +964,7 @@ export default function MarkdownEditor({
       const view = api?.getEditorView?.();
       if (!view) return false;
       applyBase64ImageFoldEnabled(view, foldBase64Images);
+      applyMermaidBase64FoldEnabled(view, foldBase64Images);
       return true;
     };
     if (apply()) return undefined;

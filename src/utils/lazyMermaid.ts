@@ -59,13 +59,25 @@ export function isLazyMermaidPlaceholder(el: Element): boolean {
   if (!(el instanceof HTMLElement)) return false;
   if (!el.classList.contains('md-editor-mermaid')) return false;
   if (el.getAttribute('data-processed') != null) return false;
+  if (el.getAttribute('data-haim-mermaid-image') === '1') return false;
   if (el.getAttribute('data-closed') === 'false') return false;
-  return el.tagName === 'DIV' || el.tagName === 'P';
+  if (el.tagName !== 'DIV' && el.tagName !== 'P') return false;
+  if (el.closest('[data-haim-mermaid-embed]')) return true;
+  return Boolean((el.textContent || el.innerText || '').trim());
+}
+
+function readEmbedPreSource(el: HTMLElement): string {
+  const embed = el.closest('[data-haim-mermaid-embed]');
+  if (!embed) return '';
+  const pre = embed.querySelector('.haim-mermaid-embed-pre');
+  return (pre?.textContent || '').trim();
 }
 
 export function getMermaidSourceFromElement(el: HTMLElement): string {
   const fromAttr = (el.getAttribute('data-content') || '').trim();
   if (fromAttr) return fromAttr;
+  const fromEmbedPre = readEmbedPreSource(el);
+  if (fromEmbedPre) return fromEmbedPre;
   // Prefer textContent: innerText collapses newlines when white-space is not
   // `pre` (e.g. offscreen/print hosts). That turns `subgraph 고객 영역` into a
   // single-line parse error while simple `A --> B` diagrams still work.
