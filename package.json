@@ -29,9 +29,9 @@
     "tauri:android:init": "tauri android init --ci",
     "tauri:android:dev": "bun run sync:tauri-version && tauri android dev",
     "tauri:android:build": "bun run sync:tauri-version && tauri android build --apk",
-    "tauri:cleanup": "rm -rf src-tauri/target src-tauri/gen/schemas",
-    "//": "clean up the tauri build directory and cache (keep gen/android project)",
-    "cleanup:tauri": "rm -rf src-tauri/target src-tauri/gen/schemas"
+    "tauri:cleanup": "rm -rf src-tauri/target",
+    "//": "clean up the tauri build directory and cache (keep gen/android project and gen/schemas)",
+    "cleanup:tauri": "rm -rf src-tauri/target"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",
