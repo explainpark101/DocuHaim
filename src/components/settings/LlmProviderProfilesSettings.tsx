@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { RadioGroup } from 'radix-ui';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -71,15 +71,31 @@ export default function LlmProviderProfilesSettings({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<LlmProviderProfile | null>(null);
   const [modelTick, setModelTick] = useState(0);
+  const [draftModel, setDraftModel] = useState('');
 
   const editingProfile = useMemo(
     () => (editingId ? profiles.find((p) => p.id === editingId) ?? null : null),
     [editingId, profiles],
   );
 
-  const modelValue = draft
-    ? loadLastUsedModelForProfile(draft.id, draft.kind) || defaultModelForKind(draft.kind)
-    : '';
+  useEffect(() => {
+    if (!draft) {
+      setDraftModel('');
+      return;
+    }
+    setDraftModel(
+      loadLastUsedModelForProfile(draft.id, draft.kind) || defaultModelForKind(draft.kind),
+    );
+  }, [draft?.id, draft?.kind]);
+
+  const handleDraftModelChange = useCallback(
+    (next: string) => {
+      if (!draft) return;
+      setDraftModel(next);
+      saveLastUsedModelForProfile(draft.id, next);
+    },
+    [draft],
+  );
 
   const startCreate = () => {
     setEditingId(null);
@@ -242,9 +258,10 @@ export default function LlmProviderProfilesSettings({
                       return;
                     }
                     const nextKind = next as LlmProviderKind;
+                    const nextDefaultModel = defaultModelForKind(nextKind);
                     setDraft((p) => {
                       if (!p) return p;
-                      saveLastUsedModelForProfile(p.id, defaultModelForKind(nextKind));
+                      saveLastUsedModelForProfile(p.id, nextDefaultModel);
                       return {
                         ...p,
                         kind: nextKind,
@@ -254,6 +271,7 @@ export default function LlmProviderProfilesSettings({
                           Boolean(editingProfile.apiKey.trim()),
                       };
                     });
+                    setDraftModel(nextDefaultModel);
                     setModelTick((n) => n + 1);
                   }}
                   aria-label="제공자 종류"
@@ -325,10 +343,8 @@ export default function LlmProviderProfilesSettings({
                       (editingProfile?.kind === LLM_PROVIDER_GEMINI ? editingProfile.apiKey : '')
                     }
                     profileId={draft.id}
-                    value={modelValue}
-                    onChange={(next: string) => {
-                      saveLastUsedModelForProfile(draft.id, next);
-                    }}
+                    value={draftModel}
+                    onChange={handleDraftModelChange}
                     autoLoad={draft.hasStoredKey || Boolean(draft.keyInput.trim())}
                   />
                 ) : (
@@ -341,10 +357,8 @@ export default function LlmProviderProfilesSettings({
                         ? editingProfile.apiKey
                         : '')
                     }
-                    value={modelValue}
-                    onChange={(next: string) => {
-                      saveLastUsedModelForProfile(draft.id, next);
-                    }}
+                    value={draftModel}
+                    onChange={handleDraftModelChange}
                     autoLoad={Boolean(normalizeOpenAiCompatibleBaseUrl(draft.baseUrl))}
                   />
                 )}
