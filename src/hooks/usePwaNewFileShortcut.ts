@@ -8,16 +8,17 @@ type UsePwaNewFileShortcutOptions = {
 };
 
 /**
- * PWA-only: Ctrl/Cmd+N opens the create-file flow (parent = focused file dir)
- * instead of a new browser window.
+ * PWA / Tauri: Ctrl/Cmd+N opens the create-file flow (parent = focused file dir)
+ * instead of a new browser window. Regular browser tabs are excluded.
  */
 export function usePwaNewFileShortcut({
   enabled = true,
   onNewFile,
 }: UsePwaNewFileShortcutOptions): void {
   useEffect(() => {
-    if (!enabled || !isPwaStandalone()) return;
-    if (isDesktopApp()) return;
+    if (!enabled) return;
+    // Browser tabs: keep native Cmd+N (new window).
+    if (!isPwaStandalone() && !isDesktopApp()) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.isComposing) return;

@@ -7387,7 +7387,7 @@ function MainApp() {
     ],
   );
 
-  /** Cmd/Ctrl+N (PWA) / empty-session create — parent of focused file, or vault root on chat/settings. */
+  /** Cmd/Ctrl+N (PWA / Tauri) / empty-session create — parent of focused file, or vault root on chat/settings. */
   const requestNewTempFile = useCallback(() => {
     flushSessionEditorToWorkspace();
     const existing = sessionWorkspaceRef.current;
