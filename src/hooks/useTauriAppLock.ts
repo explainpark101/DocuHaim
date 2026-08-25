@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { hasDesktopBiometricLockMarker } from '@/utils/desktopStrongholdSecrets';
+import { hasDesktopAppEntryLock } from '@/utils/desktopAppEntryLock';
 import { isTauriApp } from '@/utils/tauriPlatform';
 
 type UseTauriAppLockOptions = {
@@ -16,7 +16,7 @@ export function useTauriAppLock({ isUnlocked, onLock }: UseTauriAppLockOptions):
   unlockedRef.current = isUnlocked;
 
   useEffect(() => {
-    if (!isTauriApp() || !hasDesktopBiometricLockMarker()) return;
+    if (!isTauriApp() || !hasDesktopAppEntryLock()) return;
 
     const lockIfNeeded = () => {
       if (unlockedRef.current) onLock();

@@ -29,6 +29,8 @@ const KEY_S3_CREDS = 's3-creds';
 const KEY_WEBDAV_CONFIG = 'webdav-config';
 const KEY_BIOMETRIC_LOCK = 'biometric-lock-v1';
 const KEY_PASSWORD_ENCRYPTED_CREDS = 'password-encrypted-creds-v1';
+const KEY_PASSWORD_ENCRYPTED_WEBDAV = 'password-encrypted-webdav-v1';
+const KEY_APP_ENTRY_LOCK = 'app-entry-lock-v1';
 const KEY_MASTER_PASSWORD_WRAP = 'master-password-wrap-v1';
 const KEY_WEBAUTHN_MARKER = 'webauthn-marker-v1';
 
@@ -36,6 +38,10 @@ const KEY_WEBAUTHN_MARKER = 'webauthn-marker-v1';
 export const DESKTOP_STRONGHOLD_CREDS_MARKER = 's3haim_desktop_stronghold_creds';
 /** Sync marker: biometric app lock is enabled (Tauri only). */
 export const DESKTOP_BIOMETRIC_LOCK_MARKER = 's3haim_desktop_biometric_lock';
+/** Sync marker: desktop app entry lock mode (Tauri only). */
+export const DESKTOP_ENTRY_LOCK_MODE_MARKER = 's3haim_desktop_entry_lock_mode';
+
+export type DesktopAppEntryLockMode = 'off' | 'password' | 'biometric';
 
 const LEGACY_ENCRYPTED_KEY = 's3NotesEncrypted';
 const LEGACY_WEBAUTHN_KEY = 's3NotesWebAuthn';
@@ -155,6 +161,80 @@ export async function loadPasswordEncryptedCredsBlob(): Promise<unknown | null> 
 export async function clearPasswordEncryptedCredsBlob(): Promise<void> {
   if (!isDesktopApp()) return;
   await removeRecord(KEY_PASSWORD_ENCRYPTED_CREDS);
+}
+
+export async function savePasswordEncryptedWebdavBlob(blob: unknown): Promise<void> {
+  if (!isDesktopApp()) return;
+  await setRecord(KEY_PASSWORD_ENCRYPTED_WEBDAV, JSON.stringify(blob));
+}
+
+export async function loadPasswordEncryptedWebdavBlob(): Promise<unknown | null> {
+  if (!isDesktopApp()) return null;
+  const raw = await getRecord(KEY_PASSWORD_ENCRYPTED_WEBDAV);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPasswordEncryptedWebdavBlob(): Promise<void> {
+  if (!isDesktopApp()) return;
+  await removeRecord(KEY_PASSWORD_ENCRYPTED_WEBDAV);
+}
+
+function markDesktopEntryLockMode(mode: DesktopAppEntryLockMode) {
+  try {
+    if (mode === 'off') {
+      localStorage.removeItem(DESKTOP_ENTRY_LOCK_MODE_MARKER);
+    } else {
+      localStorage.setItem(DESKTOP_ENTRY_LOCK_MODE_MARKER, mode);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function getDesktopAppEntryLockModeSync(): DesktopAppEntryLockMode {
+  if (!isDesktopApp()) return 'off';
+  try {
+    const raw = localStorage.getItem(DESKTOP_ENTRY_LOCK_MODE_MARKER);
+    if (raw === 'password' || raw === 'biometric' || raw === 'off') return raw;
+    if (hasDesktopBiometricLockMarker()) return 'biometric';
+    return 'off';
+  } catch {
+    return 'off';
+  }
+}
+
+export async function loadDesktopAppEntryLockMode(): Promise<DesktopAppEntryLockMode | null> {
+  if (!isDesktopApp()) return null;
+  const raw = await getRecord(KEY_APP_ENTRY_LOCK);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { mode?: DesktopAppEntryLockMode };
+    if (parsed?.mode === 'off' || parsed?.mode === 'password' || parsed?.mode === 'biometric') {
+      return parsed.mode;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveDesktopAppEntryLockMode(mode: DesktopAppEntryLockMode): Promise<void> {
+  if (!isDesktopApp()) return;
+  if (mode === 'off') {
+    await removeRecord(KEY_APP_ENTRY_LOCK);
+    markDesktopEntryLockMode('off');
+    return;
+  }
+  await setRecord(
+    KEY_APP_ENTRY_LOCK,
+    JSON.stringify({ mode, updatedAt: new Date().toISOString() }),
+  );
+  markDesktopEntryLockMode(mode);
 }
 
 type MasterPasswordWrap = {
@@ -495,6 +575,11 @@ export async function tryRestoreDesktopStrongholdSession(): Promise<{
   await migrateLegacyDesktopSecretsToStronghold();
 
   if (await isBiometricLockEnabled()) {
+    return { creds: null, webdav: null };
+  }
+
+  const entryLockMode = getDesktopAppEntryLockModeSync();
+  if (entryLockMode === 'password') {
     return { creds: null, webdav: null };
   }
 

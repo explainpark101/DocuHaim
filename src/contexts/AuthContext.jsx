@@ -6,7 +6,7 @@
  */
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { clearAuthSession, saveAuthSession } from '@/utils/authSession';
-import { hasDesktopBiometricLockMarker } from '@/utils/desktopStrongholdSecrets';
+import { getDesktopAppEntryLockModeSync, hasDesktopBiometricLockMarker } from '@/utils/desktopStrongholdSecrets';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 
 const AuthContext = createContext(null);
@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!isUnlocked) return;
-    if (isDesktopApp() && hasDesktopBiometricLockMarker()) {
+    if (isDesktopApp() && (hasDesktopBiometricLockMarker() || getDesktopAppEntryLockModeSync() === 'password')) {
       clearAuthSession();
       return;
     }

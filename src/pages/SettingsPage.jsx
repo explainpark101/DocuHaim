@@ -60,6 +60,7 @@ import {
 import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfilesSettings';
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
+import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -326,6 +327,8 @@ export default function SettingsPage({
       </div>
 
       <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <DesktopAppEntryLockSettings s3Creds={s3Creds} webdavConfig={webdavConfig} />
+
         <div
           id="settings-storage"
           tabIndex={-1}

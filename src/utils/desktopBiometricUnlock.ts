@@ -122,11 +122,27 @@ export async function updateDesktopBiometricWrappedPassword(
   await saveMasterPasswordWrap(newMasterPassword);
 }
 
-export async function disableDesktopBiometricUnlock(): Promise<void> {
+/** Clear biometric enrollment only — keeps password-encrypted Stronghold blobs intact. */
+export async function clearDesktopBiometricEnrollment(): Promise<void> {
   setDesktopBiometryMarker(null);
   await setBiometricLockEnabled(false);
   await clearMasterPasswordWrap();
+  await removeLegacyKeychainEntries();
+}
+
+export async function disableDesktopBiometricUnlock(): Promise<void> {
+  await clearDesktopBiometricEnrollment();
   await clearPasswordEncryptedCredsBlob();
+}
+
+async function enrollDesktopBiometricGate(): Promise<void> {
+  if (!(await isTauriBiometricAvailable())) {
+    throw new Error('Biometric authentication is not available on this device.');
+  }
+  await promptTauriBiometric(TAURI_BIOMETRIC_REASON_REGISTER);
+  await clearMasterPasswordWrap();
+  await setBiometricLockEnabled(true);
+  setDesktopBiometryMarker({ desktopBiometry: true, mode: 'creds' });
   await removeLegacyKeychainEntries();
 }
 
@@ -134,21 +150,19 @@ export async function disableDesktopBiometricUnlock(): Promise<void> {
  * Store S3/WebDAV creds in Stronghold with biometric app lock (Tauri).
  */
 export async function saveCredsWithDesktopBiometric(creds: unknown): Promise<void> {
-  if (!(await isTauriBiometricAvailable())) {
-    throw new Error('Biometric authentication is not available on this device.');
-  }
-  await promptTauriBiometric(TAURI_BIOMETRIC_REASON_REGISTER);
+  await enrollDesktopBiometricGate();
   await saveDesktopCreds(creds);
-  await clearMasterPasswordWrap();
   await clearPasswordEncryptedCredsBlob();
-  await setBiometricLockEnabled(true);
-  setDesktopBiometryMarker({ desktopBiometry: true, mode: 'creds' });
-  await removeLegacyKeychainEntries();
   try {
     localStorage.removeItem('s3NotesEncrypted');
   } catch {
     // ignore
   }
+}
+
+/** Biometric app gate without requiring stored S3 creds (e.g. Local Haim only). */
+export async function enableDesktopBiometricGateOnly(): Promise<void> {
+  await enrollDesktopBiometricGate();
 }
 
 export async function loadCredsWithDesktopBiometric(): Promise<unknown> {

@@ -337,6 +337,7 @@ import { tryRestoreAuthSession } from '@/utils/authSession';
 import {
   hasDesktopBiometricLockMarker,
   hasDesktopStoredCredsMarker,
+  getDesktopAppEntryLockModeSync,
   loadDesktopWebdavConfig,
   loadPasswordEncryptedCredsBlob,
   migrateLegacyDesktopSecretsToStronghold,
@@ -345,6 +346,7 @@ import {
   savePasswordEncryptedCredsBlob,
   tryRestoreDesktopStrongholdSession,
 } from '@/utils/desktopStrongholdSecrets';
+import { decryptDesktopPasswordWebdav, refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
 import { unlockDesktopWithBiometricGate } from '@/utils/desktopBiometricUnlock';
 import { useTauriAppLock } from '@/hooks/useTauriAppLock';
 import { applyDocumentTheme } from '@/utils/documentTheme';
@@ -1426,9 +1428,17 @@ function MainApp() {
         try {
           await migrateLegacyDesktopSecretsToStronghold();
           if (cancelled) return;
-          if (hasDesktopBiometricLockMarker() && hasDesktopStoredCredsMarker()) {
+          if (getDesktopAppEntryLockModeSync() === 'biometric' || (hasDesktopBiometricLockMarker() && hasDesktopStoredCredsMarker())) {
             setAuthWanted(true);
             return;
+          }
+          if (getDesktopAppEntryLockModeSync() === 'password') {
+            const passwordBlob = await loadPasswordEncryptedCredsBlob();
+            if (cancelled) return;
+            if (passwordBlob) {
+              setAuthWanted(true);
+              return;
+            }
           }
           const desktop = await tryRestoreDesktopStrongholdSession();
           if (cancelled) return;
@@ -1480,8 +1490,7 @@ function MainApp() {
 
   const canUnlockWithWebAuthnForModal =
     (isDesktopApp() &&
-      hasDesktopBiometricLockMarker() &&
-      hasDesktopStoredCredsMarker() &&
+      getDesktopAppEntryLockModeSync() === 'biometric' &&
       webauthnAvailable) ||
     (webauthnAvailable &&
       !!getStoredWebAuthn() &&
@@ -1515,6 +1524,13 @@ function MainApp() {
       }
       const creds = JSON.parse(decryptedStr);
       if (isDesktopApp()) {
+        const entryLockMode = getDesktopAppEntryLockModeSync();
+        if (entryLockMode === 'password') {
+          const decryptedWebdav = await decryptDesktopPasswordWebdav(password);
+          if (decryptedWebdav) setWebdavConfig(decryptedWebdav);
+          unlock(creds, password);
+          return;
+        }
         await saveDesktopCreds(creds);
         if (stored) {
           await savePasswordEncryptedCredsBlob(JSON.parse(stored));
@@ -1542,12 +1558,15 @@ function MainApp() {
   };
 
   const handleUnlockWithWebAuthn = async () => {
-    if (isDesktopApp() && hasDesktopBiometricLockMarker() && hasDesktopStoredCredsMarker()) {
+    if (isDesktopApp() && getDesktopAppEntryLockModeSync() === 'biometric') {
       const desktop = await unlockDesktopWithBiometricGate();
-      if (!desktop.creds) throw new Error('저장된 연결 정보가 없습니다.');
-      unlock(desktop.creds, '');
-      if (desktop.webdav) setWebdavConfig(desktop.webdav);
-      loadS3Files(desktop.creds);
+      if (desktop.creds) {
+        unlock(desktop.creds, '');
+        if (desktop.webdav) setWebdavConfig(desktop.webdav);
+        loadS3Files(desktop.creds);
+      } else {
+        proceedWithoutStoredCreds();
+      }
       navigate('/');
       return;
     }
@@ -1636,6 +1655,14 @@ function MainApp() {
     'imgbbApiKey',
   ];
 
+  const S3_CONNECTION_KEYS = [
+    'accessKeyId',
+    'secretAccessKey',
+    'region',
+    'bucket',
+    'endpoint',
+  ];
+
   const normalizeCredsForCompare = (creds) => {
     if (!creds || typeof creds !== 'object') return null;
     const out = {};
@@ -1656,11 +1683,33 @@ function MainApp() {
     return CREDS_COMPARE_KEYS.some((key) => a[key] !== b[key]);
   };
 
+  const isS3ConnectionDirty = (formCreds, savedCreds) => {
+    const a = normalizeCredsForCompare(formCreds);
+    const b = normalizeCredsForCompare(savedCreds);
+    if (!a || !b) return !!a !== !!b;
+    return S3_CONNECTION_KEYS.some((key) => a[key] !== b[key]);
+  };
+
+  const shouldConfirmDesktopCredsOverwrite = (formCreds, savedCreds) => {
+    if (!isDesktopApp()) return true;
+    return isS3ConnectionDirty(formCreds, savedCreds);
+  };
+
   const handleSaveS3Creds = (creds) => {
     if (isDesktopApp()) {
       void (async () => {
         try {
-          if (hasStoredCreds()) {
+          if (getDesktopAppEntryLockModeSync() === 'password' && masterPassword) {
+            await refreshDesktopPasswordEntryLockSecrets(masterPassword, creds, webdavConfig);
+            setS3Creds(creds);
+            loadS3Files(creds);
+            showAlert({
+              title: '연결 정보',
+              message: '연결 정보 업데이트가 완료되었습니다.',
+            });
+            return;
+          }
+          if (hasStoredCreds() && shouldConfirmDesktopCredsOverwrite(creds, s3Creds)) {
             setPendingPasswordSave({ creds, password: '', options: { stayOnSettings: true } });
             setShowOverwriteCredsConfirmModal(true);
             return;
@@ -1707,7 +1756,9 @@ function MainApp() {
 
   const hasStoredCreds = () => {
     if (isDesktopApp()) {
-      return hasDesktopStoredCredsMarker();
+      return (
+        hasDesktopStoredCredsMarker() || getDesktopAppEntryLockModeSync() !== 'off'
+      );
     }
     return (
       typeof localStorage !== 'undefined' &&
@@ -1717,6 +1768,10 @@ function MainApp() {
 
   const requestSaveEncryptedSettings = (creds, password, options = {}) => {
     if (hasStoredCreds()) {
+      if (isDesktopApp() && !shouldConfirmDesktopCredsOverwrite(creds, s3Creds)) {
+        void saveEncryptedSettings(creds, password, options);
+        return;
+      }
       setPendingPasswordSave({ creds, password, options });
       setShowOverwriteCredsConfirmModal(true);
       return;
