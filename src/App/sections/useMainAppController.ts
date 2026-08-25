@@ -1,7 +1,7 @@
 // @ts-nocheck — migrated from App.jsx; typed gradually in later PRs
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import { getParentPathsToExpand, getExt } from './helpers';
-import { createAutoSaveSyncHandlers } from './appAutoSaveSync';
+import { getParentPathsToExpand, getExt } from '@/App/helpers';
+import { createAutoSaveSyncHandlers } from '@/App/sections/appAutoSaveSync';
 import { Routes, Route, useNavigate, useLocation } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
