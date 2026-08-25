@@ -1,21 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { AppBootstrapContext } from '@/App/context/AppBootstrapContext';
-import { applyDocumentTheme } from '@/utils/documentTheme';
-
-function readInitialTheme(): string {
-  if (typeof window === 'undefined') return 'light';
-  const stored = window.localStorage.getItem('theme');
-  if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
+import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
 
 type LogicSlice = Omit<
   NonNullable<React.ContextType<typeof AppBootstrapContext>>,
-  'theme' | 'setTheme'
+  'theme' | 'setTheme' | 'scriptsLoaded' | 'shareBlockingAuth' | 'setShareBlockingAuth'
 >;
 
 /**
- * Owns document theme. Auth/share/scriptsLoaded come from AppLogic (controller) slice.
+ * Publishes full bootstrap context = owned state + auth/unlock handlers from AppLogic.
  */
 export function AppBootstrapProvider({
   children,
@@ -24,17 +17,10 @@ export function AppBootstrapProvider({
   children: ReactNode;
   logic: LogicSlice;
 }) {
-  const [theme, setTheme] = useState(readInitialTheme);
-
-  useEffect(() => {
-    applyDocumentTheme(theme);
-    window.localStorage.setItem('theme', theme);
-  }, [theme]);
-
+  const owned = useBootstrapOwned();
   const value = {
     ...logic,
-    theme,
-    setTheme,
+    ...owned,
   };
 
   return (

@@ -23,6 +23,8 @@ function AppShellMerge({ controller, children }: { controller: any; children: Re
       theme: bootstrap.theme,
       setTheme: bootstrap.setTheme,
       scriptsLoaded: bootstrap.scriptsLoaded,
+      shareBlockingAuth: bootstrap.shareBlockingAuth,
+      setShareBlockingAuth: bootstrap.setShareBlockingAuth,
     }),
     [controller, autoSave, bootstrap],
   );
@@ -39,8 +41,6 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
 
   const bootstrapLogic = useMemo(
     () => ({
-      scriptsLoaded: c.scriptsLoaded,
-      shareBlockingAuth: c.shareBlockingAuth,
       showAuthModal: c.showAuthModal,
       handleUnlock: c.handleUnlock,
       handleUnlockWithWebAuthn: c.handleUnlockWithWebAuthn,

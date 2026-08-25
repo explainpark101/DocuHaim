@@ -1,4 +1,5 @@
 export { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
+export { AppBootstrapStateProvider } from '@/App/providers/AppBootstrapStateProvider';
 export { VaultProvider } from '@/App/providers/VaultProvider';
 export { WorkspaceTabsProvider } from '@/App/providers/WorkspaceTabsProvider';
 export { FileSessionProvider } from '@/App/providers/FileSessionProvider';

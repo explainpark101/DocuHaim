@@ -1,10 +1,9 @@
 // @ts-nocheck — migrated from App.jsx; typed gradually in later PRs
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
-import { Routes, Route, useNavigate, useLocation } from 'react-router';
-import { IconX } from '@/components/icons';
-import { ChevronsRight } from 'lucide-react';
+import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
+import { useNavigate, useLocation } from 'react-router';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
   isWebAuthnPRFSupported,
@@ -30,7 +29,6 @@ import {
   upsertTreeTransferBusy,
   removeTreeTransferBusy,
 } from '@/utils/treeTransferBusy';
-import TreeNameConflictModal from '@/components/modals/TreeNameConflictModal';
 import {
   createS3Client,
   listObjectsV2,
@@ -45,10 +43,6 @@ import {
   getSignedGetUrl,
   streamS3ObjectToWritable,
 } from '@/utils/s3Client';
-import Sidebar from '@/components/Sidebar';
-import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
-import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
-import DesktopTitlebar from '@/components/desktop/DesktopTitlebar';
 import ShareTargetGate, {
   useChatStorageCtx,
 } from '@/components/chatWithMyself/ShareTargetGate';
@@ -153,8 +147,6 @@ import {
   tryUnlockEncMdContent,
 } from '@/utils/encMd';
 
-const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
-const ExportPDFPage = lazy(() => import('@/pages/ExportPDFPage'));
 import { useRecording } from '@/hooks/useRecording';
 import { getSyncKeyForRecording, runEncodeAndWritePipeline } from '@/utils/recordingPipeline';
 import {
@@ -366,6 +358,11 @@ export function useMainAppController() {
   const { showToast } = useToast();
   const auth = useAuth();
   const {
+    scriptsLoaded,
+    shareBlockingAuth,
+    setShareBlockingAuth,
+  } = useBootstrapOwned();
+  const {
     isUnlocked,
     showAuthModal,
     setShowAuthModal,
@@ -405,8 +402,6 @@ export function useMainAppController() {
     clearAllLlmApiKeySessions();
   }, [s3Creds?.googleAiStudioApiKey, s3Creds?.openaiCompatibleApiKey, s3Creds?.openaiCompatibleBaseUrl, s3Creds?.llmProviderProfiles]);
 
-  const [scriptsLoaded, setScriptsLoaded] = useState(false);
-  
   // File Systems State
   const [s3Tree, setS3Tree] = useState([]);
   const [localTree, setLocalTree] = useState([]);
@@ -1387,8 +1382,7 @@ export function useMainAppController() {
   // Same-tab reload: restore unlock from sessionStorage before showing AuthModal.
   // If a share-target chooser is open, defer AuthModal until that flow finishes.
   const [authWanted, setAuthWanted] = useState(false);
-  // True until ShareTargetGate finishes bootstrap / chooser — prevents AuthModal flash.
-  const [shareBlockingAuth, setShareBlockingAuth] = useState(true);
+  // shareBlockingAuth owned by AppBootstrapStateProvider
   const [shareGroupSend, setShareGroupSend] = useState(null);
   /** Chat pane host for Sidebar-portaled tree→note-share droppable. */
   const [chatAttachDropHost, setChatAttachDropHost] = useState(null);
@@ -1402,7 +1396,6 @@ export function useMainAppController() {
   }, []);
 
   useEffect(() => {
-    setScriptsLoaded(true);
     if (isUnlocked) return;
 
     let cancelled = false;

@@ -6,6 +6,7 @@ export type AppBootstrapValue = {
   theme: string;
   setTheme: (theme: string) => void;
   shareBlockingAuth: boolean;
+  setShareBlockingAuth: (blocking: boolean) => void;
   showAuthModal: boolean;
   handleUnlock: (...args: any[]) => any;
   handleUnlockWithWebAuthn: (...args: any[]) => any;
