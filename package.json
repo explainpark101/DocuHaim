@@ -22,6 +22,8 @@
     "tauri": "tauri",
     "tauri:dev": "bun run sync:tauri-version && tauri dev",
     "tauri:build": "bun run sync:tauri-version && tauri build",
+    "macos:adhoc": "bun scripts/macos-adhoc-sign.mjs",
+    "tauri:macos": "bun run macos:adhoc -- --build",
     "sync:tauri-version": "bun scripts/sync-tauri-version-from-package.mjs",
     "tauri:vite": "cross-env VITE_ELECTRON=true vite",
     "//": "clean up the tauri build directory and cache",
