@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck — connects shell Sidebar to domain contexts
+// @ts-nocheck — SidebarConnected still takes a wide prop surface into untyped Sidebar.jsx; keep until Sidebar is typed
 import Sidebar from '@/components/shell/Sidebar.jsx';
 import { useVault } from '@/App/hooks/useVault';
 import { useTreeOps } from '@/App/hooks/useTreeOps';

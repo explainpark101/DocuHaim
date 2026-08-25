@@ -19,6 +19,18 @@ export type TreeOpsValue = {
   newFileDefaultParentPath: string;
   requestUploadFile: (...args: any[]) => any;
   requestUploadFolder: (...args: any[]) => any;
+  handleUploadFileSelect: (...args: any[]) => any;
+  handleUploadFolderSelect: (...args: any[]) => any;
+  handleRequestMoveFileFromSidebar: (...args: any[]) => any;
+  handleConfirmMoveFileFromSidebar: (...args: any[]) => any;
+  handleRequestMove: (...args: any[]) => any;
+  handleConfirmMove: (...args: any[]) => any;
+  handleConfirmMoveFolder: (...args: any[]) => any;
+  confirmDelete: (...args: any[]) => any;
+  confirmEmptyTrash: (...args: any[]) => any;
+  associatedRecordings: any[];
+  applyWorkspaceFilePathRetarget: (...args: any[]) => any;
+  applyWorkspaceFolderPathRetarget: (...args: any[]) => any;
   handleTreeNodeSelect: (...args: any[]) => any;
   handleDragEndNode: (...args: any[]) => any;
   handleDropOnFolder: (...args: any[]) => any;

@@ -35,6 +35,8 @@ export type TreeOpsOwnedApi = {
   setTreeNameConflict: (t: any | ((prev: any) => any)) => void;
   treeTransferBusy: any[];
   setTreeTransferBusy: (b: any[] | ((prev: any[]) => any[])) => void;
+  uploadTarget: any;
+  setUploadTarget: (t: any | ((prev: any) => any)) => void;
 };
 
 const TreeOpsOwnedContext = createContext<TreeOpsOwnedApi | null>(null);
@@ -64,6 +66,7 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
   const [dropTarget, setDropTarget] = useState<any>(null);
   const [treeNameConflict, setTreeNameConflict] = useState<any>(null);
   const [treeTransferBusy, setTreeTransferBusy] = useState<any[]>([]);
+  const [uploadTarget, setUploadTarget] = useState<any>(null);
 
   const value = useMemo(
     () => ({
@@ -101,6 +104,8 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
       setTreeNameConflict,
       treeTransferBusy,
       setTreeTransferBusy,
+      uploadTarget,
+      setUploadTarget,
     }),
     [
       selectedIds,
@@ -120,6 +125,7 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
       dropTarget,
       treeNameConflict,
       treeTransferBusy,
+      uploadTarget,
     ],
   );
 

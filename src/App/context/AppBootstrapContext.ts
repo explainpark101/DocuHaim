@@ -15,6 +15,11 @@ export type AppBootstrapValue = {
   proceedWithoutStoredCreds: (...args: any[]) => any;
   fileInputRef: { current: any };
   openSettingsWorkspaceTab: (...args: any[]) => any;
+  handleSaveS3Creds: (...args: any[]) => any;
+  handleExportCreds: (...args: any[]) => any;
+  handleImportCreds: (...args: any[]) => any;
+  handleSettingsClose: (...args: any[]) => any;
+  webauthnPRFSupported: boolean;
 };
 
 export const AppBootstrapContext = createContext<AppBootstrapValue | null>(null);

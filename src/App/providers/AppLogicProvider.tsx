@@ -6,6 +6,7 @@ import { AppChromeProvider } from '@/App/providers/AppChromeProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
 import { AppHandlersContext } from '@/App/context/AppHandlersContext';
 import type { AppChromeValue } from '@/App/context/AppChromeContext';
+import { APP_HANDLER_KEYS } from '@/App/context/appHandlerKeys';
 import { useAppOrchestration } from '@/App/providers/useAppOrchestration';
 
 const CHROME_KEYS = [
@@ -47,6 +48,14 @@ function pickChrome(c: Record<string, any>): AppChromeValue {
   return chrome;
 }
 
+function pickHandlers(c: Record<string, any>): Record<string, any> {
+  const handlers: Record<string, any> = {};
+  for (const key of APP_HANDLER_KEYS) {
+    handlers[key] = c[key];
+  }
+  return handlers;
+}
+
 function AppChromeAndHandlers({
   controller,
   children,
@@ -55,8 +64,7 @@ function AppChromeAndHandlers({
   children: ReactNode;
 }) {
   const chrome = useMemo(() => pickChrome(controller), [controller]);
-  // Remaining orchestration handlers for AppLayout until fully domain-owned.
-  const handlers = useMemo(() => controller, [controller]);
+  const handlers = useMemo(() => pickHandlers(controller), [controller]);
 
   return (
     <AppChromeProvider value={chrome}>
@@ -85,6 +93,11 @@ export function AppLogicProvider({ children }: { children: ReactNode }) {
       proceedWithoutStoredCreds: c.proceedWithoutStoredCreds,
       fileInputRef: c.fileInputRef,
       openSettingsWorkspaceTab: c.openSettingsWorkspaceTab,
+      handleSaveS3Creds: c.handleSaveS3Creds,
+      handleExportCreds: c.handleExportCreds,
+      handleImportCreds: c.handleImportCreds,
+      handleSettingsClose: c.handleSettingsClose,
+      webauthnPRFSupported: c.webauthnPRFSupported,
     }),
     [c],
   );

@@ -14,6 +14,8 @@ describe('App provider public API', () => {
       'VaultProvider',
       'AppFileSessionStateProvider',
       'WorkspaceTabsProvider',
+      'AppChromeStateProvider',
+      'AppModalsStateProvider',
       'FileSessionProvider',
       'AppTreeOpsStateProvider',
       'TreeOpsProvider',

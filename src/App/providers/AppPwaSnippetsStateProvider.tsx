@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { getLocalAppBuildId } from '@/utils/pwaUpdate';
+import { usePwaSnippetsDomain } from '@/App/hooks/usePwaSnippetsDomain';
 
 export type PwaSnippetsOwnedApi = {
   snippetConfig: { snippets: any[] };
@@ -26,15 +27,30 @@ export type PwaSnippetsOwnedApi = {
   setAppUpdateCheckError: (e: string | ((prev: string) => string)) => void;
 };
 
-const PwaSnippetsOwnedContext = createContext<PwaSnippetsOwnedApi | null>(null);
+export type PwaSnippetsValue = PwaSnippetsOwnedApi & {
+  needRefresh: boolean;
+  handleApplyPwaUpdate: (...args: any[]) => any;
+  handleCheckAppUpdate: (...args: any[]) => any;
+  handleConfirmAppUpdate: (...args: any[]) => any;
+  handleChangeSnippetConfig: (...args: any[]) => any;
+  handleSaveSnippetConfig: (...args: any[]) => any;
+  isSavingSnippets: boolean;
+  snippetLoadedFromLocal: boolean;
+  snippetLoadedFromS3: boolean;
+  snippetLoadedFromWebdav: boolean;
+};
 
-export function usePwaSnippetsOwned(): PwaSnippetsOwnedApi {
+const PwaSnippetsOwnedContext = createContext<PwaSnippetsValue | null>(null);
+
+export function usePwaSnippetsOwned(): PwaSnippetsValue {
   const ctx = useContext(PwaSnippetsOwnedContext);
   if (!ctx) throw new Error('usePwaSnippetsOwned must be used within AppPwaSnippetsStateProvider');
   return ctx;
 }
 
-/** Owns PWA update UI state and snippetConfig outside the main controller. */
+/**
+ * Owns PWA update UI state + snippetConfig; domain handlers from usePwaSnippetsDomain.
+ */
 export function AppPwaSnippetsStateProvider({ children }: { children: ReactNode }) {
   const [snippetConfig, setSnippetConfig] = useState({ snippets: [] as any[] });
   const [swRegistration, setSwRegistration] = useState<any>(null);
@@ -47,7 +63,7 @@ export function AppPwaSnippetsStateProvider({ children }: { children: ReactNode 
   const [appBuildRemoteId, setAppBuildRemoteId] = useState('');
   const [appUpdateCheckError, setAppUpdateCheckError] = useState('');
 
-  const value = useMemo(
+  const owned = useMemo(
     () => ({
       snippetConfig,
       setSnippetConfig,
@@ -82,6 +98,16 @@ export function AppPwaSnippetsStateProvider({ children }: { children: ReactNode 
       appBuildRemoteId,
       appUpdateCheckError,
     ],
+  );
+
+  const domain = usePwaSnippetsDomain(owned);
+
+  const value = useMemo(
+    () => ({
+      ...owned,
+      ...domain,
+    }),
+    [owned, domain],
   );
 
   return (

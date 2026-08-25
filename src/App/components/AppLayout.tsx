@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck — mechanical extract from MainApp; tighten in Phase C
+// @ts-nocheck — AppLayout still mixes many domain bags; tighten when domain values are fully typed
 import type { ReactNode } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
@@ -26,8 +26,9 @@ import { getDesktopAppEntryLockModeSync, saveDesktopWebdavConfig } from '@/utils
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { isDesktopApp } from '@/utils/isDesktopApp';
-import { useAppShell } from '@/App/hooks/useAppShell';
 import { useAppChrome } from '@/App/hooks/useAppChrome';
+import { useAppHandlers } from '@/App/hooks/useAppHandlers';
+import { useAppModals } from '@/App/hooks/useAppModals';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
@@ -36,11 +37,20 @@ import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAlertModal } from '@/contexts/AlertModalContext';
+import { useNavigate, useLocation } from 'react-router';
+import {
+  enableWebAuthnUnlock,
+  disableWebAuthnUnlock,
+} from '@/utils/webauthn';
+import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
 
-/** Main app chrome — domain hooks for vault/file/tabs; shell bag for remaining chrome. */
+/** Main app chrome — domain hooks + narrow handlers bag (no useAppShell mega-merge). */
 export function AppLayout({ children }: { children?: ReactNode }) {
-  const b = useAppShell();
   const chrome = useAppChrome();
+  const h = useAppHandlers();
+  const modals = useAppModals();
   const vault = useVault();
   const file = useFileSession();
   const autoSave = useAutoSave();
@@ -49,140 +59,87 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const treeOps = useTreeOps();
   const recording = useRecordingOwned();
   const pwaSnippets = usePwaSnippetsOwned();
+  const auth = useAuth();
+  const { showAlert } = useAlertModal();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const {
-    addToNoteSelectPath,
-    appBuildRemoteId,
-    appName,
-    audioLevel,
-    autoPromptWebAuthnForModal,
-    canScanStorageUsage,
-    canUnlockWithWebAuthnForModal,
-    cancelEditorImageUpload,
-    chatAttachDropHost,
-    chatStorageCtx,
-    chatStorageReady,
+    sidebarOpen,
+    setSidebarOpen,
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    isMobile,
     chatSurfaceActive,
-    closeSessionWorkspace,
-    disableWebAuthnUnlock,
-    editedFileName,
-    editorImageUploadPercent,
-    editorType,
-    enableWebAuthnUnlock,
-    ensureAdvancedSearchBrowseFolder,
-    expandPathsRef,
-    fileTabContextMenuRef,
-    formatFileSize,
-    formatTime,
-    getAdvancedSearchChatGroups,
-    getAdvancedSearchTrees,
-    getChatImageUrlForPath,
-    getImgbbApiKey,
-    getPresignedUrlForPath,
-    handleApplyPwaUpdate,
+    lockChatViewport,
+    isChatRoute,
+    isSettingsRoute,
+    appName,
     handleBrandClick,
-    handleChangeSnippetConfig,
-    handleCheckAppUpdate,
-    handleCreateNoteFromChatMessage,
-    handleDeleteUnusedImagePaths,
-    handleDropSessionTransfer,
+    chatAttachDropHost,
+    setChatAttachDropHost,
     handleDropToChatAttach,
-    handleEditorTypeChange,
-    handleExportCreds,
-    handleImportCreds,
-    handleOpenInNewWindow,
-    handleOpenNoteFromChat,
-    handleOpenSessionDirectory,
-    handleOpenSessionFiles,
-    handleOpenStorageUsageFile,
-    handleReadUnusedImageBytes,
-    handleReadUnusedImageText,
     handleRegisterChatAttachDrop,
-    handleRequestDownload,
-    handleRequestMove,
-    handleRequestMoveFileFromSidebar,
+    fileTabContextMenuRef,
+    expandPathsRef,
+    showHiddenFolders,
+    showTrashFolder,
+    hideRecordingCompanions,
+    treeStickyFolderPathEnabled,
+    showTreeModifiedDate,
+    treeHoverExpandSettings,
+    setTreeHoverExpandSettings,
+    uploadFileInputRef,
+    uploadFolderInputRef,
+    handleUploadFileSelect,
+    handleUploadFolderSelect,
+  } = chrome;
+
+  const {
+    closeSessionWorkspace,
+    handleOpenSessionFiles,
+    handleOpenSessionDirectory,
+    handleDropSessionTransfer,
     handleRequestSaveSessionToNote,
     handleRequestSessionTransformDownload,
-    handleSaveS3Creds,
-    handleSaveSnippetConfig,
-    handleSettingsClose,
+    isOpeningSession,
+    requestNewTempFile,
+    chatStorageCtx,
+    chatStorageReady,
+    shareGroupSend,
     handleShareBlockingChange,
     handleShareComposeClaimed,
     handleShareGroupSendConsumed,
     handleShareNodeToChatWithMyself,
     handleShareNoteToChatWithMyself,
-    handleToggleRecording,
+    handleCreateNoteFromChatMessage,
+    handleOpenNoteFromChat,
+    getChatImageUrlForPath,
+    getAdvancedSearchChatGroups,
     handleUploadEditorImage,
-    handleUploadFileSelect,
-    handleUploadFolderSelect,
-    handleViewUnsupportedAsText,
-    hidePwaUpdateToast,
-    hideRecordingCompanions,
-    isApplyingPwaUpdate,
-    isChatRoute,
-    isCheckingAppUpdate,
-    isEditableStorage,
-    isMobile,
-    isOpeningSession,
-    isPullingFromRemote,
-    isRecording,
-    isRefreshingFromDisk,
-    isSaving,
-    isSavingSnippets,
-    isSettingsRoute,
-    isUnlocked,
+    cancelEditorImageUpload,
     isUploadingEditorImage,
-    llmProviderProfiles,
-    location,
-    lockChatViewport,
-    masterPassword,
-    navigate,
-    needRefresh,
-    newFileDefaultParentPath,
+    editorImageUploadPercent,
+    handleRequestDownload,
+    handleViewUnsupportedAsText,
+    getAdvancedSearchTrees,
+    ensureAdvancedSearchBrowseFolder,
+    getPresignedUrlForPath,
+    handleToggleRecording,
     operationStatus,
-    pendingLocalFolderName,
-    recordingAudioUrl,
-    recordingPipelineStatus,
-    recordingQueueStats,
-    recordingSyncData,
-    recordingsList,
-    renameCurrentFileFullName,
-    requestAdvancedSearchCreateItem,
-    requestNewFile,
-    requestNewTempFile,
-    s3Creds,
-    scanActiveStorageUsageTree,
-    selectedRecordingKey,
+    addToNoteSelectPath,
     setAddToNoteSelectPath,
-    setChatAttachDropHost,
-    setEditedFileName,
-    setHidePwaUpdateToast,
-    setSelectedRecordingKey,
     setShowSuffixChangeConfirmModal,
-    setSidebarCollapsed,
-    setSidebarOpen,
     setSuffixConfirmAction,
-    setTreeHoverExpandSettings,
-    setWorkspaceTabs,
-    shareGroupSend,
-    showAlert,
-    showHiddenFolders,
-    showTrashFolder,
-    showTreeModifiedDate,
-    sidebarCollapsed,
-    sidebarOpen,
-    snippetConfig,
-    snippetLoadedFromLocal,
-    snippetLoadedFromS3,
-    snippetLoadedFromWebdav,
-    treeHoverExpandSettings,
-    treeStickyFolderPathEnabled,
-    uploadFileInputRef,
-    uploadFolderInputRef,
-    webauthnPRFSupported,
-  } = b;
+    handleOpenInNewWindow,
+    handleOpenStorageUsageFile,
+    handleDeleteUnusedImagePaths,
+    handleReadUnusedImageBytes,
+    handleReadUnusedImageText,
+  } = h;
 
-  // Domain hooks (prefer over shell bag for vault / file / tabs / tree / autosave / bootstrap)
+  const { pendingLocalFolderName } = modals;
+
   const {
     storageMode,
     setStorageMode,
@@ -206,7 +163,10 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     loadWebdavFolderChildren,
     openLocalFolder,
     webdavReady,
+    canScanStorageUsage,
+    scanActiveStorageUsageTree,
   } = vault;
+
   const {
     currentFile,
     editorContent,
@@ -216,13 +176,23 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     handleRequestCloseEditor,
     refreshLocalFileFromDisk,
     refreshRemoteFile,
+    editedFileName,
+    setEditedFileName,
+    editorType,
+    handleEditorTypeChange,
+    renameCurrentFileFullName,
+    isSaving,
+    isRefreshingFromDisk,
+    isPullingFromRemote,
   } = file;
+
   const {
     handleEditorChange,
     autoSaveIndicatorClass,
     lastAutoSaveAt,
     lastAutoSyncAt,
   } = autoSave;
+
   const {
     theme,
     setTheme,
@@ -233,7 +203,15 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     proceedWithoutStoredCreds,
     fileInputRef,
     openSettingsWorkspaceTab,
+    canUnlockWithWebAuthnForModal,
+    autoPromptWebAuthnForModal,
+    handleSaveS3Creds,
+    handleExportCreds,
+    handleImportCreds,
+    handleSettingsClose,
+    webauthnPRFSupported,
   } = bootstrap;
+
   const workspaceTabs = tabsCtx.state;
   const workspaceTabsEnabled = tabsCtx.workspaceTabsEnabled;
   const workspaceTabsEnabledRef = tabsCtx.workspaceTabsEnabledRef;
@@ -242,6 +220,8 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const closeWorkspaceTabById = tabsCtx.closeWorkspaceTabById;
   const openChatWorkspaceTab = tabsCtx.openChatWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
+  const setWorkspaceTabs = tabsCtx.setState;
+
   const {
     selectedIds,
     setSelectedIds,
@@ -252,6 +232,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     requestCreateItem,
     requestUploadFile,
     requestUploadFolder,
+    requestNewFile,
+    requestAdvancedSearchCreateItem,
+    newFileDefaultParentPath,
     handleTreeNodeSelect,
     handleDragEndNode,
     handleDropOnFolder,
@@ -263,7 +246,70 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     isDeletingFolder,
     deletingFolderPath,
     handleRequestMoveFolder,
+    handleRequestMove,
+    handleRequestMoveFileFromSidebar,
   } = treeOps;
+
+  const {
+    isRecording,
+    audioLevel,
+    recordingsList,
+    selectedRecordingKey,
+    setSelectedRecordingKey,
+    recordingAudioUrl,
+    recordingSyncData,
+    recordingPipelineStatus,
+    recordingQueueStats,
+  } = recording;
+
+  const {
+    snippetConfig,
+    hidePwaUpdateToast,
+    setHidePwaUpdateToast,
+    isApplyingPwaUpdate,
+    isCheckingAppUpdate,
+    appBuildRemoteId,
+    needRefresh,
+    handleApplyPwaUpdate,
+    handleCheckAppUpdate,
+    handleChangeSnippetConfig,
+    handleSaveSnippetConfig,
+    isSavingSnippets,
+    snippetLoadedFromLocal,
+    snippetLoadedFromS3,
+    snippetLoadedFromWebdav,
+  } = pwaSnippets;
+
+  const { isUnlocked, s3Creds, masterPassword } = auth;
+  const llmProviderProfiles = resolveLlmProviderProfiles(s3Creds);
+  const getImgbbApiKey = () => (s3Creds?.imgbbApiKey || '').trim();
+
+  const formatTime = (ts) => {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    const hh = `${d.getHours()}`.padStart(2, '0');
+    const mm = `${d.getMinutes()}`.padStart(2, '0');
+    const ss = `${d.getSeconds()}`.padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes == null || isNaN(bytes)) return '알 수 없음';
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    const mb = kb / 1024;
+    if (mb < 1024) return `${mb.toFixed(1)} MB`;
+    const gb = mb / 1024;
+    return `${gb.toFixed(1)} GB`;
+  };
+
+  const isEditableStorage =
+    currentFile?.type === 's3' ||
+    currentFile?.type === 'local' ||
+    currentFile?.type === 'webdav' ||
+    currentFile?.type === SESSION_STORAGE_TYPE;
+
 
   return (
     <div

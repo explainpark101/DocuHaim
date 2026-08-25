@@ -8,7 +8,12 @@ import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
-import { findFileNodeByPath, findNodeByPath, flattenTreeToPaths } from '@/utils/s3Tree';
+import {
+  findFileNodeByPath,
+  findNodeByPath,
+  flattenTreeToPaths,
+  getRecordingKeysFromTree,
+} from '@/utils/s3Tree';
 import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/treeMove';
 import { resolveNewFileDefaultParentPath } from '@/utils/newFileDefaultParentPath';
 import { allocateUniqueCopyName, getTreeChildNames, treeChildNameTaken } from '@/utils/treeCopy';
@@ -23,19 +28,37 @@ import {
 import {
   createS3Client,
   listObjectsV2,
+  collectS3DirectoryMarkersFromUpload,
+  putS3FolderMarkers,
   getObjectBody,
   putObject,
   deleteObject,
   deleteObjects,
   copyObject,
 } from '@/utils/s3Client';
+import { normalizeDeleteTargets } from '@/components/modals/DeleteConfirmModal';
+import { executeEmptyTrash } from '@/utils/emptyTrashExecute';
+import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
+import { collectCompanionImageKeysForDelete } from '@/utils/unusedImageCleanup';
+import { loadOrphanImageAutoDeleteEnabled } from '@/utils/orphanImageCleanupSettings';
+import {
+  deletedNoteScopeFromNode,
+  unlinkChatNotesForDeletedPaths,
+  postChatSyncEvent,
+  postChatLocalSyncEvent,
+} from '@/utils/chatWithMyself';
+import { useChatStorageCtx } from '@/components/chatWithMyself/ShareTargetGate';
+import {
+  retargetFileTab,
+  retargetFileTabsByPathPrefix,
+} from '@/utils/workspaceTabs/appBridge';
 import { resolveCreateItemPath } from '@/utils/createItemPath';
 import {
   encryptEncMdContent,
   isEncMdPath,
   setEncMdPassword,
 } from '@/utils/encMd';
-import { createWebdavBackend } from '@/utils/storage';
+import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
 import { webdavPropfindDeep } from '@/utils/webdavClient';
 import { ensureDirectoryReadWritePermission } from '@/utils/localFolderStore';
 import { isLocalVaultReady } from '@/utils/localVaultReady';
@@ -50,7 +73,7 @@ import {
   zipFileNameForMarkdown,
 } from '@/utils/markdownImageExport';
 import { STORAGE_MODE_LOCAL } from '@/utils/storageSettings';
-import { getActiveTab } from '@/utils/workspaceTabs';
+import { getActiveTab, getActiveFileTab } from '@/utils/workspaceTabs';
 
 export type TreeOpsBridgeDeps = {
   setOperationStatus?: (status: string) => void;
@@ -60,14 +83,11 @@ export type TreeOpsBridgeDeps = {
   confirmAndCancelEditorImageUpload?: () => boolean;
   uploadFileInputRef?: { current: any };
   uploadFolderInputRef?: { current: any };
-  setUploadTarget?: (t: any) => void;
   setAddToNoteSelectPath?: (p: any) => void;
   setSaveSessionToNoteSelectPath?: (p: any) => void;
   requestEncMdPassword?: (opts?: any) => Promise<string>;
   renameS3File?: (...args: any[]) => Promise<any>;
   renameLocalFile?: (...args: any[]) => Promise<any>;
-  applyWorkspaceFilePathRetarget?: (...args: any[]) => void;
-  applyWorkspaceFolderPathRetarget?: (...args: any[]) => void;
   readBackendBytes?: (storageType: string, path: string) => Promise<Uint8Array>;
   downloadMarkdownImageZip?: (...args: any[]) => Promise<boolean>;
   chatSurfaceActive?: boolean;
@@ -102,11 +122,15 @@ export function useTreeOpsDomain({
     loadS3Files,
     refreshLocalTree,
     refreshWebdavTree,
+    webdavReady,
   } = useVault();
 
   const {
     currentFile,
+    setCurrentFile,
     editorContent,
+    setEditorContent,
+    editorContentRef,
     currentFileRef,
     selectFileRaw,
     saveCurrentMarkdownBeforeSwitch,
@@ -116,6 +140,21 @@ export function useTreeOpsDomain({
 
   const {
     setSelectedIds,
+    deleteTarget,
+    setDeleteTarget,
+    emptyTrashTarget,
+    setEmptyTrashTarget,
+    isEmptyingTrash,
+    setIsEmptyingTrash,
+    isDeletingFolder,
+    setIsDeletingFolder,
+    setDeletingFolderPath,
+    setIsDeleting,
+    setIsMoveModalOpen,
+    moveFolderTarget,
+    setMoveFolderTarget,
+    moveFileTarget,
+    setMoveFileTarget,
     setCreateModalOpen,
     setCreateModalContext,
     createModalContext,
@@ -123,15 +162,27 @@ export function useTreeOpsDomain({
     setDropTarget,
     setTreeNameConflict,
     setTreeTransferBusy,
-    setMoveFolderTarget,
     setMoveModalSelectPath,
+    uploadTarget,
+    setUploadTarget,
   } = useTreeOpsOwned();
 
   const {
     state: workspaceTabs,
     workspaceTabsEnabled,
+    workspaceTabsRef,
+    setState: setWorkspaceTabs,
+    closeWorkspaceTabById,
   } = useWorkspaceTabsCtx();
   const activeWorkspaceTab = getActiveTab(workspaceTabs);
+
+  const { ready: chatStorageReady, ctx: chatStorageCtx } = useChatStorageCtx({
+    storageMode,
+    getS3Client,
+    s3Bucket: s3Creds?.bucket,
+    localRootHandle,
+    webdavConfig,
+  });
 
   const lastSelectedIdRef = useRef(null);
   const treeNameConflictResolverRef = useRef(null);
@@ -1154,14 +1205,14 @@ export function useTreeOpsDomain({
 
 
   const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
-    bridge().setUploadTarget?.({ storageType, parentPath, parentDirHandle });
+    setUploadTarget({ storageType, parentPath, parentDirHandle });
     const input = bridge().uploadFileInputRef?.current;
     if (input) input.value = '';
     input?.click();
   };
 
   const requestUploadFolder = (storageType, parentPath, parentDirHandle) => {
-    bridge().setUploadTarget?.({ storageType, parentPath, parentDirHandle });
+    setUploadTarget({ storageType, parentPath, parentDirHandle });
     const input = bridge().uploadFolderInputRef?.current;
     if (input) input.value = '';
     input?.click();
@@ -1966,6 +2017,955 @@ export function useTreeOpsDomain({
     setDropTarget(null);
   };
 
+
+  const requestNewFile = useCallback(() => {
+    requestAdvancedSearchCreateItem('file', newFileDefaultParentPath);
+  }, [requestAdvancedSearchCreateItem, newFileDefaultParentPath]);
+
+  const applyWorkspaceFilePathRetarget = (storageType, oldPath, newPath, filePatch = null) => {
+    if (!storageType || !oldPath || !newPath) return;
+    const next = retargetFileTab(workspaceTabsRef.current, storageType, oldPath, {
+      path: newPath,
+      ...(filePatch
+        ? {
+            currentFile: filePatch,
+            editedFileName:
+              typeof filePatch.name === 'string' ? filePatch.name : undefined,
+          }
+        : {}),
+    });
+    if (next === workspaceTabsRef.current) return;
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+  };
+
+  const applyWorkspaceFolderPathRetarget = (storageType, oldPrefix, newPrefix) => {
+    if (!storageType || !oldPrefix || !newPrefix || oldPrefix === newPrefix) return;
+    const from = oldPrefix.endsWith('/') ? oldPrefix : `${oldPrefix}/`;
+    const to = newPrefix.endsWith('/') ? newPrefix : `${newPrefix}/`;
+    const next = retargetFileTabsByPathPrefix(workspaceTabsRef.current, storageType, from, to);
+    if (next === workspaceTabsRef.current) return;
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+  };
+
+  const handleUploadFileSelect = async (e) => {
+    const files = e.target.files;
+    if (!files?.length || !uploadTarget) return;
+    const { storageType, parentPath, parentDirHandle } = uploadTarget;
+    setUploadTarget(null);
+
+    const indicatorId = addIndicator({
+      id: 'upload-file',
+      type: ActivityTypes.FILE_UPLOAD,
+      label: files.length > 1 ? `${files.length}개 파일 업로드 중` : '파일 업로드 중',
+    });
+    try {
+      const usedNames = new Set(
+        getTreeChildNames(getUploadTreeForStorage(storageType), parentPath || '', findNodeByPath),
+      );
+      let uploadedCount = 0;
+      let skippedCount = 0;
+
+      if (storageType === 's3') {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const destName = await resolveUploadDestFileName(
+            file.name,
+            usedNames,
+            askUploadNameConflict,
+          );
+          if (!destName) {
+            skippedCount += 1;
+            continue;
+          }
+          const key = parentPath + destName;
+          const body = await file.arrayBuffer();
+          await putObject(client, {
+            Bucket: s3Creds.bucket,
+            Key: key,
+            Body: new Uint8Array(body),
+            ContentType: file.type || 'application/octet-stream',
+          });
+          usedNames.add(destName);
+          uploadedCount += 1;
+          await reloadOpenFileIfPath(storageType, key);
+        }
+        loadS3Files();
+      } else if (storageType === 'local') {
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            const key = (parentPath || '') + destName;
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+            usedNames.add(destName);
+            uploadedCount += 1;
+            await reloadOpenFileIfPath(storageType, key);
+          }
+          await refreshLocalTree();
+        } else {
+          const targetDirHandle = parentDirHandle || localRootHandle;
+          if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            const newFileHandle = await targetDirHandle.getFileHandle(destName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(await file.arrayBuffer());
+            await writable.close();
+            usedNames.add(destName);
+            uploadedCount += 1;
+            await reloadOpenFileIfPath(storageType, `${parentPath || ''}${destName}`);
+          }
+          refreshLocalTree();
+        }
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const destName = await resolveUploadDestFileName(
+            file.name,
+            usedNames,
+            askUploadNameConflict,
+          );
+          if (!destName) {
+            skippedCount += 1;
+            continue;
+          }
+          const key = parentPath + destName;
+          const body = new Uint8Array(await file.arrayBuffer());
+          await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+          usedNames.add(destName);
+          uploadedCount += 1;
+          await reloadOpenFileIfPath(storageType, key);
+        }
+        await refreshWebdavTree();
+      }
+      const parentPaths = getParentPathsToExpand(parentPath);
+      expandPaths(storageType, parentPaths);
+      if (uploadedCount === 0 && skippedCount > 0) {
+        setOperationStatus('업로드 취소됨');
+      } else if (skippedCount > 0) {
+        setOperationStatus(
+          uploadedCount > 1
+            ? `${uploadedCount}개 파일 업로드 완료 (${skippedCount}개 취소)`
+            : `업로드 완료 (${skippedCount}개 취소)`,
+        );
+      } else {
+        setOperationStatus(
+          uploadedCount > 1 ? `${uploadedCount}개 파일 업로드 완료` : '업로드 완료',
+        );
+      }
+    } catch (err) {
+      alert('업로드 실패: ' + err.message);
+    } finally {
+      settleTreeNameConflict('cancel');
+      removeIndicator(indicatorId);
+      e.target.value = '';
+    }
+  };
+
+  const handleUploadFolderSelect = async (e) => {
+    const files = e.target.files;
+    if (!files?.length || !uploadTarget) return;
+    const { storageType, parentPath, parentDirHandle } = uploadTarget;
+    setUploadTarget(null);
+
+    const indicatorId = addIndicator({
+      id: 'upload-folder',
+      type: ActivityTypes.FILE_UPLOAD,
+      label: `${files.length}개 파일 업로드 중`,
+    });
+    try {
+      if (storageType === 's3') {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        const dirMarkers = collectS3DirectoryMarkersFromUpload(parentPath, files);
+        if (dirMarkers.length) {
+          await putS3FolderMarkers(client, s3Creds.bucket, dirMarkers);
+        }
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
+          const key = parentPath + relPath;
+          const body = await file.arrayBuffer();
+          await putObject(client, {
+            Bucket: s3Creds.bucket,
+            Key: key,
+            Body: new Uint8Array(body),
+            ContentType: file.type || 'application/octet-stream',
+          });
+        }
+        loadS3Files();
+      } else if (storageType === 'local') {
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
+            const key = (parentPath || '') + relPath;
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+          }
+          await refreshLocalTree();
+        } else {
+          const targetDirHandle = parentDirHandle || localRootHandle;
+          if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
+            const parts = relPath.replace(/\/$/, '').split('/');
+            let dir = targetDirHandle;
+            for (let j = 0; j < parts.length - 1; j++) {
+              dir = await dir.getDirectoryHandle(parts[j], { create: true });
+            }
+            const fileName = parts[parts.length - 1];
+            const newFileHandle = await dir.getFileHandle(fileName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(await file.arrayBuffer());
+            await writable.close();
+          }
+          refreshLocalTree();
+        }
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
+          const key = parentPath + relPath;
+          const body = new Uint8Array(await file.arrayBuffer());
+          await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+        }
+        await refreshWebdavTree();
+      }
+      const parentPaths = getParentPathsToExpand(parentPath);
+      expandPaths(storageType, parentPaths);
+      setOperationStatus(`${files.length}개 파일 업로드 완료`);
+    } catch (err) {
+      alert('폴더 업로드 실패: ' + err.message);
+    } finally {
+      removeIndicator(indicatorId);
+      e.target.value = '';
+    }
+  };
+
+  const ensureLocalTrashDir = async () => {
+    if (!localRootHandle) {
+      throw new Error('루트 폴더가 열려 있지 않습니다.');
+    }
+    return localRootHandle.getDirectoryHandle('.trash', { create: true });
+  };
+
+  const moveLocalEntryToTrash = async (node) => {
+    const trashRoot = await ensureLocalTrashDir();
+    const relativePath = node.path.replace(/\/$/, ''); // remove trailing slash for folders
+    const segments = relativePath.split('/'); // e.g. ['foo', 'bar.md'] or ['foo','bar']
+    const name = segments.pop();
+
+    let targetDir = trashRoot;
+    for (const segment of segments) {
+      if (!segment) continue;
+      targetDir = await targetDir.getDirectoryHandle(segment, { create: true });
+    }
+
+    if (node.type === 'file') {
+      const file = await node.handle.getFile();
+      const newFileHandle = await targetDir.getFileHandle(name, { create: true });
+      const writable = await newFileHandle.createWritable();
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+      const pHandle = node.parentHandle || localRootHandle;
+      await pHandle.removeEntry(node.name, { recursive: false });
+    } else if (node.type === 'folder') {
+      const sourceDir = node.handle;
+      const targetDirForFolder = await targetDir.getDirectoryHandle(name, { create: true });
+
+      const copyDirRecursive = async (srcHandle, destHandle) => {
+        for await (const entry of srcHandle.values()) {
+          if (entry.kind === 'file') {
+            const file = await entry.getFile();
+            const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(await file.arrayBuffer());
+            await writable.close();
+          } else if (entry.kind === 'directory') {
+            const newDirHandle = await destHandle.getDirectoryHandle(entry.name, { create: true });
+            await copyDirRecursive(entry, newDirHandle);
+          }
+        }
+      };
+
+      await copyDirRecursive(sourceDir, targetDirForFolder);
+
+      const pHandle = node.parentHandle || localRootHandle;
+      await pHandle.removeEntry(node.name, { recursive: true });
+    }
+  };
+
+  const moveS3KeyToTrash = async (client, bucket, key) => {
+    const destKey = `.trash/${key}`;
+    await copyObject(client, bucket, key, destKey);
+    await deleteObject(client, bucket, key);
+  };
+
+  const moveS3EntryToTrash = async (node, additionalKeys = []) => {
+    const client = getS3Client();
+    if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+
+    const bucket = s3Creds.bucket;
+
+    await putObject(client, { Bucket: bucket, Key: '.trash/', Body: '' });
+
+    if (node.type === 'file') {
+      const srcKey = node.path;
+      const destKey = `.trash/${srcKey}`;
+      await copyObject(client, bucket, srcKey, destKey);
+      await deleteObject(client, bucket, srcKey);
+    } else if (node.type === 'folder') {
+      const prefix = node.path;
+      const contents = await listObjectsV2(client, bucket, prefix);
+
+      if (contents.length > 0) {
+        for (const { Key } of contents) {
+          const destKey = `.trash/${Key}`;
+          await copyObject(client, bucket, Key, destKey);
+        }
+        await deleteObjects(client, bucket, contents.map(({ Key }) => ({ Key })));
+      }
+    }
+    for (const key of additionalKeys) {
+      try {
+        await moveS3KeyToTrash(client, bucket, key);
+      } catch (e) {
+        if (e?.$metadata?.httpStatusCode !== 404) throw e;
+      }
+    }
+  };
+
+  const associatedRecordings = (() => {
+    const targets = normalizeDeleteTargets(deleteTarget);
+    if (!targets.length) return [];
+    const seen = new Set();
+    const recordings = [];
+    for (const t of targets) {
+      if (!['s3', 'local', 'webdav'].includes(t.type) || t.node.type !== 'file') continue;
+      const tree =
+        t.type === 's3' ? s3Tree : t.type === 'webdav' ? webdavTree : localTree;
+      for (const r of getRecordingKeysFromTree(tree, t.node.path)) {
+        if (seen.has(r.key)) continue;
+        seen.add(r.key);
+        recordings.push(r);
+      }
+    }
+    return recordings;
+  })();
+
+  const confirmDelete = async (options = {}) => {
+    const targets = normalizeDeleteTargets(deleteTarget);
+    if (!targets.length) return;
+    const { deleteWithRecordings = false } = options;
+
+    const closeModal = () => setDeleteTarget(null);
+    let closeTimer = null;
+
+    // Trash root emptying uses EmptyTrashConfirmModal (context menu / dedicated flow).
+    if (targets.length === 1 && targets[0].node.path === '.trash/') {
+      closeModal();
+      return;
+    }
+
+    const workTargets = targets.filter((t) => t.node.path !== '.trash/');
+    if (!workTargets.length) return;
+
+    if (workTargets.some((t) => t.node.type === 'folder') && isDeletingFolder) return;
+
+    setIsDeleting(true);
+    const multi = workTargets.length > 1;
+    if (multi) {
+      setOperationStatus(`${workTargets.length}개 항목 삭제 중…`);
+    }
+
+    closeTimer = setTimeout(closeModal, 3000);
+
+    let successCount = 0;
+    let failCount = 0;
+    let lastError = null;
+    let anyFolder = false;
+    const isChatRoute = bridge().chatSurfaceActive;
+    let openFileAffected = false;
+    /** @type {Array<{ path?: string, type?: string, name?: string }>} */
+    const deletedNodesForChat = [];
+
+    const treeFor = (type) =>
+      type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
+
+    const recordingKeysForNode = (node, type) => {
+      if (!deleteWithRecordings || node.type !== 'file') return [];
+      return getRecordingKeysFromTree(treeFor(type), node.path).flatMap((r) => {
+        const syncKey = getSyncKeyForRecording(r.key);
+        return syncKey ? [r.key, syncKey] : [r.key];
+      });
+    };
+
+    const companionKeysForNode = (node, type) => {
+      if (!loadOrphanImageAutoDeleteEnabled()) return [];
+      return collectCompanionImageKeysForDelete(node, treeFor(type));
+    };
+
+    const mergeAdditionalKeys = (node, type) => {
+      const seen = new Set();
+      const out = [];
+      for (const key of [...recordingKeysForNode(node, type), ...companionKeysForNode(node, type)]) {
+        if (!key || seen.has(key) || key === node.path) continue;
+        seen.add(key);
+        out.push(key);
+      }
+      return out;
+    };
+
+    try {
+      const storagesTouched = new Set();
+
+      for (const { node, type } of workTargets) {
+        const isInTrash = node.path.startsWith('.trash/');
+        const isFolder = node.type === 'folder';
+        const additionalKeys = mergeAdditionalKeys(node, type);
+
+        if (isFolder) {
+          anyFolder = true;
+          setIsDeletingFolder(true);
+          setDeletingFolderPath(node.path);
+          if (!multi) setOperationStatus(`폴더 삭제 중: ${node.path}`);
+        } else if (!multi) {
+          setOperationStatus(isInTrash ? `영구 삭제 중: ${node.path}` : `삭제 중: ${node.path}`);
+        }
+
+        try {
+          if (type === 's3') {
+            const client = getS3Client();
+            if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+
+            if (isInTrash) {
+              if (node.type === 'folder') {
+                const contents = await listObjectsV2(client, s3Creds.bucket, node.path);
+                const keys = [
+                  ...contents.map(({ Key }) => Key),
+                  ...additionalKeys,
+                ].filter(Boolean);
+                if (keys.length > 0) {
+                  await deleteObjects(client, s3Creds.bucket, keys.map((Key) => ({ Key })));
+                }
+              } else {
+                const keysToDelete =
+                  additionalKeys.length > 0
+                    ? [node.path, ...additionalKeys]
+                    : [node.path];
+                await deleteObjects(client, s3Creds.bucket, keysToDelete.map((Key) => ({ Key })));
+              }
+            } else {
+              await moveS3EntryToTrash(node, additionalKeys);
+            }
+            storagesTouched.add('s3');
+          } else if (type === 'local') {
+            if (localVaultFsPath && !localRootHandle) {
+              const backend = getBackendForType('local');
+              if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+              if (isInTrash) {
+                if (node.type === 'folder') {
+                  await backend.deletePrefix(node.path);
+                } else {
+                  await backend.delete(node.path);
+                }
+                for (const key of additionalKeys) {
+                  try {
+                    await backend.delete(key);
+                  } catch {
+                    /* missing companion ok */
+                  }
+                }
+              } else {
+                const trashPath =
+                  node.type === 'folder'
+                    ? `${String(node.path || '').replace(/\/+$/, '')}/`
+                    : node.path;
+                await backend.trash(trashPath, { additionalKeys });
+              }
+            } else {
+              if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+
+              if (isInTrash) {
+                const pHandle = node.parentHandle || localRootHandle;
+                await pHandle.removeEntry(node.name, { recursive: true });
+                if (additionalKeys.length > 0) {
+                  const backend = createLocalBackend(localRootHandle);
+                  for (const key of additionalKeys) {
+                    try {
+                      await backend.delete(key);
+                    } catch {
+                      /* missing companion ok */
+                    }
+                  }
+                }
+              } else if (additionalKeys.length > 0) {
+                const backend = createLocalBackend(localRootHandle);
+                const trashPath =
+                  node.type === 'folder'
+                    ? `${String(node.path || '').replace(/\/+$/, '')}/`
+                    : node.path;
+                await backend.trash(trashPath, { additionalKeys });
+              } else {
+                await moveLocalEntryToTrash(node);
+              }
+            }
+            storagesTouched.add('local');
+          } else if (type === 'webdav') {
+            const backend = createWebdavBackend(webdavConfig);
+            if (isInTrash) {
+              if (node.type === 'folder') {
+                await backend.deletePrefix(node.path);
+                for (const key of additionalKeys) {
+                  try {
+                    await backend.delete(key);
+                  } catch (e) {
+                    if (e?.$metadata?.httpStatusCode !== 404) throw e;
+                  }
+                }
+              } else {
+                const keysToDelete =
+                  additionalKeys.length > 0
+                    ? [node.path, ...additionalKeys]
+                    : [node.path];
+                for (const key of keysToDelete) {
+                  try {
+                    await backend.delete(key);
+                  } catch (e) {
+                    if (e?.$metadata?.httpStatusCode !== 404) throw e;
+                  }
+                }
+              }
+            } else {
+              await backend.trash(node.path, { additionalKeys });
+            }
+            storagesTouched.add('webdav');
+          }
+
+          successCount += 1;
+          deletedNodesForChat.push(node);
+
+          if (
+            currentFile?.id &&
+            (node.type === 'folder'
+              ? currentFile.id === node.path || currentFile.id.startsWith(node.path)
+              : currentFile.id === node.path)
+          ) {
+            openFileAffected = true;
+          }
+        } catch (e) {
+          failCount += 1;
+          lastError = e;
+        }
+      }
+
+      if (storagesTouched.has('s3')) loadS3Files();
+      if (storagesTouched.has('local')) await refreshLocalTree();
+      if (storagesTouched.has('webdav')) await refreshWebdavTree();
+
+      if (openFileAffected) {
+        const activeFile = getActiveFileTab(workspaceTabsRef.current);
+        if (activeFile) {
+          closeWorkspaceTabById(activeFile.id, { skipDirtyConfirm: true });
+        } else {
+          setCurrentFile(null);
+          currentFileRef.current = null;
+          setEditorContent('');
+          editorContentRef.current = '';
+          if (!isChatRoute) {
+            navigate('/');
+          }
+        }
+      }
+
+      if (chatStorageReady && chatStorageCtx && deletedNodesForChat.length) {
+        try {
+          for (const node of deletedNodesForChat) {
+            const scope = deletedNoteScopeFromNode(node);
+            const { dateStrs } = await unlinkChatNotesForDeletedPaths(chatStorageCtx, scope);
+            for (const dateStr of dateStrs) {
+              postChatSyncEvent('day', { dateStr });
+              postChatLocalSyncEvent('day', { dateStr });
+            }
+          }
+        } catch (unlinkErr) {
+          console.warn('Failed to unlink chat note refs after delete:', unlinkErr);
+        }
+      }
+
+      if (successCount > 0) {
+        setSelectedIds(new Set());
+      }
+    } finally {
+      if (closeTimer) clearTimeout(closeTimer);
+      closeModal();
+      setIsDeleting(false);
+      if (anyFolder) {
+        setIsDeletingFolder(false);
+        setDeletingFolderPath(null);
+      }
+      if (failCount === 0 && successCount > 0) {
+        setOperationStatus(
+          multi ? `${successCount}개 항목 삭제 완료` : `삭제 완료: ${workTargets[0].node.path}`,
+        );
+      } else if (successCount === 0 && lastError) {
+        alert('삭제 실패: ' + lastError.message);
+        setOperationStatus(`삭제 실패: ${lastError.message}`);
+      } else if (failCount > 0) {
+        alert(
+          `${successCount}개 삭제 완료, ${failCount}개 실패` +
+            (lastError ? `: ${lastError.message}` : ''),
+        );
+        setOperationStatus(`${successCount}개 삭제, ${failCount}개 실패`);
+      }
+    }
+  };
+
+  const confirmEmptyTrash = async (options) => {
+    if (!emptyTrashTarget?.storageType || isEmptyingTrash) return;
+    const storageType = emptyTrashTarget.storageType;
+    setIsEmptyingTrash(true);
+    setOperationStatus('쓰레기통 비우는 중…');
+    try {
+      const { deletedCount } = await executeEmptyTrash({
+        storageType,
+        options,
+        getS3Client,
+        bucket: s3Creds.bucket,
+        localRootHandle,
+        webdavConfig,
+      });
+      if (storageType === 's3') await loadS3Files();
+      else if (storageType === 'local') await refreshLocalTree();
+      else if (storageType === 'webdav') await refreshWebdavTree();
+
+      if (
+        currentFile?.id &&
+        (currentFile.id === '.trash/' || currentFile.id.startsWith('.trash/'))
+      ) {
+        setCurrentFile(null);
+        setEditorContent('');
+      }
+
+      setEmptyTrashTarget(null);
+      setOperationStatus(
+        deletedCount > 0
+          ? `쓰레기통 정리 완료 (${deletedCount}개 삭제)`
+          : '쓰레기통 정리 완료 (삭제할 항목 없음)',
+      );
+    } catch (e) {
+      alert('쓰레기통 비우기 실패: ' + (e?.message || e));
+      setOperationStatus(`쓰레기통 비우기 실패: ${e?.message || e}`);
+    } finally {
+      setIsEmptyingTrash(false);
+    }
+  };
+
+  const handleRequestMove = async () => {
+    if (!currentFile) return;
+    if (currentFile.type === 's3') {
+      await loadS3Files();
+    } else if (currentFile.type === 'local' && localRootHandle) {
+      await refreshLocalTree();
+    } else if (currentFile.type === 'webdav' && webdavReady) {
+      await refreshWebdavTree();
+    }
+    setIsMoveModalOpen(true);
+  };
+
+  const handleRequestMoveFileFromSidebar = (node, storageType) => {
+    setMoveFileTarget({ node, storageType });
+    setIsMoveModalOpen(true);
+  };
+
+  const handleConfirmMoveFileFromSidebar = async (dest) => {
+    if (!moveFileTarget || !dest) return;
+    const { node, storageType } = moveFileTarget;
+    const destPath = dest.path || '';
+    const tree = getUploadTreeForStorage(storageType);
+    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
+    const destFilePath = `${destPath}${node.name}`;
+    if (destFilePath === node.path) {
+      setMoveFileTarget(null);
+      setIsMoveModalOpen(false);
+      return;
+    }
+
+    let destName = node.name;
+    try {
+      if (treeChildNameTaken(usedNames, node.name)) {
+        const resolved = await resolveTreeDestName({
+          name: node.name,
+          usedNames,
+          kind: 'file',
+          action: 'move',
+          askConflict: askTreeNameConflict,
+          loadCompare: () =>
+            loadFileCompareForDest({
+              storageType,
+              destFolderPath: destPath,
+              fileName: node.name,
+              incomingPath: node.path,
+              incomingNode: node,
+              existingLabel: `대상 폴더의 "${node.name}"`,
+              incomingLabel: `이동할 "${node.name}"`,
+            }),
+        });
+        if (!resolved) return;
+        destName = resolved;
+      }
+
+      const destFilePath = `${destPath}${destName}`;
+      beginTreeTransferBusy({
+        storageType,
+        path: node.path,
+        nodeType: 'file',
+        destFolderPath: destPath || '',
+        action: 'move',
+      });
+
+      try {
+        const fileToMove =
+          storageType === 's3'
+            ? { id: node.path, name: node.name }
+            : storageType === 'webdav'
+              ? { id: node.path, name: node.name }
+              : { ...node, handle: node.handle, parentHandle: node.parentHandle || localRootHandle };
+        if (storageType === 's3') {
+          await moveS3FileToFolder(fileToMove, destPath, destName);
+          if (currentFileRef.current?.type === 's3' && currentFileRef.current.id === node.path) {
+            setCurrentFile((prev) =>
+              prev && prev.id === node.path
+                ? { ...prev, id: destFilePath, name: destName }
+                : prev,
+            );
+          } else {
+            await reloadOpenFileIfPath(storageType, destFilePath);
+          }
+        } else if (storageType === 'webdav') {
+          const updated = await moveWebdavFileToFolder(fileToMove, destPath, destName);
+          if (currentFileRef.current?.type === 'webdav' && currentFileRef.current.id === node.path) {
+            setCurrentFile(updated);
+          } else {
+            await reloadOpenFileIfPath(storageType, destFilePath);
+          }
+        } else {
+          const updated = await moveLocalFileToFolder(
+            fileToMove,
+            dest.handle || localRootHandle,
+            destPath,
+            destName,
+          );
+          if (currentFileRef.current?.type === 'local' && currentFileRef.current.id === node.path) {
+            setCurrentFile(updated);
+          } else {
+            await reloadOpenFileIfPath(storageType, destFilePath);
+          }
+        }
+        setMoveFileTarget(null);
+        setIsMoveModalOpen(false);
+        setOperationStatus(`파일 이동 완료: ${destName}`);
+      } finally {
+        endTreeTransferBusy(storageType, node.path);
+      }
+    } catch (e) {
+      endTreeTransferBusy(storageType, node.path);
+      alert('파일 이동 실패: ' + e.message);
+      setOperationStatus(`파일 이동 실패: ${e.message}`);
+    }
+  };
+
+  const handleConfirmMoveFolder = async (dest) => {
+    if (!moveFolderTarget || !dest) return;
+    const { node, storageType } = moveFolderTarget;
+    const destPath = dest.path || '';
+    const tree = getUploadTreeForStorage(storageType);
+    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
+    const destFolderPrefix = `${destPath}${node.name}/`;
+    if (destFolderPrefix === node.path) {
+      setMoveFolderTarget(null);
+      return;
+    }
+
+    let destName = node.name;
+    try {
+      if (treeChildNameTaken(usedNames, node.name)) {
+        const resolved = await resolveTreeDestName({
+          name: node.name,
+          usedNames,
+          kind: 'folder',
+          action: 'move',
+          askConflict: askTreeNameConflict,
+        });
+        if (!resolved) return;
+        destName = resolved;
+      }
+
+      beginTreeTransferBusy({
+        storageType,
+        path: node.path,
+        nodeType: 'folder',
+        destFolderPath: destPath || '',
+        action: 'move',
+      });
+
+      try {
+        if (storageType === 's3') {
+          await moveS3FolderToFolder(node, destPath, destName);
+        } else if (storageType === 'webdav') {
+          await moveWebdavFolderToFolder(node, destPath, destName);
+        } else {
+          const destHandle = dest.handle || localRootHandle;
+          if (!destHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
+          await moveLocalFolderToFolder(node, destHandle, destPath, destName);
+        }
+        const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
+        const newPrefix = `${destPath}${destName}/`;
+        applyWorkspaceFolderPathRetarget(storageType, oldPrefix, newPrefix);
+        if (
+          currentFileRef.current &&
+          currentFileRef.current.type === storageType &&
+          (currentFileRef.current.id === node.path ||
+            currentFileRef.current.id.startsWith(oldPrefix) ||
+            currentFileRef.current.id.startsWith(node.path))
+        ) {
+          const cur = currentFileRef.current;
+          const newPath = cur.id.startsWith(oldPrefix)
+            ? newPrefix + cur.id.slice(oldPrefix.length)
+            : cur.id.startsWith(node.path)
+              ? newPrefix + cur.id.slice(node.path.length)
+              : cur.id;
+          applyOpenFileIdentityChange(
+            { ...cur, id: newPath },
+            { oldPath: cur.id, retargetTabs: false },
+          );
+        }
+        setMoveFolderTarget(null);
+        setOperationStatus(`폴더 이동 완료: ${destName}`);
+      } finally {
+        endTreeTransferBusy(storageType, node.path);
+      }
+    } catch (e) {
+      endTreeTransferBusy(storageType, node.path);
+      alert('폴더 이동 실패: ' + e.message);
+      setOperationStatus(`폴더 이동 실패: ${e.message}`);
+    }
+  };
+
+  const handleConfirmMove = async (dest) => {
+    if (!currentFile || !dest) return;
+    const destPath = dest.path || '';
+    const tree = getUploadTreeForStorage(currentFile.type);
+    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
+    const fileName = currentFile.name;
+    const destFilePath = `${destPath}${fileName}`;
+    if (destFilePath === currentFile.id) {
+      setIsMoveModalOpen(false);
+      return;
+    }
+
+    let destName = fileName;
+    try {
+      if (treeChildNameTaken(usedNames, fileName)) {
+        const resolved = await resolveTreeDestName({
+          name: fileName,
+          usedNames,
+          kind: 'file',
+          action: 'move',
+          askConflict: askTreeNameConflict,
+          loadCompare: () =>
+            loadFileCompareForDest({
+              storageType: currentFile.type,
+              destFolderPath: destPath,
+              fileName,
+              incomingPath: currentFile.id,
+              incomingNode: null,
+              existingLabel: `대상 폴더의 "${fileName}"`,
+              incomingLabel: `이동할 "${fileName}"`,
+            }),
+        });
+        if (!resolved) return;
+        destName = resolved;
+      }
+
+      const srcPath = currentFile.id;
+      const destFilePath = `${destPath}${destName}`;
+      beginTreeTransferBusy({
+        storageType: currentFile.type,
+        path: srcPath,
+        nodeType: 'file',
+        destFolderPath: destPath || '',
+        action: 'move',
+      });
+
+      try {
+        if (currentFile.type === 's3') {
+          const updated = await moveS3FileToFolder(currentFile, destPath, destName);
+          if (updated) {
+            applyOpenFileIdentityChange(
+              { ...currentFile, id: updated.id, name: destName },
+              { oldPath: srcPath },
+            );
+          }
+        } else if (currentFile.type === 'webdav') {
+          const updated = await moveWebdavFileToFolder(currentFile, destPath, destName);
+          if (updated) {
+            applyOpenFileIdentityChange(updated, { oldPath: srcPath });
+          }
+        } else if (currentFile.type === 'local') {
+          const updated = await moveLocalFileToFolder(
+            currentFile,
+            dest.handle,
+            destPath,
+            destName,
+          );
+          if (updated) {
+            applyOpenFileIdentityChange(updated, { oldPath: srcPath });
+          }
+        }
+        setIsMoveModalOpen(false);
+        setOperationStatus(`파일 이동 완료: ${destPath}${destName}`);
+      } finally {
+        endTreeTransferBusy(currentFile.type, srcPath);
+      }
+    } catch (e) {
+      endTreeTransferBusy(currentFile.type, currentFile.id);
+      alert('파일 이동 실패: ' + e.message);
+      setOperationStatus(`파일 이동 실패: ${e.message}`);
+    }
+  };
+
+
   return {
     handleTreeNodeSelect,
     handleDownloadNode,
@@ -1974,9 +2974,11 @@ export function useTreeOpsDomain({
     requestCreateItem,
     requestAdvancedSearchCreateItem,
     newFileDefaultParentPath,
-    // requestNewFile,
+    requestNewFile,
     requestUploadFile,
     requestUploadFolder,
+    handleUploadFileSelect,
+    handleUploadFolderSelect,
     askTreeNameConflict,
     settleTreeNameConflict,
     askUploadNameConflict,
@@ -1985,6 +2987,16 @@ export function useTreeOpsDomain({
     handleCreateItemSubmit,
     renameTreeItem,
     handleRequestMoveFolder,
+    handleRequestMoveFileFromSidebar,
+    handleConfirmMoveFileFromSidebar,
+    handleRequestMove,
+    handleConfirmMove,
+    handleConfirmMoveFolder,
+    confirmDelete,
+    confirmEmptyTrash,
+    associatedRecordings,
+    applyWorkspaceFilePathRetarget,
+    applyWorkspaceFolderPathRetarget,
     handleDropOnFolder,
     handleDragEndNode,
     beginTreeTransferBusy,

@@ -19,10 +19,12 @@ export type FileSessionOwnedApi = {
   currentFileRef: MutableRefObject<any>;
   editedFileName: string;
   setEditedFileName: (name: string | ((prev: string) => string)) => void;
+  editedFileNameRef: MutableRefObject<string>;
   isSaving: boolean;
   setIsSaving: (v: boolean | ((prev: boolean) => boolean)) => void;
   savingTabIds: string[];
   setSavingTabIds: (ids: string[] | ((prev: string[]) => string[])) => void;
+  savingTabIdsRef: MutableRefObject<Set<string>>;
   editorType: string;
   setEditorType: (t: string | ((prev: string) => string)) => void;
   encMdPrompt: any;
@@ -31,6 +33,14 @@ export type FileSessionOwnedApi = {
   setIsRefreshingFromDisk: (v: boolean | ((prev: boolean) => boolean)) => void;
   isPullingFromRemote: boolean;
   setIsPullingFromRemote: (v: boolean | ((prev: boolean) => boolean)) => void;
+  sessionWorkspaceRef: MutableRefObject<any>;
+  sessionObjectUrlsRef: MutableRefObject<Map<string, string>>;
+  sessionVaultBindingsRef: MutableRefObject<Record<string, any>>;
+  writeSessionFileToHaimRef: MutableRefObject<any>;
+  isOpeningSession: boolean;
+  setIsOpeningSession: (v: boolean | ((prev: boolean) => boolean)) => void;
+  saveFileRef: MutableRefObject<any>;
+  selectFileRawRef: MutableRefObject<any>;
 };
 
 const FileSessionOwnedContext = createContext<FileSessionOwnedApi | null>(null);
@@ -49,12 +59,23 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
   const prevEditorContentRef = useRef('');
   const currentFileRef = useRef<any>(null);
   const [editedFileName, setEditedFileName] = useState('');
+  const editedFileNameRef = useRef('');
   const [isSaving, setIsSaving] = useState(false);
   const [savingTabIds, setSavingTabIds] = useState<string[]>([]);
+  const savingTabIdsRef = useRef(new Set<string>());
   const [editorType, setEditorType] = useState(() => loadEditorType());
   const [encMdPrompt, setEncMdPrompt] = useState<any>(null);
   const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
   const [isPullingFromRemote, setIsPullingFromRemote] = useState(false);
+  const sessionWorkspaceRef = useRef<any>(null);
+  const sessionObjectUrlsRef = useRef(new Map<string, string>());
+  const sessionVaultBindingsRef = useRef(Object.create(null) as Record<string, any>);
+  const writeSessionFileToHaimRef = useRef<any>(null);
+  const [isOpeningSession, setIsOpeningSession] = useState(false);
+  const saveFileRef = useRef<any>(null);
+  const selectFileRawRef = useRef<any>(null);
+
+  editedFileNameRef.current = editedFileName;
 
   const value = useMemo(
     () => ({
@@ -67,10 +88,12 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
       currentFileRef,
       editedFileName,
       setEditedFileName,
+      editedFileNameRef,
       isSaving,
       setIsSaving,
       savingTabIds,
       setSavingTabIds,
+      savingTabIdsRef,
       editorType,
       setEditorType,
       encMdPrompt,
@@ -79,6 +102,14 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
       setIsRefreshingFromDisk,
       isPullingFromRemote,
       setIsPullingFromRemote,
+      sessionWorkspaceRef,
+      sessionObjectUrlsRef,
+      sessionVaultBindingsRef,
+      writeSessionFileToHaimRef,
+      isOpeningSession,
+      setIsOpeningSession,
+      saveFileRef,
+      selectFileRawRef,
     }),
     [
       currentFile,
@@ -90,6 +121,7 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
       encMdPrompt,
       isRefreshingFromDisk,
       isPullingFromRemote,
+      isOpeningSession,
     ],
   );
 

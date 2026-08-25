@@ -11,3 +11,4 @@ export { useAppModals } from '@/App/hooks/useAppModals';
 export { useAppChrome } from '@/App/hooks/useAppChrome';
 export { useAppHandlers } from '@/App/hooks/useAppHandlers';
 export { useAppShell } from '@/App/hooks/useAppShell';
+export { useAppLogicSharedState } from '@/App/hooks/useAppLogicSharedState';
