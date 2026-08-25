@@ -1,4 +1,4 @@
-import { g8 as p, ga as F } from "./index-BegHbZbw.js";
+import { g8 as p, ga as F } from "./index-Diqgktub.js";
 function $(e) {
   for (var r = 1; r < arguments.length; r++) {
     var t = arguments[r];

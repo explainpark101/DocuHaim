@@ -1,11 +1,11 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-BegHbZbw.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-Diqgktub.js","assets/vendor-react-SY5QCjFA.js","assets/vendor-md-editor-CyUZNHY0.js","assets/vendor-aws-BNw5jQBi.js","assets/vendor-lucide-DpPvFd8E.js","assets/vendor-motion-YU7ZxHqi.js","assets/vendor-radix--fTcLYkF.js","assets/vendor-zip-Bez6qchM.js","assets/index-ljC4e9Ff.css"])))=>i.map(i=>d[i]);
 import { r as p, j as d, __tla as __tla_0 } from "./vendor-react-SY5QCjFA.js";
 import { A as V, G as Y } from "./vendor-google-genai-Dw3BcYJd.js";
-import { fX as $, g1 as Z, g2 as Q, g3 as ee, e4 as te, f3 as re, g4 as M, f1 as ne, f2 as se, __tla as __tla_1 } from "./index-BegHbZbw.js";
+import { fX as $, g1 as Z, g2 as Q, g3 as ee, e4 as te, f3 as re, g4 as G, f1 as ne, f2 as se, __tla as __tla_1 } from "./index-Diqgktub.js";
 import { _ as oe, __tla as __tla_2 } from "./vendor-md-editor-CyUZNHY0.js";
 import { v as O, ap as P } from "./vendor-lucide-DpPvFd8E.js";
-import { a0 as ie, a1 as ae, a2 as ce, a3 as le, a4 as G } from "./vendor-radix--fTcLYkF.js";
-let Ve, Ye, Xe, Je, I;
+import { a0 as ie, a1 as ae, a2 as ce, a3 as le, a4 as M } from "./vendor-radix--fTcLYkF.js";
+let Ye, Ze, Je, Ve, I;
 let __tla = Promise.all([
   (() => {
     try {
@@ -110,15 +110,20 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
     }
   }
   function we() {
-    return C;
+    var _a;
+    const e = (_a = globalThis.location) == null ? void 0 : _a.origin;
+    return typeof e == "string" && e.length > 0 ? e : "http://localhost";
   }
   function Ae() {
+    return `${we()}${C}`;
+  }
+  function Ee() {
     T || !$() || (T = true, globalThis.fetch = async (e, t) => {
       var _a;
       const r = ye(e);
       if (!be(r)) return U(e, t);
       const n = new URL(r, ((_a = globalThis.location) == null ? void 0 : _a.origin) ?? "http://localhost"), s = `${n.pathname.replace(/^\/api\/gemini/, "")}${n.search}`, o = (t == null ? void 0 : t.method) ?? "GET", a = ge(t, "x-goog-api-key") ?? "", i = await xe(t);
-      return Ee(s, {
+      return Se(s, {
         method: o,
         apiKey: a,
         ...i ? {
@@ -127,12 +132,12 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
       });
     });
   }
-  async function Ee(e, t) {
+  async function Se(e, t) {
     pe(e);
     const r = t.method ?? "GET";
     if ($()) {
       const { invoke: s } = await oe(async () => {
-        const { invoke: i } = await import("./index-BegHbZbw.js").then(async (m) => {
+        const { invoke: i } = await import("./index-Diqgktub.js").then(async (m) => {
           await m.__tla;
           return m;
         }).then((c) => c.gi);
@@ -164,19 +169,19 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
       throw new Error(he(s));
     }
   }
-  const Se = 1;
-  function Ce(e) {
+  const Ce = 1;
+  function ke(e) {
     return String(e || "").replace(/^models\//, "");
   }
   function B(e) {
-    return Ae(), new Y({
+    return Ee(), new Y({
       apiKey: e,
       httpOptions: {
-        baseUrl: we()
+        baseUrl: Ae()
       }
     });
   }
-  function ke(e) {
+  function Ne(e) {
     try {
       const t = JSON.parse(e.message);
       if (t && typeof t == "object") {
@@ -192,7 +197,7 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
   }
   function z(e, t) {
     if (e instanceof V) {
-      const r = ke(e), n = new Error(fe({
+      const r = Ne(e), n = new Error(fe({
         status: e.status,
         detail: r,
         modelId: t
@@ -201,12 +206,12 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
     }
     return e instanceof Error ? e : new Error(String(e));
   }
-  function Ne(e) {
+  function Re(e) {
     if ((e.supportedActions ?? []).includes("generateContent")) return true;
     const r = e.supportedGenerationMethods;
     return Array.isArray(r) && r.includes("generateContent");
   }
-  async function Re(e) {
+  async function je(e) {
     const t = B(e), r = [], n = await t.models.list({
       config: {
         pageSize: 100
@@ -214,8 +219,8 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
     });
     for (; ; ) {
       for (const s of n.page) {
-        if (!Ne(s)) continue;
-        const o = Ce(s.name);
+        if (!Re(s)) continue;
+        const o = ke(s.name);
         o && r.push({
           id: o,
           displayName: s.displayName || o
@@ -226,7 +231,7 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
     }
     return r.sort((s, o) => s.displayName.localeCompare(o.displayName, "ko"));
   }
-  function je({ instruction: e, selectedText: t, images: r }) {
+  function Ie({ instruction: e, selectedText: t, images: r }) {
     const n = Array.isArray(r) ? r : [], s = n.length > 0, o = n.map((a) => ({
       inlineData: {
         mimeType: a.mimeType,
@@ -241,7 +246,7 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
       })
     }), o;
   }
-  async function Ie(e, t, r) {
+  async function Le(e, t, r) {
     const o = (await B(e).models.generateContent({
       model: t,
       contents: [
@@ -257,26 +262,26 @@ ${t}` : `Gemini API \uC624\uB958 (${e})${n}: ${t}`;
     if (typeof o != "string" || !o.trim()) throw new Error("Gemini API\uAC00 \uBE48 \uC751\uB2F5\uC744 \uBC18\uD658\uD588\uC2B5\uB2C8\uB2E4.");
     return o.trim();
   }
-  async function Le(e, t, r) {
+  async function Ge(e, t, r) {
     let n = 0;
     for (; ; ) try {
-      return await Ie(e, t, r);
+      return await Le(e, t, r);
     } catch (s) {
       const o = z(s, t);
-      if (!(o.status === 429 && n < Se && o.retryAfterSec && o.retryAfterSec <= 120)) throw o;
+      if (!(o.status === 429 && n < Ce && o.retryAfterSec && o.retryAfterSec <= 120)) throw o;
       n += 1, await F((o.retryAfterSec ?? 1) * 1e3);
     }
   }
-  Xe = async function({ apiKey: e, model: t, instruction: r, selectedText: n, images: s }) {
+  Je = async function({ apiKey: e, model: t, instruction: r, selectedText: n, images: s }) {
     const o = (t || Z()).trim() || Q, a = (r || "").trim(), i = (n || "").trim(), c = Array.isArray(s) ? s.filter((u) => (u == null ? void 0 : u.mimeType) && (u == null ? void 0 : u.dataBase64)) : [];
     if (!a) throw new Error("\uC9C0\uC2DC\uC0AC\uD56D\uC744 \uC785\uB825\uD558\uC138\uC694.");
-    const l = je({
+    const l = Ie({
       instruction: a,
       selectedText: i,
       images: c
     });
     try {
-      return await Le(e, o, l);
+      return await Ge(e, o, l);
     } catch (u) {
       throw z(u, o);
     }
@@ -318,7 +323,7 @@ ${t}`;
     ].join(`
 `) : t || "OpenAI \uD638\uD658 \uC694\uCCAD\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.";
   }
-  const Ge = 1;
+  const Te = 1;
   function H(e) {
     const t = {
       "Content-Type": "application/json"
@@ -357,20 +362,20 @@ ${t}`;
   function A(e) {
     return !e || typeof e != "object" || Array.isArray(e) ? null : e;
   }
-  function Te(e) {
+  function ve(e) {
     if (typeof e == "string") return e.trim();
     const t = A(e);
     if (!t) return "";
     const r = t.id ?? t.name ?? t.model;
     return typeof r == "string" ? r.trim() : "";
   }
-  function ve(e, t) {
+  function $e(e, t) {
     const r = A(e);
     if (!r) return t;
     const n = r.display_name ?? r.displayName ?? r.id ?? r.name;
     return typeof n == "string" && n.trim() ? n.trim() : t;
   }
-  async function $e(e, t = "") {
+  async function Oe(e, t = "") {
     const r = W(e), n = await J(`${r}/models`, {
       headers: H(t)
     });
@@ -383,15 +388,15 @@ ${t}`;
     }
     const s = await n.json(), o = A(s), a = o ? Array.isArray(o.data) ? o.data : Array.isArray(o.models) ? o.models : [] : Array.isArray(s) ? s : [], i = [], c = /* @__PURE__ */ new Set();
     for (const l of a) {
-      const u = Te(l);
+      const u = ve(l);
       !u || c.has(u) || (c.add(u), i.push({
         id: u,
-        displayName: ve(l, u)
+        displayName: $e(l, u)
       }));
     }
     return i.sort((l, u) => l.displayName.localeCompare(u.displayName, "ko"));
   }
-  function Oe(e) {
+  function Pe(e) {
     var _a;
     const t = A(e), r = t && Array.isArray(t.choices) ? t.choices : [], n = A(r[0]), o = ((_a = A(n == null ? void 0 : n.message)) == null ? void 0 : _a.content) ?? (n == null ? void 0 : n.text);
     if (typeof o == "string" && o.trim()) return o.trim();
@@ -409,7 +414,7 @@ ${t}`;
     }
     return "";
   }
-  function Pe({ instruction: e, selectedText: t, images: r }) {
+  function _e({ instruction: e, selectedText: t, images: r }) {
     const n = r.length > 0, s = D({
       instruction: e,
       selectedText: t,
@@ -438,7 +443,7 @@ ${t}`;
       }
     ];
   }
-  async function _e({ baseUrl: e, apiKey: t, modelId: r, messages: n }) {
+  async function Fe({ baseUrl: e, apiKey: t, modelId: r, messages: n }) {
     const s = await J(`${e}/chat/completions`, {
       method: "POST",
       headers: H(t),
@@ -456,30 +461,30 @@ ${t}`;
       }));
       throw c.status = s.status, c.retryAfterSec = K(i, s.headers.get("retry-after")), c;
     }
-    const o = await s.json(), a = Oe(o);
+    const o = await s.json(), a = Pe(o);
     if (!a) throw new Error("OpenAI \uD638\uD658 API\uAC00 \uBE48 \uC751\uB2F5\uC744 \uBC18\uD658\uD588\uC2B5\uB2C8\uB2E4.");
     return a;
   }
-  async function Fe(e) {
+  async function De(e) {
     let t = 0;
     for (; ; ) try {
-      return await _e(e);
+      return await Fe(e);
     } catch (r) {
       const n = r;
-      if (!((n == null ? void 0 : n.status) === 429 && t < Ge && n.retryAfterSec && n.retryAfterSec <= 120)) throw r;
+      if (!((n == null ? void 0 : n.status) === 429 && t < Te && n.retryAfterSec && n.retryAfterSec <= 120)) throw r;
       t += 1, await F((n.retryAfterSec ?? 1) * 1e3);
     }
   }
-  Je = async function({ baseUrl: e, apiKey: t, model: r, instruction: n, selectedText: s, images: o }) {
+  Ve = async function({ baseUrl: e, apiKey: t, model: r, instruction: n, selectedText: s, images: o }) {
     const a = W(e), i = (r || ee()).trim(), c = (n || "").trim(), l = (s || "").trim(), u = Array.isArray(o) ? o.filter((y) => (y == null ? void 0 : y.mimeType) && (y == null ? void 0 : y.dataBase64)) : [];
     if (!i) throw new Error("\uBAA8\uB378 ID\uB97C \uC785\uB825\uD558\uAC70\uB098 \uBAA9\uB85D\uC5D0\uC11C \uC120\uD0DD\uD558\uC138\uC694.");
     if (!c) throw new Error("\uC9C0\uC2DC\uC0AC\uD56D\uC744 \uC785\uB825\uD558\uC138\uC694.");
-    const h = Pe({
+    const h = _e({
       instruction: c,
       selectedText: l,
       images: u
     });
-    return Fe({
+    return De({
       baseUrl: a,
       apiKey: t ?? "",
       modelId: i,
@@ -487,7 +492,7 @@ ${t}`;
     });
   };
   let j = null, v = null, E = null;
-  function De(e) {
+  function Ue(e) {
     return I(e.id) ? `${e.displayName} (\uBB34\uB8CC \uD50C\uB79C \uBBF8\uC9C0\uC6D0)` : e.displayName;
   }
   function S(e, t) {
@@ -500,7 +505,7 @@ ${t}`;
       ...r.values()
     ].sort((n, s) => n.displayName.localeCompare(s.displayName, "ko"));
   }
-  Ve = function({ getGeminiApiKey: e, profileId: t = "gemini", value: r, onChange: n, autoLoad: s = false, className: o = "" }) {
+  Ye = function({ getGeminiApiKey: e, profileId: t = "gemini", value: r, onChange: n, autoLoad: s = false, className: o = "" }) {
     var _a;
     const a = p.useRef(e);
     a.current = e;
@@ -510,7 +515,7 @@ ${t}`;
     }, [
       r
     ]);
-    const [c, l] = p.useState(() => S(M, r)), [u, h] = p.useState(false), [y, b] = p.useState(""), m = p.useCallback(async ({ force: f = false } = {}) => {
+    const [c, l] = p.useState(() => S(G, r)), [u, h] = p.useState(false), [y, b] = p.useState(""), m = p.useCallback(async ({ force: f = false } = {}) => {
       var _a2;
       const w = a.current;
       if (typeof w != "function") {
@@ -533,7 +538,7 @@ ${t}`;
           l(S(R, i.current));
           return;
         }
-        const N = re(t, w, (R) => Re(R));
+        const N = re(t, w, (R) => je(R));
         E = {
           key: x,
           promise: N
@@ -541,7 +546,7 @@ ${t}`;
         const L = await N;
         j = L, v = x, l(S(L, i.current));
       } catch (N) {
-        b((N == null ? void 0 : N.message) || "\uBAA8\uB378 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."), l(S(M, i.current));
+        b((N == null ? void 0 : N.message) || "\uBAA8\uB378 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."), l(S(G, i.current));
       } finally {
         h(false), E && E.key === x && (E = null);
       }
@@ -573,7 +578,7 @@ ${t}`;
               className: "min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft",
               children: c.map((f) => d.jsx("option", {
                 value: f.id,
-                children: De(f)
+                children: Ue(f)
               }, f.id))
             }),
             d.jsxs("button", {
@@ -609,7 +614,7 @@ ${t}`;
       ]
     });
   };
-  function Ue({ value: e, onChange: t, options: r, loading: n = false, placeholder: s = "", className: o = "", maxItems: a = 30 }) {
+  function Be({ value: e, onChange: t, options: r, loading: n = false, placeholder: s = "", className: o = "", maxItems: a = 30 }) {
     const [i, c] = p.useState(false), l = (e || "").trim().toLowerCase(), u = p.useMemo(() => (l ? r.filter((g) => {
       const k = (g.id || "").toLowerCase(), f = (g.displayName || "").toLowerCase();
       return k.includes(l) || f.includes(l);
@@ -654,11 +659,11 @@ ${t}`;
             children: n ? d.jsx("div", {
               className: "px-2 py-1.5 text-xs text-gray-500 dark:text-odp-muted",
               children: "\uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911\u2026"
-            }) : y ? d.jsx(G, {
+            }) : y ? d.jsx(M, {
               disabled: true,
               className: "cursor-default select-none rounded px-2 py-1.5 text-xs text-gray-500 dark:text-odp-muted",
               children: b
-            }) : u.map((m) => d.jsx(G, {
+            }) : u.map((m) => d.jsx(M, {
               onSelect: (g) => {
                 g.preventDefault(), h(m.id);
               },
@@ -670,7 +675,7 @@ ${t}`;
       ]
     });
   }
-  Ye = function({ getBaseUrl: e, getApiKey: t, value: r, onChange: n, autoLoad: s = false, reloadKey: o = "", className: a = "" }) {
+  Ze = function({ getBaseUrl: e, getApiKey: t, value: r, onChange: n, autoLoad: s = false, reloadKey: o = "", className: a = "" }) {
     const i = p.useRef(e), c = p.useRef(t);
     i.current = e, c.current = t;
     const [l, u] = p.useState([]), [h, y] = p.useState(false), [b, m] = p.useState(""), g = p.useCallback(async () => {
@@ -682,7 +687,7 @@ ${t}`;
       }
       y(true), m("");
       try {
-        const w = ((_b = await Promise.resolve(c.current())) == null ? void 0 : _b.trim()) ?? "", x = await $e(f, w);
+        const w = ((_b = await Promise.resolve(c.current())) == null ? void 0 : _b.trim()) ?? "", x = await Oe(f, w);
         u(x), x.length || m("\uBAA8\uB378 \uBAA9\uB85D\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4. \uBAA8\uB378 ID\uB97C \uC9C1\uC811 \uC785\uB825\uD558\uC138\uC694.");
       } catch (w) {
         m(w instanceof Error ? w.message : "\uBAA8\uB378 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
@@ -710,7 +715,7 @@ ${t}`;
         d.jsxs("div", {
           className: "flex items-center gap-2",
           children: [
-            d.jsx(Ue, {
+            d.jsx(Be, {
               value: r,
               onChange: k,
               options: l,
@@ -750,10 +755,10 @@ ${t}`;
   };
 });
 export {
-  Ve as G,
-  Ye as O,
+  Ye as G,
+  Ze as O,
   __tla,
-  Xe as a,
-  Je as g,
+  Je as a,
+  Ve as g,
   I as i
 };
