@@ -4,6 +4,7 @@
  * Prefer carving into use*Domain modules; compose entry is useAppOrchestration.
  */
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import type { AppLogicGlue } from '@/App/hooks/appLogicGlue';
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
@@ -572,7 +573,10 @@ export function useRecordingVaultEffectsDomain(bag: Record<string, any>, glueRef
     llmProviderProfiles,
     getImgbbApiKey,
     lockApp,
-    loadPlainWebdavIfAllowed
+    loadPlainWebdavIfAllowed,
+    setS3Tree,
+    setWebdavTree,
+    attachLocalRootFolder,
   } = bag;
 
   // Recording list + selected recording URL/sync load

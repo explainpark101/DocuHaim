@@ -4,6 +4,8 @@
  * Prefer carving into use*Domain modules; compose entry is useAppOrchestration.
  */
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import type { AppLogicGlue } from '@/App/hooks/appLogicGlue';
+import { markAutoSaveTimestamp } from '@/App/hooks/autoSaveBridge';
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
@@ -757,7 +759,7 @@ export function useSessionWorkspaceDomain(bag: Record<string, any>, glueRef?: { 
     if (!flushed) return;
     const { blob, fileName } = await buildSessionDownload(flushed);
     triggerBlobDownload(blob, fileName);
-    setLastAutoSaveAt(Date.now());
+    markAutoSaveTimestamp();
     const cur = currentFileRef.current;
     if (cur?.type === SESSION_STORAGE_TYPE && cur.id) {
       const record = flushed.files[cur.id];
@@ -804,6 +806,8 @@ export function useSessionWorkspaceDomain(bag: Record<string, any>, glueRef?: { 
     handleDropSessionTransfer,
     downloadSessionWorkspace,
     closeCurrentFile,
+    getSessionObjectUrl,
+    revokeSessionObjectUrls,
   };
   Object.assign(bag, api);
   if (glueRef) {

@@ -577,6 +577,9 @@ export function useTempChatRecordingDomain(bag: Record<string, any>, glueRef?: {
     applySessionFileToEditor,
     chatStorageReady,
     chatStorageCtx,
+    revokeSessionObjectUrls,
+    selectFile,
+    confirmAndCancelEditorImageUpload,
   } = bag;
 
   const requestNewTempFile = useCallback(() => {

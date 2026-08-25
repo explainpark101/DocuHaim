@@ -4,6 +4,8 @@
  * Prefer carving into use*Domain modules; compose entry is useAppOrchestration.
  */
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { markAutoSaveTimestamp } from '@/App/hooks/autoSaveBridge';
+import type { AppLogicGlue } from '@/App/hooks/appLogicGlue';
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
@@ -574,6 +576,7 @@ export function useDownloadSessionDomain(bag: Record<string, any>, glueRef?: { c
     lockApp,
     loadPlainWebdavIfAllowed,
     flushSessionEditorToWorkspace,
+    downloadSessionWorkspace,
   } = bag;
 
   const handleViewUnsupportedAsText = async () => {
@@ -776,7 +779,7 @@ export function useDownloadSessionDomain(bag: Record<string, any>, glueRef?: { c
         currentFileRef.current = next;
         return next;
       });
-      setLastAutoSaveAt(Date.now());
+      markAutoSaveTimestamp();
     }
 
     const existingTab = findFileTab(workspaceTabsRef.current, SESSION_STORAGE_TYPE, file.id);

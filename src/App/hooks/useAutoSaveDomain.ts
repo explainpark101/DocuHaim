@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
+import { registerAutoSaveTimestampSetter } from '@/App/hooks/autoSaveBridge';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useVault } from '@/App/hooks/useVault';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
@@ -22,6 +23,8 @@ export function useAutoSaveDomain(): AutoSaveValue {
   const [lastAutoSyncAt, setLastAutoSyncAt] = useState<number | null>(null);
   const ownedPrevRef = useRef('');
   const prevEditorContentRef = file.prevEditorContentRef ?? ownedPrevRef;
+
+  useEffect(() => registerAutoSaveTimestampSetter(setLastAutoSaveAt), []);
 
   const { handleEditorChange, runAutoSaveEffect, runAutoSyncEffect } = createAutoSaveSyncHandlers({
     saveFile: file.saveFile,
