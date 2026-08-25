@@ -13,7 +13,6 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
-import { useWorkspaceTabsPersistence } from '@/App/hooks/useWorkspaceTabsPersistence';
 import { useNavigate, useLocation } from 'react-router';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -65,7 +64,6 @@ import {
   SETTINGS_TAB_ID,
   anyFileTabDirty,
   clearPersistedWorkspaceTabs,
-  closedTabEntryFromWorkspaceTab,
   getActiveFileTab,
   getActiveTab,
   isChatTab,
@@ -84,25 +82,16 @@ import {
   toPersistedWorkspaceTabs,
 } from '@/utils/workspaceTabs';
 import {
-  activateTab,
   applyOpenedFileReducer,
   closeTab,
   findFileTab,
   flushEditorIntoActiveFileTab,
-  moveTab,
-  openOrActivateChat,
-  openOrActivateSettings,
   patchFileTab,
   retargetFileTab,
   retargetFileTabsByPathPrefix,
   softCapPrompt,
 } from '@/utils/workspaceTabs/appBridge';
-import {
-  collapseWorkspaceToLegacy,
-  retainOnlyFileTab,
-  stripChatTab,
-  stripSettingsTab,
-} from '@/utils/workspaceTabs/legacyMode';
+import { retainOnlyFileTab } from '@/utils/workspaceTabs/legacyMode';
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
 import {
   loadWorkspaceTabsAutoSaveMode,
@@ -813,7 +802,8 @@ export function useMainAppController() {
   const fileTabContextMenuRef = useRef(null);
 
   const hasSeededTabsRestoreQueueRef = useRef(false);
-  const hasRestoredPersistedWorkspaceTabsRef = useRef(false);
+  const hasRestoredPersistedWorkspaceTabsRef =
+    workspaceTabsApi.hasRestoredPersistedWorkspaceTabsRef;
   const restoringWorkspaceTabsRef = useRef(false);
 
   const loadLastOpenedFile = useCallback(() => {
@@ -978,262 +968,25 @@ export function useMainAppController() {
     return true;
   }, []);
 
-  const activateWorkspaceTab = useCallback(
-    (id, options = {}) => {
-      const { navigateUrl = true } = options;
-      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-        editorContent: editorContentRef.current ?? '',
-        currentFile: currentFileRef.current,
-        editedFileName: editedFileNameRef.current ?? '',
-      });
-      const leaving = getActiveTab(flushed);
-      if (
-        isFileTab(leaving) &&
-        leaving.id !== id &&
-        isFileTabDirty(leaving) &&
-        leaving.storageType !== SESSION_STORAGE_TYPE
-      ) {
-        maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
-      }
-      const activated = activateTab(flushed, id);
-      workspaceTabsRef.current = activated;
-      setWorkspaceTabs(activated);
-      const active = getActiveTab(activated);
-      if (isFileTab(active)) {
-        const file = active.currentFile;
-        setCurrentFile(file);
-        currentFileRef.current = file;
-        setEditorContent(active.editorContent);
-        editorContentRef.current = active.editorContent;
-        setEditedFileName(active.editedFileName || String(file?.name || ''));
-        if (navigateUrl) {
-          const viewPath =
-            (typeof file?.id === 'string' && file.id) || active.path;
-          navigate(`/view/${viewPath}`);
-        }
-      } else if (isChatTab(active)) {
-        setCurrentFile(null);
-        currentFileRef.current = null;
-        if (navigateUrl) navigate('/chat');
-      } else if (isSettingsTab(active)) {
-        setCurrentFile(null);
-        currentFileRef.current = null;
-        if (navigateUrl) navigate('/settings');
-      } else if (navigateUrl) {
-        navigate('/');
-      }
-    },
-    [navigate, maybeAutoSaveOnFocusChange],
-  );
-
-  const openChatWorkspaceTab = useCallback(
-    (options = {}) => {
-      const { navigateUrl = true } = options;
-      if (!workspaceTabsEnabledRef.current) {
-        // Legacy: exclusive /chat route — flush editor to the single file tab if any.
-        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-          editorContent: editorContentRef.current ?? '',
-          currentFile: currentFileRef.current,
-          editedFileName: editedFileNameRef.current ?? '',
-        });
-        const leaving = getActiveFileTab(flushed);
-        if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
-          maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
-        }
-        const next = stripChatTab(flushed);
-        workspaceTabsRef.current = next;
-        setWorkspaceTabs(next);
-        setCurrentFile(null);
-        currentFileRef.current = null;
-        if (navigateUrl) navigate('/chat');
-        return;
-      }
-      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-        editorContent: editorContentRef.current ?? '',
-        currentFile: currentFileRef.current,
-        editedFileName: editedFileNameRef.current ?? '',
-      });
-      const leaving = getActiveFileTab(flushed);
-      if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
-        maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
-      }
-      const next = openOrActivateChat(flushed);
-      workspaceTabsRef.current = next;
-      setWorkspaceTabs(next);
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      if (navigateUrl) navigate('/chat');
-    },
-    [navigate, maybeAutoSaveOnFocusChange],
-  );
-
-  const openSettingsWorkspaceTab = useCallback(
-    (options = {}) => {
-      const { navigateUrl = true, hash } = options;
-      const target =
-        typeof hash === 'string' && hash
-          ? `/settings${hash.startsWith('#') ? hash : `#${hash}`}`
-          : '/settings';
-      if (!workspaceTabsEnabledRef.current) {
-        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-          editorContent: editorContentRef.current ?? '',
-          currentFile: currentFileRef.current,
-          editedFileName: editedFileNameRef.current ?? '',
-        });
-        const leaving = getActiveFileTab(flushed);
-        if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
-          maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
-        }
-        const next = stripSettingsTab(flushed);
-        workspaceTabsRef.current = next;
-        setWorkspaceTabs(next);
-        setCurrentFile(null);
-        currentFileRef.current = null;
-        if (navigateUrl) navigate(target);
-        return;
-      }
-      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-        editorContent: editorContentRef.current ?? '',
-        currentFile: currentFileRef.current,
-        editedFileName: editedFileNameRef.current ?? '',
-      });
-      const leaving = getActiveFileTab(flushed);
-      if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
-        maybeAutoSaveOnFocusChange(leaving.currentFile, leaving.editorContent);
-      }
-      const next = openOrActivateSettings(flushed);
-      workspaceTabsRef.current = next;
-      setWorkspaceTabs(next);
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      if (navigateUrl) navigate(target);
-    },
-    [navigate, maybeAutoSaveOnFocusChange],
-  );
-
-  const collapseToLegacyWorkspace = useCallback(() => {
-    const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-      editorContent: editorContentRef.current ?? '',
-      currentFile: currentFileRef.current,
-      editedFileName: editedFileNameRef.current ?? '',
-    });
-    const wasChat = isChatRoute;
-    const wasSettings =
-      isSettingsRoute || isSettingsTab(getActiveTab(flushed));
-    const next = collapseWorkspaceToLegacy(flushed);
-    workspaceTabsRef.current = next;
-    setWorkspaceTabs(next);
-    const active = getActiveTab(next);
-    if (wasChat) {
-      // Stay on exclusive /chat; keep a single file tab in store for when leaving chat.
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      return;
-    }
-    if (wasSettings) {
-      // Stay on exclusive /settings (tab mode may have shown settings without /settings URL).
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      if (!isSettingsRoute) {
-        navigate('/settings');
-      }
-      return;
-    }
-    if (isFileTab(active)) {
-      const file = active.currentFile;
-      setCurrentFile(file);
-      currentFileRef.current = file;
-      setEditorContent(active.editorContent);
-      editorContentRef.current = active.editorContent;
-      setEditedFileName(active.editedFileName || String(file?.name || ''));
-    }
-  }, [isChatRoute, isSettingsRoute, navigate]);
-
-  const closeWorkspaceTabById = useCallback(
-    (id, options = {}) => {
-      const { skipDirtyConfirm = false, skipHistory = false } = options;
-      const closing = workspaceTabsRef.current.tabs.find((t) => t.id === id);
-      if (!skipDirtyConfirm && isFileTab(closing) && isFileTabDirty(closing)) {
-        setPendingCloseTabId(id);
-        setShowCloseFileConfirmModal(true);
-        return;
-      }
-      if (!skipHistory && closing) {
-        pushClosedTab(closedTabEntryFromWorkspaceTab(closing));
-      }
-      if (isFileTab(closing)) {
-        const closedPath =
-          closing.currentFile?.id || closing.path || '';
-        if (closedPath) clearEncMdPassword(closedPath);
-      }
-      const next = closeTab(workspaceTabsRef.current, id);
-      workspaceTabsRef.current = next;
-      setWorkspaceTabs(next);
-      const active = getActiveTab(next);
-      if (isFileTab(active)) {
-        const file = active.currentFile;
-        setCurrentFile(file);
-        currentFileRef.current = file;
-        setEditorContent(active.editorContent);
-        editorContentRef.current = active.editorContent;
-        setEditedFileName(active.editedFileName || String(file?.name || ''));
-        navigate(`/view/${(typeof file?.id === 'string' && file.id) || active.path}`);
-      } else if (isChatTab(active)) {
-        setCurrentFile(null);
-        currentFileRef.current = null;
-        navigate('/chat');
-      } else if (isSettingsTab(active)) {
-        setCurrentFile(null);
-        currentFileRef.current = null;
-        navigate('/settings');
-      } else {
-        setCurrentFile(null);
-        currentFileRef.current = null;
-        setEditorContent('');
-        editorContentRef.current = '';
-        setEditedFileName('');
-        navigate('/');
-      }
-    },
-    [navigate],
-  );
-
-  const reorderWorkspaceTabs = useCallback((activeId, overId) => {
-    const next = moveTab(workspaceTabsRef.current, activeId, overId);
-    workspaceTabsRef.current = next;
-    setWorkspaceTabs(next);
-  }, []);
-
-  useLayoutEffect(() => {
-    workspaceTabsApi.registerTabActions({
-      activateWorkspaceTab,
-      closeWorkspaceTabById,
-      openChatWorkspaceTab,
-      openSettingsWorkspaceTab,
-      reorderWorkspaceTabs,
-    });
-  }, [
-    workspaceTabsApi,
+  const {
     activateWorkspaceTab,
     closeWorkspaceTabById,
     openChatWorkspaceTab,
     openSettingsWorkspaceTab,
     reorderWorkspaceTabs,
-  ]);
+    collapseToLegacyWorkspace,
+    cycleWorkspaceTab,
+  } = workspaceTabsApi;
 
-  const cycleWorkspaceTab = useCallback(
-    (delta) => {
-      if (!workspaceTabsEnabledRef.current) return;
-      const { tabs, activeId } = workspaceTabsRef.current;
-      if (!tabs.length) return;
-      let idx = tabs.findIndex((t) => t.id === activeId);
-      if (idx < 0) idx = delta > 0 ? -1 : 0;
-      const nextIdx = (idx + delta + tabs.length) % tabs.length;
-      const next = tabs[nextIdx];
-      if (next) activateWorkspaceTab(next.id);
-    },
-    [activateWorkspaceTab],
-  );
+  useLayoutEffect(() => {
+    workspaceTabsApi.registerTabBridgeDeps({
+      onLeavingDirtyFileTab: maybeAutoSaveOnFocusChange,
+      requestDirtyCloseConfirm: (id) => {
+        setPendingCloseTabId(id);
+        setShowCloseFileConfirmModal(true);
+      },
+    });
+  }, [workspaceTabsApi, maybeAutoSaveOnFocusChange]);
 
   const handleEditorTypeChange = fileSessionApi.handleEditorTypeChange;
 
@@ -4469,20 +4222,6 @@ export function useMainAppController() {
       return pendingFile;
     });
   }, [location.pathname, isUnlocked]);
-
-  // Persist open workspace tabs (+ last-open snapshot) — Tabs domain
-  useWorkspaceTabsPersistence({
-    isUnlocked,
-    workspaceTabs,
-    currentFile,
-    editorContent,
-    workspaceTabsEnabledRef,
-    workspaceTabsRef,
-    editorContentRef,
-    currentFileRef,
-    editedFileNameRef,
-    hasRestoredPersistedWorkspaceTabsRef,
-  });
 
   // Seed Ctrl+Shift+T queue once from last-open snapshot (siblings of the auto-restored tab).
   useEffect(() => {

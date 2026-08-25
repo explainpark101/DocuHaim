@@ -2,22 +2,16 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { WorkspaceTabsContext } from '@/App/context/WorkspaceTabsContext';
 import { useWorkspaceTabs } from '@/utils/workspaceTabs/useWorkspaceTabs';
 import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
+import {
+  useWorkspaceTabsDomain,
+  type TabBridgeDeps,
+} from '@/App/hooks/useWorkspaceTabsDomain';
 
 type Props = { children: ReactNode };
 
-type TabActions = {
-  activateWorkspaceTab: (...args: any[]) => any;
-  closeWorkspaceTabById: (...args: any[]) => any;
-  openChatWorkspaceTab: (...args: any[]) => any;
-  openSettingsWorkspaceTab: (...args: any[]) => any;
-  reorderWorkspaceTabs: (...args: any[]) => any;
-};
-
-const noop = (..._args: any[]) => {};
-
 /**
- * Sole owner of workspace tab React state. Shell tab actions are registered by
- * AppLogic (controller) via `registerTabActions` — no outer context re-wrap.
+ * Owns workspace tab state + activate/close/open/reorder actions (useWorkspaceTabsDomain).
+ * Bridge deps (focus-save, dirty-close modal) inject from orchestration.
  */
 export function WorkspaceTabsProvider({ children }: Props) {
   const tabsApi = useWorkspaceTabs();
@@ -28,39 +22,41 @@ export function WorkspaceTabsProvider({ children }: Props) {
   workspaceTabsEnabledRef.current = workspaceTabsEnabled;
   const workspaceTabsRef = useRef(tabsApi.state);
   workspaceTabsRef.current = tabsApi.state;
+  const hasRestoredPersistedWorkspaceTabsRef = useRef(false);
+  const bridgeDepsRef = useRef<TabBridgeDeps>({});
 
-  const actionsRef = useRef<TabActions>({
-    activateWorkspaceTab: noop,
-    closeWorkspaceTabById: noop,
-    openChatWorkspaceTab: noop,
-    openSettingsWorkspaceTab: noop,
-    reorderWorkspaceTabs: noop,
-  });
-
-  const registerTabActions = useCallback((actions: Partial<TabActions>) => {
-    actionsRef.current = { ...actionsRef.current, ...actions };
+  const registerTabBridgeDeps = useCallback((deps: Partial<TabBridgeDeps>) => {
+    bridgeDepsRef.current = { ...bridgeDepsRef.current, ...deps };
   }, []);
+
+  const domain = useWorkspaceTabsDomain({
+    tabsApi,
+    workspaceTabsEnabled,
+    setWorkspaceTabsEnabled,
+    workspaceTabsEnabledRef,
+    workspaceTabsRef,
+    bridgeDepsRef,
+    hasRestoredPersistedWorkspaceTabsRef,
+  });
 
   const value = useMemo(
     () => ({
       ...tabsApi,
-      workspaceTabsEnabled,
-      setWorkspaceTabsEnabled,
-      workspaceTabsEnabledRef,
-      workspaceTabsRef,
-      registerTabActions,
-      activateWorkspaceTab: (...args: any[]) =>
-        actionsRef.current.activateWorkspaceTab(...args),
-      closeWorkspaceTabById: (...args: any[]) =>
-        actionsRef.current.closeWorkspaceTabById(...args),
-      openChatWorkspaceTab: (...args: any[]) =>
-        actionsRef.current.openChatWorkspaceTab(...args),
-      openSettingsWorkspaceTab: (...args: any[]) =>
-        actionsRef.current.openSettingsWorkspaceTab(...args),
-      reorderWorkspaceTabs: (...args: any[]) =>
-        actionsRef.current.reorderWorkspaceTabs(...args),
+      workspaceTabsEnabled: domain.workspaceTabsEnabled,
+      setWorkspaceTabsEnabled: domain.setWorkspaceTabsEnabled,
+      workspaceTabsEnabledRef: domain.workspaceTabsEnabledRef,
+      workspaceTabsRef: domain.workspaceTabsRef,
+      registerTabBridgeDeps,
+      hasRestoredPersistedWorkspaceTabsRef,
+      activateWorkspaceTab: domain.activateWorkspaceTab,
+      closeWorkspaceTabById: domain.closeWorkspaceTabById,
+      openChatWorkspaceTab: domain.openChatWorkspaceTab,
+      openSettingsWorkspaceTab: domain.openSettingsWorkspaceTab,
+      reorderWorkspaceTabs: domain.reorderWorkspaceTabs,
+      collapseToLegacyWorkspace: domain.collapseToLegacyWorkspace,
+      cycleWorkspaceTab: domain.cycleWorkspaceTab,
     }),
-    [tabsApi, workspaceTabsEnabled, registerTabActions],
+    [tabsApi, domain, registerTabBridgeDeps],
   );
 
   return (
