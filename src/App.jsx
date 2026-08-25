@@ -335,13 +335,18 @@ import { clearAllLlmApiKeySessions } from '@/utils/llmApiKeySession';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
 import { tryRestoreAuthSession } from '@/utils/authSession';
 import {
+  hasDesktopBiometricLockMarker,
   hasDesktopStoredCredsMarker,
   loadDesktopWebdavConfig,
+  loadPasswordEncryptedCredsBlob,
   migrateLegacyDesktopSecretsToStronghold,
   saveDesktopCreds,
   saveDesktopWebdavConfig,
+  savePasswordEncryptedCredsBlob,
   tryRestoreDesktopStrongholdSession,
 } from '@/utils/desktopStrongholdSecrets';
+import { unlockDesktopWithBiometricGate } from '@/utils/desktopBiometricUnlock';
+import { useTauriAppLock } from '@/hooks/useTauriAppLock';
 import { applyDocumentTheme } from '@/utils/documentTheme';
 import {
   applyForcedAppUpdate,
@@ -401,9 +406,12 @@ function MainApp() {
     setS3Creds,
     unlock,
     proceedWithoutStoredCreds,
+    lock,
   } = auth;
   const navigate = useNavigate();
   const location = useLocation();
+
+  useTauriAppLock({ isUnlocked, onLock: lock });
 
   const llmProviderProfiles = useMemo(
     () => resolveLlmProviderProfiles(s3Creds),
@@ -1416,6 +1424,12 @@ function MainApp() {
 
       if (isDesktopApp()) {
         try {
+          await migrateLegacyDesktopSecretsToStronghold();
+          if (cancelled) return;
+          if (hasDesktopBiometricLockMarker() && hasDesktopStoredCredsMarker()) {
+            setAuthWanted(true);
+            return;
+          }
           const desktop = await tryRestoreDesktopStrongholdSession();
           if (cancelled) return;
           if (desktop.creds) {
@@ -1433,12 +1447,16 @@ function MainApp() {
         }
       }
 
-      const stored = localStorage.getItem('s3NotesEncrypted');
-      if (stored) {
+      if (isDesktopApp() && hasDesktopStoredCredsMarker()) {
         setAuthWanted(true);
       } else {
-        proceedWithoutStoredCreds();
-        navigate('/settings');
+        const stored = localStorage.getItem('s3NotesEncrypted');
+        if (stored) {
+          setAuthWanted(true);
+        } else {
+          proceedWithoutStoredCreds();
+          navigate('/settings');
+        }
       }
     })();
 
@@ -1460,6 +1478,15 @@ function MainApp() {
     });
   }, []);
 
+  const canUnlockWithWebAuthnForModal =
+    (isDesktopApp() &&
+      hasDesktopBiometricLockMarker() &&
+      hasDesktopStoredCredsMarker() &&
+      webauthnAvailable) ||
+    (webauthnAvailable &&
+      !!getStoredWebAuthn() &&
+      (isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword));
+
   // 2. Auth Actions
   const handleUnlock = async (password) => {
     try {
@@ -1472,7 +1499,10 @@ function MainApp() {
         }
       }
 
-      const stored = localStorage.getItem('s3NotesEncrypted');
+      const storedBlob = isDesktopApp() ? await loadPasswordEncryptedCredsBlob() : null;
+      const stored = storedBlob
+        ? JSON.stringify(storedBlob)
+        : localStorage.getItem('s3NotesEncrypted');
       if (!stored) throw new Error("저장된 데이터가 없습니다.");
       const encryptedObj = JSON.parse(stored);
       if (encryptedObj?.webauthn) throw new Error("보안 키로 저장된 데이터는 비밀번호로 해제할 수 없습니다.");
@@ -1486,6 +1516,9 @@ function MainApp() {
       const creds = JSON.parse(decryptedStr);
       if (isDesktopApp()) {
         await saveDesktopCreds(creds);
+        if (stored) {
+          await savePasswordEncryptedCredsBlob(JSON.parse(stored));
+        }
         const decryptedWebdav = await decryptWebdavConfig(password);
         if (decryptedWebdav) {
           await saveDesktopWebdavConfig(decryptedWebdav);
@@ -1509,6 +1542,15 @@ function MainApp() {
   };
 
   const handleUnlockWithWebAuthn = async () => {
+    if (isDesktopApp() && hasDesktopBiometricLockMarker() && hasDesktopStoredCredsMarker()) {
+      const desktop = await unlockDesktopWithBiometricGate();
+      if (!desktop.creds) throw new Error('저장된 연결 정보가 없습니다.');
+      unlock(desktop.creds, '');
+      if (desktop.webdav) setWebdavConfig(desktop.webdav);
+      loadS3Files(desktop.creds);
+      navigate('/');
+      return;
+    }
     if (isStoredWithWebAuthn()) {
       const creds = await loadCredsWithWebAuthn();
       if (isDesktopApp()) {
@@ -9564,11 +9606,7 @@ function MainApp() {
             proceedWithoutStoredCreds();
             openSettingsWorkspaceTab();
           }}
-          canUnlockWithWebAuthn={
-            webauthnAvailable &&
-            !!getStoredWebAuthn() &&
-            (isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword)
-          }
+          canUnlockWithWebAuthn={canUnlockWithWebAuthnForModal}
           onUnlockWithWebAuthn={handleUnlockWithWebAuthn}
           isPasswordMode={!isStoredWithWebAuthn()}
         />
@@ -9691,11 +9729,7 @@ function MainApp() {
           proceedWithoutStoredCreds();
           openSettingsWorkspaceTab();
         }}
-        canUnlockWithWebAuthn={
-          webauthnAvailable &&
-          !!getStoredWebAuthn() &&
-          (isStoredWithWebAuthn() || !!getStoredWebAuthn()?.encryptedPassword)
-        }
+        canUnlockWithWebAuthn={canUnlockWithWebAuthnForModal}
         onUnlockWithWebAuthn={handleUnlockWithWebAuthn}
         isPasswordMode={!isStoredWithWebAuthn()}
       />

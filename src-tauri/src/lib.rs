@@ -133,11 +133,21 @@ fn take_pending_open_paths(state: tauri::State<'_, PendingOpenPaths>) -> Vec<Str
 pub fn run() {
     let pending = PendingOpenPaths(Mutex::new(collect_cli_file_args()));
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_biometric::init())
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_biometry::init())
+        .plugin(tauri_plugin_fs::init());
+
+    #[cfg(not(mobile))]
+    {
+        builder = builder.plugin(tauri_plugin_biometry::init());
+    }
+
+    #[cfg(mobile)]
+    {
+        builder = builder.plugin(tauri_plugin_biometric::init());
+    }
+
+    builder
         .manage(pending)
         .invoke_handler(tauri::generate_handler![
             take_pending_open_paths,

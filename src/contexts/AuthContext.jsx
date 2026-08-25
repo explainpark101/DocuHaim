@@ -6,6 +6,8 @@
  */
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { clearAuthSession, saveAuthSession } from '@/utils/authSession';
+import { hasDesktopBiometricLockMarker } from '@/utils/desktopStrongholdSecrets';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 
 const AuthContext = createContext(null);
 
@@ -31,6 +33,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!isUnlocked) return;
+    if (isDesktopApp() && hasDesktopBiometricLockMarker()) {
+      clearAuthSession();
+      return;
+    }
     void saveAuthSession({ creds: s3Creds, password: masterPassword });
   }, [isUnlocked, s3Creds, masterPassword]);
 

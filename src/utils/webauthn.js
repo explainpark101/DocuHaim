@@ -29,6 +29,7 @@ import {
   unlockWithDesktopBiometric,
   updateDesktopBiometricWrappedPassword,
 } from '@/utils/desktopBiometricUnlock';
+import { hasDesktopStoredCredsMarker } from '@/utils/desktopStrongholdSecrets';
 
 const S3HAIM_PRF_INFO = new TextEncoder().encode('S3 Haim Master Password Wrap V1');
 const S3HAIM_CREDS_INFO = new TextEncoder().encode('S3 Haim Creds Encryption V1');
@@ -354,6 +355,10 @@ export async function updateWebAuthnWrappedPassword(newMasterPassword) {
  */
 export function isStoredWithWebAuthn() {
   try {
+    if (isDesktopApp()) {
+      const marker = getDesktopBiometryMarker();
+      return marker?.mode === 'creds' && hasDesktopStoredCredsMarker();
+    }
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(ENCRYPTED_STORAGE_KEY) : null;
     if (!raw) return false;
     const data = JSON.parse(raw);

@@ -1,10 +1,27 @@
 /**
- * Desktop (Tauri) biometric unlock via native Touch ID / Windows Hello.
- * WebView WebAuthn/PRF is unreliable in Tauri; this uses tauri-plugin-biometry
- * (macOS keychain, Windows Hello + native webauthn.dll PRF).
+ * Tauri biometric app lock — authenticate gate only.
+ * All secrets (creds, markers, wrapped passwords) live in Stronghold.
  */
 
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import {
+  clearMasterPasswordWrap,
+  clearPasswordEncryptedCredsBlob,
+  isBiometricLockEnabled,
+  loadDesktopCreds,
+  loadMasterPasswordFromWrap,
+  saveDesktopCreds,
+  saveMasterPasswordWrap,
+  saveStrongholdWebAuthnMarker,
+  setBiometricLockEnabled,
+  type StrongholdWebAuthnMarker,
+} from '@/utils/desktopStrongholdSecrets';
+import {
+  isTauriBiometricAvailable,
+  promptTauriBiometric,
+  TAURI_BIOMETRIC_REASON_REGISTER,
+  TAURI_BIOMETRIC_REASON_UNLOCK,
+} from '@/utils/tauriBiometricLock';
+import { isTauriApp } from '@/utils/tauriPlatform';
 
 const BIOMETRY_DOMAIN = 'com.docuhaim.app';
 const NAME_UNLOCK_PASSWORD = 'unlock-password';
@@ -20,8 +37,19 @@ export type DesktopBiometryMarker = {
   encryptedPassword?: true;
 };
 
-async function loadBiometryApi() {
+async function loadLegacyBiometryApi() {
   return import('@choochmeque/tauri-plugin-biometry-api');
+}
+
+async function removeLegacyKeychainEntries(): Promise<void> {
+  if (!isTauriApp()) return;
+  try {
+    const { removeData } = await loadLegacyBiometryApi();
+    await removeData({ domain: BIOMETRY_DOMAIN, name: NAME_UNLOCK_PASSWORD });
+    await removeData({ domain: BIOMETRY_DOMAIN, name: NAME_CREDS_ENTROPY });
+  } catch {
+    // ignore — keychain may be empty or unavailable
+  }
 }
 
 export function isDesktopBiometryMarker(data: unknown): data is DesktopBiometryMarker {
@@ -48,40 +76,31 @@ export function getDesktopBiometryMarker(): DesktopBiometryMarker | null {
 function setDesktopBiometryMarker(marker: DesktopBiometryMarker | null) {
   if (!marker) {
     localStorage.removeItem(MARKER_KEY);
+    void saveStrongholdWebAuthnMarker(null);
     return;
   }
   localStorage.setItem(MARKER_KEY, JSON.stringify(marker));
+  void saveStrongholdWebAuthnMarker(marker as StrongholdWebAuthnMarker);
 }
 
 /** True when running in Tauri and platform biometry is available. */
 export async function isDesktopBiometricAvailable(): Promise<boolean> {
-  if (!isDesktopApp()) return false;
-  try {
-    const { checkStatus } = await loadBiometryApi();
-    const status = await checkStatus();
-    return status.isAvailable === true;
-  } catch {
-    return false;
-  }
+  return isTauriBiometricAvailable();
 }
 
 export async function enableDesktopBiometricUnlock(masterPassword: string): Promise<void> {
-  const { setData, removeData } = await loadBiometryApi();
-  await setData({
-    domain: BIOMETRY_DOMAIN,
-    name: NAME_UNLOCK_PASSWORD,
-    data: masterPassword,
-  });
-  try {
-    await removeData({ domain: BIOMETRY_DOMAIN, name: NAME_CREDS_ENTROPY });
-  } catch {
-    /* ignore */
+  if (!(await isTauriBiometricAvailable())) {
+    throw new Error('Biometric authentication is not available on this device.');
   }
+  await promptTauriBiometric(TAURI_BIOMETRIC_REASON_REGISTER);
+  await saveMasterPasswordWrap(masterPassword);
+  await setBiometricLockEnabled(true);
   setDesktopBiometryMarker({
     desktopBiometry: true,
     mode: 'password',
     encryptedPassword: true,
   });
+  await removeLegacyKeychainEntries();
 }
 
 export async function unlockWithDesktopBiometric(): Promise<string> {
@@ -89,15 +108,10 @@ export async function unlockWithDesktopBiometric(): Promise<string> {
   if (!marker || marker.mode !== 'password') {
     throw new Error('등록된 생체 인증이 없습니다.');
   }
-  const { getData } = await loadBiometryApi();
-  const response = await getData({
-    domain: BIOMETRY_DOMAIN,
-    name: NAME_UNLOCK_PASSWORD,
-    reason: 'Unlock DocuHaim vault',
-    cancelTitle: 'Cancel',
-  });
-  if (!response?.data) throw new Error('생체 인증에 실패했습니다.');
-  return response.data;
+  await promptTauriBiometric(TAURI_BIOMETRIC_REASON_UNLOCK);
+  const password = await loadMasterPasswordFromWrap();
+  if (!password) throw new Error('저장된 마스터 비밀번호가 없습니다.');
+  return password;
 }
 
 export async function updateDesktopBiometricWrappedPassword(
@@ -105,57 +119,36 @@ export async function updateDesktopBiometricWrappedPassword(
 ): Promise<void> {
   const marker = getDesktopBiometryMarker();
   if (!marker || marker.mode !== 'password') return;
-  const { setData } = await loadBiometryApi();
-  await setData({
-    domain: BIOMETRY_DOMAIN,
-    name: NAME_UNLOCK_PASSWORD,
-    data: newMasterPassword,
-  });
+  await saveMasterPasswordWrap(newMasterPassword);
 }
 
 export async function disableDesktopBiometricUnlock(): Promise<void> {
   setDesktopBiometryMarker(null);
-  try {
-    const { removeData } = await loadBiometryApi();
-    await removeData({ domain: BIOMETRY_DOMAIN, name: NAME_UNLOCK_PASSWORD });
-    await removeData({ domain: BIOMETRY_DOMAIN, name: NAME_CREDS_ENTROPY });
-  } catch {
-    /* ignore keychain errors after marker cleared */
-  }
-}
-
-function bufToBase64(buf: ArrayBuffer | Uint8Array): string {
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  return btoa(String.fromCharCode(...bytes));
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  await setBiometricLockEnabled(false);
+  await clearMasterPasswordWrap();
+  await clearPasswordEncryptedCredsBlob();
+  await removeLegacyKeychainEntries();
 }
 
 /**
- * Store S3/WebDAV creds encrypted with biometry-protected entropy (desktop).
+ * Store S3/WebDAV creds in Stronghold with biometric app lock (Tauri).
  */
 export async function saveCredsWithDesktopBiometric(creds: unknown): Promise<void> {
-  const { setData, removeData } = await loadBiometryApi();
-  const { encryptWithEntropy } = await import('@/utils/crypto');
-  const entropy = crypto.getRandomValues(new Uint8Array(32));
-  const encrypted = await encryptWithEntropy(JSON.stringify(creds), entropy);
-  await setData({
-    domain: BIOMETRY_DOMAIN,
-    name: NAME_CREDS_ENTROPY,
-    data: bufToBase64(entropy),
-  });
-  try {
-    await removeData({ domain: BIOMETRY_DOMAIN, name: NAME_UNLOCK_PASSWORD });
-  } catch {
-    /* ignore */
+  if (!(await isTauriBiometricAvailable())) {
+    throw new Error('Biometric authentication is not available on this device.');
   }
-  localStorage.setItem(
-    's3NotesEncrypted',
-    JSON.stringify({ ...encrypted, webauthn: true }),
-  );
+  await promptTauriBiometric(TAURI_BIOMETRIC_REASON_REGISTER);
+  await saveDesktopCreds(creds);
+  await clearMasterPasswordWrap();
+  await clearPasswordEncryptedCredsBlob();
+  await setBiometricLockEnabled(true);
   setDesktopBiometryMarker({ desktopBiometry: true, mode: 'creds' });
+  await removeLegacyKeychainEntries();
+  try {
+    localStorage.removeItem('s3NotesEncrypted');
+  } catch {
+    // ignore
+  }
 }
 
 export async function loadCredsWithDesktopBiometric(): Promise<unknown> {
@@ -163,21 +156,26 @@ export async function loadCredsWithDesktopBiometric(): Promise<unknown> {
   if (!marker || marker.mode !== 'creds') {
     throw new Error('등록된 생체 인증이 없습니다.');
   }
-  const raw = localStorage.getItem('s3NotesEncrypted');
-  if (!raw) throw new Error('저장된 연결 정보가 없습니다.');
-  const blob = JSON.parse(raw) as { webauthn?: boolean };
-  if (blob?.webauthn !== true) throw new Error('보안 키로 저장된 데이터가 아닙니다.');
+  await promptTauriBiometric(TAURI_BIOMETRIC_REASON_UNLOCK);
+  const creds = await loadDesktopCreds();
+  if (!creds) throw new Error('저장된 연결 정보가 없습니다.');
+  return creds;
+}
 
-  const { getData } = await loadBiometryApi();
-  const { decryptWithEntropy } = await import('@/utils/crypto');
-  const response = await getData({
-    domain: BIOMETRY_DOMAIN,
-    name: NAME_CREDS_ENTROPY,
-    reason: 'Unlock DocuHaim vault',
-    cancelTitle: 'Cancel',
-  });
-  if (!response?.data) throw new Error('생체 인증에 실패했습니다.');
-  const entropy = base64ToBytes(response.data);
-  const decryptedStr = await decryptWithEntropy(blob as never, entropy);
-  return JSON.parse(decryptedStr);
+/** Prompt biometrics and load Stronghold session (Tauri app lock). */
+export async function unlockDesktopWithBiometricGate(): Promise<{
+  creds: Record<string, unknown> | null;
+  webdav: Awaited<ReturnType<typeof import('@/utils/desktopStrongholdSecrets').loadDesktopWebdavConfig>>;
+}> {
+  if (!(await isBiometricLockEnabled())) {
+    throw new Error('Biometric app lock is not enabled.');
+  }
+  await promptTauriBiometric(TAURI_BIOMETRIC_REASON_UNLOCK);
+  const { loadDesktopStrongholdAfterBiometric } = await import('@/utils/desktopStrongholdSecrets');
+  return loadDesktopStrongholdAfterBiometric();
+}
+
+export async function isDesktopBiometricLockEnabled(): Promise<boolean> {
+  if (!isTauriApp()) return false;
+  return isBiometricLockEnabled();
 }

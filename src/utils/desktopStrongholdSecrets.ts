@@ -9,6 +9,7 @@ import { appDataDir, join } from '@tauri-apps/api/path';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   decryptData,
+  encryptWithEntropy,
   decryptWithEntropy,
   deriveEntropyFromPassword,
 } from '@/utils/crypto';
@@ -26,14 +27,176 @@ const CLIENT_NAME = 'docuhaim';
 
 const KEY_S3_CREDS = 's3-creds';
 const KEY_WEBDAV_CONFIG = 'webdav-config';
+const KEY_BIOMETRIC_LOCK = 'biometric-lock-v1';
+const KEY_PASSWORD_ENCRYPTED_CREDS = 'password-encrypted-creds-v1';
+const KEY_MASTER_PASSWORD_WRAP = 'master-password-wrap-v1';
+const KEY_WEBAUTHN_MARKER = 'webauthn-marker-v1';
 
 /** Sync marker so hasStoredCreds() works without awaiting Stronghold. */
 export const DESKTOP_STRONGHOLD_CREDS_MARKER = 's3haim_desktop_stronghold_creds';
+/** Sync marker: biometric app lock is enabled (Tauri only). */
+export const DESKTOP_BIOMETRIC_LOCK_MARKER = 's3haim_desktop_biometric_lock';
 
 const LEGACY_ENCRYPTED_KEY = 's3NotesEncrypted';
 const LEGACY_WEBAUTHN_KEY = 's3NotesWebAuthn';
 const LEGACY_WEBDAV_CONFIG_KEY = 's3haim_webdav_config';
 const LEGACY_WEBDAV_ENCRYPTED_KEY = 's3haim_webdav_encrypted';
+
+export type StrongholdBiometricLockConfig = {
+  enabled: boolean;
+  enrolledAt?: string;
+};
+
+export type StrongholdWebAuthnMarker =
+  | { desktopBiometry: true; mode: 'password'; encryptedPassword?: true }
+  | { desktopBiometry: true; mode: 'creds' }
+  | { credentialId: string; salt: number[]; encryptedPassword?: string };
+
+function markBiometricLockEnabled(enabled: boolean) {
+  try {
+    if (enabled) {
+      localStorage.setItem(DESKTOP_BIOMETRIC_LOCK_MARKER, '1');
+    } else {
+      localStorage.removeItem(DESKTOP_BIOMETRIC_LOCK_MARKER);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function hasDesktopBiometricLockMarker(): boolean {
+  if (!isDesktopApp()) return false;
+  try {
+    return localStorage.getItem(DESKTOP_BIOMETRIC_LOCK_MARKER) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export async function loadBiometricLockConfig(): Promise<StrongholdBiometricLockConfig | null> {
+  if (!isDesktopApp()) return null;
+  const raw = await getRecord(KEY_BIOMETRIC_LOCK);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as StrongholdBiometricLockConfig;
+    if (typeof parsed?.enabled !== 'boolean') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function isBiometricLockEnabled(): Promise<boolean> {
+  const config = await loadBiometricLockConfig();
+  return config?.enabled === true;
+}
+
+export async function setBiometricLockEnabled(enabled: boolean): Promise<void> {
+  if (!isDesktopApp()) return;
+  if (enabled) {
+    await setRecord(
+      KEY_BIOMETRIC_LOCK,
+      JSON.stringify({ enabled: true, enrolledAt: new Date().toISOString() } satisfies StrongholdBiometricLockConfig),
+    );
+    markBiometricLockEnabled(true);
+    return;
+  }
+  await removeRecord(KEY_BIOMETRIC_LOCK);
+  markBiometricLockEnabled(false);
+}
+
+export async function saveStrongholdWebAuthnMarker(marker: StrongholdWebAuthnMarker | null): Promise<void> {
+  if (!isDesktopApp()) return;
+  if (!marker) {
+    await removeRecord(KEY_WEBAUTHN_MARKER);
+    try {
+      localStorage.removeItem(LEGACY_WEBAUTHN_KEY);
+    } catch {
+      // ignore
+    }
+    return;
+  }
+  const json = JSON.stringify(marker);
+  await setRecord(KEY_WEBAUTHN_MARKER, json);
+  try {
+    localStorage.setItem(LEGACY_WEBAUTHN_KEY, json);
+  } catch {
+    // ignore
+  }
+}
+
+export async function loadStrongholdWebAuthnMarker(): Promise<StrongholdWebAuthnMarker | null> {
+  if (!isDesktopApp()) return null;
+  const raw = await getRecord(KEY_WEBAUTHN_MARKER);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as StrongholdWebAuthnMarker;
+  } catch {
+    return null;
+  }
+}
+
+export async function savePasswordEncryptedCredsBlob(blob: unknown): Promise<void> {
+  if (!isDesktopApp()) return;
+  await setRecord(KEY_PASSWORD_ENCRYPTED_CREDS, JSON.stringify(blob));
+}
+
+export async function loadPasswordEncryptedCredsBlob(): Promise<unknown | null> {
+  if (!isDesktopApp()) return null;
+  const raw = await getRecord(KEY_PASSWORD_ENCRYPTED_CREDS);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPasswordEncryptedCredsBlob(): Promise<void> {
+  if (!isDesktopApp()) return;
+  await removeRecord(KEY_PASSWORD_ENCRYPTED_CREDS);
+}
+
+type MasterPasswordWrap = {
+  wrapKeyB64: string;
+  salt: number[];
+  iv: number[];
+  cipher: number[];
+};
+
+export async function saveMasterPasswordWrap(masterPassword: string): Promise<void> {
+  if (!isDesktopApp()) return;
+  const wrapKey = crypto.getRandomValues(new Uint8Array(32));
+  const encrypted = await encryptWithEntropy(masterPassword, wrapKey);
+  const payload: MasterPasswordWrap = {
+    wrapKeyB64: btoa(String.fromCharCode(...wrapKey)),
+    salt: encrypted.salt,
+    iv: encrypted.iv,
+    cipher: encrypted.cipher,
+  };
+  await setRecord(KEY_MASTER_PASSWORD_WRAP, JSON.stringify(payload));
+}
+
+export async function loadMasterPasswordFromWrap(): Promise<string | null> {
+  if (!isDesktopApp()) return null;
+  const raw = await getRecord(KEY_MASTER_PASSWORD_WRAP);
+  if (!raw) return null;
+  try {
+    const payload = JSON.parse(raw) as MasterPasswordWrap;
+    const wrapKey = Uint8Array.from(atob(payload.wrapKeyB64), (c) => c.charCodeAt(0));
+    return decryptWithEntropy(
+      { salt: payload.salt, iv: payload.iv, cipher: payload.cipher },
+      wrapKey,
+    );
+  } catch {
+    return null;
+  }
+}
+
+export async function clearMasterPasswordWrap(): Promise<void> {
+  if (!isDesktopApp()) return;
+  await removeRecord(KEY_MASTER_PASSWORD_WRAP);
+}
 
 let strongholdRef: Stronghold | null = null;
 let storeRef: Store | null = null;
@@ -161,6 +324,7 @@ function clearLegacyDesktopStorage() {
     localStorage.removeItem(LEGACY_WEBAUTHN_KEY);
     localStorage.removeItem(LEGACY_WEBDAV_CONFIG_KEY);
     localStorage.removeItem(LEGACY_WEBDAV_ENCRYPTED_KEY);
+    localStorage.removeItem(DESKTOP_BIOMETRIC_LOCK_MARKER);
   } catch {
     // ignore
   }
@@ -215,10 +379,63 @@ function loadLegacyPlainWebdav() {
  * One-time migration from localStorage / biometry blobs to Stronghold.
  * Password-encrypted legacy blobs require `password` (from unlock modal).
  */
+export async function syncDesktopStrongholdMarkers(): Promise<void> {
+  if (!isDesktopApp()) return;
+
+  const strongholdMarker = await loadStrongholdWebAuthnMarker();
+  if (!strongholdMarker) {
+    try {
+      const raw = localStorage.getItem(LEGACY_WEBAUTHN_KEY);
+      if (raw) {
+        await saveStrongholdWebAuthnMarker(JSON.parse(raw) as StrongholdWebAuthnMarker);
+      }
+    } catch {
+      // ignore
+    }
+  } else {
+    try {
+      localStorage.setItem(LEGACY_WEBAUTHN_KEY, JSON.stringify(strongholdMarker));
+    } catch {
+      // ignore
+    }
+  }
+
+  const lockConfig = await loadBiometricLockConfig();
+  if (!lockConfig?.enabled) {
+    try {
+      const raw = localStorage.getItem(LEGACY_WEBAUTHN_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { desktopBiometry?: boolean };
+        if (parsed?.desktopBiometry === true) {
+          await setBiometricLockEnabled(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const legacyEnc = localStorage.getItem(LEGACY_ENCRYPTED_KEY);
+  const strongholdEnc = await loadPasswordEncryptedCredsBlob();
+  if (legacyEnc && !strongholdEnc) {
+    try {
+      await savePasswordEncryptedCredsBlob(JSON.parse(legacyEnc));
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export async function migrateLegacyDesktopSecretsToStronghold(
   password = '',
 ): Promise<{ creds: Record<string, unknown> | null; webdav: ReturnType<typeof normalizeWebdavConfig> | null }> {
-  if (!isDesktopApp() || hasDesktopStoredCredsMarker()) {
+  if (!isDesktopApp()) {
+    return { creds: null, webdav: null };
+  }
+
+  await syncDesktopStrongholdMarkers();
+
+  if (hasDesktopStoredCredsMarker()) {
     return { creds: null, webdav: null };
   }
 
@@ -264,6 +481,7 @@ export async function migrateLegacyDesktopSecretsToStronghold(
 
 /**
  * Try auto-restore on desktop cold start (no password prompt).
+ * Skips restore when biometric app lock is enabled — caller must prompt biometrics first.
  */
 export async function tryRestoreDesktopStrongholdSession(): Promise<{
   creds: Record<string, unknown> | null;
@@ -273,6 +491,24 @@ export async function tryRestoreDesktopStrongholdSession(): Promise<{
 
   await migrateLegacyDesktopSecretsToStronghold();
 
+  if (await isBiometricLockEnabled()) {
+    return { creds: null, webdav: null };
+  }
+
+  const creds = await loadDesktopCreds<Record<string, unknown>>();
+  const webdav = await loadDesktopWebdavConfig();
+  return { creds, webdav };
+}
+
+/**
+ * Load secrets from Stronghold after biometric verification (Tauri app lock).
+ */
+export async function loadDesktopStrongholdAfterBiometric(): Promise<{
+  creds: Record<string, unknown> | null;
+  webdav: ReturnType<typeof normalizeWebdavConfig> | null;
+}> {
+  if (!isDesktopApp()) return { creds: null, webdav: null };
+  await migrateLegacyDesktopSecretsToStronghold();
   const creds = await loadDesktopCreds<Record<string, unknown>>();
   const webdav = await loadDesktopWebdavConfig();
   return { creds, webdav };

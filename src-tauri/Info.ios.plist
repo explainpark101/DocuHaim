@@ -3,6 +3,6 @@
 <plist version="1.0">
   <dict>
     <key>NSFaceIDUsageDescription</key>
-    <string>Authenticate with biometric</string>
+    <string>DocuHaim needs FaceID or TouchID to unlock your vault.</string>
   </dict>
 </plist>
