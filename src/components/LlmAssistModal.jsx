@@ -659,16 +659,18 @@ export default function LlmAssistModal({
         <LlmAssistPanel {...panelProps} />
       </div>
 
-      <button
-        type="button"
+      <div
+        role="separator"
+        aria-orientation="horizontal"
         aria-label="크기 조절"
-        className="absolute bottom-0 left-0 z-10 h-5 w-5 touch-none cursor-nesw-resize opacity-0"
+        className="absolute bottom-0 left-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
         onPointerDown={(e) => startCornerResize('sw', e)}
       />
-      <button
-        type="button"
+      <div
+        role="separator"
+        aria-orientation="horizontal"
         aria-label="크기 조절"
-        className="absolute bottom-0 right-0 z-10 h-5 w-5 touch-none cursor-nwse-resize opacity-0"
+        className="absolute bottom-0 right-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
         onPointerDown={(e) => startCornerResize('se', e)}
       />
     </div>

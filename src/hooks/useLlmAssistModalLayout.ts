@@ -25,6 +25,40 @@ type ResizeState = {
   startLayout: LlmModalLayout;
 };
 
+const RESIZE_CURSOR_STYLE_ID = 'llm-assist-modal-resize-cursor-style';
+const RESIZE_ROOT_CLASS = 'llm-assist-modal-corner-resize';
+
+function ensureResizeCursorStyle() {
+  if (document.getElementById(RESIZE_CURSOR_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = RESIZE_CURSOR_STYLE_ID;
+  style.textContent = `
+    html.${RESIZE_ROOT_CLASS},
+    html.${RESIZE_ROOT_CLASS} * {
+      cursor: var(--llm-assist-resize-cursor, nwse-resize) !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function resizeCursorForCorner(corner: BottomCorner): string {
+  return corner === 'se' ? 'nwse-resize' : 'nesw-resize';
+}
+
+function lockResizeCursor(corner: BottomCorner) {
+  ensureResizeCursorStyle();
+  const cursor = resizeCursorForCorner(corner);
+  document.documentElement.style.setProperty('--llm-assist-resize-cursor', cursor);
+  document.documentElement.classList.add(RESIZE_ROOT_CLASS);
+  document.body.style.userSelect = 'none';
+}
+
+function unlockResizeCursor() {
+  document.documentElement.classList.remove(RESIZE_ROOT_CLASS);
+  document.documentElement.style.removeProperty('--llm-assist-resize-cursor');
+  document.body.style.userSelect = '';
+}
+
 export function useLlmAssistModalLayout(
   editorRef: { current?: unknown } | null | undefined,
   { enabled = true }: { enabled?: boolean } = {},
@@ -238,20 +272,35 @@ export function useLlmAssistModalLayout(
         startLayout: layout,
       };
 
+      lockResizeCursor(corner);
+
+      const target = e.currentTarget;
+      if (target instanceof HTMLElement && typeof target.setPointerCapture === 'function') {
+        target.setPointerCapture(e.pointerId);
+      }
+
+      const finish = () => {
+        resizeRef.current = null;
+        unlockResizeCursor();
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+      };
+
       const onMove = (ev: PointerEvent) => {
         ev.preventDefault();
         applyResizeDelta(ev.clientX, ev.clientY);
       };
 
       const onUp = () => {
-        resizeRef.current = null;
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
+        if (!resizeRef.current) return;
+        finish();
         setLayout((prev) => persistLayout(prev));
       };
 
       document.addEventListener('pointermove', onMove, { passive: false });
       document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
     },
     [applyResizeDelta, layout, persistLayout],
   );
