@@ -225,23 +225,26 @@ export function hasDesktopStoredCredsMarker(): boolean {
 
 async function getStore(): Promise<Store> {
   if (storeRef) return storeRef;
-  if (!initPromise) {
-    initPromise = (async () => {
-      const dir = await appDataDir();
-      const vaultPath = await join(dir, VAULT_FILE);
-      const stronghold = await Stronghold.load(vaultPath, VAULT_PASSWORD);
-      strongholdRef = stronghold;
-      let client: Client;
-      try {
-        client = await stronghold.loadClient(CLIENT_NAME);
-      } catch {
-        client = await stronghold.createClient(CLIENT_NAME);
-      }
-      storeRef = client.getStore();
-      return storeRef;
-    })();
-  }
+  initPromise ??= initStrongholdStore().catch((err) => {
+    initPromise = null;
+    throw err;
+  });
   return initPromise;
+}
+
+async function initStrongholdStore(): Promise<Store> {
+  const dir = await appDataDir();
+  const vaultPath = await join(dir, VAULT_FILE);
+  const stronghold = await Stronghold.load(vaultPath, VAULT_PASSWORD);
+  strongholdRef = stronghold;
+  let client: Client;
+  try {
+    client = await stronghold.loadClient(CLIENT_NAME);
+  } catch {
+    client = await stronghold.createClient(CLIENT_NAME);
+  }
+  storeRef = client.getStore();
+  return storeRef;
 }
 
 async function setRecord(key: string, value: string): Promise<void> {

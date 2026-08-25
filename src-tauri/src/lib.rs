@@ -1,3 +1,5 @@
+mod stronghold_kdf;
+
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -154,13 +156,19 @@ pub fn run() {
             gemini_api_fetch
         ])
         .setup(|app| {
-            let salt_path = app
+            let data_dir = app
                 .path()
                 .app_local_data_dir()
-                .expect("could not resolve app local data path")
-                .join("stronghold-salt.txt");
-            app.handle()
-                .plugin(tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build())?;
+                .map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+            let salt_path = data_dir.join("stronghold-salt.txt");
+            let salt_path_for_hash = salt_path.clone();
+            app.handle().plugin(
+                tauri_plugin_stronghold::Builder::new(move |password| {
+                    stronghold_kdf::hash_password(password, &salt_path_for_hash)
+                })
+                .build(),
+            )?;
             if let Some(state) = app.try_state::<PendingOpenPaths>() {
                 if let Ok(guard) = state.0.lock() {
                     if !guard.is_empty() {
