@@ -38,6 +38,8 @@ export default function WorkspaceMainPanels({
   tabsEnabled = true,
   isChatRoute = false,
   isSettingsRoute = false,
+  /** `titlebar` — tab strip lives in DesktopTitlebar; omit inline WorkspaceTabBar. */
+  tabBarPlacement = 'inline',
 }) {
   const fileTabs = tabs.filter(isFileTab);
   const hasChatTab = tabs.some((t) => t.kind === 'chat');
@@ -88,16 +90,18 @@ export default function WorkspaceMainPanels({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <WorkspaceTabBar
-        tabs={tabs}
-        activeId={activeId}
-        savingTabIds={savingTabIds}
-        onActivate={onActivateTab}
-        onClose={onCloseTab}
-        onReorder={onReorderTabs}
-        onFileTabContextMenu={onFileTabContextMenu}
-        isMobileLayout={isMobileLayout}
-      />
+      {tabBarPlacement === 'inline' ? (
+        <WorkspaceTabBar
+          tabs={tabs}
+          activeId={activeId}
+          savingTabIds={savingTabIds}
+          onActivate={onActivateTab}
+          onClose={onCloseTab}
+          onReorder={onReorderTabs}
+          onFileTabContextMenu={onFileTabContextMenu}
+          isMobileLayout={isMobileLayout}
+        />
+      ) : null}
       <WorkspaceTabHost>
         {fileTabs.map((tab) => {
           const active = tab.id === activeId;

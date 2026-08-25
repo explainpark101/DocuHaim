@@ -16,6 +16,7 @@
 @layer base {
   html {
     color-scheme: dark;
+    --desktop-titlebar-h: 2rem;
   }
 
   body {

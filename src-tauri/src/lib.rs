@@ -261,6 +261,13 @@ pub fn run() {
             gemini_api_fetch
         ])
         .setup(|app| {
+            // Windows: remove OS titlebar; custom controls live in the webview.
+            // macOS keeps decorations so Overlay traffic lights remain available.
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_decorations(false);
+            }
+
             let data_dir = app
                 .path()
                 .app_local_data_dir()

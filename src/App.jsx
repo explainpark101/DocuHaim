@@ -45,6 +45,7 @@ import {
 import Sidebar from '@/components/Sidebar';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
+import DesktopTitlebar from '@/components/desktop/DesktopTitlebar';
 import ShareTargetGate, {
   useChatStorageCtx,
 } from '@/components/chatWithMyself/ShareTargetGate';
@@ -248,7 +249,7 @@ import {
   tryRestoreLocalRootHandle,
 } from '@/utils/localFolderStore';
 import { isDesktopApp } from '@/utils/isDesktopApp';
-import { isTauriAndroid } from '@/utils/tauriPlatform';
+import { isTauriAndroid, isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
   loadLocalVaultFsPath,
   saveLocalVaultFsPath,
@@ -1055,6 +1056,8 @@ function MainApp() {
       editedFileName: editedFileNameRef.current ?? '',
     });
     const wasChat = isChatRoute;
+    const wasSettings =
+      isSettingsRoute || isSettingsTab(getActiveTab(flushed));
     const next = collapseWorkspaceToLegacy(flushed);
     workspaceTabsRef.current = next;
     setWorkspaceTabs(next);
@@ -1065,6 +1068,15 @@ function MainApp() {
       currentFileRef.current = null;
       return;
     }
+    if (wasSettings) {
+      // Stay on exclusive /settings (tab mode may have shown settings without /settings URL).
+      setCurrentFile(null);
+      currentFileRef.current = null;
+      if (!isSettingsRoute) {
+        navigate('/settings');
+      }
+      return;
+    }
     if (isFileTab(active)) {
       const file = active.currentFile;
       setCurrentFile(file);
@@ -1073,7 +1085,7 @@ function MainApp() {
       editorContentRef.current = active.editorContent;
       setEditedFileName(active.editedFileName || String(file?.name || ''));
     }
-  }, [isChatRoute]);
+  }, [isChatRoute, isSettingsRoute, navigate]);
 
   const closeWorkspaceTabById = useCallback(
     (id, options = {}) => {
@@ -9703,7 +9715,9 @@ function MainApp() {
       className={`flex min-h-0 bg-gray-50 dark:bg-odp-bgSofter text-gray-800 dark:text-odp-fg font-sans ${
         lockChatViewport
           ? 'fixed inset-x-0 z-0 flex-col overflow-hidden'
-          : 'relative h-screen'
+          : isTauriDesktopPlatform()
+            ? 'relative h-screen flex-col'
+            : 'relative h-screen'
       }`}
       style={
         lockChatViewport
@@ -9716,6 +9730,32 @@ function MainApp() {
       }
     >
       <UserWebfontStyles />
+      {isTauriDesktopPlatform() ? (
+        <DesktopTitlebar
+          tabs={workspaceTabs.tabs}
+          activeId={workspaceTabs.activeId}
+          savingTabIds={savingTabIds}
+          tabsEnabled={workspaceTabsEnabled}
+          appName={appName}
+          isMobileLayout={isMobile}
+          onActivateTab={(id) => activateWorkspaceTab(id)}
+          onCloseTab={(id) => {
+            closeWorkspaceTabById(id);
+          }}
+          onReorderTabs={reorderWorkspaceTabs}
+          onFileTabContextMenu={(tab, point) => {
+            fileTabContextMenuRef.current?.open?.({
+              storageType: tab.storageType,
+              path: tab.path,
+              name: tab.editedFileName || tab.currentFile?.name,
+              currentFile: tab.currentFile,
+              clientX: point.clientX,
+              clientY: point.clientY,
+              onCloseTab: () => closeWorkspaceTabById(tab.id),
+            });
+          }}
+        />
+      ) : null}
       {/* Hidden file input for import */}
       <input type="file" ref={fileInputRef} onChange={handleImportCreds} accept=".json" className="hidden" />
 
@@ -9963,6 +10003,7 @@ function MainApp() {
                   activeId={workspaceTabs.activeId}
                   savingTabIds={savingTabIds}
                   tabsEnabled={workspaceTabsEnabled}
+                  tabBarPlacement={isTauriDesktopPlatform() ? 'titlebar' : 'inline'}
                   isChatRoute={isChatRoute}
                   isSettingsRoute={isSettingsRoute}
                   isMobileLayout={isMobile}

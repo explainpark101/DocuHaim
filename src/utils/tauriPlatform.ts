@@ -21,3 +21,15 @@ export function isTauriAndroid(): boolean {
 export function isTauriDesktopPlatform(): boolean {
   return isTauriApp() && !isTauriMobilePlatform();
 }
+
+/** Tauri desktop on macOS (native traffic lights + Overlay titlebar). */
+export function isTauriMacOS(): boolean {
+  if (!isTauriDesktopPlatform() || typeof navigator === 'undefined') return false;
+  return /Mac|Macintosh/i.test(navigator.userAgent) || /Mac/i.test(navigator.platform || '');
+}
+
+/** Tauri desktop on Windows (borderless + custom window controls). */
+export function isTauriWindows(): boolean {
+  if (!isTauriDesktopPlatform() || typeof navigator === 'undefined') return false;
+  return /Windows/i.test(navigator.userAgent) || /Win/i.test(navigator.platform || '');
+}

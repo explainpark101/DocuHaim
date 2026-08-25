@@ -57,6 +57,12 @@ type WorkspaceTabBarProps = {
     point: { clientX: number; clientY: number },
   ) => void;
   isMobileLayout?: boolean;
+  /**
+   * `inline` — bordered strip above editor panels (web / default).
+   * `titlebar` — embedded in DesktopTitlebar (no own border/bg; parent owns chrome).
+   */
+  variant?: 'inline' | 'titlebar';
+  className?: string;
 };
 
 type IconComp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
@@ -298,6 +304,8 @@ export default function WorkspaceTabBar({
   onReorder,
   onFileTabContextMenu,
   isMobileLayout = false,
+  variant = 'inline',
+  className = '',
 }: WorkspaceTabBarProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -319,15 +327,16 @@ export default function WorkspaceTabBar({
     onReorder(from, to);
   };
 
+  const listClass =
+    variant === 'titlebar'
+      ? `flex h-full min-w-0 shrink items-stretch gap-0.5 overflow-x-auto px-1 ${className}`.trim()
+      : `flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${className}`.trim();
+
   return (
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
-          <div
-            role="tablist"
-            aria-label="워크스페이스 탭"
-            className="flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-          >
+          <div role="tablist" aria-label="워크스페이스 탭" className={listClass}>
             {tabs.map((tab) => (
               <SortableWorkspaceTab
                 key={tab.id}
