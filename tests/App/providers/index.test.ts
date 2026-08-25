@@ -9,11 +9,18 @@ import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 describe('App provider public API', () => {
   it('documents fixed provider nesting order', () => {
     expect(APP_PROVIDER_ORDER).toEqual([
+      'AppBootstrapStateProvider',
+      'AppVaultStateProvider',
+      'WorkspaceTabsProvider',
+      'AppFileSessionStateProvider',
+      'AppTreeOpsStateProvider',
+      'AppPwaSnippetsStateProvider',
+      'RecordingProvider',
       'AppBootstrapProvider',
       'VaultProvider',
-      'WorkspaceTabsProvider',
       'FileSessionProvider',
       'TreeOpsProvider',
+      'AppModalsProvider',
       'AutoSaveProvider',
     ]);
   });

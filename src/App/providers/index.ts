@@ -9,8 +9,12 @@ export { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 export { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 export { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 export { AppLogicProvider } from '@/App/providers/AppLogicProvider';
+export { useAppOrchestration, useMainAppController } from '@/App/providers/useAppOrchestration';
 export { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
 export { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
+export { RecordingProvider } from '@/App/providers/RecordingProvider';
+export { AppPwaSnippetsStateProvider } from '@/App/providers/AppPwaSnippetsStateProvider';
+export { AppModalsProvider } from '@/App/providers/AppModalsProvider';
 export {
   isVaultPathStorageType,
   VAULT_PATH_STORAGE_TYPES,

@@ -1,4 +1,8 @@
-// @ts-nocheck — migrated from App.jsx; typed gradually in later PRs
+// @ts-nocheck — migrated from App.jsx; handlers gradually leave for domain modules (R9+)
+/**
+ * Cross-domain orchestration: handlers that span Vault / FileSession / TreeOps / Tabs.
+ * React state for those domains is owned by outer *StateProvider / RecordingProvider wrappers.
+ */
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { getParentPathsToExpand, getExt } from '@/App/helpers';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';

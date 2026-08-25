@@ -1,4 +1,3 @@
-// @ts-nocheck — domain composition from useMainAppController
 import { useMemo, type ReactNode } from 'react';
 import { AppBootstrapProvider } from '@/App/providers/AppBootstrapProvider';
 import { VaultProvider } from '@/App/providers/VaultProvider';
@@ -9,9 +8,15 @@ import { AppModalsProvider } from '@/App/providers/AppModalsProvider';
 import { AppShellContext } from '@/App/context/AppShellContext';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
-import { useMainAppController } from '@/App/providers/useMainAppController';
+import { useAppOrchestration } from '@/App/providers/useAppOrchestration';
 
-function AppShellMerge({ controller, children }: { controller: any; children: ReactNode }) {
+function AppShellMerge({
+  controller,
+  children,
+}: {
+  controller: Record<string, unknown>;
+  children: ReactNode;
+}) {
   const autoSave = useAutoSave();
   const bootstrap = useAppBootstrap();
   const value = useMemo(
@@ -30,11 +35,11 @@ function AppShellMerge({ controller, children }: { controller: any; children: Re
 }
 
 /**
- * Runs the main app controller (inside WorkspaceTabsProvider) and fans out
- * domain slices. AutoSaveProvider owns §7–8; AppBootstrapProvider owns theme/scriptsLoaded.
+ * Runs cross-domain orchestration (handlers still in useAppOrchestration) and fans out
+ * typed domain slices. Domain React state lives in *StateProvider / RecordingProvider wrappers.
  */
 export function AppLogicProvider({ children }: { children: ReactNode }) {
-  const c = useMainAppController();
+  const c = useAppOrchestration() as Record<string, any>;
 
   const bootstrapLogic = useMemo(
     () => ({
