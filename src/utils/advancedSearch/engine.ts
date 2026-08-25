@@ -247,6 +247,17 @@ class AdvancedSearchEngine {
   }
 
   setEnabled(value: boolean): void {
+    // Tauri Android never runs lucivy inverted index.
+    if (
+      typeof window !== 'undefined' &&
+      ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) &&
+      /Android/i.test(navigator.userAgent || '')
+    ) {
+      this.enabled = false;
+      saveAdvancedSearchIndexEnabled(false);
+      this.emit();
+      return;
+    }
     this.enabled = Boolean(value);
     saveAdvancedSearchIndexEnabled(this.enabled);
     this.emit();

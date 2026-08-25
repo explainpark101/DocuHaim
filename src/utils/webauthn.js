@@ -75,7 +75,10 @@ function challengeBase64URL() {
 }
 
 export async function isWebAuthnPRFSupported() {
-  if (isDesktopApp() && (await isDesktopBiometricAvailable())) return true;
+  // Tauri shells use native biometry (desktop plugin-biometry / Android plugin-biometric), not browser PRF.
+  if (isDesktopApp()) {
+    return isDesktopBiometricAvailable();
+  }
   if (!(await browserSupportsWebAuthn())) return false;
   if (!window.PublicKeyCredential || typeof PublicKeyCredential.getClientCapabilities !== 'function') return false;
   try {
@@ -91,10 +94,12 @@ export async function isWebAuthnPRFSupported() {
  * Uses PRF when detectable; falls back to basic WebAuthn so browsers that support passkeys
  * but lack getClientCapabilities() (or don't list 'prf') still show the option. Actual save
  * will fail with a clear error if PRF is not supported.
- * On Tauri desktop, native biometry (Touch ID / Windows Hello) counts as available.
+ * On Tauri (desktop + Android), only native biometry counts — never browser passkeys/PRF.
  */
 export async function isWebAuthnAvailableForSave() {
-  if (isDesktopApp() && (await isDesktopBiometricAvailable())) return true;
+  if (isDesktopApp()) {
+    return isDesktopBiometricAvailable();
+  }
   if (await isWebAuthnPRFSupported()) return true;
   return browserSupportsWebAuthn();
 }
@@ -303,7 +308,10 @@ export function setStoredWebAuthn(data) {
  * On Tauri desktop, stores the master password in OS biometry-protected storage instead.
  */
 export async function enableWebAuthnUnlock(masterPassword) {
-  if (isDesktopApp() && (await isDesktopBiometricAvailable())) {
+  if (isDesktopApp()) {
+    if (!(await isDesktopBiometricAvailable())) {
+      throw new Error('Biometric unlock is not available in this Tauri shell.');
+    }
     await enableDesktopBiometricUnlock(masterPassword);
     return;
   }
@@ -373,7 +381,10 @@ export function isStoredWithWebAuthn() {
  * On Tauri desktop, encrypts with biometry-protected entropy instead of WebView PRF.
  */
 export async function saveCredsWithWebAuthn(creds) {
-  if (isDesktopApp() && (await isDesktopBiometricAvailable())) {
+  if (isDesktopApp()) {
+    if (!(await isDesktopBiometricAvailable())) {
+      throw new Error('Biometric unlock is not available in this Tauri shell.');
+    }
     await saveCredsWithDesktopBiometric(creds);
     return;
   }

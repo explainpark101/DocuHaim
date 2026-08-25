@@ -74,6 +74,7 @@ import {
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { isTauriAndroid } from '@/utils/tauriPlatform';
 
 export default function SettingsPage({
   s3Creds,
@@ -987,6 +988,7 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
+          {!isTauriAndroid() && (
           <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
               type="button"
@@ -1018,6 +1020,13 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
+          )}
+          {isTauriAndroid() && (
+            <p className="mt-3 text-[11px] text-gray-500 dark:text-odp-muted">
+              Android 앱에서는 Lucivy 역색인을 사용하지 않습니다. 파일명·경로·커맨드만 검색합니다.
+            </p>
+          )}
+          {!isTauriAndroid() && (
           <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
               type="button"
@@ -1052,6 +1061,9 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
+          )}
+          {!isTauriAndroid() && (
+          <>
           <div
             className={`mt-3 rounded-md border px-3 py-2 text-xs ${
               advancedSearchStatus.building
@@ -1212,6 +1224,8 @@ export default function SettingsPage({
             building={advancedSearchStatus.building}
             progress={advancedSearchStatus.buildProgress}
           />
+          </>
+          )}
         </div>
 
         {/* Wiki 이미지 캐싱 방식 */}

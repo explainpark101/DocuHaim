@@ -248,6 +248,7 @@ import {
   tryRestoreLocalRootHandle,
 } from '@/utils/localFolderStore';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isTauriAndroid } from '@/utils/tauriPlatform';
 import {
   loadLocalVaultFsPath,
   saveLocalVaultFsPath,
@@ -257,6 +258,7 @@ import {
   pickTauriLocalVaultDirectory,
   readTauriLocalDirectoryTree,
 } from '@/utils/storage/tauriLocalBackend';
+import { ensureAndroidDefaultLocalVaultRoot } from '@/utils/storage/androidLocalVault';
 import {
   resolveDesktopOpenPaths,
   subscribeDesktopOpenFiles,
@@ -2357,6 +2359,14 @@ function MainApp() {
     sessionWorkspace,
   };
 
+  // Tauri Android: never build/load lucivy inverted index (filename/path search only).
+  useEffect(() => {
+    if (!isTauriAndroid()) return;
+    if (advancedSearchEngine.isEnabled()) {
+      advancedSearchEngine.setEnabled(false);
+    }
+  }, []);
+
   useEffect(() => {
     const backend = getBackendForType(storageMode);
     const storageKey =
@@ -2379,6 +2389,7 @@ function MainApp() {
 
   useEffect(() => {
     if (!isUnlocked) return undefined;
+    if (!advancedSearchEngine.isEnabled()) return undefined;
     const backend = getBackendForType(storageMode);
     if (!backend?.isReady?.()) return undefined;
     let cancelled = false;
@@ -5043,14 +5054,18 @@ function MainApp() {
   }, [isUnlocked, storageMode, localRootHandle]);
 
   // Restore Tauri local vault tree from persisted absolute path
+  // (Android: ensure app-private LocalHaim default when none is set).
   useEffect(() => {
     if (!isUnlocked || !isDesktopApp()) return;
     if (storageMode !== STORAGE_MODE_LOCAL) return;
-    const abs = localVaultFsPath || loadLocalVaultFsPath();
-    if (!abs) return;
-    if (localVaultFsPath !== abs) setLocalVaultFsPath(abs);
     let cancelled = false;
     (async () => {
+      let abs = localVaultFsPath || loadLocalVaultFsPath();
+      if (!abs && isTauriAndroid()) {
+        abs = (await ensureAndroidDefaultLocalVaultRoot()) || '';
+      }
+      if (!abs || cancelled) return;
+      if (localVaultFsPath !== abs) setLocalVaultFsPath(abs);
       setIsLocalTreeLoading(true);
       try {
         const tree = await readTauriLocalDirectoryTree(abs);

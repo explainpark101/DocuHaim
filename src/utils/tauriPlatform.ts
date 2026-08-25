@@ -11,6 +11,12 @@ export function isTauriMobilePlatform(): boolean {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+/** Tauri Android shell (sideload APK). */
+export function isTauriAndroid(): boolean {
+  if (!isTauriApp() || typeof navigator === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 /** Tauri on macOS / Windows (uses tauri-plugin-biometry). */
 export function isTauriDesktopPlatform(): boolean {
   return isTauriApp() && !isTauriMobilePlatform();

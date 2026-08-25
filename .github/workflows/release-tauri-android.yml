@@ -1,0 +1,121 @@
+name: Release Tauri Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver for Android release tag (e.g. 1.4.0). Empty = package.json version.'
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        description: 'Mark GitHub Release as prerelease'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;27.0.12077973"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      - name: Install Rust stable (Android targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Resolve version
+        id: app_version
+        shell: bash
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+          VERSION="${VERSION#v}"
+          VERSION="${VERSION#android-v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using Android release version $VERSION"
+          bun run sync:tauri-version
+
+      - name: Generate Tauri icons
+        run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
+
+      - name: Build Android APK
+        run: bunx tauri android build --apk
+        env:
+          NDK_HOME: ${{ env.NDK_HOME }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Collect APK artifacts
+        id: apk
+        shell: bash
+        run: |
+          mkdir -p dist-android
+          find src-tauri/gen/android -type f -name '*.apk' -print0 | while IFS= read -r -d '' f; do
+            cp -v "$f" "dist-android/$(basename "$f")"
+          done
+          count="$(find dist-android -type f -name '*.apk' | wc -l | tr -d ' ')"
+          if [[ "$count" -eq 0 ]]; then
+            echo "No APK found under src-tauri/gen/android"
+            find src-tauri/gen/android -type f | head -100 || true
+            exit 1
+          fi
+          ls -la dist-android
+
+      - name: Create Android GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ steps.app_version.outputs.version }}
+          name: DocuHaim Android v${{ steps.app_version.outputs.version }}
+          body: |
+            Android sideload APK (not on Google Play).
+
+            Install on device: enable “Install unknown apps”, then open the `.apk`.
+
+            - Separate from desktop DMG/NSIS releases (`vX.Y.Z`)
+            - See docs/desktop/android-sideload.md
+
+            Unsigned / debug-signed builds if signing secrets are not configured.
+          prerelease: ${{ inputs.prerelease }}
+          files: dist-android/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

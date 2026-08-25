@@ -4,10 +4,17 @@ const ENABLED_KEY = 's3haim_advanced_search_index_enabled';
 const INCLUDE_OTHER_FILES_KEY = 's3haim_advanced_search_include_other_files';
 const UI_ANIMATION_KEY = 's3haim_advanced_search_ui_animation';
 
-/** Default ON. Explicit `'0'` disables. */
+/** Default ON. Explicit `'0'` disables. Forced OFF on Tauri Android (no lucivy index). */
 export function loadAdvancedSearchIndexEnabled(): boolean {
   if (typeof window === 'undefined') return true;
   try {
+    // Lazy import avoided — keep sync for engine ctor. UA heuristic matches isTauriAndroid().
+    if (
+      ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) &&
+      /Android/i.test(navigator.userAgent || '')
+    ) {
+      return false;
+    }
     const raw = window.localStorage.getItem(ENABLED_KEY);
     if (raw === '0') return false;
     return true;

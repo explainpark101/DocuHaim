@@ -87,8 +87,21 @@ fn path_from_url_or_raw(s: &str) -> Option<String> {
                 .ok()
                 .map(|p| p.to_string_lossy().into_owned());
         }
+        // Keep content:// (Android) and other URI schemes for the frontend / reader.
+        if url.scheme() == "content" || url.scheme() == "http" || url.scheme() == "https" {
+            return Some(trimmed.to_string());
+        }
     }
     Some(trimmed.to_string())
+}
+
+fn looks_like_markdown_path(p: &str) -> bool {
+    let lower = p.to_ascii_lowercase();
+    let path_only = lower.split('?').next().unwrap_or(&lower);
+    path_only.ends_with(".md")
+        || path_only.ends_with(".markdown")
+        || lower.contains("text/markdown")
+        || lower.contains("text%2fmarkdown")
 }
 
 fn collect_cli_file_args() -> Vec<String> {
@@ -98,12 +111,103 @@ fn collect_cli_file_args() -> Vec<String> {
             if arg.starts_with('-') {
                 return None;
             }
-            path_from_url_or_raw(&arg).filter(|p| {
-                let lower = p.to_ascii_lowercase();
-                lower.ends_with(".md") || lower.ends_with(".markdown")
-            })
+            path_from_url_or_raw(&arg).filter(|p| looks_like_markdown_path(p))
         })
         .collect()
+}
+
+/// Read bytes for an OS-open path (absolute file path or Android content:// URI).
+#[tauri::command]
+fn read_open_uri(path: String) -> Result<Vec<u8>, String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("empty path".into());
+    }
+    if trimmed.starts_with("content:") {
+        #[cfg(target_os = "android")]
+        {
+            return read_android_content_uri(trimmed);
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            return Err("content:// URIs are only supported on Android".into());
+        }
+    }
+    let file_path = path_from_url_or_raw(trimmed).unwrap_or_else(|| trimmed.to_string());
+    std::fs::read(&file_path).map_err(|e| format!("failed to read {file_path}: {e}"))
+}
+
+#[cfg(target_os = "android")]
+fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
+    use jni::objects::{JObject, JValue};
+    use jni::JavaVM;
+
+    let ctx = ndk_context::android_context();
+    let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
+    let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+    let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
+
+    let uri_jstr = env.new_string(uri).map_err(|e| e.to_string())?;
+    let uri_class = env
+        .find_class("android/net/Uri")
+        .map_err(|e| e.to_string())?;
+    let parsed_uri = env
+        .call_static_method(
+            uri_class,
+            "parse",
+            "(Ljava/lang/String;)Landroid/net/Uri;",
+            &[JValue::Object(&uri_jstr)],
+        )
+        .map_err(|e| e.to_string())?
+        .l()
+        .map_err(|e| e.to_string())?;
+
+    let resolver = env
+        .call_method(
+            &activity,
+            "getContentResolver",
+            "()Landroid/content/ContentResolver;",
+            &[],
+        )
+        .map_err(|e| e.to_string())?
+        .l()
+        .map_err(|e| e.to_string())?;
+
+    let input_stream = env
+        .call_method(
+            &resolver,
+            "openInputStream",
+            "(Landroid/net/Uri;)Ljava/io/InputStream;",
+            &[JValue::Object(&parsed_uri)],
+        )
+        .map_err(|e| e.to_string())?
+        .l()
+        .map_err(|e| e.to_string())?;
+
+    if input_stream.is_null() {
+        return Err(format!("openInputStream returned null for {uri}"));
+    }
+
+    let mut out = Vec::new();
+    let buf = env
+        .new_byte_array(8192)
+        .map_err(|e| e.to_string())?;
+    loop {
+        let n = env
+            .call_method(&input_stream, "read", "([B)I", &[(&buf).into()])
+            .map_err(|e| e.to_string())?
+            .i()
+            .map_err(|e| e.to_string())?;
+        if n <= 0 {
+            break;
+        }
+        let mut chunk = vec![0i8; n as usize];
+        env.get_byte_array_region(&buf, 0, &mut chunk)
+            .map_err(|e| e.to_string())?;
+        out.extend(chunk.into_iter().map(|b| b as u8));
+    }
+    let _ = env.call_method(&input_stream, "close", "()V", &[]);
+    Ok(out)
 }
 
 fn push_paths(app: &AppHandle, paths: Vec<String>) {
@@ -153,6 +257,7 @@ pub fn run() {
         .manage(pending)
         .invoke_handler(tauri::generate_handler![
             take_pending_open_paths,
+            read_open_uri,
             gemini_api_fetch
         ])
         .setup(|app| {
@@ -188,8 +293,8 @@ pub fn run() {
         .expect("error while building DocuHaim")
         .run(|app_handle, event| {
             match event {
-                // RunEvent::Opened exists only on macOS / iOS (NSApplication open URLs).
-                #[cfg(any(target_os = "macos", target_os = "ios"))]
+                // File associations: macOS / iOS / Android deliver open URLs here.
+                #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
                 RunEvent::Opened { urls } => {
                     let paths: Vec<String> = urls
                         .iter()
@@ -202,6 +307,7 @@ pub fn run() {
                                 path_from_url_or_raw(u.as_str())
                             }
                         })
+                        .filter(|p| looks_like_markdown_path(p) || p.starts_with("content:"))
                         .collect();
                     push_paths(app_handle, paths);
                 }

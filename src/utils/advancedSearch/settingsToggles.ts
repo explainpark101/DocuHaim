@@ -252,6 +252,15 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['index', '역색인', 'inverted', 'advanced search', '색인'],
     load: () => advancedSearchEngine.isEnabled(),
     save: (v) => {
+      // Android Tauri: lucivy inverted index is unsupported — keep forced off.
+      if (
+        typeof window !== 'undefined' &&
+        ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) &&
+        /Android/i.test(navigator.userAgent || '')
+      ) {
+        advancedSearchEngine.setEnabled(false);
+        return;
+      }
       advancedSearchEngine.setEnabled(v);
     },
   },

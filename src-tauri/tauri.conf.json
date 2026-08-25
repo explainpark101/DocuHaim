@@ -37,7 +37,7 @@
     ],
     "category": "Productivity",
     "shortDescription": "Markdown notes with S3 / Local / WebDAV vaults",
-    "longDescription": "DocuHaim desktop shell wrapping the same web app for local .md file association and vault editing.",
+    "longDescription": "DocuHaim desktop and Android shell wrapping the same web app for local .md file association and vault editing.",
     "fileAssociations": [
       {
         "ext": ["md", "markdown"],
@@ -45,7 +45,8 @@
         "description": "Markdown Document",
         "mimeType": "text/markdown",
         "role": "Editor",
-        "rank": "Default"
+        "rank": "Default",
+        "androidIntentActionFilters": ["view", "send", "sendMultiple"]
       }
     ],
     "macOS": {

@@ -1,3 +1,8 @@
+/**
+ * Desktop OS / CLI / Android intent open-file bridge.
+ * Routes paths under the Local vault to vault notes; otherwise session workspace.
+ */
+
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   loadLocalVaultFsPath,
@@ -48,7 +53,7 @@ export function subscribeDesktopOpenFiles(listener: Listener): () => void {
   };
 }
 
-/** Start listening for OS / CLI open-file events (desktop builds only). */
+/** Start listening for OS / CLI / Android intent open-file events (Tauri builds). */
 export async function startDesktopOpenFilesBridge(): Promise<void> {
   if (!isDesktopApp() || started || typeof window === 'undefined') return;
   started = true;
@@ -81,17 +86,35 @@ export type DesktopOpenRoute =
 
 function basename(path: string): string {
   const n = String(path || '').replace(/\\/g, '/');
-  const parts = n.split('/').filter(Boolean);
-  return parts[parts.length - 1] || 'note.md';
+  const withoutQuery = n.split('?')[0] || n;
+  const parts = withoutQuery.split('/').filter(Boolean);
+  const last = parts[parts.length - 1] || 'note.md';
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
+}
+
+async function readOpenPathBytes(abs: string): Promise<Uint8Array> {
+  try {
+    const { readFile } = await import('@tauri-apps/plugin-fs');
+    const bytes = await readFile(abs);
+    return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  } catch {
+    // Android content:// and some SAF paths need ContentResolver via Rust.
+    const { invoke } = await import('@tauri-apps/api/core');
+    const bytes = await invoke<number[]>('read_open_uri', { path: abs });
+    return new Uint8Array(bytes || []);
+  }
 }
 
 /**
- * Route absolute OS paths: under registered vault → relative local note; else session workspace.
+ * Route absolute OS paths / content URIs: under registered vault → relative local note; else session.
  */
 export async function resolveDesktopOpenPaths(
   absolutePaths: string[],
 ): Promise<DesktopOpenRoute[]> {
-  const { readFile } = await import('@tauri-apps/plugin-fs');
   const vaultRoot = loadLocalVaultFsPath();
   const routes: DesktopOpenRoute[] = [];
 
@@ -102,7 +125,7 @@ export async function resolveDesktopOpenPaths(
       continue;
     }
     try {
-      const bytes = await readFile(abs);
+      const bytes = await readOpenPathBytes(abs);
       const name = basename(abs);
       const copy = new Uint8Array(bytes.byteLength);
       copy.set(bytes);

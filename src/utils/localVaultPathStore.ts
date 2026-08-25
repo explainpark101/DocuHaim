@@ -1,5 +1,5 @@
 /**
- * Persist absolute local vault root path for the desktop (Tauri) shell.
+ * Persist absolute local vault root path for Tauri shells (desktop + Android).
  * Web builds continue to use File System Access handles only.
  */
 
