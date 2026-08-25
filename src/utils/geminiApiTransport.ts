@@ -80,12 +80,19 @@ async function readRequestBody(init?: RequestInit): Promise<string | undefined> 
   return undefined;
 }
 
+function resolveGeminiProxyOrigin(): string {
+  const origin = globalThis.location?.origin;
+  if (typeof origin === 'string' && origin.length > 0) return origin;
+  return 'http://localhost';
+}
+
 /**
  * Base URL for @google/genai httpOptions.
- * Uses a virtual same-origin prefix; web proxy or Tauri Rust route handles transport.
+ * SDK requires an absolute URL (relative paths fail in constructUrl).
+ * Web proxy or Tauri fetch shim still routes by /api/gemini pathname.
  */
 export function resolveGeminiHttpBaseUrl(): string {
-  return GEMINI_PROXY_PREFIX;
+  return `${resolveGeminiProxyOrigin()}${GEMINI_PROXY_PREFIX}`;
 }
 
 /**
