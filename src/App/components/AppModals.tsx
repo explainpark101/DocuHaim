@@ -19,9 +19,14 @@ import { revertNoteCoverComment } from '@/utils/noteCover';
 import { getActiveFileTab, isFileTab } from '@/utils/workspaceTabs';
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
-import { useAppShell } from '@/App/hooks/useAppShell';
+import { useAppModals } from '@/App/hooks/useAppModals';
+import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
+import { useFileSession } from '@/App/hooks/useFileSession';
+import { useTreeOps } from '@/App/hooks/useTreeOps';
+import { useVault } from '@/App/hooks/useVault';
+import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 
-/** App-level modals — reads state from AppProviders via useAppShell. */
+/** App-level modals — domain hooks + modal slice (no AppShell mega-bag). */
 export function AppModals() {
   const {
     showSaveMethodModal,
@@ -39,10 +44,6 @@ export function AppModals() {
     showCoverChangeConfirmModal,
     setShowCoverChangeConfirmModal,
     pendingCoverSaveRef,
-    saveFile,
-    currentFileRef,
-    editorContentRef,
-    setEditorContent,
     showRestoreLocalFolderModal,
     setShowRestoreLocalFolderModal,
     pendingLocalFolderName,
@@ -61,9 +62,6 @@ export function AppModals() {
     handleOverwriteCredsConfirm,
     setPendingWebAuthnSave,
     setPendingPasswordSave,
-    treeNameConflict,
-    settleTreeNameConflict,
-    theme,
     showUnsavedConfirmModal,
     setShowUnsavedConfirmModal,
     handleUnsavedConfirmLeave,
@@ -74,7 +72,6 @@ export function AppModals() {
     setShowCloseFileConfirmModal,
     pendingCloseTabId,
     setPendingCloseTabId,
-    workspaceTabs,
     handleCloseFileConfirmSave,
     handleCloseFileConfirmDiscard,
     navGuard,
@@ -91,8 +88,6 @@ export function AppModals() {
     setShowDownloadMethodModal,
     downloadModalMode,
     setDownloadModalMode,
-    currentFile,
-    editorContent,
     handleDownloadCurrentFile,
     handleDownloadToFolder,
     handleSelectHaimFromDownload,
@@ -103,48 +98,65 @@ export function AppModals() {
     setDownloadComplete,
     showSaveSessionToNoteModal,
     setShowSaveSessionToNoteModal,
-    storageMode,
-    s3Tree,
-    localTree,
-    webdavTree,
-    localRootHandle,
     newFileDefaultParentPath,
     isSavingSessionToNote,
     handleConfirmSaveSessionToNote,
-    setCreateModalContext,
-    setCreateModalOpen,
     saveSessionToNoteSelectPath,
     setSaveSessionToNoteSelectPath,
     downloadResultModal,
     closeDownloadResultModal,
-    deleteTarget,
-    setDeleteTarget,
     associatedRecordings,
     confirmDelete,
+    confirmEmptyTrash,
+    handleConfirmMoveFileFromSidebar,
+    handleConfirmMove,
+    handleConfirmMoveFolder,
+    createModalTree,
+    ensureCreateModalFolderLoaded,
+    handleCreateItemSubmit,
+  } = useAppModals();
+
+  const { theme } = useAppBootstrap();
+  const {
+    saveFile,
+    currentFileRef,
+    editorContentRef,
+    setEditorContent,
+    currentFile,
+    editorContent,
+    encMdPrompt,
+  } = useFileSession();
+  const {
+    treeNameConflict,
+    settleTreeNameConflict,
+    deleteTarget,
+    setDeleteTarget,
     isDeleting,
     emptyTrashTarget,
     setEmptyTrashTarget,
     isEmptyingTrash,
-    confirmEmptyTrash,
     isMoveModalOpen,
     setIsMoveModalOpen,
     moveFileTarget,
     setMoveFileTarget,
     moveModalSelectPath,
     setMoveModalSelectPath,
-    handleConfirmMoveFileFromSidebar,
-    handleConfirmMove,
     moveFolderTarget,
     setMoveFolderTarget,
-    handleConfirmMoveFolder,
     createModalOpen,
     createModalContext,
-    createModalTree,
-    ensureCreateModalFolderLoaded,
+    setCreateModalContext,
+    setCreateModalOpen,
     isCreateSubmitting,
-    handleCreateItemSubmit,
-    encMdPrompt,
-  } = useAppShell();
+  } = useTreeOps();
+  const {
+    storageMode,
+    s3Tree,
+    localTree,
+    webdavTree,
+    localRootHandle,
+  } = useVault();
+  const { state: workspaceTabs } = useWorkspaceTabsCtx();
 
   return (
     <>

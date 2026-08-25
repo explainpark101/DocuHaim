@@ -23,6 +23,7 @@ export type FileSessionValue = {
   refreshRemoteFile: (...args: any[]) => any;
   handleRequestCloseEditor: (...args: any[]) => any;
   openAdvancedSearchFile: (...args: any[]) => any;
+  encMdPrompt: any;
 };
 
 export const FileSessionContext = createContext<FileSessionValue | null>(null);

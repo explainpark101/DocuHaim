@@ -5,4 +5,5 @@ export { useFileSession } from '@/App/hooks/useFileSession';
 export { useTreeOps } from '@/App/hooks/useTreeOps';
 export { useAutoSave } from '@/App/hooks/useAutoSave';
 export { useAutoSaveDomain } from '@/App/hooks/useAutoSaveDomain';
+export { useAppModals } from '@/App/hooks/useAppModals';
 export { useAppShell } from '@/App/hooks/useAppShell';

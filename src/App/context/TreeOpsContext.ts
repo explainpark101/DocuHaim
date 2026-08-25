@@ -34,8 +34,11 @@ export type TreeOpsValue = {
   isMoveModalOpen: boolean;
   setIsMoveModalOpen: (...args: any[]) => any;
   moveFileTarget: any;
+  setMoveFileTarget: (...args: any[]) => any;
   moveFolderTarget: any;
+  setMoveFolderTarget: (...args: any[]) => any;
   moveModalSelectPath: any;
+  setMoveModalSelectPath: (...args: any[]) => any;
   handleRequestMoveFolder: (...args: any[]) => any;
 };
 
