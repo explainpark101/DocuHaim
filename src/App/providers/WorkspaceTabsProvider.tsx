@@ -1,17 +1,13 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { WorkspaceTabsContext } from '@/App/context/WorkspaceTabsContext';
 import { useWorkspaceTabs } from '@/utils/workspaceTabs/useWorkspaceTabs';
 import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
-import {
-  useWorkspaceTabsDomain,
-  type TabBridgeDeps,
-} from '@/App/hooks/useWorkspaceTabsDomain';
+import { useWorkspaceTabsDomain } from '@/App/hooks/useWorkspaceTabsDomain';
 
 type Props = { children: ReactNode };
 
 /**
  * Owns workspace tab state + activate/close/open/reorder actions (useWorkspaceTabsDomain).
- * Bridge deps (focus-save, dirty-close modal) inject from orchestration.
  */
 export function WorkspaceTabsProvider({ children }: Props) {
   const tabsApi = useWorkspaceTabs();
@@ -23,11 +19,6 @@ export function WorkspaceTabsProvider({ children }: Props) {
   const workspaceTabsRef = useRef(tabsApi.state);
   workspaceTabsRef.current = tabsApi.state;
   const hasRestoredPersistedWorkspaceTabsRef = useRef(false);
-  const bridgeDepsRef = useRef<TabBridgeDeps>({});
-
-  const registerTabBridgeDeps = useCallback((deps: Partial<TabBridgeDeps>) => {
-    bridgeDepsRef.current = { ...bridgeDepsRef.current, ...deps };
-  }, []);
 
   const domain = useWorkspaceTabsDomain({
     tabsApi,
@@ -35,7 +26,6 @@ export function WorkspaceTabsProvider({ children }: Props) {
     setWorkspaceTabsEnabled,
     workspaceTabsEnabledRef,
     workspaceTabsRef,
-    bridgeDepsRef,
     hasRestoredPersistedWorkspaceTabsRef,
   });
 
@@ -46,7 +36,6 @@ export function WorkspaceTabsProvider({ children }: Props) {
       setWorkspaceTabsEnabled: domain.setWorkspaceTabsEnabled,
       workspaceTabsEnabledRef: domain.workspaceTabsEnabledRef,
       workspaceTabsRef: domain.workspaceTabsRef,
-      registerTabBridgeDeps,
       hasRestoredPersistedWorkspaceTabsRef,
       activateWorkspaceTab: domain.activateWorkspaceTab,
       closeWorkspaceTabById: domain.closeWorkspaceTabById,
@@ -56,7 +45,7 @@ export function WorkspaceTabsProvider({ children }: Props) {
       collapseToLegacyWorkspace: domain.collapseToLegacyWorkspace,
       cycleWorkspaceTab: domain.cycleWorkspaceTab,
     }),
-    [tabsApi, domain, registerTabBridgeDeps],
+    [tabsApi, domain],
   );
 
   return (

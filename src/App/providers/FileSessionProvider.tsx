@@ -1,22 +1,17 @@
 import {
   useCallback,
   useMemo,
-  useRef,
   type ReactNode,
 } from 'react';
 import { FileSessionContext } from '@/App/context/FileSessionContext';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
-import {
-  useFileSessionDomain,
-  type FileSessionBridgeDeps,
-} from '@/App/hooks/useFileSessionDomain';
+import { useFileSessionDomain } from '@/App/hooks/useFileSessionDomain';
 import { saveEditorType } from '@/utils/editorTypeSettings';
 
 type Props = { children: ReactNode };
 
 /**
  * Owns file-session context + open/save/refresh actions (useFileSessionDomain).
- * Bridge deps (modals, session write, tree select) inject from orchestration.
  */
 export function FileSessionProvider({ children }: Props) {
   const owned = useFileSessionOwned();
@@ -44,16 +39,7 @@ export function FileSessionProvider({ children }: Props) {
     setIsPullingFromRemote,
   } = owned;
 
-  const bridgeDepsRef = useRef<FileSessionBridgeDeps>({});
-
-  const registerFileSessionBridgeDeps = useCallback(
-    (deps: Partial<FileSessionBridgeDeps>) => {
-      bridgeDepsRef.current = { ...bridgeDepsRef.current, ...deps };
-    },
-    [],
-  );
-
-  const domain = useFileSessionDomain({ bridgeDepsRef });
+  const domain = useFileSessionDomain();
 
   const handleEditorTypeChange = useCallback((next: string) => {
     saveEditorType(next);
@@ -83,7 +69,6 @@ export function FileSessionProvider({ children }: Props) {
       setIsPullingFromRemote,
       encMdPrompt,
       setEncMdPrompt,
-      registerFileSessionBridgeDeps,
       saveFile: domain.saveFile,
       refreshLocalFileFromDisk: domain.refreshLocalFileFromDisk,
       refreshRemoteFile: domain.refreshRemoteFile,
@@ -94,6 +79,8 @@ export function FileSessionProvider({ children }: Props) {
       saveCurrentMarkdownBeforeSwitch: domain.saveCurrentMarkdownBeforeSwitch,
       applyOpenFileIdentityChange: domain.applyOpenFileIdentityChange,
       renameCurrentFileFullName: domain.renameCurrentFileFullName,
+      renameS3File: domain.renameS3File,
+      renameLocalFile: domain.renameLocalFile,
     }),
     [
       currentFile,
@@ -117,7 +104,6 @@ export function FileSessionProvider({ children }: Props) {
       setIsPullingFromRemote,
       encMdPrompt,
       setEncMdPrompt,
-      registerFileSessionBridgeDeps,
       domain,
     ],
   );

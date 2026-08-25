@@ -1,4 +1,12 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+} from 'react';
 
 export type TreeOpsOwnedApi = {
   selectedIds: Set<string>;
@@ -37,6 +45,12 @@ export type TreeOpsOwnedApi = {
   setTreeTransferBusy: (b: any[] | ((prev: any[]) => any[])) => void;
   uploadTarget: any;
   setUploadTarget: (t: any | ((prev: any) => any)) => void;
+  /** Late-bound AppLogic helpers (TreeOps mounts above AppLogic). */
+  confirmAndCancelEditorImageUploadRef: MutableRefObject<(() => boolean) | null>;
+  readBackendBytesRef: MutableRefObject<
+    ((storageType: string, path: string) => Promise<Uint8Array>) | null
+  >;
+  downloadMarkdownImageZipRef: MutableRefObject<((...args: any[]) => Promise<boolean>) | null>;
 };
 
 const TreeOpsOwnedContext = createContext<TreeOpsOwnedApi | null>(null);
@@ -67,6 +81,13 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
   const [treeNameConflict, setTreeNameConflict] = useState<any>(null);
   const [treeTransferBusy, setTreeTransferBusy] = useState<any[]>([]);
   const [uploadTarget, setUploadTarget] = useState<any>(null);
+  const confirmAndCancelEditorImageUploadRef = useRef<(() => boolean) | null>(null);
+  const readBackendBytesRef = useRef<
+    ((storageType: string, path: string) => Promise<Uint8Array>) | null
+  >(null);
+  const downloadMarkdownImageZipRef = useRef<((...args: any[]) => Promise<boolean>) | null>(
+    null,
+  );
 
   const value = useMemo(
     () => ({
@@ -106,6 +127,9 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
       setTreeTransferBusy,
       uploadTarget,
       setUploadTarget,
+      confirmAndCancelEditorImageUploadRef,
+      readBackendBytesRef,
+      downloadMarkdownImageZipRef,
     }),
     [
       selectedIds,

@@ -1,5 +1,4 @@
 import { createContext } from 'react';
-import type { FileSessionBridgeDeps } from '@/App/hooks/useFileSessionDomain';
 
 /** §5 file open/save / editor bridge (owned by FileSessionProvider). */
 export type FileSessionValue = {
@@ -32,9 +31,10 @@ export type FileSessionValue = {
   saveCurrentMarkdownBeforeSwitch: (...args: any[]) => any;
   applyOpenFileIdentityChange: (...args: any[]) => any;
   renameCurrentFileFullName: (...args: any[]) => any;
+  renameS3File: (...args: any[]) => any;
+  renameLocalFile: (...args: any[]) => any;
   encMdPrompt: any;
   setEncMdPrompt: (...args: any[]) => any;
-  registerFileSessionBridgeDeps: (deps: Partial<FileSessionBridgeDeps>) => void;
 };
 
 export const FileSessionContext = createContext<FileSessionValue | null>(null);

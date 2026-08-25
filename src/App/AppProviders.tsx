@@ -3,9 +3,9 @@ import { AppBootstrapStateProvider } from '@/App/providers/AppBootstrapStateProv
 import { AppVaultStateProvider } from '@/App/providers/AppVaultStateProvider';
 import { VaultProvider } from '@/App/providers/VaultProvider';
 import { AppFileSessionStateProvider } from '@/App/providers/AppFileSessionStateProvider';
+import { AppModalsStateProvider } from '@/App/providers/AppModalsStateProvider';
 import { WorkspaceTabsProvider } from '@/App/providers/WorkspaceTabsProvider';
 import { AppChromeStateProvider } from '@/App/providers/AppChromeStateProvider';
-import { AppModalsStateProvider } from '@/App/providers/AppModalsStateProvider';
 import { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 import { AppTreeOpsStateProvider } from '@/App/providers/AppTreeOpsStateProvider';
 import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
@@ -16,16 +16,19 @@ import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
 export { APP_PROVIDER_ORDER };
 
-/** FileSessionState above Tabs so tab actions can flush editor via useFileSessionOwned. */
+/**
+ * Nest: FileSessionState → Modals → Tabs → Chrome → FileSession → TreeOps…
+ * so Tabs can use useModalsOwned and FileSession can use useChromeOwned / useModalsOwned.
+ */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <AppBootstrapStateProvider>
       <AppVaultStateProvider>
         <VaultProvider>
           <AppFileSessionStateProvider>
-            <WorkspaceTabsProvider>
-              <AppChromeStateProvider>
-                <AppModalsStateProvider>
+            <AppModalsStateProvider>
+              <WorkspaceTabsProvider>
+                <AppChromeStateProvider>
                   <FileSessionProvider>
                     <AppTreeOpsStateProvider>
                       <TreeOpsProvider>
@@ -37,9 +40,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
                       </TreeOpsProvider>
                     </AppTreeOpsStateProvider>
                   </FileSessionProvider>
-                </AppModalsStateProvider>
-              </AppChromeStateProvider>
-            </WorkspaceTabsProvider>
+                </AppChromeStateProvider>
+              </WorkspaceTabsProvider>
+            </AppModalsStateProvider>
           </AppFileSessionStateProvider>
         </VaultProvider>
       </AppVaultStateProvider>

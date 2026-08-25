@@ -2,6 +2,7 @@
 import { useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useWorkspaceTabsPersistence } from '@/App/hooks/useWorkspaceTabsPersistence';
 import {
   closedTabEntryFromWorkspaceTab,
@@ -27,18 +28,20 @@ import {
   stripSettingsTab,
 } from '@/utils/workspaceTabs/legacyMode';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
-import { clearEncMdPassword } from '@/utils/encMd';
+import { clearEncMdPassword, isEncMdPath } from '@/utils/encMd';
 import { isSettingsAppPathname } from '@/utils/appHref';
 import { useAuth } from '@/contexts/AuthContext';
-
-export type TabBridgeDeps = {
-  onLeavingDirtyFileTab?: (file: any, content: string) => void;
-  requestDirtyCloseConfirm?: (tabId: string) => void;
-};
+import { findFileTab } from '@/utils/workspaceTabs/appBridge';
+import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
+import {
+  loadWorkspaceTabsAutoSaveMode,
+  WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
+} from '@/utils/workspaceTabsSettings';
+import { useEffect } from 'react';
 
 /**
  * Owns workspace tab activate/close/open/reorder bodies.
- * Bridge deps (focus-save + dirty-close modal) inject from orchestration until those move.
+ * Dirty-close uses useModalsOwned; focus-save uses saveFileRef + settings mode.
  */
 export function useWorkspaceTabsDomain({
   tabsApi,
@@ -46,7 +49,6 @@ export function useWorkspaceTabsDomain({
   setWorkspaceTabsEnabled,
   workspaceTabsEnabledRef,
   workspaceTabsRef,
-  bridgeDepsRef,
   hasRestoredPersistedWorkspaceTabsRef,
 }: {
   tabsApi: { state: any; setState: (s: any) => void };
@@ -54,7 +56,6 @@ export function useWorkspaceTabsDomain({
   setWorkspaceTabsEnabled: (v: boolean) => void;
   workspaceTabsEnabledRef: { current: boolean };
   workspaceTabsRef: { current: any };
-  bridgeDepsRef: { current: TabBridgeDeps };
   hasRestoredPersistedWorkspaceTabsRef: { current: boolean };
 }) {
   const navigate = useNavigate();
@@ -69,19 +70,92 @@ export function useWorkspaceTabsDomain({
     currentFileRef,
     editedFileName,
     setEditedFileName,
+    saveFileRef,
+    setSavingTabIds,
+    savingTabIdsRef,
   } = useFileSessionOwned();
+  const { setPendingCloseTabId, setShowCloseFileConfirmModal } = useModalsOwned();
 
   const editedFileNameRef = useRef(editedFileName);
   editedFileNameRef.current = editedFileName;
   const setWorkspaceTabs = tabsApi.setState;
+  const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
+
+  useEffect(() => {
+    const onAutoSaveMode = (event) => {
+      const mode = event?.detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
+      workspaceTabsAutoSaveModeRef.current = mode;
+    };
+    window.addEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
+    return () => {
+      window.removeEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
+    };
+  }, []);
 
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.endsWith('/chat');
   const isSettingsRoute = isSettingsAppPathname(location.pathname);
 
-  const onLeavingDirty = useCallback((file, content) => {
-    bridgeDepsRef.current.onLeavingDirtyFileTab?.(file, content);
-  }, [bridgeDepsRef]);
+  const queueBackgroundTabSave = useCallback((file, content) => {
+    if (!file?.type || !file?.id) return;
+    if (file.type === SESSION_STORAGE_TYPE) return;
+    if (isEncMdPath(file.id) || isEncMdPath(file.name)) return;
+    const viewer = file.viewer || 'markdown';
+    if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
+
+    const text = typeof content === 'string' ? content : '';
+    const tab = findFileTab(workspaceTabsRef.current, file.type, file.id);
+    const baseline =
+      tab != null
+        ? tab.baselineContent
+        : typeof file.content === 'string'
+          ? file.content
+          : '';
+    if (text === baseline) return;
+
+    const tabId = `${file.type}:${file.id}`;
+    if (savingTabIdsRef.current.has(tabId)) return;
+    savingTabIdsRef.current.add(tabId);
+    setSavingTabIds([...savingTabIdsRef.current]);
+
+    const origLastMod = file.lastModified;
+    const ts =
+      origLastMod instanceof Date
+        ? origLastMod.getTime()
+        : typeof origLastMod === 'number'
+          ? origLastMod
+          : 0;
+
+    void (async () => {
+      try {
+        await saveMemoDraft({
+          key: getDraftKey(file.type, file.id),
+          content: text,
+          originalLastModified: ts,
+        });
+        await saveFileRef.current?.(file, {
+          skipSuffixCheck: true,
+          skipCoverChangeCheck: true,
+          contentOverride: text,
+          background: true,
+        });
+      } catch (err) {
+        console.error('Background tab save failed:', err);
+      } finally {
+        savingTabIdsRef.current.delete(tabId);
+        setSavingTabIds([...savingTabIdsRef.current]);
+      }
+    })();
+  }, [workspaceTabsRef, savingTabIdsRef, setSavingTabIds, saveFileRef]);
+
+  const onLeavingDirty = useCallback(
+    (file, content) => {
+      if (!workspaceTabsEnabledRef.current) return;
+      if (workspaceTabsAutoSaveModeRef.current !== 'onFocusChange') return;
+      queueBackgroundTabSave(file, content);
+    },
+    [workspaceTabsEnabledRef, queueBackgroundTabSave],
+  );
 
   const activateWorkspaceTab = useCallback(
     (id, options = {}) => {
@@ -295,7 +369,8 @@ export function useWorkspaceTabsDomain({
       const { skipDirtyConfirm = false, skipHistory = false } = options;
       const closing = workspaceTabsRef.current.tabs.find((t) => t.id === id);
       if (!skipDirtyConfirm && isFileTab(closing) && isFileTabDirty(closing)) {
-        bridgeDepsRef.current.requestDirtyCloseConfirm?.(id);
+        setPendingCloseTabId(id);
+        setShowCloseFileConfirmModal(true);
         return;
       }
       if (!skipHistory && closing) {
@@ -336,7 +411,8 @@ export function useWorkspaceTabsDomain({
     },
     [
       navigate,
-      bridgeDepsRef,
+      setPendingCloseTabId,
+      setShowCloseFileConfirmModal,
       workspaceTabsRef,
       setWorkspaceTabs,
       currentFileRef,

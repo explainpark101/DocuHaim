@@ -124,8 +124,6 @@ export function useAppLogicSharedState() {
     setSavingTabIds: fileOwned.setSavingTabIds,
     savingTabIdsRef: fileOwned.savingTabIdsRef,
     saveFileRef: fileOwned.saveFileRef,
-    setPendingCloseTabId: modals.setPendingCloseTabId,
-    setShowCloseFileConfirmModal: modals.setShowCloseFileConfirmModal,
     s3Tree: vault.s3Tree,
     webdavTree: vault.webdavTree,
     sessionWorkspace: vault.sessionWorkspace,
@@ -147,9 +145,9 @@ export function useAppLogicSharedState() {
     setHideRecordingCompanions: chrome.setHideRecordingCompanions,
     setTreeStickyFolderPathEnabled: chrome.setTreeStickyFolderPathEnabled,
     setShowTreeModifiedDate: chrome.setShowTreeModifiedDate,
+    suppressUnsavedNavGuardRef: fileOwned.suppressUnsavedNavGuardRef,
   });
 
-  fileOwned.saveFileRef.current = setup.saveFile;
   fileOwned.selectFileRawRef.current = setup.selectFileRaw;
 
   const bag: Record<string, any> = {
@@ -178,6 +176,7 @@ export function useAppLogicSharedState() {
     enableWebAuthnUnlock, disableWebAuthnUnlock,
     getParentPathsToExpand,
     ...setup,
+    suppressUnsavedNavGuardRef: fileOwned.suppressUnsavedNavGuardRef,
   };
 
   const glueRef = useRef({});
@@ -195,7 +194,7 @@ export function useAppLogicSharedState() {
     sessionWorkspaceRef: fileOwned.sessionWorkspaceRef,
     sessionVaultBindingsRef: fileOwned.sessionVaultBindingsRef,
     savingTabIdsRef: fileOwned.savingTabIdsRef,
-    suppressUnsavedNavGuardRef: setup.suppressUnsavedNavGuardRef,
+    suppressUnsavedNavGuardRef: fileOwned.suppressUnsavedNavGuardRef,
     pendingCoverSaveRef: modals.pendingCoverSaveRef,
   });
 
@@ -210,6 +209,24 @@ export function useAppLogicSharedState() {
   useDownloadSessionDomain(bag, glueRef);
   useTempChatRecordingDomain(bag, glueRef);
   useRenameBridgeDomain(bag, glueRef);
+
+  // Late-bound refs for domains that mount above AppLogic (FileSession / TreeOps / Tabs).
+  fileOwned.selectFileRef.current = bag.selectFile ?? null;
+  fileOwned.flushSessionEditorToWorkspaceRef.current = bag.flushSessionEditorToWorkspace ?? null;
+  fileOwned.applySessionFileToEditorRef.current = bag.applySessionFileToEditor ?? null;
+  fileOwned.handleRequestSessionSaveChooserRef.current =
+    bag.handleRequestSessionSaveChooser ?? null;
+  fileOwned.connectedHaimStorageTypeRef.current = bag.connectedHaimStorageType ?? null;
+  fileOwned.hasUnsavedEditorChangesRef.current = bag.hasUnsavedEditorChanges ?? null;
+  fileOwned.closeCurrentFileRef.current = bag.closeCurrentFile ?? null;
+  fileOwned.maybeAutoSaveOnFocusChangeRef.current = setup.maybeAutoSaveOnFocusChange ?? null;
+  fileOwned.requestEncMdPasswordRef.current = bag.requestEncMdPassword ?? null;
+  fileOwned.writeSessionFileToHaimRef.current = bag.writeSessionFileToHaim ?? null;
+
+  treeOwned.confirmAndCancelEditorImageUploadRef.current =
+    bag.confirmAndCancelEditorImageUpload ?? null;
+  treeOwned.readBackendBytesRef.current = bag.readBackendBytes ?? null;
+  treeOwned.downloadMarkdownImageZipRef.current = bag.downloadMarkdownImageZip ?? null;
 
   Object.assign(glueRef.current, {
     selectFile: bag.selectFile,

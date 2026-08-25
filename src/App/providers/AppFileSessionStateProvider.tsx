@@ -41,6 +41,26 @@ export type FileSessionOwnedApi = {
   setIsOpeningSession: (v: boolean | ((prev: boolean) => boolean)) => void;
   saveFileRef: MutableRefObject<any>;
   selectFileRawRef: MutableRefObject<any>;
+  /** Filled by AppLogic / FileOpenRouting (TreeOps is below FileSession). */
+  selectFileRef: MutableRefObject<((type: string, node: any) => void | Promise<void>) | null>;
+  /** Filled by TreeOpsProvider when applyWorkspaceFilePathRetarget mounts. */
+  applyWorkspaceFilePathRetargetRef: MutableRefObject<
+    ((...args: any[]) => void) | null
+  >;
+  suppressUnsavedNavGuardRef: MutableRefObject<boolean>;
+  /** Late-bound AppLogic session helpers (domains below FileSession fill these). */
+  flushSessionEditorToWorkspaceRef: MutableRefObject<(() => any) | null>;
+  applySessionFileToEditorRef: MutableRefObject<
+    ((path: string, workspace: any, options?: any) => boolean) | null
+  >;
+  handleRequestSessionSaveChooserRef: MutableRefObject<(() => void) | null>;
+  connectedHaimStorageTypeRef: MutableRefObject<(() => string) | null>;
+  hasUnsavedEditorChangesRef: MutableRefObject<(() => boolean) | null>;
+  closeCurrentFileRef: MutableRefObject<(() => void) | null>;
+  maybeAutoSaveOnFocusChangeRef: MutableRefObject<
+    ((file: any, content: string) => void) | null
+  >;
+  requestEncMdPasswordRef: MutableRefObject<((opts?: any) => Promise<string>) | null>;
 };
 
 const FileSessionOwnedContext = createContext<FileSessionOwnedApi | null>(null);
@@ -74,6 +94,21 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
   const [isOpeningSession, setIsOpeningSession] = useState(false);
   const saveFileRef = useRef<any>(null);
   const selectFileRawRef = useRef<any>(null);
+  const selectFileRef = useRef<((type: string, node: any) => void | Promise<void>) | null>(null);
+  const applyWorkspaceFilePathRetargetRef = useRef<((...args: any[]) => void) | null>(null);
+  const suppressUnsavedNavGuardRef = useRef(false);
+  const flushSessionEditorToWorkspaceRef = useRef<(() => any) | null>(null);
+  const applySessionFileToEditorRef = useRef<
+    ((path: string, workspace: any, options?: any) => boolean) | null
+  >(null);
+  const handleRequestSessionSaveChooserRef = useRef<(() => void) | null>(null);
+  const connectedHaimStorageTypeRef = useRef<(() => string) | null>(null);
+  const hasUnsavedEditorChangesRef = useRef<(() => boolean) | null>(null);
+  const closeCurrentFileRef = useRef<(() => void) | null>(null);
+  const maybeAutoSaveOnFocusChangeRef = useRef<
+    ((file: any, content: string) => void) | null
+  >(null);
+  const requestEncMdPasswordRef = useRef<((opts?: any) => Promise<string>) | null>(null);
 
   editedFileNameRef.current = editedFileName;
 
@@ -110,6 +145,17 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
       setIsOpeningSession,
       saveFileRef,
       selectFileRawRef,
+      selectFileRef,
+      applyWorkspaceFilePathRetargetRef,
+      suppressUnsavedNavGuardRef,
+      flushSessionEditorToWorkspaceRef,
+      applySessionFileToEditorRef,
+      handleRequestSessionSaveChooserRef,
+      connectedHaimStorageTypeRef,
+      hasUnsavedEditorChangesRef,
+      closeCurrentFileRef,
+      maybeAutoSaveOnFocusChangeRef,
+      requestEncMdPasswordRef,
     }),
     [
       currentFile,

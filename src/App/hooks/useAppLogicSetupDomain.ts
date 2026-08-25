@@ -2,8 +2,13 @@
  * App logic setup: autosave helpers, document title, auth session restore,
  * settings-toggle sync. Owns routing restore refs; pulls other state from ctx.
  */
-// @ts-nocheck
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
+import type { Location, NavigateFunction } from 'react-router';
+import type { WorkspaceTabsCtxValue } from '@/App/context/WorkspaceTabsContext';
+import type { FileSessionValue } from '@/App/context/FileSessionContext';
+import type { AuthS3Creds } from '@/contexts/AuthContext';
+import type { WorkspaceTabsState } from '@/utils/workspaceTabs/types';
+import type { WorkspaceTabsAutoSaveMode } from '@/utils/workspaceTabsSettings';
 import { getExt } from '@/App/helpers';
 import { clearAllLlmApiKeySessions } from '@/utils/llmApiKeySession';
 import {
@@ -56,7 +61,77 @@ import {
 import { hasDesktopAppEntryLock } from '@/utils/desktopAppEntryLock';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 
-export function useAppLogicSetupDomain(ctx) {
+type WebdavConfig = {
+  endpoint: string;
+  username: string;
+  password: string;
+  basePath: string;
+};
+
+type BackgroundTabSaveFile = {
+  type?: string;
+  id?: string;
+  name?: string;
+  viewer?: string;
+  content?: string;
+  lastModified?: Date | number;
+};
+
+export type AppLogicSetupDomainCtx = {
+  s3Creds: AuthS3Creds;
+  setWebdavConfig: (cfg: WebdavConfig | ((prev: WebdavConfig) => WebdavConfig)) => void;
+  lock: () => void;
+  unlock: (creds: AuthS3Creds, password?: string) => void;
+  proceedWithoutStoredCreds: () => void;
+  isUnlocked: boolean;
+  masterPassword: string;
+  webdavConfig: WebdavConfig;
+  navigate: NavigateFunction;
+  location: Location;
+  setSelectedIds: (ids: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  setCurrentFile: (
+    file: BackgroundTabSaveFile | null | ((prev: BackgroundTabSaveFile | null) => BackgroundTabSaveFile | null),
+  ) => void;
+  currentFileRef: MutableRefObject<BackgroundTabSaveFile | null>;
+  setEditorContent: (content: string | ((prev: string) => string)) => void;
+  editorContentRef: MutableRefObject<string>;
+  setEditedFileName: (name: string | ((prev: string) => string)) => void;
+  editedFileName: string;
+  currentFile: BackgroundTabSaveFile | null;
+  editedFileNameRef: MutableRefObject<string>;
+  workspaceTabsApi: WorkspaceTabsCtxValue;
+  workspaceTabsRef: MutableRefObject<WorkspaceTabsState>;
+  workspaceTabsEnabledRef: MutableRefObject<boolean>;
+  setWorkspaceTabs: WorkspaceTabsCtxValue['setState'];
+  setWorkspaceTabsEnabled: (enabled: boolean) => void;
+  setSavingTabIds: (ids: string[] | ((prev: string[]) => string[])) => void;
+  savingTabIdsRef: MutableRefObject<Set<string>>;
+  saveFileRef: MutableRefObject<FileSessionValue['saveFile'] | undefined>;
+  s3Tree: unknown[];
+  webdavTree: unknown[];
+  sessionWorkspace: unknown;
+  sessionWorkspaceRef: MutableRefObject<unknown>;
+  storageMode: string;
+  fileSessionApi: FileSessionValue;
+  appLockPromptManual: boolean;
+  setAuthWanted: (wanted: boolean) => void;
+  authWanted: boolean;
+  shareBlockingAuth: boolean;
+  setShowAuthModal: (show: boolean) => void;
+  setWebauthnPRFSupported: (supported: boolean) => void;
+  setWebauthnAvailable: (available: boolean) => void;
+  webauthnAvailable: boolean;
+  isChatRoute: boolean;
+  isSettingsRoute: boolean;
+  setShowTrashFolder: (show: boolean) => void;
+  setShowHiddenFolders: (show: boolean) => void;
+  setHideRecordingCompanions: (hide: boolean) => void;
+  setTreeStickyFolderPathEnabled: (enabled: boolean) => void;
+  setShowTreeModifiedDate: (show: boolean) => void;
+  suppressUnsavedNavGuardRef?: MutableRefObject<boolean>;
+};
+
+export function useAppLogicSetupDomain(ctx: AppLogicSetupDomainCtx) {
   const {
     s3Creds, setWebdavConfig, lock, unlock, proceedWithoutStoredCreds,
     isUnlocked, masterPassword, webdavConfig, navigate, location,
@@ -64,7 +139,6 @@ export function useAppLogicSetupDomain(ctx) {
     setEditedFileName, editedFileName, currentFile, editedFileNameRef,
     workspaceTabsApi, workspaceTabsRef, workspaceTabsEnabledRef, setWorkspaceTabs,
     setWorkspaceTabsEnabled, setSavingTabIds, savingTabIdsRef, saveFileRef,
-    setPendingCloseTabId, setShowCloseFileConfirmModal,
     s3Tree, webdavTree, sessionWorkspace, sessionWorkspaceRef,
     storageMode, fileSessionApi, appLockPromptManual,
     setAuthWanted, authWanted, shareBlockingAuth, setShowAuthModal,
@@ -73,6 +147,10 @@ export function useAppLogicSetupDomain(ctx) {
     setShowTrashFolder, setShowHiddenFolders, setHideRecordingCompanions,
     setTreeStickyFolderPathEnabled, setShowTreeModifiedDate,
   } = ctx;
+
+  const fallbackSuppressUnsavedNavGuardRef = useRef(false);
+  const suppressUnsavedNavGuardRef =
+    ctx.suppressUnsavedNavGuardRef ?? fallbackSuppressUnsavedNavGuardRef;
 
   const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
   const appName = getAppNameByStorageMode(storageMode || DEFAULT_STORAGE_MODE);
@@ -125,10 +203,9 @@ export function useAppLogicSetupDomain(ctx) {
     }
   }, []);
 
-  const s3TreeRef = useRef([]);
-  const webdavTreeRef = useRef([]);
-  const prevHistoryViewPathRef = useRef(undefined);
-  const suppressUnsavedNavGuardRef = useRef(false);
+  const s3TreeRef = useRef<unknown[]>([]);
+  const webdavTreeRef = useRef<unknown[]>([]);
+  const prevHistoryViewPathRef = useRef<string | undefined>(undefined);
   const hasRestoredLastFileRef = useRef(false);
   const hasProcessedOpenFromUrlRef = useRef(false);
   const hasRestoredFromPrintRef = useRef(false);
@@ -171,16 +248,18 @@ export function useAppLogicSetupDomain(ctx) {
     clearPersistedWorkspaceTabs();
   }, []);
 
-  const queueBackgroundTabSave = useCallback((file, content) => {
-    if (!file?.type || !file?.id) return;
-    if (file.type === SESSION_STORAGE_TYPE) return;
+  const queueBackgroundTabSave = useCallback((file: BackgroundTabSaveFile, content: string) => {
+    const fileType = file.type;
+    const fileId = file.id;
+    if (!fileType || !fileId) return;
+    if (fileType === SESSION_STORAGE_TYPE) return;
     // Encrypted notes: never auto-save or write plaintext drafts.
-    if (isEncMdPath(file.id) || isEncMdPath(file.name)) return;
+    if (isEncMdPath(fileId) || isEncMdPath(file.name)) return;
     const viewer = file.viewer || 'markdown';
     if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
 
     const text = typeof content === 'string' ? content : '';
-    const tab = findFileTab(workspaceTabsRef.current, file.type, file.id);
+    const tab = findFileTab(workspaceTabsRef.current, fileType, fileId);
     const baseline =
       tab != null
         ? tab.baselineContent
@@ -189,7 +268,7 @@ export function useAppLogicSetupDomain(ctx) {
           : '';
     if (text === baseline) return;
 
-    const tabId = `${file.type}:${file.id}`;
+    const tabId = `${fileType}:${fileId}`;
     if (savingTabIdsRef.current.has(tabId)) return;
     savingTabIdsRef.current.add(tabId);
     setSavingTabIds([...savingTabIdsRef.current]);
@@ -205,7 +284,7 @@ export function useAppLogicSetupDomain(ctx) {
     void (async () => {
       try {
         await saveMemoDraft({
-          key: getDraftKey(file.type, file.id),
+          key: getDraftKey(fileType, fileId),
           content: text,
           originalLastModified: ts,
         });
@@ -226,7 +305,7 @@ export function useAppLogicSetupDomain(ctx) {
 
   /** VS Code onFocusChange: save when leaving a dirty file tab. */
   const maybeAutoSaveOnFocusChange = useCallback(
-    (file, content) => {
+    (file: BackgroundTabSaveFile, content: string) => {
       if (!workspaceTabsEnabledRef.current) return;
       if (workspaceTabsAutoSaveModeRef.current !== 'onFocusChange') return;
       queueBackgroundTabSave(file, content);
@@ -265,15 +344,6 @@ export function useAppLogicSetupDomain(ctx) {
     cycleWorkspaceTab,
   } = workspaceTabsApi;
 
-  useLayoutEffect(() => {
-    workspaceTabsApi.registerTabBridgeDeps({
-      onLeavingDirtyFileTab: maybeAutoSaveOnFocusChange,
-      requestDirtyCloseConfirm: (id) => {
-        setPendingCloseTabId(id);
-        setShowCloseFileConfirmModal(true);
-      },
-    });
-  }, [workspaceTabsApi, maybeAutoSaveOnFocusChange]);
   useEffect(() => {
     s3TreeRef.current = s3Tree;
   }, [s3Tree]);
@@ -356,8 +426,9 @@ export function useAppLogicSetupDomain(ctx) {
   }, [collapseToLegacyWorkspace, isChatRoute, isSettingsRoute, openChatWorkspaceTab, openSettingsWorkspaceTab]);
 
   useEffect(() => {
-    const onAutoSaveMode = (event) => {
-      const mode = event?.detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
+    const onAutoSaveMode = (event: Event) => {
+      const detail = (event as CustomEvent<{ mode?: WorkspaceTabsAutoSaveMode }>).detail;
+      const mode = detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
       workspaceTabsAutoSaveModeRef.current = mode;
     };
     window.addEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
@@ -393,9 +464,10 @@ export function useAppLogicSetupDomain(ctx) {
       const session = await tryRestoreAuthSession();
       if (cancelled) return;
       if (session) {
-        unlock(session.creds, session.password);
-        if (session.webdavConfig?.endpoint || session.webdavConfig?.username) {
-          setWebdavConfig(session.webdavConfig);
+        unlock(session.creds as AuthS3Creds, session.password);
+        const sessionWebdav = session.webdavConfig as WebdavConfig | null;
+        if (sessionWebdav?.endpoint || sessionWebdav?.username) {
+          setWebdavConfig(sessionWebdav);
         } else if (session.password) {
           decryptWebdavConfig(session.password)
             .then((decryptedWebdav) => {
@@ -425,7 +497,7 @@ export function useAppLogicSetupDomain(ctx) {
           const desktop = await tryRestoreDesktopStrongholdSession();
           if (cancelled) return;
           if (desktop.creds) {
-            unlock(desktop.creds, '');
+            unlock(desktop.creds as AuthS3Creds, '');
             if (desktop.webdav) setWebdavConfig(desktop.webdav);
             return;
           }

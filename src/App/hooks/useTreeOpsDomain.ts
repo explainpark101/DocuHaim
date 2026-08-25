@@ -4,7 +4,10 @@ import { useNavigate, useLocation } from 'react-router';
 import { getParentPathsToExpand } from '@/App/helpers';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSession } from '@/App/hooks/useFileSession';
+import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
+import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
+import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
@@ -75,34 +78,11 @@ import {
 import { STORAGE_MODE_LOCAL } from '@/utils/storageSettings';
 import { getActiveTab, getActiveFileTab } from '@/utils/workspaceTabs';
 
-export type TreeOpsBridgeDeps = {
-  setOperationStatus?: (status: string) => void;
-  expandPathsRef?: { current: ((type: string, paths: string[]) => void) | null };
-  isMobile?: boolean;
-  setSidebarOpen?: (open: boolean) => void;
-  confirmAndCancelEditorImageUpload?: () => boolean;
-  uploadFileInputRef?: { current: any };
-  uploadFolderInputRef?: { current: any };
-  setAddToNoteSelectPath?: (p: any) => void;
-  setSaveSessionToNoteSelectPath?: (p: any) => void;
-  requestEncMdPassword?: (opts?: any) => Promise<string>;
-  renameS3File?: (...args: any[]) => Promise<any>;
-  renameLocalFile?: (...args: any[]) => Promise<any>;
-  readBackendBytes?: (storageType: string, path: string) => Promise<Uint8Array>;
-  downloadMarkdownImageZip?: (...args: any[]) => Promise<boolean>;
-  chatSurfaceActive?: boolean;
-  setDownloadResultModal?: (modal: any) => void;
-};
-
 /**
  * Owns tree CRUD / DnD / select / create-upload request handlers.
- * Bridge deps inject orchestration-only pieces (modals, chrome, rename helpers).
+ * Reads chrome/modals/fileSession + late-bound owned refs — no register*BridgeDeps.
  */
-export function useTreeOpsDomain({
-  bridgeDepsRef,
-}: {
-  bridgeDepsRef: { current: TreeOpsBridgeDeps };
-}) {
+export function useTreeOpsDomain() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
@@ -136,7 +116,29 @@ export function useTreeOpsDomain({
     saveCurrentMarkdownBeforeSwitch,
     commitOpenFile,
     applyOpenFileIdentityChange,
+    renameS3File,
   } = useFileSession();
+
+  const {
+    applyWorkspaceFilePathRetargetRef,
+    requestEncMdPasswordRef,
+  } = useFileSessionOwned();
+
+  const {
+    setOperationStatus,
+    expandPathsRef,
+    isMobile,
+    setSidebarOpen,
+    uploadFileInputRef,
+    uploadFolderInputRef,
+    chatSurfaceActive,
+  } = useChromeOwned();
+
+  const {
+    setAddToNoteSelectPath,
+    setSaveSessionToNoteSelectPath,
+    setDownloadResultModal,
+  } = useModalsOwned();
 
   const {
     setSelectedIds,
@@ -165,6 +167,9 @@ export function useTreeOpsDomain({
     setMoveModalSelectPath,
     uploadTarget,
     setUploadTarget,
+    confirmAndCancelEditorImageUploadRef,
+    readBackendBytesRef,
+    downloadMarkdownImageZipRef,
   } = useTreeOpsOwned();
 
   const {
@@ -188,10 +193,10 @@ export function useTreeOpsDomain({
   const treeNameConflictResolverRef = useRef(null);
   const selectFileRawRef = useRef(selectFileRaw);
   selectFileRawRef.current = selectFileRaw;
+  const applyWorkspaceFilePathRetargetLocalRef = useRef(null);
+  const applyWorkspaceFolderPathRetargetLocalRef = useRef(null);
 
-  const bridge = () => bridgeDepsRef.current;
-  const setOperationStatus = (...args) => bridge().setOperationStatus?.(...args);
-  const expandPaths = (type, paths) => bridge().expandPathsRef?.current?.(type, paths);
+  const expandPaths = (type, paths) => expandPathsRef.current?.(type, paths);
 
   const triggerBlobDownload = useCallback((blob, fileName) => {
     const url = URL.createObjectURL(blob);
@@ -208,12 +213,12 @@ export function useTreeOpsDomain({
   }, []);
 
   const openUnsupportedFolderDownloadModal = useCallback(() => {
-    bridge().setDownloadResultModal?.({
+    setDownloadResultModal({
       isOpen: true,
       title: '폴더 다운로드',
       message: '이 브라우저에서 폴더 다운로드는 지원하지 않습니다',
     });
-  }, [bridgeDepsRef]);
+  }, [setDownloadResultModal]);
 
   const downloadFolderAsZip = useCallback(async (storageType, node, folderName, indicatorId) => {
     const entries = [];
@@ -634,8 +639,8 @@ export function useTreeOpsDomain({
             });
             lastSelectedIdRef.current = key;
             if (node.type === 'file') {
-              if (!bridge().confirmAndCancelEditorImageUpload?.()) return;
-              if (bridge().isMobile) bridge().setSidebarOpen?.(false);
+              if (!confirmAndCancelEditorImageUploadRef.current?.()) return;
+              if (isMobile) setSidebarOpen(false);
               saveCurrentMarkdownBeforeSwitch(storageType, node);
               await selectFileRaw(storageType, node);
             }
@@ -658,13 +663,13 @@ export function useTreeOpsDomain({
       }
 
       if (node.type === 'file') {
-        if (!bridge().confirmAndCancelEditorImageUpload?.()) return;
-        if (bridge().isMobile) bridge().setSidebarOpen?.(false);
+        if (!confirmAndCancelEditorImageUploadRef.current?.()) return;
+        if (isMobile) setSidebarOpen(false);
         saveCurrentMarkdownBeforeSwitch(storageType, node);
         await selectFileRaw(storageType, node);
       }
     },
-    [s3Tree, localTree, webdavTree, sessionWorkspace, selectFileRaw, saveCurrentMarkdownBeforeSwitch, bridgeDepsRef]
+    [s3Tree, localTree, webdavTree, sessionWorkspace, selectFileRaw, saveCurrentMarkdownBeforeSwitch, isMobile, setSidebarOpen]
   );
 
   const handleDownloadNode = async (storageType, node) => {
@@ -672,7 +677,7 @@ export function useTreeOpsDomain({
       node?.name || node?.path?.split('/').filter(Boolean).pop() || (node?.type === 'folder' ? '폴더' : '파일'),
     );
     const showDownloadCompleteModal = (title, message) => {
-      bridge().setDownloadResultModal?.({
+      setDownloadResultModal({
         isOpen: true,
         title,
         message,
@@ -816,7 +821,7 @@ export function useTreeOpsDomain({
       if (isMarkdownFileName(fileName)) {
         const backend = getBackendForType(storageType);
         const { text } = await backend.readText(node.path);
-        const bundled = await bridge().downloadMarkdownImageZip?.(storageType, node.path, fileName, text);
+        const bundled = await downloadMarkdownImageZipRef.current?.(storageType, node.path, fileName, text);
         if (bundled) {
           const zipName = zipFileNameForMarkdown(fileName);
           setOperationStatus(`다운로드: ${zipName}`);
@@ -830,7 +835,7 @@ export function useTreeOpsDomain({
       }
 
       if (storageType === 's3') {
-        const body = await bridge().readBackendBytes?.(storageType, node.path);
+        const body = await readBackendBytesRef.current?.(storageType, node.path);
         triggerBlobDownload(new Blob([body]), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
         showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
@@ -844,7 +849,7 @@ export function useTreeOpsDomain({
         return;
       }
       if (storageType === 'webdav') {
-        const body = await bridge().readBackendBytes?.(storageType, node.path);
+        const body = await readBackendBytesRef.current?.(storageType, node.path);
         triggerBlobDownload(new Blob([body]), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
         showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
@@ -1022,7 +1027,7 @@ export function useTreeOpsDomain({
     if (type !== 'folder' && isEncMdPath(newPath)) {
       let password;
       try {
-        password = await bridge().requestEncMdPassword?.({
+        password = await requestEncMdPasswordRef.current?.({
           title: '암호화해서 만들기',
           message:
             '이 노트를 암호화할 비밀번호를 입력하세요.\n같은 비밀번호로만 다시 열 수 있습니다.',
@@ -1189,14 +1194,14 @@ export function useTreeOpsDomain({
     () =>
       resolveNewFileDefaultParentPath({
         pathname: location.pathname,
-        chatSurfaceActive: bridge().chatSurfaceActive,
+        chatSurfaceActive,
         workspaceTabsEnabled,
         activeTab: activeWorkspaceTab,
         currentFilePath: currentFile?.id,
       }),
     [
       location.pathname,
-      bridgeDepsRef,
+      chatSurfaceActive,
       workspaceTabsEnabled,
       activeWorkspaceTab,
       currentFile?.id,
@@ -1206,14 +1211,14 @@ export function useTreeOpsDomain({
 
   const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
     setUploadTarget({ storageType, parentPath, parentDirHandle });
-    const input = bridge().uploadFileInputRef?.current;
+    const input = uploadFileInputRef.current;
     if (input) input.value = '';
     input?.click();
   };
 
   const requestUploadFolder = (storageType, parentPath, parentDirHandle) => {
     setUploadTarget({ storageType, parentPath, parentDirHandle });
-    const input = bridge().uploadFolderInputRef?.current;
+    const input = uploadFolderInputRef.current;
     if (input) input.value = '';
     input?.click();
   };
@@ -1325,8 +1330,8 @@ export function useTreeOpsDomain({
         const resolved = resolveCreateItemPath(parentPath, nameInput, 'folder');
         if (resolved.ok) {
           if (fromMoveModal) setMoveModalSelectPath(resolved.path);
-          if (fromAddToNoteModal) bridge().setAddToNoteSelectPath?.(resolved.path);
-          if (fromSaveSessionModal) bridge().setSaveSessionToNoteSelectPath?.(resolved.path);
+          if (fromAddToNoteModal) setAddToNoteSelectPath(resolved.path);
+          if (fromSaveSessionModal) setSaveSessionToNoteSelectPath(resolved.path);
         }
       }
       setCreateModalOpen(false);
@@ -1349,7 +1354,7 @@ export function useTreeOpsDomain({
           const destPrefix = `${parentPath}${trimmed}/`;
           await moveS3FolderToFolder(node, parentPath, trimmed);
           await loadS3Files();
-          bridge().applyWorkspaceFolderPathRetarget?.('s3', prefix, destPrefix);
+          applyWorkspaceFolderPathRetargetLocalRef.current?.('s3', prefix, destPrefix);
           if (currentFile && currentFile.type === 's3' && currentFile.id.startsWith(node.path)) {
             const newPath = currentFile.id.replace(prefix, destPrefix);
             applyOpenFileIdentityChange(
@@ -1368,7 +1373,7 @@ export function useTreeOpsDomain({
             const toRel = String(newPrefix || '').replace(/\/+$/, '');
             await backend.move(fromRel, toRel);
             await refreshLocalTree();
-            bridge().applyWorkspaceFolderPathRetarget?.('local', oldPrefix, newPrefix);
+            applyWorkspaceFolderPathRetargetLocalRef.current?.('local', oldPrefix, newPrefix);
             if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
               const newPathForFile = currentFile.id.startsWith(oldPrefix)
                 ? newPrefix + currentFile.id.slice(oldPrefix.length)
@@ -1387,7 +1392,7 @@ export function useTreeOpsDomain({
             const newPrefix =
               node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
             await moveLocalFolderToFolder(node, parentHandle, '', trimmed);
-            bridge().applyWorkspaceFolderPathRetarget?.('local', oldPrefix, newPrefix);
+            applyWorkspaceFolderPathRetargetLocalRef.current?.('local', oldPrefix, newPrefix);
             if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
               const newPathForFile = currentFile.id.startsWith(oldPrefix)
                 ? newPrefix + currentFile.id.slice(oldPrefix.length)
@@ -1404,7 +1409,7 @@ export function useTreeOpsDomain({
           const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
           const destPrefix = node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
           await moveWebdavFolderToFolder(node, '', trimmed);
-          bridge().applyWorkspaceFolderPathRetarget?.('webdav', oldPrefix, destPrefix);
+          applyWorkspaceFolderPathRetargetLocalRef.current?.('webdav', oldPrefix, destPrefix);
           if (currentFile && currentFile.type === 'webdav' && currentFile.id.startsWith(node.path)) {
             const newPathForFile = currentFile.id.startsWith(oldPrefix)
               ? destPrefix + currentFile.id.slice(oldPrefix.length)
@@ -1429,11 +1434,11 @@ export function useTreeOpsDomain({
         const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
         const contentOverride = hasUnsaved ? editorContent : null;
 
-        const updated = await bridge().renameS3File?.(fileToRename, newName, contentOverride);
+        const updated = await renameS3File(fileToRename, newName, contentOverride);
         if (isCurrentFile) {
           applyOpenFileIdentityChange(updated, { oldPath });
         } else {
-          bridge().applyWorkspaceFilePathRetarget?.('s3', oldPath, updated.id, {
+          applyWorkspaceFilePathRetargetLocalRef.current?.('s3', oldPath, updated.id, {
             ...updated,
             name: newName,
           });
@@ -1468,7 +1473,7 @@ export function useTreeOpsDomain({
               { oldPath },
             );
           } else {
-            bridge().applyWorkspaceFilePathRetarget?.('local', oldPath, newPath, {
+            applyWorkspaceFilePathRetargetLocalRef.current?.('local', oldPath, newPath, {
               id: newPath,
               name: newName,
             });
@@ -1509,7 +1514,7 @@ export function useTreeOpsDomain({
               { oldPath },
             );
           } else {
-            bridge().applyWorkspaceFilePathRetarget?.('local', oldPath, newPath, {
+            applyWorkspaceFilePathRetargetLocalRef.current?.('local', oldPath, newPath, {
               id: newPath,
               name: newName,
               handle: newFileHandle,
@@ -1543,7 +1548,7 @@ export function useTreeOpsDomain({
             { oldPath },
           );
         } else {
-          bridge().applyWorkspaceFilePathRetarget?.('webdav', oldPath, newPath, {
+          applyWorkspaceFilePathRetargetLocalRef.current?.('webdav', oldPath, newPath, {
             id: newPath,
             name: newName,
           });
@@ -1742,7 +1747,7 @@ export function useTreeOpsDomain({
                     { oldPath: srcPath },
                   );
                 } else {
-                  bridge().applyWorkspaceFilePathRetarget?.(srcStorageType, srcPath, destFilePath, {
+                  applyWorkspaceFilePathRetargetLocalRef.current?.(srcStorageType, srcPath, destFilePath, {
                     id: destFilePath,
                     name: destName,
                   });
@@ -1753,7 +1758,7 @@ export function useTreeOpsDomain({
                 if (currentFileRef.current?.type === 'webdav' && currentFileRef.current.id === srcPath) {
                   applyOpenFileIdentityChange(updated, { oldPath: srcPath });
                 } else {
-                  bridge().applyWorkspaceFilePathRetarget?.(srcStorageType, srcPath, destFilePath, {
+                  applyWorkspaceFilePathRetargetLocalRef.current?.(srcStorageType, srcPath, destFilePath, {
                     id: destFilePath,
                     name: destName,
                   });
@@ -1764,7 +1769,7 @@ export function useTreeOpsDomain({
                 if (currentFileRef.current?.type === 'local' && currentFileRef.current.id === srcPath) {
                   applyOpenFileIdentityChange(updated, { oldPath: srcPath });
                 } else {
-                  bridge().applyWorkspaceFilePathRetarget?.(srcStorageType, srcPath, destFilePath, {
+                  applyWorkspaceFilePathRetargetLocalRef.current?.(srcStorageType, srcPath, destFilePath, {
                     id: destFilePath,
                     name: destName,
                     ...(updated?.handle ? { handle: updated.handle } : {}),
@@ -1783,7 +1788,7 @@ export function useTreeOpsDomain({
               }
               const oldPrefix = srcNode.path.endsWith('/') ? srcNode.path : `${srcNode.path}/`;
               const newPrefix = `${destPath}${destName}/`;
-              bridge().applyWorkspaceFolderPathRetarget?.(srcStorageType, oldPrefix, newPrefix);
+              applyWorkspaceFolderPathRetargetLocalRef.current?.(srcStorageType, oldPrefix, newPrefix);
               if (
                 currentFileRef.current &&
                 currentFileRef.current.type === srcStorageType &&
@@ -2048,6 +2053,10 @@ export function useTreeOpsDomain({
     workspaceTabsRef.current = next;
     setWorkspaceTabs(next);
   };
+
+  applyWorkspaceFilePathRetargetLocalRef.current = applyWorkspaceFilePathRetarget;
+  applyWorkspaceFolderPathRetargetLocalRef.current = applyWorkspaceFolderPathRetarget;
+  applyWorkspaceFilePathRetargetRef.current = applyWorkspaceFilePathRetarget;
 
   const handleUploadFileSelect = async (e) => {
     const files = e.target.files;
@@ -2414,7 +2423,7 @@ export function useTreeOpsDomain({
     let failCount = 0;
     let lastError = null;
     let anyFolder = false;
-    const isChatRoute = bridge().chatSurfaceActive;
+    const isChatRoute = chatSurfaceActive;
     let openFileAffected = false;
     /** @type {Array<{ path?: string, type?: string, name?: string }>} */
     const deletedNodesForChat = [];

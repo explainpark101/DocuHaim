@@ -1,10 +1,13 @@
 // @ts-nocheck — file session domain actions; tighten with FileSessionValue
 import { useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { getParentPathsToExpand } from '@/App/helpers';
+import { getExt, getParentPathsToExpand } from '@/App/helpers';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
+import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { markAutoSaveSyncTimestamp } from '@/App/hooks/autoSaveBridge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -32,7 +35,7 @@ import {
   tryUnlockEncMdContent,
 } from '@/utils/encMd';
 import { noteCoverCommentChanged } from '@/utils/noteCover';
-import { getObjectBody, putObject } from '@/utils/s3Client';
+import { getObjectBody, putObject, copyObject, deleteObject } from '@/utils/s3Client';
 import {
   createWebdavBackend,
   createLocalBackend,
@@ -85,45 +88,11 @@ function isAbortOrNetworkError(e) {
   );
 }
 
-export type FileSessionBridgeDeps = {
-  hasSuffixChange?: () => boolean;
-  setSuffixConfirmAction?: (action: string) => void;
-  setShowSuffixChangeConfirmModal?: (open: boolean) => void;
-  pendingCoverSaveRef?: { current: any };
-  setShowCoverChangeConfirmModal?: (open: boolean) => void;
-  sessionVaultBindingsRef?: { current: Record<string, any> };
-  writeSessionFileToHaimRef?: { current: ((...args: any[]) => any) | null };
-  handleRequestSessionSaveChooser?: () => void;
-  connectedHaimStorageType?: () => string;
-  requestEncMdPassword?: (opts?: any) => Promise<string>;
-  setOperationStatus?: (status: string) => void;
-  setLastAutoSyncAt?: (at: number) => void;
-  setPendingCloseTabId?: (id: string | null) => void;
-  setShowCloseFileConfirmModal?: (open: boolean) => void;
-  closeCurrentFile?: () => void;
-  hasUnsavedEditorChanges?: () => boolean;
-  expandPathsRef?: { current: ((type: string, paths: string[]) => void) | null };
-  selectFile?: (type: string, node: any) => void | Promise<void>;
-  flushSessionEditorToWorkspace?: () => any;
-  applySessionFileToEditor?: (path: string, workspace: any, options?: any) => boolean;
-  maybeAutoSaveOnFocusChange?: (file: any, content: string) => void;
-  renameS3File?: (...args: any[]) => Promise<any>;
-  renameLocalFile?: (...args: any[]) => Promise<any>;
-  suppressUnsavedNavGuardRef?: { current: boolean };
-  applyWorkspaceFilePathRetarget?: (...args: any[]) => void;
-  sessionWorkspaceRef?: { current: any };
-  savingTabIdsRef?: { current: Set<string> };
-};
-
 /**
  * Owns file open/save/refresh/close/AS-open + P3 identity handlers.
- * Bridge deps inject orchestration-only pieces (modals, session write, tree select).
+ * Reads modals/chrome/owned refs — no register*BridgeDeps.
  */
-export function useFileSessionDomain({
-  bridgeDepsRef,
-}: {
-  bridgeDepsRef: { current: FileSessionBridgeDeps };
-}) {
+export function useFileSessionDomain() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addIndicator, removeIndicator } = useActivityIndicator();
@@ -159,10 +128,37 @@ export function useFileSessionDomain({
     setEditedFileName,
     setIsSaving,
     setSavingTabIds,
+    savingTabIdsRef,
     setEncMdPrompt,
     setIsRefreshingFromDisk,
     setIsPullingFromRemote,
+    sessionVaultBindingsRef,
+    writeSessionFileToHaimRef,
+    sessionWorkspaceRef,
+    saveFileRef,
+    selectFileRef,
+    applyWorkspaceFilePathRetargetRef,
+    suppressUnsavedNavGuardRef,
+    flushSessionEditorToWorkspaceRef,
+    applySessionFileToEditorRef,
+    handleRequestSessionSaveChooserRef,
+    connectedHaimStorageTypeRef,
+    hasUnsavedEditorChangesRef,
+    closeCurrentFileRef,
+    maybeAutoSaveOnFocusChangeRef,
+    requestEncMdPasswordRef,
   } = useFileSessionOwned();
+
+  const {
+    setSuffixConfirmAction,
+    setShowSuffixChangeConfirmModal,
+    pendingCoverSaveRef,
+    setShowCoverChangeConfirmModal,
+    setPendingCloseTabId,
+    setShowCloseFileConfirmModal,
+  } = useModalsOwned();
+
+  const { setOperationStatus, expandPathsRef } = useChromeOwned();
 
   const {
     setState: setWorkspaceTabs,
@@ -174,10 +170,14 @@ export function useFileSessionDomain({
 
   const editedFileNameRef = useRef(editedFileName);
   editedFileNameRef.current = editedFileName;
-  const savingTabIdsRef = useRef(new Set());
   const openFileRequestSeqByKeyRef = useRef(new Map());
-  const resolveSavingTabIdsRef = () =>
-    bridgeDepsRef.current.savingTabIdsRef ?? savingTabIdsRef;
+  const resolveSavingTabIdsRef = () => savingTabIdsRef;
+
+  const hasSuffixChange = () => {
+    if (!currentFile?.name) return false;
+    const trimmed = (editedFileName ?? '').trim();
+    return trimmed !== currentFile.name && getExt(trimmed) !== getExt(currentFile.name);
+  };
 
   const unlockEncMdOrPrompt = useCallback(
     async (path, ciphertext) => {
@@ -764,10 +764,10 @@ export function useFileSessionDomain({
         ...(isEncMdPath(node.path) ? { encMd: true } : {}),
       }, contentToUse, { baselineContent });
     } else if (type === SESSION_STORAGE_TYPE) {
-      bridgeDepsRef.current.flushSessionEditorToWorkspace?.();
-      const workspace = bridgeDepsRef.current.sessionWorkspaceRef?.current;
+      flushSessionEditorToWorkspaceRef.current?.();
+      const workspace = sessionWorkspaceRef.current;
       if (!workspace) return;
-      bridgeDepsRef.current.applySessionFileToEditor?.(node.path, workspace, { skipNavigate });
+      applySessionFileToEditorRef.current?.(node.path, workspace, { skipNavigate });
     }
     } finally {
       try {
@@ -797,7 +797,6 @@ export function useFileSessionDomain({
     webdavConfig,
     getS3Client,
     s3Creds.bucket,
-    bridgeDepsRef,
     commitOpenFile,
     activateWorkspaceTab,
     showToast,
@@ -824,7 +823,7 @@ export function useFileSessionDomain({
       if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
 
       if (cur.type === SESSION_STORAGE_TYPE) {
-        bridgeDepsRef.current.flushSessionEditorToWorkspace?.();
+        flushSessionEditorToWorkspaceRef.current?.();
         return;
       }
 
@@ -841,9 +840,9 @@ export function useFileSessionDomain({
       if (!leaving || !isFileTabDirty(leaving)) return;
 
       // Fire-and-forget when onFocusChange: navigate continues immediately.
-      bridgeDepsRef.current.maybeAutoSaveOnFocusChange?.(leaving.currentFile, leaving.editorContent);
+      maybeAutoSaveOnFocusChangeRef.current?.(leaving.currentFile, leaving.editorContent);
     },
-    [bridgeDepsRef, workspaceTabsRef, setWorkspaceTabs, editorContentRef, currentFileRef, editedFileNameRef],
+    [workspaceTabsRef, setWorkspaceTabs, editorContentRef, currentFileRef, editedFileNameRef],
   );
 
   const handleRequestCloseEditor = () => {
@@ -852,11 +851,11 @@ export function useFileSessionDomain({
       closeWorkspaceTabById(active.id);
       return;
     }
-    if (bridgeDepsRef.current.hasUnsavedEditorChanges?.()) {
-      bridgeDepsRef.current.setPendingCloseTabId?.(null);
-      bridgeDepsRef.current.setShowCloseFileConfirmModal?.(true);
+    if (hasUnsavedEditorChangesRef.current?.()) {
+      setPendingCloseTabId(null);
+      setShowCloseFileConfirmModal(true);
     } else {
-      bridgeDepsRef.current.closeCurrentFile?.();
+      closeCurrentFileRef.current?.();
     }
   };
 
@@ -868,7 +867,7 @@ export function useFileSessionDomain({
       const parentPath = slash >= 0 ? path.slice(0, slash + 1) : '';
       const parentPaths = getParentPathsToExpand(parentPath);
       if (parentPaths.length) {
-        bridgeDepsRef.current.expandPathsRef?.current?.(type, parentPaths);
+        expandPathsRef.current?.(type, parentPaths);
       }
       let node = null;
       if (type === STORAGE_MODE_LOCAL) {
@@ -885,7 +884,7 @@ export function useFileSessionDomain({
         node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
       }
       if (node?.type === 'file') {
-        bridgeDepsRef.current.selectFile?.(type, node);
+        selectFileRef.current?.(type, node);
       } else {
         navigate(`/view/${path}`);
       }
@@ -897,7 +896,6 @@ export function useFileSessionDomain({
       s3Tree,
       localRootHandle,
       navigate,
-      bridgeDepsRef,
     ],
   );
 
@@ -911,9 +909,9 @@ export function useFileSessionDomain({
     } = options;
     const fileToSave = fileOverride ?? currentFile;
     if (!fileToSave) return;
-    if (!skipSuffixCheck && !fileOverride && bridgeDepsRef.current.hasSuffixChange?.()) {
-      bridgeDepsRef.current.setSuffixConfirmAction?.('renameAndSave');
-      bridgeDepsRef.current.setShowSuffixChangeConfirmModal?.(true);
+    if (!skipSuffixCheck && !fileOverride && hasSuffixChange()) {
+      setSuffixConfirmAction('renameAndSave');
+      setShowSuffixChangeConfirmModal(true);
       return;
     }
     const viewer = fileToSave.viewer || 'markdown';
@@ -931,18 +929,18 @@ export function useFileSessionDomain({
         String(textToSave ?? ''),
       )
     ) {
-      bridgeDepsRef.current.pendingCoverSaveRef && (bridgeDepsRef.current.pendingCoverSaveRef.current = { fileOverride, options });
-      bridgeDepsRef.current.setShowCoverChangeConfirmModal?.(true);
+      pendingCoverSaveRef.current = { fileOverride, options };
+      setShowCoverChangeConfirmModal(true);
       return;
     }
 
     if (fileToSave.type === SESSION_STORAGE_TYPE) {
-      const binding = bridgeDepsRef.current.sessionVaultBindingsRef?.current?.[fileToSave.id];
+      const binding = sessionVaultBindingsRef.current?.[fileToSave.id];
       const bindingOk =
-        Boolean(binding?.destPath) && binding.storageType === bridgeDepsRef.current.connectedHaimStorageType?.();
+        Boolean(binding?.destPath) && binding.storageType === connectedHaimStorageTypeRef.current?.();
       if (!bindingOk) {
         if (fileOverride || background) return;
-        bridgeDepsRef.current.handleRequestSessionSaveChooser?.();
+        handleRequestSessionSaveChooserRef.current?.();
         return;
       }
     }
@@ -984,7 +982,7 @@ export function useFileSessionDomain({
       try {
         let pw = getEncMdPassword(fileToSave.id);
         if (!pw) {
-          const req = bridgeDepsRef.current.requestEncMdPassword;
+          const req = requestEncMdPasswordRef.current;
           if (!req) throw new Error('cancelled');
           pw = await req({
             title: '암호화된 노트 저장',
@@ -1103,11 +1101,11 @@ export function useFileSessionDomain({
           });
         }
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
-        const binding = bridgeDepsRef.current.sessionVaultBindingsRef?.current?.[fileToSave.id];
+        const binding = sessionVaultBindingsRef.current?.[fileToSave.id];
         if (!binding?.destPath) {
           throw new Error('저장 위치를 찾지 못했습니다.');
         }
-        await bridgeDepsRef.current.writeSessionFileToHaimRef?.current?.({
+        await writeSessionFileToHaimRef.current?.({
           destPath: binding.destPath,
           sessionFile: fileToSave,
           content: vaultBody,
@@ -1187,7 +1185,6 @@ export function useFileSessionDomain({
     }
   }, [
     currentFile,
-    bridgeDepsRef,
     getS3Client,
     s3Creds.bucket,
     loadS3Files,
@@ -1274,7 +1271,7 @@ export function useFileSessionDomain({
       await deleteMemoDraft(getDraftKey('local', fileToRefresh.id));
 
       if (backupName) {
-        bridgeDepsRef.current.setOperationStatus?.(`충돌: 현재 문서를 ${backupName}으로 저장하고 디스크 내용으로 교체했습니다`);
+        setOperationStatus(`충돌: 현재 문서를 ${backupName}으로 저장하고 디스크 내용으로 교체했습니다`);
         showAlert({
           title: '새로고침 충돌',
           message:
@@ -1282,11 +1279,11 @@ export function useFileSessionDomain({
           detail: backupName,
         });
       } else if (nextEditorText === diskText && ours === diskText) {
-        bridgeDepsRef.current.setOperationStatus?.('디스크 내용과 동일합니다');
+        setOperationStatus('디스크 내용과 동일합니다');
       } else if (nextEditorText === diskText) {
-        bridgeDepsRef.current.setOperationStatus?.('디스크 내용으로 새로고침했습니다');
+        setOperationStatus('디스크 내용으로 새로고침했습니다');
       } else {
-        bridgeDepsRef.current.setOperationStatus?.('디스크 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
+        setOperationStatus('디스크 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
       }
     } catch (e) {
       console.error('Local refresh failed:', e);
@@ -1302,7 +1299,6 @@ export function useFileSessionDomain({
     addIndicator,
     removeIndicator,
     showAlert,
-    bridgeDepsRef,
     localRootHandle,
     refreshLocalTree,
     setIsRefreshingFromDisk,
@@ -1382,7 +1378,7 @@ export function useFileSessionDomain({
       setEditorContent(nextEditorText);
       editorContentRef.current = nextEditorText;
       await deleteMemoDraft(getDraftKey(fileToRefresh.type, fileToRefresh.id));
-      bridgeDepsRef.current.setLastAutoSyncAt?.(Date.now());
+      markAutoSaveSyncTimestamp();
 
       const active = getActiveFileTab(workspaceTabsRef.current);
       if (active) {
@@ -1423,7 +1419,7 @@ export function useFileSessionDomain({
       }
 
       if (backupName) {
-        bridgeDepsRef.current.setOperationStatus?.(`충돌: 현재 문서를 ${backupName}으로 저장하고 원격 내용으로 교체했습니다`);
+        setOperationStatus(`충돌: 현재 문서를 ${backupName}으로 저장하고 원격 내용으로 교체했습니다`);
         showAlert({
           title: '가져오기 충돌',
           message:
@@ -1431,11 +1427,11 @@ export function useFileSessionDomain({
           detail: backupName,
         });
       } else if (nextEditorText === remoteText && ours === remoteText) {
-        bridgeDepsRef.current.setOperationStatus?.('원격 내용과 동일합니다');
+        setOperationStatus('원격 내용과 동일합니다');
       } else if (nextEditorText === remoteText) {
-        bridgeDepsRef.current.setOperationStatus?.('원격 내용으로 가져왔습니다');
+        setOperationStatus('원격 내용으로 가져왔습니다');
       } else {
-        bridgeDepsRef.current.setOperationStatus?.('원격 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
+        setOperationStatus('원격 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
       }
     } catch (e) {
       console.error('Remote pull failed:', e);
@@ -1452,7 +1448,6 @@ export function useFileSessionDomain({
     removeIndicator,
     showAlert,
     showToast,
-    bridgeDepsRef,
     getBackendForType,
     loadS3Files,
     refreshWebdavTree,
@@ -1488,7 +1483,7 @@ export function useFileSessionDomain({
       typeof nextPath === 'string' &&
       nextPath
     ) {
-      bridgeDepsRef.current.applyWorkspaceFilePathRetarget?.(storageType, fromPath, nextPath, updated);
+      applyWorkspaceFilePathRetargetRef.current?.(storageType, fromPath, nextPath, updated);
     }
 
     currentFileRef.current = updated;
@@ -1498,7 +1493,7 @@ export function useFileSessionDomain({
     }
     if (typeof nextPath !== 'string' || !nextPath) return updated;
     if (parseOpenNotePathFromAppPathname(location.pathname) === nextPath) return updated;
-    if (bridgeDepsRef.current.suppressUnsavedNavGuardRef) bridgeDepsRef.current.suppressUnsavedNavGuardRef.current = true;
+    suppressUnsavedNavGuardRef.current = true;
     try {
       const onExport = isExportPdfAppPathname(location.pathname);
       navigate(
@@ -1506,11 +1501,10 @@ export function useFileSessionDomain({
         { replace: true },
       );
     } finally {
-      if (bridgeDepsRef.current.suppressUnsavedNavGuardRef) bridgeDepsRef.current.suppressUnsavedNavGuardRef.current = false;
+      suppressUnsavedNavGuardRef.current = false;
     }
     return updated;
   }, [
-    bridgeDepsRef,
     workspaceTabsEnabledRef,
     currentFileRef,
     setCurrentFile,
@@ -1518,6 +1512,71 @@ export function useFileSessionDomain({
     location.pathname,
     navigate,
   ]);
+
+
+  const renameS3File = useCallback(async (file, newName, contentOverride = null) => {
+    const client = getS3Client();
+    if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+
+    const oldKey = file.id;
+    const lastSlash = oldKey.lastIndexOf('/');
+    const dirPrefix = lastSlash >= 0 ? oldKey.slice(0, lastSlash + 1) : '';
+    const newKey = dirPrefix + newName;
+
+    if (newKey === oldKey) return file;
+
+    if (contentOverride != null && typeof contentOverride === 'string') {
+      const viewer = file.viewer || 'markdown';
+      const contentType =
+        viewer === 'json'
+          ? 'application/json'
+          : viewer === 'raw'
+            ? 'text/plain'
+            : viewer === 'html'
+              ? 'text/html'
+              : viewer === 'svg'
+                ? 'image/svg+xml'
+                : 'text/markdown';
+      await putObject(client, {
+        Bucket: s3Creds.bucket,
+        Key: newKey,
+        Body: contentOverride,
+        ContentType: contentType,
+      });
+    } else {
+      await copyObject(client, s3Creds.bucket, oldKey, newKey);
+    }
+    await deleteObject(client, s3Creds.bucket, oldKey);
+
+    await loadS3Files();
+
+    const result = { ...file, id: newKey, name: newName };
+    if (contentOverride != null) result.content = contentOverride;
+    return result;
+  }, [getS3Client, s3Creds, loadS3Files]);
+
+  const renameLocalFile = useCallback(async (file, newName) => {
+    const pHandle = file.parentHandle || localRootHandle;
+    if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+
+    const oldPath = file.id;
+    const lastSlash = oldPath.lastIndexOf('/');
+    const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
+    const newPath = dirPrefix + newName;
+
+    if (newPath === oldPath) return file;
+
+    const newFileHandle = await pHandle.getFileHandle(newName, { create: true });
+    const writable = await newFileHandle.createWritable();
+    await writable.write(editorContent);
+    await writable.close();
+
+    await pHandle.removeEntry(file.name, { recursive: false });
+
+    await refreshLocalTree();
+
+    return { ...file, id: newPath, name: newName, handle: newFileHandle, content: editorContent };
+  }, [localRootHandle, editorContent, refreshLocalTree]);
 
   const renameCurrentFileFullName = useCallback(async (newFullName) => {
     if (!currentFile) return null;
@@ -1529,19 +1588,19 @@ export function useFileSessionDomain({
       if (currentFile.type === 's3') {
         const hasUnsaved = currentFile.content !== editorContent;
         const contentOverride = hasUnsaved ? editorContent : null;
-        updated = await bridgeDepsRef.current.renameS3File?.(currentFile, trimmed, contentOverride);
+        updated = await renameS3File(currentFile, trimmed, contentOverride);
       } else if (currentFile.type === 'local') {
-        updated = await bridgeDepsRef.current.renameLocalFile?.(currentFile, trimmed);
+        updated = await renameLocalFile(currentFile, trimmed);
       } else if (currentFile.type === SESSION_STORAGE_TYPE) {
-        const ws = bridgeDepsRef.current.flushSessionEditorToWorkspace?.() ?? bridgeDepsRef.current.sessionWorkspaceRef?.current;
+        const ws = flushSessionEditorToWorkspaceRef.current?.() ?? sessionWorkspaceRef.current;
         if (!ws) return null;
         const nextWs = renameSessionFile(ws, currentFile.id, trimmed);
-        if (bridgeDepsRef.current.sessionWorkspaceRef) bridgeDepsRef.current.sessionWorkspaceRef.current = nextWs;
+        sessionWorkspaceRef.current = nextWs;
         setSessionWorkspace(nextWs);
         const lastSlash = String(currentFile.id || '').lastIndexOf('/');
         const dirPrefix = lastSlash >= 0 ? currentFile.id.slice(0, lastSlash + 1) : '';
         const newKey = dirPrefix + trimmed;
-        const bindingsRef = bridgeDepsRef.current.sessionVaultBindingsRef;
+        const bindingsRef = sessionVaultBindingsRef;
         const prevBinding = bindingsRef?.current?.[currentFile.id];
         if (bindingsRef && prevBinding && newKey !== currentFile.id) {
           const nextBindings = { ...bindingsRef.current };
@@ -1584,12 +1643,16 @@ export function useFileSessionDomain({
   }, [
     currentFile,
     editorContent,
-    bridgeDepsRef,
+    renameS3File,
+    renameLocalFile,
     setSessionWorkspace,
     webdavConfig,
     refreshWebdavTree,
     applyOpenFileIdentityChange,
   ]);
+
+  // Keep saveFileRef in sync for tabs / AppLogic background saves.
+  saveFileRef.current = saveFile;
 
   return {
     saveFile,
@@ -1602,5 +1665,7 @@ export function useFileSessionDomain({
     saveCurrentMarkdownBeforeSwitch,
     applyOpenFileIdentityChange,
     renameCurrentFileFullName,
+    renameS3File,
+    renameLocalFile,
   };
 }

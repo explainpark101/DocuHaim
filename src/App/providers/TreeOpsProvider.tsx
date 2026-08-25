@@ -1,39 +1,23 @@
 import {
-  useCallback,
   useMemo,
-  useRef,
   type ReactNode,
 } from 'react';
 import { TreeOpsContext } from '@/App/context/TreeOpsContext';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
-import {
-  useTreeOpsDomain,
-  type TreeOpsBridgeDeps,
-} from '@/App/hooks/useTreeOpsDomain';
+import { useTreeOpsDomain } from '@/App/hooks/useTreeOpsDomain';
 
 type Props = { children: ReactNode };
 
 /**
  * Owns tree-ops context + CRUD/DnD/select actions (useTreeOpsDomain).
- * Bridge deps (chrome, rename helpers, download bytes) inject from orchestration.
  */
 export function TreeOpsProvider({ children }: Props) {
   const owned = useTreeOpsOwned();
-  const bridgeDepsRef = useRef<TreeOpsBridgeDeps>({});
-
-  const registerTreeOpsBridgeDeps = useCallback(
-    (deps: Partial<TreeOpsBridgeDeps>) => {
-      bridgeDepsRef.current = { ...bridgeDepsRef.current, ...deps };
-    },
-    [],
-  );
-
-  const domain = useTreeOpsDomain({ bridgeDepsRef });
+  const domain = useTreeOpsDomain();
 
   const value = useMemo(
     () => ({
       ...owned,
-      registerTreeOpsBridgeDeps,
       requestCreateItem: domain.requestCreateItem,
       requestNewFile: domain.requestNewFile,
       requestAdvancedSearchCreateItem: domain.requestAdvancedSearchCreateItem,
@@ -83,7 +67,7 @@ export function TreeOpsProvider({ children }: Props) {
       lastSelectedIdRef: domain.lastSelectedIdRef,
       toSelectKey: domain.toSelectKey,
     }),
-    [owned, registerTreeOpsBridgeDeps, domain],
+    [owned, domain],
   );
 
   return <TreeOpsContext.Provider value={value}>{children}</TreeOpsContext.Provider>;

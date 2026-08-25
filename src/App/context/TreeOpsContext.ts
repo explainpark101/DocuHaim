@@ -1,5 +1,4 @@
 import { createContext } from 'react';
-import type { TreeOpsBridgeDeps } from '@/App/hooks/useTreeOpsDomain';
 
 /** §6 tree CRUD / DnD / upload / download. */
 export type TreeOpsValue = {
@@ -77,7 +76,6 @@ export type TreeOpsValue = {
   copyWebdavFolderToFolder: (...args: any[]) => any;
   lastSelectedIdRef: { current: any };
   toSelectKey: (storageType: string, path: string) => string;
-  registerTreeOpsBridgeDeps: (deps: Partial<TreeOpsBridgeDeps>) => void;
 };
 
 export const TreeOpsContext = createContext<TreeOpsValue | null>(null);
