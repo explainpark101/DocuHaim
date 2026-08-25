@@ -61,18 +61,57 @@ jobs:
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
 
-      - name: Build and upload release
+      # Pass signing env only when the matching platform secret exists.
+      # Empty strings still trigger tauri-action import/codesign and fail.
+      - name: Build and upload release (unsigned)
+        if: ${{ matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE == '' || matrix.platform == 'windows-latest' && secrets.WINDOWS_CERTIFICATE == '' }}
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing / notarization (optional — all or none)
+        with:
+          tagName: v${{ env.VERSION }}
+          releaseName: DocuHaim v${{ env.VERSION }}
+          releaseBody: |
+            Desktop builds (DMG / NSIS).
+
+            - macOS: universal DMG
+            - Windows: NSIS installer (.exe)
+
+            Unsigned builds if signing secrets are not configured — see docs/desktop/code-signing.md.
+          releaseDraft: false
+          prerelease: ${{ inputs.prerelease }}
+          args: ${{ matrix.args }}
+
+      - name: Build and upload release (signed macOS)
+        if: ${{ matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != '' }}
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows Authenticode (optional)
+        with:
+          tagName: v${{ env.VERSION }}
+          releaseName: DocuHaim v${{ env.VERSION }}
+          releaseBody: |
+            Desktop builds (DMG / NSIS).
+
+            - macOS: universal DMG
+            - Windows: NSIS installer (.exe)
+
+            Unsigned builds if signing secrets are not configured — see docs/desktop/code-signing.md.
+          releaseDraft: false
+          prerelease: ${{ inputs.prerelease }}
+          args: ${{ matrix.args }}
+
+      - name: Build and upload release (signed Windows)
+        if: ${{ matrix.platform == 'windows-latest' && secrets.WINDOWS_CERTIFICATE != '' }}
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         with:

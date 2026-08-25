@@ -85,6 +85,8 @@ pub fn run() {
     .expect("error while building DocuHaim")
     .run(|app_handle, event| {
       match event {
+        // RunEvent::Opened exists only on macOS / iOS (NSApplication open URLs).
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
         RunEvent::Opened { urls } => {
           let paths: Vec<String> = urls
             .iter()
@@ -98,7 +100,7 @@ pub fn run() {
             .collect();
           push_paths(app_handle, paths);
         }
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        #[cfg(target_os = "macos")]
         RunEvent::Reopen { has_visible_windows, .. } => {
           if !has_visible_windows {
             if let Some(window) = app_handle.get_webview_window("main") {

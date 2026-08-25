@@ -33,7 +33,7 @@ GitHub → Actions → **Release Tauri** → Run workflow (optional: mark prerel
 | `WINDOWS_CERTIFICATE` | Windows | Base64-encoded Authenticode PFX / P12 |
 | `WINDOWS_CERTIFICATE_PASSWORD` | Windows | PFX password |
 
-Empty secrets are ignored by the runner environment; Tauri simply skips signing.
+Empty secrets are ignored; **do not** set `APPLE_CERTIFICATE` (or other signing secrets) with placeholder or broken values — Tauri will attempt import/codesign and the workflow fails with `security import` / `SecKeychainItemImport` errors. Remove invalid secrets or fix the `.p12` encoding and password.
 
 ## macOS setup
 
