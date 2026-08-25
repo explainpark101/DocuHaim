@@ -162,7 +162,7 @@ export default function DesktopAppEntryLockSettings({
   };
 
   const handleManualLock = () => {
-    if (mode !== 'password' || busy) return;
+    if (mode === 'off' || busy) return;
     lockApp();
   };
 
@@ -178,7 +178,7 @@ export default function DesktopAppEntryLockSettings({
             <IconLock size={16} />
             앱 입장 잠금 (Tauri)
           </h3>
-          {mode === 'password' ? (
+          {mode !== 'off' ? (
             <Button
               type="button"
               variant="secondary"
