@@ -33,22 +33,23 @@ Android and desktop releases are **separate**. Desktop workflow does not upload 
 
 ## Local development
 
-Requires Android SDK + NDK (`NDK_HOME` / `ANDROID_NDK_HOME`), JDK 17, and Rust Android targets.
+Requires Android SDK + NDK, **JDK 17**, and Rust Android targets.  
+`bun run tauri:android:*` uses [`scripts/tauri-android.mjs`](../../scripts/tauri-android.mjs) to set `JAVA_HOME` (Homebrew OpenJDK) so Gradle does not hit macOS’s “Unable to locate a Java Runtime” stub.
 
 ```bash
-export ANDROID_HOME=~/Library/Android/sdk   # example
-export NDK_HOME=$ANDROID_HOME/ndk/<version>
-bun run tauri:android:init   # once, if gen/android is missing
-bun run tauri:android:dev
+# Sideload-ready (debug-signed) — recommended for device install without a release keystore
+bun run tauri:android:build:debug
+
+# Release APK (needs signingConfig / keystore — otherwise unsigned and will not install)
 bun run tauri:android:build
 ```
 
-Project files live under `src-tauri/gen/android/`. Intent filters for markdown are generated from [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) `bundle.fileAssociations` on build.
+APK output: `src-tauri/gen/android/app/build/outputs/apk/`.  
+Project files: `src-tauri/gen/android/`. Intent filters come from [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) `bundle.fileAssociations`.
 
 ## Signing
 
-Sideload APKs may be debug-signed when release keystore secrets are not configured. For a private release keystore, configure Android signing in the generated Gradle project / CI secrets (not covered by the desktop Apple/Windows signing doc).
-
+Without a release keystore, use **`tauri:android:build:debug`** for sideload. Plain `tauri:android:build` can produce an unsigned release APK that Android rejects (“패키지가 잘못되어…”). For private release signing, configure Gradle `signingConfig` / CI secrets (not covered by the desktop Apple/Windows signing doc).
 ## Out of scope
 
 - Google Play / AAB

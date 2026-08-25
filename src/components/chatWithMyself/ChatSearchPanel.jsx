@@ -305,7 +305,6 @@ function SearchResultCard({
         onOpenNote={onOpenNote}
         onViewEditHistory={onViewEditHistory}
         noteExists={noteExists}
-        onViewEditHistory={onViewEditHistory}
       />
     </AdaptiveContextMenu>
   );
