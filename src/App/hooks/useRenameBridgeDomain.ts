@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -649,56 +648,131 @@ export function useRenameBridgeDomain(bag: Record<string, any>, glueRef?: { curr
     return { ...file, id: newPath, name: newName, handle: newFileHandle, content: editorContent };
   };
 
-  // moved to useTreeOpsDomain (lines were 5006-5031)
+  // Keep latest bridge values without re-registering every render (empty-deps bug).
+  const fileBridgeLatestRef = useRef({});
+  fileBridgeLatestRef.current = {
+    hasSuffixChange,
+    setSuffixConfirmAction,
+    setShowSuffixChangeConfirmModal,
+    pendingCoverSaveRef,
+    setShowCoverChangeConfirmModal,
+    sessionVaultBindingsRef,
+    writeSessionFileToHaimRef,
+    handleRequestSessionSaveChooser,
+    connectedHaimStorageType,
+    requestEncMdPassword,
+    setOperationStatus,
+    setPendingCloseTabId,
+    setShowCloseFileConfirmModal,
+    closeCurrentFile,
+    hasUnsavedEditorChanges,
+    expandPathsRef,
+    selectFile,
+    flushSessionEditorToWorkspace,
+    applySessionFileToEditor,
+    maybeAutoSaveOnFocusChange,
+    renameS3File,
+    renameLocalFile,
+    suppressUnsavedNavGuardRef,
+    applyWorkspaceFilePathRetarget: treeOpsApi.applyWorkspaceFilePathRetarget,
+    sessionWorkspaceRef,
+    savingTabIdsRef,
+  };
+  const treeBridgeLatestRef = useRef({});
+  treeBridgeLatestRef.current = {
+    setOperationStatus,
+    expandPathsRef,
+    isMobile: bag.isMobile,
+    setSidebarOpen: bag.setSidebarOpen,
+    confirmAndCancelEditorImageUpload: bag.confirmAndCancelEditorImageUpload,
+    uploadFileInputRef: bag.uploadFileInputRef,
+    uploadFolderInputRef: bag.uploadFolderInputRef,
+    setAddToNoteSelectPath: bag.setAddToNoteSelectPath,
+    setSaveSessionToNoteSelectPath: bag.setSaveSessionToNoteSelectPath,
+    requestEncMdPassword,
+    renameS3File,
+    renameLocalFile,
+    readBackendBytes: bag.readBackendBytes,
+    downloadMarkdownImageZip: bag.downloadMarkdownImageZip,
+    chatSurfaceActive: bag.chatSurfaceActive,
+    setDownloadResultModal: bag.setDownloadResultModal,
+  };
 
   useLayoutEffect(() => {
+    const L = () => fileBridgeLatestRef.current;
+    const T = () => treeBridgeLatestRef.current;
     fileSessionApi.registerFileSessionBridgeDeps({
-      hasSuffixChange,
-      setSuffixConfirmAction,
-      setShowSuffixChangeConfirmModal,
-      pendingCoverSaveRef,
-      setShowCoverChangeConfirmModal,
-      sessionVaultBindingsRef,
-      writeSessionFileToHaimRef,
-      handleRequestSessionSaveChooser,
-      connectedHaimStorageType,
-      requestEncMdPassword,
-      setOperationStatus,
-      setPendingCloseTabId,
-      setShowCloseFileConfirmModal,
-      closeCurrentFile,
-      hasUnsavedEditorChanges,
-      expandPathsRef,
-      selectFile,
-      flushSessionEditorToWorkspace,
-      applySessionFileToEditor,
-      maybeAutoSaveOnFocusChange,
-      renameS3File,
-      renameLocalFile,
-      suppressUnsavedNavGuardRef,
-      applyWorkspaceFilePathRetarget: treeOpsApi.applyWorkspaceFilePathRetarget,
-      sessionWorkspaceRef,
-      savingTabIdsRef,
+      hasSuffixChange: (...a) => L().hasSuffixChange?.(...a),
+      setSuffixConfirmAction: (...a) => L().setSuffixConfirmAction?.(...a),
+      setShowSuffixChangeConfirmModal: (...a) => L().setShowSuffixChangeConfirmModal?.(...a),
+      get pendingCoverSaveRef() {
+        return L().pendingCoverSaveRef;
+      },
+      setShowCoverChangeConfirmModal: (...a) => L().setShowCoverChangeConfirmModal?.(...a),
+      get sessionVaultBindingsRef() {
+        return L().sessionVaultBindingsRef;
+      },
+      get writeSessionFileToHaimRef() {
+        return L().writeSessionFileToHaimRef;
+      },
+      handleRequestSessionSaveChooser: (...a) => L().handleRequestSessionSaveChooser?.(...a),
+      connectedHaimStorageType: (...a) => L().connectedHaimStorageType?.(...a),
+      requestEncMdPassword: (...a) => L().requestEncMdPassword?.(...a),
+      setOperationStatus: (...a) => L().setOperationStatus?.(...a),
+      setPendingCloseTabId: (...a) => L().setPendingCloseTabId?.(...a),
+      setShowCloseFileConfirmModal: (...a) => L().setShowCloseFileConfirmModal?.(...a),
+      closeCurrentFile: (...a) => L().closeCurrentFile?.(...a),
+      hasUnsavedEditorChanges: (...a) => L().hasUnsavedEditorChanges?.(...a),
+      get expandPathsRef() {
+        return L().expandPathsRef;
+      },
+      selectFile: (...a) => L().selectFile?.(...a),
+      flushSessionEditorToWorkspace: (...a) => L().flushSessionEditorToWorkspace?.(...a),
+      applySessionFileToEditor: (...a) => L().applySessionFileToEditor?.(...a),
+      maybeAutoSaveOnFocusChange: (...a) => L().maybeAutoSaveOnFocusChange?.(...a),
+      renameS3File: (...a) => L().renameS3File?.(...a),
+      renameLocalFile: (...a) => L().renameLocalFile?.(...a),
+      get suppressUnsavedNavGuardRef() {
+        return L().suppressUnsavedNavGuardRef;
+      },
+      applyWorkspaceFilePathRetarget: (...a) => L().applyWorkspaceFilePathRetarget?.(...a),
+      get sessionWorkspaceRef() {
+        return L().sessionWorkspaceRef;
+      },
+      get savingTabIdsRef() {
+        return L().savingTabIdsRef;
+      },
     });
     treeOpsApi.registerTreeOpsBridgeDeps?.({
-      setOperationStatus,
-      expandPathsRef,
-      isMobile: bag.isMobile,
-      setSidebarOpen: bag.setSidebarOpen,
-      confirmAndCancelEditorImageUpload: bag.confirmAndCancelEditorImageUpload,
-      uploadFileInputRef: bag.uploadFileInputRef,
-      uploadFolderInputRef: bag.uploadFolderInputRef,
-      setAddToNoteSelectPath: bag.setAddToNoteSelectPath,
-      setSaveSessionToNoteSelectPath: bag.setSaveSessionToNoteSelectPath,
-      requestEncMdPassword,
-      renameS3File,
-      renameLocalFile,
-      readBackendBytes: bag.readBackendBytes,
-      downloadMarkdownImageZip: bag.downloadMarkdownImageZip,
-      chatSurfaceActive: bag.chatSurfaceActive,
-      setDownloadResultModal: bag.setDownloadResultModal,
+      setOperationStatus: (...a) => T().setOperationStatus?.(...a),
+      get expandPathsRef() {
+        return T().expandPathsRef;
+      },
+      get isMobile() {
+        return T().isMobile;
+      },
+      setSidebarOpen: (...a) => T().setSidebarOpen?.(...a),
+      confirmAndCancelEditorImageUpload: (...a) =>
+        T().confirmAndCancelEditorImageUpload?.(...a),
+      get uploadFileInputRef() {
+        return T().uploadFileInputRef;
+      },
+      get uploadFolderInputRef() {
+        return T().uploadFolderInputRef;
+      },
+      setAddToNoteSelectPath: (...a) => T().setAddToNoteSelectPath?.(...a),
+      setSaveSessionToNoteSelectPath: (...a) => T().setSaveSessionToNoteSelectPath?.(...a),
+      requestEncMdPassword: (...a) => T().requestEncMdPassword?.(...a),
+      renameS3File: (...a) => T().renameS3File?.(...a),
+      renameLocalFile: (...a) => T().renameLocalFile?.(...a),
+      readBackendBytes: (...a) => T().readBackendBytes?.(...a),
+      downloadMarkdownImageZip: (...a) => T().downloadMarkdownImageZip?.(...a),
+      get chatSurfaceActive() {
+        return T().chatSurfaceActive;
+      },
+      setDownloadResultModal: (...a) => T().setDownloadResultModal?.(...a),
     });
-  });
+  }, [fileSessionApi, treeOpsApi]);
 
   // 6. Create & Delete
 

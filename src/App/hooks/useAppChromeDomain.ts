@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -573,7 +572,10 @@ export function useAppChromeDomain(bag: Record<string, any>, glueRef?: { current
     llmProviderProfiles,
     getImgbbApiKey,
     lockApp,
-    loadPlainWebdavIfAllowed
+    loadPlainWebdavIfAllowed,
+    flushSessionEditorToWorkspace,
+    closeCurrentFile,
+    navGuard,
   } = bag;
 
   const handleBrandClick = async () => {
@@ -714,7 +716,12 @@ export function useAppChromeDomain(bag: Record<string, any>, glueRef?: { current
 
 
   const api = {
-    
+    handleBrandClick,
+    handleCloseFileConfirmSave,
+    handleCloseFileConfirmDiscard,
+    handleNavGuardConfirmSave,
+    handleNavGuardConfirmDiscard,
+    advancedSearchTreesRef,
   };
   Object.assign(bag, api);
   if (glueRef) {

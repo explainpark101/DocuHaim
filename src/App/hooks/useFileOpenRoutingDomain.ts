@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -573,7 +572,10 @@ export function useFileOpenRoutingDomain(bag: Record<string, any>, glueRef?: { c
     llmProviderProfiles,
     getImgbbApiKey,
     lockApp,
-    loadPlainWebdavIfAllowed
+    loadPlainWebdavIfAllowed,
+    clearOpenFileState,
+    openSessionWorkspace,
+    restorePersistedWorkspaceTabs,
   } = bag;
 
   const selectFile = useCallback(
@@ -1257,7 +1259,11 @@ export function useFileOpenRoutingDomain(bag: Record<string, any>, glueRef?: { c
 
 
   const api = {
-    
+    selectFile,
+    ensureAdvancedSearchBrowseFolder,
+    ensureCreateModalFolderLoaded,
+    createModalTree,
+    handleOpenInNewWindow,
   };
   Object.assign(bag, api);
   if (glueRef) {

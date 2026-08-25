@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -573,7 +572,11 @@ export function useTempChatRecordingDomain(bag: Record<string, any>, glueRef?: {
     llmProviderProfiles,
     getImgbbApiKey,
     lockApp,
-    loadPlainWebdavIfAllowed
+    loadPlainWebdavIfAllowed,
+    flushSessionEditorToWorkspace,
+    applySessionFileToEditor,
+    chatStorageReady,
+    chatStorageCtx,
   } = bag;
 
   const requestNewTempFile = useCallback(() => {

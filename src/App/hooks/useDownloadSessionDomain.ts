@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -573,7 +572,8 @@ export function useDownloadSessionDomain(bag: Record<string, any>, glueRef?: { c
     llmProviderProfiles,
     getImgbbApiKey,
     lockApp,
-    loadPlainWebdavIfAllowed
+    loadPlainWebdavIfAllowed,
+    flushSessionEditorToWorkspace,
   } = bag;
 
   const handleViewUnsupportedAsText = async () => {
@@ -1411,7 +1411,21 @@ export function useDownloadSessionDomain(bag: Record<string, any>, glueRef?: { c
 
 
   const api = {
-    
+    handleViewUnsupportedAsText,
+    handleRequestDownload,
+    handleRequestSessionSaveChooser,
+    handleRequestSessionTransformDownload,
+    connectedHaimStorageType,
+    writeSessionFileToHaim,
+    handleRequestSaveSessionToNote,
+    handleSelectHaimFromDownload,
+    handleConfirmSaveSessionToNote,
+    readBackendBytes,
+    downloadMarkdownImageZip,
+    handleCopyCurrentFileToClipboard,
+    handleDownloadCurrentFile,
+    handleDownloadToFolder,
+    requestEncMdPassword,
   };
   Object.assign(bag, api);
   if (glueRef) {

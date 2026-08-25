@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -1099,7 +1098,25 @@ export function useBootstrapDomain(bag: Record<string, any>, glueRef?: { current
 
 
   const api = {
-    
+    handleUnlock,
+    handleUnlockWithWebAuthn,
+    handleSaveS3Creds,
+    handleSaveWithWebAuthn,
+    handleSaveWithPasswordFromModal,
+    requestSaveEncryptedSettings,
+    handleOverwriteCredsConfirm,
+    handleExportCreds,
+    handleExportConfirm,
+    handleImportCreds,
+    handleImportConfirm,
+    handleSettingsClose,
+    handleUnsavedConfirmLeave,
+    handleSuffixChangeConfirm,
+    handleSuffixChangeCancel,
+    hasUnsavedEditorChanges,
+    navGuard,
+    clearOpenFileState,
+    revokeOpenFileObjectUrl,
   };
   Object.assign(bag, api);
   if (glueRef) {

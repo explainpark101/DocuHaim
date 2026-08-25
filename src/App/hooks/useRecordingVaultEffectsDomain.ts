@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -860,7 +859,10 @@ export function useRecordingVaultEffectsDomain(bag: Record<string, any>, glueRef
   // 5. File Read & Save
 
   const api = {
-    
+    handleReadUnusedImageText,
+    handleReadUnusedImageBytes,
+    handleDeleteUnusedImagePaths,
+    handleConfirmRestoreLocalFolder,
   };
   Object.assign(bag, api);
   if (glueRef) {

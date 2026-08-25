@@ -1,4 +1,3 @@
-// @ts-nocheck — extracted domain handlers
 // @ts-nocheck — residual cross-domain handlers pending further domain splits
 /**
  * Residual app logic still shared across chrome/bootstrap/session/PWA/chat/routing.
@@ -573,7 +572,8 @@ export function useEditorImageDownloadDomain(bag: Record<string, any>, glueRef?:
     llmProviderProfiles,
     getImgbbApiKey,
     lockApp,
-    loadPlainWebdavIfAllowed
+    loadPlainWebdavIfAllowed,
+    flushSessionEditorToWorkspace,
   } = bag;
 
   const editorImageUploadInProgressRef = useRef(false);
@@ -962,7 +962,13 @@ export function useEditorImageDownloadDomain(bag: Record<string, any>, glueRef?:
 
 
   const api = {
-    
+    cancelEditorImageUpload,
+    confirmAndCancelEditorImageUpload,
+    handleUploadEditorImage,
+    getPresignedUrlForPath,
+    getChatImageUrlForPath,
+    isUploadingEditorImage,
+    editorImageUploadPercent,
   };
   Object.assign(bag, api);
   if (glueRef) {
