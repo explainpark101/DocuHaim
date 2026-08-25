@@ -10,12 +10,8 @@ import {
 import { withLlmProfileApiKey } from '@/utils/llmApiKeySession';
 import { generateGeminiTransform } from '@/utils/geminiClient';
 import { generateOpenAiCompatibleTransform } from '@/utils/openaiCompatibleClient';
-import {
-  loadLlmModalHidden,
-  loadLlmModalPosition,
-  saveLlmModalHidden,
-  saveLlmModalPosition,
-} from '@/utils/llmModalPosition';
+import { loadLlmModalHidden, saveLlmModalHidden } from '@/utils/llmModalLayout';
+import { useLlmAssistModalLayout } from '@/hooks/useLlmAssistModalLayout';
 import { applyLlmResultToEditor, getEditorSelectionFromRef } from '@/utils/editorSelection';
 import { useLlmProfileIdState } from '@/components/LlmProviderSelect';
 import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
@@ -49,7 +45,6 @@ export default function LlmAssistModal({
   theme = 'light',
 }) {
   const profiles = Array.isArray(llmProviderProfiles) ? llmProviderProfiles : [];
-  const [position, setPosition] = useState(() => loadLlmModalPosition());
   const [hidden, setHidden] = useState(() => loadLlmModalHidden());
   const [popoutActive, setPopoutActive] = useState(false);
   const [selectedText, setSelectedText] = useState('');
@@ -73,8 +68,14 @@ export default function LlmAssistModal({
   );
 
   const popoutRef = useRef(null);
-  const dragRef = useRef({ active: false, startX: 0, startY: 0, startLeftVw: 0, startTopVh: 0 });
-  const DRAG_THRESHOLD_PX = 5;
+  const {
+    panelRef,
+    panelStyle,
+    startPositionDrag,
+    startPositionTouchDrag,
+    startCornerResize,
+    refreshBounds,
+  } = useLlmAssistModalLayout(editorRef, { enabled: open });
 
   const buildSyncPayload = useCallback(
     () => ({
@@ -139,124 +140,6 @@ export default function LlmAssistModal({
     setPopoutActive(false);
   }, []);
 
-  const startPositionDrag = useCallback((e, { onTap } = {}) => {
-    // We handle touch dragging via touchstart/touchend to avoid scroll/gesture quirks.
-    if (e.pointerType === 'touch') return;
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let dragged = false;
-
-    dragRef.current = {
-      active: true,
-      startX,
-      startY,
-      startLeftVw: position.leftVw,
-      startTopVh: position.topVh,
-    };
-
-    const onMove = (ev) => {
-      if (!dragRef.current.active) return;
-      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > DRAG_THRESHOLD_PX) {
-        dragged = true;
-      }
-      const vw = window.innerWidth || 1;
-      const vh = window.innerHeight || 1;
-      const dxVw = ((ev.clientX - dragRef.current.startX) / vw) * 100;
-      const dyVh = ((ev.clientY - dragRef.current.startY) / vh) * 100;
-      setPosition({
-        leftVw: Math.min(92, Math.max(0, dragRef.current.startLeftVw + dxVw)),
-        topVh: Math.min(90, Math.max(0, dragRef.current.startTopVh + dyVh)),
-      });
-    };
-
-    const onUp = () => {
-      if (!dragRef.current.active) return;
-      dragRef.current.active = false;
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      setPosition((prev) => {
-        saveLlmModalPosition(prev);
-        return prev;
-      });
-      if (!dragged) onTap?.();
-    };
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-  }, [position.leftVw, position.topVh]);
-
-  const startPositionTouchDrag = useCallback((e, { onTap } = {}) => {
-    const touches = e.changedTouches;
-    if (!touches || !touches.length) return;
-
-    // Only track the first touch that started the gesture.
-    const touch = touches[0];
-    const identifier = touch.identifier;
-    const startX = touch.clientX;
-    const startY = touch.clientY;
-
-    // Prevent iOS/Android scrolling while the user drags the panel.
-    e.preventDefault();
-
-    let dragged = false;
-    dragRef.current = {
-      active: true,
-      startX,
-      startY,
-      startLeftVw: position.leftVw,
-      startTopVh: position.topVh,
-      touchIdentifier: identifier,
-    };
-
-    const onTouchMove = (ev) => {
-      if (!dragRef.current.active) return;
-      const current = Array.from(ev.touches || []).find((t) => t.identifier === identifier);
-      if (!current) return;
-
-      if (Math.hypot(current.clientX - startX, current.clientY - startY) > DRAG_THRESHOLD_PX) {
-        dragged = true;
-      }
-
-      const vw = window.innerWidth || 1;
-      const vh = window.innerHeight || 1;
-      const dxVw = ((current.clientX - startX) / vw) * 100;
-      const dyVh = ((current.clientY - startY) / vh) * 100;
-      setPosition({
-        leftVw: Math.min(92, Math.max(0, dragRef.current.startLeftVw + dxVw)),
-        topVh: Math.min(90, Math.max(0, dragRef.current.startTopVh + dyVh)),
-      });
-
-      // Required so preventDefault works even in Safari.
-      ev.preventDefault();
-    };
-
-    const finalize = () => {
-      if (!dragRef.current.active) return;
-      dragRef.current.active = false;
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
-      document.removeEventListener('touchcancel', onTouchEnd);
-      setPosition((prev) => {
-        saveLlmModalPosition(prev);
-        return prev;
-      });
-      if (!dragged) onTap?.();
-    };
-
-    const onTouchEnd = (ev) => {
-      if (!dragRef.current.active) return;
-      const ended = Array.from(ev.changedTouches || []).some((t) => t.identifier === identifier);
-      if (!ended) return;
-      finalize();
-    };
-
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd, { passive: false });
-    document.addEventListener('touchcancel', onTouchEnd, { passive: false });
-  }, [position.leftVw, position.topVh]);
-
   const refreshSelection = useCallback(() => {
     const { text, from, to } = getEditorSelectionFromRef(editorRef);
     setSelectedText(text);
@@ -274,11 +157,12 @@ export default function LlmAssistModal({
     if (!open) return;
     setHidden(false);
     saveLlmModalHidden(false);
+    refreshBounds();
     syncProfileId();
     refreshSelection();
     loadTemplates();
     setError('');
-  }, [open, refreshSelection, loadTemplates, syncProfileId]);
+  }, [open, refreshBounds, refreshSelection, loadTemplates, syncProfileId]);
 
   useEffect(() => {
     if (!selectedProfile?.id || !selectedProfile?.kind) {
@@ -704,7 +588,7 @@ export default function LlmAssistModal({
           }
         }}
         className="fixed z-10050 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
-        style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
+        style={{ left: panelStyle.left, top: panelStyle.top }}
         title={chipTitle}
         aria-label={chipLabel}
       >
@@ -716,8 +600,9 @@ export default function LlmAssistModal({
 
   return (
     <div
-      className="fixed z-10050 w-[min(92vw,420px)] rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
-      style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
+      ref={panelRef}
+      className="fixed z-10050 flex flex-col rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
+      style={panelStyle}
       role="dialog"
       aria-modal="false"
       aria-label="AI 텍스트 도우미"
@@ -770,9 +655,22 @@ export default function LlmAssistModal({
         </div>
       </div>
 
-      <div className="max-h-[min(70vh,560px)] overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
         <LlmAssistPanel {...panelProps} />
       </div>
+
+      <button
+        type="button"
+        aria-label="크기 조절"
+        className="absolute bottom-0 left-0 z-10 h-5 w-5 touch-none cursor-nesw-resize opacity-0"
+        onPointerDown={(e) => startCornerResize('sw', e)}
+      />
+      <button
+        type="button"
+        aria-label="크기 조절"
+        className="absolute bottom-0 right-0 z-10 h-5 w-5 touch-none cursor-nwse-resize opacity-0"
+        onPointerDown={(e) => startCornerResize('se', e)}
+      />
     </div>
   );
 }
