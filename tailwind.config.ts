@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss';
-import { SYSTEM_SANS_FALLBACK_LIST } from '@/utils/fontFallback';
+import { SYSTEM_SANS_FALLBACK_LIST } from './src/utils/fontFallback';
 
 const config: Config = {
   darkMode: 'class',

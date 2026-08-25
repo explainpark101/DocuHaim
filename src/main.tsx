@@ -28,7 +28,7 @@ const routerBasename = isDesktop ? '/' : base
  * Hosts often SPA-fallback `/docs` to this app shell. VitePress lives at `/docs/`.
  * If we landed on a docs URL as the React shell, retry with a trailing slash or stop.
  */
-function bailIfSpaShellOnDocsPath() {
+function bailIfSpaShellOnDocsPath(): boolean {
   if (isDesktop || typeof window === 'undefined') return false
   const pathname = window.location.pathname || '/'
   const prefix = base === '/' ? '' : base
@@ -75,7 +75,7 @@ const router = (isDesktop ? createHashRouter : createBrowserRouter)(
   { basename: routerBasename },
 )
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   if (bailIfSpaShellOnDocsPath()) return
 
   const canRender = await ensureLatestAppBuild()
@@ -102,4 +102,4 @@ async function bootstrap() {
   )
 }
 
-bootstrap()
+void bootstrap()
