@@ -75,6 +75,8 @@ export default function EditorPane({
   isSaving,
   onRefreshFromDisk,
   isRefreshingFromDisk = false,
+  onPullFromRemote,
+  isPullingFromRemote = false,
   onRequestDelete,
   editedFileName = '',
   setEditedFileName,
@@ -156,6 +158,11 @@ export default function EditorPane({
     novelFlushBeforeSaveRef.current?.();
     onRefreshFromDisk?.();
   }, [onRefreshFromDisk]);
+
+  const handlePullFromRemote = useCallback(() => {
+    novelFlushBeforeSaveRef.current?.();
+    onPullFromRemote?.();
+  }, [onPullFromRemote]);
 
   const handleApplyDocumentSettings = useCallback((nextSettings) => {
     const nextMarkdown = upsertDocumentSettingsMeta(editorContent ?? '', nextSettings);
@@ -618,7 +625,19 @@ export default function EditorPane({
           {isRecording ? (
             <AudioLevelIndicator level={audioLevel} size={16} />
           ) : currentFile.type === 's3' || currentFile.type === 'webdav' ? (
-            <IconCloud />
+            typeof onPullFromRemote === 'function' && isEditableViewer ? (
+              <button
+                type="button"
+                onClick={handlePullFromRemote}
+                disabled={isSaving || isPullingFromRemote}
+                aria-label={isPullingFromRemote ? '원격 동기화 중' : '원격에서 가져오기'}
+                className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-md p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fg"
+              >
+                <IconCloud className={isPullingFromRemote ? 'animate-pulse' : undefined} />
+              </button>
+            ) : (
+              <IconCloud />
+            )
           ) : currentFile.type === 'session' ? (
             <IconDownload />
           ) : (

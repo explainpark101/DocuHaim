@@ -469,6 +469,7 @@ function MainApp() {
   const [savingTabIds, setSavingTabIds] = useState(() => []);
   const savingTabIdsRef = useRef(new Set());
   const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
+  const [isPullingFromRemote, setIsPullingFromRemote] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [emptyTrashTarget, setEmptyTrashTarget] = useState(null);
   const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
@@ -6871,6 +6872,113 @@ function MainApp() {
     }
   };
 
+  const refreshRemoteFile = async () => {
+    const fileToRefresh = currentFileRef.current;
+    if (!fileToRefresh || (fileToRefresh.type !== 's3' && fileToRefresh.type !== 'webdav')) return;
+    if (isEncMdPath(fileToRefresh.id) || isEncMdPath(fileToRefresh.name)) return;
+    const viewer = fileToRefresh.viewer || 'markdown';
+    const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
+    if (!editableViewers.includes(viewer)) return;
+
+    const backend = getBackendForType(fileToRefresh.type);
+    if (!backend) return;
+
+    setIsPullingFromRemote(true);
+    const indicatorId = addIndicator({
+      id: 'note-pull-remote',
+      type: ActivityTypes.NOTE_PROCESSING,
+      label: '원격에서 가져오는 중',
+      detail: fileToRefresh.name,
+    });
+    try {
+      const { text: rawRemoteText } = await backend.readText(fileToRefresh.id);
+      let remoteText = rawRemoteText;
+      if (viewer === 'json' && remoteText.length <= 100000) {
+        try {
+          remoteText = JSON.stringify(JSON.parse(remoteText), null, 2);
+        } catch {
+          // keep raw json text
+        }
+      }
+
+      const base = typeof fileToRefresh.content === 'string' ? fileToRefresh.content : '';
+      const ours = editorContentRef.current ?? '';
+      const merge = rebaseMergeTexts(base, ours, remoteText);
+
+      let nextEditorText = remoteText;
+      let backupName = null;
+      if (merge.status === 'conflict') {
+        const fileId = String(fileToRefresh.id || '');
+        const lastSlash = fileId.lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? fileId.slice(0, lastSlash + 1) : '';
+        const now = new Date();
+        let disambiguator = 1;
+        let candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
+        while (await backend.head(`${dirPrefix}${candidate}`)) {
+          disambiguator += 1;
+          candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
+        }
+        await backend.writeText(`${dirPrefix}${candidate}`, ours);
+        backupName = candidate;
+        if (fileToRefresh.type === 's3') await loadS3Files();
+        else await refreshWebdavTree();
+      } else {
+        nextEditorText = merge.text;
+      }
+
+      const remoteByteLength = new TextEncoder().encode(remoteText).length;
+      setCurrentFile((prev) => {
+        if (prev?.id !== fileToRefresh.id || prev?.type !== fileToRefresh.type) return prev;
+        const next = {
+          ...prev,
+          content: remoteText,
+          size: remoteByteLength,
+        };
+        currentFileRef.current = next;
+        return next;
+      });
+      setEditorContent(nextEditorText);
+      editorContentRef.current = nextEditorText;
+      await deleteMemoDraft(getDraftKey(fileToRefresh.type, fileToRefresh.id));
+      setLastAutoSyncAt(Date.now());
+
+      const active = getActiveFileTab(workspaceTabsRef.current);
+      if (active) {
+        const nextTabs = patchFileTab(workspaceTabsRef.current, active.id, {
+          editorContent: nextEditorText,
+          size: remoteByteLength,
+        });
+        workspaceTabsRef.current = nextTabs;
+        setWorkspaceTabs(nextTabs);
+      }
+
+      if (backupName) {
+        setOperationStatus(`충돌: 현재 문서를 ${backupName}으로 저장하고 원격 내용으로 교체했습니다`);
+        showAlert({
+          title: '가져오기 충돌',
+          message:
+            '원격 내용과 현재 문서가 충돌하여, 현재 문서를 새 파일로 저장한 뒤 원격 내용으로 교체했습니다.',
+          detail: backupName,
+        });
+      } else if (nextEditorText === remoteText && ours === remoteText) {
+        setOperationStatus('원격 내용과 동일합니다');
+      } else if (nextEditorText === remoteText) {
+        setOperationStatus('원격 내용으로 가져왔습니다');
+      } else {
+        setOperationStatus('원격 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
+      }
+    } catch (e) {
+      console.error('Remote pull failed:', e);
+      showAlert({
+        title: '가져오기 실패',
+        message: e?.message || String(e),
+      });
+    } finally {
+      removeIndicator(indicatorId);
+      setIsPullingFromRemote(false);
+    }
+  };
+
   const renameS3File = async (file, newName, contentOverride = null) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
@@ -9680,6 +9788,13 @@ function MainApp() {
                     onRefreshFromDisk:
                       paneFile?.type === 'local' ? refreshLocalFileFromDisk : undefined,
                     isRefreshingFromDisk,
+                    onPullFromRemote:
+                      (paneFile?.type === 's3' || paneFile?.type === 'webdav') &&
+                      !isEncMdPath(paneFile?.id) &&
+                      !isEncMdPath(paneFile?.name)
+                        ? refreshRemoteFile
+                        : undefined,
+                    isPullingFromRemote,
                     editedFileName: paneEditedName,
                     setEditedFileName: paneSetEditedName,
                     onRenameFullName: renameCurrentFileFullName,
