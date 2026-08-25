@@ -13,7 +13,7 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
-import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
+import { useWorkspaceTabsPersistence } from '@/App/hooks/useWorkspaceTabsPersistence';
 import { useNavigate, useLocation } from 'react-router';
 import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
 import {
@@ -4470,76 +4470,19 @@ export function useMainAppController() {
     });
   }, [location.pathname, isUnlocked]);
 
-  // Persist open workspace tabs (+ legacy lastFile mirror)
-  useEffect(() => {
-    if (!isUnlocked) return;
-    // Cold start opens the active tab first; defer writes until siblings are restored.
-    if (workspaceTabsEnabledRef.current && !hasRestoredPersistedWorkspaceTabsRef.current) {
-      return;
-    }
-    const flushed = flushEditorIntoActiveFileTab(workspaceTabs, {
-      editorContent: editorContentRef.current ?? '',
-      currentFile: currentFileRef.current,
-      editedFileName: editedFileNameRef.current ?? '',
-    });
-    const payload = toPersistedWorkspaceTabs(
-      flushed.tabs.map((t) =>
-        t.kind === 'chat'
-          ? { kind: 'chat' }
-          : t.kind === 'settings'
-            ? { kind: 'settings' }
-            : { kind: 'file', storageType: t.storageType, path: t.path },
-      ),
-      flushed.activeId,
-    );
-    if (payload.tabs.length === 0) {
-      clearPersistedWorkspaceTabs();
-      return;
-    }
-    savePersistedWorkspaceTabs(payload);
-    // Keep last-open snapshot for Ctrl+Shift+T after restart. Do not shrink it while
-    // the cold-start path has only reopened the active tab (pagehide writes the truth).
-    const prevSnap = loadLastOpenTabsSnapshot();
-    if (!prevSnap || payload.tabs.length >= prevSnap.tabs.length) {
-      saveLastOpenTabsSnapshot(payload);
-    }
-  }, [isUnlocked, workspaceTabs, currentFile, editorContent]);
-
-  // Save last-open snapshot on leave so Ctrl+Shift+T can restore siblings after restart
-  // (live workspaceTabs key is reduced to the auto-opened active tab on next boot).
-  useEffect(() => {
-    if (!isUnlocked) return undefined;
-    const persistLastOpenSnapshot = () => {
-      if (!workspaceTabsEnabledRef.current) return;
-      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-        editorContent: editorContentRef.current ?? '',
-        currentFile: currentFileRef.current,
-        editedFileName: editedFileNameRef.current ?? '',
-      });
-      const payload = toPersistedWorkspaceTabs(
-        flushed.tabs.map((t) =>
-          t.kind === 'chat'
-            ? { kind: 'chat' }
-            : t.kind === 'settings'
-              ? { kind: 'settings' }
-              : { kind: 'file', storageType: t.storageType, path: t.path },
-        ),
-        flushed.activeId,
-      );
-      saveLastOpenTabsSnapshot(payload);
-    };
-    const onVisibilityHidden = () => {
-      if (document.visibilityState === 'hidden') persistLastOpenSnapshot();
-    };
-    window.addEventListener('pagehide', persistLastOpenSnapshot);
-    window.addEventListener('beforeunload', persistLastOpenSnapshot);
-    document.addEventListener('visibilitychange', onVisibilityHidden);
-    return () => {
-      window.removeEventListener('pagehide', persistLastOpenSnapshot);
-      window.removeEventListener('beforeunload', persistLastOpenSnapshot);
-      document.removeEventListener('visibilitychange', onVisibilityHidden);
-    };
-  }, [isUnlocked]);
+  // Persist open workspace tabs (+ last-open snapshot) — Tabs domain
+  useWorkspaceTabsPersistence({
+    isUnlocked,
+    workspaceTabs,
+    currentFile,
+    editorContent,
+    workspaceTabsEnabledRef,
+    workspaceTabsRef,
+    editorContentRef,
+    currentFileRef,
+    editedFileNameRef,
+    hasRestoredPersistedWorkspaceTabsRef,
+  });
 
   // Seed Ctrl+Shift+T queue once from last-open snapshot (siblings of the auto-restored tab).
   useEffect(() => {
