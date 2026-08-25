@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck — SidebarConnected still takes a wide prop surface into untyped Sidebar.jsx; keep until Sidebar is typed
 import Sidebar from '@/components/shell/Sidebar.jsx';
 import { useVault } from '@/App/hooks/useVault';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
@@ -7,29 +6,32 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { buildSessionTree } from '@/utils/sessionWorkspace';
 
-type ChromeProps = {
-  isMobileLayout?: boolean;
+/** Untyped Sidebar.jsx — accept wide props until Sidebar is typed. */
+const SidebarAny = Sidebar as any;
+
+export type ChromeProps = {
+  isMobileLayout?: boolean | undefined;
   fileTabContextMenuRef?: any;
-  appName?: string;
-  onBrandClick?: (...args: any[]) => any;
-  s3Bucket?: string;
-  onOpenSettings?: (...args: any[]) => any;
-  showHiddenFolders?: boolean;
-  showTrashFolder?: boolean;
-  hideRecordingCompanions?: boolean;
-  treeStickyFolderPathEnabled?: boolean;
-  showTreeModifiedDate?: boolean;
-  hoverExpandDelayMs?: number;
-  onRequestCollapseSidebar?: (...args: any[]) => any;
+  appName?: string | undefined;
+  onBrandClick?: ((...args: any[]) => any) | undefined;
+  s3Bucket?: string | undefined;
+  onOpenSettings?: ((...args: any[]) => any) | undefined;
+  showHiddenFolders?: boolean | undefined;
+  showTrashFolder?: boolean | undefined;
+  hideRecordingCompanions?: boolean | undefined;
+  treeStickyFolderPathEnabled?: boolean | undefined;
+  showTreeModifiedDate?: boolean | undefined;
+  hoverExpandDelayMs?: number | undefined;
+  onRequestCollapseSidebar?: ((...args: any[]) => any) | undefined;
   expandPathsRef?: any;
-  onRequestMoveFile?: (...args: any[]) => any;
-  onOpenInNewWindow?: (...args: any[]) => any;
-  onShareToChatWithMyself?: (...args: any[]) => any;
-  onOpenChatWithMyself?: (...args: any[]) => any;
-  chatSurfaceActive?: boolean;
+  onRequestMoveFile?: ((...args: any[]) => any) | undefined;
+  onOpenInNewWindow?: ((...args: any[]) => any) | undefined;
+  onShareToChatWithMyself?: ((...args: any[]) => any) | undefined;
+  onOpenChatWithMyself?: ((...args: any[]) => any) | undefined;
+  chatSurfaceActive?: boolean | undefined;
   chatAttachDropHost?: any;
-  onDropToChatAttach?: (...args: any[]) => any;
-  onCloseSessionWorkspace?: (...args: any[]) => any;
+  onDropToChatAttach?: ((...args: any[]) => any) | undefined;
+  onCloseSessionWorkspace?: ((...args: any[]) => any) | undefined;
 };
 
 /**
@@ -48,7 +50,7 @@ export default function SidebarConnected(props: ChromeProps) {
   } = props;
 
   return (
-    <Sidebar
+    <SidebarAny
       {...chrome}
       storageMode={vault.storageMode}
       onStorageModeChange={vault.setStorageMode}

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck — modal JSX still uses loose modal-lib props; slice is typed in AppModalsContext
 import { SaveMethodModal } from '@/components/modals/SaveMethodModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';

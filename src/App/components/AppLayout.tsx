@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck — AppLayout still mixes many domain bags; tighten when domain values are fully typed
 import type { ReactNode } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
