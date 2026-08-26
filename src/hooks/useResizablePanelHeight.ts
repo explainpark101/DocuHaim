@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+type UseResizablePanelHeightOptions = {
+  storageKey?: string;
+  defaultHeight?: number;
+  minHeight?: number;
+  maxHeight?: number;
+  /** Panel side; 'bottom' means the handle sits on the top edge (drag up → taller). */
+  edge?: 'top' | 'bottom';
+  deferReactUpdateUntilEnd?: boolean;
+  onLiveHeight?: (height: number) => void;
+};
+
 /**
  * Drag-to-resize panel height. Bottom panels: drag up increases height.
- *
- * @param {object} [options]
- * @param {string} [options.storageKey]
- * @param {number} [options.defaultHeight=280]
- * @param {number} [options.minHeight=140]
- * @param {number} [options.maxHeight=640]
- * @param {'top'|'bottom'} [options.edge='bottom']
- *   Panel side; 'bottom' means the handle sits on the top edge (drag up → taller).
- * @param {boolean} [options.deferReactUpdateUntilEnd=false]
- * @param {(height: number) => void} [options.onLiveHeight]
  */
 export function useResizablePanelHeight({
   storageKey,
@@ -20,8 +21,8 @@ export function useResizablePanelHeight({
   maxHeight = 640,
   edge = 'bottom',
   deferReactUpdateUntilEnd = false,
-  onLiveHeight
-}: any = {}) {
+  onLiveHeight,
+}: UseResizablePanelHeightOptions = {}) {
   const [height, setHeight] = useState(() => {
     if (!storageKey || typeof window === 'undefined') return defaultHeight;
     try {
@@ -40,7 +41,7 @@ export function useResizablePanelHeight({
     startHeight: defaultHeight,
   });
   const heightRef = useRef(height);
-  const liveHeightRef = useRef(null);
+  const liveHeightRef = useRef<number | null>(null);
   const onLiveHeightRef = useRef(onLiveHeight);
   const deferRef = useRef(deferReactUpdateUntilEnd);
   const minHeightRef = useRef(minHeight);
@@ -73,8 +74,7 @@ export function useResizablePanelHeight({
 
   // Clamp when viewport max shrinks below current height.
   useEffect(() => {
-    // @ts-expect-error TS(7006): Parameter 'prev' implicitly has an 'any' type.
-    setHeight((prev) => Math.min(maxHeight, Math.max(minHeight, prev)));
+    setHeight((prev: number) => Math.min(maxHeight, Math.max(minHeight, prev)));
   }, [minHeight, maxHeight]);
 
   const endResizeSession = useCallback(() => {
@@ -112,7 +112,6 @@ export function useResizablePanelHeight({
         maxHeightRef.current,
         Math.max(minHeightRef.current, state.startHeight + signed),
       );
-      // @ts-expect-error TS(2322): Type 'number' is not assignable to type 'null'.
       liveHeightRef.current = next;
       onLiveHeightRef.current?.(next);
       if (!deferRef.current) {

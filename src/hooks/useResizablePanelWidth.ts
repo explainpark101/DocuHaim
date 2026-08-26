@@ -3,28 +3,32 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 /** Bump when default widths change so stale localStorage px values are not reused. */
 const PANEL_WIDTH_STORE_VERSION = 3;
 
-function versionedStorageKey(storageKey: any) {
+type UseResizablePanelWidthOptions = {
+  storageKey?: string;
+  defaultWidth?: number;
+  minWidth?: number;
+  maxWidth?: number;
+  /** Collapse threshold (and hard floor when onCollapseBelowMin is unset). Defaults to minWidth. */
+  collapseBelowWidth?: number;
+  /** Panel side; 'right' inverts drag delta. */
+  edge?: 'left' | 'right';
+  deferReactUpdateUntilEnd?: boolean;
+  /** Called on every move (and start) with the live width. */
+  onLiveWidth?: (width: number) => void;
+  /**
+   * On pointer/touch end, if live width is below collapseBelowWidth, called instead of committing width
+   * (pre-drag width is restored). Collapse does not run mid-drag.
+   */
+  onCollapseBelowMin?: () => void;
+};
+
+function versionedStorageKey(storageKey: string | undefined) {
   if (!storageKey) return storageKey;
   return `${storageKey}::v${PANEL_WIDTH_STORE_VERSION}`;
 }
 
 /**
  * Drag-to-resize panel width. Right-edge panels: drag left increases width.
- *
- * @param {object} [options]
- * @param {string} [options.storageKey]
- * @param {number} [options.defaultWidth=360]
- * @param {number} [options.minWidth=160]
- * @param {number} [options.maxWidth=640]
- * @param {number} [options.collapseBelowWidth]
- *   Collapse threshold (and hard floor when onCollapseBelowMin is unset). Defaults to minWidth.
- * @param {'left'|'right'} [options.edge='right'] Panel side; 'right' inverts drag delta.
- * @param {boolean} [options.deferReactUpdateUntilEnd=false]
- *   When true, React width state updates only on pointer-up; during drag call onLiveWidth instead.
- * @param {(width: number) => void} [options.onLiveWidth] Called on every move (and start) with the live width.
- * @param {() => void} [options.onCollapseBelowMin]
- *   On pointer/touch end, if live width is below collapseBelowWidth, called instead of committing width
- *   (pre-drag width is restored). Collapse does not run mid-drag.
  */
 export function useResizablePanelWidth({
   storageKey,
@@ -35,8 +39,8 @@ export function useResizablePanelWidth({
   edge = 'right',
   deferReactUpdateUntilEnd = false,
   onLiveWidth,
-  onCollapseBelowMin
-}: any = {}) {
+  onCollapseBelowMin,
+}: UseResizablePanelWidthOptions = {}) {
   const dragFloor = collapseBelowWidth ?? minWidth;
   /** Width committed when not collapsing — soft min, not the drag-collapse floor. */
   const commitFloor = minWidth;
@@ -61,7 +65,7 @@ export function useResizablePanelWidth({
     startWidth: defaultWidth,
   });
   const widthRef = useRef(width);
-  const liveWidthRef = useRef(null);
+  const liveWidthRef = useRef<number | null>(null);
   const onLiveWidthRef = useRef(onLiveWidth);
   const onCollapseBelowMinRef = useRef(onCollapseBelowMin);
   const deferRef = useRef(deferReactUpdateUntilEnd);
@@ -106,8 +110,7 @@ export function useResizablePanelWidth({
   useEffect(() => {
     if (isResizing) return;
     const floor = Math.min(minWidth, maxWidth);
-    // @ts-expect-error TS(7006): Parameter 'w' implicitly has an 'any' type.
-    setWidth((w) => {
+    setWidth((w: number) => {
       const next = Math.min(maxWidth, Math.max(floor, w));
       return next === w ? w : next;
     });
@@ -153,7 +156,6 @@ export function useResizablePanelWidth({
         ? Math.min(max, Math.max(0, raw))
         : Math.min(max, Math.max(floor, raw));
 
-      // @ts-expect-error TS(2322): Type 'number' is not assignable to type 'null'.
       liveWidthRef.current = next;
       onLiveWidthRef.current?.(next);
       if (!deferRef.current) {

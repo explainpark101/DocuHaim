@@ -4,7 +4,7 @@
  * - checkpoint stack persisted in IndexedDB
  * - on reopen, replay checkpoints into CM history so Ctrl+Z works
  */
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 import {
   EDITOR_UNDO_RECORD_DELAY_MS,
   getEditorUndoHistory,
@@ -20,42 +20,51 @@ import {
   rebuildCmHistoryFromStack,
 } from '@/utils/rebuildCmHistoryFromStack';
 
-function getEditorApi(editorRef: any) {
-  return editorRef?.current?.value ?? editorRef?.current ?? null;
+function getEditorApi(editorRef: MutableRefObject<unknown>) {
+  const current = editorRef.current as
+    | { value?: unknown }
+    | null
+    | undefined;
+  return current?.value ?? current ?? null;
 }
 
-/**
- * @param {Object} options
- * @param {{ type?: string, id?: string } | null} options.currentFile
- * @param {string} options.value
- * @param {(v: string) => void} [options.onChange]
- * @param {import('react').MutableRefObject} options.editorRef
- * @param {boolean} [options.enabled]
- */
+type EditorFile = {
+  type?: string;
+  id?: string;
+};
+
+type UsePerFileEditorUndoHistoryOptions = {
+  currentFile?: EditorFile | null;
+  value: string;
+  onChange?: (v: string) => void;
+  editorRef: MutableRefObject<unknown>;
+  enabled?: boolean;
+};
+
 export function usePerFileEditorUndoHistory({
   currentFile,
   value,
   onChange,
   editorRef,
-  enabled = true
-}: any) {
+  enabled = true,
+}: UsePerFileEditorUndoHistoryOptions) {
   const fileKey = enabled ? getEditorUndoHistoryKeyFromFile(currentFile) : null;
 
-  const stackRef = useRef(['']);
+  const stackRef = useRef<string[]>(['']);
   const indexRef = useRef(0);
-  const fileKeyRef = useRef(null);
+  const fileKeyRef = useRef<string | null>(null);
   const suppressChangeRef = useRef(false);
-  const recordTimerRef = useRef(null);
-  const persistTimerRef = useRef(null);
+  const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const valueRef = useRef(value);
   const hasLocalEditsRef = useRef(false);
-  const initDoneForKeyRef = useRef(null);
+  const initDoneForKeyRef = useRef<string | null>(null);
   const rebuildGenRef = useRef(0);
   const lastEmittedRef = useRef(value);
 
   valueRef.current = value;
 
-  const persistNow = useCallback(async (key: any, stack: any, index: any) => {
+  const persistNow = useCallback(async (key: string, stack: string[], index: number) => {
     if (!key) return;
     try {
       await saveEditorUndoHistory({ key, stack, index });
@@ -64,10 +73,9 @@ export function usePerFileEditorUndoHistory({
     }
   }, []);
 
-  const schedulePersist = useCallback((key: any, stack: any, index: any) => {
+  const schedulePersist = useCallback((key: string, stack: string[], index: number) => {
     if (!key) return;
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
     persistTimerRef.current = setTimeout(() => {
       persistTimerRef.current = null;
       persistNow(key, stack, index);
@@ -89,7 +97,7 @@ export function usePerFileEditorUndoHistory({
     return synced;
   }, []);
 
-  const rebuildFromStack = useCallback((stackForReplay: any) => {
+  const rebuildFromStack = useCallback((stackForReplay: string[]) => {
     const api = getEditorApi(editorRef);
     const view = getEditorViewFromApi(api);
     const resetHistory = getResetHistoryFn(api);
@@ -112,7 +120,7 @@ export function usePerFileEditorUndoHistory({
   }, [editorRef]);
 
   const applyHistoryForFile = useCallback(
-    (key: any, stored: any) => {
+    (key: string, stored: { stack?: string[]; index?: number } | null) => {
       const content = valueRef.current ?? '';
       const baseStack = stored?.stack?.length ? stored.stack : [content];
       const baseIndex = stored?.stack?.length
@@ -126,7 +134,7 @@ export function usePerFileEditorUndoHistory({
       lastEmittedRef.current = content;
 
       const replay = synced.stack.slice(0, synced.index + 1);
-      const attempt = (triesLeft: any) => {
+      const attempt = (triesLeft: number) => {
         if (fileKeyRef.current !== key) return;
         if (rebuildFromStack(replay)) return;
         if (triesLeft <= 0) return;
@@ -164,7 +172,6 @@ export function usePerFileEditorUndoHistory({
       persistNow(prevKey, synced.stack, synced.index);
     }
 
-    // @ts-expect-error TS(2322): Type 'string | null' is not assignable to type 'nu... Remove this comment to see the full error message
     fileKeyRef.current = nextKey;
     initDoneForKeyRef.current = null;
     hasLocalEditsRef.current = false;
@@ -248,7 +255,7 @@ export function usePerFileEditorUndoHistory({
   }, [enabled, flushRecordTimer]);
 
   const wrappedOnChange = useCallback(
-    (nextValue: any) => {
+    (nextValue: string) => {
       if (suppressChangeRef.current) {
         return;
       }
@@ -260,7 +267,6 @@ export function usePerFileEditorUndoHistory({
       if (!enabled || !fileKeyRef.current) return;
 
       flushRecordTimer();
-      // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
       recordTimerRef.current = setTimeout(() => {
         recordTimerRef.current = null;
         if (suppressChangeRef.current) return;

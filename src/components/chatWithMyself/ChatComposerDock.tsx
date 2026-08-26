@@ -41,9 +41,9 @@ export default function ChatComposerDock({
   fitKey = ''
 }: any) {
   const [maxHeight, setMaxHeight] = useState(chatComposerAreaMaxHeight);
-  const heightBeforeFitRef = useRef(/** @type {number | null} */ (null));
-  const contentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const [fitHeight, setFitHeight] = useState(/** @type {number | null} */ (null));
+  const heightBeforeFitRef = useRef<number | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [fitHeight, setFitHeight] = useState<number | null>(null);
 
   useEffect(() => {
     const sync = () => setMaxHeight(chatComposerAreaMaxHeight());
@@ -90,7 +90,6 @@ export default function ChatComposerDock({
 
     const measure = () => {
       const natural = Math.ceil(
-        // @ts-expect-error TS(2339) FIXME: Property 'scrollHeight' does not exist on type 'ne... Remove this comment to see the full error message
         Math.max(el.scrollHeight, el.getBoundingClientRect().height),
       );
       const floor = Math.max(
@@ -98,7 +97,6 @@ export default function ChatComposerDock({
         heightBeforeFitRef.current ?? height,
       );
       const next = Math.min(maxHeight, Math.max(floor, natural));
-      // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: null) => number' is not a... Remove this comment to see the full error message
       setFitHeight((prev) => (prev === next ? prev : next));
     };
 
