@@ -496,9 +496,9 @@ export function AppModals() {
     <MoveFileModal
       isOpen={isMoveModalOpen}
       storageType={moveFileTarget ? moveFileTarget.storageType : currentFile?.type}
-      s3Tree={s3Tree as any}
-      localTree={localTree as any}
-      webdavTree={webdavTree as any}
+      s3Tree={s3Tree}
+      localTree={localTree}
+      webdavTree={webdavTree}
       localRootHandle={localRootHandle}
       currentFile={moveFileTarget ? null : currentFile}
       fileToMove={moveFileTarget?.node}
@@ -531,9 +531,9 @@ export function AppModals() {
     <MoveFolderModal
       isOpen={!!moveFolderTarget}
       storageType={moveFolderTarget?.storageType}
-      s3Tree={s3Tree as any}
-      localTree={localTree as any}
-      webdavTree={webdavTree as any}
+      s3Tree={s3Tree}
+      localTree={localTree}
+      webdavTree={webdavTree}
       localRootHandle={localRootHandle}
       folderNode={moveFolderTarget?.node}
       onClose={() => setMoveFolderTarget(null)}

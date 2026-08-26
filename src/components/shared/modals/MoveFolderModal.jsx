@@ -76,12 +76,26 @@ function filterFoldersForMove(nodes, movingFolderPath) {
     }));
 }
 
+/** @typedef {{ name: string, type: string, path: string, handle?: FileSystemDirectoryHandle, children?: TreeNodeLike[] }} TreeNodeLike */
+
+/**
+ * @param {object} props
+ * @param {boolean} props.isOpen
+ * @param {string} props.storageType
+ * @param {TreeNodeLike[]} [props.s3Tree]
+ * @param {TreeNodeLike[]} [props.localTree]
+ * @param {TreeNodeLike[]} [props.webdavTree]
+ * @param {FileSystemDirectoryHandle | null} [props.localRootHandle]
+ * @param {TreeNodeLike | null} [props.folderNode]
+ * @param {() => void} props.onClose
+ * @param {(folder: object) => void | Promise<void>} props.onConfirm
+ */
 export function MoveFolderModal({
   isOpen,
   storageType,
   s3Tree,
   localTree,
-  webdavTree = [],
+  webdavTree = /** @type {TreeNodeLike[]} */ ([]),
   localRootHandle,
   folderNode,
   onClose,

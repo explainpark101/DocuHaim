@@ -472,22 +472,20 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             collapsed={sidebarCollapsed}
             open={sidebarOpen}
             onRequestCollapse={() => setSidebarCollapsed(true)}
-            {...(isMobile
-              ? {
-                  mobileHeader: (
-                    <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
-                      <button
-                        type="button"
-                        aria-label="사이드바 닫기"
-                        onClick={() => setSidebarOpen(false)}
-                        className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
-                      >
-                        <IconX size={22} />
-                      </button>
-                    </div>
-                  ),
-                }
-              : {})}
+            mobileHeader={
+              isMobile ? (
+                <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
+                  <button
+                    type="button"
+                    aria-label="사이드바 닫기"
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
+                  >
+                    <IconX size={22} />
+                  </button>
+                </div>
+              ) : undefined
+            }
           >
             <SidebarConnected
               isMobileLayout={isMobile}

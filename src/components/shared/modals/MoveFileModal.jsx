@@ -94,12 +94,30 @@ function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, select
   );
 }
 
+/** @typedef {{ name: string, type: string, path: string, handle?: FileSystemDirectoryHandle, children?: TreeNodeLike[] }} TreeNodeLike */
+
+/**
+ * @param {object} props
+ * @param {boolean} props.isOpen
+ * @param {string} props.storageType
+ * @param {TreeNodeLike[]} [props.s3Tree]
+ * @param {TreeNodeLike[]} [props.localTree]
+ * @param {TreeNodeLike[]} [props.webdavTree]
+ * @param {FileSystemDirectoryHandle | null} [props.localRootHandle]
+ * @param {object | null} [props.currentFile]
+ * @param {object | null} [props.fileToMove]
+ * @param {() => void} props.onClose
+ * @param {(folder: object) => void | Promise<void>} props.onConfirm
+ * @param {(parentPath: string, parentDirHandle: FileSystemDirectoryHandle | null) => void} [props.onRequestCreateFolder]
+ * @param {string | null} [props.selectPathAfterCreate]
+ * @param {() => void} [props.onSelectPathAfterCreateApplied]
+ */
 export function MoveFileModal({
   isOpen,
   storageType,
   s3Tree,
   localTree,
-  webdavTree = [],
+  webdavTree = /** @type {TreeNodeLike[]} */ ([]),
   localRootHandle,
   currentFile,
   fileToMove,
