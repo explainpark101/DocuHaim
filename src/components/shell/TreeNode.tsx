@@ -31,19 +31,23 @@ import TreeNodeModifiedLabel from '@/components/shell/TreeNodeModifiedLabel';
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
 
-function EmptyItemHint({ label }) {
+function EmptyItemHint({
+  label
+}: any) {
   return (
     <Tooltip.Provider delayDuration={280} skipDelayDuration={120}>
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
+          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             className="inline-flex shrink-0 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 rounded-full"
             aria-label={label}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e: any) => e.stopPropagation()}
+            onPointerDown={(e: any) => e.stopPropagation()}
           >
             <AlertCircle size={12} strokeWidth={2.5} />
+          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
@@ -96,13 +100,16 @@ export default function TreeNode({
   isCopyDrag = false,
   foldersOnly = false,
   folderSelectMode = false,
+
   /** When true, node cannot be dragged (e.g. mobile add-to-note picker). */
   disableDrag = false,
+
   /** Mobile tree UI — touch drag + modal context menu. */
   mobileTree = false,
+
   /** In-flight move/copy markers from App. */
-  transferBusyItems = null,
-}) {
+  transferBusyItems = null
+}: any) {
   useEffect(() => {
     if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
       setIsRenaming(true);
@@ -255,7 +262,7 @@ export default function TreeNode({
   });
 
   const setRowRef = useCallback(
-    (el) => {
+    (el: any) => {
       rowRef.current = el;
       setDragRef(el);
       setDropRef(el);
@@ -266,7 +273,7 @@ export default function TreeNode({
   const isDragGhost =
     !isCopyDrag && (isDragging || (activeDragItemIds?.has?.(selectKey) ?? false));
 
-  const composePointerHandler = (gestureHandler, dndHandler) => (event) => {
+  const composePointerHandler = (gestureHandler: any, dndHandler: any) => (event: any) => {
     gestureHandler?.(event);
     dndHandler?.(event);
   };
@@ -400,6 +407,7 @@ export default function TreeNode({
   const startTitleScroll = () => {
     const el = titleContainerRef.current;
     if (!el) return;
+    // @ts-expect-error TS(2339): Property 'scrollWidth' does not exist on type 'nev... Remove this comment to see the full error message
     if (el.scrollWidth <= el.clientWidth) return;
 
     if (scrollTimerRef.current) {
@@ -407,21 +415,26 @@ export default function TreeNode({
     }
 
     scrollDirectionRef.current = 1;
+    // @ts-expect-error TS(2322): Type 'number' is not assignable to type 'null'.
     scrollTimerRef.current = window.setInterval(() => {
       const target = titleContainerRef.current;
       if (!target) return;
 
       const dir = scrollDirectionRef.current;
       if (dir > 0) {
+        // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
         if (target.scrollLeft + target.clientWidth >= target.scrollWidth) {
           scrollDirectionRef.current = -1;
         } else {
+          // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
           target.scrollLeft += 1;
         }
       } else {
+        // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
         if (target.scrollLeft <= 0) {
           scrollDirectionRef.current = 1;
         } else {
+          // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
           target.scrollLeft -= 1;
         }
       }
@@ -434,11 +447,12 @@ export default function TreeNode({
       scrollTimerRef.current = null;
     }
     if (titleContainerRef.current) {
+      // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
       titleContainerRef.current.scrollLeft = 0;
     }
   };
 
-  const handleOsDragOver = (e) => {
+  const handleOsDragOver = (e: any) => {
     if (!canAcceptOsDrop) return;
     const dt = e.dataTransfer;
     const hasFiles =
@@ -450,7 +464,7 @@ export default function TreeNode({
     if (onDropOnFolder) onDropOnFolder(effectiveDropTarget, storageType, 'dragOver');
   };
 
-  const handleOsDrop = async (e) => {
+  const handleOsDrop = async (e: any) => {
     if (!canAcceptOsDrop) return;
     e.preventDefault();
     e.stopPropagation();
@@ -479,7 +493,7 @@ export default function TreeNode({
     }
   };
 
-  const handleToggle = (e) => {
+  const handleToggle = (e: any) => {
     e.stopPropagation();
     if (isNodeLocked) return;
     if (contextMenuOpenedRef.current) {
@@ -515,7 +529,7 @@ export default function TreeNode({
     }
   };
 
-  const handleRenameStart = (e) => {
+  const handleRenameStart = (e: any) => {
     e.stopPropagation();
     if (isNodeLocked) return;
     if (node.type === 'file') {
@@ -564,7 +578,7 @@ export default function TreeNode({
     setIsRenaming(false);
   };
 
-  const handleRenameKeyDown = (e) => {
+  const handleRenameKeyDown = (e: any) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
@@ -601,7 +615,7 @@ export default function TreeNode({
     const rowEl = rowRef.current;
     if (!rowEl) return;
 
-    const findScrollParent = (el) => {
+    const findScrollParent = (el: any) => {
       let current = el.parentElement;
       while (current) {
         const style = window.getComputedStyle(current);
@@ -613,10 +627,11 @@ export default function TreeNode({
     };
 
     const scrollParent = findScrollParent(rowEl);
-    let rafId = null;
+    let rafId: any = null;
     const updatePinnedState = () => {
       const nodeEl = rowRef.current;
       if (!nodeEl) return;
+      // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
       const nodeTop = nodeEl.getBoundingClientRect().top;
       const threshold = stickyTopOffset + level * 30;
       setIsStickyPinned(nodeTop <= threshold + 0.5);
@@ -678,7 +693,7 @@ export default function TreeNode({
         onClick={handleToggle}
         onContextMenu={
           onOpenContextMenu
-            ? (e) => {
+            ? (e: any) => {
                 if (mobileTree) {
                   e.preventDefault();
                   e.stopPropagation();
@@ -702,9 +717,12 @@ export default function TreeNode({
                 style={{ left: `${offset}px` }}
               />
             ))}
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex items-center gap-1.5 overflow-hidden">
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
             {node.type === 'folder' ? (
               isLoadingChildren ? (
@@ -715,19 +733,23 @@ export default function TreeNode({
                 <IconChevronRight />
               )
             ) : null}
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className={`${iconColorClass} shrink-0 inline-flex items-center gap-0.5`}>
             {isTransferBusy ? (
               <Tooltip.Provider delayDuration={200} skipDelayDuration={80}>
                 <Tooltip.Root>
                   <Tooltip.Trigger asChild>
+                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     <span
                       className="inline-flex"
                       aria-label={transferBusyHint || '전송 중'}
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e: any) => e.stopPropagation()}
+                      onPointerDown={(e: any) => e.stopPropagation()}
                     >
                       <Loader2 size={14} className="animate-spin text-blue-500 dark:text-blue-400" />
+                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     </span>
                   </Tooltip.Trigger>
                   <Tooltip.Portal>
@@ -754,27 +776,32 @@ export default function TreeNode({
             {!isTransferBusy && emptyHintLabel ? (
               <EmptyItemHint label={emptyHintLabel} />
             ) : null}
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
           {isRenaming && !isTrashRoot && (node.type === 'file' || node.type === 'folder') ? (
             <span className="flex items-baseline gap-1 min-w-0">
+              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 className="bg-transparent border-none outline-none text-sm font-medium truncate placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 value={tempName}
-                onChange={(e) => setTempName(e.target.value)}
+                onChange={(e: any) => setTempName(e.target.value)}
                 onBlur={commitRename}
                 onKeyDown={handleRenameKeyDown}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: any) => e.stopPropagation()}
                 autoFocus
                 placeholder={node.type === 'file' ? (baseName || '이름 없음') : (node.name || '폴더명')}
               />
               {node.type === 'file' && extension && (
                 <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
                   {extension}
+                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 </span>
               )}
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
           ) : (
             <span className="flex min-w-0 flex-col overflow-hidden">
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 ref={titleContainerRef}
                 className={`text-sm select-none overflow-hidden whitespace-nowrap ${
@@ -789,6 +816,7 @@ export default function TreeNode({
                 onMouseLeave={stopTitleScroll}
               >
                 {displayName}
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
               {showModifiedDate && node.type === 'file' && !isTrashRoot && node.lastModified ? (
                 <TreeNodeModifiedLabel
@@ -796,14 +824,17 @@ export default function TreeNode({
                   className="text-gray-400/75 dark:text-gray-500/80"
                 />
               ) : null}
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
           )}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="hidden opacity-100 flex items-center gap-1 shrink-0 transition-opacity">
           {node.type === 'folder' && !isTrashRoot && onRequestMoveFolder && (
             <button
-              onClick={(e) => {
+              onClick={(e: any) => {
                 e.stopPropagation();
                 if (isNodeLocked) return;
                 onRequestMoveFolder(node, storageType);
@@ -813,6 +844,7 @@ export default function TreeNode({
               aria-label="폴더 위치 이동"
             >
               <ArrowRightToLine size={12} />
+            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
           {node.type === 'file' && !isTrashRoot && (
@@ -823,6 +855,7 @@ export default function TreeNode({
               aria-label="파일명 수정"
             >
               <PencilIcon className="size-3.5" />
+            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
           {node.type === 'folder' && !isTrashRoot && (
@@ -833,10 +866,12 @@ export default function TreeNode({
               aria-label="폴더명 수정"
             >
               <PencilIcon className="size-3.5" />
+            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
+          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
-            onClick={(e) => {
+            onClick={(e: any) => {
               e.stopPropagation();
               if (isNodeLocked) return;
               onDelete(node, storageType);
@@ -850,56 +885,57 @@ export default function TreeNode({
             aria-label="삭제"
           >
             <IconTrash />
+          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       </Motion.div>
 
       {isOpen &&
         node.type === 'folder' &&
         node.children
-          ?.filter((child) => !foldersOnly || child.type === 'folder')
-          .map((child) => (
-            <TreeNode
-              key={child.path}
-              node={child}
-              level={level + 1}
-              onSelect={onSelect}
-              onCreateFile={onCreateFile}
-              onCreateFolder={onCreateFolder}
-              onRequestMoveFolder={onRequestMoveFolder}
-              onDelete={onDelete}
-              selectedIds={selectedIds}
-              storageType={storageType}
-              currentFile={currentFile}
-              onRename={onRename}
-              deletingFolderPath={deletingFolderPath}
-              isDeletingFolder={isDeletingFolder}
-              isSearching={isSearching}
-              expandedPaths={expandedPaths}
-              onExpandedChange={onExpandedChange}
-              onFolderFocus={onFolderFocus}
-              focusedFolderPath={focusedFolderPath}
-              onDropOnFolder={onDropOnFolder}
-              dropTarget={dropTarget}
-              rootDropNode={rootDropNode}
-              onOpenContextMenu={onOpenContextMenu}
-              onActivate={onActivate}
-              renameTarget={renameTarget}
-              onClearRenameTarget={onClearRenameTarget}
-              recordingBasePathSet={recordingBasePathSet}
-              stickyFoldersEnabled={stickyFoldersEnabled}
-              showModifiedDate={showModifiedDate}
-              stickyTopOffset={stickyTopOffset}
-              isFolderLoading={isFolderLoading}
-              activeDragItemIds={activeDragItemIds}
-              isCopyDrag={isCopyDrag}
-              foldersOnly={foldersOnly}
-              folderSelectMode={folderSelectMode}
-              disableDrag={disableDrag}
-              mobileTree={mobileTree}
-              transferBusyItems={transferBusyItems}
-            />
-          ))}
+          ?.filter((child: any) => !foldersOnly || child.type === 'folder')
+          .map((child: any) => <TreeNode
+          key={child.path}
+          node={child}
+          level={level + 1}
+          onSelect={onSelect}
+          onCreateFile={onCreateFile}
+          onCreateFolder={onCreateFolder}
+          onRequestMoveFolder={onRequestMoveFolder}
+          onDelete={onDelete}
+          selectedIds={selectedIds}
+          storageType={storageType}
+          currentFile={currentFile}
+          onRename={onRename}
+          deletingFolderPath={deletingFolderPath}
+          isDeletingFolder={isDeletingFolder}
+          isSearching={isSearching}
+          expandedPaths={expandedPaths}
+          onExpandedChange={onExpandedChange}
+          onFolderFocus={onFolderFocus}
+          focusedFolderPath={focusedFolderPath}
+          onDropOnFolder={onDropOnFolder}
+          dropTarget={dropTarget}
+          rootDropNode={rootDropNode}
+          onOpenContextMenu={onOpenContextMenu}
+          onActivate={onActivate}
+          renameTarget={renameTarget}
+          onClearRenameTarget={onClearRenameTarget}
+          recordingBasePathSet={recordingBasePathSet}
+          stickyFoldersEnabled={stickyFoldersEnabled}
+          showModifiedDate={showModifiedDate}
+          stickyTopOffset={stickyTopOffset}
+          isFolderLoading={isFolderLoading}
+          activeDragItemIds={activeDragItemIds}
+          isCopyDrag={isCopyDrag}
+          foldersOnly={foldersOnly}
+          folderSelectMode={folderSelectMode}
+          disableDrag={disableDrag}
+          mobileTree={mobileTree}
+          transferBusyItems={transferBusyItems}
+        />)}
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

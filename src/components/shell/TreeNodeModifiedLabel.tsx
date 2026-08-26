@@ -65,7 +65,9 @@ export default function TreeNodeModifiedLabel({
 
   return (
     <span ref={containerRef} className={`relative block min-w-0 max-w-full ${className}`.trim()}>
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className={`block truncate ${LABEL_TEXT_CLASS}`}>{displayText}</span>
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span
         ref={measureRef}
         aria-hidden
@@ -74,9 +76,12 @@ export default function TreeNodeModifiedLabel({
         {TREE_MODIFIED_DATE_LEVELS.map((probeLevel) => (
           <span key={probeLevel} data-level={probeLevel} className="block w-max whitespace-nowrap">
             {formatTreeNodeModifiedDate(date, probeLevel)}
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
         ))}
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </span>
+    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
     </span>
   );
 }

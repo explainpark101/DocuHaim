@@ -9,13 +9,13 @@ const SIDEBAR_COLLAPSE_BELOW_VW = 10;
 const SIDEBAR_MIN_VW = 10;
 const SIDEBAR_MAX_FLOOR_VW = 50;
 
-function vwPx(vw) {
+function vwPx(vw: any) {
   if (typeof window === 'undefined') return vw * 5;
   return (window.innerWidth * vw) / 100;
 }
 
 /** Full untruncated width of an element (ignores truncate/overflow). */
-function measureUntruncatedWidth(el) {
+function measureUntruncatedWidth(el: any) {
   if (!el) return 0;
   const clone = el.cloneNode(true);
   clone.style.cssText = [
@@ -37,7 +37,7 @@ function measureUntruncatedWidth(el) {
 }
 
 /** Min width so mode brand titles (e.g. "WebDAV Haim") and header controls fit without truncating. */
-function measureBrandExpandWidth(panelEl) {
+function measureBrandExpandWidth(panelEl: any) {
   if (!panelEl) return SIDEBAR_DEFAULT_WIDTH;
   const row = panelEl.querySelector('[data-sidebar-header-row]');
   const brand = panelEl.querySelector('[data-sidebar-brand]');
@@ -48,7 +48,7 @@ function measureBrandExpandWidth(panelEl) {
   const brandWidth = measureUntruncatedWidth(brand);
   let leftExtras = 0;
   if (left) {
-    left.querySelectorAll('button').forEach((btn) => {
+    left.querySelectorAll('button').forEach((btn: any) => {
       leftExtras += btn.getBoundingClientRect().width;
     });
     const gap = Number.parseFloat(getComputedStyle(left).gap || '0') || 0;
@@ -64,16 +64,16 @@ function measureBrandExpandWidth(panelEl) {
 }
 
 /** Content-driven max: longest tree row scroll width (filenames can exceed 50vw). */
-function measureTreeContentWidth(panelEl) {
+function measureTreeContentWidth(panelEl: any) {
   if (!panelEl) return 0;
   let max = 0;
-  panelEl.querySelectorAll('[data-tree-node-row], [data-tree-root-drop-zone]').forEach((row) => {
+  panelEl.querySelectorAll('[data-tree-node-row], [data-tree-root-drop-zone]').forEach((row: any) => {
     max = Math.max(max, row.scrollWidth);
   });
   return Math.ceil(max);
 }
 
-function computeSidebarBounds(panelEl) {
+function computeSidebarBounds(panelEl: any) {
   const min = Math.max(1, vwPx(SIDEBAR_MIN_VW));
   const collapseBelow = Math.max(min, vwPx(SIDEBAR_COLLAPSE_BELOW_VW));
   const floorMax = vwPx(SIDEBAR_MAX_FLOOR_VW);
@@ -82,6 +82,7 @@ function computeSidebarBounds(panelEl) {
   return { min, max, collapseBelow };
 }
 
+// @ts-expect-error TS(2769): No overload matches this call.
 const SidebarContentSlot = memo(function SidebarContentSlot({ children }) {
   return <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{children}</div>;
 });
@@ -109,8 +110,8 @@ export default function ResizableSidebarPanel({
   open = false,
   onRequestCollapse,
   children,
-  mobileHeader = null,
-}) {
+  mobileHeader = null
+}: any) {
   const panelRef = useRef(null);
   const liveWidthRef = useRef(null);
   const collapsedRef = useRef(collapsed);
@@ -134,7 +135,7 @@ export default function ResizableSidebarPanel({
     refreshBounds();
     window.addEventListener('resize', refreshBounds);
     const panel = panelRef.current;
-    const observers = [];
+    const observers: any = [];
 
     if (panel && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
@@ -154,15 +155,17 @@ export default function ResizableSidebarPanel({
 
     return () => {
       window.removeEventListener('resize', refreshBounds);
+      // @ts-expect-error TS(7006): Parameter 'dispose' implicitly has an 'any' type.
       observers.forEach((dispose) => dispose());
     };
   }, [refreshBounds]);
 
   const applyLiveWidth = useCallback(
-    (nextWidth) => {
+    (nextWidth: any) => {
       liveWidthRef.current = nextWidth;
       const el = panelRef.current;
       if (!el || isMobile || collapsed || snapCollapse) return;
+      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'never'.
       el.style.width = `${nextWidth}px`;
     },
     [collapsed, isMobile, snapCollapse],
@@ -172,6 +175,7 @@ export default function ResizableSidebarPanel({
     setSnapCollapse(true);
     const el = panelRef.current;
     if (el && !isMobile) {
+      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'never'.
       el.style.width = '0px';
     }
     onRequestCollapse?.();
@@ -207,7 +211,7 @@ export default function ResizableSidebarPanel({
 
     const applyBrandWidth = () => {
       const brandMin = measureBrandExpandWidth(panelRef.current);
-      setWidth((prev) => Math.max(prev, brandMin));
+      setWidth((prev: any) => Math.max(prev, brandMin));
       refreshBounds();
     };
 
@@ -219,7 +223,7 @@ export default function ResizableSidebarPanel({
   // Keep committed width inside the current max when viewport shrinks.
   useEffect(() => {
     if (collapsed || isMobile || isResizing) return;
-    setWidth((prev) => Math.min(prev, bounds.max));
+    setWidth((prev: any) => Math.min(prev, bounds.max));
   }, [bounds.max, collapsed, isMobile, isResizing, setWidth]);
 
   const showResizeHandle = !isMobile && !collapsed && !snapCollapse;
@@ -263,6 +267,7 @@ export default function ResizableSidebarPanel({
           label="사이드바 너비 조절"
         />
       )}
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

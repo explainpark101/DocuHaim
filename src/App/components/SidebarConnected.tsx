@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import Sidebar from '@/components/shell/Sidebar.jsx';
+import Sidebar from '@/components/shell/Sidebar';
 import { useVault } from '@/App/hooks/useVault';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useFileSession } from '@/App/hooks/useFileSession';

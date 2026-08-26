@@ -84,16 +84,16 @@ const BRAND_LONG_PRESS_MS = 500;
 /** Above main pane / chat drop overlay; DragOverlay is portaled to document.body. */
 const TREE_DRAG_OVERLAY_Z_INDEX = 100060;
 
-function getParentPathFromFilePath(filePath) {
+function getParentPathFromFilePath(filePath: any) {
   return getParentFolderPath(filePath);
 }
 
-function isRenameableTreeNode(node) {
+function isRenameableTreeNode(node: any) {
   if (!node || node.path === '.trash/' || node.path === '') return false;
   return node.type === 'file' || node.type === 'folder';
 }
 
-function isTypingElement(target) {
+function isTypingElement(target: any) {
   if (!target || typeof target !== 'object') return false;
   const el = /** @type {HTMLElement} */ (target);
   const tag = el.tagName;
@@ -112,7 +112,7 @@ function isTypingElement(target) {
   return false;
 }
 
-function isEventInsideSidebarTree(target) {
+function isEventInsideSidebarTree(target: any) {
   if (!target || typeof target !== 'object' || typeof target.closest !== 'function') {
     return false;
   }
@@ -121,12 +121,15 @@ function isEventInsideSidebarTree(target) {
   );
 }
 
-function ChatWithMyselfEntry({ isActive, onOpen }) {
+function ChatWithMyselfEntry({
+  isActive,
+  onOpen
+}: any) {
   return (
     <button
       type="button"
       data-chat-with-myself-entry
-      onClick={(e) => {
+      onClick={(e: any) => {
         e.stopPropagation();
         onOpen?.();
       }}
@@ -139,22 +142,30 @@ function ChatWithMyselfEntry({ isActive, onOpen }) {
       }`}
       style={{ paddingLeft: '8px' }}
     >
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="text-violet-400 dark:text-violet-500 w-4 flex justify-center shrink-0">
         <MessageCircle size={14} />
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </span>
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="text-gray-500 dark:text-gray-400 truncate">나와의 채팅</span>
+    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }
 
 function filterTree(
-  nodes,
-  { hideDotFolders, hideTrashFolder, hideRecordingCompanionFiles, searchTerm } = {},
+  nodes: any,
+  {
+    hideDotFolders,
+    hideTrashFolder,
+    hideRecordingCompanionFiles,
+    searchTerm
+  }: any = {},
 ) {
   const q = searchTerm ? searchTerm.toLowerCase() : '';
-  const isTrashFolder = (node) =>
-    node.type === 'folder' && (node.name === '.trash' || node.path === '.trash/');
-  const walk = (node) => {
+  const isTrashFolder = (node: any) => node.type === 'folder' && (node.name === '.trash' || node.path === '.trash/');
+  const walk = (node: any) => {
     if (node.type === 'folder') {
       if (isTrashFolder(node)) {
         if (hideTrashFolder) return null;
@@ -186,7 +197,7 @@ function filterTree(
     .filter(Boolean);
 }
 
-function getSelectedFolderForMove(selectedIds, s3Tree, localTree, webdavTree) {
+function getSelectedFolderForMove(selectedIds: any, s3Tree: any, localTree: any, webdavTree: any) {
   if (!selectedIds?.size) return null;
   for (const key of selectedIds) {
     const colonIdx = key.indexOf(':');
@@ -206,7 +217,7 @@ function getSelectedFolderForMove(selectedIds, s3Tree, localTree, webdavTree) {
   return null;
 }
 
-function expandedSetForStorageType(expanded, storageType) {
+function expandedSetForStorageType(expanded: any, storageType: any) {
   if (storageType === 's3') return expanded.s3;
   if (storageType === 'webdav') return expanded.webdav;
   return expanded.local;
@@ -267,23 +278,28 @@ export default function Sidebar({
   onShareToChatWithMyself,
   onOpenChatWithMyself,
   chatWithMyselfActive = false,
+
   /** Host element on ChatWithMyselfPane for portaled tree→attach droppable. */
   chatAttachDropHost = null,
+
   /** Called when tree items are dropped onto the chat attach zone. */
   onDropToChatAttach,
+
   onBrandClick,
   onStorageModeChange,
   sessionWorkspace = null,
   sessionTree = [],
   onCloseSessionWorkspace,
+
   /** App mobile layout (max-width 768px) — enables touch tree drag + modal menu. */
   isMobileLayout = false,
+
   /**
    * Ref filled with `{ open(args) }` so workspace file tabs can open this same menu.
    * `open({ storageType, path, name?, currentFile?, clientX?, clientY?, onCloseTab? })`
    */
-  fileTabContextMenuRef = null,
-}) {
+  fileTabContextMenuRef = null
+}: any) {
   const TREE_STICKY_SECTION_TOP = 33;
   const coarsePointer = useIsCoarsePointer();
   const mobileTree = isMobileLayout || coarsePointer;
@@ -323,7 +339,7 @@ export default function Sidebar({
   const [lastActivatedNode, setLastActivatedNode] = useState(null);
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
-  const [activeDragItems, setActiveDragItems] = useState(null);
+  const [activeDragItems, setActiveDragItems] = useState<any>(null);
   const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
     useTreeCopyDragModifier(Boolean(activeDragItems?.length));
   const scrollContainerRef = useRef(null);
@@ -352,7 +368,7 @@ export default function Sidebar({
   useEffect(() => () => clearHoverExpandTimer(), [clearHoverExpandTimer]);
 
   const scheduleHoverExpandFolder = useCallback(
-    (storageType, folderPath) => {
+    (storageType: any, folderPath: any) => {
       if (!folderPath || folderPath === '.trash/') {
         clearHoverExpandTimer();
         return;
@@ -371,11 +387,14 @@ export default function Sidebar({
       if (hoverExpandKeyRef.current === key) return;
 
       clearHoverExpandTimer();
+      // @ts-expect-error TS(2322): Type 'string' is not assignable to type 'null'.
       hoverExpandKeyRef.current = key;
       const delayMs = Math.max(0, Number(hoverExpandDelayMsRef.current) || 0);
+      // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
       hoverExpandTimerRef.current = setTimeout(() => {
         hoverExpandTimerRef.current = null;
         hoverExpandKeyRef.current = null;
+        // @ts-expect-error TS(2349): This expression is not callable.
         handleExpandedChangeRef.current?.(storageType, folderPath, true);
       }, delayMs);
     },
@@ -394,7 +413,7 @@ export default function Sidebar({
   );
 
   const findTreeNode = useCallback(
-    (storageType, path) => {
+    (storageType: any, path: any) => {
       if (storageType === 'session') {
         return findNodeByPath(sessionTree, path);
       }
@@ -410,7 +429,7 @@ export default function Sidebar({
   );
 
   const resolveDropTargetNode = useCallback(
-    (storageType, path) => {
+    (storageType: any, path: any) => {
       if (path === '' || path == null) {
         return {
           path: '',
@@ -447,7 +466,7 @@ export default function Sidebar({
   );
 
   const requestDeleteNode = useCallback(
-    (node, storageType) => {
+    (node: any, storageType: any) => {
       if (!node) return;
       if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
       if (node.path === '.trash/') {
@@ -477,7 +496,7 @@ export default function Sidebar({
   }, [clearHoverExpandTimer, onDragEndNode]);
 
   const handleDndDragStart = useCallback(
-    (event) => {
+    (event: any) => {
       const activeId = String(event.active.id);
       const items = resolveDragItems(activeId, selectedIds, findTreeNode);
       activeDragItemsRef.current = items;
@@ -489,7 +508,7 @@ export default function Sidebar({
   );
 
   const handleDndDragOver = useCallback(
-    (event) => {
+    (event: any) => {
       const { over } = event;
       if (!over) {
         clearHoverExpandTimer();
@@ -532,7 +551,7 @@ export default function Sidebar({
   );
 
   const handleDndDragEnd = useCallback(
-    (event) => {
+    (event: any) => {
       const { over } = event;
       const items = activeDragItemsRef.current;
       const copy = isCopyDragRef.current;
@@ -541,6 +560,7 @@ export default function Sidebar({
       clearHoverExpandTimer();
       handleDragEndNode();
 
+      // @ts-expect-error TS(2339): Property 'length' does not exist on type 'never'.
       if (!over || !items?.length) {
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
@@ -586,7 +606,7 @@ export default function Sidebar({
 
   const activeDragItemIds = useMemo(() => {
     if (!activeDragItems?.length) return null;
-    return new Set(activeDragItems.map((item) => toTreeSelectKey(item.storageType, item.path)));
+    return new Set(activeDragItems.map((item: any) => toTreeSelectKey(item.storageType, item.path)));
   }, [activeDragItems]);
 
   useEffect(() => {
@@ -599,8 +619,9 @@ export default function Sidebar({
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    const onWheel = (e) => {
+    const onWheel = (e: any) => {
       if (!isDraggingRef.current) return;
+      // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
       const rect = el.getBoundingClientRect();
       const isOver =
         e.clientX >= rect.left &&
@@ -608,6 +629,7 @@ export default function Sidebar({
         e.clientY >= rect.top &&
         e.clientY <= rect.bottom;
       if (isOver) {
+        // @ts-expect-error TS(2339): Property 'scrollTop' does not exist on type 'never... Remove this comment to see the full error message
         el.scrollTop += e.deltaY;
         e.preventDefault();
       }
@@ -633,19 +655,21 @@ export default function Sidebar({
     };
   }, []);
 
-  const handleScrollAreaDragEnter = useCallback((e) => {
+  const handleScrollAreaDragEnter = useCallback((e: any) => {
     const hasDragData = e.dataTransfer?.types?.includes?.('Files');
     if (hasDragData) isDraggingRef.current = true;
   }, []);
 
-  const handleScrollAreaDragOver = useCallback((e) => {
+  const handleScrollAreaDragOver = useCallback((e: any) => {
     const el = scrollContainerRef.current;
     const hasDragData =
       e.dataTransfer?.types?.includes?.('Files') && e.dataTransfer?.items?.length > 0;
     if (!el || !hasDragData) return;
+    // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
     const rect = el.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const threshold = EDGE_THRESHOLD;
+    // @ts-expect-error TS(2339): Property 'scrollHeight' does not exist on type 'ne... Remove this comment to see the full error message
     const maxScroll = el.scrollHeight - el.clientHeight;
     if (maxScroll <= 0) return;
 
@@ -658,8 +682,10 @@ export default function Sidebar({
 
     if (y < threshold) {
       if (!autoScrollIntervalRef.current) {
+        // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
         autoScrollIntervalRef.current = setInterval(() => {
           if (el) {
+            // @ts-expect-error TS(2339): Property 'scrollTop' does not exist on type 'never... Remove this comment to see the full error message
             el.scrollTop = Math.max(0, el.scrollTop - AUTO_SCROLL_SPEED);
           } else {
             stopAutoScroll();
@@ -668,8 +694,10 @@ export default function Sidebar({
       }
     } else if (y > rect.height - threshold) {
       if (!autoScrollIntervalRef.current) {
+        // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
         autoScrollIntervalRef.current = setInterval(() => {
           if (el) {
+            // @ts-expect-error TS(2339): Property 'scrollTop' does not exist on type 'never... Remove this comment to see the full error message
             el.scrollTop = Math.min(el.scrollHeight - el.clientHeight, el.scrollTop + AUTO_SCROLL_SPEED);
           } else {
             stopAutoScroll();
@@ -681,7 +709,7 @@ export default function Sidebar({
     }
   }, []);
 
-  const handleExpandedChange = useCallback((storageType, path, isOpen) => {
+  const handleExpandedChange = useCallback((storageType: any, path: any, isOpen: any) => {
     setExpandedPaths((prev) => {
       const next = {
         s3: new Set(prev.s3),
@@ -710,6 +738,7 @@ export default function Sidebar({
     }
   }, [localTree, webdavTree, onLoadLocalFolderChildren, onLoadWebdavFolderChildren]);
 
+  // @ts-expect-error TS(2322): Type '(storageType: any, path: any, isOpen: any) =... Remove this comment to see the full error message
   handleExpandedChangeRef.current = handleExpandedChange;
 
   useEffect(() => {
@@ -717,7 +746,7 @@ export default function Sidebar({
     const expanded = expandedPaths.local;
     if (!expanded?.size) return;
 
-    const visit = (nodes) => {
+    const visit = (nodes: any) => {
       for (const node of nodes) {
         if (node?.type !== 'folder') continue;
         if (expanded.has(node.path) && node.childrenLoaded !== true) {
@@ -734,7 +763,7 @@ export default function Sidebar({
     const expanded = expandedPaths.webdav;
     if (!expanded?.size) return;
 
-    const visit = (nodes) => {
+    const visit = (nodes: any) => {
       for (const node of nodes) {
         if (node?.type !== 'folder') continue;
         if (expanded.has(node.path) && node.childrenLoaded !== true) {
@@ -746,7 +775,7 @@ export default function Sidebar({
     visit(webdavTree);
   }, [webdavTree, expandedPaths.webdav, onLoadWebdavFolderChildren]);
 
-  const expandPathsForNewItem = useCallback((storageType, paths) => {
+  const expandPathsForNewItem = useCallback((storageType: any, paths: any) => {
     if (!paths?.length) return;
     setExpandedPaths((prev) => {
       const next = {
@@ -755,7 +784,7 @@ export default function Sidebar({
         webdav: new Set(prev.webdav),
       };
       const set = expandedSetForStorageType(next, storageType);
-      paths.forEach((p) => set.add(p));
+      paths.forEach((p: any) => set.add(p));
       saveExpandedFolderPaths(next);
       return next;
     });
@@ -811,9 +840,9 @@ export default function Sidebar({
     [s3Tree, localTree, webdavTree],
   );
 
-  const collectFolderPaths = (nodes) => {
+  const collectFolderPaths = (nodes: any) => {
     const paths = new Set();
-    const walk = (n) => {
+    const walk = (n: any) => {
       if (n.type === 'folder' && n.path) {
         paths.add(n.path);
         if (n.children) n.children.forEach(walk);
@@ -842,10 +871,12 @@ export default function Sidebar({
     webdavTree,
   );
 
+  // @ts-expect-error TS(2339): Property 'node' does not exist on type 'never'.
   const contextMenuNode = contextMenu?.node;
+  // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
   const contextMenuStorageType = contextMenu?.storageType;
   const getCreateTargetForStorage = useCallback(
-    (storageType) => {
+    (storageType: any) => {
       if (storageType === 's3') {
         if (lastFocusedS3FolderPath !== null) {
           return { parentPath: lastFocusedS3FolderPath, parentDirHandle: null };
@@ -874,7 +905,9 @@ export default function Sidebar({
 
       if (lastFocusedLocalFolder !== null) {
         return {
+          // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
           parentPath: lastFocusedLocalFolder.path,
+          // @ts-expect-error TS(2339): Property 'handle' does not exist on type 'never'.
           parentDirHandle: lastFocusedLocalFolder.handle,
         };
       }
@@ -902,19 +935,22 @@ export default function Sidebar({
   const isWebdavMode = storageMode === 'webdav';
   const localVaultReady = isLocalVaultReady(localRootHandle, localVaultFsPath);
 
-  const activateTreeNode = useCallback((storageType, node) => {
+  const activateTreeNode = useCallback((storageType: any, node: any) => {
+    // @ts-expect-error TS(2345): Argument of type '{ storageType: any; node: any; }... Remove this comment to see the full error message
     setLastActivatedNode({ storageType, node });
   }, []);
 
   const openTreeContextMenu = useCallback(
-    (storageType, node, event, extras = {}) => {
+    (storageType: any, node: any, event: any, extras = {}) => {
       activateTreeNode(storageType, node);
       setContextMenu({
+        // @ts-expect-error TS(2345): Argument of type '{ x: any; y: any; node: any; sto... Remove this comment to see the full error message
         x: mobileTree ? null : event?.clientX ?? null,
         y: mobileTree ? null : event?.clientY ?? null,
         node,
         storageType,
         modal: mobileContextMenu,
+        // @ts-expect-error TS(2339): Property 'onCloseTab' does not exist on type '{}'.
         onCloseTab: typeof extras.onCloseTab === 'function' ? extras.onCloseTab : null,
       });
     },
@@ -929,8 +965,8 @@ export default function Sidebar({
       currentFile,
       clientX,
       clientY,
-      onCloseTab,
-    } = {}) => {
+      onCloseTab
+    }: any = {}) => {
       if (!storageType || !path) return;
       let node = findTreeNode(storageType, path);
       if (!node || node.type !== 'file') {
@@ -972,7 +1008,7 @@ export default function Sidebar({
   }, [fileTabContextMenuRef, openFileTabContextMenu]);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: any) => {
       if (e.defaultPrevented) return;
       if (isTypingElement(e.target)) return;
 
@@ -988,9 +1024,11 @@ export default function Sidebar({
           return;
         }
         if (!isRenameableTreeNode(node)) return;
+        // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
         if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
 
         e.preventDefault();
+        // @ts-expect-error TS(2345): Argument of type '{ storageType: never; node: neve... Remove this comment to see the full error message
         setRenameTarget({ storageType, node });
         return;
       }
@@ -1016,9 +1054,12 @@ export default function Sidebar({
         let storageType = null;
         let node = null;
         if (lastActivatedNode) {
+          // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
           const key = toTreeSelectKey(lastActivatedNode.storageType, lastActivatedNode.node.path);
           if (!selectedIds?.size || selectedIds.has(key)) {
+            // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
             storageType = lastActivatedNode.storageType;
+            // @ts-expect-error TS(2339): Property 'node' does not exist on type 'never'.
             node = lastActivatedNode.node;
           }
         }
@@ -1032,7 +1073,9 @@ export default function Sidebar({
           }
         }
         if (!node && lastActivatedNode) {
+          // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
           storageType = lastActivatedNode.storageType;
+          // @ts-expect-error TS(2339): Property 'node' does not exist on type 'never'.
           node = lastActivatedNode.node;
         }
         if (!node || !storageType) {
@@ -1042,10 +1085,13 @@ export default function Sidebar({
             node = findTreeNode('s3', lastFocusedS3FolderPath);
           } else if (
             isLocalMode &&
+            // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
             lastFocusedLocalFolder?.path != null &&
+            // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
             lastFocusedLocalFolder.path !== ''
           ) {
             storageType = 'local';
+            // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
             node = findTreeNode('local', lastFocusedLocalFolder.path);
           } else if (
             isWebdavMode &&
@@ -1096,10 +1142,13 @@ export default function Sidebar({
     >
       {contextMenu && contextMenuNode && (
         <SidebarContextMenu
+          // @ts-expect-error TS(2339): Property 'x' does not exist on type 'never'.
           x={contextMenu.x}
+          // @ts-expect-error TS(2339): Property 'y' does not exist on type 'never'.
           y={contextMenu.y}
           node={contextMenuNode}
           storageType={contextMenuStorageType}
+          // @ts-expect-error TS(2339): Property 'modal' does not exist on type 'never'.
           mobileDialog={contextMenu.modal ?? mobileContextMenu}
           isTrashRoot={contextMenuNode.path === '.trash/'}
           deleteCount={
@@ -1115,6 +1164,7 @@ export default function Sidebar({
           }
           onClose={() => setContextMenu(null)}
           onCloseTab={
+            // @ts-expect-error TS(2339): Property 'onCloseTab' does not exist on type 'neve... Remove this comment to see the full error message
             typeof contextMenu.onCloseTab === 'function' ? contextMenu.onCloseTab : undefined
           }
           onCreateFile={
@@ -1128,6 +1178,7 @@ export default function Sidebar({
               : undefined
           }
           onDownload={onDownloadNode ? () => onDownloadNode(contextMenuStorageType, contextMenuNode) : undefined}
+          // @ts-expect-error TS(2345): Argument of type '{ storageType: any; node: any; }... Remove this comment to see the full error message
           onRename={() => setRenameTarget({ storageType: contextMenuStorageType, node: contextMenuNode })}
           onDelete={() => requestDeleteNode(contextMenuNode, contextMenuStorageType)}
           onEmptyTrash={
@@ -1151,9 +1202,13 @@ export default function Sidebar({
           }
         />
       )}
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex flex-col bg-gray-50 dark:bg-odp-surface shrink-0">
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="p-4 flex flex-col gap-3">
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex justify-between items-center gap-2" data-sidebar-header-row>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex items-center gap-1 min-w-0" data-sidebar-header-left>
               {typeof onRequestCollapseSidebar === 'function' && (
                 <button
@@ -1164,6 +1219,7 @@ export default function Sidebar({
                   aria-label="사이드바 접기"
                 >
                   <ChevronsLeft size={18} />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               )}
               {typeof onBrandClick === 'function' || typeof onStorageModeChange === 'function' ? (
@@ -1180,13 +1236,15 @@ export default function Sidebar({
                         if (brandMenuOpen) return;
                         onBrandClick?.();
                       }}
-                      onPointerDown={(e) => {
+                      onPointerDown={(e: any) => {
                         if (!onStorageModeChange || !mobileContextMenu) return;
                         if (e.pointerType === 'mouse') return;
                         if (e.button !== 0 && e.button !== -1) return;
                         brandLongPressOpenedRef.current = false;
                         clearBrandLongPress();
+                        // @ts-expect-error TS(2322): Type '{ x: any; y: any; }' is not assignable to ty... Remove this comment to see the full error message
                         brandPressStartRef.current = { x: e.clientX, y: e.clientY };
+                        // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
                         brandLongPressTimerRef.current = setTimeout(() => {
                           brandLongPressTimerRef.current = null;
                           brandLongPressOpenedRef.current = true;
@@ -1194,11 +1252,13 @@ export default function Sidebar({
                           setBrandMenuOpen(true);
                         }, BRAND_LONG_PRESS_MS);
                       }}
-                      onPointerMove={(e) => {
+                      onPointerMove={(e: any) => {
                         const start = brandPressStartRef.current;
                         if (!start || !brandLongPressTimerRef.current) return;
                         if (
+                          // @ts-expect-error TS(2339): Property 'x' does not exist on type 'never'.
                           Math.abs(e.clientX - start.x) > 10 ||
+                          // @ts-expect-error TS(2339): Property 'y' does not exist on type 'never'.
                           Math.abs(e.clientY - start.y) > 10
                         ) {
                           clearBrandLongPress();
@@ -1206,7 +1266,7 @@ export default function Sidebar({
                       }}
                       onPointerUp={clearBrandLongPress}
                       onPointerCancel={clearBrandLongPress}
-                      onContextMenu={(e) => {
+                      onContextMenu={(e: any) => {
                         if (mobileContextMenu && onStorageModeChange) {
                           e.preventDefault();
                         }
@@ -1215,6 +1275,7 @@ export default function Sidebar({
                       aria-label={`${appName} 홈으로`}
                     >
                       {appName}
+                    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                     </button>
                   );
 
@@ -1249,9 +1310,12 @@ export default function Sidebar({
                               onStorageModeChange(mode);
                             }}
                           >
+                            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                             <span className="inline-flex w-4 shrink-0 items-center justify-center">
                               {selected ? <IconCheck size={14} aria-hidden /> : null}
+                            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                             </span>
+                            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                             <span className="min-w-0 flex-1 truncate">{label}</span>
                           </AdaptiveMenuItem>
                         );
@@ -1265,30 +1329,42 @@ export default function Sidebar({
                   className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate"
                 >
                   {appName}
+                // @ts-expect-error TS(2339): Property 'h1' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
                 </h1>
               )}
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex items-center gap-1.5" data-sidebar-header-right>
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={onToggleTheme}
                 className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
                 title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
               >
                 {theme !== 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={onOpenSettings}
                 className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
               >
                 <IconSettings />
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {selectedFolderForMove && onRequestMoveFolder && (
             <div className="flex items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-1.5 text-xs">
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-blue-700 dark:text-blue-300 truncate flex-1 min-w-0">
                 폴더 선택됨: {selectedFolderForMove.node.name}
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={() => onRequestMoveFolder(selectedFolderForMove.node, selectedFolderForMove.storageType)}
@@ -1297,16 +1373,21 @@ export default function Sidebar({
               >
                 <ArrowRightToLine size={12} />
                 이동
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex items-center gap-2 w-full border-y border-gray-400 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm text-gray-700 dark:text-odp-fgStrong">
           <AdvancedSearchSidebarTrigger />
+          // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <input
             type="text"
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e: any) => setSearchInput(e.target.value)}
             placeholder={isWebdavMode ? '파일명 검색 (WebDAV)' : '파일명 검색'}
             className="min-w-0 flex-1 bg-transparent border-none outline-none text-sm font-bold placeholder:font-normal placeholder:text-gray-400 dark:placeholder:text-gray-500"
             aria-label="파일명 검색"
@@ -1329,9 +1410,12 @@ export default function Sidebar({
               aria-label="검색어 지우기"
             >
               <X size={16} />
+            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           ) : null}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
       <DndContext
@@ -1343,6 +1427,7 @@ export default function Sidebar({
         onDragCancel={handleDndDragCancel}
         autoScroll
       >
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         ref={scrollContainerRef}
         data-sidebar-tree-scroll
@@ -1352,9 +1437,10 @@ export default function Sidebar({
         onDragOver={handleScrollAreaDragOver}
         onPointerDownCapture={() => {
           // Move focus into the tree so Delete/Backspace target selection, not the editor.
+          // @ts-expect-error TS(2339): Property 'focus' does not exist on type 'never'.
           scrollContainerRef.current?.focus({ preventScroll: true });
         }}
-        onClick={(e) => {
+        onClick={(e: any) => {
           if (
             !e.target.closest('[data-tree-node-row]') &&
             !e.target.closest('[data-tree-root-drop-zone]') &&
@@ -1372,10 +1458,14 @@ export default function Sidebar({
       >
         {sessionWorkspace ? (
           <div>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="sticky top-0 z-9999 mb-1 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:border-odp-surface dark:bg-odp-bgSoft">
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="flex min-w-0 items-center gap-1">
                 <Download size={14} />
+                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="truncate">다운로드 세션</span>
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
               {typeof onCloseSessionWorkspace === 'function' ? (
                 <button
@@ -1386,26 +1476,35 @@ export default function Sidebar({
                   onClick={onCloseSessionWorkspace}
                 >
                   <X size={14} />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               ) : null}
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
+            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             <p className="px-3 pb-1 text-[11px] text-gray-400 dark:text-odp-muted truncate" title={sessionWorkspace.originName}>
               {sessionWorkspace.originName}
+            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </p>
             <SessionTreeList
               nodes={sessionTree}
               currentPath={treeCurrentFile?.type === 'session' ? treeCurrentFile.id : null}
-              onSelectFile={(node) => onSelectFile?.('session', node, {})}
+              onSelectFile={(node: any) => onSelectFile?.('session', node, {})}
             />
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
         {/* S3 Section */}
         {isS3Mode && (
         <div>
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="flex items-center gap-1">
               <IconCloud /> S3
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex gap-1">
               {onRefreshS3 && s3Bucket && (
                 <button
@@ -1437,8 +1536,10 @@ export default function Sidebar({
                           : ''
                     }`}
                   />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               )}
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const { parentPath } = getCreateTargetForStorage('s3');
@@ -1448,7 +1549,9 @@ export default function Sidebar({
                 title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
               >
                 <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const { parentPath } = getCreateTargetForStorage('s3');
@@ -1458,7 +1561,9 @@ export default function Sidebar({
                 title="선택된 폴더에 폴더 업로드 (폴더 전체)"
               >
                 <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const target = getCreateTargetForStorage('s3');
@@ -1468,7 +1573,9 @@ export default function Sidebar({
                 title="선택된 폴더에 파일 생성"
               >
                 <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const target = getCreateTargetForStorage('s3');
@@ -1478,8 +1585,11 @@ export default function Sidebar({
                 title="선택된 폴더에 폴더 생성"
               >
                 <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {s3Bucket ? (
             <div className="space-y-0.5">
@@ -1495,74 +1605,78 @@ export default function Sidebar({
                 isFocused={
                   !chatWithMyselfActive && lastFocusedS3FolderPath === ''
                 }
+                // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                 onFocusRoot={() => setLastFocusedS3FolderPath('')}
-                onContextMenu={(e, rootNode) => {
+                onContextMenu={(e: any, rootNode: any) => {
+                  // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                   setLastFocusedS3FolderPath('');
                   openTreeContextMenu('s3', rootNode, e);
                 }}
                 mobileTree={mobileTree}
               />
               {filteredS3Tree.length > 0 ? (
-                filteredS3Tree.map((node) => (
-                  <TreeNode
-                    key={node.path}
-                    node={node}
-                    level={0}
-                    rootDropNode={{ path: '', type: 'folder', handle: null }}
-                    onSelect={onSelectFile}
-                    storageType="s3"
-                    selectedIds={treeSelectedIds}
-                    currentFile={treeCurrentFile}
-                    onCreateFile={(p) => onCreateItem('s3', p, null, 'file')}
-                    onCreateFolder={(p) => onCreateItem('s3', p, null, 'folder')}
-                    onRequestMoveFolder={onRequestMoveFolder}
-                    onDelete={(n, t) => requestDeleteNode(n, t)}
-                    onRename={onRenameItem}
-                    deletingFolderPath={deletingFolderPath}
-                    isDeletingFolder={isDeletingFolder}
-                    transferBusyItems={transferBusyItems}
-                    isSearching={!!searchTerm}
-                    expandedPaths={effectiveExpandedS3}
-                    onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
-                      setLastFocusedS3FolderPath(node ? node.path || '' : null)
-                    }
-                    focusedFolderPath={
-                      chatWithMyselfActive
-                        ? undefined
-                        : (lastFocusedS3FolderPath ?? undefined)
-                    }
-                    onDropOnFolder={onDropOnFolder}
-                    dropTarget={dropTarget}
-                    activeDragItemIds={activeDragItemIds}
-                    isCopyDrag={isCopyDrag}
-                    onOpenContextMenu={(e, n) => openTreeContextMenu('s3', n, e)}
-                    onActivate={(n) => activateTreeNode('s3', n)}
-                    renameTarget={renameTarget}
-                    onClearRenameTarget={() => setRenameTarget(null)}
-                    recordingBasePathSet={recordingBasePathSet}
-                    stickyFoldersEnabled={treeStickyFolderPathEnabled}
-                    showModifiedDate={showTreeModifiedDate}
-                    stickyTopOffset={TREE_STICKY_SECTION_TOP}
-                    mobileTree={mobileTree}
-                  />
-                ))
+                filteredS3Tree.map((node: any) => <TreeNode
+                  key={node.path}
+                  node={node}
+                  level={0}
+                  rootDropNode={{ path: '', type: 'folder', handle: null }}
+                  onSelect={onSelectFile}
+                  storageType="s3"
+                  selectedIds={treeSelectedIds}
+                  currentFile={treeCurrentFile}
+                  onCreateFile={(p: any) => onCreateItem('s3', p, null, 'file')}
+                  onCreateFolder={(p: any) => onCreateItem('s3', p, null, 'folder')}
+                  onRequestMoveFolder={onRequestMoveFolder}
+                  onDelete={(n: any, t: any) => requestDeleteNode(n, t)}
+                  onRename={onRenameItem}
+                  deletingFolderPath={deletingFolderPath}
+                  isDeletingFolder={isDeletingFolder}
+                  transferBusyItems={transferBusyItems}
+                  isSearching={!!searchTerm}
+                  expandedPaths={effectiveExpandedS3}
+                  onExpandedChange={handleExpandedChange}
+                  onFolderFocus={(node: any) => setLastFocusedS3FolderPath(node ? node.path || '' : null)
+                  }
+                  focusedFolderPath={
+                    chatWithMyselfActive
+                      ? undefined
+                      : (lastFocusedS3FolderPath ?? undefined)
+                  }
+                  onDropOnFolder={onDropOnFolder}
+                  dropTarget={dropTarget}
+                  activeDragItemIds={activeDragItemIds}
+                  isCopyDrag={isCopyDrag}
+                  onOpenContextMenu={(e: any, n: any) => openTreeContextMenu('s3', n, e)}
+                  onActivate={(n: any) => activateTreeNode('s3', n)}
+                  renameTarget={renameTarget}
+                  onClearRenameTarget={() => setRenameTarget(null)}
+                  recordingBasePathSet={recordingBasePathSet}
+                  stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                  showModifiedDate={showTreeModifiedDate}
+                  stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                  mobileTree={mobileTree}
+                />)
               ) : (
                 <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
               )}
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : (
             <p className="text-xs text-gray-400 px-4 py-2">설정에서 연동하세요.</p>
           )}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         )}
 
         {/* Local Section */}
         {isLocalMode && (
         <div>
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="flex items-center gap-1">
               <IconFolder /> Local Folder
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
             {localVaultReady && (
               <div className="flex gap-1">
@@ -1581,8 +1695,10 @@ export default function Sidebar({
                       size={22}
                       className={`shrink-0 w-5 h-5 md:w-[14px] md:h-[14px] ${isLocalTreeLoading ? 'animate-spin' : ''}`}
                     />
+                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 )}
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath, parentDirHandle } = getCreateTargetForStorage('local');
@@ -1592,7 +1708,9 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
                 >
                   <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath, parentDirHandle } = getCreateTargetForStorage('local');
@@ -1602,7 +1720,9 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 업로드 (폴더 전체)"
                 >
                   <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('local');
@@ -1612,7 +1732,9 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 생성"
                 >
                   <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('local');
@@ -1622,20 +1744,27 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 생성"
                 >
                   <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             )}
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {!localVaultReady && (
             <div className="px-3 mb-2">
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={onOpenLocalFolder}
                 className="w-full bg-white dark:bg-odp-surface border border-gray-300 dark:border-odp-borderStrong text-gray-700 dark:text-odp-fgStrong text-sm py-1.5 px-3 rounded shadow-sm hover:bg-gray-50 dark:hover:bg-odp-focusBg transition flex items-center justify-center gap-2"
               >
                 <IconFolder /> 폴더 선택
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="space-y-0.5">
             <ChatWithMyselfEntry
               isActive={chatWithMyselfActive}
@@ -1649,13 +1778,17 @@ export default function Sidebar({
               isFocused={
                 !chatWithMyselfActive &&
                 lastFocusedLocalFolder !== null &&
+                // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
                 lastFocusedLocalFolder.path === '' &&
+                // @ts-expect-error TS(2339): Property 'handle' does not exist on type 'never'.
                 lastFocusedLocalFolder.handle === localRootHandle
               }
               onFocusRoot={() =>
+                // @ts-expect-error TS(2345): Argument of type '{ path: string; handle: any; }' ... Remove this comment to see the full error message
                 setLastFocusedLocalFolder({ path: '', handle: localRootHandle })
               }
-              onContextMenu={(e, rootNode) => {
+              onContextMenu={(e: any, rootNode: any) => {
+                // @ts-expect-error TS(2345): Argument of type '{ path: string; handle: any; }' ... Remove this comment to see the full error message
                 setLastFocusedLocalFolder({ path: '', handle: localRootHandle });
                 openTreeContextMenu('local', rootNode, e);
               }}
@@ -1666,72 +1799,76 @@ export default function Sidebar({
             )}
             {localVaultReady ? (
               filteredLocalTree.length > 0 ? (
-                filteredLocalTree.map((node) => (
-                  <TreeNode
-                    key={node.path}
-                    node={node}
-                    level={0}
-                    rootDropNode={
-                      localRootHandle
-                        ? { path: '', type: 'folder', handle: localRootHandle }
-                        : localVaultFsPath
-                          ? { path: '', type: 'folder', handle: null }
-                          : null
-                    }
-                    onSelect={onSelectFile}
-                    storageType="local"
-                    selectedIds={treeSelectedIds}
-                    currentFile={treeCurrentFile}
-                    onCreateFile={(p, h) => onCreateItem('local', p, h, 'file')}
-                    onCreateFolder={(p, h) => onCreateItem('local', p, h, 'folder')}
-                    onRequestMoveFolder={onRequestMoveFolder}
-                    onDelete={(n, t) => requestDeleteNode(n, t)}
-                    onRename={onRenameItem}
-                    deletingFolderPath={deletingFolderPath}
-                    isDeletingFolder={isDeletingFolder}
-                    transferBusyItems={transferBusyItems}
-                    isSearching={!!searchTerm}
-                    expandedPaths={effectiveExpandedLocal}
-                    onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
-                      setLastFocusedLocalFolder(
-                        node ? { path: node.path || '', handle: node.handle } : null,
-                      )
-                    }
-                    focusedFolderPath={
-                      chatWithMyselfActive
-                        ? undefined
-                        : (lastFocusedLocalFolder?.path ?? undefined)
-                    }
-                    onDropOnFolder={onDropOnFolder}
-                    dropTarget={dropTarget}
-                    activeDragItemIds={activeDragItemIds}
-                    isCopyDrag={isCopyDrag}
-                    onOpenContextMenu={(e, n) => openTreeContextMenu('local', n, e)}
-                    onActivate={(n) => activateTreeNode('local', n)}
-                    isFolderLoading={localFolderLoadingPath}
-                    renameTarget={renameTarget}
-                    onClearRenameTarget={() => setRenameTarget(null)}
-                    recordingBasePathSet={recordingBasePathSet}
-                    stickyFoldersEnabled={treeStickyFolderPathEnabled}
-                    showModifiedDate={showTreeModifiedDate}
-                    stickyTopOffset={TREE_STICKY_SECTION_TOP}
-                    mobileTree={mobileTree}
-                  />
-                ))
+                filteredLocalTree.map((node: any) => <TreeNode
+                  key={node.path}
+                  node={node}
+                  level={0}
+                  rootDropNode={
+                    localRootHandle
+                      ? { path: '', type: 'folder', handle: localRootHandle }
+                      : localVaultFsPath
+                        ? { path: '', type: 'folder', handle: null }
+                        : null
+                  }
+                  onSelect={onSelectFile}
+                  storageType="local"
+                  selectedIds={treeSelectedIds}
+                  currentFile={treeCurrentFile}
+                  onCreateFile={(p: any, h: any) => onCreateItem('local', p, h, 'file')}
+                  onCreateFolder={(p: any, h: any) => onCreateItem('local', p, h, 'folder')}
+                  onRequestMoveFolder={onRequestMoveFolder}
+                  onDelete={(n: any, t: any) => requestDeleteNode(n, t)}
+                  onRename={onRenameItem}
+                  deletingFolderPath={deletingFolderPath}
+                  isDeletingFolder={isDeletingFolder}
+                  transferBusyItems={transferBusyItems}
+                  isSearching={!!searchTerm}
+                  expandedPaths={effectiveExpandedLocal}
+                  onExpandedChange={handleExpandedChange}
+                  onFolderFocus={(node: any) => setLastFocusedLocalFolder(
+                    // @ts-expect-error TS(2345): Argument of type '{ path: any; handle: any; } | nu... Remove this comment to see the full error message
+                    node ? { path: node.path || '', handle: node.handle } : null,
+                  )
+                  }
+                  focusedFolderPath={
+                    chatWithMyselfActive
+                      ? undefined
+                      // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
+                      : (lastFocusedLocalFolder?.path ?? undefined)
+                  }
+                  onDropOnFolder={onDropOnFolder}
+                  dropTarget={dropTarget}
+                  activeDragItemIds={activeDragItemIds}
+                  isCopyDrag={isCopyDrag}
+                  onOpenContextMenu={(e: any, n: any) => openTreeContextMenu('local', n, e)}
+                  onActivate={(n: any) => activateTreeNode('local', n)}
+                  isFolderLoading={localFolderLoadingPath}
+                  renameTarget={renameTarget}
+                  onClearRenameTarget={() => setRenameTarget(null)}
+                  recordingBasePathSet={recordingBasePathSet}
+                  stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                  showModifiedDate={showTreeModifiedDate}
+                  stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                  mobileTree={mobileTree}
+                />)
               ) : (
                 <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
               )
             ) : null}
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         )}
 
         {isWebdavMode && (
         <div>
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="flex items-center gap-1">
               <IconCloud /> WebDAV
+            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
             {webdavReady && (
               <div className="flex gap-1">
@@ -1752,8 +1889,10 @@ export default function Sidebar({
                         isWebdavTreeLoading ? 'animate-spin' : ''
                       }`}
                     />
+                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 )}
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath } = getCreateTargetForStorage('webdav');
@@ -1763,7 +1902,9 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
                 >
                   <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath } = getCreateTargetForStorage('webdav');
@@ -1773,7 +1914,9 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 업로드 (폴더 전체)"
                 >
                   <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('webdav');
@@ -1783,7 +1926,9 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 생성"
                 >
                   <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('webdav');
@@ -1793,9 +1938,12 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 생성"
                 >
                   <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
+              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             )}
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {webdavReady ? (
             <div className="space-y-0.5">
@@ -1811,8 +1959,10 @@ export default function Sidebar({
                 isFocused={
                   !chatWithMyselfActive && lastFocusedWebdavFolderPath === ''
                 }
+                // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                 onFocusRoot={() => setLastFocusedWebdavFolderPath('')}
-                onContextMenu={(e, rootNode) => {
+                onContextMenu={(e: any, rootNode: any) => {
+                  // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                   setLastFocusedWebdavFolderPath('');
                   openTreeContextMenu('webdav', rootNode, e);
                 }}
@@ -1822,60 +1972,60 @@ export default function Sidebar({
                 <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
               )}
               {filteredWebdavTree.length > 0 ? (
-                filteredWebdavTree.map((node) => (
-                  <TreeNode
-                    key={node.path}
-                    node={node}
-                    level={0}
-                    rootDropNode={{ path: '', type: 'folder', handle: null }}
-                    onSelect={onSelectFile}
-                    storageType="webdav"
-                    selectedIds={treeSelectedIds}
-                    currentFile={treeCurrentFile}
-                    onCreateFile={(p) => onCreateItem('webdav', p, null, 'file')}
-                    onCreateFolder={(p) => onCreateItem('webdav', p, null, 'folder')}
-                    onRequestMoveFolder={onRequestMoveFolder}
-                    onDelete={(n, t) => requestDeleteNode(n, t)}
-                    onRename={onRenameItem}
-                    deletingFolderPath={deletingFolderPath}
-                    isDeletingFolder={isDeletingFolder}
-                    transferBusyItems={transferBusyItems}
-                    isSearching={!!searchTerm}
-                    expandedPaths={effectiveExpandedWebdav}
-                    onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
-                      setLastFocusedWebdavFolderPath(node ? node.path || '' : null)
-                    }
-                    focusedFolderPath={
-                      chatWithMyselfActive
-                        ? undefined
-                        : (lastFocusedWebdavFolderPath ?? undefined)
-                    }
-                    onDropOnFolder={onDropOnFolder}
-                    dropTarget={dropTarget}
-                    activeDragItemIds={activeDragItemIds}
-                    isCopyDrag={isCopyDrag}
-                    onOpenContextMenu={(e, n) => openTreeContextMenu('webdav', n, e)}
-                    onActivate={(n) => activateTreeNode('webdav', n)}
-                    isFolderLoading={webdavFolderLoadingPath}
-                    renameTarget={renameTarget}
-                    onClearRenameTarget={() => setRenameTarget(null)}
-                    recordingBasePathSet={recordingBasePathSet}
-                    stickyFoldersEnabled={treeStickyFolderPathEnabled}
-                    showModifiedDate={showTreeModifiedDate}
-                    stickyTopOffset={TREE_STICKY_SECTION_TOP}
-                    mobileTree={mobileTree}
-                  />
-                ))
+                filteredWebdavTree.map((node: any) => <TreeNode
+                  key={node.path}
+                  node={node}
+                  level={0}
+                  rootDropNode={{ path: '', type: 'folder', handle: null }}
+                  onSelect={onSelectFile}
+                  storageType="webdav"
+                  selectedIds={treeSelectedIds}
+                  currentFile={treeCurrentFile}
+                  onCreateFile={(p: any) => onCreateItem('webdav', p, null, 'file')}
+                  onCreateFolder={(p: any) => onCreateItem('webdav', p, null, 'folder')}
+                  onRequestMoveFolder={onRequestMoveFolder}
+                  onDelete={(n: any, t: any) => requestDeleteNode(n, t)}
+                  onRename={onRenameItem}
+                  deletingFolderPath={deletingFolderPath}
+                  isDeletingFolder={isDeletingFolder}
+                  transferBusyItems={transferBusyItems}
+                  isSearching={!!searchTerm}
+                  expandedPaths={effectiveExpandedWebdav}
+                  onExpandedChange={handleExpandedChange}
+                  onFolderFocus={(node: any) => setLastFocusedWebdavFolderPath(node ? node.path || '' : null)
+                  }
+                  focusedFolderPath={
+                    chatWithMyselfActive
+                      ? undefined
+                      : (lastFocusedWebdavFolderPath ?? undefined)
+                  }
+                  onDropOnFolder={onDropOnFolder}
+                  dropTarget={dropTarget}
+                  activeDragItemIds={activeDragItemIds}
+                  isCopyDrag={isCopyDrag}
+                  onOpenContextMenu={(e: any, n: any) => openTreeContextMenu('webdav', n, e)}
+                  onActivate={(n: any) => activateTreeNode('webdav', n)}
+                  isFolderLoading={webdavFolderLoadingPath}
+                  renameTarget={renameTarget}
+                  onClearRenameTarget={() => setRenameTarget(null)}
+                  recordingBasePathSet={recordingBasePathSet}
+                  stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                  showModifiedDate={showTreeModifiedDate}
+                  stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                  mobileTree={mobileTree}
+                />)
               ) : !isWebdavTreeLoading ? (
                 <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
               ) : null}
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : (
             <p className="text-xs text-gray-400 px-4 py-2">설정에서 WebDAV 연결 정보를 저장해 주세요.</p>
           )}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         )}
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
       {typeof document !== 'undefined'
         ? createPortal(
@@ -1885,6 +2035,7 @@ export default function Sidebar({
             document.body,
           )
         : null}
+      // @ts-expect-error TS(2339): Property 'length' does not exist on type 'never'.
       {chatWithMyselfActive && activeDragItems?.length ? (
         <ChatTreeAttachDroppable
           host={chatAttachDropHost}
@@ -1892,6 +2043,7 @@ export default function Sidebar({
         />
       ) : null}
       </DndContext>
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

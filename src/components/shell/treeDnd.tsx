@@ -4,7 +4,7 @@ import { IconFolder } from '@/components/icons';
 import { toDroppableId } from '@/utils/vault/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
 
-export function treeCollisionDetection(args) {
+export function treeCollisionDetection(args: any) {
   const pointerCollisions = pointerWithin(args);
   if (pointerCollisions.length > 0) return pointerCollisions;
   return closestCenter(args);
@@ -19,8 +19,8 @@ export function RootDropZone({
   onFocusRoot,
   isFocused,
   isSelected = false,
-  mobileTree = false,
-}) {
+  mobileTree = false
+}: any) {
   const rootNode = {
     path: '',
     type: 'folder',
@@ -41,7 +41,7 @@ export function RootDropZone({
     disabled: !canDrop,
   });
 
-  const handleClick = (e) => {
+  const handleClick = (e: any) => {
     if (e.button !== 0) return;
     if (contextMenuOpenedRef.current) {
       contextMenuOpenedRef.current = false;
@@ -51,7 +51,7 @@ export function RootDropZone({
     onFocusRoot?.();
   };
 
-  const handleContextMenu = (e) => {
+  const handleContextMenu = (e: any) => {
     if (mobileTree) {
       e.preventDefault();
       return;
@@ -71,7 +71,7 @@ export function RootDropZone({
     onContextMenu: openFromLongPress,
   });
 
-  const handleOsDragOver = (e) => {
+  const handleOsDragOver = (e: any) => {
     const dt = e.dataTransfer;
     const hasFiles =
       dt.types?.includes?.('Files') || dt.files?.length > 0 || dt.items?.length > 0;
@@ -82,7 +82,7 @@ export function RootDropZone({
     if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'dragOver');
   };
 
-  const handleOsDrop = async (e) => {
+  const handleOsDrop = async (e: any) => {
     e.preventDefault();
     e.stopPropagation();
     const dt = e.dataTransfer;
@@ -134,9 +134,12 @@ export function RootDropZone({
       } ${mobileTree ? 'touch-pan-y' : ''}`}
       style={{ paddingLeft: '8px' }}
     >
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
         <IconFolder size={14} />
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </span>
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span
         className={`truncate ${
           isSelected
@@ -145,12 +148,17 @@ export function RootDropZone({
         }`}
       >
         {storageType === 's3' ? '루트 (버킷 최상위)' : '루트 폴더'}
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </span>
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
 
-export function TreeDragOverlayPreview({ items, isCopy = false }) {
+export function TreeDragOverlayPreview({
+  items,
+  isCopy = false
+}: any) {
   if (!items?.length) return null;
   const primary = items[0];
   const count = items.length;
@@ -165,17 +173,21 @@ export function TreeDragOverlayPreview({ items, isCopy = false }) {
           : 'border-blue-300 dark:border-blue-700'
       }`}
     >
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="max-w-[180px] truncate font-medium text-gray-800 dark:text-odp-fgStrong">
         {primary.name || primary.path}
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </span>
       {isCopy ? (
         <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
           복제
+        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
       ) : null}
       {count > 1 && (
         <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">
           {count}
+        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
       )}
     </Motion.div>

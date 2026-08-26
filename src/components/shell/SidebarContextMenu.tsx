@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
 import {
+  // @ts-expect-error TS(6133): 'MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS' is declare... Remove this comment to see the full error message
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
 } from '@/components/shared/contextMenu/mobileContextMenuStyles';
@@ -17,7 +18,8 @@ import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucid
 
 const VIEWPORT_PADDING = 8;
 
-function formatTreeNodePath(node, storageType) {
+// @ts-expect-error TS(6133): 'storageType' is declared but its value is never r... Remove this comment to see the full error message
+function formatTreeNodePath(node: any, storageType: any) {
   if (!node) return '';
   if (node.path === '.trash/') return '.trash/';
   if (!node.path) return '/';
@@ -42,8 +44,8 @@ function SidebarContextMenuItems({
   onOpenInNewWindow,
   onShareToChatWithMyself,
   itemClass,
-  iconClass,
-}) {
+  iconClass
+}: any) {
   const isFolder = node.type === 'folder';
   const canAdd = isFolder && !isTrashRoot;
   const canEdit = !isTrashRoot;
@@ -52,6 +54,7 @@ function SidebarContextMenuItems({
     <>
       {onCloseTab ? (
         <>
+          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             className={itemClass}
@@ -62,7 +65,9 @@ function SidebarContextMenuItems({
           >
             <IconX className={iconClass} size={14} />
             탭 닫기
+          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             role="separator"
             className="my-0.5 h-px bg-gray-200 dark:bg-odp-borderSoft"
@@ -80,6 +85,7 @@ function SidebarContextMenuItems({
         >
           <IconFilePlus className={iconClass} />
           파일 추가
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {canAdd && onCreateFolder && (
@@ -93,6 +99,7 @@ function SidebarContextMenuItems({
         >
           <IconFolderPlus className={iconClass} />
           폴더 추가
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {!isFolder && node.type === 'file' && onOpenInNewWindow && (
@@ -106,6 +113,7 @@ function SidebarContextMenuItems({
         >
           <SquareArrowOutUpRight className={iconClass} size={14} />
           새 창에서 열기
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {onDownload && (isFolder || node.type === 'file') && (
@@ -119,6 +127,7 @@ function SidebarContextMenuItems({
         >
           <IconDownload className={iconClass} />
           {isFolder ? '폴더 다운로드' : '다운로드'}
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {!isFolder && node.type === 'file' && onShareToChatWithMyself && (
@@ -132,6 +141,7 @@ function SidebarContextMenuItems({
         >
           <IconMessage className={iconClass} size={14} />
           나와의 채팅에 공유하기
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {canEdit && onRename && (
@@ -145,6 +155,7 @@ function SidebarContextMenuItems({
         >
           <PencilIcon className={iconClass} />
           이름 수정
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {isTrashRoot && onEmptyTrash && (
@@ -158,6 +169,7 @@ function SidebarContextMenuItems({
         >
           <IconTrash className={iconClass} />
           쓰레기통 비우기
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {canEdit && onDelete && (
@@ -171,6 +183,7 @@ function SidebarContextMenuItems({
         >
           <IconTrash className={iconClass} />
           {deleteCount > 1 ? `${deleteCount}개 삭제` : '삭제'}
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {canEdit && onDuplicate && (
@@ -184,6 +197,7 @@ function SidebarContextMenuItems({
         >
           <Copy className={iconClass} size={14} />
           복제
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       {canEdit && onMove && (
@@ -197,6 +211,7 @@ function SidebarContextMenuItems({
         >
           <ArrowRightToLine className={iconClass} size={14} />
           이동
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
     </>
@@ -226,8 +241,8 @@ export default function SidebarContextMenu({
   onMove,
   onOpenInNewWindow,
   onShareToChatWithMyself,
-  deleteCount = 1,
-}) {
+  deleteCount = 1
+}: any) {
   const menuRef = useRef(null);
   const [position, setPosition] = useState({ left: x, top: y });
 
@@ -263,12 +278,13 @@ export default function SidebarContextMenu({
 
   useEffect(() => {
     if (!isOpen || mobileDialog) return undefined;
-    const handleClickOutside = (e) => {
+    const handleClickOutside = (e: any) => {
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         onClose();
       }
     };
-    const handleEscape = (e) => {
+    const handleEscape = (e: any) => {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -284,6 +300,7 @@ export default function SidebarContextMenu({
     const el = menuRef.current;
     if (!el) return;
 
+    // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
     const { width, height } = el.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -307,7 +324,7 @@ export default function SidebarContextMenu({
     return (
       <MobileContextMenuModal
         open={isOpen}
-        onOpenChange={(next) => {
+        onOpenChange={(next: any) => {
           if (!next) onClose();
         }}
         title={pathLabel}
@@ -327,6 +344,7 @@ export default function SidebarContextMenu({
       style={{ left: position.left ?? x, top: position.top ?? y }}
     >
       <SidebarContextMenuItems {...itemsProps} />
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>,
     document.body,
   );

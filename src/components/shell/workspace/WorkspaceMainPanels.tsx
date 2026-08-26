@@ -13,6 +13,7 @@ function RouteSuspenseFallback() {
   return (
     <div className="flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted">
       로딩 중…
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
@@ -38,12 +39,13 @@ export default function WorkspaceMainPanels({
   tabsEnabled = true,
   isChatRoute = false,
   isSettingsRoute = false,
+
   /** `titlebar` — tab strip lives in DesktopTitlebar; omit inline WorkspaceTabBar. */
-  tabBarPlacement = 'inline',
-}) {
+  tabBarPlacement = 'inline'
+}: any) {
   const fileTabs = tabs.filter(isFileTab);
-  const hasChatTab = tabs.some((t) => t.kind === 'chat');
-  const hasSettingsTab = tabs.some((t) => t.kind === 'settings');
+  const hasChatTab = tabs.some((t: any) => t.kind === 'chat');
+  const hasSettingsTab = tabs.some((t: any) => t.kind === 'settings');
   const chatActive = tabsEnabled ? activeId === CHAT_TAB_ID : isChatRoute;
   const settingsActive = tabsEnabled ? activeId === SETTINGS_TAB_ID : isSettingsRoute;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
@@ -62,12 +64,14 @@ export default function WorkspaceMainPanels({
               <Suspense fallback={<RouteSuspenseFallback />}>
                 <SettingsPage {...settingsPaneProps} />
               </Suspense>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : isChatRoute ? (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
               <Suspense fallback={<RouteSuspenseFallback />}>
                 <ChatWithMyselfPane {...chatPaneProps} isActive />
               </Suspense>
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -81,9 +85,11 @@ export default function WorkspaceMainPanels({
                   isActiveFile: true,
                 })}
               />
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
         </WorkspaceTabHost>
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -103,7 +109,7 @@ export default function WorkspaceMainPanels({
         />
       ) : null}
       <WorkspaceTabHost>
-        {fileTabs.map((tab) => {
+        {fileTabs.map((tab: any) => {
           const active = tab.id === activeId;
           const useMirrors =
             active &&
@@ -122,10 +128,10 @@ export default function WorkspaceMainPanels({
                   editedFileName: paneName,
                   setEditedFileName: useMirrors
                     ? mirrors.setEditedFileName
-                    : (name) => mirrors?.onInactiveEditedFileName?.(tab.id, name),
+                    : (name: any) => mirrors?.onInactiveEditedFileName?.(tab.id, name),
                   onChangeEditor: useMirrors
                     ? mirrors.onChangeEditor
-                    : (value) => mirrors?.onInactiveEditorChange?.(tab.id, value),
+                    : (value: any) => mirrors?.onInactiveEditorChange?.(tab.id, value),
                   isActiveFile: active,
                 })}
               />
@@ -161,9 +167,11 @@ export default function WorkspaceMainPanels({
                 isActiveFile: true,
               })}
             />
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
       </WorkspaceTabHost>
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
