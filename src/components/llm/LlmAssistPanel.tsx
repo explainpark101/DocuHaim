@@ -8,14 +8,67 @@ import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import LlmProviderSelect from '@/components/llm/LlmProviderSelect';
-import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llm/llmProviderProfiles';
+import {
+  LLM_PROVIDER_OPENAI_COMPATIBLE,
+  type LlmProviderProfile,
+} from '@/utils/llm/llmProviderProfiles';
 import {
   extractImageFilesFromClipboard,
   LLM_ASSIST_MAX_IMAGES,
+  normalizeImageAttachment,
   readImageFilesAsAttachments,
 } from '@/utils/llm/llmAssistImages';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
+
+type LlmPromptTemplateOption = {
+  id: string;
+  name: string;
+};
+
+type LlmImageAttachment = {
+  id: string;
+  name: string;
+  mimeType: string;
+  dataBase64: string;
+  previewDataUrl: string;
+};
+
+type LlmAssistPanelProps = {
+  theme?: string;
+  profiles?: LlmProviderProfile[];
+  selectedProfileId?: string;
+  onSelectedProfileIdChange?: (value: string) => void;
+  selectedProfile?: LlmProviderProfile | null;
+  model?: string;
+  onModelChange?: (value: string) => void;
+  selectedText: string;
+  onRefreshSelection: () => void;
+  attachedImages?: LlmImageAttachment[];
+  onAddImages?: (images: LlmImageAttachment[]) => void | Promise<void>;
+  onRemoveImage?: (id: string) => void;
+  instruction: string;
+  onInstructionChange: (value: string) => void;
+  result: string;
+  onResultChange?: (value: string) => void;
+  resultViewMode?: 'text' | 'preview';
+  onResultViewModeChange?: (value: 'text' | 'preview') => void;
+  loading?: boolean;
+  error?: string;
+  templates?: LlmPromptTemplateOption[];
+  selectedTemplateId?: string;
+  onLoadTemplate?: (id: string) => void;
+  templateName?: string;
+  onTemplateNameChange?: (value: string) => void;
+  editingTemplateId?: string | null;
+  onSaveTemplate?: () => void;
+  onNewTemplate?: () => void;
+  onDeleteTemplate?: () => void;
+  onRun: () => void;
+  onApplyResult: () => void;
+  remoteMode?: boolean;
+  modelSelectAutoLoad?: boolean;
+};
 
 export default function LlmAssistPanel({
   theme = 'light',
@@ -50,12 +103,12 @@ export default function LlmAssistPanel({
   onRun,
   onApplyResult,
   remoteMode = false,
-  modelSelectAutoLoad = true
-}: any) {
+  modelSelectAutoLoad = true,
+}: LlmAssistPanelProps) {
   const resultReadOnly = remoteMode ? false : !result;
-  const panelRef = useRef(null);
-  const resultPreviewRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const resultPreviewRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const attachedCountRef = useRef(attachedImages.length);
   const [imageError, setImageError] = useState('');
   const [addingImages, setAddingImages] = useState(false);
@@ -68,34 +121,37 @@ export default function LlmAssistPanel({
     attachedCountRef.current = attachedImages.length;
   }, [attachedImages.length]);
 
-  const handlePickImages = useCallback(async (fileList: any) => {
+  const handlePickImages = useCallback(async (fileList: FileList | null) => {
     if (!fileList?.length || !onAddImages) return;
     setImageError('');
     setAddingImages(true);
     try {
-      const next = await readImageFilesAsAttachments(fileList, attachedCountRef.current);
+      const raw = await readImageFilesAsAttachments(fileList, attachedCountRef.current);
+      const next = raw
+        .map(normalizeImageAttachment)
+        .filter((item): item is LlmImageAttachment => item !== null);
       await onAddImages(next);
-    } catch (err) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      setImageError(err?.message || '이미지를 추가할 수 없습니다.');
+    } catch (err: unknown) {
+      setImageError(
+        err instanceof Error ? err.message : '이미지를 추가할 수 없습니다.',
+      );
     } finally {
       setAddingImages(false);
-      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [onAddImages]);
 
-  const handleImageDrop = async (e: any) => {
+  const handleImageDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     await handlePickImages(e.dataTransfer?.files);
   };
 
   useEffect(() => {
-    const onPaste = async (e: any) => {
+    const onPaste = async (e: ClipboardEvent) => {
       if (!onAddImages || !panelRef.current) return;
-      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
-      if (!panelRef.current.contains(e.target)) return;
+      const target = e.target;
+      if (!(target instanceof Node) || !panelRef.current.contains(target)) return;
       if (addingImages || attachedCountRef.current >= LLM_ASSIST_MAX_IMAGES) return;
 
       const files = extractImageFilesFromClipboard(e.clipboardData);
@@ -105,11 +161,17 @@ export default function LlmAssistPanel({
       setImageError('');
       setAddingImages(true);
       try {
-        const next = await readImageFilesAsAttachments(files, attachedCountRef.current);
+        const raw = await readImageFilesAsAttachments(files, attachedCountRef.current);
+        const next = raw
+          .map(normalizeImageAttachment)
+          .filter((item): item is LlmImageAttachment => item !== null);
         await onAddImages(next);
-      } catch (err) {
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        setImageError(err?.message || '클립보드 이미지를 붙여넣을 수 없습니다.');
+      } catch (err: unknown) {
+        setImageError(
+          err instanceof Error
+            ? err.message
+            : '클립보드 이미지를 붙여넣을 수 없습니다.',
+        );
       } finally {
         setAddingImages(false);
       }
@@ -140,7 +202,7 @@ export default function LlmAssistPanel({
               getBaseUrl={() => selectedProfile.baseUrl || ''}
               getApiKey={() => selectedProfile.apiKey || ''}
               value={model}
-              onChange={onModelChange}
+              onChange={onModelChange ?? (() => {})}
               autoLoad={modelSelectAutoLoad}
             />
           ) : (
@@ -149,7 +211,7 @@ export default function LlmAssistPanel({
               getGeminiApiKey={() => selectedProfile.apiKey || ''}
               profileId={selectedProfile.id}
               value={model}
-              onChange={onModelChange}
+              onChange={onModelChange ?? (() => {})}
               autoLoad={modelSelectAutoLoad}
             />
           )}
@@ -168,7 +230,6 @@ export default function LlmAssistPanel({
             새로고침
           </button>
         </div>
-        // @ts-expect-error TS(2339): Property 'textarea' does not exist on type 'JSX.In... Remove this comment to see the full error message
         <textarea
           readOnly
           value={selectedText}
@@ -188,7 +249,6 @@ export default function LlmAssistPanel({
           </label>
           <button
             type="button"
-            // @ts-expect-error TS(2339): Property 'click' does not exist on type 'never'.
             onClick={() => fileInputRef.current?.click()}
             disabled={addingImages || attachedImages.length >= LLM_ASSIST_MAX_IMAGES}
             className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
@@ -203,10 +263,10 @@ export default function LlmAssistPanel({
           accept="image/jpeg,image/png,image/webp,image/gif"
           multiple
           className="hidden"
-          onChange={(e: any) => handlePickImages(e.target.files)}
+          onChange={(e) => handlePickImages(e.target.files)}
         />
         <div
-          onDragOver={(e: any) => {
+          onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
           }}
@@ -217,8 +277,7 @@ export default function LlmAssistPanel({
         >
           {attachedImages.length ? (
             <div className="grid grid-cols-2 gap-2">
-              // @ts-expect-error TS(7006): Parameter 'img' implicitly has an 'any' type.
-              {attachedImages.map((img: any) => (
+              {attachedImages.map((img) => (
                 <div
                   key={img.id}
                   className="relative overflow-hidden rounded border border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft"
@@ -261,12 +320,11 @@ export default function LlmAssistPanel({
           <label className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">템플릿</label>
           <select
             value={selectedTemplateId}
-            onChange={(e: any) => onLoadTemplate?.(e.target.value)}
+            onChange={(e) => onLoadTemplate?.(e.target.value)}
             className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
           >
             <option value="">— 불러오기 —</option>
-            // @ts-expect-error TS(7006): Parameter 't' implicitly has an 'any' type.
-            {templates.map((t: any) => (
+            {templates.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>
@@ -281,14 +339,13 @@ export default function LlmAssistPanel({
         <input
           type="text"
           value={templateName}
-          onChange={(e: any) => onTemplateNameChange?.(e.target.value)}
+          onChange={(e) => onTemplateNameChange?.(e.target.value)}
           placeholder="템플릿 이름"
           className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
         />
-        // @ts-expect-error TS(2339): Property 'textarea' does not exist on type 'JSX.In... Remove this comment to see the full error message
         <textarea
           value={instruction}
-          onChange={(e: any) => onInstructionChange?.(e.target.value)}
+          onChange={(e) => onInstructionChange?.(e.target.value)}
           rows={4}
           placeholder="지시사항 (예: 이미지를 설명하거나, 선택한 텍스트를 다시 써 주세요)"
           className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
@@ -377,7 +434,7 @@ export default function LlmAssistPanel({
             {result ? (
               <MdPreview
                 id={RESULT_PREVIEW_ID}
-                theme={theme}
+                theme={theme === 'dark' ? 'dark' : 'light'}
                 language="ko-KR"
                 codeTheme={MD_EDITOR_CODE_THEME}
                 customIcon={MD_EDITOR_CUSTOM_ICONS}
@@ -396,7 +453,7 @@ export default function LlmAssistPanel({
           <textarea
             readOnly={resultReadOnly}
             value={result}
-            onChange={(e: any) => onResultChange?.(e.target.value)}
+            onChange={(e) => onResultChange?.(e.target.value)}
             rows={6}
             className="w-full resize-y rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] leading-relaxed text-gray-800 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
             placeholder="실행 후 결과가 여기에 표시됩니다."

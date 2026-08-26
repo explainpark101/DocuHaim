@@ -118,18 +118,72 @@ import { useAuth } from '@/contexts/AuthContext';
 import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
 import { FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT } from '@/utils/previewFootnotesSettings';
 import PreviewFootnoteTooltips from '@/components/editor/PreviewFootnoteTooltips';
+import type { CoverPlaceMode } from '@/utils/noteCover/placeMode';
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';
 const PRINT_TOC_DEFAULT_WIDTH = 360;
 
+type ExportDocumentFile = {
+  id: string;
+  content?: string;
+  type?: string;
+} & Record<string, unknown>;
+
+type TocItem = {
+  id: string;
+  level: number;
+  text: string;
+};
+
+type WikiImageModalState = {
+  kind: 'wiki' | 'markdown';
+  key: string;
+  width?: string;
+  height?: string;
+  occurrence?: number;
+  imageSrc?: string;
+};
+
+type FreeTransformState = {
+  kind: string;
+  key: string;
+  occurrence: number;
+  widthPx: number;
+  heightPx: number;
+  originalWidthPx: number;
+  originalHeightPx: number;
+};
+
+type OverlayRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type HeadingPgbrModalState = {
+  headingIndex: number;
+  headingText: string;
+};
+
+type ExportPDFPageProps = {
+  documentValue?: string;
+  documentFile?: ExportDocumentFile | null;
+  openCoverEdit?: boolean;
+  isDocumentLoading?: boolean;
+  hasNavigationSession?: boolean;
+};
+
 const headingId = ({
-  index
-}: any) => `pdf-ex-heading-${index}`;
+  index,
+}: {
+  index: number;
+}) => `pdf-ex-heading-${index}`;
 /** TOC stays active until the next heading crosses this viewport ratio from the top. */
 const TOC_ACTIVE_SCAN_RATIO = 2 / 3;
 
-function getActiveHeadingId(headingEls: any) {
+function getActiveHeadingId(headingEls: HTMLElement[]) {
   const scanY = window.innerHeight * TOC_ACTIVE_SCAN_RATIO;
   let activeId = null;
   for (const el of headingEls) {
@@ -449,7 +503,7 @@ export default function ExportPDFPage({
   openCoverEdit: openCoverEditProp = false,
   isDocumentLoading = false,
   hasNavigationSession = false,
-}) {
+}: ExportPDFPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
@@ -485,18 +539,21 @@ export default function ExportPDFPage({
   const [fontModalOpen, setFontModalOpen] = useState(false);
   const [tocVisible, setTocVisible] = useState(true);
   const [tocTopPx, setTocTopPx] = useState(0);
-  const [tocItems, setTocItems] = useState<any[]>([]);
+  const [tocItems, setTocItems] = useState<TocItem[]>([]);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const [visibleHeadingIds, setVisibleHeadingIds] = useState<string[]>([]);
-  const [wikiImageModalState, setWikiImageModalState] = useState<any>(null);
+  const [wikiImageModalState, setWikiImageModalState] = useState<WikiImageModalState | null>(null);
   /** TOC right-click: insert `<pgbr/>` before a heading (ConfirmModal). */
-  const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
-  const [freeTransformState, setFreeTransformState] = useState(null);
+  const [headingPgbrModalState, setHeadingPgbrModalState] = useState<HeadingPgbrModalState | null>(
+    null,
+  );
+  const [freeTransformState, setFreeTransformState] = useState<FreeTransformState | null>(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
-  const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
+  const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState<OverlayRect | null>(
+    null,
+  );
   const [coverEditMode, setCoverEditMode] = useState(() => Boolean(openCoverEdit));
   const [coverSelectedIds, setCoverSelectedIds] = useState<string[]>([]);
-  // @ts-expect-error TS(2304) FIXME: Cannot find name 'CoverPlaceMode'.
   const [coverPlaceMode, setCoverPlaceMode] = useState<CoverPlaceMode>(null);
   const [coverCenterSnap, setCoverCenterSnap] = useState(() => loadCoverCenterSnapEnabled());
   const [coverCenterSnapTolerance, setCoverCenterSnapTolerance] = useState(() =>
@@ -515,18 +572,18 @@ export default function ExportPDFPage({
   const [flipIndex, setFlipIndex] = useState(0);
   const [stageVisiblePages, setStageVisiblePages] = useState<number[] | null>(null);
   const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
-  const activeTransformRef = useRef(null);
-  const headerRef = useRef(null);
-  const previewContainerRef = useRef(null);
-  const [previewPanRoot, setPreviewPanRoot] = useState(null);
-  const setPreviewContainerRef = useCallback((node: any) => {
+  const activeTransformRef = useRef<FreeTransformState | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const [previewPanRoot, setPreviewPanRoot] = useState<HTMLDivElement | null>(null);
+  const setPreviewContainerRef = useCallback((node: HTMLDivElement | null) => {
     previewContainerRef.current = node;
     setPreviewPanRoot(node);
   }, []);
-  const paperContentRef = useRef(null);
-  const pagesHostRef = useRef(null);
-  const coverPageRef = useRef(null);
-  const imageMaxProbeRef = useRef(null);
+  const paperContentRef = useRef<HTMLDivElement | null>(null);
+  const pagesHostRef = useRef<HTMLDivElement | null>(null);
+  const coverPageRef = useRef<HTMLDivElement | null>(null);
+  const imageMaxProbeRef = useRef<HTMLDivElement | null>(null);
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
   usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
@@ -547,9 +604,9 @@ export default function ExportPDFPage({
     effectivePageInnerHeightPx,
     packLayoutKey,
   );
-  const tocListRef = useRef(null);
+  const tocListRef = useRef<HTMLUListElement | null>(null);
   const tocProgrammaticScrollRef = useRef(false);
-  const tocProgrammaticResetTimerRef = useRef(null);
+  const tocProgrammaticResetTimerRef = useRef<number | null>(null);
   const tocAutoFollowPausedUntilRef = useRef(0);
   const {
     width: tocWidth,
@@ -609,11 +666,8 @@ export default function ExportPDFPage({
   // After refresh, MainApp loads the note from `/export-pdf/*` into props.
   useEffect(() => {
     if (locationState?.value != null) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
     if (!documentFile?.id) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
     if (hydratedFileIdRef.current === documentFile.id) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
     hydratedFileIdRef.current = documentFile.id;
     setCurrentFile(documentFile);
     const nextValue = typeof documentValue === 'string' ? documentValue : '';
@@ -837,7 +891,6 @@ export default function ExportPDFPage({
         setTocTopPx(0);
         return;
       }
-      // @ts-expect-error TS(2339) FIXME: Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
       const rect = el.getBoundingClientRect();
       setTocTopPx(Math.max(0, Math.round(rect.bottom)));
     };
@@ -887,15 +940,13 @@ export default function ExportPDFPage({
       ].join(', ');
       const stagingSelector = '#export-pdf-preview .md-editor-preview h1, #export-pdf-preview .md-editor-preview h2, #export-pdf-preview .md-editor-preview h3, #export-pdf-preview .md-editor-preview h4, #export-pdf-preview .md-editor-preview h5, #export-pdf-preview .md-editor-preview h6';
       const packed = pagesHost
-        // @ts-expect-error TS(2339) FIXME: Property 'querySelectorAll' does not exist on type... Remove this comment to see the full error message
-        ? [...pagesHost.querySelectorAll(headingSelector)]
+        ? [...pagesHost.querySelectorAll<HTMLElement>(headingSelector)]
         : [];
       const headings = packed.length
         ? packed
-        // @ts-expect-error TS(2339) FIXME: Property 'querySelectorAll' does not exist on type... Remove this comment to see the full error message
-        : [...root.querySelectorAll(stagingSelector)];
-      const seen = new Set();
-      const next: any = [];
+        : [...root.querySelectorAll<HTMLElement>(stagingSelector)];
+      const seen = new Set<string>();
+      const next: TocItem[] = [];
       headings.forEach((el, index) => {
         const id = el.id || headingId({ index });
         if (!id || seen.has(id)) return;
@@ -927,7 +978,7 @@ export default function ExportPDFPage({
 
     const headingEls = tocItems
       .map((item) => document.getElementById(item.id))
-      .filter(Boolean);
+      .filter((el): el is HTMLElement => el !== null);
 
     if (!headingEls.length) {
       setVisibleHeadingIds([]);
@@ -956,13 +1007,11 @@ export default function ExportPDFPage({
     };
 
     applyActiveHeading();
-    // @ts-expect-error TS(2339) FIXME: Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     scrollRoot?.addEventListener('scroll', scheduleUpdate, { passive: true });
     window.addEventListener('scroll', scheduleUpdate, { passive: true, capture: true });
     window.addEventListener('resize', scheduleUpdate);
 
     let resizeObserver: any = null;
-    // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
     const resizeTarget = scrollRoot?.querySelector(`#${EDITOR_ID}`) ?? scrollRoot;
     if (typeof ResizeObserver !== 'undefined' && resizeTarget) {
       resizeObserver = new ResizeObserver(scheduleUpdate);
@@ -971,7 +1020,6 @@ export default function ExportPDFPage({
 
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
-      // @ts-expect-error TS(2339) FIXME: Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       scrollRoot?.removeEventListener('scroll', scheduleUpdate);
       window.removeEventListener('scroll', scheduleUpdate, { capture: true });
       window.removeEventListener('resize', scheduleUpdate);
@@ -989,11 +1037,9 @@ export default function ExportPDFPage({
     const firstVisibleId = tocItems.find((item) => visibleHeadingIds.includes(item.id))?.id;
     if (!firstVisibleId) return;
 
-    // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
     const target = tocList.querySelector(`button[data-toc-id="${firstVisibleId}"]`);
     if (!target) return;
 
-    // @ts-expect-error TS(2339) FIXME: Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
     const listRect = tocList.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
     const isWithinViewport = targetRect.top >= listRect.top + 8 && targetRect.bottom <= listRect.bottom - 8;
@@ -1004,7 +1050,6 @@ export default function ExportPDFPage({
     if (tocProgrammaticResetTimerRef.current) {
       window.clearTimeout(tocProgrammaticResetTimerRef.current);
     }
-    // @ts-expect-error TS(2322) FIXME: Type 'number' is not assignable to type 'null'.
     tocProgrammaticResetTimerRef.current = window.setTimeout(() => {
       tocProgrammaticScrollRef.current = false;
     }, 120);
@@ -1084,9 +1129,9 @@ export default function ExportPDFPage({
         alert('세션 노트는 뒤로 가면 편집기에 반영됩니다.');
       }
       return true;
-    } catch (error) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      alert(`저장 실패: ${error?.message || error}`);
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.message : String(error);
+      alert(`저장 실패: ${detail}`);
       return false;
     } finally {
       setIsSaving(false);
@@ -1134,8 +1179,7 @@ export default function ExportPDFPage({
       }
       const top = document.elementFromPoint(event.clientX, event.clientY);
       if (top?.closest?.(COVER_SEL)) return true;
-      // @ts-expect-error TS(2339) FIXME: Property 'querySelectorAll' does not exist on type... Remove this comment to see the full error message
-      for (const cover of root.querySelectorAll(COVER_SEL)) {
+      for (const cover of root.querySelectorAll<HTMLElement>(COVER_SEL)) {
         const rect = cover.getBoundingClientRect();
         if (
           event.clientX >= rect.left
@@ -1161,10 +1205,10 @@ export default function ExportPDFPage({
       if (!contentRoot) return;
 
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
-      // @ts-expect-error TS(2339) FIXME: Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
-      if (img && contentRoot.contains(img)) {
+      if (img instanceof HTMLImageElement && contentRoot.contains(img)) {
         const attrs = getResizableImageAttrsFromElement(img);
         if (!attrs.kind || !attrs.key) return;
+        if (attrs.kind !== 'wiki' && attrs.kind !== 'markdown') return;
         event.preventDefault();
         const occurrence =
           attrs.kind === 'wiki'
@@ -1180,9 +1224,7 @@ export default function ExportPDFPage({
         });
       }
     };
-    // @ts-expect-error TS(2339) FIXME: Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('contextmenu', onContextMenu);
-    // @ts-expect-error TS(2339) FIXME: Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => root.removeEventListener('contextmenu', onContextMenu);
   }, []);
 
@@ -1259,7 +1301,7 @@ export default function ExportPDFPage({
       }
       const prepared = await prepareMarkdownImageForWikiConvert({
         markdownSrc: modal.key,
-        displaySrc: modal.imageSrc,
+        displaySrc: modal.imageSrc ?? null,
         currentNotePath: currentFile?.id ?? null,
       });
       let nextPath = '';
@@ -1305,16 +1347,15 @@ export default function ExportPDFPage({
       }
       const fetchSrc = resolveImgbbFetchSrc({
         path: modal.key,
-        imageSrc: modal.imageSrc,
+        imageSrc: modal.imageSrc ?? null,
       });
       if (!fetchSrc) {
         throw new Error('업로드할 이미지 소스를 찾지 못했습니다.');
       }
-      // @ts-expect-error TS(2379) FIXME: Argument of type '{ apiKey: string; image: string;... Remove this comment to see the full error message
       const uploaded = await uploadImageToImgbb({
         apiKey,
         image: fetchSrc,
-        name: isDataImageUri(modal.key) ? 'image' : undefined,
+        ...(isDataImageUri(modal.key) ? { name: 'image' } : {}),
       });
       const nextUrl = uploaded.url;
       const occurrence = modal.occurrence ?? 0;
@@ -1360,8 +1401,7 @@ export default function ExportPDFPage({
     if (!root || !target?.kind || !target?.key) return null;
     const selector =
       target.kind === 'wiki' ? 'img[data-wiki-path]' : 'img[data-md-src]';
-    // @ts-expect-error TS(2339) FIXME: Property 'querySelectorAll' does not exist on type... Remove this comment to see the full error message
-    const images = [...root.querySelectorAll(selector)];
+    const images = [...root.querySelectorAll<HTMLImageElement>(selector)];
     const matched = images.filter((img) => {
       const key =
         target.kind === 'wiki'
@@ -1392,9 +1432,7 @@ export default function ExportPDFPage({
     img.style.width = `${widthPx}px`;
     img.style.height = `${heightPx}px`;
     img.setAttribute('data-print-free-transform', '1');
-    // @ts-expect-error TS(2322) FIXME: Type '{ kind: any; key: any; occurrence: any; widt... Remove this comment to see the full error message
     activeTransformRef.current = next;
-    // @ts-expect-error TS(2345) FIXME: Argument of type '{ kind: any; key: any; occurrenc... Remove this comment to see the full error message
     setFreeTransformState(next);
     setFreeTransformConfirmOpen(false);
   }, [findResizableImageElement, wikiImageModalState]);
@@ -1414,7 +1452,6 @@ export default function ExportPDFPage({
     const updateRect = () => {
       const rect = img.getBoundingClientRect();
       setFreeTransformOverlayRect({
-        // @ts-expect-error TS(2345) FIXME: Argument of type '{ left: any; top: any; width: an... Remove this comment to see the full error message
         left: rect.left,
         top: rect.top,
         width: rect.width,
@@ -1442,32 +1479,23 @@ export default function ExportPDFPage({
       const startX = event.clientX;
       const startY = event.clientY;
       const baseRatio =
-        // @ts-expect-error TS(2339) FIXME: Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         start.heightPx > 0 ? start.widthPx / start.heightPx : 1;
 
-      const onMove = (moveEvent: any) => {
+      const onMove = (moveEvent: PointerEvent) => {
         const dx = moveEvent.clientX - startX;
         const dy = moveEvent.clientY - startY;
-        // @ts-expect-error TS(2339) FIXME: Property 'widthPx' does not exist on type 'never'.
         let width = start.widthPx;
-        // @ts-expect-error TS(2339) FIXME: Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         let height = start.heightPx;
-        // @ts-expect-error TS(2339) FIXME: Property 'widthPx' does not exist on type 'never'.
         if (dir.includes('e')) width = start.widthPx + dx;
-        // @ts-expect-error TS(2339) FIXME: Property 'widthPx' does not exist on type 'never'.
         if (dir.includes('w')) width = start.widthPx - dx;
-        // @ts-expect-error TS(2339) FIXME: Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         if (dir.includes('s')) height = start.heightPx + dy;
-        // @ts-expect-error TS(2339) FIXME: Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         if (dir.includes('n')) height = start.heightPx - dy;
         width = Math.max(24, width);
         height = Math.max(24, height);
 
         const keepAspect = isTouchResize || moveEvent.shiftKey;
         if (keepAspect) {
-          // @ts-expect-error TS(2339) FIXME: Property 'widthPx' does not exist on type 'never'.
           const widthChangeRate = Math.abs((width - start.widthPx) / Math.max(1, start.widthPx));
-          // @ts-expect-error TS(2339) FIXME: Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
           const heightChangeRate = Math.abs((height - start.heightPx) / Math.max(1, start.heightPx));
           if (widthChangeRate >= heightChangeRate) {
             height = Math.max(24, width / Math.max(0.0001, baseRatio));
@@ -1480,7 +1508,6 @@ export default function ExportPDFPage({
         height = Math.max(24, Math.round(height));
         target.style.width = `${width}px`;
         target.style.height = `${height}px`;
-        // @ts-expect-error TS(2698) FIXME: Spread types may only be created from object types... Remove this comment to see the full error message
         const next = { ...(activeTransformRef.current || start), widthPx: width, heightPx: height };
         activeTransformRef.current = next;
         setFreeTransformState(next);
@@ -1524,27 +1551,19 @@ export default function ExportPDFPage({
 
   const handleConfirmTransformApply = useCallback(() => {
     const active = activeTransformRef.current || freeTransformState;
-    // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
     if (!active?.key) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'widthPx' does not exist on type 'never'.
     const width = `${Math.round(active.widthPx)}px`;
-    // @ts-expect-error TS(2339) FIXME: Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
     const height = `${Math.round(active.heightPx)}px`;
     const next =
-      // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
       active.kind === 'wiki'
         ? updateWikiImageSizeInMarkdown(previewValue, {
-            // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
             path: active.key,
-            // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
             occurrence: active.occurrence ?? 0,
             width,
             height,
           })
         : updateMarkdownImageSizeInMarkdown(previewValue, {
-            // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
             src: active.key,
-            // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
             occurrence: active.occurrence ?? 0,
             width,
             height,
@@ -1569,10 +1588,8 @@ export default function ExportPDFPage({
     const md = previewValueRef.current ?? '';
     const next = insertPgbrBeforeHeadingByText(
       md,
-      // @ts-expect-error TS(2339) FIXME: Property 'headingText' does not exist on type 'nev... Remove this comment to see the full error message
       state.headingText || '',
       0,
-      // @ts-expect-error TS(2339) FIXME: Property 'headingIndex' does not exist on type 'ne... Remove this comment to see the full error message
       state.headingIndex,
     );
     if (next.updated && next.markdown !== md) {
@@ -1590,9 +1607,7 @@ export default function ExportPDFPage({
     if (!active) return;
     const img = findResizableImageElement(active);
     if (img) {
-      // @ts-expect-error TS(2339) FIXME: Property 'originalWidthPx' does not exist on type ... Remove this comment to see the full error message
       img.style.width = `${active.originalWidthPx}px`;
-      // @ts-expect-error TS(2339) FIXME: Property 'originalHeightPx' does not exist on type... Remove this comment to see the full error message
       img.style.height = `${active.originalHeightPx}px`;
       img.removeAttribute('data-print-free-transform');
     }
@@ -1618,8 +1633,7 @@ export default function ExportPDFPage({
 
   // Advanced Search: print toolbar actions + live TOC headings.
   useEffect(() => {
-    /** @type {Record<string, () => void>} */
-    const handlers = {
+    const handlers: Record<string, () => void> = {
       'print-save': () => {
         void handleSave();
       },
@@ -1656,15 +1670,13 @@ export default function ExportPDFPage({
         if (!coverEditMode) {
           toggleCoverEditMode();
         }
-        // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
-        setCoverPlaceMode((prev) => (prev?.kind === 'text' ? null : { kind: 'text' }));
+        setCoverPlaceMode((prev: CoverPlaceMode) => (prev?.kind === 'text' ? null : { kind: 'text' }));
       },
       'print-cover-place-rect': () => {
         if (!coverEditMode) {
           toggleCoverEditMode();
         }
-        // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
-        setCoverPlaceMode((prev) => (
+        setCoverPlaceMode((prev: CoverPlaceMode) => (
           prev?.kind === 'shape' && prev.shapeType === 'rect'
             ? null
             : { kind: 'shape', shapeType: 'rect' }
@@ -1674,8 +1686,7 @@ export default function ExportPDFPage({
         if (!coverEditMode) {
           toggleCoverEditMode();
         }
-        // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
-        setCoverPlaceMode((prev) => (
+        setCoverPlaceMode((prev: CoverPlaceMode) => (
           prev?.kind === 'shape' && prev.shapeType === 'ellipse'
             ? null
             : { kind: 'shape', shapeType: 'ellipse' }
@@ -1708,7 +1719,6 @@ export default function ExportPDFPage({
       },
     };
     for (const size of PRINT_PAGE_SIZES) {
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       handlers[paperActionId(size.id)] = () => {
         updatePrintLayout({ pageSizeId: size.id });
       };
@@ -1756,9 +1766,7 @@ export default function ExportPDFPage({
         return next;
       });
     };
-    // @ts-expect-error TS(2339) FIXME: Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('wheel', onWheel, { passive: false });
-    // @ts-expect-error TS(2339) FIXME: Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => root.removeEventListener('wheel', onWheel);
   }, [previewPanRoot]);
 
@@ -2203,10 +2211,10 @@ export default function ExportPDFPage({
                           const idMatch = String(item.id || '').match(/^pdf-ex-heading-(\d+)$/i);
                           const fromId = idMatch?.[1] ? Number(idMatch[1]) : null;
                           const headingIndex =
-                            // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-                            Number.isInteger(fromId) && fromId >= 1 ? fromId : i + 1;
+                            fromId !== null && Number.isInteger(fromId) && fromId >= 1
+                              ? fromId
+                              : i + 1;
                           setHeadingPgbrModalState({
-                            // @ts-expect-error TS(2345) FIXME: Argument of type '{ headingIndex: number | null; h... Remove this comment to see the full error message
                             headingIndex,
                             headingText: item.text || '',
                           });
@@ -2271,13 +2279,9 @@ export default function ExportPDFPage({
         <div
           className="fixed z-70 pointer-events-none border-2 border-blue-500 print:hidden"
           style={{
-            // @ts-expect-error TS(2339) FIXME: Property 'left' does not exist on type 'never'.
             left: `${freeTransformOverlayRect.left}px`,
-            // @ts-expect-error TS(2339) FIXME: Property 'top' does not exist on type 'never'.
             top: `${freeTransformOverlayRect.top}px`,
-            // @ts-expect-error TS(2339) FIXME: Property 'width' does not exist on type 'never'.
             width: `${freeTransformOverlayRect.width}px`,
-            // @ts-expect-error TS(2339) FIXME: Property 'height' does not exist on type 'never'.
             height: `${freeTransformOverlayRect.height}px`,
           }}
         >
@@ -2340,7 +2344,6 @@ export default function ExportPDFPage({
       <ConfirmModal
         isOpen={Boolean(headingPgbrModalState)}
         title="페이지 나누기 삽입"
-        // @ts-expect-error TS(2339) FIXME: Property 'headingText' does not exist on type 'nev... Remove this comment to see the full error message
         message={`아래 heading 앞에 <pgbr/> 를 삽입합니다.\n\n${headingPgbrModalState?.headingText || '(제목 텍스트 없음)'}`}
         confirmLabel="삽입"
         cancelLabel="취소"

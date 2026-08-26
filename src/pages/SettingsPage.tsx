@@ -61,6 +61,7 @@ import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLo
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
+  type LlmProviderProfile,
 } from '@/utils/llm/llmProviderProfiles';
 import { getLocalAppBuildId } from '@/utils/shared/pwaUpdate';
 import { RadioGroup } from 'radix-ui';
@@ -261,7 +262,7 @@ export default function SettingsPage({
 
   const hasStoredImgbbKey = Boolean((s3Creds?.imgbbApiKey || '').trim());
 
-  const buildCredsForSave = (nextProfiles: any) => {
+  const buildCredsForSave = (nextProfiles?: LlmProviderProfile[]) => {
     const profiles =
       nextProfiles !== undefined
         ? nextProfiles
@@ -322,7 +323,6 @@ export default function SettingsPage({
         </div>
         <button
           type="button"
-          // @ts-expect-error TS(2554) FIXME: Expected 1 arguments, but got 0.
           onClick={() => onRequestClose?.(buildCredsForSave())}
           className="text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition"
         >
@@ -383,7 +383,6 @@ export default function SettingsPage({
           tabIndex={-1}
           onSubmit={(e: any) => {
             e.preventDefault();
-            // @ts-expect-error TS(2554) FIXME: Expected 1 arguments, but got 0.
             onSaveS3Creds(buildCredsForSave());
           }}
           className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
@@ -487,7 +486,6 @@ export default function SettingsPage({
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  // @ts-expect-error TS(2554) FIXME: Expected 1 arguments, but got 0.
                   onClick={() => onRequestClose?.(buildCredsForSave())}
                   className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition dark:text-odp-muted dark:hover:bg-odp-focusBg"
                 >
@@ -612,11 +610,11 @@ export default function SettingsPage({
                       }
                       await backend.testConnection();
                       alert('WebDAV 연결에 성공했습니다.');
-                    } catch (e) {
+                    } catch (e: unknown) {
+                      const detail = e instanceof Error ? e.message : String(e);
                       alert(
                         'WebDAV 연결 실패: ' +
-                          // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-                          (e?.message || e) +
+                          detail +
                           '\n\n브라우저에서 사용하려면 서버 CORS가 허용되어야 합니다.',
                       );
                     }
@@ -771,17 +769,23 @@ export default function SettingsPage({
                     let promise;
                     try {
                       promise = onEnableWebAuthn(masterPassword);
-                    } catch (err) {
-                      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-                      alert(err?.message || '보안 키 등록에 실패했습니다.');
+                    } catch (err: unknown) {
+                      alert(
+                        err instanceof Error
+                          ? err.message
+                          : '보안 키 등록에 실패했습니다.',
+                      );
                       return;
                     }
                     setWebauthnLoading(true);
                     try {
                       await promise;
-                    } catch (err) {
-                      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-                      alert(err?.message || '보안 키 등록에 실패했습니다.');
+                    } catch (err: unknown) {
+                      alert(
+                        err instanceof Error
+                          ? err.message
+                          : '보안 키 등록에 실패했습니다.',
+                      );
                     } finally {
                       setWebauthnLoading(false);
                     }
@@ -841,7 +845,6 @@ export default function SettingsPage({
               alert('API 키를 입력하세요.');
               return;
             }
-            // @ts-expect-error TS(2554) FIXME: Expected 1 arguments, but got 0.
             onSaveS3Creds(buildCredsForSave());
           }}
           className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"

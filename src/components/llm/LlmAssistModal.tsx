@@ -35,6 +35,37 @@ import {
 import LlmAssistPanel from '@/components/llm/LlmAssistPanel';
 import { LLM_ASSIST_MAX_IMAGES, normalizeImageAttachment } from '@/utils/llm/llmAssistImages';
 
+type LlmPromptTemplate = {
+  id: string;
+  name: string;
+  instruction: string;
+  updatedAt: number;
+};
+
+type LlmImageAttachment = {
+  id: string;
+  name: string;
+  mimeType: string;
+  dataBase64: string;
+  previewDataUrl: string;
+};
+
+type PopoutActionPayload = {
+  value?: string;
+  id?: string;
+  images?: unknown[];
+};
+
+type LlmAssistModalProps = {
+  editorRef: { current?: unknown } | null;
+  onChange?: (value: string) => void;
+  getMarkdown?: () => string;
+  llmProviderProfiles?: import('@/utils/llm/llmProviderProfiles').LlmProviderProfile[];
+  open: boolean;
+  onOpenChange?: (open: boolean) => void;
+  theme?: string;
+};
+
 export default function LlmAssistModal({
   editorRef,
   onChange,
@@ -42,23 +73,23 @@ export default function LlmAssistModal({
   llmProviderProfiles = [],
   open,
   onOpenChange,
-  theme = 'light'
-}: any) {
+  theme = 'light',
+}: LlmAssistModalProps) {
   const profiles = Array.isArray(llmProviderProfiles) ? llmProviderProfiles : [];
   const [hidden, setHidden] = useState(() => loadLlmModalHidden());
   const [popoutActive, setPopoutActive] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
-  const [attachedImages, setAttachedImages] = useState([]);
+  const [attachedImages, setAttachedImages] = useState<LlmImageAttachment[]>([]);
   const [instruction, setInstruction] = useState('');
   const [result, setResult] = useState('');
-  const [resultViewMode, setResultViewMode] = useState('text');
+  const [resultViewMode, setResultViewMode] = useState<'text' | 'preview'>('text');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState<LlmPromptTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templateName, setTemplateName] = useState('');
-  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [profileId, setProfileId, syncProfileId] = useLlmProfileIdState(profiles);
   const selectedProfile = resolveSelectedLlmProfile(profiles, profileId);
   const [model, setModel] = useState(() =>
@@ -67,7 +98,7 @@ export default function LlmAssistModal({
       : '',
   );
 
-  const popoutRef = useRef(null);
+  const popoutRef = useRef<Window | null>(null);
   const {
     panelRef,
     panelStyle,
@@ -123,17 +154,14 @@ export default function LlmAssistModal({
 
   const syncToPopout = useCallback(() => {
     const win = popoutRef.current;
-    // @ts-expect-error TS(2339): Property 'closed' does not exist on type 'never'.
     if (!win || win.closed) return;
     postLlmAssistMessage(win, LLM_ASSIST_MSG.SYNC, { state: buildSyncPayload() });
   }, [buildSyncPayload]);
 
   const closePopout = useCallback(() => {
     const win = popoutRef.current;
-    // @ts-expect-error TS(2339): Property 'closed' does not exist on type 'never'.
     if (win && !win.closed) {
       try {
-        // @ts-expect-error TS(2339): Property 'close' does not exist on type 'never'.
         win.close();
       } catch {
         // ignore
@@ -202,7 +230,6 @@ export default function LlmAssistModal({
     if (!popoutActive) return undefined;
     const interval = setInterval(() => {
       const win = popoutRef.current;
-      // @ts-expect-error TS(2339): Property 'closed' does not exist on type 'never'.
       if (!win || win.closed) {
         popoutRef.current = null;
         setPopoutActive(false);
@@ -219,11 +246,9 @@ export default function LlmAssistModal({
 
     const onBeforeUnload = () => {
       const win = popoutRef.current;
-      // @ts-expect-error TS(2339): Property 'closed' does not exist on type 'never'.
       if (win && !win.closed) {
         postLlmAssistMessage(win, LLM_ASSIST_MSG.PARENT_CLOSING);
         try {
-          // @ts-expect-error TS(2339): Property 'close' does not exist on type 'never'.
           win.close();
         } catch {
           // ignore
@@ -236,7 +261,7 @@ export default function LlmAssistModal({
   }, [open, closePopout]);
 
   const handleModelChange = useCallback(
-    (nextId: any) => {
+    (nextId: string) => {
       const next = String(nextId || '').trim();
       setModel(next);
       if (!selectedProfile) return;
@@ -308,9 +333,8 @@ export default function LlmAssistModal({
         },
       );
       setResult(output);
-    } catch (err) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      setError(err?.message || 'LLM 요청에 실패했습니다.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'LLM 요청에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -335,16 +359,12 @@ export default function LlmAssistModal({
   }, [result, editorRef, selectionRange, onChange, getMarkdown, refreshSelection]);
 
   const handleLoadTemplate = useCallback(
-    (id: any) => {
+    (id: string) => {
       setSelectedTemplateId(id);
-      // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
       const tpl = templates.find((t) => t.id === id);
       if (tpl) {
-        // @ts-expect-error TS(2339): Property 'instruction' does not exist on type 'nev... Remove this comment to see the full error message
         setInstruction(tpl.instruction);
-        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
         setTemplateName(tpl.name);
-        // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
         setEditingTemplateId(tpl.id);
       }
     },
@@ -368,9 +388,8 @@ export default function LlmAssistModal({
       setEditingTemplateId(saved.id);
       setSelectedTemplateId(saved.id);
       await loadTemplates();
-    } catch (err) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      alert(err?.message || '템플릿 저장에 실패했습니다.');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '템플릿 저장에 실패했습니다.');
     }
   }, [templateName, instruction, editingTemplateId, loadTemplates]);
 
@@ -388,15 +407,13 @@ export default function LlmAssistModal({
       await deleteLlmPromptTemplate(editingTemplateId);
       handleNewTemplate();
       await loadTemplates();
-    } catch (err) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      alert(err?.message || '템플릿 삭제에 실패했습니다.');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '템플릿 삭제에 실패했습니다.');
     }
   }, [editingTemplateId, handleNewTemplate, loadTemplates]);
 
-  const handleAddImages = useCallback(async (images: any) => {
+  const handleAddImages = useCallback(async (images: LlmImageAttachment[]) => {
     if (!Array.isArray(images) || !images.length) return;
-    // @ts-expect-error TS(2345): Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setAttachedImages((prev) => {
       const remaining = LLM_ASSIST_MAX_IMAGES - prev.length;
       if (remaining <= 0) return prev;
@@ -404,14 +421,13 @@ export default function LlmAssistModal({
     });
   }, []);
 
-  const handleRemoveImage = useCallback((id: any) => {
+  const handleRemoveImage = useCallback((id: string) => {
     if (!id) return;
-    // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
     setAttachedImages((prev) => prev.filter((img) => img.id !== id));
   }, []);
 
   const handlePopoutAction = useCallback(
-    async (action: any, payload = {}) => {
+    async (action: string, payload: PopoutActionPayload = {}) => {
       switch (action) {
         case 'refresh-selection':
           refreshSelection();
@@ -423,23 +439,18 @@ export default function LlmAssistModal({
           handleApplyResult();
           break;
         case 'set-instruction':
-          // @ts-expect-error TS(2339): Property 'value' does not exist on type '{}'.
           setInstruction(typeof payload.value === 'string' ? payload.value : '');
           break;
         case 'set-result':
-          // @ts-expect-error TS(2339): Property 'value' does not exist on type '{}'.
           setResult(typeof payload.value === 'string' ? payload.value : '');
           break;
         case 'set-model':
-          // @ts-expect-error TS(2339): Property 'value' does not exist on type '{}'.
           if (typeof payload.value === 'string') handleModelChange(payload.value);
           break;
         case 'set-llm-profile-id':
-          // @ts-expect-error TS(2339): Property 'value' does not exist on type '{}'.
           if (typeof payload.value === 'string') setProfileId(payload.value);
           break;
         case 'load-template':
-          // @ts-expect-error TS(2339): Property 'id' does not exist on type '{}'.
           handleLoadTemplate(payload.id ?? '');
           break;
         case 'save-template':
@@ -452,27 +463,22 @@ export default function LlmAssistModal({
           await handleDeleteTemplate();
           break;
         case 'set-template-name':
-          // @ts-expect-error TS(2339): Property 'value' does not exist on type '{}'.
           setTemplateName(typeof payload.value === 'string' ? payload.value : '');
           break;
         case 'set-result-view-mode':
-          // @ts-expect-error TS(2339): Property 'value' does not exist on type '{}'.
           if (payload.value === 'preview' || payload.value === 'text') {
-            // @ts-expect-error TS(2339): Property 'value' does not exist on type '{}'.
             setResultViewMode(payload.value);
           }
           break;
         case 'add-images': {
-          // @ts-expect-error TS(2339): Property 'images' does not exist on type '{}'.
           const incoming = (Array.isArray(payload.images) ? payload.images : [])
             .map(normalizeImageAttachment)
-            .filter(Boolean);
+            .filter((item): item is LlmImageAttachment => item !== null);
           if (incoming.length) await handleAddImages(incoming);
           break;
         }
         case 'remove-image':
-          // @ts-expect-error TS(2339): Property 'id' does not exist on type '{}'.
-          handleRemoveImage(payload.id);
+          if (payload.id) handleRemoveImage(payload.id);
           break;
         case 'close':
           onOpenChange?.(false);
@@ -540,9 +546,7 @@ export default function LlmAssistModal({
 
   const handleOpenPopout = () => {
     let win = popoutRef.current;
-    // @ts-expect-error TS(2339): Property 'closed' does not exist on type 'never'.
     if (win && !win.closed) {
-      // @ts-expect-error TS(2339): Property 'focus' does not exist on type 'never'.
       win.focus();
       syncToPopout();
       setPopoutActive(true);
@@ -550,7 +554,6 @@ export default function LlmAssistModal({
     }
 
     const url = getLlmAssistPopoutUrl();
-    // @ts-expect-error TS(2322): Type 'Window | null' is not assignable to type 'nu... Remove this comment to see the full error message
     win = window.open(url, LLM_ASSIST_POPOUT_NAME, LLM_ASSIST_POPOUT_FEATURES);
     if (!win) {
       alert('팝업이 차단되어 새 창을 열 수 없습니다.');
@@ -606,10 +609,12 @@ export default function LlmAssistModal({
       <div
         role="button"
         tabIndex={0}
-        // @ts-expect-error TS(2379): Argument of type '{ onTap: (() => void) | undefine... Remove this comment to see the full error message
-        onPointerDown={(e: any) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
-        // @ts-expect-error TS(2379): Argument of type '{ onTap: (() => void) | undefine... Remove this comment to see the full error message
-        onTouchStart={(e: any) => startPositionTouchDrag(e, { onTap: popoutActive ? undefined : handleShow })}
+        onPointerDown={(e) =>
+          startPositionDrag(e, popoutActive ? {} : { onTap: handleShow })
+        }
+        onTouchStart={(e) =>
+          startPositionTouchDrag(e, popoutActive ? {} : { onTap: handleShow })
+        }
         onKeyDown={(e: any) => {
           if (popoutActive) return;
           if (e.key === 'Enter' || e.key === ' ') {

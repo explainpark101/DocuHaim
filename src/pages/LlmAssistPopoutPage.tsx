@@ -7,12 +7,42 @@ import {
   postLlmAssistMessage,
 } from '@/utils/llm/llmAssistBridge';
 import { applyDocumentTheme, loadStoredTheme } from '@/utils/documentTheme';
+import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
 
 if (typeof document !== 'undefined') {
   applyDocumentTheme(loadStoredTheme());
 }
 
-const EMPTY_STATE = {
+type LlmRemoteProfile = Pick<LlmProviderProfile, 'id' | 'name' | 'kind' | 'baseUrl'> & {
+  apiKey?: string;
+};
+
+type LlmRemoteState = {
+  selectedText: string;
+  selectionRange: { from: number; to: number };
+  attachedImages: Array<{
+    id: string;
+    name: string;
+    mimeType: string;
+    dataBase64: string;
+    previewDataUrl: string;
+  }>;
+  instruction: string;
+  result: string;
+  resultViewMode: 'text' | 'preview';
+  loading: boolean;
+  error: string;
+  templates: Array<{ id: string; name: string }>;
+  selectedTemplateId: string;
+  templateName: string;
+  editingTemplateId: string | null;
+  profiles: LlmRemoteProfile[];
+  selectedProfileId: string;
+  model: string;
+  theme: string;
+};
+
+const EMPTY_STATE: LlmRemoteState = {
   selectedText: '',
   selectionRange: { from: 0, to: 0 },
   attachedImages: [],
@@ -31,17 +61,17 @@ const EMPTY_STATE = {
   theme: loadStoredTheme(),
 };
 
-function postActionToOpener(action: any, payload = {}) {
+function postActionToOpener(action: string, payload: Record<string, unknown> = {}) {
   if (!window.opener || window.opener.closed) return;
   postLlmAssistMessage(window.opener, LLM_ASSIST_MSG.ACTION, { action, payload });
 }
 
 export default function LlmAssistPopoutPage() {
-  const [remoteState, setRemoteState] = useState(EMPTY_STATE);
+  const [remoteState, setRemoteState] = useState<LlmRemoteState>(EMPTY_STATE);
   const [instruction, setInstruction] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [result, setResult] = useState('');
-  const [resultViewMode, setResultViewMode] = useState('text');
+  const [resultViewMode, setResultViewMode] = useState<'text' | 'preview'>('text');
   const [model, setModel] = useState('');
   const [selectedProfileId, setSelectedProfileId] = useState('');
   const [connected, setConnected] = useState(false);
@@ -51,17 +81,17 @@ export default function LlmAssistPopoutPage() {
     applyDocumentTheme(remoteState.theme);
   }, [remoteState.theme]);
 
-  const sendAction = useCallback((action: any, payload = {}) => {
+  const sendAction = useCallback((action: string, payload: Record<string, unknown> = {}) => {
     postActionToOpener(action, payload);
   }, []);
 
   useEffect(() => {
-    const onMessage = (event: any) => {
+    const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (!isLlmAssistMessage(event.data)) return;
 
       if (event.data.type === LLM_ASSIST_MSG.SYNC && event.data.state) {
-        const next = { ...EMPTY_STATE, ...event.data.state };
+        const next = { ...EMPTY_STATE, ...event.data.state } as LlmRemoteState;
         setRemoteState(next);
         setInstruction(next.instruction);
         setTemplateName(next.templateName);
@@ -99,7 +129,7 @@ export default function LlmAssistPopoutPage() {
   }, []);
 
   const handleInstructionChange = useCallback(
-    (value: any) => {
+    (value: string) => {
       setInstruction(value);
       sendAction('set-instruction', { value });
     },
@@ -107,7 +137,7 @@ export default function LlmAssistPopoutPage() {
   );
 
   const handleTemplateNameChange = useCallback(
-    (value: any) => {
+    (value: string) => {
       setTemplateName(value);
       sendAction('set-template-name', { value });
     },
@@ -115,7 +145,7 @@ export default function LlmAssistPopoutPage() {
   );
 
   const handleResultChange = useCallback(
-    (value: any) => {
+    (value: string) => {
       setResult(value);
       sendAction('set-result', { value });
     },
@@ -126,6 +156,17 @@ export default function LlmAssistPopoutPage() {
     sendAction('close');
     window.close();
   };
+
+  const remoteProfiles: LlmProviderProfile[] = (remoteState.profiles || []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    kind: p.kind,
+    baseUrl: p.baseUrl || '',
+    apiKey: p.apiKey || '',
+  }));
+
+  const selectedProfile =
+    remoteProfiles.find((p) => p.id === selectedProfileId) || null;
 
   return (
     <div className="llm-assist-popout-page flex min-h-screen flex-col bg-white dark:bg-odp-bgSofter">
@@ -151,30 +192,29 @@ export default function LlmAssistPopoutPage() {
       <main className="min-h-0 flex-1 overflow-y-auto p-4">
         <LlmAssistPanel
           theme={remoteState.theme}
-          profiles={remoteState.profiles || []}
+          profiles={remoteProfiles}
           selectedProfileId={selectedProfileId}
-          onSelectedProfileIdChange={(value: any) => {
+          onSelectedProfileIdChange={(value) => {
             setSelectedProfileId(value);
             sendAction('set-llm-profile-id', { value });
           }}
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
-          selectedProfile={(remoteState.profiles || []).find((p) => p.id === selectedProfileId) || null}
+          selectedProfile={selectedProfile}
           model={model}
-          onModelChange={(value: any) => {
+          onModelChange={(value) => {
             setModel(value);
             sendAction('set-model', { value });
           }}
           selectedText={remoteState.selectedText}
           onRefreshSelection={() => sendAction('refresh-selection')}
           attachedImages={remoteState.attachedImages || []}
-          onAddImages={async (images: any) => sendAction('add-images', { images })}
-          onRemoveImage={(id: any) => sendAction('remove-image', { id })}
+          onAddImages={async (images) => sendAction('add-images', { images })}
+          onRemoveImage={(id) => sendAction('remove-image', { id })}
           instruction={instruction}
           onInstructionChange={handleInstructionChange}
           result={result}
           onResultChange={handleResultChange}
           resultViewMode={resultViewMode}
-          onResultViewModeChange={(value: any) => {
+          onResultViewModeChange={(value) => {
             setResultViewMode(value);
             sendAction('set-result-view-mode', { value });
           }}
@@ -182,7 +222,7 @@ export default function LlmAssistPopoutPage() {
           error={remoteState.error}
           templates={remoteState.templates}
           selectedTemplateId={remoteState.selectedTemplateId}
-          onLoadTemplate={(id: any) => sendAction('load-template', { id })}
+          onLoadTemplate={(id) => sendAction('load-template', { id })}
           templateName={templateName}
           onTemplateNameChange={handleTemplateNameChange}
           editingTemplateId={remoteState.editingTemplateId}
