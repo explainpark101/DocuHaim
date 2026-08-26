@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useRef } from 'react';
+import type { editor as MonacoEditor } from 'monaco-editor';
 import Editor from '@monaco-editor/react';
+
+type MonacoTextEditorProps = {
+  value?: string;
+  language?: string;
+  theme?: string;
+  readOnly?: boolean;
+  onChange?: (value: string | undefined) => void;
+  onSave?: () => void;
+  className?: string;
+};
 
 /**
  * Non-markdown text viewer/editor using Monaco.
@@ -12,10 +23,10 @@ export default function MonacoTextEditor({
   readOnly = false,
   onChange,
   onSave,
-  className = ''
-}: any) {
-  const containerRef = useRef(null);
-  const editorRef = useRef(null);
+  className = '',
+}: MonacoTextEditorProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
   const options = useMemo(
     () => ({
@@ -23,8 +34,8 @@ export default function MonacoTextEditor({
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       fontSize: 13,
-      lineNumbers: 'on',
-      wordWrap: 'on',
+      lineNumbers: 'on' as const,
+      wordWrap: 'on' as const,
       automaticLayout: true,
     }),
     [readOnly],
@@ -33,10 +44,9 @@ export default function MonacoTextEditor({
   useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof onSave !== 'function' || readOnly) return;
-    const handleKeyDown = (e: any) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
-        // @ts-expect-error TS(2339): Property 'trigger' does not exist on type 'never'.
         editorRef.current?.trigger('keyboard', 'editor.action.insertLineBefore', null);
         return;
       }
@@ -45,9 +55,7 @@ export default function MonacoTextEditor({
         onSave();
       }
     };
-    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     el.addEventListener('keydown', handleKeyDown, true);
-    // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => el.removeEventListener('keydown', handleKeyDown, true);
   }, [onSave, readOnly]);
 
@@ -59,9 +67,9 @@ export default function MonacoTextEditor({
         language={language}
         value={value}
         theme={monacoTheme}
-        options={options as any}
-        onChange={onChange}
-        onMount={(editor: any) => {
+        options={options}
+        {...(onChange ? { onChange } : {})}
+        onMount={(editor) => {
           editorRef.current = editor;
         }}
         loading={null}

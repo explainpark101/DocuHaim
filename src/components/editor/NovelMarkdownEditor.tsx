@@ -67,6 +67,10 @@ import { isDataImageUri } from '@/utils/markdownImageExport';
 import { resolveImgbbFetchSrc, uploadImageToImgbb } from '@/utils/imgbbUpload';
 import { upsertRemoteImageComment } from '@/utils/remoteImageComment';
 import '@/styles/novel-editor.css';
+import {
+  type NovelEditorInstance,
+  type WikiImageModalStateNovel,
+} from '@/components/editor/editorTypes';
 
 const DEBUG_WIKI_IMAGE = false;
 
@@ -257,14 +261,14 @@ export default function NovelMarkdownEditor({
   getImgbbApiKey
 }: any) {
   const navigate = useNavigate();
-  const debounceTimerRef = useRef(null);
-  const lastEmittedRef = useRef(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastEmittedRef = useRef<string | null>(null);
   const skipNextUpdateRef = useRef(true);
-  const editorRef = useRef(null);
+  const editorRef = useRef<NovelEditorInstance | null>(null);
   /** 이미지 붙여넣기 업로드가 끝나기 전 중복 paste·onUploadImage 호출 방지 */
   const pasteImageUploadLockRef = useRef(false);
   const [hydrateTick, setHydrateTick] = useState(0);
-  const [wikiImageModalState, setWikiImageModalState] = useState(null);
+  const [wikiImageModalState, setWikiImageModalState] = useState<WikiImageModalStateNovel | null>(null);
   const [novelTocWidthPx, setNovelTocWidthPx] = useState(NOVEL_TOC_DEFAULT_WIDTH);
 
   const [initialHtml, setInitialHtml] = useState(() => markdownToNovelEditorHtml(value ?? ''));
@@ -366,7 +370,6 @@ export default function NovelMarkdownEditor({
         md = '';
       }
       if (md === lastEmittedRef.current) return;
-      // @ts-expect-error TS(2322): Type 'string' is not assignable to type 'null'.
       lastEmittedRef.current = md;
       onChange?.(md);
     },
@@ -384,7 +387,6 @@ export default function NovelMarkdownEditor({
       }
       const html = editor.getHTML();
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
       debounceTimerRef.current = setTimeout(() => {
         emitMarkdown(html);
       }, 200);
@@ -401,9 +403,7 @@ export default function NovelMarkdownEditor({
       debounceTimerRef.current = null;
     }
     const ed = editorRef.current;
-    // @ts-expect-error TS(2339): Property 'isDestroyed' does not exist on type 'nev... Remove this comment to see the full error message
     if (!ed || ed.isDestroyed) return;
-    // @ts-expect-error TS(2339): Property 'getHTML' does not exist on type 'never'.
     emitMarkdown(ed.getHTML());
   }, [emitMarkdown]);
 
@@ -434,13 +434,10 @@ export default function NovelMarkdownEditor({
         },
       });
       if (result.markdown !== md) {
-        // @ts-expect-error TS(2322): Type 'string' is not assignable to type 'null'.
         lastEmittedRef.current = result.markdown;
         skipNextUpdateRef.current = true;
         const ed = editorRef.current;
-        // @ts-expect-error TS(2339): Property 'isDestroyed' does not exist on type 'nev... Remove this comment to see the full error message
         if (ed && !ed.isDestroyed) {
-          // @ts-expect-error TS(2339): Property 'commands' does not exist on type 'never'... Remove this comment to see the full error message
           ed.commands.setContent(markdownToNovelEditorHtml(result.markdown));
           setHydrateTick((t) => t + 1);
         }
@@ -473,7 +470,7 @@ export default function NovelMarkdownEditor({
     skipNextUpdateRef.current = true;
   }, [documentKey]);
 
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   function docHasWikiImageNode(ed: any) {
     let found = false;
@@ -519,8 +516,7 @@ export default function NovelMarkdownEditor({
         hasWiki = docHasWikiImageNode(ed);
         dbgClipboard('novel:insert:verify', { hasWikiAfterManual: hasWiki });
       } catch (e) {
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        dbgClipboard('novel:insert:manual:error', { message: e?.message ?? String(e) });
+        dbgClipboard('novel:insert:manual:error', { message: e instanceof Error ? e.message : String(e) });
       }
     }
     return hasWiki;
@@ -549,9 +545,7 @@ export default function NovelMarkdownEditor({
 
     const runHydration = () => {
       const pm =
-        // @ts-expect-error TS(2339): Property 'view' does not exist on type 'never'.
         editorRef.current?.view?.dom ??
-        // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
         containerRef.current?.querySelector?.('.ProseMirror') ??
         containerRef.current;
       if (!pm) {
@@ -630,7 +624,6 @@ export default function NovelMarkdownEditor({
     const maxAttempts = 120;
     const run = () => {
       const ed = editorRef.current;
-      // @ts-expect-error TS(2339): Property 'isDestroyed' does not exist on type 'nev... Remove this comment to see the full error message
       if (ed && !ed.isDestroyed) {
         dbgClipboard('novel:insert:start', {
           paths: list,
@@ -651,7 +644,6 @@ export default function NovelMarkdownEditor({
         dbgClipboard('novel:insert:timeout', { attempts: maxAttempts, tryingSetTimeout: true });
         setTimeout(() => {
           const ed2 = editorRef.current;
-          // @ts-expect-error TS(2339): Property 'isDestroyed' does not exist on type 'nev... Remove this comment to see the full error message
           if (ed2 && !ed2.isDestroyed) {
             dbgClipboard('novel:insert:apply:delayed', { blockCount: blocks.length });
             runInsert(ed2, 'ref-delayed');
@@ -679,8 +671,9 @@ export default function NovelMarkdownEditor({
       const imageFiles = collectClipboardImageFiles(dt);
       if (!imageFiles.length) return false;
       event.preventDefault();
-      // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
-      onUploadImage(imageFiles).then((paths: any) => insertWikiImagesFromPaths(paths));
+      onUploadImage(imageFiles).then((paths: string[]) =>
+        insertWikiImagesFromPaths(paths, editorRef.current),
+      );
       return true;
     },
     [insertWikiImagesFromPaths, isUploadingEditorImage, onUploadImage, previewOnly],
@@ -704,9 +697,7 @@ export default function NovelMarkdownEditor({
         onSave();
       }
     };
-    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     el.addEventListener('keydown', handleKeyDown, true);
-    // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => el.removeEventListener('keydown', handleKeyDown, true);
   }, [onSave, flushPendingMarkdown]);
 
@@ -715,14 +706,12 @@ export default function NovelMarkdownEditor({
     if (!root) return;
     const onContextMenu = (event: any) => {
       const img = event.target?.closest?.('img[data-wiki-path]');
-      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (!img || !root.contains(img)) return;
       const attrs = getWikiImageAttrsFromElement(img);
       if (!attrs.path) return;
       event.preventDefault();
       const occurrence = getWikiImageOccurrenceInContainer(root, img, attrs.path);
       let nodePos = null;
-      // @ts-expect-error TS(2339): Property 'view' does not exist on type 'never'.
       const view = editorRef.current?.view;
       if (view) {
         try {
@@ -734,7 +723,6 @@ export default function NovelMarkdownEditor({
         }
       }
       setWikiImageModalState({
-        // @ts-expect-error TS(2345): Argument of type '{ path: any; width: any; height:... Remove this comment to see the full error message
         path: attrs.path,
         width: attrs.width,
         height: attrs.height,
@@ -743,9 +731,7 @@ export default function NovelMarkdownEditor({
         imageSrc: img.currentSrc || img.src || '',
       });
     };
-    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('contextmenu', onContextMenu);
-    // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => root.removeEventListener('contextmenu', onContextMenu);
   }, []);
 
@@ -755,15 +741,12 @@ export default function NovelMarkdownEditor({
       height
     }: any) => {
       const modal = wikiImageModalState;
-      // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
       if (!modal?.path) return;
 
       const ed = editorRef.current;
-      // @ts-expect-error TS(2339): Property 'view' does not exist on type 'never'.
       const view = ed?.view;
-      // @ts-expect-error TS(2339): Property 'nodePos' does not exist on type 'never'.
       const pos = modal.nodePos;
-      if (view && Number.isInteger(pos)) {
+      if (view && pos != null && Number.isInteger(pos)) {
         const node = view.state.doc.nodeAt(pos);
         if (node?.type?.name === 'wikiImage') {
           const nextAttrs = {
@@ -771,7 +754,8 @@ export default function NovelMarkdownEditor({
             width: width || null,
             height: height || null,
           };
-          view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, nextAttrs, node.marks));
+          const tr = (view.state as unknown as { tr: { setNodeMarkup: (...args: unknown[]) => unknown } }).tr;
+          view.dispatch(tr.setNodeMarkup(pos, undefined, nextAttrs, node.marks));
           setHydrateTick((t) => t + 1);
           flushPendingMarkdown();
           return;
@@ -780,9 +764,7 @@ export default function NovelMarkdownEditor({
 
       if (typeof onChange === 'function') {
         const next = updateWikiImageSizeInMarkdown(value, {
-          // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
           path: modal.path,
-          // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
           occurrence: modal.occurrence ?? 0,
           width,
           height,
@@ -800,7 +782,6 @@ export default function NovelMarkdownEditor({
       file
     }: any) => {
       const modal = wikiImageModalState;
-      // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
       if (!modal?.path || typeof onUploadImage !== 'function') {
         throw new Error('이미지 업로드를 사용할 수 없습니다.');
       }
@@ -811,14 +792,13 @@ export default function NovelMarkdownEditor({
       }
 
       const ed = editorRef.current;
-      // @ts-expect-error TS(2339): Property 'view' does not exist on type 'never'.
       const view = ed?.view;
-      // @ts-expect-error TS(2339): Property 'nodePos' does not exist on type 'never'.
       const pos = modal.nodePos;
-      if (view && Number.isInteger(pos)) {
+      if (view && pos != null && Number.isInteger(pos)) {
         const node = view.state.doc.nodeAt(pos);
         if (node?.type?.name === 'wikiImage') {
-          view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
+          const tr = (view.state as unknown as { tr: { setNodeMarkup: (...args: unknown[]) => unknown } }).tr;
+          view.dispatch(tr.setNodeMarkup(pos, undefined, {
             ...node.attrs,
             path: nextPath,
           }, node.marks));
@@ -830,9 +810,7 @@ export default function NovelMarkdownEditor({
 
       if (typeof onChange === 'function') {
         const next = updateWikiImagePathInMarkdown(value, {
-          // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
           path: modal.path,
-          // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
           occurrence: modal.occurrence ?? 0,
           nextPath,
         });
@@ -850,7 +828,6 @@ export default function NovelMarkdownEditor({
       height
     }: any) => {
       const modal = wikiImageModalState;
-      // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
       if (!modal?.path) {
         throw new Error('변환할 이미지를 찾을 수 없습니다.');
       }
@@ -862,23 +839,18 @@ export default function NovelMarkdownEditor({
         throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
       }
       const fetchSrc = resolveImgbbFetchSrc({
-        // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
         path: modal.path,
-        // @ts-expect-error TS(2339): Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
-        imageSrc: modal.imageSrc,
+        imageSrc: modal.imageSrc ?? null,
       });
       if (!fetchSrc) {
         throw new Error('업로드할 이미지 소스를 찾지 못했습니다.');
       }
-      // @ts-expect-error TS(2379): Argument of type '{ apiKey: string; image: string;... Remove this comment to see the full error message
       const uploaded = await uploadImageToImgbb({
         apiKey,
         image: fetchSrc,
-        // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
-        name: isDataImageUri(modal.path) ? 'image' : undefined,
+        ...(isDataImageUri(modal.path) ? { name: 'image' } : {}),
       });
       const nextUrl = uploaded.url;
-      // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
       const occurrence = modal.occurrence ?? 0;
 
       if (typeof onChange !== 'function') {
@@ -886,7 +858,6 @@ export default function NovelMarkdownEditor({
       }
       let nextMarkdown = value;
       const sized = updateWikiImageSizeInMarkdown(nextMarkdown, {
-        // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
         path: modal.path,
         occurrence,
         width,
@@ -895,7 +866,6 @@ export default function NovelMarkdownEditor({
       if (sized.updated) nextMarkdown = sized.markdown;
       const sidecar = await upsertRemoteImageComment(
         nextMarkdown,
-        // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
         { kind: 'wiki', key: modal.path, occurrence },
         nextUrl,
       );
@@ -1007,19 +977,14 @@ export default function NovelMarkdownEditor({
       <WikiImageSizeModal
         key={
           wikiImageModalState
-            // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
             ? `${wikiImageModalState.path}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}|${wikiImageModalState.nodePos ?? -1}`
             : 'wiki-image-size-modal'
         }
         isOpen={Boolean(wikiImageModalState)}
         onClose={() => setWikiImageModalState(null)}
-        // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
         path={wikiImageModalState?.path ?? ''}
-        // @ts-expect-error TS(2339): Property 'width' does not exist on type 'never'.
         initialWidth={wikiImageModalState?.width ?? ''}
-        // @ts-expect-error TS(2339): Property 'height' does not exist on type 'never'.
         initialHeight={wikiImageModalState?.height ?? ''}
-        // @ts-expect-error TS(2339): Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
         imageSrc={wikiImageModalState?.imageSrc ?? ''}
         onApply={handleApplyWikiImageSize}
         onCrop={handleCropWikiImage}

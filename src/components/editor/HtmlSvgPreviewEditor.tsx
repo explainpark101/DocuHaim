@@ -5,7 +5,8 @@ import TocResizeHandle from '@/components/print/TocResizeHandle';
 import Button from '@/components/Button';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
-const VIEW_MODES = ['dual', 'editor', 'preview'];
+const VIEW_MODES = ['dual', 'editor', 'preview'] as const;
+type ViewMode = (typeof VIEW_MODES)[number];
 const PREVIEW_WIDTH_KEY = 's3haim_html_svg_preview_width';
 const PREVIEW_DEBOUNCE_MS = 280;
 
@@ -50,7 +51,7 @@ function buildSrcDoc(value: any, mode: any, theme: any) {
   return value ?? '';
 }
 
-const VIEW_MODE_META = {
+const VIEW_MODE_META: Record<ViewMode, { label: string; icon: typeof Columns2; title: string }> = {
   dual: { label: '양면보기', icon: Columns2, title: '양면보기 (다음: 텍스트에디터)' },
   editor: { label: '텍스트에디터', icon: FileCode, title: '텍스트에디터 (다음: 미리보기)' },
   preview: { label: '미리보기', icon: Eye, title: '미리보기 (다음: 양면보기)' },
@@ -68,7 +69,7 @@ export default function HtmlSvgPreviewEditor({
   onChange,
   onSave
 }: any) {
-  const [viewMode, setViewMode] = useState('dual');
+  const [viewMode, setViewMode] = useState<ViewMode>('dual');
   const [srcDoc, setSrcDoc] = useState(() => buildSrcDoc(value, mode, theme));
   const {
     width: previewWidth,
@@ -94,14 +95,12 @@ export default function HtmlSvgPreviewEditor({
   }, [value, mode, theme]);
 
   const cycleViewMode = () => {
-    // @ts-expect-error TS(2345): Argument of type '(prev: string) => string | undef... Remove this comment to see the full error message
     setViewMode((prev) => {
       const idx = VIEW_MODES.indexOf(prev);
-      return VIEW_MODES[(idx + 1) % VIEW_MODES.length];
+      return VIEW_MODES[(idx + 1) % VIEW_MODES.length] ?? 'dual';
     });
   };
 
-  // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
   const meta = VIEW_MODE_META[viewMode] ?? VIEW_MODE_META.dual;
   const ModeIcon = meta.icon;
 

@@ -96,9 +96,8 @@ export default function ImageToolbar({
       tabIndex={-1}
       aria-hidden
       onChange={(event: any) => {
-        const files = Array.from(event.target.files || []);
+        const files = Array.from(event.target.files ?? []) as File[];
         event.target.value = '';
-        // @ts-expect-error TS(2345): Argument of type 'unknown[]' is not assignable to ... Remove this comment to see the full error message
         if (files.length) onRequestUpload(files);
       }}
     />
