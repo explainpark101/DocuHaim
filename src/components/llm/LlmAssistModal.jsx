@@ -311,11 +311,8 @@ export default function LlmAssistModal({
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
-    const { from, to } = selectionRange;
     const ok = applyLlmResultToEditor({
       editorRef,
-      from,
-      to,
       result,
       onChange,
       getMarkdown,
@@ -325,7 +322,7 @@ export default function LlmAssistModal({
       return;
     }
     refreshSelection();
-  }, [result, editorRef, selectionRange, onChange, getMarkdown, refreshSelection]);
+  }, [result, editorRef, onChange, getMarkdown, refreshSelection]);
 
   const handleLoadTemplate = useCallback(
     (id) => {

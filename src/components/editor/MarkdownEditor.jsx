@@ -61,7 +61,7 @@ import {
 import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
-import { notifyMirrorEditCaretUpdate } from '@/utils/mirrorEditCaretBridge';
+import { createSelectionHeightDebugProbe } from '@/utils/debugSelectionHeightProbe';
 import {
   markMirrorEditCaretFromEditor,
   markMirrorEditCaretFromPreview,
@@ -170,6 +170,10 @@ import {
   isMirrorEditActiveIn,
   isMirrorEditTarget,
 } from '@/utils/previewMirrorEdit';
+import {
+  attachMdEditorSourceFocusTracking,
+  clearMdEditorSourceFocus,
+} from '@/utils/mdEditorSourceFocus';
 import { registerMirrorEditCaretHandler } from '@/utils/mirrorEditCaretBridge';
 import { createMirrorEditPreviewRemirror } from '@/utils/mirrorEditPreviewRemirror';
 import { createPreviewScrollFollow } from '@/utils/previewScrollFollow';
@@ -492,6 +496,13 @@ config({
       nextExtensions.push({
         type: 'drawSelection',
         extension: drawSelection(),
+      });
+    }
+
+    if (!nextExtensions.some((item) => item.type === 'selectionHeightDebugProbe')) {
+      nextExtensions.push({
+        type: 'selectionHeightDebugProbe',
+        extension: createSelectionHeightDebugProbe(),
       });
     }
 
@@ -1118,6 +1129,45 @@ export default function MarkdownEditor({
     const timers = [50, 200, 500, 1000].map((delay) => setTimeout(apply, delay));
     return () => timers.forEach((t) => clearTimeout(t));
   }, [currentFile?.id, currentFile?.type, previewOnly]);
+
+  // Reset source-Editor focus history when switching documents (same CM view may be reused).
+  useEffect(() => {
+    if (previewOnly) return undefined;
+    const api = editorRef.current?.value ?? editorRef.current;
+    const view = api?.getEditorView?.();
+    clearMdEditorSourceFocus(view);
+    return undefined;
+  }, [currentFile?.id, previewOnly]);
+
+  // Track last source-Editor focus position for LLM apply (even after panel steals focus).
+  useEffect(() => {
+    if (previewOnly) return undefined;
+
+    let detach = null;
+    let attachedView = null;
+
+    const tryAttach = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view || view === attachedView) return Boolean(view);
+      detach?.();
+      attachedView = view;
+      detach = attachMdEditorSourceFocusTracking(view);
+      return true;
+    };
+
+    if (tryAttach()) {
+      return () => {
+        detach?.();
+      };
+    }
+
+    const timers = [50, 200, 500, 1000].map((delay) => setTimeout(tryAttach, delay));
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+      detach?.();
+    };
+  }, [previewOnly, currentFile?.id]);
 
   // Preview heading fold chevrons (persist collapsed ids per document).
   // Do not depend on `value` ? tearing down on every keystroke flashes chevrons.
