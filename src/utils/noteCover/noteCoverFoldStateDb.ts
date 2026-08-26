@@ -4,7 +4,7 @@
 import Dexie from 'dexie';
 import { getDraftKey } from '@/utils/memoDraftsDb';
 
-export const noteCoverFoldStateDb = new Dexie('s3haim-note-cover-fold');
+export const noteCoverFoldStateDb = new Dexie('s3haim-note-cover-fold') as any;
 
 noteCoverFoldStateDb.version(1).stores({
   folds: 'key, updatedAt',

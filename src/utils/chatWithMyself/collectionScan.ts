@@ -1,4 +1,4 @@
-import { extractChatBodyAttachments } from '@/utils/chatWithMyself/attachments.js';
+import { extractChatBodyAttachments } from '@/utils/chatWithMyself/attachments';
 import { extractUrls } from '@/utils/chatWithMyself/og';
 
 export type CollectionMediaFlags = {

@@ -80,7 +80,7 @@ function renderCollapsibleEmbed(
 export function mermaidFenceMarkdownItPlugin(md: MarkdownItInstance): void {
   const defaultFence = md.renderer.rules.fence;
 
-  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  md.renderer.rules.fence = (tokens: any, idx: any, options: any, env: any, self: any) => {
     const token = tokens[idx];
     if (!token) {
       return defaultFence

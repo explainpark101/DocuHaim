@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import AdvancedSearchModal from '@/components/advancedSearch/AdvancedSearchModal';
-import { useAdvancedSearchActivityStatus } from '@/components/advancedSearch/useAdvancedSearchActivityStatus.js';
+import { useAdvancedSearchActivityStatus } from '@/components/advancedSearch/useAdvancedSearchActivityStatus';
 import {
   advancedSearchEngine,
   listBrowseDirectoryHits,

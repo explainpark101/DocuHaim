@@ -5,9 +5,9 @@
  */
 
 import { EditorSelection, type Text } from '@codemirror/state';
-import type { EditorView } from '@codemirror/view';
 
 /** Wiki image: ![[path]] / ![[path|opts]] */
+import type { EditorView } from '@codemirror/view';
 const WIKI_IMAGE_LINE_RE = /!\[\[([^[\]]*)\]\]/g;
 /** CommonMark / GFM image, optional attr block: ![alt](url){...} */
 const MD_IMAGE_LINE_RE = /!\[([^\]]*)\]\(([^)\n]+)\)(\{[^}\n]*\})?/g;

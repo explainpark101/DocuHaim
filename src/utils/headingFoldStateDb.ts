@@ -4,7 +4,7 @@
 import Dexie from 'dexie';
 import { getDraftKey } from '@/utils/memoDraftsDb';
 
-export const headingFoldStateDb = new Dexie('s3haim-preview-heading-fold');
+export const headingFoldStateDb = new Dexie('s3haim-preview-heading-fold') as any;
 
 headingFoldStateDb.version(1).stores({
   folds: 'key, updatedAt',

@@ -16,7 +16,7 @@ import {
 import {
   getComposerHelperTextVisible,
   writeComposerHelperTextPref,
-} from '@/utils/chatWithMyself/composerPrefs.js';
+} from '@/utils/chatWithMyself/composerPrefs';
 import {
   loadHideRecordingCompanions,
   saveHideRecordingCompanions,

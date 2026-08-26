@@ -1,5 +1,5 @@
 import { getObjectBody, headObject, putObject } from '@/utils/vault/s3Client';
-import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createWebdavBackend } from '@/utils/storage/webdavBackend';
 
 /**
  * Deploy template: Social Preview Inspector (HTMLRewriter OG/Twitter extract).

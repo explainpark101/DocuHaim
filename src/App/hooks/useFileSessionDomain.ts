@@ -41,7 +41,7 @@ import {
   createWebdavBackend,
   createLocalBackend,
 } from '@/utils/storage';
-import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
+import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
 import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
@@ -402,7 +402,7 @@ export function useFileSessionDomain(): FileSessionDomainValue {
           const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext ?? '');
           if (plain == null) return;
           content = plain;
-          openedFile = { ...openedFile, content: plain, encMd: true };
+          openedFile = { ...openedFile, content: plain, encMd: true } as any;
         }
         // Do not revokePrev(other tab) — only this tab's media is replaced via commitOpenFile.
         commit(openedFile, content);
@@ -640,7 +640,7 @@ export function useFileSessionDomain(): FileSessionDomainValue {
           const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext ?? '');
           if (plain == null) return;
           content = plain;
-          openedFile = { ...openedFile, content: plain, encMd: true };
+          openedFile = { ...openedFile, content: plain, encMd: true } as any;
         }
         commit(openedFile, content || '');
         return;

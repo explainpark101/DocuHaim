@@ -7,7 +7,7 @@ import {
 } from '@/utils/editorImageUpload';
 import { uploadLocalEditorImage } from '@/utils/localEditorImage';
 import { getPrintSettingsStoreSnapshot } from '@/utils/print/printSettingsStore';
-import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createWebdavBackend } from '@/utils/storage/webdavBackend';
 
 type PrintImageFile = {
   type?: string | null;

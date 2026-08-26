@@ -26,7 +26,7 @@ import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
 import type { AppCommandId } from '@/utils/advancedSearch/commands';
 import { loadAdvancedSearchUiAnimationEnabled } from '@/utils/advancedSearch/settings';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
-import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths';
 
 export type AdvancedSearchModalProps = {
   open: boolean;

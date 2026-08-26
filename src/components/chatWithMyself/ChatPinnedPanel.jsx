@@ -36,7 +36,7 @@ import {
   createPretextMeasurer,
   decideTabDensity,
   splitLabelChars,
-} from '@/utils/chatWithMyself/tabPretext.js';
+} from '@/utils/chatWithMyself/tabPretext';
 import {
   chatMenuContentClass,
   chatMenuItemClass,

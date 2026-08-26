@@ -125,7 +125,7 @@ function yieldToMain(): Promise<void> {
 
 function gzipBytes(input: Uint8Array): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
-    gzip(input, { level: 6 }, (err, data) => {
+    gzip(input, { level: 6 }, (err: any, data: any) => {
       if (err) reject(err);
       else resolve(data);
     });

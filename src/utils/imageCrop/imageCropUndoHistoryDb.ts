@@ -2,9 +2,9 @@
  * Image crop modal undo/redo checkpoints (IndexedDB) while the modal is open.
  */
 import Dexie from 'dexie';
-import type { Area } from 'react-easy-crop';
 
-export const imageCropUndoHistoryDb = new Dexie('s3haim-image-crop-undo-history');
+import type { Area } from 'react-easy-crop';
+export const imageCropUndoHistoryDb = new Dexie('s3haim-image-crop-undo-history') as any;
 
 imageCropUndoHistoryDb.version(1).stores({
   histories: 'key, updatedAt',

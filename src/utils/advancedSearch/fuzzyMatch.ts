@@ -7,7 +7,7 @@ import {
   fuzzyMatchText,
   fuzzyMatchTokensInHaystacks,
   splitSearchTokens,
-} from '@/utils/chatWithMyself/search.js';
+} from '@/utils/chatWithMyself/search';
 
 export { fuzzyMatchText, fuzzyMatchTokensInHaystacks, splitSearchTokens };
 

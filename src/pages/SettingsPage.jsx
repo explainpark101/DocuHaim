@@ -574,7 +574,7 @@ export default function SettingsPage({
                   onClick={async () => {
                     try {
                       const { createWebdavBackend } = await import(
-                        '@/utils/storage/webdavBackend.js'
+                        '@/utils/storage/webdavBackend'
                       );
                       const backend = createWebdavBackend(webdavForm);
                       if (!backend.isReady()) {

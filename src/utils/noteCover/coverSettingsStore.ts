@@ -1,5 +1,5 @@
 import { getObjectBody, headObject, putObject } from '@/utils/vault/s3Client';
-import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createWebdavBackend } from '@/utils/storage/webdavBackend';
 
 const COVER_JSON_KEY = '.settings/cover.json';
 const LOCAL_STORAGE_KEY = 's3haim_cover_settings';

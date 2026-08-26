@@ -719,7 +719,7 @@ export function useDownloadSessionDomain() {
               fileName,
               bundled.markdown,
               bundled.images,
-              (percent) => setDownloadProgress(percent),
+              (percent: number) => setDownloadProgress(percent),
             );
             setDownloadComplete(true);
           }
@@ -805,7 +805,7 @@ export function useDownloadSessionDomain() {
           fileName,
           plan.markdown,
           entries,
-          (percent) => setDownloadProgress(90 + Math.round(percent * 0.1)),
+          (percent: number) => setDownloadProgress(90 + Math.round(percent * 0.1)),
         );
         const missingMessage = formatMissingExportImagesMessage(missing);
         if (missingMessage) alert(missingMessage);
@@ -825,7 +825,7 @@ export function useDownloadSessionDomain() {
           s3Creds.bucket,
           notePath,
           writable,
-          (percent) => setDownloadProgress(percent),
+          (percent: number) => setDownloadProgress(percent),
         );
       } else if (storageType === 'local' && currentFile.handle) {
         const file = await currentFile.handle.getFile();

@@ -2,15 +2,15 @@ import {
   deletePendingShare,
   getPendingShares,
   savePendingShare,
-} from '@/utils/chatWithMyself/chatDb.js';
-import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
-import { sharePayloadFromSearch } from '@/utils/chatWithMyself/sharePayload.js';
+} from '@/utils/chatWithMyself/chatDb';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths';
+import { sharePayloadFromSearch } from '@/utils/chatWithMyself/sharePayload';
 import {
   appendShareChatMessage,
   normalizeShareFiles,
   sharePromptHasContent,
-} from '@/utils/chatWithMyself/shareSend.js';
-import { postChatLocalSyncEvent, postChatSyncEvent } from '@/utils/chatWithMyself/syncChannel.js';
+} from '@/utils/chatWithMyself/shareSend';
+import { postChatLocalSyncEvent, postChatSyncEvent } from '@/utils/chatWithMyself/syncChannel';
 import {
   SHARE_TARGET_FLAG,
   takeShareTargetFiles,

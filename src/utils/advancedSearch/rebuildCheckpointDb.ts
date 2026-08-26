@@ -5,7 +5,7 @@
 import Dexie from 'dexie';
 import { INDEX_SCHEMA_VERSION } from '@/utils/advancedSearch/types';
 
-export const rebuildCheckpointDb = new Dexie('s3haim-advanced-search-rebuild');
+export const rebuildCheckpointDb = new Dexie('s3haim-advanced-search-rebuild') as any;
 
 rebuildCheckpointDb.version(1).stores({
   checkpoints: 'key',

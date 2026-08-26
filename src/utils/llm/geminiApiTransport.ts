@@ -145,9 +145,8 @@ export async function fetchGeminiApi(path: string, init: GeminiFetchInit): Promi
   const method = init.method ?? 'GET';
 
   if (isDesktopApp()) {
-    const { invoke } = await import('@tauri-apps/api/core');
+    // @ts-expect-error TS(2347): Untyped function calls may not accept type argumen... Remove this comment to see the full error message
     const result = await invoke<TauriGeminiFetchResult>('gemini_api_fetch', {
-      path,
       method,
       apiKey: init.apiKey,
       body: init.body ?? null,

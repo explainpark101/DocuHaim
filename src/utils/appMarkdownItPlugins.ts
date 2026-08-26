@@ -1,5 +1,4 @@
 import type { MarkdownIt as MarkdownItInstance } from 'markdown-it';
-import { XSSPlugin } from 'md-editor-rt';
 import { wikiImagePlugin } from '@/utils/wikiImageMarkdownIt';
 import { previewLinkTargetBlankPlugin } from '@/utils/previewLinkTargetBlankMarkdownIt';
 import { pageBreakMarkdownItPlugin } from '@/utils/pageBreakMarkdownIt';
@@ -13,6 +12,7 @@ import { markdownItTaskListPlugin } from '@/utils/markdownItTaskListPlugin';
 import { betterMdMarkdownItPlugin } from '@/utils/betterMd/markdownItPlugin';
 import { mermaidFenceMarkdownItPlugin } from '@/utils/mermaidFenceMarkdownIt';
 
+import { XSSPlugin } from 'md-editor-rt';
 type MarkdownItPlugin = (md: MarkdownItInstance, options?: Record<string, unknown>) => void;
 
 export type AppMarkdownItPluginEntry = {

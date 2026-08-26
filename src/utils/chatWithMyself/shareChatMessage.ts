@@ -1,5 +1,5 @@
-import { extractChatBodyAttachments } from '@/utils/chatWithMyself/attachments.js';
-import { formatChatMessagePlainText } from '@/utils/chatWithMyself/format.js';
+import { extractChatBodyAttachments } from '@/utils/chatWithMyself/attachments';
+import { formatChatMessagePlainText } from '@/utils/chatWithMyself/format';
 
 export type ShareChatMessageResult =
   | 'shared'

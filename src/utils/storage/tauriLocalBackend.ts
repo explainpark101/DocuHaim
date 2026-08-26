@@ -3,7 +3,7 @@
  * Plugin APIs are loaded lazily so plain web Vite never eagerly imports @tauri-apps/*.
  */
 
-import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
+import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities';
 
 function joinVault(root: string, rel: string): string {
   const base = String(root || '').replace(/[/\\]+$/, '');
@@ -47,7 +47,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
       const abs = joinVault(root, path.replace(/\/$/, ''));
       const entries = await readDir(abs);
       const nodes = await Promise.all(
-        entries.map(async (entry) => {
+        entries.map(async (entry: any) => {
           const name = entry.name;
           const childRel = `${basePath}${name}`;
           const childAbs = joinVault(root, childRel.replace(/\/$/, ''));
@@ -136,7 +136,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
       await writeFile(joinVault(root, path), body);
     },
 
-    async writeText(path: string, text: string) {
+    async writeText(path: string, text: string, _contentType?: string) {
       await this.writeBytes(path, new TextEncoder().encode(text));
     },
 

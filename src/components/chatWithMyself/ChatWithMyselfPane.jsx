@@ -110,7 +110,7 @@ import {
 import {
   getPendingMessages,
   deletePendingMessage,
-} from '@/utils/chatWithMyself/chatDb.js';
+} from '@/utils/chatWithMyself/chatDb';
 import { findFileNodeByPath, findNodeByPath } from '@/utils/vault/s3Tree';
 import { getStorageScopeId } from '@/utils/vault/storageScope';
 
@@ -192,10 +192,10 @@ const FILL_BATCH_DAYS = 3;
  * Empty "today" must not hide older history. Short leftovers may still be
  * topped up by ChatMessageList silent fill when content does not overflow.
  *
- * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
+ * @param {import('@/utils/chatWithMyself/storage').ChatStorageCtx} ctx
  * @param {string[]} dayKeysNewestFirst
  * @param {{ minMessages?: number, maxDays?: number, startIndex?: number }} [opts]
- * @returns {Promise<{ messages: import('@/utils/chatWithMyself/format.js').ChatMessage[], loadedDayIndex: number }>}
+ * @returns {Promise<{ messages: import('@/utils/chatWithMyself/format').ChatMessage[], loadedDayIndex: number }>}
  */
 async function readMessagesForInitialWindow(ctx, dayKeysNewestFirst, opts = {}) {
   const minMessages = Math.max(1, Number(opts.minMessages) || INITIAL_MIN_MESSAGES);
@@ -923,7 +923,7 @@ export default function ChatWithMyselfPane({
     if (!silent) setLoadingOlder(true);
 
     let nextIdx = startIdx;
-    /** @type {import('@/utils/chatWithMyself/format.js').ChatMessage[]} */
+    /** @type {import('@/utils/chatWithMyself/format').ChatMessage[]} */
     let olderHead = [];
     try {
       let daysAttempted = 0;

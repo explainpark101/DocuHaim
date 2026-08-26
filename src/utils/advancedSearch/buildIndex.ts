@@ -1,4 +1,4 @@
-import { parseDayFile } from '@/utils/chatWithMyself/format.js';
+import { parseDayFile } from '@/utils/chatWithMyself/format';
 import { hashText } from '@/utils/advancedSearch/hash';
 import { chatDocId, fileDocId } from '@/utils/advancedSearch/paths';
 import { recountManifest, type DocMeta, type InMemoryIndex } from '@/utils/advancedSearch/types';

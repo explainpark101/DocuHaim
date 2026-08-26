@@ -1,7 +1,8 @@
 import { Compartment, StateEffect, StateField } from '@codemirror/state';
-import type { EditorState, Extension, Range } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
 import type { DecorationSet } from '@codemirror/view';
+
+import type { EditorState, Extension, Range } from '@codemirror/state';
 
 const MIN_PAYLOAD_LENGTH = 48;
 const DATA_IMAGE_BASE64_RE = /data:image\/([a-z0-9.+-]+);base64,([a-z0-9+/=]+)/gi;
@@ -117,18 +118,24 @@ function buildFoldState(state: EditorState, expanded: readonly FoldRange[]): {
 }
 
 const base64ImageFoldField = StateField.define<{ deco: DecorationSet; expanded: FoldRange[] }>({
-  create(state) {
+  create(state: any) {
     return buildFoldState(state, []);
   },
-  update(value, tr) {
+  update(value: any, tr: any) {
     let expanded = value.expanded;
     if (tr.docChanged && expanded.length) {
       expanded = expanded
-        .map(({ from, to }) => ({
+        .map(({
+        from,
+        to
+      }: any) => ({
           from: tr.changes.mapPos(from, 1),
           to: tr.changes.mapPos(to, -1),
         }))
-        .filter(({ from, to }) => from < to);
+        .filter(({
+        from,
+        to
+      }: any) => from < to);
     }
 
     let expandedChanged = expanded !== value.expanded;
@@ -147,11 +154,11 @@ const base64ImageFoldField = StateField.define<{ deco: DecorationSet; expanded: 
     }
     return value;
   },
-  provide: (field) => EditorView.decorations.from(field, (value) => value.deco),
+  provide: (field: any) => EditorView.decorations.from(field, (value: any) => value.deco),
 });
 
 const collapseOnOutsideClick = EditorView.domEventHandlers({
-  mousedown(event, view) {
+  mousedown(event: any, view: any) {
     const field = view.state.field(base64ImageFoldField, false);
     if (!field || field.expanded.length === 0) return false;
     const target = event.target;
@@ -159,7 +166,10 @@ const collapseOnOutsideClick = EditorView.domEventHandlers({
     const pos = view.posAtDOM(target, 0);
     if (
       pos !== -1 &&
-      field.expanded.some(({ from, to }) => pos >= from && pos <= to)
+      field.expanded.some(({
+        from,
+        to
+      }: any) => pos >= from && pos <= to)
     ) {
       return false;
     }

@@ -1,6 +1,6 @@
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import { getObjectBody, headObject, putObject } from '@/utils/vault/s3Client';
-import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createWebdavBackend } from '@/utils/storage/webdavBackend';
 import type {
   HaimTableStyleSettings,
   HaimTableTemplate,

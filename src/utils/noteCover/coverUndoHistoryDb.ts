@@ -5,7 +5,7 @@ import Dexie from 'dexie';
 import { getDraftKey } from '@/utils/memoDraftsDb';
 import type { NoteCover } from '@/utils/noteCover/types';
 
-export const coverUndoHistoryDb = new Dexie('s3haim-cover-undo-history');
+export const coverUndoHistoryDb = new Dexie('s3haim-cover-undo-history') as any;
 
 coverUndoHistoryDb.version(1).stores({
   histories: 'key, updatedAt',

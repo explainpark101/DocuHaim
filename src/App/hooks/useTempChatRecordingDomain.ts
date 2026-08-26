@@ -394,7 +394,7 @@ export function useTempChatRecordingDomain() {
           setRecordingPipelineStatus('업로드 중');
           const backend = createWebdavBackend(webdavConfig);
           await drainRecordingUploadQueue({
-            writeObject: ({ key, body, contentType }) => backend.writeBytes(key, body, contentType),
+            writeObject: ({ key, body, contentType }: any) => backend.writeBytes(key, body, contentType),
             onStatus: setRecordingPipelineStatus,
           });
           await refreshWebdavTree();

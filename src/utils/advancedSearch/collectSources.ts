@@ -1,4 +1,4 @@
-import { CHAT_FOLDER } from '@/utils/chatWithMyself/paths.js';
+import { CHAT_FOLDER } from '@/utils/chatWithMyself/paths';
 import { ADVANCED_SEARCH_FOLDER } from '@/utils/advancedSearch/paths';
 
 /** Always indexed when Advanced Search index is built. */

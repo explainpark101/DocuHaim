@@ -36,7 +36,7 @@ function gzipJsonAsync(value: unknown): Promise<Uint8Array> {
   const json = JSON.stringify(value);
   const input = strToU8(json);
   return new Promise((resolve, reject) => {
-    gzip(input, { level: 6 }, (err, data) => {
+    gzip(input, { level: 6 }, (err: any, data: any) => {
       if (err) reject(err);
       else resolve(data);
     });
@@ -55,7 +55,7 @@ function gunzipJson<T>(body: Uint8Array): T {
 
 function gzipBytesAsync(input: Uint8Array): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
-    gzip(input, { level: 6 }, (err, data) => {
+    gzip(input, { level: 6 }, (err: any, data: any) => {
       if (err) reject(err);
       else resolve(data);
     });

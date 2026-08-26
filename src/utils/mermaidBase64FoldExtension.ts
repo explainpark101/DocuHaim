@@ -26,7 +26,7 @@ function collectMermaidBase64FoldRanges(state: EditorState): FoldRange[] {
   const found: FoldRange[] = [];
   const docText = state.doc.toString();
   syntaxTree(state).iterate({
-    enter(node) {
+    enter(node: any) {
       if (node.name !== 'FencedCode') return;
       const range = mermaidBase64FenceInnerRange(docText, node.from, node.to);
       if (range) found.push(range);
@@ -43,15 +43,21 @@ const userUnfoldedField = StateField.define<FoldRange[]>({
   create() {
     return [];
   },
-  update(value, tr) {
+  update(value: any, tr: any) {
     let next = value;
     if (tr.docChanged && next.length) {
       next = next
-        .map(({ from, to }) => ({
+        .map(({
+        from,
+        to
+      }: any) => ({
           from: tr.changes.mapPos(from, 1),
           to: tr.changes.mapPos(to, -1),
         }))
-        .filter(({ from, to }) => from < to);
+        .filter(({
+        from,
+        to
+      }: any) => from < to);
     }
 
     let changed = next !== value;
@@ -63,7 +69,7 @@ const userUnfoldedField = StateField.define<FoldRange[]>({
         }
       } else if (effect.is(foldEffect)) {
         const filtered = next.filter(
-          (range) => range.from !== effect.value.from || range.to !== effect.value.to,
+          (range: any) => range.from !== effect.value.from || range.to !== effect.value.to,
         );
         if (filtered.length !== next.length) {
           next = filtered;
@@ -103,11 +109,11 @@ const autoFoldPlugin = ViewPlugin.fromClass(
   },
 );
 
-const mermaidBase64FoldService = foldService.of((state, lineStart) => {
+const mermaidBase64FoldService = foldService.of((state: any, lineStart: any) => {
   const docText = state.doc.toString();
   let found: FoldRange | null = null;
   syntaxTree(state).iterate({
-    enter(node) {
+    enter(node: any) {
       if (node.name !== 'FencedCode') return;
       const line = state.doc.lineAt(node.from);
       if (line.from !== lineStart) return;

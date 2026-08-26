@@ -2,7 +2,7 @@
  * Chat group picker helpers for Advanced Search nested mode.
  */
 
-import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths';
 import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
 import { fuzzyMatchText, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 

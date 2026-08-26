@@ -4,10 +4,10 @@
  */
 
 import { EditorSelection } from '@codemirror/state';
-import type { EditorView } from '@codemirror/view';
 import { isMirrorEditCaretFromPreview } from '@/utils/previewImageCaretSync';
 
 /** Canonical hard-break insertion for preview-driven Enter. */
+import type { EditorView } from '@codemirror/view';
 export const PREVIEW_HARD_BREAK_INSERT = '<br/>\n';
 
 /**

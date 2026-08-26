@@ -3,8 +3,8 @@
  */
 
 import { EditorSelection, type ChangeSpec, type SelectionRange, type Text } from '@codemirror/state';
-import type { EditorView } from '@codemirror/view';
 
+import type { EditorView } from '@codemirror/view';
 const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
 const ORDERED_LIST_LINE_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
 const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX])\](.*)$/;
@@ -179,9 +179,7 @@ export function toggleInlineMarkdownWrap(
   close: string = open,
 ): boolean {
   if (!view?.state || !open) return false;
-  const plans = view.state.selection.ranges.map((range) => (
-    planInlineWrap(view.state.doc, range, open, close)
-  ));
+  const plans = view.state.selection.ranges.map((range: any) => planInlineWrap(view.state.doc, range, open, close));
   return dispatchRangePlans(view, plans);
 }
 
@@ -213,9 +211,7 @@ export function toggleSubForSelection(view: EditorView): boolean {
 
 export function wrapSelectionWithInlineCode(view: EditorView): boolean {
   if (!view?.state) return false;
-  const plans: WrapPlan[] = view.state.selection.ranges.map((range) => (
-    planInlineCodeWrap(view.state.doc, range) ?? { next: range }
-  ));
+  const plans: WrapPlan[] = view.state.selection.ranges.map((range: any) => planInlineCodeWrap(view.state.doc, range) ?? { next: range });
   return dispatchRangePlans(view, plans);
 }
 
@@ -353,7 +349,7 @@ export function wrapInlineSelection(
 ): boolean {
   if (!view?.state || !open) return false;
 
-  const spec = view.state.changeByRange((range) => {
+  const spec = view.state.changeByRange((range: any) => {
     if (range.empty) return { range };
     const selectedText = view.state.doc.sliceString(range.from, range.to);
     const wrapped = `${open}${selectedText}${close}`;

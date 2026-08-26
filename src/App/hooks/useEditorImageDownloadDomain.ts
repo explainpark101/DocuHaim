@@ -186,7 +186,7 @@ export function useEditorImageDownloadDomain() {
               path = await uploadLocalEditorImage(localRootHandle, file, {
                 imagePathPrefix,
                 signal: uploadController.signal,
-                onProgress: (percent) => reportProgress(file, percent),
+                onProgress: (percent: number) => reportProgress(file, percent),
               });
             }
           } else if (isWebdavUpload) {
@@ -243,7 +243,7 @@ export function useEditorImageDownloadDomain() {
             path = await uploadEditorImage(client, s3Creds.bucket, file, {
               imagePathPrefix,
               signal: uploadController.signal,
-              onProgress: (percent) => reportProgress(file, percent),
+              onProgress: (percent: number) => reportProgress(file, percent),
             });
           }
           uploadedBytes += file.size || 0;
