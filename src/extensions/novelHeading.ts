@@ -39,8 +39,8 @@ export const NovelHeading = Node.create<NovelHeadingOptions>({
 
   parseHTML() {
     const deep = this.options.levels
-      .filter((level) => level > MAX_EXPORT_HEADING_LEVEL)
-      .flatMap((level) => [
+      .filter((level: any) => level > MAX_EXPORT_HEADING_LEVEL)
+      .flatMap((level: any) => [
         {
           tag: `h6[data-heading-level="${level}"]`,
           attrs: { level },
@@ -51,15 +51,18 @@ export const NovelHeading = Node.create<NovelHeadingOptions>({
         },
       ]);
     const standard = this.options.levels
-      .filter((level) => level <= MAX_EXPORT_HEADING_LEVEL)
-      .map((level) => ({
-        tag: `h${level}`,
-        attrs: { level },
-      }));
+      .filter((level: any) => level <= MAX_EXPORT_HEADING_LEVEL)
+      .map((level: any) => ({
+      tag: `h${level}`,
+      attrs: { level }
+    }));
     return [...deep, ...standard];
   },
 
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML({
+    node,
+    HTMLAttributes
+  }: any) {
     const hasLevel = this.options.levels.includes(node.attrs.level as AppHeadingLevel);
     const level = hasLevel ? Number(node.attrs.level) : this.options.levels[0] ?? 1;
     const attrs =
@@ -74,11 +77,15 @@ export const NovelHeading = Node.create<NovelHeadingOptions>({
 
   addCommands() {
     return {
-      setHeading: (attributes: { level: number }) => ({ commands }) => {
+      setHeading: (attributes: { level: number }) => ({
+        commands
+      }: any) => {
         if (!this.options.levels.includes(attributes.level as AppHeadingLevel)) return false;
         return commands.setNode(this.name, attributes);
       },
-      toggleHeading: (attributes: { level: number }) => ({ commands }) => {
+      toggleHeading: (attributes: { level: number }) => ({
+        commands
+      }: any) => {
         if (!this.options.levels.includes(attributes.level as AppHeadingLevel)) return false;
         return commands.toggleNode(this.name, 'paragraph', attributes);
       },
@@ -86,7 +93,7 @@ export const NovelHeading = Node.create<NovelHeadingOptions>({
   },
 
   addKeyboardShortcuts() {
-    return this.options.levels.reduce<Record<string, () => boolean>>((items, level) => {
+    return this.options.levels.reduce<Record<string, () => boolean>>((items: any, level: any) => {
       const combo = level === 10 ? 'Mod-Alt-0' : `Mod-Alt-${level}`;
       items[combo] = () => this.editor.commands.toggleNode(this.name, 'paragraph', { level });
       return items;
@@ -95,12 +102,11 @@ export const NovelHeading = Node.create<NovelHeadingOptions>({
 
   addInputRules() {
     const minLevel = Math.min(...this.options.levels);
-    return this.options.levels.map((level) =>
-      textblockTypeInputRule({
-        find: new RegExp(`^(#{${minLevel},${level}})\\s$`),
-        type: this.type,
-        getAttributes: { level },
-      }),
+    return this.options.levels.map((level: any) => textblockTypeInputRule({
+      find: new RegExp(`^(#{${minLevel},${level}})\\s$`),
+      type: this.type,
+      getAttributes: { level },
+    }),
     );
   },
 });

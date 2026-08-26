@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 /** Bump when default widths change so stale localStorage px values are not reused. */
 const PANEL_WIDTH_STORE_VERSION = 3;
 
-function versionedStorageKey(storageKey) {
+function versionedStorageKey(storageKey: any) {
   if (!storageKey) return storageKey;
   return `${storageKey}::v${PANEL_WIDTH_STORE_VERSION}`;
 }
@@ -35,8 +35,8 @@ export function useResizablePanelWidth({
   edge = 'right',
   deferReactUpdateUntilEnd = false,
   onLiveWidth,
-  onCollapseBelowMin,
-} = {}) {
+  onCollapseBelowMin
+}: any = {}) {
   const dragFloor = collapseBelowWidth ?? minWidth;
   /** Width committed when not collapsing — soft min, not the drag-collapse floor. */
   const commitFloor = minWidth;
@@ -106,6 +106,7 @@ export function useResizablePanelWidth({
   useEffect(() => {
     if (isResizing) return;
     const floor = Math.min(minWidth, maxWidth);
+    // @ts-expect-error TS(7006): Parameter 'w' implicitly has an 'any' type.
     setWidth((w) => {
       const next = Math.min(maxWidth, Math.max(floor, w));
       return next === w ? w : next;
@@ -121,7 +122,7 @@ export function useResizablePanelWidth({
     setIsResizing(false);
   }, []);
 
-  const onResizeStart = useCallback((e) => {
+  const onResizeStart = useCallback((e: any) => {
     e.preventDefault();
     e.stopPropagation();
     const clientX = e.touches?.[0]?.clientX ?? e.clientX;
@@ -137,7 +138,7 @@ export function useResizablePanelWidth({
   }, []);
 
   useEffect(() => {
-    const applyDelta = (clientX) => {
+    const applyDelta = (clientX: any) => {
       const state = resizeStateRef.current;
       if (!state.isResizing) return;
       const delta = clientX - state.startX;
@@ -152,6 +153,7 @@ export function useResizablePanelWidth({
         ? Math.min(max, Math.max(0, raw))
         : Math.min(max, Math.max(floor, raw));
 
+      // @ts-expect-error TS(2322): Type 'number' is not assignable to type 'null'.
       liveWidthRef.current = next;
       onLiveWidthRef.current?.(next);
       if (!deferRef.current) {
@@ -159,15 +161,15 @@ export function useResizablePanelWidth({
       }
     };
 
-    const handleMouseMove = (e) => applyDelta(e.clientX);
-    const handleTouchMove = (e) => {
+    const handleMouseMove = (e: any) => applyDelta(e.clientX);
+    const handleTouchMove = (e: any) => {
       if (!resizeStateRef.current.isResizing) return;
       if (e.touches?.[0]) {
         e.preventDefault();
         applyDelta(e.touches[0].clientX);
       }
     };
-    const handleEnd = (e) => {
+    const handleEnd = (e: any) => {
       if (!resizeStateRef.current.isResizing) return;
       if (e?.type?.startsWith('touch')) {
         e.stopPropagation?.();

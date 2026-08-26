@@ -11,8 +11,8 @@ export const NovelParagraph = Paragraph.extend({
     return {
       class: {
         default: null,
-        parseHTML: (element) => element.getAttribute('class'),
-        renderHTML: (attributes) => {
+        parseHTML: (element: any) => element.getAttribute('class'),
+        renderHTML: (attributes: any) => {
           if (!attributes.class) return {};
           return { class: attributes.class };
         },
@@ -22,7 +22,9 @@ export const NovelParagraph = Paragraph.extend({
 
   addKeyboardShortcuts() {
     return {
-      Enter: ({ editor }) => {
+      Enter: ({
+        editor
+      }: any) => {
         const { $from } = editor.state.selection;
         if ($from.parent.type.name !== 'paragraph') return false;
         if ($from.parent.attrs.class !== CAPTION_CLASS) return false;

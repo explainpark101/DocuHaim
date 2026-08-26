@@ -15,7 +15,7 @@ const LEVEL_POLL_INTERVAL_MS = 50;
 /**
  * level 0~1을 회색→빨간색 hex로 변환
  */
-export function levelToColor(level) {
+export function levelToColor(level: any) {
   if (level <= 0) return '#9ca3af';
   if (level >= 1) return '#ef4444';
   if (level < 0.5) {
@@ -26,7 +26,7 @@ export function levelToColor(level) {
   return interpolateHex('#f59e0b', '#ef4444', t);
 }
 
-function interpolateHex(a, b, t) {
+function interpolateHex(a: any, b: any, t: any) {
   const ar = parseInt(a.slice(1, 3), 16);
   const ag = parseInt(a.slice(3, 5), 16);
   const ab = parseInt(a.slice(5, 7), 16);
@@ -69,28 +69,34 @@ export function useRecording() {
       pollIdRef.current = null;
     }
     setAudioLevel(0);
+    // @ts-expect-error TS(2339): Property 'state' does not exist on type 'never'.
     if (mediaRecorderRef.current?.state === 'recording') {
+      // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
       mediaRecorderRef.current.stop();
     }
     mediaRecorderRef.current = null;
     if (sourceRef.current) {
       try {
+        // @ts-expect-error TS(2339): Property 'disconnect' does not exist on type 'neve... Remove this comment to see the full error message
         sourceRef.current.disconnect();
       } catch (_) {}
       sourceRef.current = null;
     }
     analyserRef.current = null;
+    // @ts-expect-error TS(2339): Property 'state' does not exist on type 'never'.
     if (audioContextRef.current?.state !== 'closed') {
+      // @ts-expect-error TS(2339): Property 'close' does not exist on type 'never'.
       audioContextRef.current?.close();
     }
     audioContextRef.current = null;
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+      // @ts-expect-error TS(2339): Property 'getTracks' does not exist on type 'never... Remove this comment to see the full error message
+      streamRef.current.getTracks().forEach((t: any) => t.stop());
       streamRef.current = null;
     }
   }, []);
 
-  const stopRecording = useCallback(async (params) => {
+  const stopRecording = useCallback(async (params: any) => {
     const { noteKey = '', markdown = '' } = params ?? {};
     if (!isRecording && !mediaRecorderRef.current) {
       return null;
@@ -107,20 +113,25 @@ export function useRecording() {
 
     if (sourceRef.current) {
       try {
+        // @ts-expect-error TS(2339): Property 'disconnect' does not exist on type 'neve... Remove this comment to see the full error message
         sourceRef.current.disconnect();
       } catch (_) {}
       sourceRef.current = null;
     }
     analyserRef.current = null;
+    // @ts-expect-error TS(2339): Property 'state' does not exist on type 'never'.
     if (audioContextRef.current?.state !== 'closed') {
+      // @ts-expect-error TS(2339): Property 'close' does not exist on type 'never'.
       audioContextRef.current?.close();
       audioContextRef.current = null;
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+      // @ts-expect-error TS(2339): Property 'getTracks' does not exist on type 'never... Remove this comment to see the full error message
+      streamRef.current.getTracks().forEach((t: any) => t.stop());
       streamRef.current = null;
     }
 
+    // @ts-expect-error TS(2339): Property 'state' does not exist on type 'never'.
     if (!mr || mr.state !== 'recording') {
       chunksRef.current = [];
       syncDataRef.current = [];
@@ -129,8 +140,10 @@ export function useRecording() {
     }
 
     const stopPromise = new Promise((resolve) => {
+      // @ts-expect-error TS(2339): Property 'onstop' does not exist on type 'never'.
       mr.onstop = () => resolve();
     });
+    // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
     mr.stop();
     await stopPromise;
 
@@ -144,6 +157,7 @@ export function useRecording() {
       return null;
     }
 
+    // @ts-expect-error TS(2339): Property 'mimeType' does not exist on type 'never'... Remove this comment to see the full error message
     const mimeType = mr.mimeType || 'audio/webm';
     const audioBlob = new Blob(chunks, { type: mimeType });
 
@@ -173,18 +187,23 @@ export function useRecording() {
     syncDataRef.current = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // @ts-expect-error TS(2322): Type 'MediaStream' is not assignable to type 'null... Remove this comment to see the full error message
       streamRef.current = stream;
 
+      // @ts-expect-error TS(2339): Property 'webkitAudioContext' does not exist on ty... Remove this comment to see the full error message
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      // @ts-expect-error TS(2322): Type 'AudioContext' is not assignable to type 'nul... Remove this comment to see the full error message
       audioContextRef.current = audioContext;
 
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = FFT_SIZE;
       analyser.smoothingTimeConstant = SMOOTHING;
+      // @ts-expect-error TS(2322): Type 'AnalyserNode' is not assignable to type 'nul... Remove this comment to see the full error message
       analyserRef.current = analyser;
 
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
+      // @ts-expect-error TS(2322): Type 'MediaStreamAudioSourceNode' is not assignabl... Remove this comment to see the full error message
       sourceRef.current = source;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -193,13 +212,17 @@ export function useRecording() {
 
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = (e) => {
+        // @ts-expect-error TS(2769): No overload matches this call.
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       mediaRecorder.start(100);
+      // @ts-expect-error TS(2322): Type 'MediaRecorder' is not assignable to type 'nu... Remove this comment to see the full error message
       mediaRecorderRef.current = mediaRecorder;
 
+      // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
       pollIdRef.current = setInterval(() => {
         if (!analyserRef.current) return;
+        // @ts-expect-error TS(2339): Property 'getByteFrequencyData' does not exist on ... Remove this comment to see the full error message
         analyserRef.current.getByteFrequencyData(dataArray);
         const sum = dataArray.reduce((a, b) => a + b, 0);
         const avg = sum / dataArray.length;
@@ -209,6 +232,7 @@ export function useRecording() {
 
       setIsRecording(true);
     } catch (e) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       setError(e?.message || '마이크 접근 실패');
       cleanup();
       setIsRecording(false);
@@ -217,6 +241,7 @@ export function useRecording() {
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {
+      // @ts-expect-error TS(2554): Expected 1 arguments, but got 0.
       stopRecording();
     } else {
       startRecording();
@@ -228,15 +253,18 @@ export function useRecording() {
     return (Date.now() - recordingStartTimeRef.current) / 1000;
   }, []);
 
-  const captureSync = useCallback((line, text, options = {}) => {
+  const captureSync = useCallback((line: any, text: any, options = {}) => {
     if (!isRecording) return;
     const time = (Date.now() - recordingStartTimeRef.current) / 1000;
+    // @ts-expect-error TS(2769): No overload matches this call.
     syncDataRef.current.push({ time, line, text, insert: options.insert ?? false });
   }, [isRecording]);
 
   useEffect(() => {
     return () => {
+      // @ts-expect-error TS(2339): Property 'state' does not exist on type 'never'.
       if (mediaRecorderRef.current?.state === 'recording') {
+        // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
         mediaRecorderRef.current.stop();
       }
       cleanup();

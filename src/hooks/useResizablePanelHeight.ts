@@ -20,8 +20,8 @@ export function useResizablePanelHeight({
   maxHeight = 640,
   edge = 'bottom',
   deferReactUpdateUntilEnd = false,
-  onLiveHeight,
-} = {}) {
+  onLiveHeight
+}: any = {}) {
   const [height, setHeight] = useState(() => {
     if (!storageKey || typeof window === 'undefined') return defaultHeight;
     try {
@@ -73,6 +73,7 @@ export function useResizablePanelHeight({
 
   // Clamp when viewport max shrinks below current height.
   useEffect(() => {
+    // @ts-expect-error TS(7006): Parameter 'prev' implicitly has an 'any' type.
     setHeight((prev) => Math.min(maxHeight, Math.max(minHeight, prev)));
   }, [minHeight, maxHeight]);
 
@@ -85,7 +86,7 @@ export function useResizablePanelHeight({
     setIsResizing(false);
   }, []);
 
-  const onResizeStart = useCallback((e) => {
+  const onResizeStart = useCallback((e: any) => {
     e.preventDefault();
     e.stopPropagation();
     const clientY = e.touches?.[0]?.clientY ?? e.clientY;
@@ -101,7 +102,7 @@ export function useResizablePanelHeight({
   }, []);
 
   useEffect(() => {
-    const applyDelta = (clientY) => {
+    const applyDelta = (clientY: any) => {
       const state = resizeStateRef.current;
       if (!state.isResizing) return;
       const delta = clientY - state.startY;
@@ -111,6 +112,7 @@ export function useResizablePanelHeight({
         maxHeightRef.current,
         Math.max(minHeightRef.current, state.startHeight + signed),
       );
+      // @ts-expect-error TS(2322): Type 'number' is not assignable to type 'null'.
       liveHeightRef.current = next;
       onLiveHeightRef.current?.(next);
       if (!deferRef.current) {
@@ -118,8 +120,8 @@ export function useResizablePanelHeight({
       }
     };
 
-    const handleMouseMove = (e) => applyDelta(e.clientY);
-    const handleTouchMove = (e) => {
+    const handleMouseMove = (e: any) => applyDelta(e.clientY);
+    const handleTouchMove = (e: any) => {
       if (!resizeStateRef.current.isResizing) return;
       if (e.touches?.[0]) {
         e.preventDefault();
@@ -127,7 +129,7 @@ export function useResizablePanelHeight({
         applyDelta(e.touches[0].clientY);
       }
     };
-    const handleEnd = (e) => {
+    const handleEnd = (e: any) => {
       if (!resizeStateRef.current.isResizing) return;
       if (e?.type?.startsWith('touch')) {
         e.stopPropagation?.();

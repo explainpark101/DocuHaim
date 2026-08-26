@@ -9,7 +9,7 @@ import { useEffect } from 'react';
  *
  * @param {boolean} enabled
  */
-export function useVisualViewportLock(enabled) {
+export function useVisualViewportLock(enabled: any) {
   useEffect(() => {
     if (!enabled) return undefined;
 

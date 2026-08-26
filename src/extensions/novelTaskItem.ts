@@ -9,7 +9,9 @@ export const NovelTaskItem = TaskItem.extend({
   addKeyboardShortcuts() {
     return {
       // Ctrl-Tab (not Cmd-Tab): toggle checked when cursor is in a task item
-      'Ctrl-Tab': ({ editor }) => {
+      'Ctrl-Tab': ({
+        editor
+      }: any) => {
         const { $from } = editor.state.selection;
         for (let depth = $from.depth; depth > 0; depth -= 1) {
           const node = $from.node(depth);
@@ -18,7 +20,9 @@ export const NovelTaskItem = TaskItem.extend({
           return editor
             .chain()
             .focus(undefined, { scrollIntoView: false })
-            .command(({ tr }) => {
+            .command(({
+            tr
+          }: any) => {
               const current = tr.doc.nodeAt(pos);
               if (!current || current.type.name !== this.name) return false;
               tr.setNodeMarkup(pos, undefined, {
@@ -35,7 +39,12 @@ export const NovelTaskItem = TaskItem.extend({
   },
 
   addNodeView() {
-    return ({ node, HTMLAttributes, getPos, editor }) => {
+    return ({
+      node,
+      HTMLAttributes,
+      getPos,
+      editor
+    }: any) => {
       const listItem = document.createElement('li');
       const checkboxWrapper = document.createElement('label');
       const checkbox = document.createElement('input');
@@ -65,12 +74,15 @@ export const NovelTaskItem = TaskItem.extend({
           checkbox.checked = !checkbox.checked;
           return;
         }
+        // @ts-expect-error TS(2339): Property 'checked' does not exist on type 'EventTa... Remove this comment to see the full error message
         const { checked } = event.target;
         if (editor.isEditable && typeof getPos === 'function') {
           editor
             .chain()
             .focus(undefined, { scrollIntoView: false })
-            .command(({ tr }) => {
+            .command(({
+            tr
+          }: any) => {
               const position = getPos();
               if (typeof position !== 'number') return false;
               const currentNode = tr.doc.nodeAt(position);
@@ -114,6 +126,7 @@ export const NovelTaskItem = TaskItem.extend({
             .filter(Boolean)
             .forEach((c) => listItem.classList.add(c));
         } else {
+          // @ts-expect-error TS(2769): No overload matches this call.
           listItem.setAttribute(key, value);
         }
       });
@@ -121,7 +134,7 @@ export const NovelTaskItem = TaskItem.extend({
       return {
         dom: listItem,
         contentDOM: content,
-        update: (updatedNode) => {
+        update: (updatedNode: any) => {
           if (updatedNode.type !== this.type) return false;
           listItem.dataset.checked = updatedNode.attrs.checked;
           checkbox.checked = updatedNode.attrs.checked;

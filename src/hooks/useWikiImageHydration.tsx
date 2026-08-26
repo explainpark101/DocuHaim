@@ -19,7 +19,7 @@ import { PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/print/printSettingsS
  * @param {(path: string) => Promise<string|null>} [getPresignedUrl]
  * @param {string | null} [currentNotePath]
  */
-export function useWikiImageHydration(rootRef, value, getPresignedUrl, currentNotePath = null) {
+export function useWikiImageHydration(rootRef: any, value: any, getPresignedUrl: any, currentNotePath = null) {
   const valueRef = useRef(value);
   valueRef.current = value;
 
@@ -28,9 +28,9 @@ export function useWikiImageHydration(rootRef, value, getPresignedUrl, currentNo
 
     let cancelled = false;
     /** @type {MutationObserver | null} */
-    let mutationObserver = null;
+    let mutationObserver: any = null;
 
-    const ensureObserver = (root) => {
+    const ensureObserver = (root: any) => {
       if (!root || mutationObserver || typeof MutationObserver === 'undefined') return;
       // Sync in the MO callback so remembered URLs attach before paint.
       mutationObserver = new MutationObserver(() => {

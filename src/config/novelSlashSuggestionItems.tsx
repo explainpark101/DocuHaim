@@ -41,14 +41,21 @@ const LOREM_IPSUM_HTML = LOREM_IPSUM_PARAGRAPHS.map((p) => `<p>${p}</p>`).join('
  * }} opts
  * `onExportPdf`: `ExportPDF` 컴포넌트와 같이 `/export-pdf`로 본문·테마를 넘겨 인쇄 미리보기를 연다.
  */
-export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onSave } = {}) {
+export function buildNovelSlashSuggestionItems({
+  onUploadImage,
+  onExportPdf,
+  onSave
+}: any = {}) {
   return createSuggestionItems([
     {
       title: '본문',
       description: '일반 문단',
       searchTerms: ['p', 'paragraph', 'text'],
       icon: <Text className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setParagraph().run();
       },
     },
@@ -57,7 +64,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '더미 본문 여러 문단 삽입',
       searchTerms: ['lorem', 'ipsum', '/lorem', 'placeholder', 'dummy', '더미', '로렘'],
       icon: <ScrollText className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).insertContent(LOREM_IPSUM_HTML).run();
       },
     },
@@ -66,7 +76,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '체크리스트',
       searchTerms: ['todo', 'task', 'list', 'check'],
       icon: <CheckSquare className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).toggleTaskList().run();
       },
     },
@@ -75,7 +88,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '체크리스트 (할 일과 동일)',
       searchTerms: ['checkbox', '/checkbox', '체크박스'],
       icon: <CheckSquare className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).toggleTaskList().run();
       },
     },
@@ -84,7 +100,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '큰 제목',
       searchTerms: ['title', 'h1', 'heading'],
       icon: <Heading1 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
       },
     },
@@ -93,7 +112,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '중간 제목',
       searchTerms: ['h2', 'subtitle'],
       icon: <Heading2 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
       },
     },
@@ -102,7 +124,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '작은 제목',
       searchTerms: ['h3', 'subtitle'],
       icon: <Heading3 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run();
       },
     },
@@ -111,7 +136,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '4단계 제목',
       searchTerms: ['h4', 'heading'],
       icon: <Heading4 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 4 }).run();
       },
     },
@@ -120,7 +148,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '5단계 제목',
       searchTerms: ['h5', 'heading'],
       icon: <Heading5 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 5 }).run();
       },
     },
@@ -129,7 +160,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '6단계 제목',
       searchTerms: ['h6', 'heading'],
       icon: <Heading6 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 6 }).run();
       },
     },
@@ -138,7 +172,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '7단계 제목 (본문 크기·굵게)',
       searchTerms: ['h7', 'heading'],
       icon: <Heading6 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 7 }).run();
       },
     },
@@ -147,7 +184,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '8단계 제목 (본문 크기·굵게)',
       searchTerms: ['h8', 'heading'],
       icon: <Heading6 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 8 }).run();
       },
     },
@@ -156,7 +196,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '9단계 제목 (본문 크기·굵게)',
       searchTerms: ['h9', 'heading'],
       icon: <Heading6 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 9 }).run();
       },
     },
@@ -165,7 +208,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '10단계 제목 (본문 크기·굵게)',
       searchTerms: ['h10', 'heading'],
       icon: <Heading6 className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHeading({ level: 10 }).run();
       },
     },
@@ -174,7 +220,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '순서 없는 목록',
       searchTerms: ['bullet', 'unordered', 'ul'],
       icon: <List className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).toggleBulletList().run();
       },
     },
@@ -183,7 +232,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '순서 있는 목록',
       searchTerms: ['ordered', 'ol', 'number'],
       icon: <ListOrdered className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).toggleOrderedList().run();
       },
     },
@@ -192,7 +244,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '인용 블록',
       searchTerms: ['quote', 'blockquote'],
       icon: <TextQuote className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).toggleBlockquote().run();
       },
     },
@@ -201,7 +256,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '여러 줄 코드',
       searchTerms: ['code', 'codeblock', 'pre'],
       icon: <Code className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
       },
     },
@@ -210,7 +268,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '가로 구분선',
       searchTerms: ['hr', 'horizontal', 'rule', 'divider'],
       icon: <Minus className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).setHorizontalRule().run();
       },
     },
@@ -219,7 +280,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '인쇄 미리보기 페이지로 이동 (md-editor 툴바와 동일)',
       searchTerms: ['pdf', 'print', 'export', '인쇄', '프린트', '내보내기'],
       icon: <Printer className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).run();
         if (typeof onExportPdf === 'function') onExportPdf(editor);
       },
@@ -229,7 +293,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '현재 파일 저장',
       searchTerms: ['save', '/save', '저장'],
       icon: <Save className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).run();
         if (typeof onSave === 'function') onSave();
       },
@@ -239,7 +306,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: onUploadImage ? 'S3에 올리고 ![[경로]] 삽입 (아래에 캡션 줄 포함)' : 'S3 연결 후 사용',
       searchTerms: ['img', 'image', 'photo', 'picture', 'upload'],
       icon: <ImageIcon className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor.chain().focus().deleteRange(range).run();
         if (typeof onUploadImage !== 'function') return;
         const input = document.createElement('input');
@@ -261,7 +331,10 @@ export function buildNovelSlashSuggestionItems({ onUploadImage, onExportPdf, onS
       description: '바로 위 이미지 설명을 적을 줄 추가',
       searchTerms: ['caption', '캡션', '설명', 'subtitle', 'fig'],
       icon: <Subtitles className="h-4 w-4" />,
-      command: ({ editor, range }) => {
+      command: ({
+        editor,
+        range
+      }: any) => {
         editor
           .chain()
           .focus()

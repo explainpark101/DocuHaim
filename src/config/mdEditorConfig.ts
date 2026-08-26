@@ -34,27 +34,27 @@ config({
       instance: {},
     },
   },
-  mermaidConfig(base) {
+  mermaidConfig(base: any) {
     return {
       ...base,
       securityLevel: 'loose',
       startOnLoad: false,
     };
   },
-  markdownItConfig(md) {
+  markdownItConfig(md: any) {
     applyAppMarkdownItConfig(md);
   },
-  markdownItPlugins(plugins) {
+  markdownItPlugins(plugins: any) {
     return applyAppMarkdownItPluginsFromList(plugins);
   },
-  codeMirrorExtensions(extensions) {
-    const next = (extensions || []).filter((item) => item?.type !== 'linkShortener');
-    if (next.some((item) => item?.type === 'autocompleteGate')) return next;
+  codeMirrorExtensions(extensions: any) {
+    const next = (extensions || []).filter((item: any) => item?.type !== 'linkShortener');
+    if (next.some((item: any) => item?.type === 'autocompleteGate')) return next;
     return [
       ...next,
       {
         type: 'autocompleteGate',
-        extension: EditorView.updateListener.of((update) => {
+        extension: EditorView.updateListener.of((update: any) => {
           if (loadEditorAutocompleteEnabled()) return;
           if (completionStatus(update.state) === 'active') {
             closeCompletion(update.view);

@@ -22,26 +22,26 @@ export const WikiImage = Node.create({
     return {
       path: {
         default: null,
-        parseHTML: (el) => el.getAttribute('data-wiki-path'),
-        renderHTML: (attrs) => {
+        parseHTML: (el: any) => el.getAttribute('data-wiki-path'),
+        renderHTML: (attrs: any) => {
           if (!attrs.path) return {};
           return { 'data-wiki-path': attrs.path };
         },
       },
       width: {
         default: null,
-        parseHTML: (el) => el.getAttribute('data-wiki-width'),
-        renderHTML: (attrs) => (attrs.width ? { 'data-wiki-width': attrs.width } : {}),
+        parseHTML: (el: any) => el.getAttribute('data-wiki-width'),
+        renderHTML: (attrs: any) => attrs.width ? { 'data-wiki-width': attrs.width } : {},
       },
       height: {
         default: null,
-        parseHTML: (el) => el.getAttribute('data-wiki-height'),
-        renderHTML: (attrs) => (attrs.height ? { 'data-wiki-height': attrs.height } : {}),
+        parseHTML: (el: any) => el.getAttribute('data-wiki-height'),
+        renderHTML: (attrs: any) => attrs.height ? { 'data-wiki-height': attrs.height } : {},
       },
       background: {
         default: null,
-        parseHTML: (el) => el.getAttribute('data-wiki-bg'),
-        renderHTML: (attrs) => (attrs.background ? { 'data-wiki-bg': attrs.background } : {}),
+        parseHTML: (el: any) => el.getAttribute('data-wiki-bg'),
+        renderHTML: (attrs: any) => attrs.background ? { 'data-wiki-bg': attrs.background } : {},
       },
     };
   },
@@ -51,7 +51,7 @@ export const WikiImage = Node.create({
       {
         tag: 'img[data-wiki-path]',
         priority: 65,
-        getAttrs: (el) => {
+        getAttrs: (el: any) => {
           const path = el.getAttribute('data-wiki-path');
           if (!path) return false;
           return {
@@ -65,16 +65,23 @@ export const WikiImage = Node.create({
     ];
   },
 
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML({
+    node,
+    HTMLAttributes
+  }: any) {
     const sizeAttrs = {};
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     if (node.attrs.width) sizeAttrs['data-wiki-width'] = node.attrs.width;
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     if (node.attrs.height) sizeAttrs['data-wiki-height'] = node.attrs.height;
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     if (node.attrs.background) sizeAttrs['data-wiki-bg'] = node.attrs.background;
     const style = buildWikiImageStyle({
       width: node.attrs.width,
       height: node.attrs.height,
       background: node.attrs.background,
     });
+    // @ts-expect-error TS(2339): Property 'style' does not exist on type '{}'.
     if (style) sizeAttrs.style = style;
     return [
       'img',

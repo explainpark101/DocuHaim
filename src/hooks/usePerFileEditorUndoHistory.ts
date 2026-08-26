@@ -20,7 +20,7 @@ import {
   rebuildCmHistoryFromStack,
 } from '@/utils/rebuildCmHistoryFromStack';
 
-function getEditorApi(editorRef) {
+function getEditorApi(editorRef: any) {
   return editorRef?.current?.value ?? editorRef?.current ?? null;
 }
 
@@ -37,8 +37,8 @@ export function usePerFileEditorUndoHistory({
   value,
   onChange,
   editorRef,
-  enabled = true,
-}) {
+  enabled = true
+}: any) {
   const fileKey = enabled ? getEditorUndoHistoryKeyFromFile(currentFile) : null;
 
   const stackRef = useRef(['']);
@@ -55,7 +55,7 @@ export function usePerFileEditorUndoHistory({
 
   valueRef.current = value;
 
-  const persistNow = useCallback(async (key, stack, index) => {
+  const persistNow = useCallback(async (key: any, stack: any, index: any) => {
     if (!key) return;
     try {
       await saveEditorUndoHistory({ key, stack, index });
@@ -64,9 +64,10 @@ export function usePerFileEditorUndoHistory({
     }
   }, []);
 
-  const schedulePersist = useCallback((key, stack, index) => {
+  const schedulePersist = useCallback((key: any, stack: any, index: any) => {
     if (!key) return;
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
     persistTimerRef.current = setTimeout(() => {
       persistTimerRef.current = null;
       persistNow(key, stack, index);
@@ -88,7 +89,7 @@ export function usePerFileEditorUndoHistory({
     return synced;
   }, []);
 
-  const rebuildFromStack = useCallback((stackForReplay) => {
+  const rebuildFromStack = useCallback((stackForReplay: any) => {
     const api = getEditorApi(editorRef);
     const view = getEditorViewFromApi(api);
     const resetHistory = getResetHistoryFn(api);
@@ -111,7 +112,7 @@ export function usePerFileEditorUndoHistory({
   }, [editorRef]);
 
   const applyHistoryForFile = useCallback(
-    (key, stored) => {
+    (key: any, stored: any) => {
       const content = valueRef.current ?? '';
       const baseStack = stored?.stack?.length ? stored.stack : [content];
       const baseIndex = stored?.stack?.length
@@ -125,7 +126,7 @@ export function usePerFileEditorUndoHistory({
       lastEmittedRef.current = content;
 
       const replay = synced.stack.slice(0, synced.index + 1);
-      const attempt = (triesLeft) => {
+      const attempt = (triesLeft: any) => {
         if (fileKeyRef.current !== key) return;
         if (rebuildFromStack(replay)) return;
         if (triesLeft <= 0) return;
@@ -163,6 +164,7 @@ export function usePerFileEditorUndoHistory({
       persistNow(prevKey, synced.stack, synced.index);
     }
 
+    // @ts-expect-error TS(2322): Type 'string | null' is not assignable to type 'nu... Remove this comment to see the full error message
     fileKeyRef.current = nextKey;
     initDoneForKeyRef.current = null;
     hasLocalEditsRef.current = false;
@@ -246,7 +248,7 @@ export function usePerFileEditorUndoHistory({
   }, [enabled, flushRecordTimer]);
 
   const wrappedOnChange = useCallback(
-    (nextValue) => {
+    (nextValue: any) => {
       if (suppressChangeRef.current) {
         return;
       }
@@ -258,6 +260,7 @@ export function usePerFileEditorUndoHistory({
       if (!enabled || !fileKeyRef.current) return;
 
       flushRecordTimer();
+      // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
       recordTimerRef.current = setTimeout(() => {
         recordTimerRef.current = null;
         if (suppressChangeRef.current) return;

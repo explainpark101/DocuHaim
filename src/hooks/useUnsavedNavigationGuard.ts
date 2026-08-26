@@ -26,7 +26,10 @@ export function useUnsavedNavigationGuard({
   shouldAllowNavigation,
 }: UseUnsavedNavigationGuardOptions) {
   const shouldBlock = useCallback<BlockerFunction>(
-    ({ currentLocation, nextLocation }) => {
+    ({
+      currentLocation,
+      nextLocation
+    }: any) => {
       if (
         currentLocation.pathname === nextLocation.pathname &&
         currentLocation.search === nextLocation.search
