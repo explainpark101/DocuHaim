@@ -1,5 +1,6 @@
-// @ts-nocheck — file session domain actions; tighten with FileSessionValue
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useRef } from 'react';
+import type { FileSessionDomainValue } from '@/App/context/FileSessionContext';
 import { useNavigate, useLocation } from 'react-router';
 import { getExt, getParentPathsToExpand } from '@/App/helpers';
 import { useVault } from '@/App/hooks/useVault';
@@ -68,11 +69,34 @@ import {
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
 
-function isAbortOrNetworkError(e) {
+type CommitOpenFileOptions = {
+  activate?: boolean;
+  baselineContent?: string;
+};
+
+type SelectFileOptions = {
+  skipNavigate?: boolean;
+};
+
+type SaveFileOptions = {
+  skipSuffixCheck?: boolean;
+  skipCoverChangeCheck?: boolean;
+  lastInputAt?: number;
+  contentOverride?: string;
+  background?: boolean;
+};
+
+type ApplyIdentityOptions = {
+  oldPath?: string | null;
+  retargetTabs?: boolean;
+};
+
+function isAbortOrNetworkError(e: unknown) {
   if (!e) return false;
-  const name = (e?.name || '').toLowerCase();
-  const msg = (e?.message || '').toLowerCase();
-  const code = e?.code || '';
+  const err = e as { name?: string; message?: string; code?: string };
+  const name = (err.name || '').toLowerCase();
+  const msg = (err.message || '').toLowerCase();
+  const code = err.code || '';
   return (
     name === 'aborterror' ||
     name === 'networkerror' ||
@@ -92,7 +116,7 @@ function isAbortOrNetworkError(e) {
  * Owns file open/save/refresh/close/AS-open + P3 identity handlers.
  * Reads modals/chrome/owned refs — no register*BridgeDeps.
  */
-export function useFileSessionDomain() {
+export function useFileSessionDomain(): FileSessionDomainValue {
   const navigate = useNavigate();
   const location = useLocation();
   const { addIndicator, removeIndicator } = useActivityIndicator();
@@ -170,7 +194,7 @@ export function useFileSessionDomain() {
 
   const editedFileNameRef = useRef(editedFileName);
   editedFileNameRef.current = editedFileName;
-  const openFileRequestSeqByKeyRef = useRef(new Map());
+  const openFileRequestSeqByKeyRef = useRef<Map<string, number>>(new Map());
   const resolveSavingTabIdsRef = () => savingTabIdsRef;
 
   const hasSuffixChange = () => {
@@ -180,12 +204,12 @@ export function useFileSessionDomain() {
   };
 
   const unlockEncMdOrPrompt = useCallback(
-    async (path, ciphertext) => {
+    async (path: string, ciphertext: string): Promise<string | null> => {
       const first = await tryUnlockEncMdContent(path, ciphertext);
       if (first.status !== 'need-password') return first.text;
 
-      return new Promise((resolve) => {
-        const run = (password) => {
+      return new Promise<string | null>((resolve) => {
+        const run = (password: string) => {
           void (async () => {
             try {
               const plain = await decryptEncMdContent(ciphertext, password);
@@ -193,7 +217,7 @@ export function useFileSessionDomain() {
               setEncMdPrompt(null);
               resolve(plain);
             } catch {
-              setEncMdPrompt((prev) =>
+              setEncMdPrompt((prev: any) =>
                 prev
                   ? {
                       ...prev,
@@ -221,7 +245,7 @@ export function useFileSessionDomain() {
     [setEncMdPrompt],
   );
 
-  const commitOpenFile = useCallback((file, content = '', options = {}) => {
+  const commitOpenFile = useCallback((file: any, content = '', options: CommitOpenFileOptions = {}) => {
     if (!file?.type || !file?.id) return false;
     const activate = options.activate !== false;
     const tabId = `${file.type}:${file.id}`;
@@ -265,7 +289,7 @@ export function useFileSessionDomain() {
     return true;
   }, []);
 
-  const selectFileRaw = useCallback(async (type, node, options = {}) => {
+  const selectFileRaw = useCallback(async (type: any, node: any, options: SelectFileOptions = {}) => {
     if (node.type === 'folder') return;
     const requestKey = `${type}:${node.path}`;
     const prevAttempt = openFileRequestSeqByKeyRef.current.get(requestKey) || 0;
@@ -291,7 +315,7 @@ export function useFileSessionDomain() {
       }
     }
 
-    const commit = (file, content = '', commitOpts = {}) => {
+    const commit = (file: any, content = '', commitOpts: CommitOpenFileOptions = {}) => {
       if (!isCurrentAttempt()) {
         if (typeof file?.objectUrl === 'string' && file.objectUrl) {
           try {
@@ -375,7 +399,7 @@ export function useFileSessionDomain() {
         if (!opened) return;
         let { currentFile: openedFile, editorContent: content } = opened;
         if (opened.needsEncMdPassword) {
-          const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
+          const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext ?? '');
           if (plain == null) return;
           content = plain;
           openedFile = { ...openedFile, content: plain, encMd: true };
@@ -403,7 +427,7 @@ export function useFileSessionDomain() {
         try {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
           const mime = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-          const blob = new Blob([body], { type: mime });
+          const blob = new Blob([body as any], { type: mime });
           const url = URL.createObjectURL(blob);
           commit({
             type: 's3',
@@ -423,7 +447,7 @@ export function useFileSessionDomain() {
       if (ext === 'pdf') {
         try {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
-          const blob = new Blob([body], { type: 'application/pdf' });
+          const blob = new Blob([body as any], { type: 'application/pdf' });
           const url = URL.createObjectURL(blob);
           commit({
             type: 's3',
@@ -552,7 +576,7 @@ export function useFileSessionDomain() {
         try {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
           const mime = ext === 'm4a' || ext === 'mp4' ? 'audio/mp4' : ext === 'mp3' ? 'audio/mpeg' : ext === 'ogg' || ext === 'ogv' ? 'audio/ogg' : ext === 'weba' ? 'audio/webm' : `audio/${ext}`;
-          const blob = new Blob([body], { type: mime });
+          const blob = new Blob([body as any], { type: mime });
           const url = URL.createObjectURL(blob);
           commit({
             type: 's3',
@@ -573,7 +597,7 @@ export function useFileSessionDomain() {
         try {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
           const mime = ext === 'mp4' || ext === 'mov' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : 'video/ogg';
-          const blob = new Blob([body], { type: mime });
+          const blob = new Blob([body as any], { type: mime });
           const url = URL.createObjectURL(blob);
           commit({
             type: 's3',
@@ -613,7 +637,7 @@ export function useFileSessionDomain() {
         if (!opened) return;
         let { currentFile: openedFile, editorContent: content } = opened;
         if (opened.needsEncMdPassword) {
-          const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
+          const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext ?? '');
           if (plain == null) return;
           content = plain;
           openedFile = { ...openedFile, content: plain, encMd: true };
@@ -629,7 +653,7 @@ export function useFileSessionDomain() {
       const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
       const videoExts = ['mp4', 'webm', 'ogv', 'mov'];
 
-      const openLocalBlobViewer = (viewer, mime) => {
+      const openLocalBlobViewer = (viewer: any, mime: string) => {
         const blob = new Blob([file], { type: mime || file.type || undefined });
         const url = URL.createObjectURL(blob);
         commit({
@@ -814,7 +838,7 @@ export function useFileSessionDomain() {
   ]);
 
   const saveCurrentMarkdownBeforeSwitch = useCallback(
-    (storageType, node) => {
+    (storageType: any, node: any) => {
       const cur = currentFileRef.current;
       if (!cur?.id) return;
       if (cur.type === storageType && cur.id === node.path) return;
@@ -860,7 +884,7 @@ export function useFileSessionDomain() {
   };
 
   const openAdvancedSearchFile = useCallback(
-    async (path) => {
+    async (path: string) => {
       if (!path) return;
       const type = storageMode;
       const slash = path.lastIndexOf('/');
@@ -883,7 +907,7 @@ export function useFileSessionDomain() {
       } else if (type === STORAGE_MODE_S3) {
         node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
       }
-      if (node?.type === 'file') {
+      if ((node as any)?.type === 'file') {
         selectFileRef.current?.(type, node);
       } else {
         navigate(`/view/${path}`);
@@ -899,7 +923,7 @@ export function useFileSessionDomain() {
     ],
   );
 
-  const saveFile = useCallback(async (fileOverride = null, options = {}) => {
+  const saveFile = useCallback(async (fileOverride: any = null, options: SaveFileOptions = {}) => {
     const {
       skipSuffixCheck = false,
       skipCoverChangeCheck = false,
@@ -954,7 +978,7 @@ export function useFileSessionDomain() {
     const tabId =
       fileToSave.type && fileToSave.id ? `${fileToSave.type}:${fileToSave.id}` : null;
     const savingIdsRef = resolveSavingTabIdsRef();
-    const manageSavingBadge = Boolean(tabId) && !savingIdsRef.current.has(tabId);
+    const manageSavingBadge = tabId != null && !savingIdsRef.current.has(tabId);
     if (tabId && manageSavingBadge) {
       savingIdsRef.current.add(tabId);
       setSavingTabIds([...savingIdsRef.current]);
@@ -991,25 +1015,26 @@ export function useFileSessionDomain() {
           });
         }
         vaultBody = await prepareEncMdVaultBody(fileToSave.id, textToSave, pw);
-      } catch (e) {
+      } catch (e: unknown) {
         removeIndicator(indicatorId);
         if (touchesActiveEditor) setIsSaving(false);
         if (tabId && manageSavingBadge) {
           savingIdsRef.current.delete(tabId);
           setSavingTabIds([...savingIdsRef.current]);
         }
-        if (e?.message !== 'cancelled') {
-          alert(e?.message || '암호화 저장 실패');
+        const err = e as { message?: string };
+        if (err.message !== 'cancelled') {
+          alert(err.message || '암호화 저장 실패');
         }
         return;
       }
     }
 
-    const applySavedContentToTab = (extraFileFields = {}) => {
+    const applySavedContentToTab = (extraFileFields: Record<string, any> = {}) => {
       const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
       if (!existing) return;
-      const tabId = `${fileToSave.type}:${fileToSave.id}`;
-      const patch = {
+      const savedTabId = `${fileToSave.type}:${fileToSave.id}`;
+      const patch: Record<string, any> = {
         currentFile: {
           ...existing.currentFile,
           content: textToSave,
@@ -1021,7 +1046,7 @@ export function useFileSessionDomain() {
       if (existing.editorContent === textToSave) {
         patch.editorContent = textToSave;
       }
-      const patched = patchFileTab(workspaceTabsRef.current, tabId, patch);
+      const patched = patchFileTab(workspaceTabsRef.current, savedTabId, patch);
       workspaceTabsRef.current = patched;
       setWorkspaceTabs(patched);
     };
@@ -1039,7 +1064,7 @@ export function useFileSessionDomain() {
         await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
         const savedByteLength = new TextEncoder().encode(vaultBody).length;
-        setCurrentFile((prev) => {
+        setCurrentFile((prev: any) => {
           if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
           const next = { ...prev, content: textToSave, size: savedByteLength };
           currentFileRef.current = next;
@@ -1061,7 +1086,7 @@ export function useFileSessionDomain() {
           await deleteMemoDraft(getDraftKey('local', fileToSave.id));
           await refreshLocalTree();
           const savedByteLength = new TextEncoder().encode(vaultBody).length;
-          setCurrentFile((prev) => {
+          setCurrentFile((prev: any) => {
             if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
             const next = { ...prev, content: textToSave, size: savedByteLength };
             currentFileRef.current = next;
@@ -1079,7 +1104,7 @@ export function useFileSessionDomain() {
           await writable.close();
           await deleteMemoDraft(getDraftKey('local', fileToSave.id));
           const file = await fileToSave.handle.getFile();
-          setCurrentFile((prev) => {
+          setCurrentFile((prev: any) => {
             if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
             const next = {
               ...prev,
@@ -1116,7 +1141,7 @@ export function useFileSessionDomain() {
         await deleteMemoDraft(getDraftKey('webdav', fileToSave.id));
         await refreshWebdavTree();
         const savedByteLength = new TextEncoder().encode(vaultBody).length;
-        setCurrentFile((prev) => {
+        setCurrentFile((prev: any) => {
           if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
           const next = { ...prev, content: textToSave, size: savedByteLength };
           currentFileRef.current = next;
@@ -1129,12 +1154,13 @@ export function useFileSessionDomain() {
           content: isEncMdPath(fileToSave.id) ? '' : textToSave,
         });
       }
-    } catch (e) {
+    } catch (e: unknown) {
+      const err = e as { message?: string };
       const encNote =
         isEncMdPath(fileToSave.id) || isEncMdPath(fileToSave.name);
       // Never park plaintext (or password) in IndexedDB for encrypted notes.
       if (encNote) {
-        alert('저장 실패: ' + (e?.message || String(e)));
+        alert('저장 실패: ' + (err.message || String(e)));
       } else if (fileToSave.type === 's3' && isAbortOrNetworkError(e)) {
         try {
           await savePendingUpload({
@@ -1146,7 +1172,7 @@ export function useFileSessionDomain() {
           alert('업로드가 중단되었습니다. 연결이 복구되면 다시 로그인하면 자동으로 동기화됩니다.');
         } catch (dbErr) {
           console.error('저장 실패 및 IndexedDB 임시 저장 실패:', dbErr);
-          alert('저장 실패: ' + e.message);
+          alert('저장 실패: ' + (err.message || String(e)));
         }
       } else if (fileToSave.type === 'webdav' && isAbortOrNetworkError(e)) {
         try {
@@ -1158,7 +1184,7 @@ export function useFileSessionDomain() {
           alert('저장에 실패했습니다. 임시 초안이 로컬에 보관되었습니다.');
         } catch (dbErr) {
           console.error('WebDAV save failed and draft save failed:', dbErr);
-          alert('저장 실패: ' + e.message);
+          alert('저장 실패: ' + (err.message || String(e)));
         }
       } else if (fileToSave.type === 'local') {
         try {
@@ -1170,10 +1196,10 @@ export function useFileSessionDomain() {
           alert('저장에 실패했습니다. 임시 초안이 로컬에 보관되었습니다.');
         } catch (dbErr) {
           console.error('Local save failed and draft save failed:', dbErr);
-          alert('저장 실패: ' + e.message);
+          alert('저장 실패: ' + (err.message || String(e)));
         }
       } else {
-        alert('저장 실패: ' + e.message);
+        alert('저장 실패: ' + (err.message || String(e)));
       }
     } finally {
       removeIndicator(indicatorId);
@@ -1255,7 +1281,7 @@ export function useFileSessionDomain() {
         nextEditorText = merge.text;
       }
 
-      setCurrentFile((prev) => {
+      setCurrentFile((prev: any) => {
         if (prev?.id !== fileToRefresh.id) return prev;
         const next = {
           ...prev,
@@ -1285,11 +1311,12 @@ export function useFileSessionDomain() {
       } else {
         setOperationStatus('디스크 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('Local refresh failed:', e);
+      const err = e as { message?: string };
       showAlert({
         title: '새로고침 실패',
-        message: e?.message || String(e),
+        message: err.message || String(e),
       });
     } finally {
       removeIndicator(indicatorId);
@@ -1365,7 +1392,7 @@ export function useFileSessionDomain() {
       }
 
       const remoteByteLength = new TextEncoder().encode(remoteText).length;
-      setCurrentFile((prev) => {
+      setCurrentFile((prev: any) => {
         if (prev?.id !== fileToRefresh.id || prev?.type !== fileToRefresh.type) return prev;
         const next = {
           ...prev,
@@ -1382,7 +1409,7 @@ export function useFileSessionDomain() {
 
       const active = getActiveFileTab(workspaceTabsRef.current);
       if (active) {
-        const tabPatch = {
+        const tabPatch: Record<string, any> = {
           editorContent: nextEditorText,
           currentFile: {
             ...active.currentFile,
@@ -1433,11 +1460,12 @@ export function useFileSessionDomain() {
       } else {
         setOperationStatus('원격 변경 위에 로컬 수정을 적용했습니다. 저장하면 반영됩니다.');
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('Remote pull failed:', e);
+      const err = e as { message?: string };
       showAlert({
         title: '가져오기 실패',
-        message: e?.message || String(e),
+        message: err.message || String(e),
       });
     } finally {
       removeIndicator(indicatorId);
@@ -1462,7 +1490,7 @@ export function useFileSessionDomain() {
     setEditorContent,
   ]);
 
-  const applyOpenFileIdentityChange = useCallback((updated, options = {}) => {
+  const applyOpenFileIdentityChange = useCallback((updated: any, options: ApplyIdentityOptions = {}) => {
     if (!updated) return null;
     const { oldPath = null, retargetTabs = true } = options;
     const prev = currentFileRef.current;
@@ -1514,7 +1542,7 @@ export function useFileSessionDomain() {
   ]);
 
 
-  const renameS3File = useCallback(async (file, newName, contentOverride = null) => {
+  const renameS3File = useCallback(async (file: any, newName: string, contentOverride: string | null = null) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
 
@@ -1555,7 +1583,7 @@ export function useFileSessionDomain() {
     return result;
   }, [getS3Client, s3Creds, loadS3Files]);
 
-  const renameLocalFile = useCallback(async (file, newName) => {
+  const renameLocalFile = useCallback(async (file: any, newName: string) => {
     const pHandle = file.parentHandle || localRootHandle;
     if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
 
@@ -1578,7 +1606,7 @@ export function useFileSessionDomain() {
     return { ...file, id: newPath, name: newName, handle: newFileHandle, content: editorContent };
   }, [localRootHandle, editorContent, refreshLocalTree]);
 
-  const renameCurrentFileFullName = useCallback(async (newFullName) => {
+  const renameCurrentFileFullName = useCallback(async (newFullName: string) => {
     if (!currentFile) return null;
     const trimmed = newFullName.trim();
     if (!trimmed) return null;
@@ -1636,8 +1664,9 @@ export function useFileSessionDomain() {
         return applyOpenFileIdentityChange(updated);
       }
       return updated ?? null;
-    } catch (e) {
-      alert("이름 변경 실패: " + e.message);
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      alert("이름 변경 실패: " + (err.message || String(e)));
       return null;
     }
   }, [

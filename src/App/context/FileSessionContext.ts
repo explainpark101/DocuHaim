@@ -37,4 +37,20 @@ export type FileSessionValue = {
   setEncMdPrompt: (...args: any[]) => any;
 };
 
+export type FileSessionDomainValue = Pick<
+  FileSessionValue,
+  | 'saveFile'
+  | 'refreshLocalFileFromDisk'
+  | 'refreshRemoteFile'
+  | 'handleRequestCloseEditor'
+  | 'openAdvancedSearchFile'
+  | 'selectFileRaw'
+  | 'commitOpenFile'
+  | 'saveCurrentMarkdownBeforeSwitch'
+  | 'applyOpenFileIdentityChange'
+  | 'renameCurrentFileFullName'
+  | 'renameS3File'
+  | 'renameLocalFile'
+>;
+
 export const FileSessionContext = createContext<FileSessionValue | null>(null);
