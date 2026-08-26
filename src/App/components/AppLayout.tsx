@@ -156,21 +156,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     s3Tree,
     localTree,
     webdavTree,
-    sessionWorkspace,
     localRootHandle,
     localVaultFsPath,
     webdavConfig,
     setWebdavConfig,
-    isLocalTreeLoading,
-    isWebdavTreeLoading,
     localFolderLoadingPath,
-    webdavFolderLoadingPath,
     getS3Client,
-    loadS3Files,
-    refreshLocalTree,
     refreshWebdavTree,
     loadLocalFolderChildren,
-    loadWebdavFolderChildren,
     openLocalFolder,
     webdavReady,
     canScanStorageUsage,
@@ -205,7 +198,6 @@ export function AppLayout({ children }: { children?: ReactNode }) {
 
   const {
     theme,
-    setTheme,
     showAuthModal,
     shareBlockingAuth,
     handleUnlock,
@@ -233,28 +225,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const setWorkspaceTabs = tabsCtx.setState;
 
   const {
-    selectedIds,
-    setSelectedIds,
     setDeleteTarget,
-    setEmptyTrashTarget,
     setCreateModalContext,
     setCreateModalOpen,
-    requestCreateItem,
-    requestUploadFile,
-    requestUploadFolder,
     requestNewFile,
     requestAdvancedSearchCreateItem,
     newFileDefaultParentPath,
-    handleTreeNodeSelect,
-    handleDragEndNode,
     handleDropOnFolder,
-    handleDownloadNode,
-    handleDuplicateNode,
-    renameTreeItem,
     dropTarget,
-    treeTransferBusy,
-    isDeletingFolder,
-    deletingFolderPath,
     handleRequestMoveFolder,
     handleRequestMove,
     handleRequestMoveFileFromSidebar,
@@ -295,7 +273,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const llmProviderProfiles = resolveLlmProviderProfiles(s3Creds);
   const getImgbbApiKey = () => (s3Creds?.imgbbApiKey || '').trim();
 
-  const formatTime = (ts) => {
+  const formatTime = (ts: number | null | undefined) => {
     if (!ts) return '—';
     const d = new Date(ts);
     const hh = `${d.getHours()}`.padStart(2, '0');
@@ -304,7 +282,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     return `${hh}:${mm}:${ss}`;
   };
 
-  const formatFileSize = (bytes) => {
+  const formatFileSize = (bytes: number | null | undefined) => {
     if (bytes == null || isNaN(bytes)) return '알 수 없음';
     if (bytes < 1024) return `${bytes} B`;
     const kb = bytes / 1024;
@@ -384,8 +362,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         type="file"
         ref={uploadFolderInputRef}
         onChange={handleUploadFolderSelect}
-        webkitdirectory=""
-        directory=""
+        {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
         className="hidden"
       />
 
@@ -495,20 +472,22 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             collapsed={sidebarCollapsed}
             open={sidebarOpen}
             onRequestCollapse={() => setSidebarCollapsed(true)}
-            mobileHeader={
-              isMobile ? (
-                <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
-                  <button
-                    type="button"
-                    aria-label="사이드바 닫기"
-                    onClick={() => setSidebarOpen(false)}
-                    className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
-                  >
-                    <IconX size={22} />
-                  </button>
-                </div>
-              ) : null
-            }
+            {...(isMobile
+              ? {
+                  mobileHeader: (
+                    <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
+                      <button
+                        type="button"
+                        aria-label="사이드바 닫기"
+                        onClick={() => setSidebarOpen(false)}
+                        className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
+                      >
+                        <IconX size={22} />
+                      </button>
+                    </div>
+                  ),
+                }
+              : {})}
           >
             <SidebarConnected
               isMobileLayout={isMobile}
@@ -576,12 +555,12 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   isChatRoute={isChatRoute}
                   isSettingsRoute={isSettingsRoute}
                   isMobileLayout={isMobile}
-                  onActivateTab={(id) => activateWorkspaceTab(id)}
-                  onCloseTab={(id) => {
+                  onActivateTab={(id: string) => activateWorkspaceTab(id)}
+                  onCloseTab={(id: string) => {
                     closeWorkspaceTabById(id);
                   }}
                   onReorderTabs={reorderWorkspaceTabs}
-                  onFileTabContextMenu={(tab, point) => {
+                  onFileTabContextMenu={(tab: any, point: { clientX: number; clientY: number }) => {
                     fileTabContextMenuRef.current?.open?.({
                       storageType: tab.storageType,
                       path: tab.path,
@@ -598,14 +577,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     editedFileName,
                     setEditedFileName,
                     onChangeEditor: handleEditorChange,
-                    onInactiveEditorChange: (tabId, value) => {
+                    onInactiveEditorChange: (tabId: string, value: string) => {
                       const next = patchFileTab(workspaceTabsRef.current, tabId, {
                         editorContent: value,
                       });
                       workspaceTabsRef.current = next;
                       setWorkspaceTabs(next);
                     },
-                    onInactiveEditedFileName: (tabId, name) => {
+                    onInactiveEditedFileName: (tabId: string, name: string) => {
                       const next = patchFileTab(workspaceTabsRef.current, tabId, {
                         editedFileName: name,
                       });
@@ -627,7 +606,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     localVaultFsPath: isDesktopApp() ? localVaultFsPath : '',
                     onOpenLocalFolder: openLocalFolder,
                     webdavConfig,
-                    onSaveWebdavConfig: async (next) => {
+                    onSaveWebdavConfig: async (next: any) => {
                       setWebdavConfig(next);
                       if (isDesktopApp()) {
                         if (getDesktopAppEntryLockModeSync() === 'password' && masterPassword) {
@@ -711,6 +690,13 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     setEditedFileName: paneSetEditedName,
                     onChangeEditor,
                     isActiveFile,
+                  }: {
+                    currentFile: any;
+                    editorContent: string;
+                    editedFileName: string;
+                    setEditedFileName: (name: string) => void;
+                    onChangeEditor: (value: string) => void;
+                    isActiveFile: boolean;
                   }) => ({
                     currentFile: paneFile,
                     editorType,
@@ -822,7 +808,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     onOpenNote: handleOpenNoteFromChat,
                     selectPathAfterCreateFolder: addToNoteSelectPath,
                     onSelectPathAfterCreateFolderApplied: () => setAddToNoteSelectPath(null),
-                    onRequestCreateFolderForNote: (parentPath, parentDirHandle) => {
+                    onRequestCreateFolderForNote: (parentPath: string, parentDirHandle: FileSystemDirectoryHandle | null) => {
                       setCreateModalContext({
                         storageType:
                           storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'

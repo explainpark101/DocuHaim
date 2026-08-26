@@ -176,7 +176,7 @@ export function AppModals() {
       isOpen={showSetPasswordModal}
       masterPassword={masterPassword}
       onCancel={() => setShowSetPasswordModal(false)}
-      onSubmit={(password) => requestSaveEncryptedSettings(s3Creds, password, { stayOnSettings: true })}
+      onSubmit={(password: string) => requestSaveEncryptedSettings(s3Creds, password, { stayOnSettings: true })}
     />
 
     <ConfirmModal
@@ -403,11 +403,9 @@ export function AppModals() {
       confirmLabel="다운로드"
       onSelectLegacy={handleDownloadCurrentFile}
       onSelectStorageApi={handleDownloadToFolder}
-      onSelectHaim={
-        currentFile?.type === SESSION_STORAGE_TYPE && downloadModalMode !== 'session-transform'
-          ? handleSelectHaimFromDownload
-          : undefined
-      }
+      {...(currentFile?.type === SESSION_STORAGE_TYPE && downloadModalMode !== 'session-transform'
+        ? { onSelectHaim: handleSelectHaimFromDownload }
+        : {})}
       onSelectClipboard={handleCopyCurrentFileToClipboard}
       onCancel={() => {
         setShowDownloadMethodModal(false);
@@ -432,7 +430,7 @@ export function AppModals() {
       webdavTree={webdavTree}
       localRootHandle={localRootHandle}
       defaultFileName={currentFile?.name || 'untitled.md'}
-      defaultParentPath={newFileDefaultParentPath}
+      defaultParentPath={newFileDefaultParentPath ?? ''}
       isSaving={isSavingSessionToNote}
       onClose={() => setShowSaveSessionToNoteModal(false)}
       onConfirm={handleConfirmSaveSessionToNote}
@@ -498,9 +496,9 @@ export function AppModals() {
     <MoveFileModal
       isOpen={isMoveModalOpen}
       storageType={moveFileTarget ? moveFileTarget.storageType : currentFile?.type}
-      s3Tree={s3Tree}
-      localTree={localTree}
-      webdavTree={webdavTree}
+      s3Tree={s3Tree as any}
+      localTree={localTree as any}
+      webdavTree={webdavTree as any}
       localRootHandle={localRootHandle}
       currentFile={moveFileTarget ? null : currentFile}
       fileToMove={moveFileTarget?.node}
@@ -512,7 +510,7 @@ export function AppModals() {
       onConfirm={moveFileTarget ? handleConfirmMoveFileFromSidebar : handleConfirmMove}
       onRequestCreateFolder={
         (moveFileTarget || currentFile)
-          ? (parentPath, parentDirHandle) => {
+          ? (parentPath: string, parentDirHandle: FileSystemDirectoryHandle | null) => {
               const st = moveFileTarget ? moveFileTarget.storageType : currentFile.type;
               setCreateModalContext({
                 storageType: st,
@@ -533,9 +531,9 @@ export function AppModals() {
     <MoveFolderModal
       isOpen={!!moveFolderTarget}
       storageType={moveFolderTarget?.storageType}
-      s3Tree={s3Tree}
-      localTree={localTree}
-      webdavTree={webdavTree}
+      s3Tree={s3Tree as any}
+      localTree={localTree as any}
+      webdavTree={webdavTree as any}
       localRootHandle={localRootHandle}
       folderNode={moveFolderTarget?.node}
       onClose={() => setMoveFolderTarget(null)}

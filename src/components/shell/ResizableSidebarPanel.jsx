@@ -94,6 +94,14 @@ const SidebarContentSlot = memo(function SidebarContentSlot({ children }) {
  * collapses via onRequestCollapse. Committed width stays at least that threshold when not
  * collapsed. Max is max(SIDEBAR_MAX_FLOOR_VW, tree content).
  * Re-expand restores a width where the brand title is fully visible.
+ *
+ * @param {object} props
+ * @param {boolean} [props.isMobile]
+ * @param {boolean} [props.collapsed]
+ * @param {boolean} [props.open]
+ * @param {() => void} props.onRequestCollapse
+ * @param {import('react').ReactNode} props.children
+ * @param {import('react').ReactNode} [props.mobileHeader]
  */
 export default function ResizableSidebarPanel({
   isMobile = false,
