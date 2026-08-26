@@ -1,0 +1,73 @@
+import { r as f, j as h } from "./vendor-react-kfkzeLNk.js";
+function C(r) {
+  return r.altKey ? 0.1 : r.shiftKey ? 10 : r.ctrlKey || r.metaKey ? 100 : 1;
+}
+function k(r, n, e) {
+  return r === "percent" ? F() : (Number.isFinite(e) && e > 0 ? e : 1) * C(n);
+}
+function F() {
+  return 1;
+}
+function p(r, n, e) {
+  return Math.min(e, Math.max(n, r));
+}
+function x(r, n) {
+  if (n < 1) {
+    const l = 10 ** Math.max(0, Math.ceil(-Math.log10(n)));
+    return Math.round(r * l) / l;
+  }
+  if (n >= 1 && Number.isInteger(n)) return Math.round(r);
+  const u = 10 ** Math.max(0, Math.ceil(-Math.log10(n % 1 || 1)));
+  return Math.round(r * u) / u;
+}
+function T({ value: r, onChange: n, min: e, max: u, step: a = 1, unit: l, suffix: w, id: E, "aria-label": m, className: R = "", disabled: g = false }) {
+  const j = f.useId(), D = E ?? j, S = f.useRef(null), i = f.useRef(r), b = f.useRef(n);
+  i.current = r, b.current = n;
+  const [M, s] = f.useState(() => String(r));
+  f.useEffect(() => {
+    document.activeElement !== S.current && s(String(r));
+  }, [r]);
+  const v = (t) => {
+    const c = Number(t);
+    if (!Number.isFinite(c)) {
+      s(String(i.current));
+      return;
+    }
+    const o = p(x(c, a), e, u);
+    s(String(o)), o !== i.current && b.current(o);
+  }, K = (t, c) => {
+    const o = k(l, c, a), d = p(x(i.current + t * o, o), e, u);
+    s(String(d)), d !== i.current && b.current(d);
+  };
+  f.useEffect(() => {
+    const t = S.current;
+    if (!t) return;
+    const c = (o) => {
+      if (g) return;
+      o.preventDefault(), o.stopPropagation();
+      const d = o.deltaY < 0 ? 1 : -1, N = k(l, o, a), y = p(x(i.current + d * N, N), e, u);
+      s(String(y)), y !== i.current && b.current(y);
+    };
+    return t.addEventListener("wheel", c, { passive: false }), () => t.removeEventListener("wheel", c);
+  }, [g, l, a, e, u]);
+  const I = (t) => {
+    if (g || t.key !== "ArrowUp" && t.key !== "ArrowDown") return;
+    t.preventDefault();
+    const c = t.key === "ArrowUp" ? 1 : -1;
+    K(c, t);
+  }, A = (t) => {
+    const c = p(x(Number(t.target.value), a), e, u);
+    s(String(c)), n(c);
+  };
+  return h.jsxs("div", { className: `flex min-w-0 items-center gap-1.5 ${R}`, children: [h.jsx("input", { id: D, type: "range", min: e, max: u, step: a, value: p(r, e, u), disabled: g, "aria-label": m, onChange: A, className: "min-w-0 flex-1" }), h.jsxs("div", { className: "flex shrink-0 items-center gap-0.5", children: [h.jsx("input", { ref: S, type: "text", inputMode: "decimal", disabled: g, "aria-label": m ? `${m} \uAC12` : void 0, value: M, onChange: (t) => s(t.target.value), onBlur: () => v(M), onKeyDown: (t) => {
+    if (t.key === "Enter") {
+      t.currentTarget.blur();
+      return;
+    }
+    I(t);
+  }, className: "h-7 w-12 rounded border border-gray-300 bg-white px-1 text-center text-[11px] tabular-nums text-gray-800 outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bg dark:text-odp-fg" }), w ? h.jsx("span", { className: "w-4 text-[10px] text-gray-400 dark:text-odp-fgMuted", children: w }) : null] })] });
+}
+export {
+  T as S,
+  C as g
+};
