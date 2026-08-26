@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { GripHorizontal, PanelRight, Sparkles, X, EyeOff, SquareArrowOutUpRight, PanelTop } from 'lucide-react';
 import {
   createEmptyLlmPromptTemplate,
@@ -12,7 +12,7 @@ import { generateGeminiTransform } from '@/utils/geminiClient';
 import { generateOpenAiCompatibleTransform } from '@/utils/openaiCompatibleClient';
 import { loadLlmModalHidden, saveLlmModalHidden } from '@/utils/llmModalLayout';
 import { useLlmAssistModalLayout } from '@/hooks/useLlmAssistModalLayout';
-import { applyLlmResultToEditor, getEditorSelectionFromRef } from '@/utils/editorSelection';
+import { applyLlmResultToEditor, getEditorSelectionFromRef, type EditorRefLike } from '@/utils/editorSelection';
 import { useLlmProfileIdState } from '@/components/LlmProviderSelect';
 import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
@@ -34,6 +34,7 @@ import {
   openLlmAssistPopoutWindow,
   subscribeLlmAssistPopoutFromChild,
   syncLlmAssistPopoutWindow,
+  type LlmAssistBridgePayload,
 } from '@/utils/llm/llmAssistPopoutHost';
 import LlmAssistPanel from '@/components/LlmAssistPanel';
 import LlmAssistDockShell from '@/components/llm/LlmAssistDockShell';
@@ -52,23 +53,40 @@ import {
   createLlmAssistAbortError,
   isLlmAssistAbortError,
 } from '@/utils/llm/llmAssistAbort';
+import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
 
-const FLOAT_EASE = [0.4, 0, 0.2, 1];
+const FLOAT_EASE = [0.4, 0, 0.2, 1] as const;
 const FLOAT_TRANSITION = { duration: 0.28, ease: FLOAT_EASE };
+
+/** Untyped panel props until LlmAssistPanel.jsx is migrated. */
+const LlmAssistPanelView = LlmAssistPanel as unknown as ComponentType<Record<string, unknown>>;
+
+type LlmPromptTemplate = {
+  id: string;
+  name: string;
+  instruction: string;
+  systemPrompt?: string;
+  requestOptions?: Record<string, unknown>;
+  updatedAt: number;
+};
+
+type LlmAssistResultViewMode = 'text' | 'preview';
+
+type PopoutActionPayload = Record<string, unknown>;
+
+export type LlmAssistModalProps = {
+  editorRef?: RefObject<unknown> | null;
+  onChange?: (markdown: string) => void;
+  getMarkdown?: () => string;
+  llmProviderProfiles?: LlmProviderProfile[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  theme?: string;
+};
 
 /**
  * Global LLM Assist host: floating modal or right dock.
  * Prefer mounting once under AppLayout with LlmAssistSessionProvider.
- *
- * @param {{
- *   editorRef?: import('react').RefObject<unknown> | null;
- *   onChange?: (markdown: string) => void;
- *   getMarkdown?: () => string;
- *   llmProviderProfiles?: unknown[];
- *   open?: boolean;
- *   onOpenChange?: (open: boolean) => void;
- *   theme?: string;
- * }} props
  */
 export default function LlmAssistModal({
   editorRef: editorRefProp = null,
@@ -78,7 +96,7 @@ export default function LlmAssistModal({
   open: openProp,
   onOpenChange: onOpenChangeProp,
   theme = 'light',
-}) {
+}: LlmAssistModalProps) {
   const session = useLlmAssistSessionOptional();
   const { requestCreateFileWithContent } = useTreeOps();
   const open = session ? session.open : Boolean(openProp);
@@ -90,32 +108,32 @@ export default function LlmAssistModal({
     ? session.canInsertIntoDocument
     : Boolean(editorRefProp);
 
-  const editorRef = session?.editorBridge?.editorRef ?? editorRefProp;
+  const editorRef = (session?.editorBridge?.editorRef ?? editorRefProp) as EditorRefLike | null | undefined;
   const onChange = session?.editorBridge?.onChange ?? onChangeProp;
   const getMarkdown = session?.editorBridge?.getMarkdown ?? getMarkdownProp;
 
   const profiles = useMemo(
-    () => (Array.isArray(llmProviderProfiles) ? llmProviderProfiles : []),
+    (): LlmProviderProfile[] => (Array.isArray(llmProviderProfiles) ? llmProviderProfiles : []),
     [llmProviderProfiles],
   );
   const [hidden, setHidden] = useState(() => loadLlmModalHidden());
   const [popoutActive, setPopoutActive] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
-  const [attachedImages, setAttachedImages] = useState([]);
+  const [attachedImages, setAttachedImages] = useState<unknown[]>([]);
   const [instruction, setInstruction] = useState('');
   const [systemPrompt, setSystemPrompt] = useState(() => getDefaultLlmAssistSystemPrompt());
   const [requestOptions, setRequestOptions] = useState(() => ({
     ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
   }));
   const [result, setResult] = useState('');
-  const [resultViewMode, setResultViewMode] = useState('text');
+  const [resultViewMode, setResultViewMode] = useState<LlmAssistResultViewMode>('text');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState<LlmPromptTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templateName, setTemplateName] = useState('');
-  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [profileId, setProfileId, syncProfileId] = useLlmProfileIdState(profiles);
   const selectedProfile = resolveSelectedLlmProfile(profiles, profileId);
   const [model, setModel] = useState(() =>
@@ -124,9 +142,9 @@ export default function LlmAssistModal({
       : '',
   );
 
-  const popoutRef = useRef(null);
+  const popoutRef = useRef<Window | null>(null);
   const popoutUsesTauriRef = useRef(false);
-  const runAbortRef = useRef(null);
+  const runAbortRef = useRef<AbortController | null>(null);
   const {
     panelRef,
     panelStyle,
@@ -313,7 +331,7 @@ export default function LlmAssistModal({
   }, [open, closePopout]);
 
   const handleModelChange = useCallback(
-    (nextId) => {
+    (nextId: string) => {
       const next = String(nextId || '').trim();
       setModel(next);
       if (!selectedProfile) return;
@@ -365,7 +383,7 @@ export default function LlmAssistModal({
               instruction,
               systemPrompt,
               selectedText: text,
-              images: attachedImages,
+              images: attachedImages as { mimeType: string; dataBase64: string }[],
               requestOptions,
               onChunk: setResult,
               signal: controller.signal,
@@ -396,7 +414,7 @@ export default function LlmAssistModal({
             instruction,
             systemPrompt,
             selectedText: text,
-            images: attachedImages,
+            images: attachedImages as { mimeType: string; dataBase64: string }[],
             requestOptions,
             onChunk: setResult,
             signal: controller.signal,
@@ -412,7 +430,7 @@ export default function LlmAssistModal({
         setError('생성이 취소되었습니다.');
         return;
       }
-      setError(err?.message || 'LLM 요청에 실패했습니다.');
+      setError(err instanceof Error ? err.message : 'LLM 요청에 실패했습니다.');
     } finally {
       if (runAbortRef.current === controller) {
         runAbortRef.current = null;
@@ -430,8 +448,8 @@ export default function LlmAssistModal({
     const ok = applyLlmResultToEditor({
       editorRef,
       result,
-      onChange,
-      getMarkdown,
+      ...(onChange ? { onChange } : {}),
+      ...(getMarkdown ? { getMarkdown } : {}),
     });
     if (!ok) {
       setError('에디터에 결과를 적용할 수 없습니다. 선택 영역을 다시 확인하세요.');
@@ -449,8 +467,8 @@ export default function LlmAssistModal({
     const ok = applyLlmResultToEditor({
       editorRef,
       result,
-      onChange,
-      getMarkdown,
+      ...(onChange ? { onChange } : {}),
+      ...(getMarkdown ? { getMarkdown } : {}),
       forceAppendAtEnd: true,
     });
     if (!ok) {
@@ -472,7 +490,7 @@ export default function LlmAssistModal({
   }, [result, requestCreateFileWithContent]);
 
   const handleLoadTemplate = useCallback(
-    (id) => {
+    (id: string) => {
       setSelectedTemplateId(id);
       const tpl = templates.find((t) => t.id === id);
       if (tpl) {
@@ -510,7 +528,7 @@ export default function LlmAssistModal({
       setSelectedTemplateId(saved.id);
       await loadTemplates();
     } catch (err) {
-      alert(err?.message || '템플릿 저장에 실패했습니다.');
+      alert(err instanceof Error ? err.message : '템플릿 저장에 실패했습니다.');
     }
   }, [templateName, instruction, systemPrompt, requestOptions, editingTemplateId, loadTemplates]);
 
@@ -531,18 +549,23 @@ export default function LlmAssistModal({
       handleNewTemplate();
       await loadTemplates();
     } catch (err) {
-      alert(err?.message || '템플릿 삭제에 실패했습니다.');
+      alert(err instanceof Error ? err.message : '템플릿 삭제에 실패했습니다.');
     }
   }, [editingTemplateId, handleNewTemplate, loadTemplates]);
 
-  const handleAddImages = useCallback(async (images) => {
+  const handleAddImages = useCallback(async (images: unknown[]) => {
     if (!Array.isArray(images) || !images.length) return;
     setAttachedImages((prev) => [...prev, ...images]);
   }, []);
 
-  const handleRemoveImage = useCallback((id) => {
+  const handleRemoveImage = useCallback((id: string) => {
     if (!id) return;
-    setAttachedImages((prev) => prev.filter((img) => img.id !== id));
+    setAttachedImages((prev) =>
+      prev.filter((img) => {
+        if (!img || typeof img !== 'object') return true;
+        return (img as { id?: string }).id !== id;
+      }),
+    );
   }, []);
 
   const handleClearImages = useCallback(() => {
@@ -550,19 +573,19 @@ export default function LlmAssistModal({
   }, []);
 
   const handleOsImageFilesDrop = useCallback(
-    async (files) => {
+    async (files: FileList) => {
       try {
         const next = await readImageFilesAsAttachments(files);
         await handleAddImages(next);
       } catch (err) {
-        setError(err?.message || '이미지를 추가할 수 없습니다.');
+        setError(err instanceof Error ? err.message : '이미지를 추가할 수 없습니다.');
       }
     },
     [handleAddImages],
   );
 
   const handlePopoutAction = useCallback(
-    async (action, payload = {}) => {
+    async (action: string, payload: PopoutActionPayload = {}) => {
       switch (action) {
         case 'refresh-selection':
           refreshSelection();
@@ -604,7 +627,7 @@ export default function LlmAssistModal({
           if (typeof payload.value === 'string') setProfileId(payload.value);
           break;
         case 'load-template':
-          handleLoadTemplate(payload.id ?? '');
+          handleLoadTemplate(String(payload.id ?? ''));
           break;
         case 'save-template':
           await handleSaveTemplate();
@@ -631,7 +654,7 @@ export default function LlmAssistModal({
           break;
         }
         case 'remove-image':
-          handleRemoveImage(payload.id);
+          handleRemoveImage(String(payload.id ?? ''));
           break;
         case 'clear-images':
           handleClearImages();
@@ -670,7 +693,7 @@ export default function LlmAssistModal({
     let unsubBridge = () => {};
     let cancelled = false;
 
-    void subscribeLlmAssistPopoutFromChild((message) => {
+    void subscribeLlmAssistPopoutFromChild((message: LlmAssistBridgePayload) => {
       if (message.type === LLM_ASSIST_MSG.READY) {
         if (message.source && typeof message.source.postMessage === 'function') {
           popoutRef.current = message.source;
@@ -687,8 +710,8 @@ export default function LlmAssistModal({
         return;
       }
 
-      if (message.type === LLM_ASSIST_MSG.ACTION) {
-        handlePopoutAction(message.action, message.payload);
+      if (message.type === LLM_ASSIST_MSG.ACTION && message.action) {
+        void handlePopoutAction(message.action, message.payload ?? {});
       }
     }).then((unsub) => {
       if (cancelled) {
@@ -901,7 +924,7 @@ export default function LlmAssistModal({
           {headerActions}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+          <LlmAssistPanelView {...panelProps} enableImageDropZone={false} />
         </div>
       </div>
     </LlmAssistImageDropZone>
@@ -923,8 +946,12 @@ export default function LlmAssistModal({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.85 }}
             transition={FLOAT_TRANSITION}
-            onPointerDown={(e) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
-            onTouchStart={(e) => startPositionTouchDrag(e, { onTap: popoutActive ? undefined : handleShow })}
+            onPointerDown={(e) =>
+              startPositionDrag(e, popoutActive ? {} : { onTap: handleShow })
+            }
+            onTouchStart={(e) =>
+              startPositionTouchDrag(e, popoutActive ? {} : { onTap: handleShow })
+            }
             onKeyDown={(e) => {
               if (popoutActive) return;
               if (e.key === 'Enter' || e.key === ' ') {
@@ -977,7 +1004,7 @@ export default function LlmAssistModal({
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+                <LlmAssistPanelView {...panelProps} enableImageDropZone={false} />
               </div>
             </LlmAssistImageDropZone>
 

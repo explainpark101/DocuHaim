@@ -632,21 +632,23 @@ export default function LlmAssistPanel({
         )}
 
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {presentation === 'docked' ? (
+          {canInsertIntoDocument ? (
             <>
-              {canInsertIntoDocument ? (
-                <button
-                  type="button"
-                  disabled={resultActionsDisabled}
-                  {...applyResultPress}
-                  className={[
-                    `inline-flex items-center gap-1.5 rounded border  px-3 py-1.5 text-[11px] font-medium  disabled:cursor-not-allowed disabled:opacity-50`,
-                    (selectedText.trim() 
-                    ? `border-violet-400 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60`
-                    : `border-sky-400 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-600 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-900/60`)
-                  ].join(" ")}
-                >
-                  {selectedText.trim() ? (
+              <button
+                type="button"
+                disabled={resultActionsDisabled}
+                {...applyResultPress}
+                className={[
+                  'inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-50',
+                  presentation === 'docked'
+                    ? selectedText.trim()
+                      ? 'border-violet-400 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60'
+                      : 'border-sky-400 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-600 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-900/60'
+                    : 'border-violet-400 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60',
+                ].join(' ')}
+              >
+                {presentation === 'docked' ? (
+                  selectedText.trim() ? (
                     <>
                       <CornerLeftDown size={14} aria-hidden />
                       대체하기
@@ -656,38 +658,13 @@ export default function LlmAssistPanel({
                       <TextCursor size={14} aria-hidden />
                       삽입하기
                     </>
-                  )}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                disabled={resultActionsDisabled}
-                {...copyResultPress}
-                className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
-              >
-                <Copy size={14} aria-hidden />
-                복사하기
-              </button>
-              <button
-                type="button"
-                disabled={resultActionsDisabled}
-                {...createNotePress}
-                className="inline-flex items-center gap-1.5 rounded border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/60"
-              >
-                <FilePlus size={14} aria-hidden />
-                새 노트로
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={resultActionsDisabled}
-                {...applyResultPress}
-                className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
-              >
-                <CornerLeftDown size={14} aria-hidden />
-                선택 영역 바꿔치기
+                  )
+                ) : (
+                  <>
+                    <CornerLeftDown size={14} aria-hidden />
+                    선택 영역 바꿔치기
+                  </>
+                )}
               </button>
               <button
                 type="button"
@@ -698,17 +675,28 @@ export default function LlmAssistPanel({
                 <ArrowDownToLine size={14} aria-hidden />
                 문서 가장 하단에 삽입
               </button>
-              <button
-                type="button"
-                disabled={resultActionsDisabled}
-                {...createNotePress}
-                className="inline-flex items-center gap-1.5 rounded border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/60"
-              >
-                <FilePlus size={14} aria-hidden />
-                새 노트로
-              </button>
             </>
-          )}
+          ) : null}
+          {presentation === 'docked' ? (
+            <button
+              type="button"
+              disabled={resultActionsDisabled}
+              {...copyResultPress}
+              className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+            >
+              <Copy size={14} aria-hidden />
+              복사하기
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={resultActionsDisabled}
+            {...createNotePress}
+            className="inline-flex items-center gap-1.5 rounded border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/60"
+          >
+            <FilePlus size={14} aria-hidden />
+            새 노트로
+          </button>
         </div>
       </div>
       </div>

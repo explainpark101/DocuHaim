@@ -13,7 +13,7 @@ type MdEditorApi = {
   value?: MdEditorApi;
 };
 
-type EditorRefLike =
+export type EditorRefLike =
   | RefObject<MdEditorApi | null | undefined>
   | { current?: MdEditorApi | null | undefined | { value?: MdEditorApi | null } };
 

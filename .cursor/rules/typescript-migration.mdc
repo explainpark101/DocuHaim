@@ -10,20 +10,24 @@ Do **not** mass-convert the codebase to TypeScript. Prefer incremental adoption 
 ## Policy
 
 1. **New files** — use `.ts` / `.tsx` only (no new `.js` / `.jsx` unless matching an existing colocated pattern that cannot move yet).
-2. **Existing files — convert when cheap or when editing heavily**
+2. **Existing files — convert when editing for features or bug fixes**
+   - Any **feature add** or **bug fix** in an existing `.js` / `.jsx` **implementation** file → convert that file to `.ts` / `.tsx` in the **same change**.
    - **Substantial edit** of a module → convert that file to `.ts` / `.tsx` in the same change.
    - **Modest edit** (small surface, clear types, few import sites, not a giant UI pane) → prefer converting / recreating as `.ts` / `.tsx` rather than deepening the JS file.
-   - **Do not** rename/convert for typing alone across huge UI (`App`, `Sidebar`, `ChatWithMyselfPane`, editors) or when the typing cost would dwarf the feature change.
-3. **Boundaries first** — prefer typing DB schemas, storage contracts, API/S3 clients, and shared utils before large UI components.
-4. **Keep `allowJs`** — `checkJs` stays off project-wide for now (full JS type-checking floods ~1.8k inference errors). Undeclared / unused checks for JS are gated by ESLint (`no-undef`, `no-unused-vars`) via `bun run check` / pre-push. Enable `checkJs` only when deliberately fixing a scoped area.
-5. **Large UI later** — defer opportunistic conversion of giant panes unless the change already rewrites most of the file.
+   - **Do not** rename/convert for typing alone across huge UI (`App`, `Sidebar`, `ChatWithMyselfPane`, editors) or when the typing cost would dwarf the feature change — extract new logic into `.ts` / `.tsx` helpers instead.
+3. **Re-export shims may stay `.js` / `.jsx`** — a file that **only** re-exports from a typed implementation (stable import path) does not need conversion. Do not add logic to shims; point them at the `.ts` / `.tsx` target.
+4. **Boundaries first** — prefer typing DB schemas, storage contracts, API/S3 clients, and shared utils before large UI components.
+5. **Keep `allowJs`** — `checkJs` stays off project-wide for now (full JS type-checking floods ~1.8k inference errors). Undeclared / unused checks for JS are gated by ESLint (`no-undef`, `no-unused-vars`) via `bun run check` / pre-push. Enable `checkJs` only when deliberately fixing a scoped area.
+6. **Large UI later** — defer opportunistic conversion of giant panes unless the change already rewrites most of the file.
 
 ## Checklist when touching a `.js` / `.jsx` module
 
 1. Is this a **new** module? → write `.ts` / `.tsx`.
-2. Is the file **small/medium** and the change already rewrites a meaningful chunk? → convert in place (`.js`→`.ts` / `.jsx`→`.tsx`), update imports, delete the old file.
-3. Is the file a **huge UI shell** and the change is a few lines? → keep JS; extract new logic into a new `.ts` / `.tsx` helper instead.
-4. Prefer **English** in new code comments if Korean Unicode might corrupt.
+2. Is this a **re-export-only shim** (`export { default } from '…/Foo.tsx'`)? → keep `.js`; update the shim path if the target moved.
+3. Are you **adding a feature or fixing a bug** in an implementation file? → convert to `.ts` / `.tsx` in the same PR (unless huge UI shell with a tiny diff — then extract helpers).
+4. Is the file **small/medium** and the change already rewrites a meaningful chunk? → convert in place (`.js`→`.ts` / `.jsx`→`.tsx`), update imports, delete the old file.
+5. Is the file a **huge UI shell** and the change is a few lines? → keep JS; extract new logic into a new `.ts` / `.tsx` helper instead.
+6. Prefer **English** in new code comments if Korean Unicode might corrupt.
 
 ## Examples
 
@@ -32,10 +36,13 @@ Do **not** mass-convert the codebase to TypeScript. Prefer incremental adoption 
 ❌ BAD — mechanical .jsx → .tsx rename with `any` everywhere
 ❌ BAD — turn on project-wide `checkJs` without a fix plan for inference/`never` errors
 ❌ BAD — keep growing a modest util as .js when a typed rewrite fits in the same PR
+❌ BAD — ship a feature/bugfix in Foo.jsx without converting Foo to Foo.tsx in the same change
+❌ BAD — add business logic to a re-export shim instead of the .tsx implementation
 ✅ GOOD — add src/utils/chatWithMyself/sync.ts for new sync logic
 ✅ GOOD — while editing chatDb.js heavily, convert that file to chatDb.ts
 ✅ GOOD — while rewriting og.js fetch path, ship og.ts and drop og.js
 ✅ GOOD — one-line fix in App.jsx: leave App.jsx; put new helper in a .ts module
+✅ GOOD — `components/LlmAssistModal.jsx` shim re-exports `llm/LlmAssistModal.tsx`
 ✅ GOOD — rely on ESLint for unused/undeclared in remaining JS; tsc for .ts/.tsx
 ```
 
