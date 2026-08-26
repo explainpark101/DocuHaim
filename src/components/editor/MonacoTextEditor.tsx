@@ -12,8 +12,8 @@ export default function MonacoTextEditor({
   readOnly = false,
   onChange,
   onSave,
-  className = '',
-}) {
+  className = ''
+}: any) {
   const containerRef = useRef(null);
   const editorRef = useRef(null);
   const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
@@ -33,9 +33,10 @@ export default function MonacoTextEditor({
   useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof onSave !== 'function' || readOnly) return;
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: any) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
+        // @ts-expect-error TS(2339): Property 'trigger' does not exist on type 'never'.
         editorRef.current?.trigger('keyboard', 'editor.action.insertLineBefore', null);
         return;
       }
@@ -44,7 +45,9 @@ export default function MonacoTextEditor({
         onSave();
       }
     };
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     el.addEventListener('keydown', handleKeyDown, true);
+    // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => el.removeEventListener('keydown', handleKeyDown, true);
   }, [onSave, readOnly]);
 
@@ -56,13 +59,14 @@ export default function MonacoTextEditor({
         language={language}
         value={value}
         theme={monacoTheme}
-        options={options}
+        options={options as any}
         onChange={onChange}
-        onMount={(editor) => {
+        onMount={(editor: any) => {
           editorRef.current = editor;
         }}
         loading={null}
       />
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

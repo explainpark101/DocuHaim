@@ -218,11 +218,12 @@ export default function PreviewFootnoteTooltips({ containerRef, rootEl = null }:
     <Tooltip.Provider delayDuration={0} skipDelayDuration={0} disableHoverableContent>
       <Tooltip.Root
         open={open}
-        onOpenChange={(next) => {
+        onOpenChange={(next: any) => {
           if (!next) clearActive();
         }}
       >
         <Tooltip.Trigger asChild>
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span
             aria-hidden
             className="pointer-events-none fixed z-100049"

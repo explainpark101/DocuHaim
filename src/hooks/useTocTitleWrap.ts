@@ -16,7 +16,7 @@ export function useTocTitleWrap() {
     });
   }, []);
 
-  return [wrapTitles, setWrapTitles];
+  return [wrapTitles, setWrapTitles] as const;
 }
 
 /** Button/title classes for TOC heading rows. */

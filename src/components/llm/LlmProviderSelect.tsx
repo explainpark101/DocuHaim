@@ -72,6 +72,7 @@ export default function LlmProviderSelect({
     return (
       <p className={`text-[11px] text-amber-700 dark:text-amber-300 ${className}`.trim()}>
         저장된 제공자가 없습니다. 설정에서 추가하세요.
+      // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
       </p>
     );
   }

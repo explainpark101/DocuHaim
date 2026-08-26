@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { MdEditor, config } from 'md-editor-rt';
+
+const MdEditorAny = MdEditor as any;
 import {
   createScopedPreviewHeadingId,
   mdEditorIdFromReactId,
@@ -197,7 +199,7 @@ const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
 const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
 
 /** Windows: Ctrl, Mac: Cmd ? mod ? ??? ? ?? ??? ?? (keydown ???) */
-function getKeyComboFromEvent(e) {
+function getKeyComboFromEvent(e: any) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
   const parts = [];
   if (isMac ? e.metaKey : e.ctrlKey) parts.push('mod');
@@ -213,7 +215,7 @@ function getKeyComboFromEvent(e) {
 }
 
 /** ??? shortcut ???? ctrl/meta ? mod ? ??? (???) */
-function normalizeShortcutForMatch(shortcut) {
+function normalizeShortcutForMatch(shortcut: any) {
   if (!shortcut || typeof shortcut !== 'string') return '';
   return shortcut
     .toLowerCase()
@@ -225,7 +227,7 @@ function normalizeShortcutForMatch(shortcut) {
 const markdownContinueMarkup = insertNewlineContinueMarkupCommand({ nonTightLists: false });
 
 /** Remove blank line inserted before a new list item (loose-list continuation). */
-function collapseEmptyLineBeforeListItem(view) {
+function collapseEmptyLineBeforeListItem(view: any) {
   if (!view?.state) return;
   const { state } = view;
   const pos = state.selection?.main?.head;
@@ -242,7 +244,7 @@ function collapseEmptyLineBeforeListItem(view) {
   });
 }
 
-function markdownEnterSingleNewline(view) {
+function markdownEnterSingleNewline(view: any) {
   if (markdownContinueMarkup(view)) {
     collapseEmptyLineBeforeListItem(view);
     return true;
@@ -256,7 +258,7 @@ const MARKDOWN_SINGLE_NEWLINE_ENTER_KEYMAP = Prec.highest(
   keymap.of([{ key: 'Enter', run: markdownEnterSingleNewline }]),
 );
 
-function insertLineAboveInEditorView(view) {
+function insertLineAboveInEditorView(view: any) {
   if (!view?.state) return;
   const head = view.state.selection?.main?.head;
   if (typeof head !== 'number') return;
@@ -268,7 +270,7 @@ function insertLineAboveInEditorView(view) {
 }
 
 /** Mac KO/US ??? `???\ ?? ?? ?? ?(Backquote/IntlBackslash)? ??? ?? ??? ?? */
-function isInlineCodeFenceTriggerKey(e) {
+function isInlineCodeFenceTriggerKey(e: any) {
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
   const { key, code } = e;
   if (key === '`' || key === '?' || key === '\\') return true;
@@ -277,7 +279,7 @@ function isInlineCodeFenceTriggerKey(e) {
 }
 
 /** Wrap the current selection when typing $, [, (, or {. Empty selection: no-op. */
-function wrapSelectionWithPairIfTriggerKey(view, event) {
+function wrapSelectionWithPairIfTriggerKey(view: any, event: any) {
   if (event.defaultPrevented) return false;
   if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
   switch (event.key) {
@@ -294,7 +296,7 @@ function wrapSelectionWithPairIfTriggerKey(view, event) {
   }
 }
 
-function runAltVimNavigation(view, command) {
+function runAltVimNavigation(view: any, command: any) {
   if (!loadAltVimNavigationEnabled()) return false;
   return command(view);
 }
@@ -303,22 +305,22 @@ const ALT_VIM_NAVIGATION_KEY_BINDINGS = [
   {
     key: 'Alt-h',
     preventDefault: true,
-    run: (view) => runAltVimNavigation(view, cursorCharLeft),
+    run: (view: any) => runAltVimNavigation(view, cursorCharLeft),
   },
   {
     key: 'Alt-j',
     preventDefault: true,
-    run: (view) => runAltVimNavigation(view, cursorLineDown),
+    run: (view: any) => runAltVimNavigation(view, cursorLineDown),
   },
   {
     key: 'Alt-k',
     preventDefault: true,
-    run: (view) => runAltVimNavigation(view, cursorLineUp),
+    run: (view: any) => runAltVimNavigation(view, cursorLineUp),
   },
   {
     key: 'Alt-l',
     preventDefault: true,
-    run: (view) => runAltVimNavigation(view, cursorCharRight),
+    run: (view: any) => runAltVimNavigation(view, cursorCharRight),
   },
 ];
 
@@ -331,7 +333,9 @@ config({
     // Safari: restore library default ? renderDelay 0 makes typing very laggy.
     renderDelay: isSafariBrowser() ? 500 : 0,
   },
-  codeMirrorExtensions(extensions, { keyBindings }) {
+  codeMirrorExtensions(extensions: any, {
+    keyBindings
+  }: any) {
     const nextExtensions = [...extensions].filter(
       (item) =>
         item.type !== 'keymap'
@@ -339,67 +343,65 @@ config({
         && item.type !== 'lineNumbers',
     );
 
-    const baseKeyBindings = (keyBindings || []).filter((binding) => {
+    const baseKeyBindings = (keyBindings || []).filter((binding: any) => {
       const key = String(binding?.key || '').toLowerCase();
       const mac = String(binding?.mac || '').toLowerCase();
-      return (
-        key !== 'ctrl-d' &&
-        key !== 'mod-d' &&
-        mac !== 'cmd-d' &&
-        key !== 'ctrl-b' &&
-        key !== 'mod-b' &&
-        mac !== 'cmd-b' &&
-        key !== 'ctrl-u' &&
-        key !== 'mod-u' &&
-        mac !== 'cmd-u' &&
-        key !== 'ctrl-o' &&
-        key !== 'mod-o' &&
-        mac !== 'cmd-o' &&
-        key !== 'ctrl-arrowup' &&
-        key !== 'mod-arrowup' &&
-        mac !== 'cmd-arrowup' &&
-        key !== 'ctrl-arrowdown' &&
-        key !== 'mod-arrowdown' &&
-        mac !== 'cmd-arrowdown' &&
-        !/^ctrl-[0-9]$/.test(key) &&
-        !/^mod-[0-9]$/.test(key) &&
-        !/^cmd-[0-9]$/.test(mac)
-      );
+      return key !== 'ctrl-d' &&
+      key !== 'mod-d' &&
+      mac !== 'cmd-d' &&
+      key !== 'ctrl-b' &&
+      key !== 'mod-b' &&
+      mac !== 'cmd-b' &&
+      key !== 'ctrl-u' &&
+      key !== 'mod-u' &&
+      mac !== 'cmd-u' &&
+      key !== 'ctrl-o' &&
+      key !== 'mod-o' &&
+      mac !== 'cmd-o' &&
+      key !== 'ctrl-arrowup' &&
+      key !== 'mod-arrowup' &&
+      mac !== 'cmd-arrowup' &&
+      key !== 'ctrl-arrowdown' &&
+      key !== 'mod-arrowdown' &&
+      mac !== 'cmd-arrowdown' &&
+      !/^ctrl-[0-9]$/.test(key) &&
+      !/^mod-[0-9]$/.test(key) &&
+      !/^cmd-[0-9]$/.test(mac);
     });
 
     const multiCursorKeyBindings = [
       {
         key: 'ArrowLeft',
-        run: (view) => moveCaretSkippingImages(view, -1),
+        run: (view: any) => moveCaretSkippingImages(view, -1),
       },
       {
         key: 'ArrowRight',
-        run: (view) => moveCaretSkippingImages(view, 1),
+        run: (view: any) => moveCaretSkippingImages(view, 1),
       },
       // Ctrl/Alt+Arrow: CM group & syntax motion ? keep image markup atomic.
       {
         key: 'Ctrl-ArrowLeft',
         mac: 'Alt-ArrowLeft',
-        run: (view) => runMotionSkippingImages(view, -1, cursorGroupLeft),
-        shift: (view) => runMotionSkippingImages(view, -1, selectGroupLeft),
+        run: (view: any) => runMotionSkippingImages(view, -1, cursorGroupLeft),
+        shift: (view: any) => runMotionSkippingImages(view, -1, selectGroupLeft),
       },
       {
         key: 'Ctrl-ArrowRight',
         mac: 'Alt-ArrowRight',
-        run: (view) => runMotionSkippingImages(view, 1, cursorGroupRight),
-        shift: (view) => runMotionSkippingImages(view, 1, selectGroupRight),
+        run: (view: any) => runMotionSkippingImages(view, 1, cursorGroupRight),
+        shift: (view: any) => runMotionSkippingImages(view, 1, selectGroupRight),
       },
       {
         key: 'Alt-ArrowLeft',
         mac: 'Ctrl-ArrowLeft',
-        run: (view) => runMotionSkippingImages(view, -1, cursorSyntaxLeft),
-        shift: (view) => runMotionSkippingImages(view, -1, selectSyntaxLeft),
+        run: (view: any) => runMotionSkippingImages(view, -1, cursorSyntaxLeft),
+        shift: (view: any) => runMotionSkippingImages(view, -1, selectSyntaxLeft),
       },
       {
         key: 'Alt-ArrowRight',
         mac: 'Ctrl-ArrowRight',
-        run: (view) => runMotionSkippingImages(view, 1, cursorSyntaxRight),
-        shift: (view) => runMotionSkippingImages(view, 1, selectSyntaxRight),
+        run: (view: any) => runMotionSkippingImages(view, 1, cursorSyntaxRight),
+        shift: (view: any) => runMotionSkippingImages(view, 1, selectSyntaxRight),
       },
       ...ALT_VIM_NAVIGATION_KEY_BINDINGS,
       {
@@ -415,7 +417,7 @@ config({
         key: 'Ctrl-d',
         mac: 'Cmd-d',
         preventDefault: true,
-        run: (view) => {
+        run: (view: any) => {
           selectNextOccurrence(view);
           return true;
         },
@@ -467,16 +469,16 @@ config({
         key: `Ctrl-${level}`,
         mac: `Cmd-${level}`,
         preventDefault: true,
-        run: (view) => toggleHeadingForSelection(view, level),
+        run: (view: any) => toggleHeadingForSelection(view, level),
       })),
       {
         key: 'Ctrl-0',
         mac: 'Cmd-0',
         preventDefault: true,
-        run: (view) => toggleHeadingForSelection(view, 10),
+        run: (view: any) => toggleHeadingForSelection(view, 10),
       },
       {
-        any: (view, event) => {
+        any: (view: any, event: any) => {
           if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyC') {
             return wrapSelectionWithInlineCode(view);
           }
@@ -510,7 +512,7 @@ config({
       },
       {
         type: 'clickAddsSelectionRange',
-        extension: EditorView.clickAddsSelectionRange.of((event) => {
+        extension: EditorView.clickAddsSelectionRange.of((event: any) => {
           const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
           return event.altKey || (isMac ? event.metaKey : event.ctrlKey);
         }),
@@ -538,7 +540,7 @@ config({
       {
         // md-editor-rt re-injects built-in completions; close them when preference is off.
         type: 'autocompleteGate',
-        extension: EditorView.updateListener.of((update) => {
+        extension: EditorView.updateListener.of((update: any) => {
           notifyMirrorEditCaretUpdate(update);
           if (loadEditorAutocompleteEnabled()) return;
           if (completionStatus(update.state) === 'active') {
@@ -552,7 +554,7 @@ config({
   },
   // Must use shared merge (includes mermaid fence). A hand-rolled list here
   // overwrote mdEditorConfig and dropped mermaid → plain code blocks.
-  markdownItPlugins(plugins) {
+  markdownItPlugins(plugins: any) {
     return applyAppMarkdownItPluginsFromList(plugins);
   },
 });
@@ -575,8 +577,8 @@ export default function MarkdownEditor({
   getImgbbApiKey,
   onOpenViewPath,
   onRequestConvertAllImagesToWiki,
-  onRegisterConvertAllImagesToWiki,
-}) {
+  onRegisterConvertAllImagesToWiki
+}: any) {
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
   // Unique per keep-alive mount so catalog getElementById / preview-wrapper
@@ -627,6 +629,7 @@ export default function MarkdownEditor({
         value: content,
         theme: themeRef.current === 'dark' ? 'dark' : 'light',
         currentFile: file,
+        // @ts-expect-error TS(2339): Property 'openCoverEdit' does not exist on type '{... Remove this comment to see the full error message
         ...(options.openCoverEdit ? { openCoverEdit: true } : {}),
       },
     });
@@ -690,13 +693,14 @@ export default function MarkdownEditor({
     if (previewOnly) return undefined;
 
     const snapshotSelection = () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return;
       asSelectionSnapshotRef.current = view.state.selection;
     };
 
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: any) => {
       if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
       if (e.key.toLowerCase() !== 'k') return;
       snapshotSelection();
@@ -714,6 +718,7 @@ export default function MarkdownEditor({
   useEffect(() => {
     if (previewOnly) return undefined;
 
+    // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
     const getApi = () => editorRef.current?.value ?? editorRef.current;
 
     const restoreSelectionIfNeeded = () => {
@@ -724,7 +729,7 @@ export default function MarkdownEditor({
       view.dispatch({ selection: snap, scrollIntoView: true });
     };
 
-    const runDirective = (direct) => {
+    const runDirective = (direct: any) => {
       const api = getApi();
       if (!api) return;
       restoreSelectionIfNeeded();
@@ -762,9 +767,11 @@ export default function MarkdownEditor({
     const handlers = {};
     for (const cmd of EDITOR_ACTION_COMMANDS) {
       if (cmd.directive) {
+        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         handlers[cmd.id] = () => runDirective(cmd.directive);
       }
     }
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-revoke'] = () => {
       restoreSelectionIfNeeded();
       const view = getApi()?.getEditorView?.();
@@ -772,6 +779,7 @@ export default function MarkdownEditor({
       view.focus();
       undo(view);
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-next'] = () => {
       restoreSelectionIfNeeded();
       const view = getApi()?.getEditorView?.();
@@ -779,17 +787,23 @@ export default function MarkdownEditor({
       view.focus();
       redo(view);
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-llm-assist'] = () => setLlmAssistOpen(true);
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-export-pdf'] = openExport;
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-pgbr'] = () => {
       restoreSelectionIfNeeded();
       insertPgbr();
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-heading-remap'] = () => {
       restoreSelectionIfNeeded();
       openHeadingRemapRef.current();
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-checklist-progress'] = () => setChecklistProgressOpen(true);
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-table-edit'] = () => {
       restoreSelectionIfNeeded();
       const view = getApi()?.getEditorView?.();
@@ -803,6 +817,7 @@ export default function MarkdownEditor({
         });
       }
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-image-upload'] = () => {
       const input = document.createElement('input');
       input.type = 'file';
@@ -810,29 +825,35 @@ export default function MarkdownEditor({
       input.multiple = true;
       input.onchange = () => {
         const files = Array.from(input.files || []);
+        // @ts-expect-error TS(2349): This expression is not callable.
         if (files.length) void handleToolbarImageUploadRef.current?.(files);
       };
       input.click();
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-image-clip'] = () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
       input.onchange = () => {
         const file = input.files?.[0];
+        // @ts-expect-error TS(2345): Argument of type 'File' is not assignable to param... Remove this comment to see the full error message
         if (file) setClipCropFile(file);
       };
       input.click();
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-convert-all-images-to-wiki'] = () => {
       if (typeof onRequestConvertAllImagesToWiki === 'function') {
         onRequestConvertAllImagesToWiki();
       }
     };
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     handlers['editor-insert-footnote'] = () => {
       requestOpenAdvancedSearch({ mode: 'footnote-insert' });
     };
-    handlers['editor-insert-circle-number'] = (payload) => {
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
+    handlers['editor-insert-circle-number'] = (payload: any) => {
       const glyph = typeof payload === 'string' ? payload : '';
       if (!glyph) {
         requestOpenAdvancedSearch({ mode: 'circle-number' });
@@ -849,7 +870,8 @@ export default function MarkdownEditor({
     };
 
     // Advanced Search snippet insertion: host passes snippet body as payload.
-    handlers['editor-insert-snippet'] = (payload) => {
+    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
+    handlers['editor-insert-snippet'] = (payload: any) => {
       const body = typeof payload === 'string' ? payload : '';
       if (!body) return;
 
@@ -869,6 +891,7 @@ export default function MarkdownEditor({
     if (previewOnly) return undefined;
 
     const getView = () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       return api?.getEditorView?.() ?? null;
     };
@@ -880,7 +903,7 @@ export default function MarkdownEditor({
       view.dispatch({ selection: snap, scrollIntoView: true });
     };
 
-    const applyDoc = (next, caret) => {
+    const applyDoc = (next: any, caret: any) => {
       const view = getView();
       if (view) {
         view.dispatch({
@@ -933,6 +956,7 @@ export default function MarkdownEditor({
     maxWidth: 640,
     edge: 'right',
     onCollapseBelowMin: () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       api?.toggleCatalog?.(false);
     },
@@ -960,6 +984,7 @@ export default function MarkdownEditor({
 
   useEffect(() => {
     const apply = () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return false;
@@ -981,6 +1006,7 @@ export default function MarkdownEditor({
     if (!root) return undefined;
 
     const syncCatalog = () => {
+      // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       const next = root.querySelector(
         '.md-editor-catalog-fixed, .md-editor-catalog-flat',
       );
@@ -996,6 +1022,7 @@ export default function MarkdownEditor({
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return;
+    // @ts-expect-error TS(2339): Property 'style' does not exist on type 'never'.
     root.style.setProperty('--md-catalog-width', `${catalogWidth}px`);
   }, [catalogWidth]);
 
@@ -1007,12 +1034,14 @@ export default function MarkdownEditor({
     }
 
     const updateBox = () => {
+      // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
       const catRect = catalogEl.getBoundingClientRect();
       if (catRect.width <= 0 || catRect.height <= 0) {
         setCatalogHandleBox(null);
         return;
       }
       setCatalogHandleBox({
+        // @ts-expect-error TS(2345): Argument of type '{ top: any; left: any; height: a... Remove this comment to see the full error message
         top: catRect.top,
         left: catRect.left,
         height: catRect.height,
@@ -1063,9 +1092,11 @@ export default function MarkdownEditor({
       });
     };
     const scheduleIfNeeded = () => {
+      // @ts-expect-error TS(2339): Property 'querySelectorAll' does not exist on type... Remove this comment to see the full error message
       const hosts = root.querySelectorAll('[data-note-cover-mount]');
       if (!hosts.length) return;
       const needs =
+        // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
         root.querySelector('.md-note-cover-placeholder--pending')
         || [...hosts].some((host) => host.childNodes.length === 0);
       if (!needs) return;
@@ -1079,6 +1110,7 @@ export default function MarkdownEditor({
     const delays = [0, 80, 280, 600, 1100, 2000];
     const timers = delays.map((delay) => setTimeout(runCoverHydration, delay));
 
+    // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
     const preview = root.querySelector('.md-editor-preview') || root;
     const mutationObserver =
       typeof MutationObserver !== 'undefined'
@@ -1108,6 +1140,7 @@ export default function MarkdownEditor({
     if (previewOnly) return undefined;
     const key = getNoteCoverFoldKeyFromFile(currentFile);
     const apply = () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return false;
@@ -1129,12 +1162,13 @@ export default function MarkdownEditor({
     const collapsedRef = { current: /** @type {string[]} */ ([]) };
     let cancelled = false;
     /** @type {(() => void) | null} */
-    let cleanupEnhance = null;
+    let cleanupEnhance: any = null;
     /** @type {MutationObserver | null} */
-    let mutationObserver = null;
+    let mutationObserver: any = null;
     /** @type {ReturnType<typeof setTimeout>[]} */
-    let timers = [];
+    let timers: any = [];
 
+    // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
     const getPreview = () => container.querySelector('.md-editor-preview');
 
     const applyEnhance = () => {
@@ -1149,6 +1183,7 @@ export default function MarkdownEditor({
       const nextCleanup = enhancePreviewHeadingFolds(preview, {
         collapsedIds: collapsedRef.current,
         onCollapsedChange: (ids) => {
+          // @ts-expect-error TS(2322): Type 'string[]' is not assignable to type 'never[]... Remove this comment to see the full error message
           collapsedRef.current = ids;
           if (docKey) void saveHeadingFoldCollapsedIds(docKey, ids);
         },
@@ -1160,7 +1195,7 @@ export default function MarkdownEditor({
       };
     };
 
-    const ensureObserver = (preview) => {
+    const ensureObserver = (preview: any) => {
       if (!preview || mutationObserver || typeof MutationObserver === 'undefined') return;
       mutationObserver = new MutationObserver(applyEnhance);
       mutationObserver.observe(preview, {
@@ -1173,6 +1208,7 @@ export default function MarkdownEditor({
       if (docKey) {
         const saved = await getHeadingFoldCollapsedIds(docKey);
         if (cancelled) return;
+        // @ts-expect-error TS(2322): Type 'string[]' is not assignable to type 'never[]... Remove this comment to see the full error message
         if (saved) collapsedRef.current = saved;
       }
       if (cancelled) return;
@@ -1194,6 +1230,7 @@ export default function MarkdownEditor({
 
     return () => {
       cancelled = true;
+      // @ts-expect-error TS(7006): Parameter 't' implicitly has an 'any' type.
       timers.forEach((t) => clearTimeout(t));
       mutationObserver?.disconnect();
       mutationObserver = null;
@@ -1204,6 +1241,7 @@ export default function MarkdownEditor({
 
   useEffect(() => {
     if (!previewOnly) return;
+    // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
     const api = editorRef.current?.value ?? editorRef.current;
     api?.togglePreviewOnly?.(true);
   }, [previewOnly]);
@@ -1217,6 +1255,7 @@ export default function MarkdownEditor({
     setMirrorEditEnabled(false);
 
     const applyPreviewOnly = () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       api?.togglePreviewOnly?.(true);
     };
@@ -1233,11 +1272,12 @@ export default function MarkdownEditor({
     const root = containerRef.current;
     if (!root) return undefined;
 
+    // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
     const getPreviewRoot = () => root.querySelector('.md-editor-preview');
     const mirrorEditOn = () => mirrorEditEnabled;
-    let pointerDown = null;
+    let pointerDown: any = null;
 
-    const shouldIgnoreTarget = (target) => {
+    const shouldIgnoreTarget = (target: any) => {
       if (!(target instanceof Element)) return false;
       if (isMirrorEditTarget(target)) return true;
       return Boolean(
@@ -1247,7 +1287,7 @@ export default function MarkdownEditor({
       );
     };
 
-    const syncFromPreview = (eventTarget) => {
+    const syncFromPreview = (eventTarget: any) => {
       const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
       if (isMirrorEditActiveIn(previewRoot)) return;
@@ -1282,6 +1322,7 @@ export default function MarkdownEditor({
         }
       }
 
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return;
@@ -1294,20 +1335,19 @@ export default function MarkdownEditor({
         target: eventTarget,
       });
       markMirrorEditCaretFromPreview();
+      // @ts-expect-error TS(2339): Property 'schedule' does not exist on type 'never'... Remove this comment to see the full error message
       mirrorEditRemirrorRef.current?.schedule({ withRetries: true });
     };
 
-    const isContextMenuMouseDown = (e) => (
-      e.button === 2 || (e.button === 0 && e.ctrlKey)
-    );
+    const isContextMenuMouseDown = (e: any) => e.button === 2 || (e.button === 0 && e.ctrlKey);
 
-    const restorePreviewSelectionForContextMenu = (e, previewRoot) => {
+    const restorePreviewSelectionForContextMenu = (e: any, previewRoot: any) => {
       if (isPointInLivePreviewSelection(previewRoot, e.clientX, e.clientY)) return true;
       if (!isPointInMirroredPreviewSelection(e.clientX, e.clientY)) return false;
       return restoreMirroredPreviewSelection(previewRoot);
     };
 
-    const onMouseDown = (e) => {
+    const onMouseDown = (e: any) => {
       const previewRoot = getPreviewRoot();
       if (!previewRoot) return;
       const target = e.target;
@@ -1327,6 +1367,7 @@ export default function MarkdownEditor({
       }
 
       pointerDown = null;
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (view?.dom.contains(target)) {
@@ -1336,13 +1377,13 @@ export default function MarkdownEditor({
       }
     };
 
-    const onContextMenuCapture = (e) => {
+    const onContextMenuCapture = (e: any) => {
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       restorePreviewSelectionForContextMenu(e, previewRoot);
     };
 
-    const onMouseUp = (e) => {
+    const onMouseUp = (e: any) => {
       if (isContextMenuMouseDown(e)) return;
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
@@ -1356,6 +1397,7 @@ export default function MarkdownEditor({
         );
         pointerDown = null;
         if (!mirrorEditOn() || dragged) return;
+        // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
         const api = editorRef.current?.value ?? editorRef.current;
         const view = api?.getEditorView?.();
         const block =
@@ -1373,13 +1415,14 @@ export default function MarkdownEditor({
       requestAnimationFrame(() => syncFromPreview(e.target));
     };
 
-    const onTouchEnd = (e) => {
+    const onTouchEnd = (e: any) => {
       const previewRoot = getPreviewRoot();
       if (!previewRoot || !(e.target instanceof Node) || !previewRoot.contains(e.target)) return;
       if (shouldIgnoreTarget(e.target)) return;
 
       if (isMdEditorPreviewOnlyUi(root)) {
         if (!mirrorEditOn()) return;
+        // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
         const api = editorRef.current?.value ?? editorRef.current;
         const view = api?.getEditorView?.();
         const touch = e.changedTouches?.[0];
@@ -1406,7 +1449,7 @@ export default function MarkdownEditor({
     // Mirror Edit ON only: if focus/selection is still on the preview, move editing
     // into CodeMirror. Skip while composing (Korean IME). In preview-only UI, never
     // steal focus to the zero-width source pane ? contentEditable handles input instead.
-    const onKeyDownCapture = (e) => {
+    const onKeyDownCapture = (e: any) => {
       if (!mirrorEditOn()) return;
       if (e.isComposing || e.keyCode === 229 || e.key === 'Process') return;
       if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
@@ -1423,11 +1466,14 @@ export default function MarkdownEditor({
         target instanceof Node && previewRoot.contains(target);
       const sel = window.getSelection?.();
       const selInPreview =
+        // @ts-expect-error TS(2532): Object is possibly 'undefined'.
         sel?.rangeCount > 0
+        // @ts-expect-error TS(2531): Object is possibly 'null'.
         && previewRoot.contains(sel.getRangeAt(0).commonAncestorContainer);
 
       if (!focusInPreview && !selInPreview) return;
 
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return;
@@ -1436,23 +1482,34 @@ export default function MarkdownEditor({
       if (selInPreview) {
         mirrorCurrentPreviewSelection(previewRoot, { allowCollapsed: true });
         syncPreviewSelectionToEditor(view, previewRoot, { focus: true });
+        // @ts-expect-error TS(2339): Property 'schedule' does not exist on type 'never'... Remove this comment to see the full error message
         mirrorEditRemirrorRef.current?.schedule({ withRetries: true });
       } else {
         view.focus();
       }
     };
 
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('mousedown', onMouseDown, true);
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('contextmenu', onContextMenuCapture, true);
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('mouseup', onMouseUp);
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('touchend', onTouchEnd, { passive: true });
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('keydown', onKeyDownCapture, true);
     return () => {
       clearPreviewSelectionMirror(getPreviewRoot());
+      // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       root.removeEventListener('mousedown', onMouseDown, true);
+      // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       root.removeEventListener('contextmenu', onContextMenuCapture, true);
+      // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       root.removeEventListener('mouseup', onMouseUp);
+      // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       root.removeEventListener('touchend', onTouchEnd);
+      // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       root.removeEventListener('keydown', onKeyDownCapture, true);
     };
   }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
@@ -1462,8 +1519,10 @@ export default function MarkdownEditor({
   // Safari: keep data-line scroll sync; skip Mirror Edit remirror only.
   useEffect(() => {
     if (previewOnly) {
+      // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
       previewScrollFollowRef.current?.stop();
       previewScrollFollowRef.current = null;
+      // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
       mirrorEditRemirrorRef.current?.stop();
       mirrorEditRemirrorRef.current = null;
       markMirrorEditCaretFromEditor();
@@ -1472,19 +1531,25 @@ export default function MarkdownEditor({
 
     const root = containerRef.current;
     const getPreviewRoot = () =>
+      // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       (root ?? containerRef.current)?.querySelector('.md-editor-preview');
     const getView = () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       return api?.getEditorView?.();
     };
 
+    // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
     previewScrollFollowRef.current?.stop();
     const scrollFollow = createPreviewScrollFollow({ getPreviewRoot, getView });
+    // @ts-expect-error TS(2322): Type 'PreviewScrollFollowController' is not assign... Remove this comment to see the full error message
     previewScrollFollowRef.current = scrollFollow;
 
+    // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
     mirrorEditRemirrorRef.current?.stop();
     mirrorEditRemirrorRef.current = null;
     if (mirrorEditEnabled) {
+      // @ts-expect-error TS(2322): Type 'MirrorEditRemirrorController' is not assigna... Remove this comment to see the full error message
       mirrorEditRemirrorRef.current = createMirrorEditPreviewRemirror({
         getPreviewRoot,
         getView,
@@ -1498,14 +1563,17 @@ export default function MarkdownEditor({
       if (!own || view !== own) return;
       scrollFollow.schedule({ withRetries: update.docChanged });
       if (mirrorEditEnabled) {
+        // @ts-expect-error TS(2339): Property 'schedule' does not exist on type 'never'... Remove this comment to see the full error message
         mirrorEditRemirrorRef.current?.schedule({ withRetries: update.docChanged });
       }
     });
 
     return () => {
       unregisterCaret();
+      // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
       mirrorEditRemirrorRef.current?.stop();
       mirrorEditRemirrorRef.current = null;
+      // @ts-expect-error TS(2339): Property 'stop' does not exist on type 'never'.
       previewScrollFollowRef.current?.stop();
       previewScrollFollowRef.current = null;
     };
@@ -1521,8 +1589,10 @@ export default function MarkdownEditor({
     if (!root) return undefined;
 
     return attachPreviewMirrorEdit(root, {
+      // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       getPreviewRoot: () => root.querySelector('.md-editor-preview'),
       getView: () => {
+        // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
         const api = editorRef.current?.value ?? editorRef.current;
         return api?.getEditorView?.();
       },
@@ -1532,16 +1602,19 @@ export default function MarkdownEditor({
 
   useEffect(() => {
     const root = containerRef.current;
+    // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
     const previewRoot = root?.querySelector('.md-editor-preview');
     abandonDetachedPreviewMirrorEdit();
     if (!previewRoot) return;
 
     // Preview HTML rebuilds with `value`; re-follow caret after DOM settles.
+    // @ts-expect-error TS(2339): Property 'schedule' does not exist on type 'never'... Remove this comment to see the full error message
     previewScrollFollowRef.current?.schedule({ withRetries: true });
 
     if (safariMdEditor) return;
 
     if (mirrorEditEnabled && !isMirrorEditActiveIn(previewRoot)) {
+      // @ts-expect-error TS(2339): Property 'schedule' does not exist on type 'never'... Remove this comment to see the full error message
       mirrorEditRemirrorRef.current?.schedule({ withRetries: true });
       return;
     }
@@ -1552,10 +1625,11 @@ export default function MarkdownEditor({
   useEffect(() => {
     if (previewOnly) return;
     const registerPasteHandler = () => {
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       if (!api?.domEventHandlers) return false;
       api.domEventHandlers({
-        paste: (e, view) => {
+        paste: (e: any, view: any) => {
           const clipboardData = e.clipboardData;
           if (!clipboardData || !view) return;
 
@@ -1568,9 +1642,10 @@ export default function MarkdownEditor({
             }
             e.preventDefault();
             const pasteView = view;
-            onUploadImage(imageFiles).then((paths) => {
+            onUploadImage(imageFiles).then((paths: any) => {
               if (!paths?.length) return;
-              const markdown = paths.map((p) => `![[${p}]]`).join('\n');
+              const markdown = paths.map((p: any) => `![[${p}]]`).join('\n');
+              // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
               const api2 = editorRef.current?.value ?? editorRef.current;
               const v = api2?.getEditorView?.() ?? pasteView;
               if (v) v.dispatch(v.state.replaceSelection(markdown));
@@ -1585,7 +1660,7 @@ export default function MarkdownEditor({
             return false;
           }
         },
-        keydown: (e, view) => {
+        keydown: (e: any, view: any) => {
           if (!view) return;
 
           if (!view.composing && isInlineCodeFenceTriggerKey(e)) {
@@ -1620,6 +1695,7 @@ export default function MarkdownEditor({
           const snippets = config?.snippets || [];
           const normalizedCombo = normalizeShortcutForMatch(keyCombo);
           const entry = snippets.find(
+            // @ts-expect-error TS(7006): Parameter 's' implicitly has an 'any' type.
             (s) => normalizeShortcutForMatch(s.prefix) === normalizedCombo && (s.body || '').trim(),
           );
           if (entry) {
@@ -1641,20 +1717,23 @@ export default function MarkdownEditor({
   // ??? ???? ??? ?? ???(cmd+[, cmd+] ?)?? ?? ??: document ??? ??? ??
   useEffect(() => {
     if (previewOnly) return;
-    const handleKeyDownCapture = (e) => {
+    const handleKeyDownCapture = (e: any) => {
       const keyCombo = getKeyComboFromEvent(e);
       if (!keyCombo || keyCombo === 'mod+s') return;
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       if (!view) return;
       const container = containerRef.current;
       const target = e.target;
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (!container?.contains(target) && !view.dom?.contains(target)) return;
 
       const config = snippetConfigRef.current;
       const snippets = config?.snippets || [];
       const normalizedCombo = normalizeShortcutForMatch(keyCombo);
       const entry = snippets.find(
+        // @ts-expect-error TS(7006): Parameter 's' implicitly has an 'any' type.
         (s) => normalizeShortcutForMatch(s.prefix) === normalizedCombo && (s.body || '').trim(),
       );
       if (!entry) return;
@@ -1669,7 +1748,7 @@ export default function MarkdownEditor({
 
   useEffect(() => {
     if (typeof onSave !== 'function') return undefined;
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: any) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
       if (e.key !== 's' && e.key !== 'S' && e.code !== 'KeyS') return;
 
@@ -1677,7 +1756,9 @@ export default function MarkdownEditor({
       if (!root) return;
 
       const target = e.target;
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       const inEditor = target instanceof Node && root.contains(target);
+      // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       const previewRoot = root.querySelector('.md-editor-preview');
       const sel = window.getSelection?.();
       const selInPreview = Boolean(
@@ -1691,6 +1772,7 @@ export default function MarkdownEditor({
       e.stopPropagation();
       e.stopImmediatePropagation?.();
 
+      // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
       commitPreviewMirrorEdit(view);
@@ -1703,7 +1785,8 @@ export default function MarkdownEditor({
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return;
-    const onContextMenu = (event) => {
+    const onContextMenu = (event: any) => {
+      // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       const previewRoot = root.querySelector('.md-editor-preview');
 
       // Preview tables: PreviewTableContextMenu owns the menu.
@@ -1720,7 +1803,9 @@ export default function MarkdownEditor({
 
       // Editor (CodeMirror) selection in a GFM / haim-table block
       const cm = event.target?.closest?.('.cm-editor');
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (cm && root.contains(cm)) {
+        // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
         const api = editorRef.current?.value ?? editorRef.current;
         const view = api?.getEditorView?.();
         if (view) {
@@ -1736,6 +1821,7 @@ export default function MarkdownEditor({
       }
 
       const img = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (!img || !root.contains(img)) return;
       const attrs = getResizableImageAttrsFromElement(img);
       if (!attrs.kind || !attrs.key) return;
@@ -1745,6 +1831,7 @@ export default function MarkdownEditor({
           ? getWikiImageOccurrenceInContainer(root, img, attrs.key)
           : getMarkdownImageOccurrenceInContainer(root, img, attrs.key);
       setWikiImageModalState({
+        // @ts-expect-error TS(2345): Argument of type '{ kind: string; key: any; width:... Remove this comment to see the full error message
         kind: attrs.kind,
         key: attrs.key,
         width: attrs.width,
@@ -1753,7 +1840,9 @@ export default function MarkdownEditor({
         imageSrc: img.currentSrc || img.src || '',
       });
     };
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('contextmenu', onContextMenu);
+    // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => root.removeEventListener('contextmenu', onContextMenu);
   }, [showAlert]);
 
@@ -1762,7 +1851,7 @@ export default function MarkdownEditor({
     const root = containerRef.current;
     if (!root) return undefined;
 
-    const onDblClick = (event) => {
+    const onDblClick = (event: any) => {
       if (
         event.target?.closest?.(
           '[data-haim-table-resize-handle], [data-haim-table-resize-overlay]',
@@ -1770,6 +1859,7 @@ export default function MarkdownEditor({
       ) {
         return;
       }
+      // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       const previewRoot = root.querySelector('.md-editor-preview');
       const table = event.target?.closest?.('table');
       if (!table || !previewRoot || !previewRoot.contains(table)) return;
@@ -1785,7 +1875,9 @@ export default function MarkdownEditor({
       }
     };
 
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('dblclick', onDblClick, true);
+    // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => root.removeEventListener('dblclick', onDblClick, true);
   }, [showAlert]);
 
@@ -1808,7 +1900,7 @@ export default function MarkdownEditor({
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return undefined;
-    const onCoverPlaceholderActivate = (coverPlaceholder) => {
+    const onCoverPlaceholderActivate = (coverPlaceholder: any) => {
       // Auto-loaded cover (or empty): open Export cover editor confirm.
       if (
         coverPlaceholder.classList.contains('md-note-cover-placeholder--ready')
@@ -1819,8 +1911,9 @@ export default function MarkdownEditor({
       }
     };
 
-    const onClick = (event) => {
+    const onClick = (event: any) => {
       const coverPlaceholder = event.target?.closest?.('[data-note-cover-placeholder]');
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (coverPlaceholder && root.contains(coverPlaceholder)) {
         event.preventDefault();
         event.stopPropagation();
@@ -1829,6 +1922,7 @@ export default function MarkdownEditor({
       }
 
       const card = event.target?.closest?.('[data-chat-saved-note]');
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (card && root.contains(card)) {
         event.preventDefault();
         event.stopPropagation();
@@ -1836,12 +1930,13 @@ export default function MarkdownEditor({
           chatSavedNoteLinkTo({
             id: card.getAttribute('data-chat-id') || '',
             href: card.getAttribute('data-chat-href') || card.getAttribute('href') || '',
-          }),
+          }) as any,
         );
         return;
       }
 
       const anchor = event.target?.closest?.('a[href]');
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (!anchor || !root.contains(anchor)) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       if (typeof event.button === 'number' && event.button !== 0) return;
@@ -1865,37 +1960,51 @@ export default function MarkdownEditor({
       navigate(`${resolved.pathname || '/'}${search}${hash}`);
     };
 
-    const onKeyDown = (event) => {
+    const onKeyDown = (event: any) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       const coverPlaceholder = event.target?.closest?.('[data-note-cover-placeholder]');
+      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (!coverPlaceholder || !root.contains(coverPlaceholder)) return;
       event.preventDefault();
       event.stopPropagation();
       onCoverPlaceholderActivate(coverPlaceholder);
     };
 
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('click', onClick);
+    // @ts-expect-error TS(2339): Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     root.addEventListener('keydown', onKeyDown);
     return () => {
+      // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       root.removeEventListener('click', onClick);
+      // @ts-expect-error TS(2339): Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
       root.removeEventListener('keydown', onKeyDown);
     };
   }, [navigate, currentFile?.id, currentFile?.type, onOpenViewPath]);
 
   const handleApplyWikiImageSize = useCallback(
-    ({ width, height }) => {
+    ({
+      width,
+      height
+    }: any) => {
       const modal = wikiImageModalState;
+      // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
       if (!modal?.key || typeof onChangeWithUndoHistory !== 'function') return;
       const next =
+        // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
         modal.kind === 'wiki'
           ? updateWikiImageSizeInMarkdown(value, {
+              // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
               path: modal.key,
+              // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               width,
               height,
             })
           : updateMarkdownImageSizeInMarkdown(value, {
+              // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
               src: modal.key,
+              // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               width,
               height,
@@ -1908,8 +2017,11 @@ export default function MarkdownEditor({
   );
 
   const handleCropWikiImage = useCallback(
-    async ({ file }) => {
+    async ({
+      file
+    }: any) => {
       const modal = wikiImageModalState;
+      // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
       if (!modal?.key || typeof onUploadImage !== 'function') {
         throw new Error('Upload handler not available.');
       }
@@ -1920,14 +2032,19 @@ export default function MarkdownEditor({
       }
       if (typeof onChangeWithUndoHistory !== 'function') return;
       const next =
+        // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
         modal.kind === 'wiki'
           ? updateWikiImagePathInMarkdown(value, {
+              // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
               path: modal.key,
+              // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               nextPath,
             })
           : replaceMarkdownImageWithWikiPath(value, {
+              // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
               src: modal.key,
+              // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               nextPath,
             });
@@ -1939,8 +2056,12 @@ export default function MarkdownEditor({
   );
 
   const handleConvertMarkdownToWiki = useCallback(
-    async ({ width, height }) => {
+    async ({
+      width,
+      height
+    }: any) => {
       const modal = wikiImageModalState;
+      // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
       if (!modal?.key || modal.kind !== 'markdown') {
         throw new Error('Cannot convert: not a markdown image.');
       }
@@ -1948,7 +2069,9 @@ export default function MarkdownEditor({
         throw new Error('Cannot apply change.');
       }
       const prepared = await prepareMarkdownImageForWikiConvert({
+        // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
         markdownSrc: modal.key,
+        // @ts-expect-error TS(2339): Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
         displaySrc: modal.imageSrc,
         currentNotePath: currentFile?.id ?? null,
       });
@@ -1966,7 +2089,9 @@ export default function MarkdownEditor({
         }
       }
       const next = replaceMarkdownImageWithWikiPath(value, {
+        // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
         src: modal.key,
+        // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
         occurrence: modal.occurrence ?? 0,
         nextPath,
         width,
@@ -1980,8 +2105,12 @@ export default function MarkdownEditor({
   );
 
   const handleConvertToImgbb = useCallback(
-    async ({ width, height }) => {
+    async ({
+      width,
+      height
+    }: any) => {
       const modal = wikiImageModalState;
+      // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
       if (!modal?.key || !modal?.kind) {
         throw new Error('Cannot convert: image target is missing.');
       }
@@ -1996,29 +2125,37 @@ export default function MarkdownEditor({
         throw new Error('ImgBB API key is missing. Please add it in settings.');
       }
       const fetchSrc = resolveImgbbFetchSrc({
+        // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
         path: modal.key,
+        // @ts-expect-error TS(2339): Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
         imageSrc: modal.imageSrc,
       });
       if (!fetchSrc) {
         throw new Error('Cannot determine image source URL for upload.');
       }
+      // @ts-expect-error TS(2379): Argument of type '{ apiKey: string; image: string;... Remove this comment to see the full error message
       const uploaded = await uploadImageToImgbb({
         apiKey,
         image: fetchSrc,
+        // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
         name: isDataImageUri(modal.key) ? 'image' : undefined,
       });
       const nextUrl = uploaded.url;
+      // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
       const occurrence = modal.occurrence ?? 0;
       let nextMarkdown = value;
       const sized =
+        // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
         modal.kind === 'wiki'
           ? updateWikiImageSizeInMarkdown(nextMarkdown, {
+              // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
               path: modal.key,
               occurrence,
               width,
               height,
             })
           : updateMarkdownImageSizeInMarkdown(nextMarkdown, {
+              // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
               src: modal.key,
               occurrence,
               width,
@@ -2028,7 +2165,9 @@ export default function MarkdownEditor({
       const sidecar = await upsertRemoteImageComment(
         nextMarkdown,
         {
+          // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
           kind: modal.kind === 'wiki' ? 'wiki' : 'markdown',
+          // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
           key: modal.key,
           occurrence,
         },
@@ -2078,11 +2217,12 @@ export default function MarkdownEditor({
     value,
   ]);
 
-  const findResizableImageElement = useCallback((target) => {
+  const findResizableImageElement = useCallback((target: any) => {
     const root = containerRef.current;
     if (!root || !target?.kind || !target?.key) return null;
     const selector =
       target.kind === 'wiki' ? 'img[data-wiki-path]' : 'img[data-md-src]';
+    // @ts-expect-error TS(2339): Property 'querySelectorAll' does not exist on type... Remove this comment to see the full error message
     const images = [...root.querySelectorAll(selector)];
     const matched = images.filter((img) => {
       const key =
@@ -2095,7 +2235,13 @@ export default function MarkdownEditor({
   }, []);
 
   const applyTransformSizeToMarkdown = useCallback(
-    ({ kind, key, occurrence, widthPx, heightPx }) => {
+    ({
+      kind,
+      key,
+      occurrence,
+      widthPx,
+      heightPx
+    }: any) => {
       if (!key || typeof onChangeWithUndoHistory !== 'function') return false;
       const width = Number.isFinite(widthPx) ? `${Math.round(widthPx)}px` : null;
       const height = Number.isFinite(heightPx) ? `${Math.round(heightPx)}px` : null;
@@ -2114,6 +2260,7 @@ export default function MarkdownEditor({
 
   const startFreeTransform = useCallback(() => {
     const modal = wikiImageModalState;
+    // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
     if (!modal?.kind || !modal?.key) return;
     const img = findResizableImageElement(modal);
     if (!img) return;
@@ -2121,8 +2268,11 @@ export default function MarkdownEditor({
     const widthPx = Math.max(24, Math.round(rect.width));
     const heightPx = Math.max(24, Math.round(rect.height));
     const next = {
+      // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
       kind: modal.kind,
+      // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
       key: modal.key,
+      // @ts-expect-error TS(2339): Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
       occurrence: modal.occurrence ?? 0,
       widthPx,
       heightPx,
@@ -2131,7 +2281,9 @@ export default function MarkdownEditor({
     };
     img.style.width = `${widthPx}px`;
     img.style.height = `${heightPx}px`;
+    // @ts-expect-error TS(2322): Type '{ kind: any; key: any; occurrence: any; widt... Remove this comment to see the full error message
     activeTransformRef.current = next;
+    // @ts-expect-error TS(2345): Argument of type '{ kind: any; key: any; occurrenc... Remove this comment to see the full error message
     setFreeTransformState(next);
     setFreeTransformConfirmOpen(false);
   }, [findResizableImageElement, wikiImageModalState]);
@@ -2151,6 +2303,7 @@ export default function MarkdownEditor({
     const updateRect = () => {
       const rect = img.getBoundingClientRect();
       setFreeTransformOverlayRect({
+        // @ts-expect-error TS(2345): Argument of type '{ left: any; top: any; width: an... Remove this comment to see the full error message
         left: rect.left,
         top: rect.top,
         width: rect.width,
@@ -2167,7 +2320,7 @@ export default function MarkdownEditor({
     const target = findResizableImageElement(freeTransformState);
     if (!target) return undefined;
 
-    const onPointerDown = (event) => {
+    const onPointerDown = (event: any) => {
       const handle = event.target?.closest?.('[data-transform-handle]');
       if (!handle) return;
       event.preventDefault();
@@ -2178,23 +2331,32 @@ export default function MarkdownEditor({
       const startX = event.clientX;
       const startY = event.clientY;
       const baseRatio =
+        // @ts-expect-error TS(2339): Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         start.heightPx > 0 ? start.widthPx / start.heightPx : 1;
 
-      const onMove = (moveEvent) => {
+      const onMove = (moveEvent: any) => {
         const dx = moveEvent.clientX - startX;
         const dy = moveEvent.clientY - startY;
+        // @ts-expect-error TS(2339): Property 'widthPx' does not exist on type 'never'.
         let width = start.widthPx;
+        // @ts-expect-error TS(2339): Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         let height = start.heightPx;
+        // @ts-expect-error TS(2339): Property 'widthPx' does not exist on type 'never'.
         if (dir.includes('e')) width = start.widthPx + dx;
+        // @ts-expect-error TS(2339): Property 'widthPx' does not exist on type 'never'.
         if (dir.includes('w')) width = start.widthPx - dx;
+        // @ts-expect-error TS(2339): Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         if (dir.includes('s')) height = start.heightPx + dy;
+        // @ts-expect-error TS(2339): Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
         if (dir.includes('n')) height = start.heightPx - dy;
         width = Math.max(24, width);
         height = Math.max(24, height);
 
         const keepAspect = isTouchResize || moveEvent.shiftKey;
         if (keepAspect) {
+          // @ts-expect-error TS(2339): Property 'widthPx' does not exist on type 'never'.
           const widthChangeRate = Math.abs((width - start.widthPx) / Math.max(1, start.widthPx));
+          // @ts-expect-error TS(2339): Property 'heightPx' does not exist on type 'never'... Remove this comment to see the full error message
           const heightChangeRate = Math.abs((height - start.heightPx) / Math.max(1, start.heightPx));
           if (widthChangeRate >= heightChangeRate) {
             height = Math.max(24, width / Math.max(0.0001, baseRatio));
@@ -2207,6 +2369,7 @@ export default function MarkdownEditor({
         height = Math.max(24, Math.round(height));
         target.style.width = `${width}px`;
         target.style.height = `${height}px`;
+        // @ts-expect-error TS(2698): Spread types may only be created from object types... Remove this comment to see the full error message
         const next = { ...(activeTransformRef.current || start), widthPx: width, heightPx: height };
         activeTransformRef.current = next;
         setFreeTransformState(next);
@@ -2219,13 +2382,13 @@ export default function MarkdownEditor({
       document.addEventListener('pointerup', onUp, true);
     };
 
-    const onKeyDown = (event) => {
+    const onKeyDown = (event: any) => {
       if (event.key === 'Enter') {
         event.preventDefault();
         setFreeTransformConfirmOpen(true);
       }
     };
-    const onPointerDownOutside = (event) => {
+    const onPointerDownOutside = (event: any) => {
       const clickedHandle = event.target?.closest?.('[data-transform-handle]');
       const clickedImage = event.target?.closest?.('img[data-wiki-path], img[data-md-src]');
       if (clickedHandle || clickedImage === target) return;
@@ -2256,7 +2419,9 @@ export default function MarkdownEditor({
     if (!active) return;
     const img = findResizableImageElement(active);
     if (img) {
+      // @ts-expect-error TS(2339): Property 'originalWidthPx' does not exist on type ... Remove this comment to see the full error message
       img.style.width = `${active.originalWidthPx}px`;
+      // @ts-expect-error TS(2339): Property 'originalHeightPx' does not exist on type... Remove this comment to see the full error message
       img.style.height = `${active.originalHeightPx}px`;
     }
     setFreeTransformState(null);
@@ -2264,9 +2429,10 @@ export default function MarkdownEditor({
     setFreeTransformConfirmOpen(false);
   }, [findResizableImageElement, freeTransformState]);
 
-  const insertMarkdownAtCursor = useCallback((markdown) => {
+  const insertMarkdownAtCursor = useCallback((markdown: any) => {
     const text = String(markdown || '');
     if (!text) return;
+    // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
     const api = editorRef.current?.value ?? editorRef.current;
     if (typeof api?.insert === 'function') {
       api.insert(() => ({
@@ -2284,18 +2450,19 @@ export default function MarkdownEditor({
     view.focus?.();
   }, []);
 
-  const handleToolbarImageUpload = useCallback(async (files) => {
+  const handleToolbarImageUpload = useCallback(async (files: any) => {
     if (!files?.length || typeof onUploadImage !== 'function') return;
     if (isUploadingEditorImage) return;
     const paths = await onUploadImage(files);
     if (!paths?.length) return;
-    insertMarkdownAtCursor(`${paths.map((p) => `![[${p}]]`).join('\n')}\n`);
+    insertMarkdownAtCursor(`${paths.map((p: any) => `![[${p}]]`).join('\n')}\n`);
   }, [insertMarkdownAtCursor, isUploadingEditorImage, onUploadImage]);
   useEffect(() => {
+    // @ts-expect-error TS(2322): Type '(files: any) => Promise<void>' is not assign... Remove this comment to see the full error message
     handleToolbarImageUploadRef.current = handleToolbarImageUpload;
   }, [handleToolbarImageUpload]);
 
-  const handleToolbarImageClipConfirm = useCallback(async (file) => {
+  const handleToolbarImageClipConfirm = useCallback(async (file: any) => {
     if (!file || typeof onUploadImage !== 'function') {
       throw new Error('Upload handler not available.');
     }
@@ -2309,6 +2476,7 @@ export default function MarkdownEditor({
   }, [insertMarkdownAtCursor, onUploadImage]);
 
   const openHeadingRemap = useCallback(() => {
+    // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
     const api = editorRef.current?.value ?? editorRef.current;
     const view = api?.getEditorView?.();
     let snapshot = null;
@@ -2316,6 +2484,7 @@ export default function MarkdownEditor({
       const { from, to } = view.state.selection.main;
       if (from !== to) {
         snapshot = {
+          // @ts-expect-error TS(2345): Argument of type '{ from: any; to: any; text: any;... Remove this comment to see the full error message
           from,
           to,
           text: view.state.doc.sliceString(from, to),
@@ -2385,10 +2554,10 @@ export default function MarkdownEditor({
       key="image-toolbar"
       disabled={typeof onUploadImage !== 'function'}
       onRequestLink={() => setImageLinkModalOpen(true)}
-      onRequestUpload={(files) => {
+      onRequestUpload={(files: any) => {
         void handleToolbarImageUpload(files);
       }}
-      onRequestClip={(file) => setClipCropFile(file)}
+      onRequestClip={(file: any) => setClipCropFile(file)}
     />,
   ], [
     value,
@@ -2422,10 +2591,10 @@ export default function MarkdownEditor({
 
   const onUploadImg = useMemo(() => {
     if (typeof onUploadImage !== 'function') return undefined;
-    return async (files, callback) => {
+    return async (files: any, callback: any) => {
       if (isUploadingEditorImage) return;
       const paths = await onUploadImage(files);
-      if (paths?.length) callback(paths.map((p) => `![[${p}]]`));
+      if (paths?.length) callback(paths.map((p: any) => `![[${p}]]`));
     };
   }, [onUploadImage, isUploadingEditorImage]);
 
@@ -2433,7 +2602,7 @@ export default function MarkdownEditor({
     <div
       ref={containerRef}
       className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}`}
-      style={{ '--md-catalog-width': `${catalogWidth}px`, ...documentFontStyleVars }}
+      style={{ '--md-catalog-width': `${catalogWidth}px`, ...documentFontStyleVars } as any}
     >
       {documentSettings?.webfontCss ? (
         <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>
@@ -2447,8 +2616,11 @@ export default function MarkdownEditor({
             label="TOC resize handle"
             style={{
               position: 'fixed',
+              // @ts-expect-error TS(2339): Property 'top' does not exist on type 'never'.
               top: catalogHandleBox.top,
+              // @ts-expect-error TS(2339): Property 'left' does not exist on type 'never'.
               left: catalogHandleBox.left,
+              // @ts-expect-error TS(2339): Property 'height' does not exist on type 'never'.
               height: catalogHandleBox.height,
               bottom: 'auto',
               zIndex: 10003,
@@ -2462,6 +2634,7 @@ export default function MarkdownEditor({
           aria-live="polite"
         >
           <Loader2 size={16} className="animate-spin shrink-0" />
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span>Uploading image... {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
           {typeof onCancelUploadImage === 'function' && (
             <button
@@ -2470,11 +2643,13 @@ export default function MarkdownEditor({
               className="ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950"
             >
               Cancel
+            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
-      <MdEditor
+      <MdEditorAny
         key={`footnotes-${previewFootnotesRenderKey}`}
         ref={editorRef}
         id={editorId}
@@ -2493,8 +2668,8 @@ export default function MarkdownEditor({
         // previewScrollFollow: image-aware bidirectional scroll + caret follow.
         scrollAuto={false}
         footers={['markdownTotal']}
-        toolbars={toolbars}
-        defToolbars={defToolbars}
+        toolbars={toolbars as any}
+        defToolbars={defToolbars as any}
         onUploadImg={onUploadImg}
       />
       <MdEditorToolbarTooltips containerRef={containerRef} />
@@ -2502,15 +2677,21 @@ export default function MarkdownEditor({
       <WikiImageSizeModal
         key={
           wikiImageModalState
+            // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
             ? `${wikiImageModalState.kind}|${wikiImageModalState.key}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
             : 'wiki-image-size-modal'
         }
         isOpen={Boolean(wikiImageModalState)}
         onClose={() => setWikiImageModalState(null)}
+        // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
         path={wikiImageModalState?.key ?? ''}
+        // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
         kind={wikiImageModalState?.kind ?? 'wiki'}
+        // @ts-expect-error TS(2339): Property 'width' does not exist on type 'never'.
         initialWidth={wikiImageModalState?.width ?? ''}
+        // @ts-expect-error TS(2339): Property 'height' does not exist on type 'never'.
         initialHeight={wikiImageModalState?.height ?? ''}
+        // @ts-expect-error TS(2339): Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
         imageSrc={wikiImageModalState?.imageSrc ?? ''}
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
@@ -2521,7 +2702,10 @@ export default function MarkdownEditor({
       <ImageLinkModal
         isOpen={imageLinkModalOpen}
         onClose={() => setImageLinkModalOpen(false)}
-        onConfirm={({ desc, url }) => {
+        onConfirm={({
+          desc,
+          url
+        }: any) => {
           const alt = desc || '';
           insertMarkdownAtCursor(`![${alt}](${url})\n`);
         }}
@@ -2529,7 +2713,11 @@ export default function MarkdownEditor({
       <FootnoteComposeModal
         isOpen={footnoteComposeOpen}
         onClose={() => setFootnoteComposeOpen(false)}
-        onConfirm={({ line1, line2 }) => {
+        onConfirm={({
+          line1,
+          line2
+        }: any) => {
+          // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
           const api = editorRef.current?.value ?? editorRef.current;
           const view = api?.getEditorView?.();
           const markdown = view?.state.doc.toString() ?? valueRef.current ?? '';
@@ -2562,11 +2750,11 @@ export default function MarkdownEditor({
       <PreviewTableContextMenu
         containerRef={containerRef}
         getMarkdown={() => valueRef.current ?? ''}
-        setMarkdown={(next) => {
+        setMarkdown={(next: any) => {
           if (typeof onChangeWithUndoHistory === 'function') onChangeWithUndoHistory(next);
           else if (typeof onChange === 'function') onChange(next);
         }}
-        onEditTable={(table, previewRoot) => openHaimTablePreviewRef.current(table, previewRoot)}
+        onEditTable={(table: any, previewRoot: any) => openHaimTablePreviewRef.current(table, previewRoot)}
         onEditFailed={() => {
           showAlert({
             title: '? ??',
@@ -2577,7 +2765,7 @@ export default function MarkdownEditor({
       <HaimTableBoxResizeLayer
         containerRef={containerRef}
         getMarkdown={() => valueRef.current ?? ''}
-        setMarkdown={(next) => {
+        setMarkdown={(next: any) => {
           if (typeof onChangeWithUndoHistory === 'function') onChangeWithUndoHistory(next);
         }}
         enabled={!haimTableEdit.isOpen}
@@ -2586,9 +2774,13 @@ export default function MarkdownEditor({
         <div
           className="fixed z-70 pointer-events-none border-2 border-blue-500"
           style={{
+            // @ts-expect-error TS(2339): Property 'left' does not exist on type 'never'.
             left: `${freeTransformOverlayRect.left}px`,
+            // @ts-expect-error TS(2339): Property 'top' does not exist on type 'never'.
             top: `${freeTransformOverlayRect.top}px`,
+            // @ts-expect-error TS(2339): Property 'width' does not exist on type 'never'.
             width: `${freeTransformOverlayRect.width}px`,
+            // @ts-expect-error TS(2339): Property 'height' does not exist on type 'never'.
             height: `${freeTransformOverlayRect.height}px`,
           }}
         >
@@ -2609,6 +2801,7 @@ export default function MarkdownEditor({
               aria-label={`transform-${dir}`}
             />
           ))}
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
       {freeTransformState && (
@@ -2617,10 +2810,15 @@ export default function MarkdownEditor({
           onClick={() => setFreeTransformConfirmOpen(true)}
           className="fixed z-70 bottom-4 left-1/2 -translate-x-1/2 max-w-[min(92vw,680px)] rounded-lg border border-blue-300/60 bg-blue-950/85 px-3 py-2 text-left text-[11px] leading-4 text-blue-50 shadow-lg backdrop-blur-sm"
         >
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block font-semibold mb-1">Free transform guide</span>
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block">- Shift + drag: keep aspect ratio / plain drag: ignore ratio</span>
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block">- Touch drag: keeps aspect ratio</span>
+          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block">- Click elsewhere (including this banner): confirm transform</span>
+        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       <ConfirmModal
@@ -2649,12 +2847,13 @@ export default function MarkdownEditor({
       <HeadingRemapModal
         isOpen={headingRemapOpen}
         markdown={value}
+        // @ts-expect-error TS(2339): Property 'text' does not exist on type 'never'.
         selectedMarkdown={headingRemapSelection?.text ?? ''}
         onClose={() => {
           setHeadingRemapOpen(false);
           setHeadingRemapSelection(null);
         }}
-        onApply={(next, scope) => {
+        onApply={(next: any, scope: any) => {
           if (scope === 'selection' && headingRemapSelection) {
             const { from, to } = headingRemapSelection;
             const base = valueRef.current ?? value;
@@ -2671,6 +2870,7 @@ export default function MarkdownEditor({
         editorRef={editorRef}
         onChange={onChangeWithUndoHistory}
         getMarkdown={() => {
+          // @ts-expect-error TS(2339): Property 'value' does not exist on type 'never'.
           const api = editorRef.current?.value ?? editorRef.current;
           const view = api?.getEditorView?.();
           return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
@@ -2686,6 +2886,7 @@ export default function MarkdownEditor({
         open={checklistProgressOpen}
         onOpenChange={setChecklistProgressOpen}
       />
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
  * syncData에서 라인별 작성 시작 시점(최소 time) 맵 생성
  * line index 대신 text(내용) 기반으로도 저장 - 위쪽에 라인 추가 시 인덱스가 밀리므로
  */
-function buildLineToTimeMap(syncData) {
+function buildLineToTimeMap(syncData: any) {
   const mapByLine = new Map();
   const mapByText = new Map();
   for (const e of syncData) {
@@ -27,7 +27,7 @@ function buildLineToTimeMap(syncData) {
  * 1) line 인덱스의 내용이 text와 일치하면 line 사용
  * 2) 아니면 content에서 text와 일치하는 라인 검색 (위쪽 삽입 대응)
  */
-function findLineIndexForSyncEntry(lines, entry, prevIdx) {
+function findLineIndexForSyncEntry(lines: any, entry: any, prevIdx: any) {
   const { line, text } = entry;
   if (line >= 0 && line < lines.length && (lines[line] ?? '') === (text ?? '')) {
     return line;
@@ -56,8 +56,9 @@ export default function RecordingSyncView({
   content = '',
   syncData = [],
   audioRef,
-  _theme = 'light',
-}) {
+  // @ts-expect-error TS(6133): '_theme' is declared but its value is never read.
+  _theme = 'light'
+}: any) {
   const [highlightedLine, setHighlightedLine] = useState(-1);
   const containerRef = useRef(null);
 
@@ -74,7 +75,7 @@ export default function RecordingSyncView({
   }, [syncData, lines]);
 
   const getTimeForLine = useCallback(
-    (lineIndex) => {
+    (lineIndex: any) => {
       const text = lines[lineIndex] ?? '';
       return mapByText.get(text) ?? mapByLine.get(lineIndex);
     },
@@ -106,6 +107,7 @@ export default function RecordingSyncView({
       prevIdx = idx;
       setHighlightedLine(idx);
       if (idx >= 0 && containerRef.current) {
+        // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
         const lineEl = containerRef.current.querySelector(`[data-line="${idx}"]`);
         lineEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
@@ -115,7 +117,7 @@ export default function RecordingSyncView({
     return () => audio.removeEventListener('timeupdate', handleTimeUpdate);
   }, [syncData, audioRef, content]);
 
-  const handleLineClick = (lineIndex) => {
+  const handleLineClick = (lineIndex: any) => {
     const time = getTimeForLine(lineIndex);
     if (time === undefined) return;
     const audio = audioRef?.current;
@@ -125,11 +127,13 @@ export default function RecordingSyncView({
 
   return (
     <div className="flex h-full">
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         ref={containerRef}
         className="flex-1 overflow-auto p-4 font-mono text-sm min-w-0"
       >
-        {lines.map((line, i) => {
+        // @ts-expect-error TS(7006): Parameter 'line' implicitly has an 'any' type.
+        {lines.map((line: any, i: number) => {
           const isCurrent = i === highlightedLine;
           const isSynced = syncedLineSet.has(i);
           const canSeek = isSynced && getTimeForLine(i) !== undefined;
@@ -140,7 +144,7 @@ export default function RecordingSyncView({
               role={canSeek ? 'button' : undefined}
               tabIndex={canSeek ? 0 : undefined}
               onClick={canSeek ? () => handleLineClick(i) : undefined}
-              onKeyDown={canSeek ? (e) => e.key === 'Enter' && handleLineClick(i) : undefined}
+              onKeyDown={canSeek ? (e: any) => e.key === 'Enter' && handleLineClick(i) : undefined}
               className={`px-2 py-0.5 -mx-2 rounded transition-colors ${
                 canSeek
                   ? 'cursor-pointer ' +
@@ -157,14 +161,19 @@ export default function RecordingSyncView({
               }`}
               title={canSeek ? '클릭하여 해당 시점으로 이동' : undefined}
             >
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="select-none text-gray-400 dark:text-odp-muted w-8 inline-block mr-2">
                 {i + 1}
+              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
               {line || '\u00A0'}
+            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           );
         })}
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

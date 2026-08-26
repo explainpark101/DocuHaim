@@ -31,9 +31,10 @@ export default function MdEditorToolbarToggle({
       className="md-editor-toolbar-item inline-flex items-center !w-auto !min-w-0 px-1"
       title={title}
     >
+      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <label
         className="inline-flex shrink-0 cursor-pointer select-none items-center gap-1"
-        onMouseDown={(e) => {
+        onMouseDown={(e: any) => {
           // Keep focus/selection in the editor panes when toggling.
           e.preventDefault();
         }}
@@ -47,7 +48,7 @@ export default function MdEditorToolbarToggle({
         />
         <Switch.Root
           checked={checked}
-          onCheckedChange={(next) => onChange?.(Boolean(next))}
+          onCheckedChange={(next: any) => onChange?.(Boolean(next))}
           aria-label={label}
           className={[
             'relative h-4 w-7 rounded-full border-0 outline-none transition-colors',
@@ -66,7 +67,9 @@ export default function MdEditorToolbarToggle({
             ].join(' ')}
           />
         </Switch.Root>
+      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       </label>
+    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
     </span>
   );
 }

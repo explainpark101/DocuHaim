@@ -14,8 +14,8 @@ export default function TocResizeHandle({
   label = 'Resize table of contents',
   edge = 'left',
   visibleOnHover = false,
-  style,
-}) {
+  style
+}: any) {
   const edgeClass = edge === 'right' ? 'right-0' : 'left-0';
   const toneClass = visibleOnHover
     ? isResizing

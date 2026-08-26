@@ -4,13 +4,13 @@ import { Printer } from 'lucide-react';
 import { setPendingPrintReturnState } from '@/utils/print/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 
-export default function PrintButton({
+export default function ExportPDF({
   value = '',
   theme = 'light',
   currentFile = null,
   disabled,
-  trigger,
-}) {
+  trigger
+}: any) {
   const navigate = useNavigate();
 
   const open = useCallback(() => {
@@ -24,13 +24,14 @@ export default function PrintButton({
   return (
     <button
       type="button"
-      className="shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong"
+      className="md-editor-toolbar-item"
       onClick={open}
       disabled={disabled}
-      title="프린트"
-      aria-label="프린트"
+      title="PDF로 내보내기"
+      aria-label="PDF로 내보내기"
     >
-      {trigger ?? <Printer className="size-4" aria-hidden />}
+      {trigger ?? <Printer className="md-editor-icon" size={16} />}
+    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }

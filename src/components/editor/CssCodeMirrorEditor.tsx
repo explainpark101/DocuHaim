@@ -46,7 +46,7 @@ export function CssCodeMirrorEditor({ value, onChange, className = '' }: Props) 
           css(),
           oneDark,
           EditorView.lineWrapping,
-          EditorView.updateListener.of((update) => {
+          EditorView.updateListener.of((update: any) => {
             if (update.docChanged) {
               onChangeRef.current(update.state.doc.toString());
             }

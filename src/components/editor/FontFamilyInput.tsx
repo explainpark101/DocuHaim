@@ -111,9 +111,10 @@ export default function FontFamilyInput({
 
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
-      <Form.Root onSubmit={(e) => e.preventDefault()}>
+      <Form.Root onSubmit={(e: any) => e.preventDefault()}>
         <Form.Field name={fieldName}>
           <Form.Control asChild>
+            // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <input
               type="text"
               id={id}
@@ -134,6 +135,7 @@ export default function FontFamilyInput({
           </Form.Control>
         </Form.Field>
       </Form.Root>
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         id={id ? `${id}-listbox` : undefined}
         role="listbox"
@@ -144,6 +146,7 @@ export default function FontFamilyInput({
         {filtered.length === 0 && !allowAddWebfont ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-odp-muted">
             제안 목록 없음 (직접 입력한 값 사용)
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : (
           <>
@@ -155,12 +158,13 @@ export default function FontFamilyInput({
                 id={id ? `${id}-opt-${i}` : undefined}
                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none dark:hover:bg-odp-focusBg dark:focus:bg-odp-focusBg"
                 style={{ fontFamily: withFontFallback(font) }}
-                onMouseDown={(e) => {
+                onMouseDown={(e: any) => {
                   e.preventDefault();
                   handleSelect(font);
                 }}
               >
                 {font}
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
             ))}
             {allowAddWebfont ? (
@@ -169,7 +173,7 @@ export default function FontFamilyInput({
                 role="option"
                 id={id ? `${id}-opt-add` : undefined}
                 className="flex w-full items-center gap-1.5 border-t border-gray-100 px-3 py-2 text-left text-sm font-medium text-blue-600 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none dark:border-odp-border dark:text-blue-400 dark:hover:bg-blue-950/40 dark:focus:bg-blue-950/40"
-                onMouseDown={(e) => {
+                onMouseDown={(e: any) => {
                   e.preventDefault();
                   setOpen(false);
                   setAddOpen(true);
@@ -177,16 +181,18 @@ export default function FontFamilyInput({
               >
                 <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 웹폰트 추가
+              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
             ) : null}
           </>
         )}
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
       <WebfontCssEditorModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
-        onSaved={(families) => {
+        onSaved={(families: any) => {
           const first = families[0];
           if (first) {
             setInputValue(first);
@@ -195,6 +201,7 @@ export default function FontFamilyInput({
           setOptionsTick((t) => t + 1);
         }}
       />
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

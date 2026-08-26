@@ -13,10 +13,11 @@ type Props = {
 export default function PrintPageSizeSelect({ value, onValueChange }: Props) {
   return (
     <label className="flex min-w-0 items-center gap-2">
+      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="shrink-0 text-xs text-gray-500 dark:text-odp-muted">용지</span>
       <Select.Root
         value={value}
-        onValueChange={(next) => {
+        onValueChange={(next: any) => {
           const match = PRINT_PAGE_SIZES.find((size) => size.id === next);
           if (match) onValueChange(match.id);
         }}
@@ -54,6 +55,7 @@ export default function PrintPageSizeSelect({ value, onValueChange }: Props) {
           </Select.Content>
         </Select.Portal>
       </Select.Root>
+    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
     </label>
   );
 }

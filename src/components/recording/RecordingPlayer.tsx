@@ -3,14 +3,14 @@ import { IconPlay, IconPause } from '@/components/icons';
 
 const BUFFER_THRESHOLD_SEC = 3;
 
-function formatTime(sec) {
+function formatTime(sec: any) {
   if (!Number.isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function getBufferedAhead(audio) {
+function getBufferedAhead(audio: any) {
   if (!audio || audio.buffered.length === 0) return 0;
   const t = audio.currentTime;
   for (let i = 0; i < audio.buffered.length; i++) {
@@ -25,7 +25,10 @@ function getBufferedAhead(audio) {
  * 녹음 재생 플레이어 (버퍼링 후 재생)
  * audioRef를 통해 부모에서 seek 등 제어 가능
  */
-export default function RecordingPlayer({ audioUrl = '', audioRef }) {
+export default function RecordingPlayer({
+  audioUrl = '',
+  audioRef
+}: any) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -66,6 +69,7 @@ export default function RecordingPlayer({ audioUrl = '', audioRef }) {
     audio.addEventListener('progress', check);
     audio.addEventListener('canplay', check, { once: true });
     audio.addEventListener('canplaythrough', check, { once: true });
+    // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
     bufferCheckRef.current = setInterval(check, 200);
     audio.addEventListener('error', cleanup, { once: true });
   }, [ref]);
@@ -122,7 +126,9 @@ export default function RecordingPlayer({ audioUrl = '', audioRef }) {
 
   return (
     <div className="flex-1 min-w-0 flex items-center gap-2">
+      // @ts-expect-error TS(2339): Property 'audio' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <audio ref={ref} src={audioUrl} preload="auto" className="hidden" />
+      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
       <button
         type="button"
         onClick={handlePlayPause}
@@ -137,18 +143,27 @@ export default function RecordingPlayer({ audioUrl = '', audioRef }) {
         ) : (
           <IconPlay size={16} />
         )}
+      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
       </button>
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex-1 min-w-0 flex items-center gap-2">
+        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <span className="text-xs text-gray-600 dark:text-odp-muted shrink-0">
           {formatTime(currentTime)} / {formatTime(duration)}
+        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex-1 min-w-0 h-1 bg-gray-200 dark:bg-odp-borderSoft rounded-full overflow-hidden">
+          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             className="h-full bg-blue-500 dark:bg-blue-400 transition-all duration-150"
             style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
           />
+        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
+      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
+    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
