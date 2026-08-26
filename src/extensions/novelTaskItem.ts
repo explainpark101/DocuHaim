@@ -74,8 +74,9 @@ export const NovelTaskItem = TaskItem.extend({
           checkbox.checked = !checkbox.checked;
           return;
         }
-        // @ts-expect-error TS(2339): Property 'checked' does not exist on type 'EventTa... Remove this comment to see the full error message
-        const { checked } = event.target;
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        const { checked } = target;
         if (editor.isEditable && typeof getPos === 'function') {
           editor
             .chain()
@@ -126,8 +127,7 @@ export const NovelTaskItem = TaskItem.extend({
             .filter(Boolean)
             .forEach((c) => listItem.classList.add(c));
         } else {
-          // @ts-expect-error TS(2769): No overload matches this call.
-          listItem.setAttribute(key, value);
+          listItem.setAttribute(key, String(value));
         }
       });
 

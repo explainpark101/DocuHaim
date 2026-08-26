@@ -82,9 +82,8 @@ export default function GeminiModelSelect({
       cachedGeminiModels = list;
       cachedGeminiModelsKey = key;
       setModels(mergeModelOptions(list, valueRef.current));
-    } catch (err) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(err?.message || '모델 목록을 불러오지 못했습니다.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '모델 목록을 불러오지 못했습니다.');
       setModels(mergeModelOptions(FALLBACK_GEMINI_MODELS, valueRef.current));
     } finally {
       setLoading(false);

@@ -1,5 +1,4 @@
-// @ts-expect-error TS(6196) FIXME: 'ChecklistTask' is declared but never used.
-import type { ChecklistCategory, ChecklistTask } from '@/utils/chatWithMyself/messageTypes';
+import type { ChecklistCategory } from '@/utils/chatWithMyself/messageTypes';
 import { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3,
@@ -13,7 +12,7 @@ import {
   Search,
 } from 'lucide-react';
 
-function parseChecklistMarkdown(markdown: any) {
+function parseChecklistMarkdown(markdown: string) {
   const lines = String(markdown ?? '').split('\n');
   const categories: ChecklistCategory[] = [];
   let currentCategory: ChecklistCategory = { name: '일반 / 미분류', tasks: [] };
@@ -26,19 +25,15 @@ function parseChecklistMarkdown(markdown: any) {
       if (currentCategory.tasks.length > 0 || currentCategory.name !== '일반 / 미분류') {
         categories.push(currentCategory);
       }
-      // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-      currentCategory = { name: headerMatch[2].trim(), tasks: [] };
+      currentCategory = { name: headerMatch[2]?.trim() ?? '', tasks: [] };
       return;
     }
 
     const taskMatch = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX])\]\s+(.*)/);
     if (taskMatch) {
-      // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-      const indentLevel = Math.floor(taskMatch[1].length / 2);
-      // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-      const isCompleted = taskMatch[3].toLowerCase() === 'x';
-      // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-      const taskText = taskMatch[4].trim();
+      const indentLevel = Math.floor((taskMatch[1]?.length ?? 0) / 2);
+      const isCompleted = (taskMatch[3] ?? '').toLowerCase() === 'x';
+      const taskText = (taskMatch[4] ?? '').trim();
 
       totalTasksCount += 1;
       if (isCompleted) completedTasksCount += 1;
@@ -70,21 +65,16 @@ function parseChecklistMarkdown(markdown: any) {
   };
 }
 
-function toggleTaskLine(markdown: any, lineIndex: any) {
+function toggleTaskLine(markdown: string, lineIndex: number) {
   const lines = String(markdown ?? '').split('\n');
   if (lineIndex < 0 || lineIndex >= lines.length) return markdown;
   const line = lines[lineIndex];
-  // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
+  if (line == null) return markdown;
   if (line.includes('[ ]')) {
-    // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
     lines[lineIndex] = line.replace('[ ]', '[x]');
-  // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
   } else if (line.includes('[x]')) {
-    // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
     lines[lineIndex] = line.replace('[x]', '[ ]');
-  // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
   } else if (line.includes('[X]')) {
-    // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
     lines[lineIndex] = line.replace('[X]', '[ ]');
   } else {
     return markdown;
@@ -92,44 +82,46 @@ function toggleTaskLine(markdown: any, lineIndex: any) {
   return lines.join('\n');
 }
 
+type ChecklistProgressViewProps = {
+  markdown?: string;
+  onMarkdownChange?: (next: string) => void;
+};
+
 /**
  * Compact checklist progress dashboard (from checkListProgressCheck).
- * @param {{ markdown: string, onMarkdownChange?: (next: string) => void }} props
  */
 export default function ChecklistProgressView({
   markdown = '',
-  onMarkdownChange
-}: any) {
+  onMarkdownChange,
+}: ChecklistProgressViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [expandedCategories, setExpandedCategories] = useState({});
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'pending'>('all');
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const parsedData = useMemo(() => parseChecklistMarkdown(markdown), [markdown]);
 
   useEffect(() => {
-    const initialExpanded = {};
+    const initialExpanded: Record<string, boolean> = {};
     parsedData.categories.forEach((cat) => {
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       initialExpanded[cat.name] = true;
     });
     setExpandedCategories(initialExpanded);
   }, [parsedData.categories.length]);
 
-  const toggleTask = (lineIndex: any) => {
+  const toggleTask = (lineIndex: number) => {
     if (typeof onMarkdownChange !== 'function') return;
     onMarkdownChange(toggleTaskLine(markdown, lineIndex));
   };
 
-  const toggleCategory = (catName: any) => {
+  const toggleCategory = (catName: string) => {
     setExpandedCategories((prev) => ({
       ...prev,
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       [catName]: !prev[catName],
     }));
   };
 
-  const filterTask = (task: any) => {
+  const filterTask = (task: ChecklistCategory['tasks'][number]) => {
     const matchesSearch = task.text.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === 'all'
@@ -262,7 +254,6 @@ export default function ChecklistProgressView({
                 const catTotal = cat.tasks.length;
                 const catDone = cat.tasks.filter((t) => t.completed).length;
                 const catPercent = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0;
-                // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
                 const isExpanded = !!expandedCategories[cat.name];
                 const filteredTasks = cat.tasks.filter(filterTask);
                 if (searchQuery && filteredTasks.length === 0) return null;

@@ -1,7 +1,5 @@
-// @ts-expect-error TS(6196) FIXME: 'ChecklistTask' is declared but never used.
-import type { ChecklistCategory, ChecklistTask } from '@/utils/chatWithMyself/messageTypes';
-// @ts-expect-error TS(1259) FIXME: Module '"/Users/jaehyung101/projects/s3haim/node_m... Remove this comment to see the full error message
-import React, { useState, useMemo, useEffect } from 'react';
+import type { ChecklistCategory } from '@/utils/chatWithMyself/messageTypes';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   CheckCircle2, 
   Circle, 
@@ -11,14 +9,10 @@ import {
   Check, 
   RotateCcw, 
   Search, 
-  // @ts-expect-error TS(6133) FIXME: 'Filter' is declared but its value is never read.
-  Filter, 
   LayoutDashboard, 
   FileText, 
   ChevronDown, 
   ChevronUp,
-  // @ts-expect-error TS(6133) FIXME: 'Sparkles' is declared but its value is never read... Remove this comment to see the full error message
-  Sparkles,
   PieChart
 } from 'lucide-react';
 
@@ -28,8 +22,8 @@ export default function App() {
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'completed', 'pending'
-  const [expandedCategories, setExpandedCategories] = useState({});
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'pending'>('all');
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'checklist'
 
   const parsedData = useMemo(() => {
@@ -46,20 +40,16 @@ export default function App() {
         if (currentCategory.tasks.length > 0 || currentCategory.name !== '일반 / 미분류') {
           categories.push(currentCategory);
         }
-        // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-        currentCategory = { name: headerMatch[2].trim(), tasks: [] };
+        currentCategory = { name: headerMatch[2]?.trim() ?? '', tasks: [] };
         return;
       }
 
       // Checklist item detection `- [ ]`, `- [x]`, `* [ ]`, `1. [ ]`
       const taskMatch = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX])\]\s+(.*)/);
       if (taskMatch) {
-        // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-        const indentLevel = Math.floor(taskMatch[1].length / 2);
-        // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-        const isCompleted = taskMatch[3].toLowerCase() === 'x';
-        // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-        const taskText = taskMatch[4].trim();
+        const indentLevel = Math.floor((taskMatch[1]?.length ?? 0) / 2);
+        const isCompleted = (taskMatch[3] ?? '').toLowerCase() === 'x';
+        const taskText = (taskMatch[4] ?? '').trim();
 
         totalTasksCount++;
         if (isCompleted) completedTasksCount++;
@@ -94,29 +84,23 @@ export default function App() {
 
   useEffect(() => {
     // Default all categories to expanded
-    const initialExpanded = {};
+    const initialExpanded: Record<string, boolean> = {};
     parsedData.categories.forEach(cat => {
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       initialExpanded[cat.name] = true;
     });
     setExpandedCategories(initialExpanded);
   }, [parsedData.categories.length]);
 
-  const toggleTaskInMarkdown = (lineIndex: any) => {
+  const toggleTaskInMarkdown = (lineIndex: number) => {
     const lines = markdown.split('\n');
     if (lineIndex >= 0 && lineIndex < lines.length) {
       const line = lines[lineIndex];
-      // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
+      if (line == null) return;
       if (line.includes('[ ]')) {
-        // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
         lines[lineIndex] = line.replace('[ ]', '[x]');
-      // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
       } else if (line.includes('[x]')) {
-        // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
         lines[lineIndex] = line.replace('[x]', '[ ]');
-      // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
       } else if (line.includes('[X]')) {
-        // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
         lines[lineIndex] = line.replace('[X]', '[ ]');
       }
       setMarkdown(lines.join('\n'));
@@ -133,11 +117,10 @@ export default function App() {
     setMarkdown(DEFAULT_MARKDOWN);
   };
 
-  const toggleCategory = (catName: any) => {
+  const toggleCategory = (catName: string) => {
     setExpandedCategories(prev => ({
       ...prev,
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      [catName]: !prev[catName]
+      [catName]: !prev[catName],
     }));
   };
 
@@ -331,7 +314,6 @@ export default function App() {
                     const catTotal = cat.tasks.length;
                     const catDone = cat.tasks.filter(t => t.completed).length;
                     const catPercent = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0;
-                    // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
                     const isExpanded = !!expandedCategories[cat.name];
 
                     // Filter tasks inside category

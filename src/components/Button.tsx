@@ -1,12 +1,17 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+
 const baseClasses =
   'inline-flex items-center justify-center gap-2 rounded shadow-sm text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-default';
 
-const sizeClasses = {
+type ButtonSize = 'sm' | 'md';
+type ButtonVariant = 'primary' | 'danger' | 'secondary' | 'tertiary';
+
+const sizeClasses: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5',
   md: 'px-4 py-2',
 };
 
-const variantClasses = {
+const variantClasses: Record<ButtonVariant, string> = {
   primary:
     'bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700',
   danger:
@@ -17,17 +22,22 @@ const variantClasses = {
     'bg-transparent hover:bg-gray-100 text-gray-700 dark:hover:bg-odp-focusBg dark:text-odp-fgStrong',
 };
 
+type ButtonProps = {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+  children?: ReactNode;
+} & ButtonHTMLAttributes<HTMLButtonElement>;
+
 export default function Button({
   variant = 'primary',
   size = 'sm',
   className = '',
   children,
   ...rest
-}: any) {
-  // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-  const v = variantClasses[variant] || variantClasses.primary;
-  // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-  const s = sizeClasses[size] || sizeClasses.sm;
+}: ButtonProps) {
+  const v = variantClasses[variant] ?? variantClasses.primary;
+  const s = sizeClasses[size] ?? sizeClasses.sm;
 
   return (
     <button
@@ -38,4 +48,3 @@ export default function Button({
     </button>
   );
 }
-

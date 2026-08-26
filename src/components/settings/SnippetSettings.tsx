@@ -55,8 +55,8 @@ export default function SnippetSettings({
   isLoaded = true
 }: any) {
   const [localConfig, setLocalConfig] = useState(() => value || { snippets: [] });
-  const [recordForSnippetId, setRecordForSnippetId] = useState(null);
-  const [capturedCombo, setCapturedCombo] = useState(null);
+  const [recordForSnippetId, setRecordForSnippetId] = useState<string | null>(null);
+  const [capturedCombo, setCapturedCombo] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalConfig(value || { snippets: [] });
@@ -68,7 +68,6 @@ export default function SnippetSettings({
       e.preventDefault();
       e.stopPropagation();
       const combo = getKeyComboFromEvent(e);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'string' is not assignable to par... Remove this comment to see the full error message
       if (combo) setCapturedCombo(combo);
     };
     window.addEventListener('keydown', onKeyDown, true);
