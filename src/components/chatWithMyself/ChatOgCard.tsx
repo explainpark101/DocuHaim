@@ -79,17 +79,15 @@ export default function ChatOgCard({
     const shouldForce = reloadKey > prevReloadKeyRef.current;
     prevReloadKeyRef.current = reloadKey;
 
-    const preloadImage = (src: any) => new Promise((resolve) => {
+    const preloadImage = (src: string) =>
+      new Promise<void>((resolve) => {
       if (!src || typeof Image === 'undefined') {
-        // @ts-expect-error TS(2794) FIXME: Expected 1 arguments, but got 0. Did you forget to... Remove this comment to see the full error message
         resolve();
         return;
       }
       const img = new Image();
       img.decoding = 'async';
-      // @ts-expect-error TS(2794) FIXME: Expected 1 arguments, but got 0. Did you forget to... Remove this comment to see the full error message
       img.onload = () => resolve();
-      // @ts-expect-error TS(2794) FIXME: Expected 1 arguments, but got 0. Did you forget to... Remove this comment to see the full error message
       img.onerror = () => resolve();
       img.referrerPolicy = 'no-referrer';
       img.src = src;
@@ -161,7 +159,7 @@ export default function ChatOgCard({
             onClick={(e: any) => {
               e.preventDefault();
               e.stopPropagation();
-              openChatImage?.(data.image, { alt: data.title || url });
+              openChatImage?.(data.image ?? '', { alt: data.title || url });
             }}
             aria-label="이미지 크게 보기"
           >
@@ -208,7 +206,7 @@ export default function ChatOgCard({
               setShowEmbed(true);
               return;
             }
-            openChatImage?.(data.image, { alt: data.title || url });
+            openChatImage?.(data.image ?? '', { alt: data.title || url });
           }}
           aria-label={yt ? '동영상 재생' : '이미지 크게 보기'}
         >

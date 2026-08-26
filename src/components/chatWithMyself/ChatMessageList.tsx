@@ -30,7 +30,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
-import { VList } from 'virtua';
+import { VList, type VListHandle } from 'virtua';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
@@ -69,6 +69,31 @@ import {
 } from '@/utils/chatWithMyself/scrollToMessage';
 import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
 import { copyText, resolveAnchorHref } from '@/utils/shared/copyText';
+import type { ChatMessage } from '@/utils/chatWithMyself/messageTypes';
+
+type OverlayDate = { label: string; dateStr: string };
+
+type DateListRow = {
+  type: 'date';
+  key: string;
+  label: string;
+  dateStr: string;
+};
+type MsgListRow = {
+  type: 'msg';
+  key: string;
+  msg: ChatMessage;
+  showName: boolean;
+  clustered: boolean;
+  groupLabel: string;
+};
+type EndOlderRow = { type: 'end-older'; key: string };
+type EmptyRow = { type: 'empty'; key: string };
+type ListRow = DateListRow | MsgListRow | EndOlderRow | EmptyRow;
+
+type SwipePoint = { x: number; y: number };
+
+type ScrollToMessageOpts = { align?: string };
 
 /** Near-bottom threshold for stick-to-bottom (px). */
 const STICK_BOTTOM_PX = 80;
@@ -608,21 +633,19 @@ const MessageBubble = memo(function MessageBubble({
   );
   const isMarkdown = !encryptedLocked && isChatMessageMarkdown(msg);
   const time = formatMessageTime(msg.at, timeZone || detectTimeZone());
-  const longPressThresholdTimer = useRef(null);
-  const longPressMenuTimer = useRef(null);
+  const longPressThresholdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressMenuTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [offsetX, setOffsetX] = useState(0);
   const offsetRef = useRef(0);
-  const pointerIdRef = useRef(null);
-  const swipeStartRef = useRef(null);
-  const axisRef = useRef(null);
-  const rowRef = useRef(null);
+  const pointerIdRef = useRef<number | null>(null);
+  const swipeStartRef = useRef<SwipePoint | null>(null);
+  const axisRef = useRef<'h' | 'v' | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const longPressOpenedRef = useRef(false);
   const swipedThisGestureRef = useRef(false);
-  const contextLinkHrefRef = useRef(/** @type {string|null} */ (null));
+  const contextLinkHrefRef = useRef<string | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const [contextLinkHref, setContextLinkHref] = useState(
-    /** @type {string|null} */ (null),
-  );
+  const [contextLinkHref, setContextLinkHref] = useState<string | null>(null);
   const contextMenuClamp = useViewportClampNudge(contextMenuOpen);
   const [pressing, setPressing] = useState(false);
   const [localReactionPickerOpen, setLocalReactionPickerOpen] = useState(false);
@@ -675,9 +698,7 @@ const MessageBubble = memo(function MessageBubble({
 
   const captureContextLink = (target: any) => {
     const href = resolveAnchorHref(target);
-    // @ts-expect-error TS(2322) FIXME: Type 'string | null' is not assignable to type 'nu... Remove this comment to see the full error message
     contextLinkHrefRef.current = href;
-    // @ts-expect-error TS(2345) FIXME: Argument of type 'string | null' is not assignable... Remove this comment to see the full error message
     setContextLinkHref(href);
     return href;
   };
@@ -706,7 +727,6 @@ const MessageBubble = memo(function MessageBubble({
     axisRef.current = null;
     applyOffset(0);
     try {
-      // @ts-expect-error TS(2339) FIXME: Property 'releasePointerCapture' does not exist on... Remove this comment to see the full error message
       rowRef.current?.releasePointerCapture?.(pointerId);
     } catch {
       /* ignore */
@@ -773,35 +793,29 @@ const MessageBubble = memo(function MessageBubble({
         if (onLink) {
           if (!coarse) return;
           pointerIdRef.current = e.pointerId;
-          // @ts-expect-error TS(2322) FIXME: Type '{ x: any; y: any; }' is not assignable to ty... Remove this comment to see the full error message
           swipeStartRef.current = { x: e.clientX, y: e.clientY };
           axisRef.current = null;
           longPressOpenedRef.current = false;
           swipedThisGestureRef.current = false;
           clearLongPress();
-          // @ts-expect-error TS(2322) FIXME: Type 'number' is not assignable to type 'null'.
           longPressThresholdTimer.current = setTimeout(() => {
             setPressing(true);
           }, LONG_PRESS_THRESHOLD_MS);
-          // @ts-expect-error TS(2322) FIXME: Type 'number' is not assignable to type 'null'.
           longPressMenuTimer.current = setTimeout(() => {
             openMobileSheetFromLongPress();
           }, LONG_PRESS_MENU_MS);
           return;
         }
         pointerIdRef.current = e.pointerId;
-        // @ts-expect-error TS(2322) FIXME: Type '{ x: any; y: any; }' is not assignable to ty... Remove this comment to see the full error message
         swipeStartRef.current = { x: e.clientX, y: e.clientY };
         axisRef.current = null;
         longPressOpenedRef.current = false;
         swipedThisGestureRef.current = false;
         if (!coarse) return;
         clearLongPress();
-        // @ts-expect-error TS(2322) FIXME: Type 'number' is not assignable to type 'null'.
         longPressThresholdTimer.current = setTimeout(() => {
           setPressing(true);
         }, LONG_PRESS_THRESHOLD_MS);
-        // @ts-expect-error TS(2322) FIXME: Type 'number' is not assignable to type 'null'.
         longPressMenuTimer.current = setTimeout(() => {
           openMobileSheetFromLongPress();
         }, LONG_PRESS_MENU_MS);
@@ -810,20 +824,16 @@ const MessageBubble = memo(function MessageBubble({
         if (isDeleting) return;
         if (e.pointerType === 'mouse') return;
         if (pointerIdRef.current !== e.pointerId || !swipeStartRef.current) return;
-        // @ts-expect-error TS(2339) FIXME: Property 'x' does not exist on type 'never'.
         const dx = e.clientX - swipeStartRef.current.x;
-        // @ts-expect-error TS(2339) FIXME: Property 'y' does not exist on type 'never'.
         const dy = e.clientY - swipeStartRef.current.y;
         if (!axisRef.current) {
           if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-          // @ts-expect-error TS(2322) FIXME: Type '"h" | "v"' is not assignable to type 'null'.
           axisRef.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
           if (axisRef.current === 'h') {
             swipedThisGestureRef.current = true;
             clearLongPress();
             endPressVisual();
             try {
-              // @ts-expect-error TS(2339) FIXME: Property 'setPointerCapture' does not exist on typ... Remove this comment to see the full error message
               rowRef.current?.setPointerCapture?.(e.pointerId);
             } catch {
               /* ignore */
@@ -867,9 +877,7 @@ const MessageBubble = memo(function MessageBubble({
           sel &&
           !sel.isCollapsed &&
           rowRef.current &&
-          // @ts-expect-error TS(2339) FIXME: Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
           (rowRef.current.contains(sel.anchorNode) ||
-            // @ts-expect-error TS(2339) FIXME: Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
             rowRef.current.contains(sel.focusNode))
         ) {
           return;
@@ -1222,9 +1230,9 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   },
   ref,
 ) {
-  const listRef = useRef(null);
+  const listRef = useRef<VListHandle | null>(null);
   const stickBottomRef = useRef(true);
-  const prevFirstIdRef = useRef(/** @type {string|null} */ (null));
+  const prevFirstIdRef = useRef<string | null>(null);
   const prevLenRef = useRef(0);
   const initialBottomPinRef = useRef(true);
   const loadingOlderLockRef = useRef(false);
@@ -1233,23 +1241,15 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   const fillingRef = useRef(false);
   const hasMoreRef = useRef(hasMore);
   hasMoreRef.current = hasMore;
-  const listHostRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const [sheetMessage, setSheetMessage] = useState(null);
-  const [sheetLinkHref, setSheetLinkHref] = useState(
-    /** @type {string|null} */ (null),
-  );
-  const [selectCopyMessage, setSelectCopyMessage] = useState(null);
-  const [ogReloadById, setOgReloadById] = useState(
-    /** @type {Record<string, number>} */ ({}),
-  );
-  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
+  const listHostRef = useRef<HTMLDivElement | null>(null);
+  const [sheetMessage, setSheetMessage] = useState<ChatMessage | null>(null);
+  const [sheetLinkHref, setSheetLinkHref] = useState<string | null>(null);
+  const [selectCopyMessage, setSelectCopyMessage] = useState<ChatMessage | null>(null);
+  const [ogReloadById, setOgReloadById] = useState<Record<string, number>>({});
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
   /** Session-only: temporarily show a collapsed message without persisting. */
-  const [peekedCollapsedId, setPeekedCollapsedId] = useState(
-    /** @type {string|null} */ (null),
-  );
-  const [overlayDate, setOverlayDate] = useState(
-    /** @type {{ label: string, dateStr: string } | null} */ (null),
-  );
+  const [peekedCollapsedId, setPeekedCollapsedId] = useState<string | null>(null);
+  const [overlayDate, setOverlayDate] = useState<OverlayDate | null>(null);
   const coarse = useIsCoarsePointer();
   const mobileContextMenu = useMobileContextMenuMode();
   const shiftHeldRef = useShiftHeldRef();
@@ -1266,20 +1266,16 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   }, []);
 
   useEffect(() => {
-    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
     if (!sheetMessage?.id) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
-    const current = messages.find((m: any) => m.id === sheetMessage.id);
+    const current = messages.find((m: ChatMessage) => m.id === sheetMessage.id);
     if (!current || current.pendingSync === 'delete') {
       closeMobileSheet();
     }
   }, [messages, sheetMessage, closeMobileSheet]);
 
   useEffect(() => {
-    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
     if (!selectCopyMessage?.id) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
-    const current = messages.find((m: any) => m.id === selectCopyMessage.id);
+    const current = messages.find((m: ChatMessage) => m.id === selectCopyMessage.id);
     if (!current || current.pendingSync === 'delete') {
       setSelectCopyMessage(null);
     }
@@ -1315,14 +1311,13 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
     if (!id) return;
     setOgReloadById((prev) => ({
       ...prev,
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       [id]: (prev[id] || 0) + 1,
     }));
   }, []);
 
   const items = useMemo(() => {
     const tz = timeZone || detectTimeZone();
-    const out = [];
+    const out: ListRow[] = [];
     let lastDate = '';
     let prevGroup = null;
     let prevAtMs = 0;
@@ -1371,7 +1366,7 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   }, [messages, timeZone, groupLabelByKey]);
 
   const rows = useMemo(() => {
-    const out = [];
+    const out: ListRow[] = [];
     if (!hasMore && messages.length > 0) {
       out.push({ type: 'end-older', key: 'end-older' });
     }
@@ -1383,9 +1378,8 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   }, [items, hasMore, messages.length]);
 
   const messageIdToIndex = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, number>();
     rows.forEach((row, index) => {
-      // @ts-expect-error TS(2339) FIXME: Property 'msg' does not exist on type '{ type: str... Remove this comment to see the full error message
       if (row.type === 'msg') map.set(row.msg.id, index);
     });
     return map;
@@ -1399,24 +1393,20 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   }, [rows]);
 
   const dateStrToIndex = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, number>();
     rows.forEach((row, index) => {
-      // @ts-expect-error TS(2339) FIXME: Property 'dateStr' does not exist on type '{ type:... Remove this comment to see the full error message
       if (row.type === 'date' && row.dateStr) map.set(row.dateStr, index);
     });
     return map;
   }, [rows]);
 
   const scrollToMessageId = useCallback(
-    (messageId: any, opts = {}) => {
+    (messageId: string, opts: ScrollToMessageOpts = {}) => {
       if (!messageId || !listRef.current) return false;
       const index = messageIdToIndex.get(messageId);
       if (index == null) return false;
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollToIndex' does not exist on type 'n... Remove this comment to see the full error message
       listRef.current.scrollToIndex(index, {
-        // @ts-expect-error TS(2339) FIXME: Property 'align' does not exist on type '{}'.
-        align: opts.align || 'start',
-        // @ts-expect-error TS(2339) FIXME: Property 'align' does not exist on type '{}'.
+        align: (opts.align || 'start') as 'start' | 'center' | 'end',
         offset: opts.align === 'start' ? -CHAT_MESSAGE_SCROLL_MARGIN : 0,
       });
       return true;
@@ -1425,11 +1415,10 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   );
 
   const scrollToDateStr = useCallback(
-    (dateStr: any) => {
+    (dateStr: string) => {
       if (!dateStr || !listRef.current) return false;
       const index = dateStrToIndex.get(dateStr);
       if (index == null) return false;
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollToIndex' does not exist on type 'n... Remove this comment to see the full error message
       listRef.current.scrollToIndex(index, { align: 'start' });
       return true;
     },
@@ -1473,10 +1462,8 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
     const pinInitial = initialBottomPinRef.current && nextLen > 0;
     if (pinInitial) {
       stickBottomRef.current = true;
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollToIndex' does not exist on type 'n... Remove this comment to see the full error message
       list.scrollToIndex(Math.max(0, rows.length - 1), { align: 'end' });
       requestAnimationFrame(() => {
-        // @ts-expect-error TS(2339) FIXME: Property 'scrollToIndex' does not exist on type 'n... Remove this comment to see the full error message
         listRef.current?.scrollToIndex(Math.max(0, rows.length - 1), {
           align: 'end',
         });
@@ -1486,7 +1473,6 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
     }
 
     if (stickBottomRef.current && grewAtEnd && !prepended) {
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollToIndex' does not exist on type 'n... Remove this comment to see the full error message
       list.scrollToIndex(Math.max(0, rows.length - 1), { align: 'end' });
     }
   }, [
@@ -1509,12 +1495,10 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
     const ro = new ResizeObserver(() => {
       if (fillingRef.current) return;
       if (!stickBottomRef.current || !listRef.current) return;
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollToIndex' does not exist on type 'n... Remove this comment to see the full error message
       listRef.current.scrollToIndex(Math.max(0, rows.length - 1), {
         align: 'end',
       });
     });
-    // @ts-expect-error TS(2339) FIXME: Property 'firstElementChild' does not exist on typ... Remove this comment to see the full error message
     const viewport = host.firstElementChild;
     const content = viewport?.firstElementChild;
     if (content) ro.observe(content);
@@ -1547,9 +1531,8 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
         setOverlayDate(null);
         return;
       }
-      // @ts-expect-error TS(2339) FIXME: Property 'findItemIndex' does not exist on type 'n... Remove this comment to see the full error message
       const index = list.findItemIndex(offset + 4);
-      let dateRow: any = null;
+      let dateRow: DateListRow | null = null;
       for (let i = Math.min(index, rows.length - 1); i >= 0; i -= 1) {
         const row = rows[i];
         if (row?.type === 'date') {
@@ -1557,14 +1540,11 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
           break;
         }
       }
-      // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: null) => { label: any; da... Remove this comment to see the full error message
       setOverlayDate((prev) => {
         if (!dateRow) return null;
         if (
           prev &&
-          // @ts-expect-error TS(2339) FIXME: Property 'dateStr' does not exist on type 'never'.
           prev.dateStr === dateRow.dateStr &&
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'never'.
           prev.label === dateRow.label
         ) {
           return prev;
@@ -1580,7 +1560,6 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
       const list = listRef.current;
       if (!list) return;
 
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollSize' does not exist on type 'neve... Remove this comment to see the full error message
       const distBottom = list.scrollSize - offset - list.viewportSize;
       stickBottomRef.current = distBottom < STICK_BOTTOM_PX;
       updateOverlayFromOffset(offset);
@@ -1640,9 +1619,7 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
         if (attempts++ < 30) raf = requestAnimationFrame(tryFill);
         return;
       }
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollSize' does not exist on type 'neve... Remove this comment to see the full error message
       const scrollSize = Number(list.scrollSize) || 0;
-      // @ts-expect-error TS(2339) FIXME: Property 'viewportSize' does not exist on type 'ne... Remove this comment to see the full error message
       const viewportSize = Number(list.viewportSize) || 0;
       if (viewportSize <= 0) {
         if (attempts++ < 30) raf = requestAnimationFrame(tryFill);
@@ -1685,7 +1662,7 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   }, [hasMore, loadingOlder, onFillOlder, onReachTop, messages.length, rows.length]);
 
   const renderRow = useCallback(
-    (row: any, index: any) => {
+    (row: ListRow, index: number) => {
       if (row.type === 'end-older') {
         return (
           <div
@@ -1716,6 +1693,8 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
           />
         );
       }
+
+      if (row.type !== 'msg') return <div key={`skip-${index}`} hidden />;
 
       const prev = index > 0 ? rows[index - 1] : null;
       const gapClass = row.clustered
@@ -1758,12 +1737,10 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
                 : null
             }
             peeked={peekedCollapsedId === row.msg.id}
-            // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
             ogReloadKey={ogReloadById[row.msg.id] || 0}
             shiftHeldRef={shiftHeldRef}
             coarse={coarse}
             mobileContextMenu={mobileContextMenu}
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             rowSelected={sheetMessage?.id === row.msg.id}
             isEditing={editingMessageId === row.msg.id}
             externalReactionPickerOpen={reactionPickerMsgId === row.msg.id}
@@ -1784,9 +1761,9 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
             groupLabel={row.groupLabel}
             replyGroupLabel={
               groupLabelByKey instanceof Map
-                ? groupLabelByKey.get(row.msg.replyGroup) ||
+                ? groupLabelByKey.get(row.msg.replyGroup ?? '') ||
                   row.msg.replyGroup
-                : groupLabelByKey?.[row.msg.replyGroup] || row.msg.replyGroup
+                : groupLabelByKey?.[row.msg.replyGroup ?? ''] || row.msg.replyGroup
             }
           />
         </div>
@@ -1813,7 +1790,6 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
       decryptedById,
       shiftHeldRef,
       coarse,
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       sheetMessage?.id,
       reactionPickerMsgId,
       peekedCollapsedId,
@@ -1846,9 +1822,9 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
     >
       {/* VList row-union / keepMounted typing is loose after JS migrate */}
       <VList
-        ref={listRef as any}
+        ref={listRef}
         className="h-full max-h-full overscroll-contain"
-        data={rows as any}
+        data={rows}
         shift={shift}
         keepMounted={keepMounted as any}
         onScroll={handleScroll}
@@ -1860,7 +1836,6 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
         <div className="pointer-events-none absolute inset-x-0 top-0 z-30">
           <ChatDateDivider
             sticky={false}
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'never'.
             label={overlayDate.label}
             className="pointer-events-none shadow-sm"
           />
@@ -1890,9 +1865,7 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
       message={sheetMessage}
       linkHref={sheetLinkHref}
       decryptedBody={
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         sheetMessage?.id != null && decryptedById[sheetMessage.id] != null
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           ? decryptedById[sheetMessage.id]
           : null
       }
@@ -1931,13 +1904,9 @@ const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
       groupLabel={
         selectCopyMessage
           ? groupLabelByKey instanceof Map
-            // @ts-expect-error TS(2339) FIXME: Property 'group' does not exist on type 'never'.
             ? groupLabelByKey.get(selectCopyMessage.group) ||
-              // @ts-expect-error TS(2339) FIXME: Property 'group' does not exist on type 'never'.
               selectCopyMessage.group
-            // @ts-expect-error TS(2339) FIXME: Property 'group' does not exist on type 'never'.
             : groupLabelByKey?.[selectCopyMessage.group] ||
-              // @ts-expect-error TS(2339) FIXME: Property 'group' does not exist on type 'never'.
               selectCopyMessage.group
           : undefined
       }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { ChatMessage } from '@/utils/chatWithMyself/messageTypes';
 import {
   createChatBackend,
   listDayKeys,
@@ -16,6 +17,21 @@ import {
 import { getStorageScopeId } from '@/utils/vault/storageScope';
 
 const POLL_MS = 10_000;
+
+type FileStamp = { etag: string | null; mtime: number | null };
+
+type SyncQueue = {
+  forceDays: boolean;
+  forceMeta: boolean;
+  extraDates: Set<string>;
+};
+
+type SyncOpts = {
+  forceDays?: boolean;
+  forceMeta?: boolean;
+  extraDates?: string[];
+  dateStr?: string;
+};
 
 /**
  * Poll remote day/meta changes (S3 / WebDAV) and listen for BroadcastChannel.
@@ -43,10 +59,10 @@ export function useChatRemoteSync({
   onDayKeys,
   syncApiRef
 }: any) {
-  const metaStampRef = useRef(/** @type {{ etag: string | null, mtime: number | null } | null} */ (null));
-  const dayStampRef = useRef(/** @type {Map<string, { etag: string | null, mtime: number | null }>} */ (new Map()));
+  const metaStampRef = useRef<FileStamp | null>(null);
+  const dayStampRef = useRef<Map<string, FileStamp>>(new Map());
   const busyRef = useRef(false);
-  const queuedRef = useRef(/** @type {{ forceDays: boolean, forceMeta: boolean, extraDates: Set<string> } | null} */ (null));
+  const queuedRef = useRef<SyncQueue | null>(null);
   const pullGenerationRef = useRef(0);
   const callbacksRef = useRef({
     getWatchedDateStrs,
@@ -76,7 +92,7 @@ export function useChatRemoteSync({
     const tabId = getChatSyncTabId();
     const scope = getStorageScopeId(ctx);
 
-    const pullDay = async (dateStr: any, generation: any) => {
+    const pullDay = async (dateStr: string, generation: number) => {
       const parsed = await readDayFileParsed(ctx, dateStr);
       // Drop stale pulls that finished after a newer local write invalidated the day
       if (generation !== pullGenerationRef.current) return null;
@@ -92,7 +108,11 @@ export function useChatRemoteSync({
     const runSync = async ({
       forceDays = false,
       forceMeta = false,
-      extraDates = [],
+      extraDates = [] as string[],
+    }: {
+      forceDays?: boolean;
+      forceMeta?: boolean;
+      extraDates?: string[];
     } = {}) => {
       const backend = createChatBackend(ctx);
       const generation = pullGenerationRef.current;
@@ -104,16 +124,13 @@ export function useChatRemoteSync({
         const metaChanged =
           forceMeta ||
           !prev ||
-          // @ts-expect-error TS(2339) FIXME: Property 'etag' does not exist on type 'never'.
           prev.etag !== (metaHead?.etag ?? null) ||
-          // @ts-expect-error TS(2339) FIXME: Property 'mtime' does not exist on type 'never'.
           prev.mtime !== (metaHead?.mtime ?? null);
         if (metaChanged) {
           const meta = await readMeta(ctx);
           if (generation !== pullGenerationRef.current) return;
-          // @ts-expect-error TS(2322) FIXME: Type '{ etag: string | null; mtime: any; }' is not... Remove this comment to see the full error message
           metaStampRef.current = metaHead
-            ? { etag: metaHead.etag, mtime: metaHead.mtime }
+            ? { etag: metaHead.etag, mtime: metaHead.mtime ?? null }
             : { etag: null, mtime: null };
           callbacksRef.current.onMeta(meta);
         }
@@ -129,7 +146,7 @@ export function useChatRemoteSync({
         }
       }
 
-      const watched = new Set(callbacksRef.current.getWatchedDateStrs?.() || []);
+      const watched = new Set<string>(callbacksRef.current.getWatchedDateStrs?.() || []);
       for (const d of extraDates) {
         if (d) watched.add(d);
       }
@@ -145,7 +162,6 @@ export function useChatRemoteSync({
           const prev = dayStampRef.current.get(dateStr);
           const changed =
             forceDays ||
-            // @ts-expect-error TS(2345) FIXME: Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
             extraDates.includes(dateStr) ||
             !prev ||
             prev.etag !== (head?.etag ?? null) ||
@@ -185,18 +201,12 @@ export function useChatRemoteSync({
       }
     };
 
-    const syncOnce = async (opts = {}) => {
-      // @ts-expect-error TS(2339) FIXME: Property 'forceDays' does not exist on type '{}'.
+    const syncOnce = async (opts: SyncOpts = {}) => {
       const forceDays = Boolean(opts.forceDays);
-      // @ts-expect-error TS(2339) FIXME: Property 'forceMeta' does not exist on type '{}'.
       const forceMeta = Boolean(opts.forceMeta);
-      // @ts-expect-error TS(2339) FIXME: Property 'extraDates' does not exist on type '{}'.
       const extraDates = Array.isArray(opts.extraDates)
-        // @ts-expect-error TS(2339) FIXME: Property 'extraDates' does not exist on type '{}'.
-        ? opts.extraDates.filter(Boolean)
-        // @ts-expect-error TS(2339) FIXME: Property 'dateStr' does not exist on type '{}'.
+        ? opts.extraDates.filter((d): d is string => Boolean(d))
         : opts.dateStr
-          // @ts-expect-error TS(2339) FIXME: Property 'dateStr' does not exist on type '{}'.
           ? [opts.dateStr]
           : [];
 
@@ -209,7 +219,6 @@ export function useChatRemoteSync({
         q.forceDays = q.forceDays || forceDays;
         q.forceMeta = q.forceMeta || forceMeta;
         for (const d of extraDates) q.extraDates.add(d);
-        // @ts-expect-error TS(2322) FIXME: Type '{ forceDays: boolean; forceMeta: boolean; ex... Remove this comment to see the full error message
         queuedRef.current = q;
         return;
       }
@@ -225,11 +234,8 @@ export function useChatRemoteSync({
         if (queued) {
           queuedRef.current = null;
           void syncOnce({
-            // @ts-expect-error TS(2339) FIXME: Property 'forceDays' does not exist on type 'never... Remove this comment to see the full error message
             forceDays: queued.forceDays,
-            // @ts-expect-error TS(2339) FIXME: Property 'forceMeta' does not exist on type 'never... Remove this comment to see the full error message
             forceMeta: queued.forceMeta,
-            // @ts-expect-error TS(2339) FIXME: Property 'extraDates' does not exist on type 'neve... Remove this comment to see the full error message
             extraDates: [...queued.extraDates],
           });
         }
@@ -336,11 +342,11 @@ export function useChatRemoteSync({
 
 /** Helper for pane: merge remote day into current message window by id. */
 export function mergeMessagesForDate(
-  prevMessages: any,
-  dateStr: any,
-  remoteMessages: any,
-  remoteParsed: any,
-  extraDeletedIds: any,
+  prevMessages: ChatMessage[] | null | undefined,
+  dateStr: string,
+  remoteMessages: ChatMessage[] | null | undefined,
+  remoteParsed: { messages?: ChatMessage[]; deletedIds?: string[]; deletedAtById?: Record<string, string> } | null | undefined,
+  extraDeletedIds: Set<string> | string[] | null | undefined,
 ) {
   const localForDay = (prevMessages || []).filter((m: any) => m.dateStr === dateStr);
   const otherDays = (prevMessages || []).filter((m: any) => m.dateStr !== dateStr);
@@ -349,9 +355,8 @@ export function mergeMessagesForDate(
     : Array.isArray(extraDeletedIds)
       ? extraDeletedIds
       : [];
-  const extraMap = {};
+  const extraMap: Record<string, string> = {};
   for (const id of extra) {
-    // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     if (id) extraMap[id] = new Date(0).toISOString();
   }
   const merged = mergeDayMessages(
@@ -369,29 +374,22 @@ export function mergeMessagesForDate(
   const withDate = merged.messages.map((m) => ({ ...m, dateStr }));
   const localById = new Map(localForDay.map((m: any) => [m.id, m]));
   const mergedWithFlags = withDate.map((m) => {
-    const local = localById.get(m.id);
+    const local = localById.get(m.id) as ChatMessage | undefined;
     if (!local) return m;
     let next = m;
-    // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
     if (local.pendingReactionSync) {
       next = {
         ...next,
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
         reactions: local.reactions,
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
         reactionsAt: local.reactionsAt,
         pendingReactionSync: true,
       };
     }
-    // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
     if (!local.pendingSync) return next;
     if (
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
       local.body === next.body &&
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
       (local.editedAt || '') === (next.editedAt || '')
     ) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
       return { ...next, pendingSync: local.pendingSync };
     }
     return next;

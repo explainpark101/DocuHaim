@@ -49,8 +49,6 @@ import {
   resolveGroupLabel,
   resolveGroupId,
   appendChatMessages,
-  // @ts-expect-error TS(6133) FIXME: 'appendChatMessage' is declared but its value is n... Remove this comment to see the full error message
-  appendChatMessage,
   appendShareChatMessage,
   createOgStorageAdapters,
   deleteChatMessage,
@@ -117,10 +115,16 @@ import {
 import { findFileNodeByPath, findNodeByPath } from '@/utils/vault/s3Tree';
 import { getStorageScopeId } from '@/utils/vault/storageScope';
 
-async function matchesFilters(msg: any, dateStr: any, filters: any, ogStorage: any, groups = []) {
+async function matchesFilters(
+  msg: ChatMessage,
+  dateStr: string,
+  filters: Record<string, unknown> | null | undefined,
+  ogStorage: unknown,
+  groups: ChatGroup[] = [],
+) {
   if (!filters) return { ok: true, ogSearchText: '' };
   if (filters.groupFilter && filters.groupFilter !== '__all__') {
-    if (!groupMatches(groups, msg.group || SELF_GROUP, filters.groupFilter)) {
+    if (!groupMatches(groups, msg.group || SELF_GROUP, String(filters.groupFilter))) {
       return { ok: false, ogSearchText: '' };
     }
   }
@@ -128,13 +132,13 @@ async function matchesFilters(msg: any, dateStr: any, filters: any, ogStorage: a
     return { ok: false, ogSearchText: '' };
   }
   if (filters.fromDt) {
-    const from = new Date(filters.fromDt).getTime();
+    const from = new Date(String(filters.fromDt)).getTime();
     if (!Number.isNaN(from) && new Date(msg.at).getTime() < from) {
       return { ok: false, ogSearchText: '' };
     }
   }
   if (filters.toDt) {
-    const to = new Date(filters.toDt).getTime();
+    const to = new Date(String(filters.toDt)).getTime();
     if (!Number.isNaN(to) && new Date(msg.at).getTime() > to) {
       return { ok: false, ogSearchText: '' };
     }
@@ -153,10 +157,10 @@ async function matchesFilters(msg: any, dateStr: any, filters: any, ogStorage: a
     const localHaystacks = [
       body,
       group,
-      ...attachments.flatMap((att: any) => [att.name || '', att.path || '']),
+      ...attachments.flatMap((att) => [att.name || '', att.path || '']),
       reactionSearchText,
     ];
-    if (fuzzyMatchTokensInHaystacks(localHaystacks, filters.query)) {
+    if (fuzzyMatchTokensInHaystacks(localHaystacks, String(filters.query))) {
       return { ok: true, ogSearchText: '' };
     }
     const ogSearchText = await loadMessageOgSearchText(msg, ogStorage);
@@ -168,19 +172,30 @@ async function matchesFilters(msg: any, dateStr: any, filters: any, ogStorage: a
   return { ok: true, ogSearchText: '' };
 }
 
-function normalizeOutgoingAttachments(items: any) {
+type OutgoingAttachment = { file: File | Blob; background: string | null };
+
+function normalizeOutgoingAttachments(items: unknown): OutgoingAttachment[] {
   return (Array.isArray(items) ? items : [])
-    .map((item) => {
+    .map((item): OutgoingAttachment | null => {
       if (!item) return null;
       if (item instanceof File || item instanceof Blob) {
         return { file: item, background: null };
       }
-      if (item.file instanceof File || item.file instanceof Blob) {
-        return { file: item.file, background: item.background || null };
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        'file' in item &&
+        (item.file instanceof File || item.file instanceof Blob)
+      ) {
+        const background =
+          'background' in item && item.background != null
+            ? String(item.background)
+            : null;
+        return { file: item.file, background };
       }
       return null;
     })
-    .filter(Boolean);
+    .filter((item): item is OutgoingAttachment => item != null);
 }
 
 /** Prefer enough history on first paint so viewport fill rarely day-steps. */
@@ -188,6 +203,47 @@ const INITIAL_MIN_MESSAGES = 40;
 const INITIAL_MAX_DAYS = 21;
 /** Silent fill safety net: multiple days per prepend to cut scroll stutter. */
 const FILL_BATCH_DAYS = 3;
+
+type InitialWindowOpts = {
+  minMessages?: number;
+  maxDays?: number;
+  startIndex?: number;
+};
+
+type LoadOlderOpts = {
+  silent?: boolean;
+  maxDays?: number;
+};
+
+type ReplyDraft = Pick<ChatMessage, 'id' | 'group' | 'body' | 'dateStr' | 'at'> & {
+  snippet?: string;
+};
+
+type ShareGroupPayload = {
+  id?: string;
+  body?: string;
+  files?: File[];
+};
+
+type SendOptions = {
+  markdown?: boolean | string;
+  encryptPassword?: string;
+};
+
+type SaveEditOptions = {
+  existingMarkdown?: string;
+  removedPaths?: string[];
+  markdown?: boolean | string;
+};
+
+type AddGroupOptions = {
+  iconPath?: string;
+  iconFile?: File;
+};
+
+type DeleteMessageOptions = {
+  skipConfirm?: boolean;
+};
 
 /**
  * Walk day keys newest→oldest from startIndex: first until at least one
@@ -200,13 +256,14 @@ const FILL_BATCH_DAYS = 3;
  * @param {{ minMessages?: number, maxDays?: number, startIndex?: number }} [opts]
  * @returns {Promise<{ messages: import('@/utils/chatWithMyself/format').ChatMessage[], loadedDayIndex: number }>}
  */
-async function readMessagesForInitialWindow(ctx: any, dayKeysNewestFirst: any, opts = {}) {
-  // @ts-expect-error TS(2339) FIXME: Property 'minMessages' does not exist on type '{}'... Remove this comment to see the full error message
+async function readMessagesForInitialWindow(
+  ctx: Parameters<typeof readDayMessages>[0],
+  dayKeysNewestFirst: string[],
+  opts: InitialWindowOpts = {},
+) {
   const minMessages = Math.max(1, Number(opts.minMessages) || INITIAL_MIN_MESSAGES);
-  // @ts-expect-error TS(2339) FIXME: Property 'maxDays' does not exist on type '{}'.
   const maxDays = Math.max(1, Number(opts.maxDays) || INITIAL_MAX_DAYS);
   const keys = Array.isArray(dayKeysNewestFirst) ? dayKeysNewestFirst : [];
-  // @ts-expect-error TS(2339) FIXME: Property 'startIndex' does not exist on type '{}'.
   let loadedDayIndex = Math.max(0, Number(opts.startIndex) || 0);
   let messages: any = [];
   let daysRead = 0;
@@ -383,7 +440,7 @@ export default function ChatWithMyselfPane({
   const [windowNewestIndex, setWindowNewestIndex] = useState(0);
   /** Exclusive end index of oldest day in the window (same role as former loadedDayIndex). */
   const [loadedDayIndex, setLoadedDayIndex] = useState(0);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [loadingNewer, setLoadingNewer] = useState(false);
   const [booting, setBooting] = useState(false);
@@ -436,11 +493,11 @@ export default function ChatWithMyselfPane({
   const [searchNoReactionsOnly, setSearchNoReactionsOnly] = useState(false);
   const [searchFiltersUiOpen, setSearchFiltersUiOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [replyTo, setReplyTo] = useState<ReplyDraft | null>(null);
   const [editTarget, setEditTarget] = useState<ChatMessage | null>(null);
   const [addToNoteMessage, setAddToNoteMessage] = useState<ChatMessage | null>(null);
   const [historyMessage, setHistoryMessage] = useState<ChatMessage | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
   const [deletingCount, setDeletingCount] = useState(0);
   /** @type {[Record<string, string>, Function]} session-only decrypted plaintext by message id */
   const [decryptedById, setDecryptedById] = useState<Record<string, string>>({});
@@ -448,7 +505,7 @@ export default function ChatWithMyselfPane({
   const [decryptError, setDecryptError] = useState('');
   const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
   const [composerSeed, setComposerSeed] = useState<any>(null);
-  const [shareGroupModal, setShareGroupModal] = useState<any>(null);
+  const [shareGroupModal, setShareGroupModal] = useState<ShareGroupPayload | null>(null);
   const [pinnedResults, setPinnedResults] = useState<any[]>([]);
   const [notedResults, setNotedResults] = useState<any[]>([]);
   const [editedResults, setEditedResults] = useState<any[]>([]);
@@ -652,9 +709,8 @@ export default function ChatWithMyselfPane({
       const meta = await touchTimezone(ctx);
       setGroups(meta.groups || []);
       setTimeZone(meta.timezone || detectTimeZone());
-    } catch (e) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(e?.message || 'meta 로드 실패');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'meta 로드 실패');
     }
   }, [storageReady, ctx]);
 
@@ -860,16 +916,15 @@ export default function ChatWithMyselfPane({
     setTimeZone(meta.timezone || detectTimeZone());
   }, []);
 
-  const handleRemoteDayKeys = useCallback((keys: any) => {
+  const handleRemoteDayKeys = useCallback((keys: string[]) => {
     const today = localDateString(new Date(), detectTimeZone());
-    const ordered = [...new Set(keys.includes(today) ? keys : [today, ...keys])];
+    const ordered: string[] = [...new Set(keys.includes(today) ? keys : [today, ...keys])];
     const prev = dayKeysRef.current;
     const oldStart = windowNewestIndexRef.current;
     const oldEnd = loadedDayIndexRef.current;
     const loadedDates =
       prev.length && oldEnd > oldStart ? prev.slice(oldStart, oldEnd) : [];
 
-    // @ts-expect-error TS(2345) FIXME: Argument of type 'unknown[]' is not assignable to ... Remove this comment to see the full error message
     setDayKeys(ordered);
 
     if (!loadedDates.length) return;
@@ -903,7 +958,6 @@ export default function ChatWithMyselfPane({
       Array.isArray(shareGroupSend.files) && shareGroupSend.files.length > 0;
     if (!hasBody && !hasFiles) return;
     setEditTarget(null);
-    // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
     setShareGroupModal((prev) =>
       prev?.id === shareGroupSend.id ? prev : shareGroupSend,
     );
@@ -921,10 +975,8 @@ export default function ChatWithMyselfPane({
    *   maxDays — how many day files to read in one prepend (default 1)
    * @returns {Promise<boolean>} true if the window advanced
    */
-  const handleLoadOlder = useCallback(async (opts = {}) => {
-    // @ts-expect-error TS(2339) FIXME: Property 'silent' does not exist on type '{}'.
+  const handleLoadOlder = useCallback(async (opts: LoadOlderOpts = {}) => {
     const silent = Boolean(opts?.silent);
-    // @ts-expect-error TS(2339) FIXME: Property 'maxDays' does not exist on type '{}'.
     const maxDays = Math.max(1, Number(opts?.maxDays) || 1);
     if (!storageReady || loadingOlderRef.current) return false;
     const keys = dayKeysRef.current;
@@ -953,11 +1005,10 @@ export default function ChatWithMyselfPane({
         setMessages((prev) => prependUniqueMessages(olderHead, prev));
       }
       return nextIdx > startIdx;
-    } catch (e) {
+    } catch (e: unknown) {
       loadedDayIndexRef.current = startIdx;
       setLoadedDayIndex(startIdx);
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(e?.message || '이전 대화 로드 실패');
+      setError(e instanceof Error ? e.message : '이전 대화 로드 실패');
       return false;
     } finally {
       loadingOlderRef.current = false;
@@ -985,11 +1036,10 @@ export default function ChatWithMyselfPane({
     try {
       const newer = await readDayMessages(ctx, dateStr);
       setMessages((prev) => appendUniqueMessages(prev, newer));
-    } catch (e) {
+    } catch (e: unknown) {
       windowNewestIndexRef.current = newestIdx;
       setWindowNewestIndex(newestIdx);
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(e?.message || '이후 대화 로드 실패');
+      setError(e instanceof Error ? e.message : '이후 대화 로드 실패');
     } finally {
       loadingNewerRef.current = false;
       setLoadingNewer(false);
@@ -1061,9 +1111,8 @@ export default function ChatWithMyselfPane({
             messageListRef.current?.scrollToDateStr(dateStr);
           });
         }
-      } catch (e) {
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '날짜 이동 실패');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '날짜 이동 실패');
       } finally {
         setJumping(false);
       }
@@ -1288,10 +1337,9 @@ export default function ChatWithMyselfPane({
             noteLocalDayWrite(dateStr);
             postChatSyncEvent('day', { dateStr });
           }
-        } catch (e) {
+        } catch (e: unknown) {
           setMessages((prev) => prev.filter((m) => !batchIds.includes(m.id)));
-          // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-          setError(e?.message || '전송 실패');
+          setError(e instanceof Error ? e.message : '전송 실패');
         }
       }
     } finally {
@@ -1303,7 +1351,13 @@ export default function ChatWithMyselfPane({
   }, [ctx, confirmPendingMessages, noteLocalDayWrite]);
 
   const handleSend = useCallback(
-    (body: any, group: any, replyTarget = null, imageFiles = [], options = {}) => {
+    (
+      body: string,
+      group: string,
+      replyTarget: ReplyDraft | null = null,
+      imageFiles: unknown[] = [],
+      options: SendOptions = {},
+    ) => {
       if (!storageReady) {
         setError(storageSendErrorHint);
         return;
@@ -1312,16 +1366,11 @@ export default function ChatWithMyselfPane({
       const files = normalizeOutgoingAttachments(imageFiles);
       if (!text && files.length === 0) return;
       const markdown =
-        // @ts-expect-error TS(2339) FIXME: Property 'markdown' does not exist on type '{}'.
         options.markdown === true ||
-        // @ts-expect-error TS(2339) FIXME: Property 'markdown' does not exist on type '{}'.
         options.markdown === '1' ||
-        // @ts-expect-error TS(2339) FIXME: Property 'markdown' does not exist on type '{}'.
         options.markdown === 'true';
       const encryptPassword =
-        // @ts-expect-error TS(2339) FIXME: Property 'encryptPassword' does not exist on type ... Remove this comment to see the full error message
         typeof options.encryptPassword === 'string'
-          // @ts-expect-error TS(2339) FIXME: Property 'encryptPassword' does not exist on type ... Remove this comment to see the full error message
           ? options.encryptPassword.trim()
           : '';
       const encrypted = Boolean(encryptPassword);
@@ -1338,7 +1387,7 @@ export default function ChatWithMyselfPane({
           ]
             .filter(Boolean)
             .join('\n\n');
-      const optimistic = {
+      const optimistic: ChatMessage = {
         id: clientId,
         at,
         tz,
@@ -1347,17 +1396,14 @@ export default function ChatWithMyselfPane({
         body: optimisticBody,
         markdown: encrypted ? false : markdown,
         encrypted,
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         replyTo: replyTarget?.id || '',
         replySnippet: replyTarget
           ? makeReplySnippet(
-              isChatMessageEncrypted(replyTarget)
+              isChatMessageEncrypted(replyTarget as ChatMessage)
                 ? ENCRYPTED_MESSAGE_LABEL
-                // @ts-expect-error TS(2339) FIXME: Property 'snippet' does not exist on type 'never'.
-                : replyTarget.snippet || replyTarget.body,
+                : replyTarget.snippet || replyTarget.body || '',
             )
           : '',
-        // @ts-expect-error TS(2339) FIXME: Property 'group' does not exist on type 'never'.
         replyGroup: replyTarget?.group || '',
         dateStr,
         pendingSync: 'send',
@@ -1397,7 +1443,6 @@ export default function ChatWithMyselfPane({
       id: message.id,
       group: message.group || SELF_GROUP,
       body: locked ? ENCRYPTED_MESSAGE_LABEL : message.body,
-      // @ts-expect-error TS(2345) FIXME: Argument of type '{ id: any; group: any; body: any... Remove this comment to see the full error message
       snippet: makeReplySnippet(
         locked ? ENCRYPTED_MESSAGE_LABEL : message.body,
       ),
@@ -1455,25 +1500,25 @@ export default function ChatWithMyselfPane({
   );
 
   const handleSaveEdit = useCallback(
-    async (body: any, group: any, target: any, imageFiles = [], options = {}) => {
+    async (
+      body: string,
+      group: string,
+      target: ChatMessage,
+      imageFiles: unknown[] = [],
+      options: SaveEditOptions = {},
+    ) => {
       if (!storageReady || !target?.id) return;
       const dateStr =
         target.dateStr || localDateString(new Date(target.at), detectTimeZone());
       const text = String(body || '').trim();
       const files = normalizeOutgoingAttachments(imageFiles);
-      // @ts-expect-error TS(2339) FIXME: Property 'existingMarkdown' does not exist on type... Remove this comment to see the full error message
       const existingMarkdown = String(options.existingMarkdown || '').trim();
-      // @ts-expect-error TS(2339) FIXME: Property 'removedPaths' does not exist on type '{}... Remove this comment to see the full error message
       const removedPaths = Array.isArray(options.removedPaths)
-        // @ts-expect-error TS(2339) FIXME: Property 'removedPaths' does not exist on type '{}... Remove this comment to see the full error message
         ? options.removedPaths.filter(Boolean)
         : [];
       const markdown =
-        // @ts-expect-error TS(2339) FIXME: Property 'markdown' does not exist on type '{}'.
         options.markdown === true ||
-        // @ts-expect-error TS(2339) FIXME: Property 'markdown' does not exist on type '{}'.
         options.markdown === '1' ||
-        // @ts-expect-error TS(2339) FIXME: Property 'markdown' does not exist on type '{}'.
         options.markdown === 'true';
       if (!text && files.length === 0 && !existingMarkdown) return;
 
@@ -1506,11 +1551,11 @@ export default function ChatWithMyselfPane({
       try {
         const uploaded = [];
         for (const attachment of files) {
-          // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-          const item = await uploadChatAttachment(ctx, attachment.file);
+          const uploadFile = attachment.file;
+          if (!uploadFile || !(uploadFile instanceof File)) continue;
+          const item = await uploadChatAttachment(ctx, uploadFile);
           uploaded.push({
             ...item,
-            // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
             background: attachment.background || null,
           });
         }
@@ -1599,12 +1644,11 @@ export default function ChatWithMyselfPane({
             /* best-effort storage cleanup */
           }
         }
-      } catch (e) {
+      } catch (e: unknown) {
         setMessages((prev) =>
           prev.map((m) => (m.id === target.id ? { ...snapshot } : m)),
         );
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '수정 실패');
+        setError(e instanceof Error ? e.message : '수정 실패');
       }
     },
     [storageReady, ctx, noteLocalDayWrite],
@@ -1655,12 +1699,11 @@ export default function ChatWithMyselfPane({
         localTombstonesRef.current.add(message.id);
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
-      } catch (e) {
+      } catch (e: unknown) {
         setMessages((prev) =>
           prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
         );
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '삭제 실패');
+        setError(e instanceof Error ? e.message : '삭제 실패');
       } finally {
         setDeletingCount((c) => Math.max(0, c - 1));
       }
@@ -1669,10 +1712,9 @@ export default function ChatWithMyselfPane({
   );
 
   const handleDelete = useCallback(
-    (message: any, options = {}) => {
+    (message: ChatMessage, options: DeleteMessageOptions = {}) => {
       if (!storageReady || !message?.id) return;
       if (message.pendingSync === 'delete') return;
-      // @ts-expect-error TS(2339) FIXME: Property 'skipConfirm' does not exist on type '{}'... Remove this comment to see the full error message
       if (options.skipConfirm) {
         void performDeleteMessage(message);
         return;
@@ -1740,21 +1782,21 @@ export default function ChatWithMyselfPane({
   );
 
   const handleAddGroup = useCallback(
-    async (name: any, options = {}) => {
+    async (name: string, options: AddGroupOptions = {}) => {
       let iconPath =
-        // @ts-expect-error TS(2339) FIXME: Property 'iconPath' does not exist on type '{}'.
         typeof options.iconPath === 'string' && options.iconPath.trim()
-          // @ts-expect-error TS(2339) FIXME: Property 'iconPath' does not exist on type '{}'.
           ? options.iconPath.trim()
           : undefined;
-      // @ts-expect-error TS(2339) FIXME: Property 'iconFile' does not exist on type '{}'.
       if (options.iconFile) {
         try {
-          // @ts-expect-error TS(2339) FIXME: Property 'iconFile' does not exist on type '{}'.
           iconPath = await uploadGroupIcon(ctx, options.iconFile);
-        } catch (e) {
+        } catch (e: unknown) {
           // Keep the group name; fall back to initials if icon upload fails.
-          setError((e as Error)?.message || '그룹 아이콘 업로드 실패 (그룹은 추가됩니다)');
+          setError(
+            e instanceof Error
+              ? e.message
+              : '그룹 아이콘 업로드 실패 (그룹은 추가됩니다)',
+          );
         }
       }
       const next = await addGroup(ctx, name, iconPath ? { iconPath } : {});
@@ -1775,9 +1817,8 @@ export default function ChatWithMyselfPane({
         setGroups(next);
         noteLocalMetaWrite();
         postChatSyncEvent('meta');
-      } catch (e) {
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '그룹 아이콘 변경 실패');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '그룹 아이콘 변경 실패');
         throw e;
       }
     },
@@ -1792,9 +1833,8 @@ export default function ChatWithMyselfPane({
         noteLocalMetaWrite();
         postChatSyncEvent('meta');
         return next;
-      } catch (e) {
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '그룹 이름 변경 실패');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '그룹 이름 변경 실패');
         throw e;
       }
     },
@@ -1824,12 +1864,10 @@ export default function ChatWithMyselfPane({
         m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
       ),
     );
-    setHistoryMessage((prev) =>
-      prev?.id === messageId
-        // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-        ? { ...prev, ...updated, dateStr: dateStr || prev.dateStr }
-        : prev,
-    );
+    setHistoryMessage((prev) => {
+      if (prev == null || prev.id !== messageId) return prev;
+      return { ...prev, ...updated, dateStr: dateStr || prev.dateStr };
+    });
     setEditedResults((prev) =>
       prev.map((m) =>
         m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
@@ -1939,9 +1977,8 @@ export default function ChatWithMyselfPane({
         );
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
-      } catch (e) {
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '고정 변경 실패');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '고정 변경 실패');
       }
     },
     [storageReady, ctx, noteLocalDayWrite],
@@ -1989,9 +2026,8 @@ export default function ChatWithMyselfPane({
         );
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
-      } catch (e) {
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '접기 상태 변경 실패');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '접기 상태 변경 실패');
       }
     },
     [storageReady, ctx, noteLocalDayWrite],
@@ -2105,8 +2141,8 @@ export default function ChatWithMyselfPane({
           if (reactionGenRef.current.get(message.id) !== gen) return;
           reactionBaseRef.current.delete(message.id);
           const confirmed = ((updated as { reactions?: unknown[] }).reactions || [])
-            .map((r: any) => normalizeReaction(r))
-            .filter(Boolean);
+            .map((r) => normalizeReaction(r as Partial<ChatReaction>))
+            .filter((r): r is ChatReaction => r != null);
           const patch = {
             ...(updated as Record<string, unknown>),
             dateStr,
@@ -2122,11 +2158,10 @@ export default function ChatWithMyselfPane({
           }));
           noteLocalDayWrite(dateStr);
           postChatSyncEvent('day', { dateStr });
-        } catch (e) {
+        } catch (e: unknown) {
           if (reactionGenRef.current.get(message.id) !== gen) return;
           rollbackToBase();
-          // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-          setError(e?.message || '반응 변경 실패');
+          setError(e instanceof Error ? e.message : '반응 변경 실패');
         }
       };
 
@@ -2241,6 +2276,7 @@ export default function ChatWithMyselfPane({
         const end = Math.min(i + batchSize, keys.length);
         for (; i < end; i++) {
           const dateStr = keys[i];
+          if (!dateStr) continue;
           const msgs = await readDayMessages(ctx, dateStr);
           for (const msg of msgs) {
             const hit = await matchesFilters(
@@ -2248,7 +2284,6 @@ export default function ChatWithMyselfPane({
               dateStr,
               filters,
               ogStorage,
-              // @ts-expect-error TS(2345) FIXME: Argument of type 'ChatGroup[]' is not assignable t... Remove this comment to see the full error message
               groups,
             );
             if (hit.ok) {

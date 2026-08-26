@@ -24,6 +24,12 @@ import {
 
 const PAGE_SIZE = 10;
 
+type HistoryEntry = { at: string; body: string; group: string; key?: string };
+
+type ConfirmTarget =
+  | { kind: 'one'; entry: HistoryEntry }
+  | { kind: 'all' };
+
 function formatHistoryWhen(iso: any, timeZone: any) {
   if (!iso) return '';
   try {
@@ -186,9 +192,7 @@ export default function ChatEditHistoryModal({
 }: any) {
   const tz = timeZone || detectTimeZone();
   const isOpen = Boolean(open && message);
-  const [entries, setEntries] = useState<
-    Array<{ at: string; body: string; group: string; key?: string }>
-  >([]);
+  const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
@@ -196,10 +200,9 @@ export default function ChatEditHistoryModal({
   const [loadingMore, setLoadingMore] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-  /** @type {[{ kind: 'one', entry: object } | { kind: 'all' } | null, Function]} */
-  const [confirmTarget, setConfirmTarget] = useState(null);
-  const scrollRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const sentinelRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const shiftHeldRef = useShiftHeldRef();
   const coarse = useIsCoarsePointer();
@@ -233,9 +236,8 @@ export default function ChatEditHistoryModal({
         setOffset(Number(page?.nextOffset) || nextOffset + list.length);
         setHasMore(Boolean(page?.hasMore));
         setTotal(Number(page?.total) || 0);
-      } catch (e) {
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '수정 기록을 불러오지 못했습니다.');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '수정 기록을 불러오지 못했습니다.');
         if (!append) {
           setEntries([]);
           setHasMore(false);
@@ -296,9 +298,8 @@ export default function ChatEditHistoryModal({
       try {
         await onDeleteHistoryEntry?.(message, entry);
         await loadPage(0, { append: false });
-      } catch (e) {
-        // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-        setError(e?.message || '수정 기록 삭제에 실패했습니다.');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '수정 기록 삭제에 실패했습니다.');
       } finally {
         setDeleting(false);
       }
@@ -313,9 +314,8 @@ export default function ChatEditHistoryModal({
     try {
       await onDeleteAllHistory?.(message);
       await loadPage(0, { append: false });
-    } catch (e) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(e?.message || '수정 기록 전체 삭제에 실패했습니다.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '수정 기록 전체 삭제에 실패했습니다.');
     } finally {
       setDeleting(false);
     }
@@ -328,7 +328,6 @@ export default function ChatEditHistoryModal({
         void runDeleteEntry(entry);
         return;
       }
-      // @ts-expect-error TS(2345) FIXME: Argument of type '{ kind: string; entry: any; }' i... Remove this comment to see the full error message
       setConfirmTarget({ kind: 'one', entry });
     },
     [deleting, runDeleteEntry, shiftHeldRef],
@@ -341,7 +340,6 @@ export default function ChatEditHistoryModal({
         void runDeleteAll();
         return;
       }
-      // @ts-expect-error TS(2345) FIXME: Argument of type '{ kind: string; }' is not assign... Remove this comment to see the full error message
       setConfirmTarget({ kind: 'all' });
     },
     [total, deleting, runDeleteAll, shiftHeldRef],
@@ -351,14 +349,11 @@ export default function ChatEditHistoryModal({
     const target = confirmTarget;
     setConfirmTarget(null);
     if (!target) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
     if (target.kind === 'all') {
       void runDeleteAll();
       return;
     }
-    // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
     if (target.kind === 'one' && target.entry) {
-      // @ts-expect-error TS(2339) FIXME: Property 'entry' does not exist on type 'never'.
       void runDeleteEntry(target.entry);
     }
   }, [confirmTarget, runDeleteAll, runDeleteEntry]);
@@ -511,15 +506,14 @@ export default function ChatEditHistoryModal({
     <ConfirmModal
       isOpen={Boolean(confirmTarget)}
       title={
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         confirmTarget?.kind === 'all' ? '수정 기록 전부 삭제' : '수정 기록 삭제'
       }
       message={
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         confirmTarget?.kind === 'all'
           ? `이전 버전 ${total}개를 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.`
-          // @ts-expect-error TS(2339) FIXME: Property 'entry' does not exist on type 'never'.
-          : `이 이전 버전을 삭제할까요?\n\n${String(confirmTarget?.entry?.body || '')
+          : `이 이전 버전을 삭제할까요?\n\n${String(
+              confirmTarget?.kind === 'one' ? confirmTarget.entry?.body || '' : '',
+            )
               .replace(/\s+/g, ' ')
               .trim()
               .slice(0, 120) || '(빈 버전)'}`

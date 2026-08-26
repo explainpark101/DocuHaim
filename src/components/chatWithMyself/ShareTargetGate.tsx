@@ -25,6 +25,7 @@ import {
   postChatLocalSyncEvent,
   postChatSyncEvent,
 } from '@/utils/chatWithMyself';
+import type { SharePrompt } from '@/utils/chatWithMyself/pendingShares';
 
 function pendingChooseToPrompt(choose: any) {
   if (!choose || !sharePromptHasContent(choose)) return null;
@@ -55,7 +56,7 @@ export default function ShareTargetGate({
   const navigate = useNavigate();
   const initialShareUrl =
     typeof window !== 'undefined' && hasShareSearchParams(window.location.search);
-  const [prompt, setPrompt] = useState(() => readSharePromptFromWindow());
+  const [prompt, setPrompt] = useState<SharePrompt | null>(() => readSharePromptFromWindow());
   const [bootstrapDone, setBootstrapDone] = useState(() => Boolean(initialShareUrl));
   const [shareIntakePending, setShareIntakePending] = useState(() =>
     Boolean(initialShareUrl),
@@ -100,9 +101,8 @@ export default function ShareTargetGate({
         files = [];
       }
       if (body || files.length) {
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: SharePrompt | null) => { ... Remove this comment to see the full error message
         setPrompt((prev) => ({
-          id: prev?.id,
+          ...(prev?.id != null ? { id: prev.id } : {}),
           body: body || prev?.body || '',
           files,
         }));
@@ -164,10 +164,8 @@ export default function ShareTargetGate({
     const current = prompt;
     if (!sharePromptHasContent(current) || actionLockRef.current) return;
     actionLockRef.current = true;
-    // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-    const body = String(current.body || '').trim();
-    // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-    const files = normalizeShareFiles(current.files);
+    const body = String(current!.body || '').trim();
+    const files = normalizeShareFiles(current!.files);
     let appended = false;
     try {
       if (isUnlocked && storageReady && chatCtx) {
@@ -214,10 +212,8 @@ export default function ShareTargetGate({
     const current = prompt;
     if (!sharePromptHasContent(current) || actionLockRef.current) return;
     actionLockRef.current = true;
-    // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-    const body = String(current.body || '').trim();
-    // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-    const files = normalizeShareFiles(current.files);
+    const body = String(current!.body || '').trim();
+    const files = normalizeShareFiles(current!.files);
     try {
       await clearPromptRecord(current);
       const payload = {
@@ -257,8 +253,7 @@ export default function ShareTargetGate({
     const current = prompt;
     if (!sharePromptHasContent(current) || actionLockRef.current) return false;
     if (typeof onOpenAsSession !== 'function') return false;
-    // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-    const files = filesForShareTargetSession(normalizeShareFiles(current.files));
+    const files = filesForShareTargetSession(normalizeShareFiles(current!.files));
     if (!files.length) return false;
     actionLockRef.current = true;
     try {

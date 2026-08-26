@@ -17,11 +17,11 @@ export type ChatMessage = {
   editedAt?: string;
   pinnedAt?: string;
   notePath?: string;
-  collapsed?: string;
+  collapsed?: string | boolean;
   reactions?: ChatReaction[];
   reactionsAt?: string;
   editHistory?: { at: string; body: string; group: string }[];
-  pendingSync?: boolean;
+  pendingSync?: boolean | 'send' | 'edit' | 'delete';
   pendingReactionSync?: boolean;
 };
 

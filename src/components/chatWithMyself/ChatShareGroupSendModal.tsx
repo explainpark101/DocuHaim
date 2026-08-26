@@ -9,6 +9,7 @@ import {
   formatChatAttachmentSize,
   sortGroupsKo,
 } from '@/utils/chatWithMyself';
+import type { ChatGroup } from '@/utils/chatWithMyself/messageTypes';
 
 const PREVIEW_MAX = 280;
 
@@ -38,7 +39,7 @@ export default function ChatShareGroupSendModal({
   const [addingGroup, setAddingGroup] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const inlineGroupInputRef = useRef(null);
+  const inlineGroupInputRef = useRef<HTMLInputElement | null>(null);
   const preview = truncatePreview(body);
   const fileList = useMemo(
     () => (Array.isArray(files) ? files.filter(Boolean) : []),
@@ -50,7 +51,7 @@ export default function ChatShareGroupSendModal({
   const groupOptions = useMemo(
     () => [
       { value: SELF_GROUP, label: SELF_GROUP },
-      ...sortedGroups.map((g: any) => ({
+      ...sortedGroups.map((g: ChatGroup) => ({
         value: g.id,
         label: g.name,
         iconPath: g.iconPath
@@ -76,7 +77,6 @@ export default function ChatShareGroupSendModal({
   useEffect(() => {
     if (!inlineAddOpen) return undefined;
     const id = window.requestAnimationFrame(() => {
-      // @ts-expect-error TS(2339) FIXME: Property 'focus' does not exist on type 'never'.
       inlineGroupInputRef.current?.focus();
     });
     return () => window.cancelAnimationFrame(id);

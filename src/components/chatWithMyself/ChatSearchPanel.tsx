@@ -348,8 +348,8 @@ export default function ChatSearchPanel({
   onDismissGroupFilter
 }: any) {
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
-  const listRef = useRef(null);
-  const queryInputRef = useRef(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const queryInputRef = useRef<HTMLInputElement | null>(null);
   const coarse = useIsCoarsePointer();
   const tz = timeZone || detectTimeZone();
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
@@ -403,7 +403,6 @@ export default function ChatSearchPanel({
 
   const handleRefreshResults = () => {
     if (!canSearch || loading) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'scrollTop' does not exist on type 'never... Remove this comment to see the full error message
     if (listRef.current) listRef.current.scrollTop = 0;
     onSearch?.({
       query: query.trim(),
@@ -475,9 +474,7 @@ export default function ChatSearchPanel({
       return;
     }
     const id = window.requestAnimationFrame(() => {
-      // @ts-expect-error TS(2339) FIXME: Property 'focus' does not exist on type 'never'.
       queryInputRef.current?.focus();
-      // @ts-expect-error TS(2339) FIXME: Property 'select' does not exist on type 'never'.
       if (focusTick > 0) queryInputRef.current?.select?.();
     });
     return () => window.cancelAnimationFrame(id);

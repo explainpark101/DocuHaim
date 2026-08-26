@@ -3,13 +3,13 @@ import { Camera } from 'lucide-react';
 import { SELF_GROUP } from '@/utils/chatWithMyself';
 import { groupColor, isSelfGroupName } from '@/utils/chatWithMyself/groupAvatar';
 
-const sizeClass = {
+const sizeClass: Record<'sm' | 'md' | 'lg', string> = {
   sm: 'h-5 w-5 text-[10px]',
   md: 'h-7 w-7 text-xs',
   lg: 'h-8 w-8 text-xs',
 };
 
-const cameraSize = {
+const cameraSize: Record<'sm' | 'md' | 'lg', number> = {
   sm: 10,
   md: 12,
   lg: 14,
@@ -46,10 +46,8 @@ export default function ChatGroupAvatar({
   const label = name || SELF_GROUP;
   const self = isSelfGroupName(label);
   const tintKey = colorKey || label;
-  // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-  const dim = sizeClass[size] || sizeClass.md;
-  // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-  const cam = cameraSize[size] || cameraSize.md;
+  const dim = sizeClass[size as 'sm' | 'md' | 'lg'] || sizeClass.md;
+  const cam = cameraSize[size as 'sm' | 'md' | 'lg'] || cameraSize.md;
   const [fetched, setFetched] = useState(
     /** @type {{ path: string|null, url: string|null }} */ ({
       path: null,

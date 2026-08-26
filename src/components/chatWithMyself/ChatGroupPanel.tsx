@@ -35,20 +35,20 @@ export default function ChatGroupPanel({
 }: any) {
   const [drafting, setDrafting] = useState(false);
   const [draftName, setDraftName] = useState('');
-  const [draftIconUrl, setDraftIconUrl] = useState(null);
-  const [draftIconFile, setDraftIconFile] = useState(null);
-  const [cropSrc, setCropSrc] = useState(null);
-  const [cropFile, setCropFile] = useState(null);
+  const [draftIconUrl, setDraftIconUrl] = useState<string | null>(null);
+  const [draftIconFile, setDraftIconFile] = useState<File | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   /** @type {[string|null, function]} null = draft icon, else group id */
-  const [cropTarget, setCropTarget] = useState(null);
+  const [cropTarget, setCropTarget] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [renaming, setRenaming] = useState(false);
-  const draftInputRef = useRef(null);
-  const editInputRef = useRef(null);
+  const draftInputRef = useRef<HTMLInputElement | null>(null);
+  const editInputRef = useRef<HTMLInputElement | null>(null);
   const commitGuardRef = useRef(false);
   const renameGuardRef = useRef(false);
   const iconPickerOpenRef = useRef(false);
@@ -61,7 +61,6 @@ export default function ChatGroupPanel({
   useEffect(() => {
     if (!drafting) return;
     const id = window.requestAnimationFrame(() => {
-      // @ts-expect-error TS(2339) FIXME: Property 'focus' does not exist on type 'never'.
       draftInputRef.current?.focus();
     });
     return () => window.cancelAnimationFrame(id);
@@ -70,9 +69,7 @@ export default function ChatGroupPanel({
   useEffect(() => {
     if (!editingId) return;
     const id = window.requestAnimationFrame(() => {
-      // @ts-expect-error TS(2339) FIXME: Property 'focus' does not exist on type 'never'.
       editInputRef.current?.focus();
-      // @ts-expect-error TS(2339) FIXME: Property 'select' does not exist on type 'never'.
       editInputRef.current?.select();
     });
     return () => window.cancelAnimationFrame(id);
@@ -150,7 +147,6 @@ export default function ChatGroupPanel({
     if (cropSrc) URL.revokeObjectURL(cropSrc);
     const url = URL.createObjectURL(file);
     setCropFile(file);
-    // @ts-expect-error TS(2345) FIXME: Argument of type 'string' is not assignable to par... Remove this comment to see the full error message
     setCropSrc(url);
     cropOpenRef.current = true;
     iconPickerOpenRef.current = true;
@@ -162,7 +158,6 @@ export default function ChatGroupPanel({
       if (draftIconUrl) URL.revokeObjectURL(draftIconUrl);
       const url = URL.createObjectURL(file);
       setDraftIconFile(file);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'string' is not assignable to par... Remove this comment to see the full error message
       setDraftIconUrl(url);
       return;
     }

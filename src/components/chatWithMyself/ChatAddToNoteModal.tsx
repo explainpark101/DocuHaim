@@ -139,7 +139,7 @@ export default function ChatAddToNoteModal({
   const [includeReplyThread, setIncludeReplyThread] = useState(true);
   const hasInitializedRef = useRef(false);
   const activeDragItemsRef = useRef<any[] | null>(null);
-  const scrollContainerRef = useRef(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const dragDisabled = useIsMobileDragDisabled();
 
   // Mouse only — touch/mobile must not start tree reorder drags.
@@ -204,7 +204,6 @@ export default function ChatAddToNoteModal({
     if (!selectedFolder || !scrollContainerRef.current) return;
     const timer = setTimeout(() => {
       requestAnimationFrame(() => {
-        // @ts-expect-error TS(2339) FIXME: Property 'querySelectorAll' does not exist on type... Remove this comment to see the full error message
         const rows = scrollContainerRef.current?.querySelectorAll('[data-tree-node-row]');
         if (!rows?.length) return;
         for (const row of rows) {
@@ -399,9 +398,8 @@ export default function ChatAddToNoteModal({
         message,
         includeReplyThread: isReplyMessage ? includeReplyThread : false,
       });
-    } catch (e) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(e?.message || '노트 생성 실패');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '노트 생성 실패');
     }
   };
 

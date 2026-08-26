@@ -17,7 +17,22 @@ import ChatImageBackgroundPicker, {
 import { useAppStatusBarInset } from '@/hooks/useAppStatusBarInset';
 import { normalizeCssHexColor } from '@/utils/cssColor';
 
-const ChatImageLightboxContext = createContext<((url: any, options?: any) => void) | null>(null);
+const ChatImageLightboxContext = createContext<
+  ((url: string, options?: ChatImageLightboxOpenOptions) => void) | null
+>(null);
+
+type ChatImageLightboxOpenOptions = {
+  alt?: string;
+  backgroundColor?: string | null;
+  onBackgroundColorChange?: (color: string | null) => void;
+};
+
+type ChatImageLightboxState = {
+  src: string | null;
+  alt: string;
+  backgroundColor: string | null;
+  backgroundLabel: string;
+};
 
 const OVERLAY_TRANSITION: any = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
 const PANEL_TRANSITION: any = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
@@ -187,29 +202,24 @@ export function ChatImageLightbox({
 export function ChatImageLightboxProvider({
   children
 }: any) {
-  const [state, setState] = useState({
+  const [state, setState] = useState<ChatImageLightboxState>({
     src: null,
     alt: '',
     backgroundColor: null,
     backgroundLabel: '보기 배경',
   });
-  const persistRef = useRef(null);
+  const persistRef = useRef<((color: string | null) => void) | null>(null);
 
-  const openChatImage = useCallback((url: any, options = {}) => {
+  const openChatImage = useCallback((url: string, options: ChatImageLightboxOpenOptions = {}) => {
     const src = String(url || '').trim();
     if (!src) return;
     persistRef.current =
-      // @ts-expect-error TS(2339) FIXME: Property 'onBackgroundColorChange' does not exist ... Remove this comment to see the full error message
       typeof options.onBackgroundColorChange === 'function'
-        // @ts-expect-error TS(2339) FIXME: Property 'onBackgroundColorChange' does not exist ... Remove this comment to see the full error message
         ? options.onBackgroundColorChange
         : null;
     setState({
-      // @ts-expect-error TS(2322) FIXME: Type 'string' is not assignable to type 'null'.
       src,
-      // @ts-expect-error TS(2339) FIXME: Property 'alt' does not exist on type '{}'.
       alt: String(options.alt || ''),
-      // @ts-expect-error TS(2322) FIXME: Type 'string | null' is not assignable to type 'nu... Remove this comment to see the full error message
       backgroundColor: normalizeCssHexColor(options.backgroundColor),
       backgroundLabel: persistRef.current ? '표시 배경' : '보기 배경',
     });
@@ -220,11 +230,9 @@ export function ChatImageLightboxProvider({
     setState({ src: null, alt: '', backgroundColor: null, backgroundLabel: '보기 배경' });
   }, []);
 
-  const handleBackgroundColorChange = useCallback((next: any) => {
+  const handleBackgroundColorChange = useCallback((next: string | null) => {
     const color = normalizeCssHexColor(next);
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: { src: null; alt: string;... Remove this comment to see the full error message
     setState((prev) => ({ ...prev, backgroundColor: color }));
-    // @ts-expect-error TS(2349) FIXME: This expression is not callable.
     persistRef.current?.(color);
   }, []);
 

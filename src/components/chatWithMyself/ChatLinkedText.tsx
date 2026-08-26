@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router';
 import { splitTextWithUrls, parseAppViewPath } from '@/utils/chatWithMyself';
+import type { ChatTextPart } from '@/utils/chatWithMyself/og';
 import ChatWikiImage from '@/components/chatWithMyself/ChatWikiImage';
 import ChatFileCard from '@/components/chatWithMyself/ChatFileCard';
 import ChatNoteLinkCard from '@/components/chatWithMyself/ChatNoteLinkCard';
@@ -14,7 +15,7 @@ const linkClass =
  * First non-empty text line when collapsed (skip images/files/notes/folders and blank lines).
  * @param {ReturnType<typeof splitTextWithUrls>} parts
  */
-function collapsedFirstLine(parts: any) {
+function collapsedFirstLine(parts: ChatTextPart[]) {
   let hasMedia = false;
   let text = '';
   for (const part of parts) {
@@ -40,8 +41,7 @@ function collapsedFirstLine(parts: any) {
   let firstLine = '';
   let firstIdx = -1;
   for (let i = 0; i < lines.length; i += 1) {
-    // @ts-expect-error TS(2532) FIXME: Object is possibly 'undefined'.
-    const line = lines[i].trimEnd();
+    const line = lines[i]?.trimEnd() ?? '';
     if (line.trim()) {
       firstLine = line;
       firstIdx = i;

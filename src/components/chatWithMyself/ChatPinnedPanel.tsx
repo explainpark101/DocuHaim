@@ -47,17 +47,23 @@ import { copyText } from '@/utils/shared/copyText';
 /** @typedef {'pinned' | 'noted' | 'edited' | 'links' | 'files' | 'photos'} CollectionTabId */
 /** @typedef {'full' | 'activeLabel' | 'iconOnly'} TabDensity */
 
+import type { ChatMessage } from '@/utils/chatWithMyself/messageTypes';
+
+type CollectionTabId = 'pinned' | 'noted' | 'edited' | 'links' | 'files' | 'photos';
+type TabDensity = 'full' | 'activeLabel' | 'iconOnly';
+type CollectionLists = Record<CollectionTabId, ChatMessage[]>;
+
 /** Preview body max height for collection cards. */
 const PREVIEW_MAX_H_CLASS = 'max-h-32';
 
-const TAB_ORDER = /** @type {const} */ ([
+const TAB_ORDER: CollectionTabId[] = [
   'pinned',
   'noted',
   'edited',
   'links',
   'files',
   'photos',
-]);
+];
 
 /**
  * Keep line breaks for collection previews; collapse runs of newlines to one.
@@ -84,39 +90,46 @@ function formatCollectionPreview(text: any) {
     .trim();
 }
 
-const TABS = [
+type TabDef = {
+  id: CollectionTabId;
+  label: string;
+  Icon: typeof Pin;
+  empty: string;
+};
+
+const TABS: TabDef[] = [
   {
-    id: /** @type {CollectionTabId} */ ('pinned'),
+    id: 'pinned',
     label: '고정됨',
     Icon: Pin,
     empty: '고정된 메시지가 없습니다',
   },
   {
-    id: /** @type {CollectionTabId} */ ('noted'),
+    id: 'noted',
     label: '노트화',
     Icon: FileText,
     empty: '노트로 보낸 메시지가 없습니다',
   },
   {
-    id: /** @type {CollectionTabId} */ ('edited'),
+    id: 'edited',
     label: '수정됨',
     Icon: Pencil,
     empty: '수정된 메시지가 없습니다',
   },
   {
-    id: /** @type {CollectionTabId} */ ('links'),
+    id: 'links',
     label: '링크',
     Icon: Link2,
     empty: '링크가 있는 메시지가 없습니다',
   },
   {
-    id: /** @type {CollectionTabId} */ ('files'),
+    id: 'files',
     label: '파일',
     Icon: Paperclip,
     empty: '파일이 있는 메시지가 없습니다',
   },
   {
-    id: /** @type {CollectionTabId} */ ('photos'),
+    id: 'photos',
     label: '사진',
     Icon: Image,
     empty: '사진이 있는 메시지가 없습니다',
@@ -246,7 +259,7 @@ function CollectionCard({
   const hasContent = Boolean(preview) || hasAttachments;
   const groupLabel = resolveGroupLabel(groups, msg.group || SELF_GROUP);
 
-  const previewRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const [overflows, setOverflows] = useState(false);
   const {
     contextMenuOpen,
@@ -266,7 +279,6 @@ function CollectionCard({
       return undefined;
     }
     const check = () => {
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollHeight' does not exist on type 'ne... Remove this comment to see the full error message
       setOverflows(el.scrollHeight > el.clientHeight + 1);
     };
     check();
@@ -451,17 +463,21 @@ function estimateTabWidth({
 function CollectionTabList({
   tab,
   onTabChange,
-  lists
-}: any) {
-  const listRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const fontSampleRef = useRef(/** @type {HTMLSpanElement | null} */ (null));
-  const [density, setDensity] = useState(/** @type {TabDensity} */ ('full'));
+  lists,
+}: {
+  tab: CollectionTabId;
+  onTabChange: (value: CollectionTabId) => void;
+  lists: CollectionLists;
+}) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const fontSampleRef = useRef<HTMLSpanElement | null>(null);
+  const [density, setDensity] = useState<TabDensity>('full');
   const measurersRef = useRef({
     label: createPretextMeasurer('500 11px ui-sans-serif, system-ui, sans-serif'),
     count: createPretextMeasurer(`500 ${COUNT_FONT} ui-sans-serif, system-ui, sans-serif`),
   });
 
-  const counts = useMemo(
+  const counts = useMemo<Record<CollectionTabId, number>>(
     () => ({
       pinned: lists.pinned?.length || 0,
       noted: lists.noted?.length || 0,
@@ -474,15 +490,18 @@ function CollectionTabList({
   );
 
   const visibleCharCounts = useMemo(() => {
-    /** @type {Record<string, number>} */
-    const targets = {};
+    const targets: Record<CollectionTabId, number> = {
+      pinned: 0,
+      noted: 0,
+      edited: 0,
+      links: 0,
+      files: 0,
+      photos: 0,
+    };
     for (const t of TABS) {
       const full = splitLabelChars(t.label).length;
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       if (density === 'full') targets[t.id] = full;
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       else if (density === 'activeLabel') targets[t.id] = t.id === tab ? full : 0;
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       else targets[t.id] = 0;
     }
     return targets;
@@ -505,7 +524,6 @@ function CollectionTabList({
   const evaluateDensity = useCallback(() => {
     const list = listRef.current;
     if (!list) return;
-    // @ts-expect-error TS(2339) FIXME: Property 'clientWidth' does not exist on type 'nev... Remove this comment to see the full error message
     const available = list.clientWidth;
     if (available <= 0) return;
 
@@ -516,7 +534,6 @@ function CollectionTabList({
     let iconOnlyTotal = 0;
 
     for (const t of TABS) {
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       const count = counts[t.id] || 0;
       const fullLabel = t.label;
       fullTotal += estimateTabWidth({
@@ -569,7 +586,7 @@ function CollectionTabList({
   }, [evaluateDensity]);
 
   return (
-    <Tabs.Root value={tab} onValueChange={onTabChange}>
+    <Tabs.Root value={tab} onValueChange={(value) => onTabChange(value as CollectionTabId)}>
       <span
         ref={fontSampleRef}
         className="sr-only text-[11px] font-medium"
@@ -585,7 +602,6 @@ function CollectionTabList({
         {TABS.map(({ id, label, Icon }) => {
           const count = (counts as Record<string, number>)[id] || 0;
           const chars = splitLabelChars(label);
-          // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           const visible = Math.max(0, Math.min(chars.length, visibleCharCounts[id] ?? 0));
           const showCount = visible > 0 && count > 0;
           return (
@@ -749,7 +765,7 @@ export default function ChatPinnedPanel({
   listFolderFiles,
   groups = []
 }: any) {
-  const [tab, setTab] = useState(/** @type {CollectionTabId} */ ('pinned'));
+  const [tab, setTab] = useState<CollectionTabId>('pinned');
   const coarse = useIsCoarsePointer();
   const togglePin = onTogglePin || onUnpin;
 
@@ -786,7 +802,7 @@ export default function ChatPinnedPanel({
     if (!emblaApi) return undefined;
     const onSelect = () => {
       const i = emblaApi.selectedScrollSnap();
-      const next = TAB_ORDER[i] || 'pinned';
+      const next = (TAB_ORDER[i] ?? 'pinned') as CollectionTabId;
       setTab((prev) => (prev === next ? prev : next));
     };
     emblaApi.on('select', onSelect);
@@ -798,8 +814,8 @@ export default function ChatPinnedPanel({
 
   // Tab header → carousel
   const handleTabChange = useCallback(
-    (value: any) => {
-      const next = /** @type {CollectionTabId} */ (value);
+    (value: string) => {
+      const next = value as CollectionTabId;
       setTab(next);
       const idx = TAB_ORDER.indexOf(next);
       if (idx >= 0) emblaApi?.scrollTo(idx);
@@ -849,7 +865,6 @@ export default function ChatPinnedPanel({
             <CollectionSlide
               key={id}
               tabId={id}
-              // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
               list={lists[id] || []}
               loading={loading}
               emptyHint={empty}

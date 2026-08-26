@@ -62,11 +62,10 @@ const COMPOSER_MAX_H = 200;
 const EDITOR_HEIGHT_CSS_TRANSITION =
   'height 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
 
-function imageBackgroundsFromQueue(queue: any) {
-  const out = {};
+function imageBackgroundsFromQueue(queue: ComposerImageQueueItem[] | null | undefined) {
+  const out: Record<string, string> = {};
   for (const item of queue || []) {
     if (!item?.id || !item.background) continue;
-    // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     out[item.id] = item.background;
   }
   return out;
@@ -179,8 +178,6 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
     onSelectedGroupChange,
     onAddGroup,
     onSend,
-    // @ts-expect-error TS(6133) FIXME: '_sending' is declared but its value is never read... Remove this comment to see the full error message
-    _sending = false,
     theme,
     replyTo = null,
     onClearReply,
@@ -226,8 +223,8 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
   const openChatImage = useChatImageLightbox();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const fileInputRef = useRef(null);
-  const inlineGroupInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inlineGroupInputRef = useRef<HTMLInputElement | null>(null);
   const valueRef = useRef(value);
   const markdownEnabledRef = useRef(markdownEnabled);
   /** When user turns Markdown off while markup remains, skip auto-enable until markup clears. */
@@ -238,7 +235,7 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
   const imageQueueRef = useRef(imageQueue);
   const prevEditTargetRef = useRef(editTarget);
   const didAutofocusOnMountRef = useRef(false);
-  const removedExistingPathsRef = useRef([]);
+  const removedExistingPathsRef = useRef<string[]>([]);
   const lineNumbersCompartmentRef = useRef<Compartment | null>(null);
   const lineNumbersViewsRef = useRef(new WeakSet());
   const appTheme = useDocumentTheme();
@@ -437,8 +434,10 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
       const cmEl = root.querySelector('.cm-editor');
       const view = cmEl ? EditorView.findFromDOM(cmEl as HTMLElement) : null;
       if (view) view.focus();
-      // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
-      else root.querySelector('.cm-content')?.focus?.();
+      else {
+        const content = root.querySelector('.cm-content') as HTMLElement | null;
+        content?.focus?.();
+      }
     };
 
     const onWindowBlur = () => {
@@ -619,8 +618,8 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
       if (view) {
         view.focus();
       } else {
-        // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
-        root.querySelector('.cm-content')?.focus?.();
+        const content = root.querySelector('.cm-content') as HTMLElement | null;
+        content?.focus?.();
       }
     }
     // Undo mobile browser scroll-into-view that pushes chat chrome off-screen.
@@ -822,9 +821,7 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
         (target.kind === 'image' || target.kind === 'file')
       ) {
         removedExistingPathsRef.current = [
-          // @ts-expect-error TS(2322) FIXME: Type 'string' is not assignable to type 'never'.
           ...removedExistingPathsRef.current,
-          // @ts-expect-error TS(2322) FIXME: Type 'string' is not assignable to type 'never'.
           target.path,
         ];
       }
@@ -835,9 +832,8 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
     });
   }, []);
 
-  const doSend = useCallback(async (options = {}) => {
+  const doSend = useCallback(async (options: { encryptPassword?: string } = {}) => {
     const encryptPassword =
-      // @ts-expect-error TS(2339) FIXME: Property 'encryptPassword' does not exist on type ... Remove this comment to see the full error message
       typeof options.encryptPassword === 'string' ? options.encryptPassword.trim() : '';
     const body = valueRef.current.trim();
     const queued = imageQueueRef.current;
@@ -1064,7 +1060,6 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
   useEffect(() => {
     if (!inlineAddOpen) return undefined;
     const id = window.requestAnimationFrame(() => {
-      // @ts-expect-error TS(2339) FIXME: Property 'focus' does not exist on type 'never'.
       inlineGroupInputRef.current?.focus();
     });
     return () => window.cancelAnimationFrame(id);
@@ -1317,7 +1312,6 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  // @ts-expect-error TS(2339) FIXME: Property 'click' does not exist on type 'never'.
                   onClick={() => fileInputRef.current?.click()}
                   className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-odp-borderSoft dark:hover:bg-odp-focusBg"
                   title="파일 첨부"
@@ -1436,7 +1430,6 @@ const ChatComposer = forwardRef<any, any>(function ChatComposer(
             {!showToolbar ? (
               <button
                 type="button"
-                // @ts-expect-error TS(2339) FIXME: Property 'click' does not exist on type 'never'.
                 onClick={() => fileInputRef.current?.click()}
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-odp-borderSoft dark:hover:bg-odp-focusBg"
                 title="파일 첨부"

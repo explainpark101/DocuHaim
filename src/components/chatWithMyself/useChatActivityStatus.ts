@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
+import type { ActivityStatus } from '@/contexts/ActivityIndicatorContext';
 
 export const CHAT_ACTIVITY_IDS = {
   sync: 'chat-sync-status',
@@ -33,7 +34,7 @@ export function useChatActivityStatus({
   error = ''
 }: any) {
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
-  const timersRef = useRef([]);
+  const timersRef = useRef<number[]>([]);
 
   useEffect(() => {
     return () => {
@@ -43,9 +44,8 @@ export function useChatActivityStatus({
     };
   }, [removeIndicator]);
 
-  const scheduleRemove = (id: any, ms = 1400) => {
+  const scheduleRemove = (id: string, ms = 1400) => {
     const t = window.setTimeout(() => removeIndicator(id), ms);
-    // @ts-expect-error TS(2345) FIXME: Argument of type 'number' is not assignable to par... Remove this comment to see the full error message
     timersRef.current.push(t);
   };
 
@@ -68,19 +68,15 @@ export function useChatActivityStatus({
       type: ActivityTypes.CHAT_SYNC,
       label: '채팅',
       detail,
-      status: storageReady ? 'done' : 'error',
-      pin: true,
+      status: (storageReady ? 'done' : 'error') as ActivityStatus,
     };
-    // @ts-expect-error TS(2345) FIXME: Argument of type '{ id: string; type: "chat-sync";... Remove this comment to see the full error message
     addIndicator(payload);
     // ADD is no-op when the id already exists; keep status/detail in sync.
     updateIndicator(CHAT_ACTIVITY_IDS.sync, {
       detail: payload.detail,
-      // @ts-expect-error TS(2322) FIXME: Type 'string' is not assignable to type 'ActivityS... Remove this comment to see the full error message
       status: payload.status,
       label: payload.label,
       type: payload.type,
-      pin: true,
     });
   }, [storageReady, storageMode, addIndicator, updateIndicator]);
 
