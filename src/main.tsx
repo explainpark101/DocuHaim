@@ -11,12 +11,14 @@ import { ToastProvider } from '@/contexts/ToastContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
+import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
 import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
 import { isDesktopApp } from '@/utils/isDesktopApp'
 import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
 
 initEditorAutocompleteDomFlag()
 initTouchLongPressHaptics()
+initDesktopExternalLinks()
 initMdEditorCodeCopy()
 void startDesktopOpenFilesBridge()
 
