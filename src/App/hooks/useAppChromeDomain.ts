@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
+import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { useSidebarToggleShortcut } from '@/hooks/useSidebarToggleShortcut';
 import { useNavigate } from 'react-router';
 import {
   getActiveFileTab,
@@ -23,12 +25,26 @@ import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
  */
 export function useAppChromeDomain() {
   const { isUnlocked, s3Creds } = useAuth();
+  const { isMobile, setSidebarOpen, setSidebarCollapsed } = useChromeOwned();
   const { getBackendForType, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspace, storageMode, webdavConfig, webdavTree } = useVault();
   const { closeCurrentFileRef, currentFileRef, editedFileNameRef, editorContentRef, flushSessionEditorToWorkspaceRef, maybeAutoSaveOnFocusChangeRef, navGuardRef, saveFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { pendingCloseTabId, setPendingCloseTabId, setShowCloseFileConfirmModal } = useModalsOwned();
   const { closeWorkspaceTabById, setState: setWorkspaceTabs, workspaceTabsRef } = useWorkspaceTabsCtx();
   const navigate = useNavigate();
+
+  const toggleFileTreeSidebar = useCallback(() => {
+    if (isMobile) {
+      setSidebarOpen((prev) => !prev);
+      return;
+    }
+    setSidebarCollapsed((prev) => !prev);
+  }, [isMobile, setSidebarOpen, setSidebarCollapsed]);
+
+  useSidebarToggleShortcut({
+    enabled: isUnlocked,
+    onToggle: toggleFileTreeSidebar,
+  });
 
   const handleBrandClick = async () => {
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
