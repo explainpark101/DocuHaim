@@ -2,6 +2,17 @@ import { useRef, useState, useEffect } from 'react';
 import { IconMic, IconSquare, IconChevronDown } from '@/components/icons';
 import Button from '@/components/Button';
 
+type RecordingDropdownButtonProps = {
+  isRecording?: boolean;
+  /** Accepted for API compatibility; level UI is not shown in this control. */
+  audioLevel?: number;
+  hasRecordings?: boolean;
+  recordingPipelineStatus?: string;
+  onStartRecording?: () => void;
+  onStopRecording?: () => void;
+  onShowToolbar?: () => void;
+};
+
 /**
  * 녹음 버튼 (녹음 존재 시 드롭다운)
  * - 녹음 없음: 단순 버튼 "녹음"
@@ -9,22 +20,22 @@ import Button from '@/components/Button';
  */
 export default function RecordingDropdownButton({
   isRecording = false,
-  // @ts-expect-error TS(6133): '_audioLevel' is declared but its value is never r... Remove this comment to see the full error message
-  _audioLevel = 0,
   hasRecordings = false,
   recordingPipelineStatus = '',
   onStartRecording,
   onStopRecording,
   onShowToolbar
-}: any) {
+}: RecordingDropdownButtonProps) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const handleClickOutside = (e: any) => {
-      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const target = e.target;
+      if (target instanceof Node && !el.contains(target)) {
         setOpen(false);
       }
     };

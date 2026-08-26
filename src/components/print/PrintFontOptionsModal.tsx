@@ -7,13 +7,22 @@ import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 
 export { DEFAULT_PRINT_FONTS };
 
+type PrintFonts = typeof DEFAULT_PRINT_FONTS;
+
+type PrintFontOptionsModalProps = {
+  isOpen: boolean;
+  onClose?: () => void;
+  fonts?: PrintFonts;
+  onFontsChange?: (fonts: PrintFonts) => void;
+};
+
 export default function PrintFontOptionsModal({
   isOpen,
   onClose,
   fonts,
   onFontsChange
-}: any) {
-  const [localFonts, setLocalFonts] = useState(() => fonts || { ...DEFAULT_PRINT_FONTS });
+}: PrintFontOptionsModalProps) {
+  const [localFonts, setLocalFonts] = useState<PrintFonts>(() => fonts ?? { ...DEFAULT_PRINT_FONTS });
   const [saving, setSaving] = useState(false);
   const [fontOptionsTick, setFontOptionsTick] = useState(0);
 
@@ -35,7 +44,7 @@ export default function PrintFontOptionsModal({
     [fontOptionsTick],
   );
 
-  const update = (key: any, value: any) => {
+  const update = (key: keyof PrintFonts, value: string) => {
     const next = { ...localFonts, [key]: value };
     setLocalFonts(next);
     onFontsChange?.(next);
@@ -47,9 +56,9 @@ export default function PrintFontOptionsModal({
       await savePrintFontsToStorage(localFonts);
       onFontsChange?.(localFonts);
       onClose?.();
-    } catch (e) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      alert('저장에 실패했습니다: ' + (e?.message || e));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      alert('저장에 실패했습니다: ' + message);
     } finally {
       setSaving(false);
     }
@@ -78,7 +87,7 @@ export default function PrintFontOptionsModal({
             <FontFamilyInput
               id="print-font-body"
               value={localFonts.body}
-              onChange={(v: any) => update('body', v)}
+              onChange={(v) => update('body', v)}
               options={fontOptions}
               placeholder="예: Noto Sans KR, serif"
             />
@@ -90,7 +99,7 @@ export default function PrintFontOptionsModal({
             <FontFamilyInput
               id="print-font-heading"
               value={localFonts.heading}
-              onChange={(v: any) => update('heading', v)}
+              onChange={(v) => update('heading', v)}
               options={fontOptions}
               placeholder="예: Noto Serif KR, Georgia"
             />
@@ -102,7 +111,7 @@ export default function PrintFontOptionsModal({
             <FontFamilyInput
               id="print-font-bold"
               value={localFonts.bold}
-              onChange={(v: any) => update('bold', v)}
+              onChange={(v) => update('bold', v)}
               options={fontOptions}
               placeholder="예: Noto Sans KR, sans-serif"
             />
@@ -114,7 +123,7 @@ export default function PrintFontOptionsModal({
             <FontFamilyInput
               id="print-font-code"
               value={localFonts.code}
-              onChange={(v: any) => update('code', v)}
+              onChange={(v) => update('code', v)}
               options={fontOptions}
               placeholder="예: Consolas, monospace"
             />

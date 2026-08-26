@@ -1,12 +1,27 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, type KeyboardEvent, type RefObject } from 'react';
+
+type RecordingSyncEntry = {
+  time: number;
+  line: number;
+  text?: string;
+  insert?: boolean;
+};
+
+type RecordingSyncViewProps = {
+  content?: string;
+  syncData?: RecordingSyncEntry[];
+  audioRef?: RefObject<HTMLAudioElement | null>;
+  /** Accepted for API compatibility; theme is applied by parent shell. */
+  theme?: string;
+};
 
 /**
  * syncData에서 라인별 작성 시작 시점(최소 time) 맵 생성
  * line index 대신 text(내용) 기반으로도 저장 - 위쪽에 라인 추가 시 인덱스가 밀리므로
  */
-function buildLineToTimeMap(syncData: any) {
-  const mapByLine = new Map();
-  const mapByText = new Map();
+function buildLineToTimeMap(syncData: RecordingSyncEntry[]) {
+  const mapByLine = new Map<number, number>();
+  const mapByText = new Map<string, number>();
   for (const e of syncData) {
     const existingLine = mapByLine.get(e.line);
     if (existingLine === undefined || e.time < existingLine) {
@@ -27,24 +42,24 @@ function buildLineToTimeMap(syncData: any) {
  * 1) line 인덱스의 내용이 text와 일치하면 line 사용
  * 2) 아니면 content에서 text와 일치하는 라인 검색 (위쪽 삽입 대응)
  */
-function findLineIndexForSyncEntry(lines: any, entry: any, prevIdx: any) {
+function findLineIndexForSyncEntry(lines: string[], entry: RecordingSyncEntry, prevIdx: number) {
   const { line, text } = entry;
   if (line >= 0 && line < lines.length && (lines[line] ?? '') === (text ?? '')) {
     return line;
   }
-  const candidates = [];
+  const candidates: number[] = [];
   for (let i = 0; i < lines.length; i++) {
     if ((lines[i] ?? '') === (text ?? '')) candidates.push(i);
   }
   if (candidates.length === 0) return line >= 0 && line < lines.length ? line : -1;
-  if (candidates.length === 1) return candidates[0];
+  if (candidates.length === 1) return candidates[0]!;
   if (prevIdx >= 0) {
     const closest = candidates.reduce((a, b) =>
       Math.abs(a - prevIdx) <= Math.abs(b - prevIdx) ? a : b
     );
     return closest;
   }
-  return candidates[0];
+  return candidates[0]!;
 }
 
 /**
@@ -56,17 +71,15 @@ export default function RecordingSyncView({
   content = '',
   syncData = [],
   audioRef,
-  // @ts-expect-error TS(6133): '_theme' is declared but its value is never read.
-  _theme = 'light'
-}: any) {
+}: RecordingSyncViewProps) {
   const [highlightedLine, setHighlightedLine] = useState(-1);
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { mapByLine, mapByText } = useMemo(() => buildLineToTimeMap(syncData), [syncData]);
   const lines = useMemo(() => content.split('\n'), [content]);
 
   const syncedLineSet = useMemo(() => {
-    const set = new Set();
+    const set = new Set<number>();
     for (const e of syncData) {
       const idx = findLineIndexForSyncEntry(lines, e, -1);
       if (idx >= 0) set.add(idx);
@@ -75,7 +88,7 @@ export default function RecordingSyncView({
   }, [syncData, lines]);
 
   const getTimeForLine = useCallback(
-    (lineIndex: any) => {
+    (lineIndex: number) => {
       const text = lines[lineIndex] ?? '';
       return mapByText.get(text) ?? mapByLine.get(lineIndex);
     },
@@ -96,10 +109,10 @@ export default function RecordingSyncView({
         prevIdx = -1;
         return;
       }
-      let entry = null;
+      let entry: RecordingSyncEntry | null = null;
       for (let i = syncData.length - 1; i >= 0; i--) {
-        if (syncData[i].time <= t) {
-          entry = syncData[i];
+        if (syncData[i]!.time <= t) {
+          entry = syncData[i]!;
           break;
         }
       }
@@ -107,7 +120,6 @@ export default function RecordingSyncView({
       prevIdx = idx;
       setHighlightedLine(idx);
       if (idx >= 0 && containerRef.current) {
-        // @ts-expect-error TS(2339): Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
         const lineEl = containerRef.current.querySelector(`[data-line="${idx}"]`);
         lineEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
@@ -117,7 +129,7 @@ export default function RecordingSyncView({
     return () => audio.removeEventListener('timeupdate', handleTimeUpdate);
   }, [syncData, audioRef, content]);
 
-  const handleLineClick = (lineIndex: any) => {
+  const handleLineClick = (lineIndex: number) => {
     const time = getTimeForLine(lineIndex);
     if (time === undefined) return;
     const audio = audioRef?.current;
@@ -131,8 +143,7 @@ export default function RecordingSyncView({
         ref={containerRef}
         className="flex-1 overflow-auto p-4 font-mono text-sm min-w-0"
       >
-        // @ts-expect-error TS(7006): Parameter 'line' implicitly has an 'any' type.
-        {lines.map((line: any, i: number) => {
+        {lines.map((line, i) => {
           const isCurrent = i === highlightedLine;
           const isSynced = syncedLineSet.has(i);
           const canSeek = isSynced && getTimeForLine(i) !== undefined;
@@ -143,7 +154,13 @@ export default function RecordingSyncView({
               role={canSeek ? 'button' : undefined}
               tabIndex={canSeek ? 0 : undefined}
               onClick={canSeek ? () => handleLineClick(i) : undefined}
-              onKeyDown={canSeek ? (e: any) => e.key === 'Enter' && handleLineClick(i) : undefined}
+              onKeyDown={
+                canSeek
+                  ? (e: KeyboardEvent<HTMLDivElement>) => {
+                      if (e.key === 'Enter') handleLineClick(i);
+                    }
+                  : undefined
+              }
               className={`px-2 py-0.5 -mx-2 rounded transition-colors ${
                 canSeek
                   ? 'cursor-pointer ' +

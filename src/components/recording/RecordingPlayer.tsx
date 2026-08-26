@@ -1,16 +1,21 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type RefObject } from 'react';
 import { IconPlay, IconPause } from '@/components/icons';
 
 const BUFFER_THRESHOLD_SEC = 3;
 
-function formatTime(sec: any) {
+type RecordingPlayerProps = {
+  audioUrl?: string;
+  audioRef?: RefObject<HTMLAudioElement | null>;
+};
+
+function formatTime(sec: number) {
   if (!Number.isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function getBufferedAhead(audio: any) {
+function getBufferedAhead(audio: HTMLAudioElement) {
   if (!audio || audio.buffered.length === 0) return 0;
   const t = audio.currentTime;
   for (let i = 0; i < audio.buffered.length; i++) {
@@ -28,13 +33,13 @@ function getBufferedAhead(audio: any) {
 export default function RecordingPlayer({
   audioUrl = '',
   audioRef
-}: any) {
+}: RecordingPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const internalRef = useRef(null);
-  const bufferCheckRef = useRef(null);
+  const internalRef = useRef<HTMLAudioElement>(null);
+  const bufferCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ref = audioRef ?? internalRef;
 
   const tryStartPlay = useCallback(() => {
@@ -55,13 +60,13 @@ export default function RecordingPlayer({
       if (getBufferedAhead(audio) >= BUFFER_THRESHOLD_SEC || audio.readyState >= 4) {
         cleanup();
         setIsBuffering(false);
-        audio.play();
+        void audio.play();
       }
     };
 
     const buffered = getBufferedAhead(audio);
     if (buffered >= BUFFER_THRESHOLD_SEC || audio.readyState >= 4) {
-      audio.play();
+      void audio.play();
       return;
     }
 
@@ -69,7 +74,6 @@ export default function RecordingPlayer({
     audio.addEventListener('progress', check);
     audio.addEventListener('canplay', check, { once: true });
     audio.addEventListener('canplaythrough', check, { once: true });
-    // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
     bufferCheckRef.current = setInterval(check, 200);
     audio.addEventListener('error', cleanup, { once: true });
   }, [ref]);
