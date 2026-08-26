@@ -1,4 +1,4 @@
-// @ts-nocheck — context-owned useAdvancedSearchTabsDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
@@ -59,7 +59,7 @@ export function useAdvancedSearchTabsDomain() {
   // webdavReady owned by VaultProvider (useVault)
 
   const resolveClosedFileNode = useCallback(
-    async (entry) => {
+    async (entry: any) => {
       if (entry.kind !== 'file') return null;
       const { storageType, path } = entry;
       const fallbackName =
@@ -73,7 +73,7 @@ export function useAdvancedSearchTabsDomain() {
               path,
               name: fallbackName,
             };
-          return node?.type === 'file' ? node : null;
+          return (node as any)?.type === 'file' ? node : null;
         }
         if (!localRootHandle) {
           throw new Error('Local storage not ready');
@@ -82,7 +82,7 @@ export function useAdvancedSearchTabsDomain() {
           findFileNodeByPath(localTree, path) ||
           findNodeByPath(localTree, path) ||
           (await resolveLocalFileNode(localRootHandle, path));
-        return node?.type === 'file' ? node : null;
+        return (node as any)?.type === 'file' ? node : null;
       }
       if (storageType === 'webdav') {
         if (!webdavReady || !webdavConfig) {
@@ -90,7 +90,7 @@ export function useAdvancedSearchTabsDomain() {
         }
         const node =
           findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
-        if (node?.type === 'file') return node;
+        if ((node as any)?.type === 'file') return node;
         const meta = await webdavHead(webdavConfig, path);
         if (!meta) return null;
         return {
@@ -102,7 +102,7 @@ export function useAdvancedSearchTabsDomain() {
       }
       // s3
       const node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
-      if (node?.type === 'file') return node;
+      if ((node as any)?.type === 'file') return node;
       const client = getS3Client();
       if (!client || !s3Creds?.bucket) {
         throw new Error('S3 not ready');
@@ -161,8 +161,11 @@ export function useAdvancedSearchTabsDomain() {
   }, [openChatWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
 
   const restorePersistedWorkspaceTabs = useCallback(
-    async (persisted, options = {}) => {
-      const { activeId: explicitActiveId = null, navigateActiveUrl = false } = options;
+    async (persisted: any, options: any = {}) => {
+      const { activeId: explicitActiveId = null, navigateActiveUrl = false } = options as {
+        activeId?: string | null;
+        navigateActiveUrl?: boolean;
+      };
       if (!workspaceTabsEnabledRef.current || !persisted?.tabs?.length) return false;
 
       let restoredAny = false;
@@ -189,7 +192,7 @@ export function useAdvancedSearchTabsDomain() {
             storageType: tab.type,
             path: tab.path,
           });
-          if (node?.type !== 'file') continue;
+          if ((node as any)?.type !== 'file') continue;
           await selectFileRawRef.current?.(tab.type, node, { skipNavigate: true });
           restoredAny = true;
         } catch (err) {
@@ -224,7 +227,7 @@ export function useAdvancedSearchTabsDomain() {
   );
 
   useEffect(() => {
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: any) => {
       if (!workspaceTabsEnabledRef.current) return;
       if (e.defaultPrevented || e.isComposing) return;
       const mod = e.ctrlKey || e.metaKey;

@@ -1,5 +1,5 @@
-// @ts-nocheck — context-owned useBootstrapDomain (no bag / glueRef)
-import { useCallback, useMemo } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback } from 'react';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
@@ -48,22 +48,17 @@ export function useBootstrapDomain() {
   const { showAlert } = useAlertModal();
   const { isUnlocked, masterPassword, proceedWithoutStoredCreds, s3Creds, setMasterPassword, setS3Creds, setShowSetPasswordModal, unlock } = useAuth();
   const { loadS3Files, setWebdavConfig, webdavConfig } = useVault();
-  const { clearLastOpenedFileRef, clearOpenFileStateRef, currentFile, currentFileRef, editedFileName, editedFileNameRef, editorContent, editorContentRef, hasUnsavedEditorChangesRef, navGuardRef, revokeOpenFileObjectUrlRef, setCurrentFile, setEditedFileName, setEditorContent, suppressUnsavedNavGuardRef } = useFileSessionOwned();
+  const { clearLastOpenedFileRef, clearOpenFileStateRef, currentFile, currentFileRef, editedFileName, editedFileNameRef, editorContentRef, hasUnsavedEditorChangesRef, navGuardRef, revokeOpenFileObjectUrlRef, setCurrentFile, setEditedFileName, setEditorContent, suppressUnsavedNavGuardRef } = useFileSessionOwned();
   const { renameCurrentFileFullName, saveFile } = useFileSession();
   const { importFileContent, pendingPasswordSave, pendingWebAuthnSave, setImportFileContent, setPendingPasswordSave, setPendingWebAuthnSave, setSaveMethodModalCreds, setShowExportPasswordModal, setShowImportPasswordModal, setShowOverwriteCredsConfirmModal, setShowSaveMethodModal, setShowSuffixChangeConfirmModal, setShowUnsavedConfirmModal, suffixConfirmAction, webauthnPRFSupported } = useModalsOwned();
   const { closeWorkspaceTabById, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
   const navigate = useNavigate();
-  const llmProviderProfiles = useMemo(
-    () => resolveLlmProviderProfiles(s3Creds),
-    [s3Creds],
-  );
-
-  const handleUnlock = async (password) => {
+  const handleUnlock = async (password: any) => {
     try {
       if (isDesktopApp()) {
         const migrated = await migrateLegacyDesktopSecretsToStronghold(password);
         if (migrated.creds) {
-          unlock(migrated.creds, '');
+          unlock(migrated.creds as any, '');
           if (migrated.webdav) setWebdavConfig(migrated.webdav);
           return;
         }
@@ -103,7 +98,7 @@ export function useBootstrapDomain() {
         }
         await migrateLegacyDesktopSecretsToStronghold(password);
       }
-      unlock(creds, isDesktopApp() ? '' : password);
+      unlock(creds as any, isDesktopApp() ? '' : password);
       if (!isDesktopApp()) {
         try {
           const decryptedWebdav = await decryptWebdavConfig(password);
@@ -112,7 +107,7 @@ export function useBootstrapDomain() {
           console.warn('WebDAV config decrypt failed:', webdavErr);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       alert(e?.message || "비밀번호가 틀렸거나 데이터가 손상되었습니다.");
       console.error(e);
     }
@@ -122,7 +117,7 @@ export function useBootstrapDomain() {
     if (isDesktopApp() && getDesktopAppEntryLockModeSync() === 'biometric') {
       const desktop = await unlockDesktopWithBiometricGate();
       if (desktop.creds) {
-        unlock(desktop.creds, '');
+        unlock(desktop.creds as any, '');
         if (desktop.webdav) setWebdavConfig(desktop.webdav);
         loadS3Files(desktop.creds);
       } else {
@@ -139,8 +134,8 @@ export function useBootstrapDomain() {
         const webdav = await loadDesktopWebdavConfig();
         if (webdav) setWebdavConfig(webdav);
       }
-      unlock(creds, '');
-      loadS3Files(creds);
+      unlock(creds as any, '');
+      loadS3Files(creds as any);
       navigate('/');
     } else {
       const password = await unlockWithWebAuthn();
@@ -148,8 +143,8 @@ export function useBootstrapDomain() {
     }
   };
 
-  const saveEncryptedSettings = async (creds, password, options = {}) => {
-    const { stayOnSettings = false } = options;
+  const saveEncryptedSettings = async (creds: any, password: any, options: any = {}) => {
+    const { stayOnSettings = false } = options as { stayOnSettings?: boolean };
     try {
       if (isDesktopApp()) {
         await saveDesktopCreds(creds);
@@ -201,7 +196,7 @@ export function useBootstrapDomain() {
       } else {
         navigate('/');
       }
-    } catch (e) {
+    } catch (e: any) {
       alert("설정 저장 중 오류가 발생했습니다: " + e.message);
     }
   };
@@ -228,9 +223,9 @@ export function useBootstrapDomain() {
     'endpoint',
   ];
 
-  const normalizeCredsForCompare = (creds) => {
+  const normalizeCredsForCompare = (creds: any) => {
     if (!creds || typeof creds !== 'object') return null;
-    const out = {};
+    const out: Record<string, any> = {};
     for (const key of CREDS_COMPARE_KEYS) {
       if (key === 'llmProviderProfiles') {
         out[key] = JSON.stringify(resolveLlmProviderProfiles(creds));
@@ -241,26 +236,26 @@ export function useBootstrapDomain() {
     return out;
   };
 
-  const isCredsDirty = (formCreds, savedCreds) => {
+  const isCredsDirty = (formCreds: any, savedCreds: any) => {
     const a = normalizeCredsForCompare(formCreds);
     const b = normalizeCredsForCompare(savedCreds);
     if (!a || !b) return !!a !== !!b;
     return CREDS_COMPARE_KEYS.some((key) => a[key] !== b[key]);
   };
 
-  const isS3ConnectionDirty = (formCreds, savedCreds) => {
+  const isS3ConnectionDirty = (formCreds: any, savedCreds: any) => {
     const a = normalizeCredsForCompare(formCreds);
     const b = normalizeCredsForCompare(savedCreds);
     if (!a || !b) return !!a !== !!b;
     return S3_CONNECTION_KEYS.some((key) => a[key] !== b[key]);
   };
 
-  const shouldConfirmDesktopCredsOverwrite = (formCreds, savedCreds) => {
+  const shouldConfirmDesktopCredsOverwrite = (formCreds: any, savedCreds: any) => {
     if (!isDesktopApp()) return true;
     return isS3ConnectionDirty(formCreds, savedCreds);
   };
 
-  const handleSaveS3Creds = (creds) => {
+  const handleSaveS3Creds = (creds: any) => {
     if (isDesktopApp()) {
       void (async () => {
         try {
@@ -286,7 +281,7 @@ export function useBootstrapDomain() {
             title: '연결 정보',
             message: '연결 정보 업데이트가 완료되었습니다.',
           });
-        } catch (e) {
+        } catch (e: any) {
           alert(e?.message || '설정 저장 중 오류가 발생했습니다.');
         }
       })();
@@ -297,7 +292,7 @@ export function useBootstrapDomain() {
     setShowSaveMethodModal(true);
   };
 
-  const handleSaveWithWebAuthn = async (creds) => {
+  const handleSaveWithWebAuthn = async (creds: any) => {
     if (typeof localStorage !== 'undefined' && (localStorage.getItem('s3NotesEncrypted') || getStoredWebAuthn())) {
       setPendingWebAuthnSave(creds);
       setShowOverwriteCredsConfirmModal(true);
@@ -333,7 +328,7 @@ export function useBootstrapDomain() {
     );
   };
 
-  const requestSaveEncryptedSettings = (creds, password, options = {}) => {
+  const requestSaveEncryptedSettings = (creds: any, password: any, options: any = {}) => {
     if (hasStoredCreds()) {
       if (isDesktopApp() && !shouldConfirmDesktopCredsOverwrite(creds, s3Creds)) {
         void saveEncryptedSettings(creds, password, options);
@@ -387,7 +382,7 @@ export function useBootstrapDomain() {
     setShowExportPasswordModal(true);
   };
 
-  const handleExportConfirm = async (exportPassword) => {
+  const handleExportConfirm = async (exportPassword: any) => {
     try {
       const dataToExport = s3Creds;
       if (!dataToExport?.bucket) {
@@ -404,18 +399,19 @@ export function useBootstrapDomain() {
       a.click();
       URL.revokeObjectURL(url);
       setShowExportPasswordModal(false);
-    } catch (e) {
+    } catch (e: any) {
       alert("내보내기 중 오류가 발생했습니다: " + (e?.message || e));
     }
   };
 
-  const handleImportCreds = (e) => {
+  const handleImportCreds = (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = (event: ProgressEvent<FileReader>) => {
       try {
-        const content = event.target.result;
+        const content = event.target?.result;
+        if (typeof content !== 'string') return;
         const parsed = JSON.parse(content);
         if (!parsed || typeof parsed !== 'object' || !parsed.salt || !parsed.iv || !parsed.ciphertext) {
           alert("잘못된 백업 파일 형식입니다. 비밀번호로 암호화된 JSON 파일이어야 합니다.");
@@ -431,7 +427,7 @@ export function useBootstrapDomain() {
     e.target.value = '';
   };
 
-  const handleImportConfirm = async (importPassword) => {
+  const handleImportConfirm = async (importPassword: any) => {
     try {
       const encryptedObj = JSON.parse(importFileContent);
       const decryptedStr = await decryptData(importPassword, encryptedObj);
@@ -460,7 +456,7 @@ export function useBootstrapDomain() {
     }
   };
 
-  const handleSettingsClose = (formCreds) => {
+  const handleSettingsClose = (formCreds: any) => {
     if (!isUnlocked && hasStoredCreds()) {
       alert("저장소 잠금 해제 후 닫을 수 있습니다.");
       return;
@@ -531,9 +527,9 @@ export function useBootstrapDomain() {
     return editable && file.content !== editorContentRef.current;
   }, []);
 
-  const allowWorkspaceTabNavigation = useCallback(({ currentLocation, nextLocation }) => {
+  const allowWorkspaceTabNavigation = useCallback(({ currentLocation, nextLocation }: any) => {
     if (!workspaceTabsEnabledRef.current) return false;
-    const isShell = (pathname) => {
+    const isShell = (pathname: any) => {
       const p = String(pathname || '');
       return (
         p === '/' ||
@@ -552,7 +548,7 @@ export function useBootstrapDomain() {
     shouldAllowNavigation: allowWorkspaceTabNavigation,
   });
 
-  const revokeOpenFileObjectUrl = (file) => {
+  const revokeOpenFileObjectUrl = (file: any) => {
     if (
       file &&
       (file.viewer === 'image' || file.viewer === 'pdf' || file.viewer === 'audio' || file.viewer === 'video') &&
@@ -569,7 +565,7 @@ export function useBootstrapDomain() {
       closeWorkspaceTabById(active.id, { skipDirtyConfirm: true });
       return;
     }
-    setCurrentFile((prev) => {
+    setCurrentFile((prev: any) => {
       revokeOpenFileObjectUrl(prev);
       return null;
     });

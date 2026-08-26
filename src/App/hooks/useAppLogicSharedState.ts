@@ -1,4 +1,3 @@
-// @ts-nocheck — AppLogic compose: providers + setup + domain hooks
 /**
  * Thin AppLogic compose. Owned state in App*StateProviders;
  * setup + use*Domain are context-owned (no bag / glueRef). Merge returns only.
@@ -36,7 +35,7 @@ import { useFileOpenRoutingDomain } from '@/App/hooks/useFileOpenRoutingDomain';
 import { useDownloadSessionDomain } from '@/App/hooks/useDownloadSessionDomain';
 import { useTempChatRecordingDomain } from '@/App/hooks/useTempChatRecordingDomain';
 
-export function useAppLogicSharedState() {
+export function useAppLogicSharedState(): Record<string, any> {
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
   const { showAlert } = useAlertModal();
   const { showToast } = useToast();
@@ -106,7 +105,7 @@ export function useAppLogicSharedState() {
     suppressUnsavedNavGuardRef: fileOwned.suppressUnsavedNavGuardRef,
     ...bootstrap, ...session, ...appChrome, ...advancedSearch, ...chat, ...editorImage,
     ...recordingEffects, ...fileOpen, ...download, ...tempChat,
-    renameS3File: (...args) => fileSessionApi.renameS3File?.(...args),
-    renameLocalFile: (...args) => fileSessionApi.renameLocalFile?.(...args),
+    renameS3File: (...args: any[]) => fileSessionApi.renameS3File?.(...args),
+    renameLocalFile: (...args: any[]) => fileSessionApi.renameLocalFile?.(...args),
   };
 }

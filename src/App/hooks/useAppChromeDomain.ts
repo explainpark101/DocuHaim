@@ -1,4 +1,3 @@
-// @ts-nocheck — context-owned useAppChromeDomain (no bag / glueRef)
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
@@ -24,8 +23,8 @@ import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
  */
 export function useAppChromeDomain() {
   const { isUnlocked, s3Creds } = useAuth();
-  const { getBackendForType, getS3Client, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspace, storageMode, webdavConfig, webdavTree } = useVault();
-  const { closeCurrentFileRef, currentFile, currentFileRef, editedFileName, editedFileNameRef, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, maybeAutoSaveOnFocusChangeRef, navGuardRef, saveFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
+  const { getBackendForType, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspace, storageMode, webdavConfig, webdavTree } = useVault();
+  const { closeCurrentFileRef, currentFileRef, editedFileNameRef, editorContentRef, flushSessionEditorToWorkspaceRef, maybeAutoSaveOnFocusChangeRef, navGuardRef, saveFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { pendingCloseTabId, setPendingCloseTabId, setShowCloseFileConfirmModal } = useModalsOwned();
   const { closeWorkspaceTabById, setState: setWorkspaceTabs, workspaceTabsRef } = useWorkspaceTabsCtx();

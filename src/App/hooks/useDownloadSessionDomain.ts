@@ -1,4 +1,4 @@
-// @ts-nocheck — context-owned useDownloadSessionDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useCallback } from 'react';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,7 +50,7 @@ export function useDownloadSessionDomain() {
   const { showAlert } = useAlertModal();
   const { s3Creds } = useAuth();
   const { getBackendForType, getS3Client, loadS3Files, localRootHandle, refreshLocalTree, refreshWebdavTree, setSessionWorkspace, storageMode, webdavConfig, webdavReady } = useVault();
-  const { connectedHaimStorageTypeRef, currentFile, currentFileRef, downloadSessionWorkspaceRef, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, handleRequestSessionSaveChooserRef, requestEncMdPasswordRef, saveFileRef, sessionVaultBindingsRef, sessionWorkspaceRef, setCurrentFile, setEditorContent, setEncMdPrompt, writeSessionFileToHaimRef } = useFileSessionOwned();
+  const { connectedHaimStorageTypeRef, currentFile, currentFileRef, downloadSessionWorkspaceRef, editorContentRef, flushSessionEditorToWorkspaceRef, handleRequestSessionSaveChooserRef, requestEncMdPasswordRef, saveFileRef, sessionVaultBindingsRef, sessionWorkspaceRef, setCurrentFile, setEditorContent, setEncMdPrompt, writeSessionFileToHaimRef } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { downloadMarkdownImageZipRef, readBackendBytesRef } = useTreeOpsOwned();
   const { downloadModalMode, openUnsupportedFolderDownloadModal, setDownloadComplete, setDownloadModalMode, setDownloadProgress, setIsSavingSessionToNote, setShowDownloadMethodModal, setShowSaveSessionToNoteModal, triggerBlobDownload } = useModalsOwned();
@@ -65,7 +65,7 @@ export function useDownloadSessionDomain() {
         if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
         const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, currentFile.id);
         const content = new TextDecoder('utf-8').decode(body);
-        setCurrentFile((prev) => ({
+        setCurrentFile((prev: any) => ({
           ...prev,
           content,
           viewer: 'raw',
@@ -83,7 +83,7 @@ export function useDownloadSessionDomain() {
         return;
       }
       const content = decodeSessionText(record.bytes);
-      setCurrentFile((prev) => ({
+      setCurrentFile((prev: any) => ({
         ...prev,
         content,
         viewer: 'raw',
@@ -92,8 +92,8 @@ export function useDownloadSessionDomain() {
       setEditorContent(content);
     } else if (currentFile.type === 'local' && currentFile.handle) {
       try {
-        const content = await currentFile.handle.getFile().then((f) => f.text());
-        setCurrentFile((prev) => ({
+        const content = await currentFile.handle.getFile().then((f: any) => f.text());
+        setCurrentFile((prev: any) => ({
           ...prev,
           content,
           viewer: 'raw',
@@ -108,7 +108,7 @@ export function useDownloadSessionDomain() {
       try {
         const backend = createWebdavBackend(webdavConfig);
         const { text, contentLength } = await backend.readText(currentFile.id);
-        setCurrentFile((prev) => ({
+        setCurrentFile((prev: any) => ({
           ...prev,
           content: text,
           viewer: 'raw',
@@ -143,7 +143,7 @@ export function useDownloadSessionDomain() {
     setDownloadComplete(false);
   };
 
-  const readSessionBytes = async (path) => {
+  const readSessionBytes = async (path: any) => {
     const ws = sessionWorkspaceRef.current;
     const cur = currentFileRef.current;
     const candidates = [
@@ -176,7 +176,7 @@ export function useDownloadSessionDomain() {
     sessionFile = null,
     content = null,
     confirmOverwrite = false,
-  }) => {
+  }: any) => {
     const storageType = connectedHaimStorageType();
     const file = sessionFile || currentFileRef.current;
     if (!file || file.type !== SESSION_STORAGE_TYPE) {
@@ -251,7 +251,7 @@ export function useDownloadSessionDomain() {
 
     const savedByteLength = new TextEncoder().encode(textToSave).length;
     if (isActive) {
-      setCurrentFile((prev) => {
+      setCurrentFile((prev: any) => {
         if (!prev || prev.type !== SESSION_STORAGE_TYPE || prev.id !== file.id) return prev;
         const next = { ...prev, content: textToSave, size: savedByteLength };
         currentFileRef.current = next;
@@ -263,7 +263,7 @@ export function useDownloadSessionDomain() {
     const existingTab = findFileTab(workspaceTabsRef.current, SESSION_STORAGE_TYPE, file.id);
     if (existingTab) {
       const tabId = `${SESSION_STORAGE_TYPE}:${file.id}`;
-      const patch = {
+      const patch: any = {
         currentFile: {
           ...existingTab.currentFile,
           content: textToSave,
@@ -294,7 +294,7 @@ export function useDownloadSessionDomain() {
     imageSyntax = 'markdown',
     headingMax = 1,
     tableFormat = 'haim',
-  } = {}) => {
+  }: any = {}) => {
     flushSessionEditorToWorkspaceRef.current?.();
     const cur = currentFileRef.current;
     if (!cur || cur.type !== SESSION_STORAGE_TYPE) return null;
@@ -309,7 +309,7 @@ export function useDownloadSessionDomain() {
         getCachedTableStyleTemplate(id),
       );
     }
-    const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
+    const effectiveSyntax = (imageMode === 'base64' ? 'markdown' : imageSyntax) as 'markdown' | 'wiki';
     const bundled = await bundleSessionMarkdownImages({
       markdown,
       notePath: cur.id,
@@ -358,8 +358,8 @@ export function useDownloadSessionDomain() {
     setOperationStatus('다운로드 완료');
   };
 
-  const writeSessionWorkspaceToDirectory = async (dirHandle, workspace, onProgress) => {
-    const records = Object.values(workspace?.files || {});
+  const writeSessionWorkspaceToDirectory = async (dirHandle: any, workspace: any, onProgress: any) => {
+    const records = Object.values(workspace?.files || {}) as any[];
     const total = Math.max(records.length, 1);
     let done = 0;
     for (const record of records) {
@@ -415,7 +415,7 @@ export function useDownloadSessionDomain() {
             destPath: binding.destPath,
             sessionFile: cur,
           });
-        } catch (error) {
+        } catch (error: any) {
           console.error('Save session to Haim failed:', error);
           alert('노트 저장에 실패했습니다: ' + (error?.message || error));
         }
@@ -425,7 +425,7 @@ export function useDownloadSessionDomain() {
     handleRequestSaveSessionToNote();
   };
 
-  const handleConfirmSaveSessionToNote = async ({ path, fileName }) => {
+  const handleConfirmSaveSessionToNote = async ({ path, fileName }: any) => {
     let finalName = String(fileName || '').trim() || 'untitled.md';
     if (!/\.[^./\\]+$/.test(finalName)) finalName += '.md';
     if (finalName.includes('/') || finalName.includes('\\')) {
@@ -446,7 +446,7 @@ export function useDownloadSessionDomain() {
         message: '노트를 저장했습니다.',
         detail: destPath,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save session to note failed:', error);
       alert('노트 저장에 실패했습니다: ' + (error?.message || error));
     } finally {
@@ -454,20 +454,20 @@ export function useDownloadSessionDomain() {
     }
   };
 
-  const readBackendBytes = async (storageType, path) => {
+  const readBackendBytes = async (storageType: any, path: any) => {
     const backend = getBackendForType(storageType);
     const { body } = await backend.readBytes(path);
     return body instanceof Uint8Array ? body : new Uint8Array(body);
   };
 
   const downloadMarkdownImageZip = async (
-    storageType,
-    notePath,
-    fileName,
-    markdownText,
-    imageSyntax = 'markdown',
+    storageType: any,
+    notePath: any,
+    fileName: any,
+    markdownText: any,
+    imageSyntax: any = 'markdown',
   ) => {
-    const plan = planMarkdownImageExport(markdownText, notePath, { syntax: imageSyntax });
+    const plan = planMarkdownImageExport(markdownText, notePath, { syntax: imageSyntax as any });
     if (!plan.images.length) return false;
     const { entries, missing } = await collectMarkdownExportImageBytes(plan.images, (path) =>
       readBackendBytes(storageType, path),
@@ -479,7 +479,7 @@ export function useDownloadSessionDomain() {
     return true;
   };
 
-  const downloadMarkdownImageBase64 = async (storageType, notePath, fileName, markdownText) => {
+  const downloadMarkdownImageBase64 = async (storageType: any, notePath: any, fileName: any, markdownText: any) => {
     const built = await buildMarkdownImageBase64Content(storageType, notePath, markdownText);
     if (!built) return false;
     triggerBlobDownload(
@@ -492,7 +492,7 @@ export function useDownloadSessionDomain() {
   };
 
   /** Build single-MD (base64-embedded) markdown for download or clipboard. */
-  const buildMarkdownImageBase64Content = async (storageType, notePath, markdownText) => {
+  const buildMarkdownImageBase64Content = async (storageType: any, notePath: any, markdownText: any) => {
     const plan = planMarkdownImageExport(markdownText, notePath, { syntax: 'markdown' });
     if (!plan.images.length) {
       return { markdown: plan.markdown || markdownText, missing: [] };
@@ -506,7 +506,7 @@ export function useDownloadSessionDomain() {
     };
   };
 
-  const copyMarkdownTextToClipboard = async (markdown) => {
+  const copyMarkdownTextToClipboard = async (markdown: any) => {
     const ok = await copyText(markdown, {
       message: '파일이 클립보드에 복사되었습니다',
       icon: 'copy',
@@ -523,7 +523,7 @@ export function useDownloadSessionDomain() {
     imageMode = 'base64',
     headingMax = 1,
     tableFormat = 'haim',
-  } = {}) => {
+  }: any = {}) => {
     if (!currentFile) return;
     if (imageMode !== 'base64') return;
     const storageType = currentFile.type;
@@ -572,7 +572,7 @@ export function useDownloadSessionDomain() {
       if (missingMessage) alert(missingMessage);
       setShowDownloadMethodModal(false);
       setDownloadModalMode('default');
-    } catch (e) {
+    } catch (e: any) {
       console.error('클립보드 복사 실패:', e);
       alert('클립보드 복사에 실패했습니다: ' + (e?.message || e));
     }
@@ -584,7 +584,7 @@ export function useDownloadSessionDomain() {
     imageSyntax = 'markdown',
     headingMax = 1,
     tableFormat = 'haim',
-  } = {}) => {
+  }: any = {}) => {
     if (!currentFile) return;
     const storageType = currentFile.type;
     if (storageType === SESSION_STORAGE_TYPE) {
@@ -596,7 +596,7 @@ export function useDownloadSessionDomain() {
         } else {
           await downloadSessionWorkspaceRef.current?.();
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error('세션 다운로드 실패:', e);
         alert('다운로드에 실패했습니다: ' + (e?.message || e));
       }
@@ -618,7 +618,7 @@ export function useDownloadSessionDomain() {
             getCachedTableStyleTemplate(id),
           );
         }
-        const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
+        const effectiveSyntax = (imageMode === 'base64' ? 'markdown' : imageSyntax) as 'markdown' | 'wiki';
         const bundled =
           imageMode === 'base64'
             ? await downloadMarkdownImageBase64(storageType, notePath, fileName, markdown)
@@ -636,7 +636,7 @@ export function useDownloadSessionDomain() {
         const body = await readBackendBytes(storageType, notePath);
         triggerBlobDownload(new Blob([body]), fileName);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('파일 다운로드 실패:', e);
       alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
     }
@@ -651,7 +651,7 @@ export function useDownloadSessionDomain() {
     imageSyntax = 'markdown',
     headingMax = 1,
     tableFormat = 'haim',
-  } = {}) => {
+  }: any = {}) => {
     if (!currentFile) return;
     const storageType = currentFile.type;
     if (
@@ -668,7 +668,7 @@ export function useDownloadSessionDomain() {
         setShowDownloadMethodModal(false);
         return;
       }
-      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const dirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
       const canWrite = await ensureDirectoryReadWritePermission(dirHandle);
       if (!canWrite) {
         throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
@@ -687,7 +687,7 @@ export function useDownloadSessionDomain() {
           const bundled = prepared?.bundled;
           if (!bundled) throw new Error('세션 문서를 준비하지 못했습니다.');
 
-          const writeSingleMarkdownFile = async (content) => {
+          const writeSingleMarkdownFile = async (content: any) => {
             const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
             const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
             const writable = await fileHandle.createWritable();
@@ -730,7 +730,7 @@ export function useDownloadSessionDomain() {
 
         const flushed = flushSessionEditorToWorkspaceRef.current?.() ?? sessionWorkspaceRef.current;
         if (!flushed) throw new Error('다운로드 세션이 없습니다.');
-        await writeSessionWorkspaceToDirectory(dirHandle, flushed, (percent) =>
+        await writeSessionWorkspaceToDirectory(dirHandle, flushed, (percent: any) =>
           setDownloadProgress(percent),
         );
         setDownloadComplete(true);
@@ -750,10 +750,10 @@ export function useDownloadSessionDomain() {
             getCachedTableStyleTemplate(id),
           );
         }
-        const effectiveSyntax = imageMode === 'base64' ? 'markdown' : imageSyntax;
-        const plan = planMarkdownImageExport(markdown, notePath, { syntax: effectiveSyntax });
+        const effectiveSyntax = (imageMode === 'base64' ? 'markdown' : imageSyntax) as 'markdown' | 'wiki';
+        const plan = planMarkdownImageExport(markdown, notePath, { syntax: effectiveSyntax as any });
 
-        const writeSingleMarkdownFile = async (content) => {
+        const writeSingleMarkdownFile = async (content: any) => {
           const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
           const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
           const writable = await fileHandle.createWritable();
@@ -847,7 +847,7 @@ export function useDownloadSessionDomain() {
         setDownloadProgress(100);
       }
       setDownloadComplete(true);
-    } catch (e) {
+    } catch (e: any) {
       if (e?.name === 'AbortError') {
         setShowDownloadMethodModal(false);
         return;
@@ -865,7 +865,7 @@ export function useDownloadSessionDomain() {
    * @param {{ title?: string, message?: string, confirmLabel?: string }} [opts]
    * @returns {Promise<string>}
    */
-  const requestEncMdPassword = useCallback((opts = {}) => {
+  const requestEncMdPassword = useCallback((opts: any = {}): Promise<string> => {
     return new Promise((resolve, reject) => {
       setEncMdPrompt({
         title: opts.title || '암호화된 노트',
@@ -874,7 +874,7 @@ export function useDownloadSessionDomain() {
           '비밀번호를 입력하세요.',
         confirmLabel: opts.confirmLabel || '확인',
         error: '',
-        resolve: (pw) => {
+        resolve: (pw: any) => {
           setEncMdPrompt(null);
           resolve(pw);
         },

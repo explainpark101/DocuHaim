@@ -1,7 +1,7 @@
-// @ts-nocheck — context-owned useFileOpenRoutingDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
+import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useFileSession } from '@/App/hooks/useFileSession';
@@ -39,7 +39,7 @@ import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseO
  */
 export function useFileOpenRoutingDomain() {
   const { isUnlocked, s3Creds } = useAuth();
-  const { localFolderRestoreSettled, setLocalFolderRestoreSettled, setPendingLocalFolderName, setShowRestoreLocalFolderModal } = useBootstrapOwned();
+  const { localFolderRestoreSettled, setLocalFolderRestoreSettled, setPendingLocalFolderName, setShowRestoreLocalFolderModal } = useModalsOwned();
   const {
     getS3Client,
     loadLocalFolderChildren,
@@ -56,7 +56,7 @@ export function useFileOpenRoutingDomain() {
     webdavReady,
     webdavTree,
   } = useVault();
-  const { clearOpenFileStateRef, currentFile, currentFileRef, editorContent, editorContentRef, hasProcessedOpenFromUrlRef, hasPromptedLocalFolderRestoreRef, hasRestoredFromPrintRef, hasRestoredLastFileRef, hasSeededTabsRestoreQueueRef, loadLastOpenedFileRef, openSessionWorkspaceRef, prevEditorContentRef, prevHistoryViewPathRef, restorePersistedWorkspaceTabsRef, restoringWorkspaceTabsRef, selectFileRawRef, selectFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
+  const { clearOpenFileStateRef, currentFileRef, editorContentRef, hasProcessedOpenFromUrlRef, hasPromptedLocalFolderRestoreRef, hasRestoredFromPrintRef, hasRestoredLastFileRef, hasSeededTabsRestoreQueueRef, loadLastOpenedFileRef, openSessionWorkspaceRef, prevEditorContentRef, prevHistoryViewPathRef, restorePersistedWorkspaceTabsRef, restoringWorkspaceTabsRef, selectFileRawRef, selectFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
   const { selectFileRaw } = useFileSession();
   const { createModalContext } = useTreeOpsOwned();
   const { handleTreeNodeSelect } = useTreeOps();
@@ -65,21 +65,21 @@ export function useFileOpenRoutingDomain() {
   const location = useLocation();
 
   const selectFile = useCallback(
-    (type, node) => {
+    (type: any, node: any) => {
       void handleTreeNodeSelect(type, node, {});
     },
     [handleTreeNodeSelect],
   );
 
   const ensureAdvancedSearchBrowseFolder = useCallback(
-    async (folderPath) => {
+    async (folderPath: any) => {
       if (!folderPath) return;
       if (storageMode === STORAGE_MODE_LOCAL) {
         const node =
           findNodeByPath(localTree, folderPath) ||
           findNodeByPath(localTree, folderPath.replace(/\/$/, '')) ||
           findNodeByPath(localTree, `${folderPath.replace(/\/$/, '')}/`);
-        if (node?.type === 'folder') {
+        if ((node as any)?.type === 'folder') {
           await loadLocalFolderChildren(node);
         }
         return;
@@ -89,7 +89,7 @@ export function useFileOpenRoutingDomain() {
           findNodeByPath(webdavTree, folderPath) ||
           findNodeByPath(webdavTree, folderPath.replace(/\/$/, '')) ||
           findNodeByPath(webdavTree, `${folderPath.replace(/\/$/, '')}/`);
-        if (node?.type === 'folder') {
+        if ((node as any)?.type === 'folder') {
           await loadWebdavFolderChildren(node);
         }
       }
@@ -98,7 +98,7 @@ export function useFileOpenRoutingDomain() {
   );
 
   const ensureCreateModalFolderLoaded = useCallback(
-    async (folderPath) => {
+    async (folderPath: any) => {
       const st = createModalContext?.storageType;
       if (!folderPath || !st) return;
       if (st === 'local') {
@@ -106,7 +106,7 @@ export function useFileOpenRoutingDomain() {
           findNodeByPath(localTree, folderPath) ||
           findNodeByPath(localTree, folderPath.replace(/\/$/, '')) ||
           findNodeByPath(localTree, `${folderPath.replace(/\/$/, '')}/`);
-        if (node?.type === 'folder') {
+        if ((node as any)?.type === 'folder') {
           await loadLocalFolderChildren(node);
         }
         return;
@@ -116,7 +116,7 @@ export function useFileOpenRoutingDomain() {
           findNodeByPath(webdavTree, folderPath) ||
           findNodeByPath(webdavTree, folderPath.replace(/\/$/, '')) ||
           findNodeByPath(webdavTree, `${folderPath.replace(/\/$/, '')}/`);
-        if (node?.type === 'folder') {
+        if ((node as any)?.type === 'folder') {
           await loadWebdavFolderChildren(node);
         }
       }
@@ -139,7 +139,7 @@ export function useFileOpenRoutingDomain() {
   }, [createModalContext?.storageType, localTree, webdavTree, s3Tree]);
 
   const handleOpenInNewWindow = useCallback(
-    async (storageType, node) => {
+    async (storageType: any, node: any) => {
       if (node?.type !== 'file' || !node?.path) return;
 
       const path = node.path;
@@ -251,7 +251,7 @@ export function useFileOpenRoutingDomain() {
     const pendingFile = pending.currentFile;
     if (!pendingFile || typeof pendingFile !== 'object') return;
 
-    setCurrentFile((prev) => {
+    setCurrentFile((prev: any) => {
       if (prev && pendingFile.id && prev.id === pendingFile.id) {
         return {
           ...prev,
@@ -285,7 +285,7 @@ export function useFileOpenRoutingDomain() {
       else if (first?.kind === 'settings') openIds.add(SETTINGS_TAB_ID);
       else if (first?.kind === 'file') openIds.add(`${first.type}:${first.path}`);
     }
-    seedTabsRestoreQueueFromSnapshot(source, openIds);
+    seedTabsRestoreQueueFromSnapshot(source, openIds as Set<string>);
   }, [isUnlocked, workspaceTabsEnabled]);
 
   // Nothing to restore — allow live tab persistence (avoids blocking fresh sessions).
@@ -302,7 +302,7 @@ export function useFileOpenRoutingDomain() {
     if (!isUnlocked || !isDesktopApp()) return undefined;
     let cancelled = false;
 
-    const processPaths = async (paths) => {
+    const processPaths = async (paths: any) => {
       const abs = (paths || []).filter(Boolean);
       if (!abs.length || cancelled) return;
       const routes = await resolveDesktopOpenPaths(abs);
@@ -499,7 +499,7 @@ export function useFileOpenRoutingDomain() {
           { replace: true },
         );
       }
-      if (node?.type === 'file') {
+      if ((node as any)?.type === 'file') {
         if (routeExportPath || isExportPdfAppPathname(location.pathname)) {
           await selectFileRawRef.current?.(type, node, { skipNavigate: true });
         } else {
@@ -618,7 +618,7 @@ export function useFileOpenRoutingDomain() {
     if (!routeNotePath) {
       // Bare /export-pdf keeps whatever was opened via navigation state.
       if (isExportPdfAppPathname(location.pathname)) return;
-      prevHistoryViewPathRef.current = null;
+      prevHistoryViewPathRef.current = null as any;
       // Bare `/` does not close workspace tabs (tab bar owns lifecycle).
       return;
     }
@@ -660,7 +660,7 @@ export function useFileOpenRoutingDomain() {
         node = findFileNodeByPath(s3Tree, routeNotePath) || findNodeByPath(s3Tree, routeNotePath);
       }
       if (cancelled) return;
-      if (node?.type === 'file') {
+      if ((node as any)?.type === 'file') {
         await selectFileRawRef.current?.(type, node, { skipNavigate: true });
         return;
       }

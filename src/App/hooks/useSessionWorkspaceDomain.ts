@@ -1,4 +1,4 @@
-// @ts-nocheck — context-owned useSessionWorkspaceDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
@@ -41,7 +41,7 @@ export function useSessionWorkspaceDomain() {
     sessionObjectUrlsRef.current.clear();
   }, []);
 
-  const getSessionObjectUrl = useCallback((path, bytes, mime) => {
+  const getSessionObjectUrl = useCallback((path: any, bytes: any, mime: any) => {
     const existing = sessionObjectUrlsRef.current.get(path);
     if (existing) return existing;
     const url = URL.createObjectURL(new Blob([bytes], { type: mime || 'application/octet-stream' }));
@@ -80,10 +80,10 @@ export function useSessionWorkspaceDomain() {
   }, [clearOpenFileStateRef, hasUnsavedEditorChangesRef, navigate, revokeSessionObjectUrls]);
 
   const applySessionFileToEditor = useCallback(
-    (path, workspace, options = {}) => {
+    (path: any, workspace: any, options: any = {}) => {
       const record = workspace?.files?.[path];
       if (!record) return false;
-      const skipNavigate = options.skipNavigate === true;
+      const skipNavigate = (options as { skipNavigate?: boolean }).skipNavigate === true;
       const viewer = sessionViewerForName(record.name);
       const size = record.bytes.byteLength;
       const mime = mimeForSessionFileName(record.name);
@@ -133,7 +133,7 @@ export function useSessionWorkspaceDomain() {
   );
 
   const openSessionWorkspace = useCallback(
-    async (workspace) => {
+    async (workspace: any) => {
       if (
         sessionWorkspaceRef.current &&
         !window.confirm('이미 열린 다운로드 세션이 있습니다. 새 파일로 바꾸면 현재 세션은 사라집니다. 계속할까요?')
@@ -157,12 +157,12 @@ export function useSessionWorkspaceDomain() {
   );
 
   const handleOpenSessionFiles = useCallback(
-    async (fileList, origin) => {
+    async (fileList: any, origin: any) => {
       setIsOpeningSession(true);
       try {
         const workspace = await workspaceFromFileList(fileList, origin);
         return await openSessionWorkspace(workspace);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Session open failed:', error);
         alert(error?.message || '파일을 열지 못했습니다.');
         return false;
@@ -180,10 +180,10 @@ export function useSessionWorkspaceDomain() {
     }
     setIsOpeningSession(true);
     try {
-      const dirHandle = await window.showDirectoryPicker();
+      const dirHandle = await (window as any).showDirectoryPicker();
       const workspace = await workspaceFromDirectoryHandle(dirHandle);
       await openSessionWorkspace(workspace);
-    } catch (error) {
+    } catch (error: any) {
       if (error?.name === 'AbortError') return;
       console.error('Session folder open failed:', error);
       alert(error?.message || '폴더를 열지 못했습니다.');
@@ -193,12 +193,12 @@ export function useSessionWorkspaceDomain() {
   }, [openSessionWorkspace]);
 
   const handleDropSessionTransfer = useCallback(
-    async (dataTransfer) => {
+    async (dataTransfer: any) => {
       setIsOpeningSession(true);
       try {
         const workspace = await workspaceFromDataTransfer(dataTransfer);
         await openSessionWorkspace(workspace);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Session drop failed:', error);
         alert(error?.message || '드롭한 항목을 열지 못했습니다.');
       } finally {
@@ -218,7 +218,7 @@ export function useSessionWorkspaceDomain() {
     if (cur?.type === SESSION_STORAGE_TYPE && cur.id) {
       const record = flushed.files[cur.id];
       const text = editorContentRef.current ?? '';
-      setCurrentFile((prev) => {
+      setCurrentFile((prev: any) => {
         if (!prev || prev.type !== SESSION_STORAGE_TYPE || prev.id !== cur.id) return prev;
         const next = {
           ...prev,
@@ -238,7 +238,7 @@ export function useSessionWorkspaceDomain() {
       closeWorkspaceTabById(active.id, { skipDirtyConfirm: true });
       return;
     }
-    setCurrentFile((prev) => {
+    setCurrentFile((prev: any) => {
       revokeOpenFileObjectUrlRef.current?.(prev);
       return null;
     });

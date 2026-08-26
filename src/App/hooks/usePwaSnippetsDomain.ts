@@ -1,4 +1,4 @@
-// @ts-nocheck — PWA update + snippet sync domain
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,7 +91,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
     if (!swRegistration) return undefined;
 
     const checkForUpdate = () => {
-      swRegistration.update().catch((error) => {
+      swRegistration.update().catch((error: any) => {
         console.warn('PWA update check failed:', error);
       });
     };
@@ -160,7 +160,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         setAppUpdateAvailable(waiting);
         console.warn('App update check failed:', buildCheck.error);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.warn('App update check failed:', error);
       setAppBuildLocalId(getLocalAppBuildId());
       setAppBuildRemoteId('');
@@ -303,7 +303,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   ]);
 
   const saveSnippetConfigToS3 = useCallback(
-    async (config) => {
+    async (config: any) => {
       const client = getS3Client();
       if (!client || !s3Creds.bucket) return;
       try {
@@ -323,7 +323,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   );
 
   const saveSnippetConfigToLocal = useCallback(
-    async (config) => {
+    async (config: any) => {
       if (!localRootHandle) return;
       try {
         const settingsDir = await localRootHandle.getDirectoryHandle('.settings', { create: true });
@@ -339,7 +339,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   );
 
   const saveSnippetConfigToWebdav = useCallback(
-    async (config) => {
+    async (config: any) => {
       if (!webdavReady) return;
       try {
         const backend = createWebdavBackend(webdavConfig);
@@ -357,14 +357,14 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   );
 
   const handleChangeSnippetConfig = useCallback(
-    (nextConfig) => {
+    (nextConfig: any) => {
       setSnippetConfig(nextConfig ?? { snippets: [] });
     },
     [setSnippetConfig],
   );
 
   const handleSaveSnippetConfig = useCallback(
-    async (config) => {
+    async (config: any) => {
       const toSave = config ?? snippetConfig;
       setIsSavingSnippets(true);
       try {
@@ -376,7 +376,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
           await saveSnippetConfigToWebdav(toSave);
         }
         setOperationStatus('스니펫 설정이 저장되었습니다.');
-      } catch (e) {
+      } catch (e: any) {
         alert('스니펫 설정 저장에 실패했습니다: ' + (e?.message || e));
       } finally {
         setIsSavingSnippets(false);

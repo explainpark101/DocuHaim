@@ -1,4 +1,4 @@
-// @ts-nocheck — context-owned useChatIntegrationDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
@@ -41,11 +41,11 @@ export function useChatIntegrationDomain() {
   const { setRecordingQueueStats } = useRecordingOwned();
   const { setShareGroupSend } = useChromeOwned();
 
-  const handleShareBlockingChange = useCallback((blocking) => {
+  const handleShareBlockingChange = useCallback((blocking: any) => {
     setShareBlockingAuth(Boolean(blocking));
   }, [setShareBlockingAuth]);
 
-  const handleShareComposeClaimed = useCallback((seed) => {
+  const handleShareComposeClaimed = useCallback((seed: any) => {
     if (seed?.body || seed?.files?.length) setShareGroupSend(seed);
   }, [setShareGroupSend]);
 
@@ -81,7 +81,7 @@ export function useChatIntegrationDomain() {
       }
       if (storageMode === 'webdav' && webdavReady) {
         const backend = createWebdavBackend(webdavConfig);
-        const writeObject = ({ key, body, contentType }) => backend.writeBytes(key, body, contentType);
+        const writeObject = ({ key, body, contentType }: any) => backend.writeBytes(key, body, contentType);
         return drainRecordingUploadQueue({ writeObject })
           .then((r) => {
             refreshStats();
@@ -108,7 +108,7 @@ export function useChatIntegrationDomain() {
           if (client && bucket) drainRecordingUploadQueue({ client, bucket }).catch(() => {});
         } else if (storageMode === 'webdav' && webdavReady) {
           const backend = createWebdavBackend(webdavConfig);
-          const writeObject = ({ key, body, contentType }) => backend.writeBytes(key, body, contentType);
+          const writeObject = ({ key, body, contentType }: any) => backend.writeBytes(key, body, contentType);
           drainRecordingUploadQueue({ writeObject }).catch(() => {});
         }
       } catch (_) {}
@@ -123,12 +123,12 @@ export function useChatIntegrationDomain() {
   }, [isUnlocked, storageMode, webdavReady, webdavConfig, getS3Client, s3Creds.bucket, loadS3Files, refreshWebdavTree]);
 
   useEffect(() => {
-    setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
-    setWebfontSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
-    setTableStyleSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
-    setCoverSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
-    setOgWorkerSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
-    setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig });
+    setPrintSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
+    setWebfontSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
+    setTableStyleSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
+    setCoverSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
+    setOgWorkerSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
+    setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
     void loadWebfontsFromStorage().then((settings) => {
       notifyWebfontsChanged(settings);
     });

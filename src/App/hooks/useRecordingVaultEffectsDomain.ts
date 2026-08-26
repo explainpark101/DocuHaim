@@ -1,7 +1,7 @@
-// @ts-nocheck — context-owned useRecordingVaultEffectsDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
+import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
@@ -24,7 +24,7 @@ import { tryRestoreLocalRootHandle } from '@/utils/localFolderStore';
  */
 export function useRecordingVaultEffectsDomain() {
   const { isUnlocked, s3Creds } = useAuth();
-  const { setLocalFolderRestoreSettled, setShowRestoreLocalFolderModal } = useBootstrapOwned();
+  const { setLocalFolderRestoreSettled, setShowRestoreLocalFolderModal } = useModalsOwned();
   const {
     attachLocalRootFolder,
     getBackendForType,
@@ -74,7 +74,7 @@ export function useRecordingVaultEffectsDomain() {
           : localTree;
     const list = getRecordingKeysFromTree(tree, noteKey);
     setRecordingsList(list);
-    setSelectedRecordingKey(list.length > 0 ? list[0].key : null);
+    setSelectedRecordingKey(list.length > 0 ? list[0]!.key : null);
   }, [currentFileId, currentFileType, currentFileViewer, s3Tree, localTree, webdavTree]);
 
   useEffect(() => {
@@ -158,8 +158,8 @@ export function useRecordingVaultEffectsDomain() {
         const ext = (cur.name?.split('.').pop() || '').toLowerCase();
         if (cur.viewer === 'markdown' || ext === 'md' || ext === 'markdown' || ext === '') {
           const text = new TextDecoder('utf-8').decode(body);
-          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
-          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? text : prevContent));
+          setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? text : prevContent));
         } else if (cur.viewer === 'json' || ext === 'json') {
           const raw = new TextDecoder('utf-8').decode(body);
           let display = raw;
@@ -167,17 +167,19 @@ export function useRecordingVaultEffectsDomain() {
             const parsed = JSON.parse(raw);
             display = JSON.stringify(parsed, null, 2);
           } catch { /* keep raw */ }
-          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
-          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? display : prevContent));
+          setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? display : prevContent));
         } else if (cur.viewer === 'html' || cur.viewer === 'svg' || ext === 'html' || ext === 'htm' || ext === 'svg') {
           const text = new TextDecoder('utf-8').decode(body);
-          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
-          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? text : prevContent));
+          setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? text : prevContent));
         } else if (cur.viewer === 'image' || cur.viewer === 'pdf' || cur.viewer === 'audio' || cur.viewer === 'video') {
           const mime = ContentType || (cur.viewer === 'pdf' ? 'application/pdf' : '');
-          const blob = new Blob([body], { type: mime || undefined });
+          // BlobPart is a DOM lib type; body is Uint8Array from storage read.
+          // eslint-disable-next-line no-undef -- BlobPart
+          const blob = new Blob([body as BlobPart], { type: mime || 'application/octet-stream' });
           const url = URL.createObjectURL(blob);
-          setCurrentFile((prev) => {
+          setCurrentFile((prev: any) => {
             if (prev?.id !== cur.id) return prev;
             if (prev.objectUrl) URL.revokeObjectURL(prev.objectUrl);
             return { ...prev, objectUrl: url, lastModified: newLastMod };
@@ -222,18 +224,18 @@ export function useRecordingVaultEffectsDomain() {
         const { text } = await backend.readText(cur.id);
         const ext = (cur.name?.split('.').pop() || '').toLowerCase();
         if (cur.viewer === 'markdown' || ext === 'md' || ext === 'markdown' || ext === '') {
-          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
-          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? text : prevContent));
+          setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? text : prevContent));
         } else if (cur.viewer === 'json' || ext === 'json') {
           let display = text;
           try {
             display = JSON.stringify(JSON.parse(text), null, 2);
           } catch { /* keep raw */ }
-          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
-          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? display : prevContent));
+          setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? display : prevContent));
         } else if (cur.viewer === 'html' || cur.viewer === 'svg' || ext === 'html' || ext === 'htm' || ext === 'svg') {
-          setCurrentFile((prev) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
-          setEditorContent((prevContent) => (currentFileRef.current?.id === cur.id ? text : prevContent));
+          setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
+          setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? text : prevContent));
         }
       } catch {
         // ignore poll errors
@@ -256,15 +258,15 @@ export function useRecordingVaultEffectsDomain() {
             ? 'webdav'
             : 's3',
       getS3Client,
-      s3Creds,
+      s3Creds: s3Creds as any,
       localRootHandle,
-      localVaultFsPath,
+      localVaultFsPath: localVaultFsPath ?? undefined,
       webdavConfig,
-    });
+    } as any);
   }, [storageMode, getS3Client, s3Creds, localRootHandle, localVaultFsPath, webdavConfig]);
 
   const handleReadUnusedImageText = useCallback(
-    async (path) => {
+    async (path: any) => {
       const backend = getActiveStorageBackend();
       const { text } = await backend.readText(path);
       return text;
@@ -273,7 +275,7 @@ export function useRecordingVaultEffectsDomain() {
   );
 
   const handleReadUnusedImageBytes = useCallback(
-    async (path) => {
+    async (path: any) => {
       const backend = getActiveStorageBackend();
       const { body } = await backend.readBytes(path);
       return body instanceof Uint8Array ? body : new Uint8Array(body);
@@ -282,7 +284,7 @@ export function useRecordingVaultEffectsDomain() {
   );
 
   const handleDeleteUnusedImagePaths = useCallback(
-    async (paths, mode) => {
+    async (paths: any, mode: any) => {
       const list = (Array.isArray(paths) ? paths : []).filter(Boolean);
       if (!list.length) return;
       const backend = getActiveStorageBackend();
@@ -293,7 +295,7 @@ export function useRecordingVaultEffectsDomain() {
           } else {
             await backend.trash(path);
           }
-        } catch (e) {
+        } catch (e: any) {
           if (e?.$metadata?.httpStatusCode === 404) continue;
           throw e;
         }
@@ -323,7 +325,7 @@ export function useRecordingVaultEffectsDomain() {
       }
       setStorageMode(STORAGE_MODE_LOCAL);
       await attachLocalRootFolder(handle);
-    } catch (e) {
+    } catch (e: any) {
       setLocalFolderRestoreSettled(true);
       alert(`폴더를 다시 열지 못했습니다: ${e?.message || e}`);
     }

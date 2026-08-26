@@ -1,4 +1,4 @@
-// @ts-nocheck — context-owned useEditorImageDownloadDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,7 +46,7 @@ export function useEditorImageDownloadDomain() {
   const { setOperationStatus } = useChromeOwned();
 
   const editorImageUploadInProgressRef = useRef(false);
-  const editorImageUploadAbortControllerRef = useRef(null);
+  const editorImageUploadAbortControllerRef = useRef<any>(null);
   const editorImageUploadCancelRequestedRef = useRef(false);
   const [isUploadingEditorImage, setIsUploadingEditorImage] = useState(false);
   const [editorImageUploadPercent, setEditorImageUploadPercent] = useState(0);
@@ -70,7 +70,7 @@ export function useEditorImageDownloadDomain() {
 
   /** 에디터 이미지 업로드 — 현재 md 파일과 동일한 경로(하위 .images/)에 저장, 반환값은 ![[path]]용 Object Key 배열. 업로드 중에는 중복 호출 무시 */
   const handleUploadEditorImage = useCallback(
-    async (files) => {
+    async (files: any) => {
       dbgClipboard('app:upload:start', {
         rawCount: files?.length ?? 0,
         files: fileSummaries(files),
@@ -101,7 +101,7 @@ export function useEditorImageDownloadDomain() {
         setOperationStatus('이미지 업로드는 로컬 폴더를 연 뒤 사용할 수 있습니다.');
         return [];
       }
-      const candidates = Array.from(files).filter((f) => f && f.size > 0);
+      const candidates = Array.from(files as Iterable<File>).filter((f) => f && f.size > 0);
       const imageFiles = [];
       for (const f of candidates) {
         if (f.type?.startsWith('image/')) {
@@ -144,7 +144,7 @@ export function useEditorImageDownloadDomain() {
       const paths = [];
       const totalBytes = imageFiles.reduce((acc, file) => acc + (file.size || 0), 0);
       let uploadedBytes = 0;
-      const reportProgress = (file, percent) => {
+      const reportProgress = (file: any, percent: any) => {
         const currentUploaded = (file.size || 0) * (Math.max(0, Math.min(100, percent)) / 100);
         const overallPercent =
           totalBytes > 0 ? ((uploadedBytes + currentUploaded) / totalBytes) * 100 : percent;
@@ -274,7 +274,7 @@ export function useEditorImageDownloadDomain() {
         if (isWebdavUpload && paths.length > 0) {
           await refreshWebdavTree();
         }
-      } catch (err) {
+      } catch (err: any) {
         if (err?.name === 'AbortError') {
           dbgClipboard('app:upload:cancelled', { message: err?.message ?? 'aborted' });
           setOperationStatus('이미지 업로드가 취소되었습니다.');
@@ -298,7 +298,7 @@ export function useEditorImageDownloadDomain() {
 
   /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬/WebDAV: blob URL) */
   const getPresignedUrlForPath = useCallback(
-    async (path) => {
+    async (path: any) => {
       const trimmed = String(path || '').trim();
       if (!trimmed) return null;
       // Cover / single-file export may store data: URIs in note-cover paths.
@@ -310,7 +310,7 @@ export function useEditorImageDownloadDomain() {
           trimmed.replace(/^\/+/, ''),
           resolveStorageImagePath(trimmed, currentFile.id),
         ].filter(Boolean);
-        for (const key of candidates) {
+        for (const key of candidates as string[]) {
           const record = ws?.files?.[key];
           if (record) {
             return getSessionObjectUrlRef.current?.(record.path, record.bytes, mimeForSessionFileName(record.name));
@@ -368,7 +368,7 @@ export function useEditorImageDownloadDomain() {
 
   /** Chat with Myself: resolve by storageMode (not current editor file). */
   const getChatImageUrlForPath = useCallback(
-    async (path) => {
+    async (path: any) => {
       if (storageMode === 'local' && isLocalVaultReady(localRootHandle, localVaultFsPath)) {
         if (localVaultFsPath && !localRootHandle) {
           try {

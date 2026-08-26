@@ -1,4 +1,4 @@
-// @ts-nocheck — context-owned useTempChatRecordingDomain (no bag / glueRef)
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useCallback } from 'react';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import { useAlertModal } from '@/contexts/AlertModalContext';
@@ -111,7 +111,7 @@ export function useTempChatRecordingDomain() {
     parentHandle,
     fileName,
     includeReplyThread = false,
-  }) => {
+  }: any) => {
     let finalName = String(fileName || '').trim();
     if (!finalName) throw new Error('파일명이 비어 있습니다.');
     if (!finalName.endsWith('.md')) finalName += '.md';
@@ -120,8 +120,8 @@ export function useTempChatRecordingDomain() {
     }
     const newPath = `${parentPath || ''}${finalName}`;
     const tz = detectTimeZone();
-    /** @type {object[]} */
-    let threadMessages = [];
+    /** @type {any[]} */
+    let threadMessages: any[] = [];
     if (includeReplyThread && message?.replyTo && chatStorageCtx) {
       try {
         threadMessages = await resolveReplyThreadMessages(chatStorageCtx, message);
@@ -185,7 +185,7 @@ export function useTempChatRecordingDomain() {
   };
 
   const handleOpenNoteFromChat = useCallback(
-    async (notePath) => {
+    async (notePath: any) => {
       if (!notePath) return;
       const path = String(notePath);
       const type =
@@ -197,10 +197,10 @@ export function useTempChatRecordingDomain() {
       const tree =
         type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
       let node = findNodeByPath(tree, path) || findFileNodeByPath(tree, path);
-      if ((!node || node.type !== 'file') && type === 'local') {
+      if ((!node || (node as any).type !== 'file') && type === 'local') {
         node = await resolveLocalFileNode(localRootHandle, path);
       }
-      if (!node || node.type !== 'file') {
+      if (!node || (node as any).type !== 'file') {
         showAlert({
           title: '노트 열기',
           message: '해당 노트가 삭제되어 열 수 없습니다',
@@ -222,7 +222,7 @@ export function useTempChatRecordingDomain() {
   );
 
   const handleOpenStorageUsageFile = useCallback(
-    async (file) => {
+    async (file: any) => {
       const scanned = file?.node;
       const path = String(file?.path || scanned?.path || '');
       if (!path) return;
@@ -276,7 +276,7 @@ export function useTempChatRecordingDomain() {
     ],
   );
 
-  const handleShareNoteToChatWithMyself = useCallback(async (fileOverride = null) => {
+  const handleShareNoteToChatWithMyself = useCallback(async (fileOverride: any = null) => {
     const file = fileOverride || currentFile;
     if (!file?.id && !file?.path) return;
     const path = String(file.id || file.path || '');
@@ -303,7 +303,7 @@ export function useTempChatRecordingDomain() {
       }
       setOperationStatus('나와의 채팅에 공유했습니다');
       navigate('/chat');
-    } catch (err) {
+    } catch (err: any) {
       try {
         await enqueuePendingShare({ body, intent: 'sendSelf' });
         setOperationStatus('나와의 채팅에 공유했습니다 (동기화 대기)');
@@ -323,7 +323,7 @@ export function useTempChatRecordingDomain() {
   ]);
 
   const handleShareNodeToChatWithMyself = useCallback(
-    async (_storageType, node) => {
+    async (_storageType: any, node: any) => {
       if (!node || node.type !== 'file') return;
       const path = String(node.path || node.id || '');
       if (!path) return;
@@ -370,10 +370,10 @@ export function useTempChatRecordingDomain() {
           const localBackend = createLocalBackend(localRootHandle);
           await runEncodeAndWritePipeline({
             recording: result,
-            writeObject: ({ key, body, contentType }) => localBackend.writeBytes(key, body, contentType),
+            writeObject: ({ key, body }: any) => localBackend.writeBytes(key, body),
             recordId: result.id,
             onStatus: setRecordingPipelineStatus,
-          });
+          } as any);
           if (result.id) {
             await deleteRecordingFragments(result.id);
             await deleteRecordingById(result.id);
@@ -399,7 +399,7 @@ export function useTempChatRecordingDomain() {
           });
           await refreshWebdavTree();
         }
-      } catch (e) {
+      } catch (e: any) {
         alert('녹음 업로드 실패: ' + (e?.message || e));
       } finally {
         removeIndicator(indicatorId);
@@ -410,7 +410,7 @@ export function useTempChatRecordingDomain() {
     }
   };
 
-  const formatTime = (ts) => {
+  const formatTime = (ts: any) => {
     if (!ts) return '—';
     const d = new Date(ts);
     const hh = `${d.getHours()}`.padStart(2, '0');
@@ -419,7 +419,7 @@ export function useTempChatRecordingDomain() {
     return `${hh}:${mm}:${ss}`;
   };
 
-  const formatFileSize = (bytes) => {
+  const formatFileSize = (bytes: any) => {
     if (bytes == null || isNaN(bytes)) return '알 수 없음';
     if (bytes < 1024) return `${bytes} B`;
     const kb = bytes / 1024;
