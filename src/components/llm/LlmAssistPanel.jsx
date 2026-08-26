@@ -630,7 +630,12 @@ export default function LlmAssistPanel({
                   type="button"
                   onClick={onApplyResult}
                   disabled={!result}
-                  className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+                  className={[
+                    `inline-flex items-center gap-1.5 rounded border  px-3 py-1.5 text-[11px] font-medium  disabled:cursor-not-allowed disabled:opacity-50`,
+                    (selectedText.trim() 
+                    ? `border-violet-400 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60`
+                    : `border-sky-400 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-600 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-900/60`)
+                  ].join(" ")}
                 >
                   {selectedText.trim() ? (
                     <>
