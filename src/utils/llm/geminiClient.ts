@@ -4,10 +4,13 @@ import { DEFAULT_GEMINI_MODEL, loadLastUsedGeminiModel } from '@/utils/geminiMod
 import {
   formatGeminiApiError,
   parseRetrySecondsFromGeminiError,
-  sleep,
 } from '@/utils/geminiError';
 import { buildLlmTransformPrompt } from '@/utils/llmTransformPrompt';
-import { mergeLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
+import {
+  isLlmAssistAbortError,
+  sleepUntilLlmAssistAbort,
+  throwIfLlmAssistAborted,
+} from '@/utils/llm/llmAssistAbort';
 import { toGeminiGenerationConfig } from '@/utils/llm/llmAssistRequestOptions';
 import {
   ensureGeminiFetchShim,
@@ -141,7 +144,9 @@ async function generateGeminiContentStream(
   systemPrompt = '',
   requestOptions: Record<string, unknown> = {},
   onChunk?: (accumulated: string) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
+  throwIfLlmAssistAborted(signal);
   const ai = createGeminiClient(apiKey);
   const trimmedSystem = (systemPrompt || '').trim();
   const generationConfig = toGeminiGenerationConfig(requestOptions);
@@ -151,17 +156,20 @@ async function generateGeminiContentStream(
     config: {
       ...generationConfig,
       ...(trimmedSystem ? { systemInstruction: trimmedSystem } : {}),
+      ...(signal ? { abortSignal: signal } : {}),
     },
   });
 
   let accumulated = '';
   for await (const chunk of stream) {
+    throwIfLlmAssistAborted(signal);
     const delta = chunk.text;
     if (typeof delta !== 'string' || !delta) continue;
     accumulated += delta;
     onChunk?.(accumulated);
   }
 
+  throwIfLlmAssistAborted(signal);
   const text = accumulated.trim();
   if (!text) {
     throw new Error('Gemini API가 빈 응답을 반환했습니다.');
@@ -176,9 +184,11 @@ async function generateGeminiContentStreamWithRetry(
   systemPrompt = '',
   requestOptions: Record<string, unknown> = {},
   onChunk?: (accumulated: string) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
   let attempt = 0;
   while (true) {
+    throwIfLlmAssistAborted(signal);
     let receivedChunk = false;
     try {
       return await generateGeminiContentStream(
@@ -191,8 +201,10 @@ async function generateGeminiContentStreamWithRetry(
           receivedChunk = true;
           onChunk?.(text);
         },
+        signal,
       );
     } catch (err) {
+      if (isLlmAssistAbortError(err)) throw err;
       const typed = toGeminiApiError(err, modelId);
       const canRetry =
         !receivedChunk &&
@@ -204,7 +216,7 @@ async function generateGeminiContentStreamWithRetry(
       if (!canRetry) throw typed;
 
       attempt += 1;
-      await sleep((typed.retryAfterSec ?? 1) * 1000);
+      await sleepUntilLlmAssistAbort((typed.retryAfterSec ?? 1) * 1000, signal);
     }
   }
 }
@@ -218,6 +230,7 @@ export async function generateGeminiTransform({
   images,
   requestOptions,
   onChunk,
+  signal,
 }: {
   apiKey: string;
   model?: string;
@@ -228,6 +241,7 @@ export async function generateGeminiTransform({
   requestOptions?: Record<string, unknown>;
   /** Called with accumulated text as stream chunks arrive. */
   onChunk?: (accumulated: string) => void;
+  signal?: AbortSignal;
 }): Promise<string> {
   const modelId = (model || loadLastUsedGeminiModel()).trim() || DEFAULT_GEMINI_MODEL;
   const trimmedInstruction = (instruction || '').trim();
@@ -237,6 +251,7 @@ export async function generateGeminiTransform({
     : [];
 
   if (!trimmedInstruction) throw new Error('지시사항을 입력하세요.');
+  throwIfLlmAssistAborted(signal);
 
   const parts = buildContentParts({
     instruction: trimmedInstruction,
@@ -249,11 +264,13 @@ export async function generateGeminiTransform({
       apiKey,
       modelId,
       parts,
-      mergeLlmAssistSystemPrompt(systemPrompt || ''),
+      (systemPrompt || '').trim(),
       requestOptions || {},
       onChunk,
+      signal,
     );
   } catch (err) {
+    if (isLlmAssistAbortError(err)) throw err;
     throw toGeminiApiError(err, modelId);
   }
 }

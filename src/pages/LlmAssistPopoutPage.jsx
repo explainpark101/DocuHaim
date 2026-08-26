@@ -17,6 +17,7 @@ import {
   LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
   normalizeRequestOptions,
 } from '@/utils/llm/llmAssistRequestOptions';
+import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
 
 if (typeof document !== 'undefined') {
   applyDocumentTheme(loadStoredTheme());
@@ -27,7 +28,7 @@ const EMPTY_STATE = {
   selectionRange: { from: 0, to: 0 },
   attachedImages: [],
   instruction: '',
-  systemPrompt: '',
+  systemPrompt: getDefaultLlmAssistSystemPrompt(),
   requestOptions: { ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS },
   result: '',
   resultViewMode: 'text',
@@ -46,7 +47,7 @@ const EMPTY_STATE = {
 export default function LlmAssistPopoutPage() {
   const [remoteState, setRemoteState] = useState(EMPTY_STATE);
   const [instruction, setInstruction] = useState('');
-  const [systemPrompt, setSystemPrompt] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState(() => getDefaultLlmAssistSystemPrompt());
   const [requestOptions, setRequestOptions] = useState(() => ({
     ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
   }));
@@ -75,7 +76,11 @@ export default function LlmAssistPopoutPage() {
     const next = { ...EMPTY_STATE, ...state };
     setRemoteState(next);
     setInstruction(next.instruction);
-    setSystemPrompt(typeof next.systemPrompt === 'string' ? next.systemPrompt : '');
+    setSystemPrompt(
+      typeof next.systemPrompt === 'string'
+        ? next.systemPrompt
+        : getDefaultLlmAssistSystemPrompt(),
+    );
     setRequestOptions(normalizeRequestOptions(next.requestOptions));
     setTemplateName(next.templateName);
     setResult(next.result);
@@ -274,6 +279,7 @@ export default function LlmAssistPopoutPage() {
           onNewTemplate={() => sendAction('new-template')}
           onDeleteTemplate={() => sendAction('delete-template')}
           onRun={() => sendAction('run')}
+          onCancelGeneration={() => sendAction('cancel-run')}
           onApplyResult={() => sendAction('apply-result')}
           onAppendResult={() => sendAction('append-result')}
           remoteMode

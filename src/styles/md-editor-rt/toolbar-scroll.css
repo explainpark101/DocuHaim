@@ -1,0 +1,5 @@
+/* md-editor-rt toolbar: smoother horizontal overflow + scroll chaining control */
+.md-editor-toolbar-wrapper {
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowDownToLine,
   Bookmark,
@@ -41,6 +42,9 @@ import {
 import LlmAssistAdvancedOptions from '@/components/llm/LlmAssistAdvancedOptions';
 import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
 import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
+import { Tooltip } from 'radix-ui';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
 
@@ -93,6 +97,7 @@ export default function LlmAssistPanel({
   onNewTemplate,
   onDeleteTemplate,
   onRun,
+  onCancelGeneration,
   onApplyResult,
   onAppendResult,
   onCopyResult,
@@ -110,6 +115,11 @@ export default function LlmAssistPanel({
   const [imageError, setImageError] = useState('');
   const [addingImages, setAddingImages] = useState(false);
   const [systemPromptOpen, setSystemPromptOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading) setCancelConfirmOpen(false);
+  }, [loading]);
 
   useLazyMermaidRender(resultPreviewRef, {
     layoutKey: `${theme}|${result || ''}|${resultViewMode}`,
@@ -379,7 +389,11 @@ export default function LlmAssistPanel({
             <span className="min-w-0 shrink-0 whitespace-nowrap">
               <PanelLabel icon={ScrollText}>시스템 프롬프트</PanelLabel>
               {!systemPromptOpen && systemPrompt.trim() ? (
-                <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">(설정됨)</span>
+                <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
+                  {systemPrompt.trim() === getDefaultLlmAssistSystemPrompt()
+                    ? '(기본)'
+                    : '(수정됨)'}
+                </span>
               ) : null}
             </span>
             <ChevronUp
@@ -389,13 +403,27 @@ export default function LlmAssistPanel({
             />
           </button>
           <LlmAssistCollapsible open={systemPromptOpen}>
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => onSystemPromptChange?.(e.target.value)}
-              rows={3}
-              placeholder="선택 사항. 모델의 역할·톤·제약 등 (system instruction)"
-              className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-            />
+            <div className="space-y-1.5">
+              <p className="text-[10px] leading-snug text-gray-500 dark:text-odp-muted">
+                템플릿마다 다르게 저장할 수 있습니다. 비우면 시스템 프롬프트 없이 실행됩니다.
+              </p>
+              <textarea
+                value={systemPrompt}
+                onChange={(e) => onSystemPromptChange?.(e.target.value)}
+                rows={10}
+                placeholder={getDefaultLlmAssistSystemPrompt()}
+                className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => onSystemPromptChange?.(getDefaultLlmAssistSystemPrompt())}
+                  className="rounded border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50 dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft"
+                >
+                  기본값으로 되돌리기
+                </button>
+              </div>
+            </div>
           </LlmAssistCollapsible>
         </div>
         <div>
@@ -413,20 +441,21 @@ export default function LlmAssistPanel({
         <div className="flex flex-wrap gap-1.5 justify-end">
           <button
             type="button"
-            onClick={onSaveTemplate}
-            className="inline-flex items-center gap-1 rounded bg-violet-600 px-2 py-1 text-[11px] text-white hover:bg-violet-700"
-          >
-            <Save size={12} aria-hidden />
-            템플릿 저장
-          </button>
-          <button
-            type="button"
             onClick={onNewTemplate}
             className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
           >
             <Plus size={12} aria-hidden />
             새 템플릿
           </button>
+          <button
+            type="button"
+            onClick={onSaveTemplate}
+            className="inline-flex items-center gap-1 rounded bg-violet-600 px-2 py-1 text-[11px] text-white hover:bg-violet-700"
+          >
+            <Save size={12} aria-hidden />
+            템플릿 저장
+          </button>
+          
           {editingTemplateId && (
             <button
               type="button"
@@ -444,15 +473,47 @@ export default function LlmAssistPanel({
         />
       </div>
 
-      <button
-        type="button"
-        onClick={onRun}
-        disabled={loading || !selectedProfile}
-        className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-        {loading ? '생성 중…' : 'Gemini 실행'}
-      </button>
+      {loading ? (
+        <button
+          type="button"
+          onClick={() => setCancelConfirmOpen(true)}
+          disabled={!selectedProfile}
+          className="flex w-full items-center justify-center gap-2 rounded bg-violet-700 px-3 py-2 text-sm font-medium text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="생성 중 — 클릭하여 취소"
+        >
+          <Loader2 size={16} className="animate-spin" aria-hidden />
+          생성 중…
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onRun?.()}
+          disabled={!selectedProfile}
+          className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Sparkles size={16} aria-hidden />
+          실행
+        </button>
+      )}
+
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <ConfirmModal
+              isOpen={cancelConfirmOpen}
+              title="생성 취소"
+              message="진행 중인 생성을 취소할까요? 지금까지 받은 결과는 유지됩니다."
+              confirmLabel="생성 취소"
+              cancelLabel="계속 생성"
+              variant="danger"
+              onConfirm={() => {
+                setCancelConfirmOpen(false);
+                onCancelGeneration?.();
+              }}
+              onCancel={() => setCancelConfirmOpen(false)}
+            />,
+            document.body,
+          )
+        : null}
 
       {error && (
         <p className="rounded border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] whitespace-pre-line text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-300">

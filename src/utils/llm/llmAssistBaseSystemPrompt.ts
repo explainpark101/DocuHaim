@@ -1,9 +1,10 @@
 /**
- * Hardcoded base system prompt shared by every LLM Assist run,
- * regardless of which prompt template (or none) is selected.
+ * Default system prompt for LLM Assist (shown in the panel field).
  *
- * Edit the string below to change the global default.
- * Per-template / panel "system prompt" fields are appended after this base.
+ * This is a starting template only — not force-prepended at request time.
+ * Users can edit it freely; each prompt template stores its own `systemPrompt`.
+ *
+ * Edit the string below to change the app default for new sessions / new templates.
  */
 export const LLM_ASSIST_BASE_SYSTEM_PROMPT = `Replace the requested part of the document.
 
@@ -18,13 +19,7 @@ export const LLM_ASSIST_BASE_SYSTEM_PROMPT = `Replace the requested part of the 
 - In Markdown tables, do not unnecessarily bold entire table headers. If emphasis is needed, bold only specific words within the header.
 - Do not add unnecessary content.`;
 
-/**
- * Prepend the shared base system prompt to an optional template/user system prompt.
- */
-export function mergeLlmAssistSystemPrompt(templateOrUserSystemPrompt = ''): string {
-  const base = LLM_ASSIST_BASE_SYSTEM_PROMPT.trim();
-  const extra = (templateOrUserSystemPrompt || '').trim();
-  if (!base) return extra;
-  if (!extra) return base;
-  return `${base}\n\n${extra}`;
+/** Trimmed default used to seed the system-prompt field. */
+export function getDefaultLlmAssistSystemPrompt(): string {
+  return LLM_ASSIST_BASE_SYSTEM_PROMPT.trim();
 }

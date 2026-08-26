@@ -1,5 +1,9 @@
 import { buildLlmTransformPrompt } from '@/utils/llmTransformPrompt';
-import { mergeLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
+import {
+  isLlmAssistAbortError,
+  sleepUntilLlmAssistAbort,
+  throwIfLlmAssistAborted,
+} from '@/utils/llm/llmAssistAbort';
 import { toOpenAiCompatibleRequestExtras } from '@/utils/llm/llmAssistRequestOptions';
 import {
   formatOpenAiCompatibleError,
@@ -10,7 +14,6 @@ import {
   loadLastUsedOpenAiCompatibleModel,
   normalizeOpenAiCompatibleBaseUrl,
 } from '@/utils/openaiCompatibleSettings';
-import { sleep } from '@/utils/geminiError';
 
 const MAX_RATE_LIMIT_RETRIES = 1;
 
@@ -71,6 +74,7 @@ async function fetchOpenAiJson(url: string, init: RequestInit): Promise<Response
   try {
     return await fetch(url, init);
   } catch (err) {
+    if (isLlmAssistAbortError(err)) throw err;
     throw new Error(formatOpenAiCompatibleNetworkError(err));
   }
 }
@@ -207,6 +211,7 @@ function extractStreamDeltaText(data: unknown): string {
 async function readOpenAiSseStream(
   res: Response,
   onChunk?: (accumulated: string) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
   if (!res.body) {
     throw new Error('OpenAI 호환 API가 스트리밍 본문을 반환하지 않았습니다.');
@@ -216,6 +221,11 @@ async function readOpenAiSseStream(
   const decoder = new TextDecoder();
   let buffer = '';
   let accumulated = '';
+
+  const onAbort = () => {
+    void reader.cancel().catch(() => {});
+  };
+  signal?.addEventListener('abort', onAbort, { once: true });
 
   const consumeEventData = (dataLine: string) => {
     const payload = dataLine.trim();
@@ -232,34 +242,40 @@ async function readOpenAiSseStream(
     onChunk?.(accumulated);
   };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      throwIfLlmAssistAborted(signal);
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    let sep = buffer.indexOf('\n');
-    while (sep >= 0) {
-      const line = buffer.slice(0, sep).replace(/\r$/, '');
-      buffer = buffer.slice(sep + 1);
-      if (line.startsWith('data:')) {
-        consumeEventData(line.slice(5));
+      let sep = buffer.indexOf('\n');
+      while (sep >= 0) {
+        const line = buffer.slice(0, sep).replace(/\r$/, '');
+        buffer = buffer.slice(sep + 1);
+        if (line.startsWith('data:')) {
+          consumeEventData(line.slice(5));
+        }
+        sep = buffer.indexOf('\n');
       }
-      sep = buffer.indexOf('\n');
     }
-  }
 
-  if (buffer.trim()) {
-    const leftover = buffer.trim();
-    if (leftover.startsWith('data:')) {
-      consumeEventData(leftover.slice(5));
+    if (buffer.trim()) {
+      const leftover = buffer.trim();
+      if (leftover.startsWith('data:')) {
+        consumeEventData(leftover.slice(5));
+      }
     }
-  }
 
-  const text = accumulated.trim();
-  if (!text) {
-    throw new Error('OpenAI 호환 API가 빈 응답을 반환했습니다.');
+    throwIfLlmAssistAborted(signal);
+    const text = accumulated.trim();
+    if (!text) {
+      throw new Error('OpenAI 호환 API가 빈 응답을 반환했습니다.');
+    }
+    return text;
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
   }
-  return text;
 }
 
 async function postChatCompletionsStream({
@@ -269,6 +285,7 @@ async function postChatCompletionsStream({
   messages,
   requestOptions,
   onChunk,
+  signal,
 }: {
   baseUrl: string;
   apiKey: string;
@@ -276,7 +293,9 @@ async function postChatCompletionsStream({
   messages: ChatMessage[];
   requestOptions?: Record<string, unknown>;
   onChunk?: (accumulated: string) => void;
+  signal?: AbortSignal;
 }): Promise<string> {
+  throwIfLlmAssistAborted(signal);
   const extras = toOpenAiCompatibleRequestExtras(requestOptions);
   const res = await fetchOpenAiJson(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -290,6 +309,7 @@ async function postChatCompletionsStream({
       messages,
       stream: true,
     }),
+    ...(signal ? { signal } : {}),
   });
 
   if (!res.ok) {
@@ -305,7 +325,7 @@ async function postChatCompletionsStream({
     throw err;
   }
 
-  return readOpenAiSseStream(res, onChunk);
+  return readOpenAiSseStream(res, onChunk, signal);
 }
 
 async function postChatCompletionsStreamWithRetry(
@@ -313,6 +333,7 @@ async function postChatCompletionsStreamWithRetry(
 ): Promise<string> {
   let attempt = 0;
   while (true) {
+    throwIfLlmAssistAborted(params.signal);
     let receivedChunk = false;
     try {
       return await postChatCompletionsStream({
@@ -323,6 +344,7 @@ async function postChatCompletionsStreamWithRetry(
         },
       });
     } catch (err) {
+      if (isLlmAssistAbortError(err)) throw err;
       const typed = err as { status?: number; retryAfterSec?: number | null };
       const canRetry =
         !receivedChunk &&
@@ -333,7 +355,7 @@ async function postChatCompletionsStreamWithRetry(
 
       if (!canRetry) throw err;
       attempt += 1;
-      await sleep((typed.retryAfterSec ?? 1) * 1000);
+      await sleepUntilLlmAssistAbort((typed.retryAfterSec ?? 1) * 1000, params.signal);
     }
   }
 }
@@ -348,6 +370,7 @@ export async function generateOpenAiCompatibleTransform({
   images,
   requestOptions,
   onChunk,
+  signal,
 }: {
   baseUrl: string;
   apiKey?: string;
@@ -359,6 +382,7 @@ export async function generateOpenAiCompatibleTransform({
   requestOptions?: Record<string, unknown>;
   /** Called with accumulated text as stream chunks arrive. */
   onChunk?: (accumulated: string) => void;
+  signal?: AbortSignal;
 }): Promise<string> {
   const base = requireBaseUrl(baseUrl);
   const modelId =
@@ -371,10 +395,11 @@ export async function generateOpenAiCompatibleTransform({
 
   if (!modelId) throw new Error('모델 ID를 입력하거나 목록에서 선택하세요.');
   if (!trimmedInstruction) throw new Error('지시사항을 입력하세요.');
+  throwIfLlmAssistAborted(signal);
 
   const messages = buildChatMessages({
     instruction: trimmedInstruction,
-    systemPrompt: mergeLlmAssistSystemPrompt(systemPrompt ?? ''),
+    systemPrompt: (systemPrompt ?? '').trim(),
     selectedText: trimmedSelection,
     images: imageList,
   });
@@ -386,5 +411,6 @@ export async function generateOpenAiCompatibleTransform({
     messages,
     requestOptions: requestOptions ?? {},
     ...(onChunk ? { onChunk } : {}),
+    ...(signal ? { signal } : {}),
   });
 }

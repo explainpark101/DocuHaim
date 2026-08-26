@@ -46,6 +46,11 @@ import {
   LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
   normalizeRequestOptions,
 } from '@/utils/llm/llmAssistRequestOptions';
+import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
+import {
+  createLlmAssistAbortError,
+  isLlmAssistAbortError,
+} from '@/utils/llm/llmAssistAbort';
 
 const FLOAT_EASE = [0.4, 0, 0.2, 1];
 const FLOAT_TRANSITION = { duration: 0.28, ease: FLOAT_EASE };
@@ -97,7 +102,7 @@ export default function LlmAssistModal({
   const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
   const [attachedImages, setAttachedImages] = useState([]);
   const [instruction, setInstruction] = useState('');
-  const [systemPrompt, setSystemPrompt] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState(() => getDefaultLlmAssistSystemPrompt());
   const [requestOptions, setRequestOptions] = useState(() => ({
     ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
   }));
@@ -119,6 +124,7 @@ export default function LlmAssistModal({
 
   const popoutRef = useRef(null);
   const popoutUsesTauriRef = useRef(false);
+  const runAbortRef = useRef(null);
   const {
     panelRef,
     panelStyle,
@@ -316,7 +322,20 @@ export default function LlmAssistModal({
     [selectedProfile],
   );
 
+  const handleCancelGeneration = useCallback(() => {
+    const controller = runAbortRef.current;
+    if (!controller || controller.signal.aborted) return;
+    controller.abort(createLlmAssistAbortError());
+  }, []);
+
   const handleRun = useCallback(async () => {
+    if (runAbortRef.current) {
+      runAbortRef.current.abort(createLlmAssistAbortError());
+      runAbortRef.current = null;
+    }
+    const controller = new AbortController();
+    runAbortRef.current = controller;
+
     setError('');
     setResult('');
     setLoading(true);
@@ -347,6 +366,7 @@ export default function LlmAssistModal({
               images: attachedImages,
               requestOptions,
               onChunk: setResult,
+              signal: controller.signal,
             }),
           {
             allowEmpty: true,
@@ -377,6 +397,7 @@ export default function LlmAssistModal({
             images: attachedImages,
             requestOptions,
             onChunk: setResult,
+            signal: controller.signal,
           }),
         {
           missingKeyMessage:
@@ -385,8 +406,15 @@ export default function LlmAssistModal({
       );
       setResult(output);
     } catch (err) {
+      if (isLlmAssistAbortError(err)) {
+        setError('생성이 취소되었습니다.');
+        return;
+      }
       setError(err?.message || 'LLM 요청에 실패했습니다.');
     } finally {
+      if (runAbortRef.current === controller) {
+        runAbortRef.current = null;
+      }
       setLoading(false);
     }
   }, [refreshSelection, attachedImages, selectedProfile, model, instruction, systemPrompt, requestOptions]);
@@ -442,7 +470,11 @@ export default function LlmAssistModal({
       const tpl = templates.find((t) => t.id === id);
       if (tpl) {
         setInstruction(tpl.instruction);
-        setSystemPrompt(typeof tpl.systemPrompt === 'string' ? tpl.systemPrompt : '');
+        setSystemPrompt(
+          typeof tpl.systemPrompt === 'string' && tpl.systemPrompt.trim()
+            ? tpl.systemPrompt
+            : getDefaultLlmAssistSystemPrompt(),
+        );
         setRequestOptions(normalizeRequestOptions(tpl.requestOptions));
         setTemplateName(tpl.name);
         setEditingTemplateId(tpl.id);
@@ -480,7 +512,7 @@ export default function LlmAssistModal({
     setSelectedTemplateId('');
     setTemplateName('');
     setInstruction('');
-    setSystemPrompt('');
+    setSystemPrompt(getDefaultLlmAssistSystemPrompt());
     setRequestOptions({ ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS });
   }, []);
 
@@ -530,6 +562,9 @@ export default function LlmAssistModal({
           break;
         case 'run':
           await handleRun();
+          break;
+        case 'cancel-run':
+          handleCancelGeneration();
           break;
         case 'apply-result':
           handleApplyResult();
@@ -598,6 +633,7 @@ export default function LlmAssistModal({
     [
       refreshSelection,
       handleRun,
+      handleCancelGeneration,
       handleApplyResult,
       handleAppendResult,
       handleModelChange,
@@ -665,6 +701,7 @@ export default function LlmAssistModal({
   };
 
   const handleClose = () => {
+    handleCancelGeneration();
     closePopout();
     onOpenChange?.(false);
   };
@@ -744,6 +781,7 @@ export default function LlmAssistModal({
     onNewTemplate: handleNewTemplate,
     onDeleteTemplate: handleDeleteTemplate,
     onRun: handleRun,
+    onCancelGeneration: handleCancelGeneration,
     onApplyResult: handleApplyResult,
     onAppendResult: handleAppendResult,
     onCopyResult: handleCopyResult,
