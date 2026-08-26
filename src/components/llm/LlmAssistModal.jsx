@@ -37,6 +37,7 @@ import {
 } from '@/utils/llm/llmAssistPopoutHost';
 import LlmAssistPanel from '@/components/LlmAssistPanel';
 import LlmAssistDockShell from '@/components/llm/LlmAssistDockShell';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import { normalizeImageAttachment } from '@/utils/llmAssistImages';
 import { copyText } from '@/utils/copyText';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
@@ -44,6 +45,9 @@ import {
   LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
   normalizeRequestOptions,
 } from '@/utils/llm/llmAssistRequestOptions';
+
+const FLOAT_EASE = [0.4, 0, 0.2, 1];
+const FLOAT_TRANSITION = { duration: 0.28, ease: FLOAT_EASE };
 
 /**
  * Global LLM Assist host: floating modal or right dock.
@@ -735,7 +739,7 @@ export default function LlmAssistModal({
   };
 
   const headerActions = (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
       {presentation === 'floating' && typeof dockToRight === 'function' ? (
         <button
           type="button"
@@ -803,111 +807,132 @@ export default function LlmAssistModal({
     </div>
   );
 
-  if (presentation === 'docked') {
-    return (
-      <LlmAssistDockShell open={open} onClose={handleClose}>
-        <div className="flex h-full min-h-0 flex-col" role="complementary" aria-label="AI 텍스트 도우미">
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40">
-            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
-              <Sparkles size={16} className="shrink-0" aria-hidden />
-              <span className="truncate">AI 도우미</span>
-            </div>
-            {headerActions}
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <LlmAssistPanel {...panelProps} />
-          </div>
-        </div>
-      </LlmAssistDockShell>
-    );
-  }
+  const dockOpen = Boolean(open && presentation === 'docked');
+  const floatingVisible = Boolean(
+    open && presentation === 'floating' && !hidden && !popoutActive,
+  );
+  const chipVisible = Boolean(
+    open && presentation === 'floating' && (hidden || popoutActive),
+  );
+  const chipLabel = popoutActive ? 'AI (새창)' : 'AI';
+  const chipTitle = popoutActive
+    ? '드래그: 이동 · 클릭: AI 도우미 표시 (새 창 닫으면 복귀)'
+    : '드래그: 이동 · 클릭: AI 도우미 표시';
 
-  if (!open) return null;
-
-  if (hidden || popoutActive) {
-    const chipLabel = popoutActive ? 'AI (새창)' : 'AI';
-    const chipTitle = popoutActive
-      ? '드래그: 이동 · 클릭: AI 도우미 표시 (새 창 닫으면 복귀)'
-      : '드래그: 이동 · 클릭: AI 도우미 표시';
-
-    return (
-      <div
-        role="button"
-        tabIndex={0}
-        onPointerDown={(e) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
-        onTouchStart={(e) => startPositionTouchDrag(e, { onTap: popoutActive ? undefined : handleShow })}
-        onKeyDown={(e) => {
-          if (popoutActive) return;
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleShow();
-          }
-        }}
-        className="fixed z-10050 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
-        style={{ left: panelStyle.left, top: panelStyle.top }}
-        title={chipTitle}
-        aria-label={chipLabel}
-      >
-        <Sparkles size={14} aria-hidden />
-        {chipLabel}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      ref={panelRef}
-      className="fixed z-10050 flex flex-col rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
-      style={panelStyle}
-      role="dialog"
-      aria-modal="false"
-      aria-label="AI 텍스트 도우미"
-    >
-      <div
-        className="flex touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
-        onPointerDown={(e) => startPositionDrag(e)}
-        onTouchStart={(e) => startPositionTouchDrag(e)}
-      >
-        <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
-          <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
+  const dockBody = (
+    <div className="flex h-full min-h-0 flex-col" role="complementary" aria-label="AI 텍스트 도우미">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40">
+        <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <Sparkles size={16} className="shrink-0" aria-hidden />
-          <span className="truncate">AI 도우미</span>
+          <span className="whitespace-nowrap">AI 도우미</span>
         </div>
         {headerActions}
       </div>
-
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         <LlmAssistPanel {...panelProps} />
       </div>
-
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="너비 조절 (왼쪽)"
-        className="absolute top-0 bottom-0 left-0 z-20 w-2 touch-none cursor-ew-resize!"
-        onPointerDown={(e) => startEdgeResize('w', e)}
-      />
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="너비 조절 (오른쪽)"
-        className="absolute top-0 bottom-0 right-0 z-20 w-2 touch-none cursor-ew-resize!"
-        onPointerDown={(e) => startEdgeResize('e', e)}
-      />
-      <div
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="크기 조절"
-        className="absolute bottom-0 left-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
-        onPointerDown={(e) => startCornerResize('sw', e)}
-      />
-      <div
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="크기 조절"
-        className="absolute bottom-0 right-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
-        onPointerDown={(e) => startCornerResize('se', e)}
-      />
     </div>
+  );
+
+  return (
+    <>
+      <LlmAssistDockShell open={dockOpen} onClose={handleClose}>
+        {dockBody}
+      </LlmAssistDockShell>
+
+      <AnimatePresence>
+        {chipVisible ? (
+          <Motion.div
+            key="llm-assist-chip"
+            role="button"
+            tabIndex={0}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={FLOAT_TRANSITION}
+            onPointerDown={(e) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
+            onTouchStart={(e) => startPositionTouchDrag(e, { onTap: popoutActive ? undefined : handleShow })}
+            onKeyDown={(e) => {
+              if (popoutActive) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleShow();
+              }
+            }}
+            className="fixed z-10050 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
+            style={{ left: panelStyle.left, top: panelStyle.top }}
+            title={chipTitle}
+            aria-label={chipLabel}
+          >
+            <Sparkles size={14} aria-hidden />
+            {chipLabel}
+          </Motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {floatingVisible ? (
+          <Motion.div
+            key="llm-assist-floating"
+            ref={panelRef}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={FLOAT_TRANSITION}
+            className="fixed z-10050 flex flex-col rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95 origin-center"
+            style={panelStyle}
+            role="dialog"
+            aria-modal="false"
+            aria-label="AI 텍스트 도우미"
+          >
+            <div
+              className="flex flex-wrap touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
+              onPointerDown={(e) => startPositionDrag(e)}
+              onTouchStart={(e) => startPositionTouchDrag(e)}
+            >
+              <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
+                <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
+                <Sparkles size={16} className="shrink-0" aria-hidden />
+                <span className="whitespace-nowrap">AI 도우미</span>
+              </div>
+              {headerActions}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <LlmAssistPanel {...panelProps} />
+            </div>
+
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="너비 조절 (왼쪽)"
+              className="absolute top-0 bottom-0 left-0 z-20 w-2 touch-none cursor-ew-resize!"
+              onPointerDown={(e) => startEdgeResize('w', e)}
+            />
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="너비 조절 (오른쪽)"
+              className="absolute top-0 bottom-0 right-0 z-20 w-2 touch-none cursor-ew-resize!"
+              onPointerDown={(e) => startEdgeResize('e', e)}
+            />
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="크기 조절"
+              className="absolute bottom-0 left-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
+              onPointerDown={(e) => startCornerResize('sw', e)}
+            />
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="크기 조절"
+              className="absolute bottom-0 right-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
+              onPointerDown={(e) => startCornerResize('se', e)}
+            />
+          </Motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 }

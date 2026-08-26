@@ -30,6 +30,7 @@ import {
   readImageFilesFromClipboardApi,
 } from '@/utils/llmAssistImages';
 import LlmAssistAdvancedOptions from '@/components/llm/LlmAssistAdvancedOptions';
+import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
 
@@ -193,8 +194,8 @@ export default function LlmAssistPanel({
       ) : null}
 
       <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="font-semibold text-gray-700 dark:text-odp-fgStrong">선택된 텍스트</label>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">선택된 텍스트</label>
           <button
             type="button"
             onClick={onRefreshSelection}
@@ -214,8 +215,8 @@ export default function LlmAssistPanel({
       </div>
 
       <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="font-semibold text-gray-700 dark:text-odp-fgStrong">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">
             입력 이미지
             {attachedImages.length > 0 ? (
               <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
@@ -223,7 +224,7 @@ export default function LlmAssistPanel({
               </span>
             ) : null}
           </label>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
             <button
               type="button"
               onClick={() => void handlePasteFromClipboard()}
@@ -313,12 +314,12 @@ export default function LlmAssistPanel({
       </div>
 
       <div className="space-y-2 rounded border border-gray-200 p-2 dark:border-odp-borderSoft">
-        <div className="flex items-center gap-2">
-          <label className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">템플릿</label>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">템플릿</label>
           <select
             value={selectedTemplateId}
             onChange={(e) => onLoadTemplate?.(e.target.value)}
-            className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+            className="min-w-0 flex-1 basis-[12rem] rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
           >
             <option value="">— 불러오기 —</option>
             {templates.map((t) => (
@@ -344,10 +345,14 @@ export default function LlmAssistPanel({
           <button
             type="button"
             onClick={() => setSystemPromptOpen((v) => !v)}
-            className="mb-1 flex w-full items-center justify-between gap-2 text-left font-semibold text-gray-700 dark:text-odp-fgStrong"
+            className={`mb-1 flex w-full items-center justify-between gap-x-2 gap-y-1 rounded px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-odp-fgStrong ${
+              systemPromptOpen
+                ? 'bg-transparent'
+                : 'bg-slate-300/90 dark:bg-slate-950/40'
+            }`}
             aria-expanded={systemPromptOpen}
           >
-            <span>
+            <span className="min-w-0 shrink-0 whitespace-nowrap">
               시스템 프롬프트
               {!systemPromptOpen && systemPrompt.trim() ? (
                 <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">(설정됨)</span>
@@ -359,7 +364,7 @@ export default function LlmAssistPanel({
               className={`shrink-0 opacity-70 transition-transform ${systemPromptOpen ? 'rotate-180' : ''}`}
             />
           </button>
-          {systemPromptOpen ? (
+          <LlmAssistCollapsible open={systemPromptOpen}>
             <textarea
               value={systemPrompt}
               onChange={(e) => onSystemPromptChange?.(e.target.value)}
@@ -367,7 +372,7 @@ export default function LlmAssistPanel({
               placeholder="선택 사항. 모델의 역할·톤·제약 등 (system instruction)"
               className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
             />
-          ) : null}
+          </LlmAssistCollapsible>
         </div>
         <div>
           <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">
@@ -429,8 +434,8 @@ export default function LlmAssistPanel({
       )}
 
       <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="font-semibold text-gray-700 dark:text-odp-fgStrong">결과</label>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">결과</label>
           <div className="inline-flex rounded border border-gray-300 dark:border-odp-borderStrong">
             <button
               type="button"

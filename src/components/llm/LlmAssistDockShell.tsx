@@ -12,9 +12,25 @@ const MAIN_MIN_WIDTH = 180;
 
 const ResizeHandle = TocResizeHandle as any;
 
+/** Matches floating panel crossfade (ease-in-out). */
+const DOCK_EASE = [0.4, 0, 0.2, 1] as const;
+
 function vwPx(vw: number) {
   if (typeof window === 'undefined') return vw * 5;
   return (window.innerWidth * vw) / 100;
+}
+
+/**
+ * Flex row that owns main content + this dock (not the Motion clip wrapper).
+ * shell → Motion.div → layout root
+ */
+function findDockLayoutRoot(shell: HTMLElement | null): HTMLElement | null {
+  if (!shell) return null;
+  return (
+    shell.closest('[data-llm-assist-layout-root]') ||
+    shell.parentElement?.parentElement ||
+    shell.parentElement
+  );
 }
 
 type LlmAssistDockShellProps = {
@@ -38,22 +54,32 @@ export default function LlmAssistDockShell({
   const hardMin = Math.max(1, Math.floor(vwPx(MIN_VW)));
 
   useEffect(() => {
+    if (!open) return undefined;
+
     const update = () => {
-      const root = shellRef.current?.parentElement;
+      const root = findDockLayoutRoot(shellRef.current);
       const rootW = root?.clientWidth ?? window.innerWidth;
+      // Use the shared layout row width — never the dock's own animated width
+      // (that feedback loop capped maxWidth at hardMin after shrinking).
       const available = rootW - MAIN_MIN_WIDTH;
       const vwMax = Math.max(MAX_FLOOR, Math.floor(vwPx(MAX_VW)));
       setFitMax(Math.max(hardMin, Math.min(vwMax, available)));
     };
+
     update();
+    // Layout root may appear one frame after open animation mounts the shell.
+    const raf = requestAnimationFrame(update);
+
     window.addEventListener('resize', update);
-    const root = shellRef.current?.parentElement;
     let ro: ResizeObserver | null = null;
+    const root = findDockLayoutRoot(shellRef.current);
     if (root && typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(update);
       ro.observe(root);
     }
+
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('resize', update);
       ro?.disconnect();
     };
@@ -84,7 +110,7 @@ export default function LlmAssistDockShell({
           transition={
             isResizing
               ? { duration: 0 }
-              : { type: 'spring', stiffness: 420, damping: 38, mass: 0.85 }
+              : { duration: 0.28, ease: DOCK_EASE }
           }
         >
           <div

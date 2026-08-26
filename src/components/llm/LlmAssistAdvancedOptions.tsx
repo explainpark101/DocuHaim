@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Select, Tabs } from 'radix-ui';
 import { JsonCodeMirrorEditor } from '@/components/editor/JsonCodeMirrorEditor';
+import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
 import {
   createEmptyRequestOptionEntry,
   createDefaultRequestOptionEntries,
@@ -89,14 +90,20 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
   const optionCount = Object.keys(value || {}).length;
 
   return (
-    <div className="rounded border border-gray-200 dark:border-odp-borderSoft">
+    <div
+      className={`rounded border border-gray-200 dark:border-odp-borderSoft ${
+        open ? '' : 'bg-slate-300/90 dark:bg-slate-950/40'
+      }`}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-odp-fgStrong"
+        className={`flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-odp-fgStrong ${
+          open ? 'rounded-t bg-transparent' : 'rounded'
+        }`}
         aria-expanded={open}
       >
-        <span>
+        <span className="shrink-0 whitespace-nowrap">
           고급 설정
           {!open && optionCount > 0 ? (
             <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
@@ -111,7 +118,7 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
         />
       </button>
 
-      {open ? (
+      <LlmAssistCollapsible open={open}>
         <div className="space-y-2 border-t border-gray-200 px-2 pb-2 pt-2 dark:border-odp-borderSoft">
           <p className="text-[10px] leading-snug text-gray-500 dark:text-odp-muted">
             LLM 요청에 합쳐지는 생성 옵션입니다. 제안 목록 외 key도 추가할 수 있습니다.
@@ -154,7 +161,7 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
                 const selectVal = keySelectValue(entry.key);
                 return (
                   <div key={entry.id} className="space-y-1 rounded border border-gray-100 p-1.5 dark:border-odp-borderSoft/60">
-                    <div className="flex items-start gap-1">
+                    <div className="flex flex-wrap items-start gap-x-1 gap-y-1">
                       <Select.Root
                         value={selectVal}
                         onValueChange={(next) => {
@@ -173,7 +180,7 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
                         }}
                       >
                         <Select.Trigger
-                          className="inline-flex h-7 min-w-0 flex-1 items-center justify-between gap-1 rounded border border-gray-300 bg-white px-2 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                          className="inline-flex h-7 min-w-[8rem] flex-1 items-center justify-between gap-1 rounded border border-gray-300 bg-white px-2 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
                           aria-label="옵션 키"
                         >
                           <Select.Value placeholder="key 선택" />
@@ -287,7 +294,7 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
             </Tabs.Content>
           </Tabs.Root>
         </div>
-      ) : null}
+      </LlmAssistCollapsible>
     </div>
   );
 }
