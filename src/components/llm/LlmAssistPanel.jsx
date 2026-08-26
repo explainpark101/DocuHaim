@@ -1,17 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDownToLine,
-  ChevronDown,
+  Bookmark,
+  Bot,
+  BrainCircuit,
   ClipboardPaste,
   Copy,
+  Image as ImageIcon,
   ImageOff,
   ImagePlus,
   Loader2,
+  MessageSquareText,
+  Plus,
   RefreshCw,
   Replace,
+  Save,
+  ScrollText,
   Sparkles,
   Eye,
   FileText,
+  TextCursorInput,
+  Trash2,
   X,
   ChevronUp,
 } from 'lucide-react';
@@ -31,8 +40,22 @@ import {
 } from '@/utils/llmAssistImages';
 import LlmAssistAdvancedOptions from '@/components/llm/LlmAssistAdvancedOptions';
 import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
+import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
+
+const LABEL_ICON_CLASS = 'shrink-0 opacity-70';
+
+function PanelLabel({ icon: Icon, children, className = '' }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-odp-fgStrong ${className}`}
+    >
+      {Icon ? <Icon size={13} className={LABEL_ICON_CLASS} aria-hidden /> : null}
+      {children}
+    </span>
+  );
+}
 
 export default function LlmAssistPanel({
   theme = 'light',
@@ -77,6 +100,8 @@ export default function LlmAssistPanel({
   canInsertIntoDocument = true,
   remoteMode = false,
   modelSelectAutoLoad = true,
+  /** When false, parent chrome owns OS image drop (dock / floating shell). */
+  enableImageDropZone = true,
 }) {
   const resultReadOnly = loading || (remoteMode ? false : !result);
   const panelRef = useRef(null);
@@ -124,12 +149,6 @@ export default function LlmAssistPanel({
     }
   }, [onAddImages, addingImages]);
 
-  const handleImageDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await handlePickImages(e.dataTransfer?.files);
-  };
-
   useEffect(() => {
     const onPaste = async (e) => {
       if (!onAddImages || !panelRef.current) return;
@@ -156,10 +175,12 @@ export default function LlmAssistPanel({
     return () => document.removeEventListener('paste', onPaste);
   }, [onAddImages, addingImages]);
 
-  return (
-    <div ref={panelRef} className="space-y-3 text-xs">
+  const panelBody = (
+      <div ref={panelRef} className="space-y-3 text-xs">
       <div>
-        <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">제공자</label>
+        <label className="mb-1 block">
+          <PanelLabel icon={Bot}>제공자</PanelLabel>
+        </label>
         <LlmProviderSelect
           profiles={profiles}
           value={selectedProfileId}
@@ -169,7 +190,9 @@ export default function LlmAssistPanel({
 
       {selectedProfile ? (
         <div>
-          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">모델</label>
+          <label className="mb-1 block">
+            <PanelLabel icon={BrainCircuit}>모델</PanelLabel>
+          </label>
           {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
             <OpenAiCompatibleModelSelect
               key={`${selectedProfile.id}-openai`}
@@ -195,7 +218,9 @@ export default function LlmAssistPanel({
 
       <div>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">선택된 텍스트</label>
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={TextCursorInput}>선택된 텍스트</PanelLabel>
+          </label>
           <button
             type="button"
             onClick={onRefreshSelection}
@@ -216,13 +241,15 @@ export default function LlmAssistPanel({
 
       <div>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">
-            입력 이미지
-            {attachedImages.length > 0 ? (
-              <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
-                ({attachedImages.length})
-              </span>
-            ) : null}
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={ImageIcon}>
+              입력 이미지
+              {attachedImages.length > 0 ? (
+                <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
+                  ({attachedImages.length})
+                </span>
+              ) : null}
+            </PanelLabel>
           </label>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
             <button
@@ -264,11 +291,6 @@ export default function LlmAssistPanel({
           onChange={(e) => handlePickImages(e.target.files)}
         />
         <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onDrop={handleImageDrop}
           className={`rounded border border-dashed p-2 dark:border-odp-borderSoft ${
             attachedImages.length ? 'border-gray-200 bg-gray-50/50 dark:bg-odp-bgSoft/40' : 'border-gray-300 bg-gray-50 dark:bg-odp-bgSoft'
           }`}
@@ -302,7 +324,7 @@ export default function LlmAssistPanel({
             </div>
           ) : (
             <p className="py-3 text-center text-[11px] text-gray-500 dark:text-odp-muted">
-              이미지를 드래그하거나 「추가」로 선택하세요.
+              AI 도우미 어디에든 이미지를 놓거나 「추가」로 선택하세요.
               <br />
               「클립보드에서 붙여넣기」또는 Ctrl+V로 붙여넣을 수 있습니다.
             </p>
@@ -315,7 +337,9 @@ export default function LlmAssistPanel({
 
       <div className="space-y-2 rounded border border-gray-200 p-2 dark:border-odp-borderSoft">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">템플릿</label>
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={Bookmark}>템플릿</PanelLabel>
+          </label>
           <select
             value={selectedTemplateId}
             onChange={(e) => onLoadTemplate?.(e.target.value)}
@@ -353,7 +377,7 @@ export default function LlmAssistPanel({
             aria-expanded={systemPromptOpen}
           >
             <span className="min-w-0 shrink-0 whitespace-nowrap">
-              시스템 프롬프트
+              <PanelLabel icon={ScrollText}>시스템 프롬프트</PanelLabel>
               {!systemPromptOpen && systemPrompt.trim() ? (
                 <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">(설정됨)</span>
               ) : null}
@@ -375,8 +399,8 @@ export default function LlmAssistPanel({
           </LlmAssistCollapsible>
         </div>
         <div>
-          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">
-            지시사항
+          <label className="mb-1 block">
+            <PanelLabel icon={MessageSquareText}>지시사항</PanelLabel>
           </label>
           <textarea
             value={instruction}
@@ -390,23 +414,26 @@ export default function LlmAssistPanel({
           <button
             type="button"
             onClick={onSaveTemplate}
-            className="rounded bg-violet-600 px-2 py-1 text-[11px] text-white hover:bg-violet-700"
+            className="inline-flex items-center gap-1 rounded bg-violet-600 px-2 py-1 text-[11px] text-white hover:bg-violet-700"
           >
+            <Save size={12} aria-hidden />
             템플릿 저장
           </button>
           <button
             type="button"
             onClick={onNewTemplate}
-            className="rounded border border-gray-300 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
+            className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
           >
+            <Plus size={12} aria-hidden />
             새 템플릿
           </button>
           {editingTemplateId && (
             <button
               type="button"
               onClick={onDeleteTemplate}
-              className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400"
+              className="inline-flex items-center gap-1 rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400"
             >
+              <Trash2 size={12} aria-hidden />
               삭제
             </button>
           )}
@@ -435,7 +462,9 @@ export default function LlmAssistPanel({
 
       <div>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-          <label className="shrink-0 whitespace-nowrap font-semibold text-gray-700 dark:text-odp-fgStrong">결과</label>
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={Sparkles}>결과</PanelLabel>
+          </label>
           <div className="inline-flex rounded border border-gray-300 dark:border-odp-borderStrong">
             <button
               type="button"
@@ -548,6 +577,18 @@ export default function LlmAssistPanel({
           )}
         </div>
       </div>
-    </div>
+      </div>
+  );
+
+  if (!enableImageDropZone) return panelBody;
+
+  return (
+    <LlmAssistImageDropZone
+      className="min-h-0"
+      disabled={!onAddImages || addingImages}
+      onFilesDrop={(files) => void handlePickImages(files)}
+    >
+      {panelBody}
+    </LlmAssistImageDropZone>
   );
 }

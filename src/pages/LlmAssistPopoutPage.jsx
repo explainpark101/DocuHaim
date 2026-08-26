@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import LlmAssistPanel from '@/components/LlmAssistPanel';
+import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
 import { LLM_ASSIST_MSG } from '@/utils/llmAssistBridge';
+import { readImageFilesAsAttachments } from '@/utils/llmAssistImages';
 import {
   closeCurrentLlmAssistTauriPopout,
   isLlmAssistTauriMainWindowOpen,
@@ -197,7 +199,17 @@ export default function LlmAssistPopoutPage() {
   };
 
   return (
-    <div className="llm-assist-popout-page flex min-h-screen flex-col bg-white dark:bg-odp-bgSofter">
+    <LlmAssistImageDropZone
+      className="llm-assist-popout-page flex min-h-screen flex-col bg-white dark:bg-odp-bgSofter"
+      onFilesDrop={async (files) => {
+        try {
+          const images = await readImageFilesAsAttachments(files);
+          if (images.length) sendAction('add-images', { images });
+        } catch {
+          /* ignore non-image drops */
+        }
+      }}
+    >
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-4 py-2.5 dark:border-violet-800/50 dark:bg-violet-950/40">
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <Sparkles size={16} className="shrink-0" aria-hidden />
@@ -266,8 +278,9 @@ export default function LlmAssistPopoutPage() {
           onAppendResult={() => sendAction('append-result')}
           remoteMode
           modelSelectAutoLoad={false}
+          enableImageDropZone={false}
         />
       </main>
-    </div>
+    </LlmAssistImageDropZone>
   );
 }

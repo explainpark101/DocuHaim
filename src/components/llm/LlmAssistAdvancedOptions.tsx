@@ -1,8 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Plus, Trash2 } from 'lucide-react';
-import { Select, Tabs } from 'radix-ui';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Braces,
+  ChevronDown,
+  CircleHelp,
+  List,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react';
+import { Select, Tabs, Tooltip } from 'radix-ui';
+import Button from '@/components/Button';
+import { IconSearch, IconX } from '@/components/icons';
 import { JsonCodeMirrorEditor } from '@/components/editor/JsonCodeMirrorEditor';
 import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
+import Modal from '@/components/modals/Modal';
+import { useLlmAssistAdvancedOptionsUndoHistory } from '@/hooks/useLlmAssistAdvancedOptionsUndoHistory';
+import type { LlmAssistAdvancedOptionsUndoSnapshot } from '@/utils/llm/llmAssistAdvancedOptionsUndoHistory';
+import {
+  buildRequestOptionGoogleSearchUrl,
+  getRequestOptionHelp,
+  getRequestOptionValuePlaceholder,
+} from '@/utils/llm/llmAssistRequestOptionHelp';
 import {
   createEmptyRequestOptionEntry,
   createDefaultRequestOptionEntries,
@@ -14,6 +32,27 @@ import {
   requestOptionsToJsonText,
   type LlmAssistRequestOptionEntry,
 } from '@/utils/llm/llmAssistRequestOptions';
+
+const TOOLTIP_CONTENT_CLASS =
+  'z-100010 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] leading-snug text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong';
+
+/** Above Select.Content (z-100010) when portaled from dropdown rows. */
+const SELECT_ITEM_TOOLTIP_CLASS =
+  'z-100011 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] leading-snug text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong';
+
+const SELECT_ITEM_CLASS =
+  'cursor-pointer rounded px-2 py-1 text-[11px] outline-none data-disabled:cursor-not-allowed data-disabled:opacity-40 data-highlighted:bg-violet-50 dark:data-highlighted:bg-violet-950/40';
+
+const CUSTOM_KEY_SELECT_TIP = '제안 목록에 없는 key를 직접 입력합니다.';
+
+const DELETE_BTN_CLASS =
+  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800/80 dark:text-red-400 dark:hover:bg-red-950/40';
+
+const TAB_TRIGGER_CLASS =
+  'inline-flex flex-1 items-center justify-center gap-1 rounded px-2 py-1 text-[11px] font-medium outline-none transition data-[state=inactive]:text-gray-500 data-[state=active]:bg-violet-600 data-[state=active]:text-white dark:data-[state=inactive]:text-odp-muted dark:data-[state=active]:text-white';
+
+const HELP_BTN_CLASS =
+  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-50 dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft';
 
 const CUSTOM_KEY = '__custom__';
 
@@ -38,12 +77,51 @@ function stableOptionsJson(options: Record<string, unknown>): string {
   }
 }
 
+type RequestOptionKeySelectItemProps = {
+  value: string;
+  label: string;
+  tip: string;
+  dimmed?: boolean;
+};
+
+function RequestOptionKeySelectItem({
+  value,
+  label,
+  tip,
+  dimmed = false,
+}: RequestOptionKeySelectItemProps) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <Select.Item
+          value={value}
+          className={`${SELECT_ITEM_CLASS}${dimmed ? ' opacity-40' : ''}`}
+        >
+          <Select.ItemText>{label}</Select.ItemText>
+        </Select.Item>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content
+          side="left"
+          sideOffset={8}
+          className={SELECT_ITEM_TOOLTIP_CLASS}
+        >
+          {tip}
+          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
 /**
  * Collapsible advanced generation options: field rows or JSON (CodeMirror).
  */
 export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'fields' | 'json'>('fields');
+  const [helpKey, setHelpKey] = useState<string | null>(null);
+  const [undoSessionKey, setUndoSessionKey] = useState(0);
   const [entries, setEntries] = useState<LlmAssistRequestOptionEntry[]>(() =>
     entriesFromRequestOptions(value),
   );
@@ -51,6 +129,43 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
   const [jsonError, setJsonError] = useState('');
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
+
+  useEffect(() => {
+    if (open) setUndoSessionKey((key) => key + 1);
+  }, [open]);
+
+  const applyUndoSnapshot = useCallback(
+    (snapshot: LlmAssistAdvancedOptionsUndoSnapshot) => {
+      setTab(snapshot.tab);
+      setEntries(snapshot.entries.map((entry) => ({ ...entry })));
+      setJsonText(snapshot.jsonText);
+      if (snapshot.tab === 'fields') {
+        const options = requestOptionsFromEntries(snapshot.entries);
+        setJsonError('');
+        onChange(options);
+        return;
+      }
+      const parsed = parseRequestOptionsJsonText(snapshot.jsonText);
+      if (parsed.ok) {
+        setJsonError('');
+        setEntries(entriesFromRequestOptions(parsed.options));
+        onChange(parsed.options);
+        return;
+      }
+      setJsonError(parsed.error);
+      onChange(requestOptionsFromEntries(snapshot.entries));
+    },
+    [onChange],
+  );
+
+  const { undo, redo } = useLlmAssistAdvancedOptionsUndoHistory({
+    enabled: open,
+    historyKey: undoSessionKey,
+    tab,
+    entries,
+    jsonText,
+    applySnapshot: applyUndoSnapshot,
+  });
 
   // Sync from parent when template load / reset replaces options content.
   useEffect(() => {
@@ -60,7 +175,8 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
     setEntries(entriesFromRequestOptions(incoming));
     setJsonText(requestOptionsToJsonText(incoming));
     setJsonError('');
-  }, [value]);
+    if (open) setUndoSessionKey((key) => key + 1);
+  }, [value, open]);
 
   const usedKeys = useMemo(
     () => new Set(entries.map((e) => e.key.trim()).filter(Boolean)),
@@ -88,6 +204,36 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
   };
 
   const optionCount = Object.keys(value || {}).length;
+  const helpContent = helpKey !== null ? getRequestOptionHelp(helpKey) : null;
+  const helpModalTitle =
+    helpKey !== null && helpKey.trim() ? helpKey.trim() : '옵션 키';
+
+  // Capture-phase: swallow undo/redo so the note editor never receives them.
+  useEffect(() => {
+    if (!open || helpKey !== null) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.metaKey || event.ctrlKey;
+      if (!mod || event.altKey) return;
+      const key = event.key.toLowerCase();
+      const isUndo = key === 'z' && !event.shiftKey;
+      const isRedo = key === 'y' || (key === 'z' && event.shiftKey);
+      if (!isUndo && !isRedo) return;
+
+      // JSON tab: CodeMirror keeps its own per-field undo while focused.
+      if (tab === 'json') {
+        const target = event.target;
+        if (target instanceof Element && target.closest('.cm-editor')) return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (isRedo) redo();
+      else undo();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [helpKey, open, redo, tab, undo]);
 
   return (
     <div
@@ -104,7 +250,10 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
         aria-expanded={open}
       >
         <span className="shrink-0 whitespace-nowrap">
-          고급 설정
+          <span className="inline-flex items-center gap-1">
+            <SlidersHorizontal size={13} className="shrink-0 opacity-70" aria-hidden />
+            고급 설정
+          </span>
           {!open && optionCount > 0 ? (
             <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
               ({optionCount})
@@ -142,21 +291,18 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
             }}
           >
             <Tabs.List className="flex gap-1 rounded border border-gray-200 p-0.5 dark:border-odp-borderSoft">
-              <Tabs.Trigger
-                value="fields"
-                className="flex-1 rounded px-2 py-1 text-[11px] font-medium text-gray-500 outline-none transition data-[state=active]:bg-violet-600 data-[state=active]:text-white dark:text-odp-muted"
-              >
+              <Tabs.Trigger value="fields" className={TAB_TRIGGER_CLASS}>
+                <List size={12} aria-hidden className="opacity-80" />
                 필드
               </Tabs.Trigger>
-              <Tabs.Trigger
-                value="json"
-                className="flex-1 rounded px-2 py-1 text-[11px] font-medium text-gray-500 outline-none transition data-[state=active]:bg-violet-600 data-[state=active]:text-white dark:text-odp-muted"
-              >
+              <Tabs.Trigger value="json" className={TAB_TRIGGER_CLASS}>
+                <Braces size={12} aria-hidden className="opacity-80" />
                 JSON
               </Tabs.Trigger>
             </Tabs.List>
 
             <Tabs.Content value="fields" className="mt-2 space-y-2 outline-none">
+              <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
               {entries.map((entry) => {
                 const selectVal = keySelectValue(entry.key);
                 return (
@@ -165,6 +311,13 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
                       <Select.Root
                         value={selectVal}
                         onValueChange={(next) => {
+                          if (
+                            next !== CUSTOM_KEY
+                            && usedKeys.has(next)
+                            && entry.key !== next
+                          ) {
+                            return;
+                          }
                           commitEntries(
                             entries.map((row) => {
                               if (row.id !== entry.id) return row;
@@ -196,40 +349,73 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
                           >
                             <Select.Viewport className="p-1">
                               {LLM_ASSIST_SUGGESTED_REQUEST_OPTION_KEYS.map((key) => (
-                                <Select.Item
+                                <RequestOptionKeySelectItem
                                   key={key}
                                   value={key}
-                                  disabled={usedKeys.has(key) && entry.key !== key}
-                                  className="cursor-pointer rounded px-2 py-1 text-[11px] outline-none data-disabled:cursor-not-allowed data-disabled:opacity-40 data-highlighted:bg-violet-50 dark:data-highlighted:bg-violet-950/40"
-                                >
-                                  <Select.ItemText>{key}</Select.ItemText>
-                                </Select.Item>
+                                  label={key}
+                                  tip={getRequestOptionHelp(key).summary}
+                                  dimmed={usedKeys.has(key) && entry.key !== key}
+                                />
                               ))}
                               <Select.Separator className="my-1 h-px bg-gray-200 dark:bg-odp-borderSoft" />
-                              <Select.Item
+                              <RequestOptionKeySelectItem
                                 value={CUSTOM_KEY}
-                                className="cursor-pointer rounded px-2 py-1 text-[11px] outline-none data-highlighted:bg-violet-50 dark:data-highlighted:bg-violet-950/40"
-                              >
-                                <Select.ItemText>직접 입력…</Select.ItemText>
-                              </Select.Item>
+                                label="직접 입력…"
+                                tip={CUSTOM_KEY_SELECT_TIP}
+                              />
                             </Select.Viewport>
                           </Select.Content>
                         </Select.Portal>
                       </Select.Root>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = entries.filter((row) => row.id !== entry.id);
-                          commitEntries(
-                            next.length ? next : createDefaultRequestOptionEntries(),
-                          );
-                        }}
-                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
-                        title="행 삭제"
-                        aria-label="행 삭제"
-                      >
-                        <Trash2 size={12} aria-hidden />
-                      </button>
+                      <Tooltip.Root>
+                        <Tooltip.Trigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = entries.filter((row) => row.id !== entry.id);
+                              commitEntries(
+                                next.length ? next : createDefaultRequestOptionEntries(),
+                              );
+                            }}
+                            className={DELETE_BTN_CLASS}
+                            aria-label="행 삭제"
+                          >
+                            <Trash2 size={12} aria-hidden />
+                          </button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            side="top"
+                            sideOffset={4}
+                            className={TOOLTIP_CONTENT_CLASS}
+                          >
+                            행 삭제
+                            <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                      <Tooltip.Root>
+                        <Tooltip.Trigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => setHelpKey(entry.key)}
+                            className={HELP_BTN_CLASS}
+                            aria-label={`${entry.key.trim() || '옵션'} 설명`}
+                          >
+                            <CircleHelp size={12} aria-hidden />
+                          </button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            side="top"
+                            sideOffset={4}
+                            className={TOOLTIP_CONTENT_CLASS}
+                          >
+                            {getRequestOptionHelp(entry.key).summary}
+                            <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
                     </div>
                     {selectVal === CUSTOM_KEY ? (
                       <input
@@ -258,12 +444,13 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
                           ),
                         );
                       }}
-                      placeholder='value (예: 0.4, true, "text", [1,2])'
+                      placeholder={getRequestOptionValuePlaceholder(entry.key)}
                       className="w-full rounded border border-gray-300 bg-white px-2 py-1 font-mono text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
                     />
                   </div>
                 );
               })}
+              </Tooltip.Provider>
               <button
                 type="button"
                 onClick={() =>
@@ -295,6 +482,44 @@ export default function LlmAssistAdvancedOptions({ value, onChange }: Props) {
           </Tabs.Root>
         </div>
       </LlmAssistCollapsible>
+
+      <Modal
+        isOpen={helpKey !== null}
+        onClose={() => setHelpKey(null)}
+        resizable={false}
+        contentClassName="max-w-md max-h-[90vh]"
+      >
+        <div className="p-6">
+          <div className="mb-3 flex justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
+              <CircleHelp size={24} aria-hidden />
+            </div>
+          </div>
+          <h2 className="mb-2 text-center text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
+            {helpModalTitle}
+          </h2>
+          {helpContent ? (
+            <p className="mb-5 text-start text-sm leading-relaxed whitespace-pre-line break-keep text-gray-600 dark:text-gray-400">
+              {helpContent.detail}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="secondary" onClick={() => setHelpKey(null)}>
+              <IconX size={14} aria-hidden />
+              닫기
+            </Button>
+            <a
+              href={buildRequestOptionGoogleSearchUrl(helpKey ?? '')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 dark:bg-blue-600 dark:hover:bg-blue-700"
+            >
+              <IconSearch size={14} aria-hidden />
+              Google에서 검색
+            </a>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

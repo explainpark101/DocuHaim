@@ -37,8 +37,9 @@ import {
 } from '@/utils/llm/llmAssistPopoutHost';
 import LlmAssistPanel from '@/components/LlmAssistPanel';
 import LlmAssistDockShell from '@/components/llm/LlmAssistDockShell';
+import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
 import { AnimatePresence, motion as Motion } from 'motion/react';
-import { normalizeImageAttachment } from '@/utils/llmAssistImages';
+import { normalizeImageAttachment, readImageFilesAsAttachments } from '@/utils/llmAssistImages';
 import { copyText } from '@/utils/copyText';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import {
@@ -509,6 +510,18 @@ export default function LlmAssistModal({
     setAttachedImages([]);
   }, []);
 
+  const handleOsImageFilesDrop = useCallback(
+    async (files) => {
+      try {
+        const next = await readImageFilesAsAttachments(files);
+        await handleAddImages(next);
+      } catch (err) {
+        setError(err?.message || '이미지를 추가할 수 없습니다.');
+      }
+    },
+    [handleAddImages],
+  );
+
   const handlePopoutAction = useCallback(
     async (action, payload = {}) => {
       switch (action) {
@@ -820,18 +833,24 @@ export default function LlmAssistModal({
     : '드래그: 이동 · 클릭: AI 도우미 표시';
 
   const dockBody = (
-    <div className="flex h-full min-h-0 flex-col" role="complementary" aria-label="AI 텍스트 도우미">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40">
-        <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
-          <Sparkles size={16} className="shrink-0" aria-hidden />
-          <span className="whitespace-nowrap">AI 도우미</span>
+    <LlmAssistImageDropZone
+      className="flex h-full min-h-0 flex-col"
+      disabled={!open}
+      onFilesDrop={handleOsImageFilesDrop}
+    >
+      <div className="flex h-full min-h-0 flex-col" role="complementary" aria-label="AI 텍스트 도우미">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40">
+          <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
+            <Sparkles size={16} className="shrink-0" aria-hidden />
+            <span className="whitespace-nowrap">AI 도우미</span>
+          </div>
+          {headerActions}
         </div>
-        {headerActions}
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+        </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        <LlmAssistPanel {...panelProps} />
-      </div>
-    </div>
+    </LlmAssistImageDropZone>
   );
 
   return (
@@ -885,22 +904,28 @@ export default function LlmAssistModal({
             aria-modal="false"
             aria-label="AI 텍스트 도우미"
           >
-            <div
-              className="flex flex-wrap touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
-              onPointerDown={(e) => startPositionDrag(e)}
-              onTouchStart={(e) => startPositionTouchDrag(e)}
+            <LlmAssistImageDropZone
+              className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg"
+              disabled={!open}
+              onFilesDrop={handleOsImageFilesDrop}
             >
-              <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
-                <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
-                <Sparkles size={16} className="shrink-0" aria-hidden />
-                <span className="whitespace-nowrap">AI 도우미</span>
+              <div
+                className="flex flex-wrap touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
+                onPointerDown={(e) => startPositionDrag(e)}
+                onTouchStart={(e) => startPositionTouchDrag(e)}
+              >
+                <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
+                  <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
+                  <Sparkles size={16} className="shrink-0" aria-hidden />
+                  <span className="whitespace-nowrap">AI 도우미</span>
+                </div>
+                {headerActions}
               </div>
-              {headerActions}
-            </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              <LlmAssistPanel {...panelProps} />
-            </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+              </div>
+            </LlmAssistImageDropZone>
 
             <div
               role="separator"

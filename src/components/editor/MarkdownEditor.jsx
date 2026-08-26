@@ -786,7 +786,7 @@ export default function MarkdownEditor({
       view.focus();
       redo(view);
     };
-    handlers['editor-llm-assist'] = () => llmAssist?.openAssist?.();
+    handlers['editor-llm-assist'] = () => llmAssist?.toggleAssist?.();
     handlers['editor-export-pdf'] = openExport;
     handlers['editor-pgbr'] = () => {
       restoreSelectionIfNeeded();
@@ -2404,8 +2404,9 @@ export default function MarkdownEditor({
     />,
     <LlmAssistToolbar
       key="llm-assist"
-      onOpen={() => {
-        llmAssist?.openAssist?.();
+      active={Boolean(llmAssist?.open)}
+      onToggle={() => {
+        llmAssist?.toggleAssist?.();
       }}
     />,
     <ChecklistProgressToolbar
@@ -2466,6 +2467,8 @@ export default function MarkdownEditor({
     onUploadImage,
     handleToolbarImageUpload,
     openHeadingRemap,
+    llmAssist?.open,
+    llmAssist?.toggleAssist,
   ]);
 
   const toolbars = useMemo(() => [

@@ -25,6 +25,7 @@ type LlmAssistSessionContextValue = {
   setOpen: (open: boolean) => void;
   openAssist: () => void;
   closeAssist: () => void;
+  toggleAssist: () => void;
   presentation: LlmAssistPresentation;
   setPresentation: (next: LlmAssistPresentation) => void;
   dockToRight: () => void;
@@ -58,6 +59,10 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
     setOpen(false);
   }, []);
 
+  const toggleAssist = useCallback(() => {
+    setOpen((prev) => !prev);
+  }, []);
+
   const dockToRight = useCallback(() => {
     setPresentation('docked');
     setOpen(true);
@@ -86,6 +91,7 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
       setOpen,
       openAssist,
       closeAssist,
+      toggleAssist,
       presentation,
       setPresentation,
       dockToRight,
@@ -98,6 +104,7 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
       open,
       openAssist,
       closeAssist,
+      toggleAssist,
       presentation,
       setPresentation,
       dockToRight,
