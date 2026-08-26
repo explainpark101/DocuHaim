@@ -99,16 +99,19 @@ export async function loadMessageOgSearchText(msg: any, storage: any) {
   return parts.join('\n\n');
 }
 
+type SearchPreviewOptions = {
+  headChars?: number;
+  contextRadius?: number;
+  maxTotal?: number;
+};
+
 /**
  * Keep the start of the text and the first query hit; omit the rest with ellipsis.
  */
-export function buildSearchPreviewText(text: any, query: any, opts = {}) {
+export function buildSearchPreviewText(text: any, query: any, opts: SearchPreviewOptions = {}) {
   const {
-    // @ts-expect-error TS(2339): Property 'headChars' does not exist on type '{}'.
     headChars = 72,
-    // @ts-expect-error TS(2339): Property 'contextRadius' does not exist on type '{... Remove this comment to see the full error message
     contextRadius = 56,
-    // @ts-expect-error TS(2339): Property 'maxTotal' does not exist on type '{}'.
     maxTotal = 260,
   } = opts;
   const raw = String(text ?? '');
@@ -238,10 +241,9 @@ export function renderSearchResultHtml(
   body: any,
   query = '',
   ogSearchText = '',
-  options = {},
+  options: { markdown?: boolean } = {},
 ) {
   const raw = buildSearchResultDisplayText(body, query, ogSearchText);
-  // @ts-expect-error TS(2339): Property 'markdown' does not exist on type '{}'.
   const asMarkdown = options.markdown === true;
   let html;
   if (asMarkdown) {

@@ -57,7 +57,7 @@ const INLINE_STYLE_PROPS = [
   'word-break',
 ];
 
-function findCopyRoot(scope = document) {
+function findCopyRoot(scope: ParentNode = document) {
   for (const selector of COPY_ROOT_SELECTORS) {
     const roots = [...scope.querySelectorAll(selector)];
     const visible = roots.find((el) => {
@@ -266,17 +266,23 @@ async function writeHtmlClipboard(html: any, text: any) {
   if (!ok) throw new Error('브라우저가 HTML 클립보드 쓰기를 거부했습니다.');
 }
 
+type CopyFormattedHtmlOptions = {
+  imageSrcReplacements?: Map<string, string> | Record<string, string> | undefined;
+};
+
 /**
  * @param {ParentNode} [scope]
  * @param {{ imageSrcReplacements?: Map<string, string> | Record<string, string> }} [options]
  */
-export async function copyCurrentPageAsFormattedHtml(scope = document, options = {}) {
+export async function copyCurrentPageAsFormattedHtml(
+  scope: ParentNode = document,
+  options: CopyFormattedHtmlOptions = {},
+) {
   const sourceRoot = findCopyRoot(scope);
   if (!sourceRoot) {
     throw new Error('복사할 렌더링 영역을 찾지 못했습니다.');
   }
 
-  // @ts-expect-error TS(2339): Property 'imageSrcReplacements' does not exist on ... Remove this comment to see the full error message
   const replacements = options?.imageSrcReplacements || null;
   const replacedKeys = new Set();
   if (replacements instanceof Map) {
@@ -288,16 +294,15 @@ export async function copyCurrentPageAsFormattedHtml(scope = document, options =
   const iframe = createLightModeFrame();
   try {
     const doc = iframe.contentDocument;
-    const clone = sourceRoot.cloneNode(true);
+    if (!doc) {
+      throw new Error('복사용 iframe 문서를 준비하지 못했습니다.');
+    }
+    const clone = sourceRoot.cloneNode(true) as HTMLElement;
     stripEditorOnlyNodes(clone);
     normalizeForPaste(clone);
-    // @ts-expect-error TS(2339): Property 'classList' does not exist on type 'Node'... Remove this comment to see the full error message
     clone.classList.add('md-editor-preview');
-    // @ts-expect-error TS(2339): Property 'style' does not exist on type 'Node'.
     clone.style.backgroundColor = '#ffffff';
-    // @ts-expect-error TS(2339): Property 'style' does not exist on type 'Node'.
     clone.style.color = '#111827';
-    // @ts-expect-error TS(2531): Object is possibly 'null'.
     doc.body.appendChild(clone);
 
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -307,12 +312,10 @@ export async function copyCurrentPageAsFormattedHtml(scope = document, options =
 
     const html = [
       '<div style="background:#ffffff;color:#111827;">',
-      // @ts-expect-error TS(2339): Property 'innerHTML' does not exist on type 'Node'... Remove this comment to see the full error message
       clone.innerHTML,
       '</div>',
     ].join('');
-    // @ts-expect-error TS(2339): Property 'innerText' does not exist on type 'Node'... Remove this comment to see the full error message
-    const text = clone.innerText || sourceRoot.innerText || '';
+    const text = clone.textContent || sourceRoot.textContent || '';
     await writeHtmlClipboard(html, text);
     return { html, text };
   } finally {

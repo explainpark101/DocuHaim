@@ -14,6 +14,11 @@ import { parseWikiImageInner, wikiImageMarkupFromAttrs } from '@/utils/wikiImage
 
 const MAX_CHAT_FILE_BYTES = 50 * 1024 * 1024;
 
+type ChatFileUploadOptions = {
+  dateStr?: string;
+  onProgress?: (n: number) => void;
+};
+
 function makeUuid() {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -58,7 +63,7 @@ export async function isChatImageFile(file: any) {
  * Upload a non-image file for chat-with-myself.
  * @returns {Promise<string>} object key / relative path
  */
-export async function uploadChatFile(ctx: any, file: any, options = {}) {
+export async function uploadChatFile(ctx: any, file: File, options: ChatFileUploadOptions = {}) {
   if (!file) throw new Error('파일이 없습니다.');
   if (file.size > MAX_CHAT_FILE_BYTES) {
     throw new Error(
@@ -67,14 +72,12 @@ export async function uploadChatFile(ctx: any, file: any, options = {}) {
   }
 
   const dateStr =
-    // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
     options.dateStr || localDateString(new Date(), detectTimeZone());
   const prefix = chatFilePathPrefix(dateStr);
   const ext = extensionFromFileName(file.name) || '';
   const key = `${prefix}${makeUuid()}${ext}`;
   const contentType = file.type || 'application/octet-stream';
 
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(0);
   if (ctx.mode === 'local') {
     if (!ctx.localRootHandle) throw new Error('로컬 폴더를 먼저 열어주세요.');
@@ -93,7 +96,6 @@ export async function uploadChatFile(ctx: any, file: any, options = {}) {
       }
       throw err;
     }
-    // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
     options.onProgress?.(100);
     return key;
   }
@@ -102,7 +104,6 @@ export async function uploadChatFile(ctx: any, file: any, options = {}) {
   const backend = createChatBackend(ctx);
   await backend.ensureChatFolder();
   await backend.putBinary(key, body, contentType);
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(100);
   return key;
 }
@@ -111,7 +112,11 @@ export async function uploadChatFile(ctx: any, file: any, options = {}) {
  * Upload image or general file; returns markdown attachment descriptor.
  * @returns {Promise<{ kind: 'image'|'file', path: string, name: string, size: number }>}
  */
-export async function uploadChatAttachment(ctx: any, file: any, options = {}) {
+export async function uploadChatAttachment(
+  ctx: any,
+  file: File,
+  options: ChatFileUploadOptions = {},
+) {
   const asImage = await isChatImageFile(file);
   if (asImage) {
     const path = await uploadChatImage(ctx, file, options);

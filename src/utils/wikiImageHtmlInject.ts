@@ -129,8 +129,7 @@ export function annotateWikiImageCaptionPairs(html: any) {
     if (!img || img.tagName !== 'IMG' || !img.getAttribute('data-wiki-path')) return;
 
     let n = img.nextSibling;
-    // @ts-expect-error TS(2531): Object is possibly 'null'.
-    while (n && n.nodeType === 3 && !n.textContent.trim()) n = n.nextSibling;
+    while (n && n.nodeType === 3 && !(n.textContent || '').trim()) n = n.nextSibling;
     if (!n) return;
 
     const tail = [];
@@ -217,10 +216,9 @@ export function mergeWikiCaptionPairsForTurndown(html: any) {
     ) {
       const img = el.querySelector('img[data-wiki-path]');
       const path = img?.getAttribute('data-wiki-path');
-      if (path) {
+      if (path && img) {
         const figure = document.createElement('figure');
         figure.className = 'novel-wiki-figure';
-        // @ts-expect-error TS(2531): Object is possibly 'null'.
         figure.appendChild(img.cloneNode(true));
         const fc = document.createElement('figcaption');
         fc.innerHTML = next.innerHTML;
@@ -250,15 +248,16 @@ export function convertMarkdownTaskListsToTiptapHtml(html: any) {
     uls.forEach((ul) => {
       const items = [...ul.children].filter((el) => el.tagName === 'LI');
       if (items.length === 0) return;
-      const markers = items.map((li) => findMarkdownTaskCheckbox(li));
-      if (!markers.every(Boolean)) return;
+      const markers = items.map((li) => findMarkdownTaskCheckbox(li as HTMLElement));
+      if (!markers.every((marker): marker is TaskCheckboxMarker => marker !== null)) return;
 
       ul.setAttribute('data-type', 'taskList');
       ul.className = 'not-prose pl-2';
 
       items.forEach((li, i) => {
-        // @ts-expect-error TS(2339): Property 'input' does not exist on type '{ input: ... Remove this comment to see the full error message
-        const { input, checked } = markers[i];
+        const marker = markers[i];
+        if (!marker) return;
+        const { input, checked } = marker;
         input.remove();
 
         let innerHtml = li.innerHTML.trim();
@@ -295,24 +294,25 @@ export function convertMarkdownTaskListsToTiptapHtml(html: any) {
   }
 }
 
-/** @param {HTMLElement} li */
-function findMarkdownTaskCheckbox(li: any) {
+type TaskCheckboxMarker = { input: HTMLInputElement; checked: boolean };
+
+function findMarkdownTaskCheckbox(li: HTMLElement): TaskCheckboxMarker | null {
   const taskInput = li.querySelector(
     ':scope > input.task-list-item-checkbox[type="checkbox"], :scope > input[type="checkbox"]',
-  );
+  ) as HTMLInputElement | null;
   if (taskInput) {
     return { input: taskInput, checked: taskInput.hasAttribute('checked') };
   }
   const label = li.querySelector(':scope > label');
   if (label) {
-    const inp = label.querySelector(':scope > input[type="checkbox"]');
+    const inp = label.querySelector(':scope > input[type="checkbox"]') as HTMLInputElement | null;
     if (inp) {
       return { input: inp, checked: inp.hasAttribute('checked') };
     }
   }
   const p = li.querySelector(':scope > p');
   if (p) {
-    const inp = p.querySelector(':scope > input[type="checkbox"]');
+    const inp = p.querySelector(':scope > input[type="checkbox"]') as HTMLInputElement | null;
     if (inp) {
       return { input: inp, checked: inp.hasAttribute('checked') };
     }

@@ -157,6 +157,11 @@ export function patchLocalTreeChildren(nodes: any, folderPath: any, children: an
  * @param {Array} nodes
  * @param {Set<string> | Iterable<string> | null | undefined} expandedPaths
  */
+type LocalFolderLoadNode = {
+  path: string;
+  handle: FileSystemDirectoryHandle;
+};
+
 export async function hydrateExpandedLocalFolders(nodes: any, expandedPaths: any) {
   const expanded =
     expandedPaths instanceof Set ? expandedPaths : new Set(expandedPaths ?? []);
@@ -166,7 +171,7 @@ export async function hydrateExpandedLocalFolders(nodes: any, expandedPaths: any
 
   let tree = nodes;
   for (;;) {
-    const toLoad: any = [];
+    const toLoad: LocalFolderLoadNode[] = [];
     const visit = (list: any) => {
       if (!list?.length) return;
       for (const node of list) {
@@ -181,7 +186,6 @@ export async function hydrateExpandedLocalFolders(nodes: any, expandedPaths: any
     if (toLoad.length === 0) return tree;
 
     const loaded = await Promise.all(
-      // @ts-expect-error TS(7006): Parameter 'folder' implicitly has an 'any' type.
       toLoad.map(async (folder) => ({
         path: folder.path,
         children: await readLocalDirectoryLevel(folder.handle, folder.path, folder.handle),

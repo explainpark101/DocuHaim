@@ -1,6 +1,7 @@
 import { getObjectBody, headObject, putObject, getSignedGetUrl } from '@/utils/vault/s3Client';
 import { getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend';
+import type { S3Client } from '@aws-sdk/client-s3';
 
 const PRINT_JSON_KEY = '.settings/print.json';
 const LOCAL_STORAGE_KEY = 's3haim_print_fonts';
@@ -14,13 +15,29 @@ export const DEFAULT_PRINT_FONTS = {
   code: '',
 };
 
-const store = {
+type WebdavConfig = {
+  endpoint: string;
+  username: string;
+  password: string;
+  basePath: string;
+};
+
+type PrintSettingsStoreState = {
+  getS3Client: (() => S3Client | null) | null;
+  s3Creds: { bucket?: string } | null;
+  localRootHandle: FileSystemDirectoryHandle | null;
+  storageMode: string;
+  webdavConfig: WebdavConfig | null;
+  /** Bumps on each setPrintSettingsStore so React can refresh resolvers. */
+  epoch: number;
+};
+
+const store: PrintSettingsStoreState = {
   getS3Client: null,
   s3Creds: null,
   localRootHandle: null,
   storageMode: 's3',
   webdavConfig: null,
-  /** Bumps on each setPrintSettingsStore so React can refresh resolvers. */
   epoch: 0,
 };
 
@@ -30,30 +47,27 @@ const store = {
  * @param {'s3' | 'local' | 'webdav' | null | undefined} [fileType]
  * @returns {((path: string) => Promise<string|null>) | null}
  */
-export function getPresignedUrlResolver(fileType = null) {
+export function getPresignedUrlResolver(fileType: string | null = null) {
   const mode = fileType || store.storageMode || 's3';
-  // @ts-expect-error TS(2349): This expression is not callable.
   const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
-  // @ts-expect-error TS(2339): Property 'bucket' does not exist on type 'never'.
   const bucket = store.s3Creds?.bucket;
   const localHandle = store.localRootHandle;
   const webdavCfg = store.webdavConfig;
 
   /** @type {((path: string) => Promise<string|null>) | null} */
-  let inner: any = null;
+  let inner: ((path: string) => Promise<string | null>) | null = null;
   if (mode === 'local' && localHandle) {
-    inner = (path: any) => getLocalWikiImageObjectUrl(localHandle, path);
-  // @ts-expect-error TS(2339): Property 'endpoint' does not exist on type 'never'... Remove this comment to see the full error message
+    inner = (path: string) => getLocalWikiImageObjectUrl(localHandle, path);
   } else if (mode === 'webdav' && webdavCfg?.endpoint && webdavCfg?.username) {
     const backend = createWebdavBackend(webdavCfg);
-    inner = (path: any) => backend.getObjectUrl(path);
+    inner = (path: string) => backend.getObjectUrl(path);
   } else if (client && bucket) {
-    inner = (path: any) => getSignedGetUrl(client, bucket, path, 3600);
+    inner = (path: string) => getSignedGetUrl(client, bucket, path, 3600);
   } else if (localHandle) {
-    inner = (path: any) => getLocalWikiImageObjectUrl(localHandle, path);
+    inner = (path: string) => getLocalWikiImageObjectUrl(localHandle, path);
   }
 
-  return async (path: any) => {
+  return async (path: string) => {
     const trimmed = String(path || '').trim();
     if (!trimmed) return null;
     if (/^(https?:|data:|blob:|\/\/)/i.test(trimmed)) return trimmed;
@@ -70,14 +84,22 @@ export function getPrintSettingsStoreEpoch() {
  * Inject S3/local/WebDAV access from MainApp.
  * @param {{ getS3Client: Function, s3Creds: object | null, localRootHandle: FileSystemDirectoryHandle | null, storageMode?: string, webdavConfig?: object | null }} payload
  */
-export function setPrintSettingsStore(payload: any) {
+export function setPrintSettingsStore(payload: {
+  getS3Client?: (() => S3Client | null) | null;
+  s3Creds?: { bucket?: string } | null;
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  storageMode?: string;
+  webdavConfig?: WebdavConfig | null | Record<string, unknown>;
+}) {
   if (payload) {
     store.getS3Client = payload.getS3Client ?? store.getS3Client;
     store.s3Creds = payload.s3Creds !== undefined ? payload.s3Creds : store.s3Creds;
     store.localRootHandle =
       payload.localRootHandle !== undefined ? payload.localRootHandle : store.localRootHandle;
     if (payload.storageMode !== undefined) store.storageMode = payload.storageMode;
-    if (payload.webdavConfig !== undefined) store.webdavConfig = payload.webdavConfig;
+    if (payload.webdavConfig !== undefined) {
+      store.webdavConfig = (payload.webdavConfig as WebdavConfig | null) ?? null;
+    }
     store.epoch += 1;
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
@@ -130,7 +152,6 @@ function saveToLocalStorage(fonts: any) {
 
 async function loadPrintFontsFromWebdav() {
   const cfg = store.webdavConfig;
-  // @ts-expect-error TS(2339): Property 'endpoint' does not exist on type 'never'... Remove this comment to see the full error message
   if (!cfg?.endpoint || !cfg?.username) return null;
   try {
     const backend = createWebdavBackend(cfg);
@@ -145,9 +166,7 @@ async function loadPrintFontsFromWebdav() {
 }
 
 async function loadPrintFontsFromS3() {
-  // @ts-expect-error TS(2349): This expression is not callable.
   const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
-  // @ts-expect-error TS(2339): Property 'bucket' does not exist on type 'never'.
   const bucket = store.s3Creds?.bucket;
   if (!client || !bucket) return null;
   try {
@@ -166,15 +185,15 @@ async function loadPrintFontsFromLocal() {
   const localHandle = store.localRootHandle;
   if (!localHandle) return null;
   try {
-    // @ts-expect-error TS(2339): Property 'getDirectoryHandle' does not exist on ty... Remove this comment to see the full error message
     const settingsDir = await localHandle.getDirectoryHandle('.settings', { create: false });
     const fileHandle = await settingsDir.getFileHandle('print.json', { create: false });
     const file = await fileHandle.getFile();
     const text = await file.text();
     return parseFontsJson(JSON.parse(text));
   } catch (e) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (e?.name !== 'NotFound') console.warn('Print settings load from local failed:', e);
+    if (e instanceof Error && e.name !== 'NotFound') {
+      console.warn('Print settings load from local failed:', e);
+    }
     return null;
   }
 }
@@ -211,7 +230,6 @@ export async function savePrintFontsToStorage(fonts: any) {
 
   if (mode === 'webdav') {
     const cfg = store.webdavConfig;
-    // @ts-expect-error TS(2339): Property 'endpoint' does not exist on type 'never'... Remove this comment to see the full error message
     if (cfg?.endpoint && cfg?.username) {
       const backend = createWebdavBackend(cfg);
       await backend.writeText(PRINT_JSON_KEY, payload, 'application/json');
@@ -219,7 +237,6 @@ export async function savePrintFontsToStorage(fonts: any) {
   } else if (mode === 'local') {
     const localHandle = store.localRootHandle;
     if (localHandle) {
-      // @ts-expect-error TS(2339): Property 'getDirectoryHandle' does not exist on ty... Remove this comment to see the full error message
       const settingsDir = await localHandle.getDirectoryHandle('.settings', { create: true });
       const fileHandle = await settingsDir.getFileHandle('print.json', { create: true });
       const writable = await fileHandle.createWritable();
@@ -227,9 +244,7 @@ export async function savePrintFontsToStorage(fonts: any) {
       await writable.close();
     }
   } else {
-    // @ts-expect-error TS(2349): This expression is not callable.
     const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
-    // @ts-expect-error TS(2339): Property 'bucket' does not exist on type 'never'.
     const bucket = store.s3Creds?.bucket;
     if (client && bucket) {
       await putObject(client, {

@@ -12,8 +12,8 @@ import { normalizeCssHexColor } from '@/utils/cssColor';
  */
 export const WIKI_IMAGE_RE = /!\[\[([^[\]]+)\]\]/g;
 
-function emptyWikiAttrs(path = null) {
-  return { path, width: null, height: null, background: null };
+function emptyWikiAttrs(path: string | null = null) {
+  return { path, width: null as string | null, height: null as string | null, background: null as string | null };
 }
 
 export function parseWikiImageInner(rawInner: any) {
@@ -22,7 +22,6 @@ export function parseWikiImageInner(rawInner: any) {
 
   const lastPipe = inner.lastIndexOf('|');
   if (lastPipe < 0) {
-    // @ts-expect-error TS(2345): Argument of type 'string' is not assignable to par... Remove this comment to see the full error message
     return emptyWikiAttrs(inner);
   }
 
@@ -31,7 +30,6 @@ export function parseWikiImageInner(rawInner: any) {
   const opts = parseWikiImageOptions(optionCandidate);
 
   if (!pathCandidate || !opts) {
-    // @ts-expect-error TS(2345): Argument of type 'string' is not assignable to par... Remove this comment to see the full error message
     return emptyWikiAttrs(inner);
   }
 
@@ -74,8 +72,7 @@ export function parseWikiImageOptions(rawOption: any) {
       continue;
     }
     const kv = chunk.match(/^([a-zA-Z]+)=(.+)$/);
-    if (!kv) continue;
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
+    if (!kv?.[1]) continue;
     const key = kv[1].toLowerCase();
     if (key === 'bg' || key === 'background') {
       const color = normalizeCssHexColor(kv[2]);
@@ -235,8 +232,7 @@ export function parseMarkdownImageAttrsBlock(rawBlock: any) {
   const chunks = inner.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
   for (const chunk of chunks) {
     const kv = chunk.match(/^([a-zA-Z]+)=(.+)$/);
-    if (!kv) continue;
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
+    if (!kv?.[1]) continue;
     const key = kv[1].toLowerCase();
     if (key === 'bg' || key === 'background') {
       const color = normalizeCssHexColor(kv[2]);

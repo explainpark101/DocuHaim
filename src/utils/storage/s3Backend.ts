@@ -181,8 +181,8 @@ export function createS3Backend(deps: any) {
           await copyObject(client, bucket, key, `.trash/${key}`);
           await deleteObject(client, bucket, key);
         } catch (e) {
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          if (e?.$metadata?.httpStatusCode !== 404) throw e;
+          const err = e as { $metadata?: { httpStatusCode?: number } };
+          if (err.$metadata?.httpStatusCode !== 404) throw e;
         }
       }
     },

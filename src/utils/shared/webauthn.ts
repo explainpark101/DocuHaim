@@ -241,13 +241,13 @@ export async function getPasskeyPRFKey(credentialId: any, saltBase64: any) {
     },
   };
 
-  // @ts-expect-error TS(2769): No overload matches this call.
-  const assertion = await navigator.credentials.get(getOptions);
+  const assertion = (await navigator.credentials.get(
+    getOptions as CredentialRequestOptions,
+  )) as PublicKeyCredential | null;
   if (!assertion) throw new Error('보안 키 인증에 실패했습니다.');
-  // @ts-expect-error TS(2339): Property 'getClientExtensionResults' does not exis... Remove this comment to see the full error message
   const prfResults = assertion.getClientExtensionResults?.()?.prf?.results?.first;
   if (!prfResults) throw new Error('PRF 결과를 가져올 수 없습니다.');
-  return prfResults;
+  return prfResults as ArrayBuffer;
 }
 
 /**

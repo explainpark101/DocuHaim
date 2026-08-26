@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatGroup, ChatMessage } from '@/utils/chatWithMyself/messageTypes';
+import type { ChatReaction } from '@/utils/chatWithMyself/reactions';
 import { useLocation } from 'react-router';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import {
@@ -666,7 +667,6 @@ export default function ChatWithMyselfPane({
       const today = localDateString(new Date(), detectTimeZone());
       const ordered = keys.includes(today) ? keys : [today, ...keys];
       const unique = [...new Set(ordered)];
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'unknown[]' is not assignable to ... Remove this comment to see the full error message
       setDayKeys(unique);
       const { messages: msgs, loadedDayIndex: end } =
         await readMessagesForInitialWindow(ctx, unique);
@@ -674,11 +674,9 @@ export default function ChatWithMyselfPane({
       setMessages(msgs);
       setWindowNewestIndex(0);
       setLoadedDayIndex(end);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
       setActiveJumpDate(unique[0] || null);
     } catch (e) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(e?.message || '채팅 로드 실패');
+      setError(e instanceof Error ? e.message : '채팅 로드 실패');
     } finally {
       setBooting(false);
     }
@@ -717,7 +715,6 @@ export default function ChatWithMyselfPane({
       const today = localDateString(new Date(), detectTimeZone());
       const ordered = keys.includes(today) ? keys : [today, ...keys];
       const unique = [...new Set(ordered)];
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'unknown[]' is not assignable to ... Remove this comment to see the full error message
       setDayKeys(unique);
 
       const prevKeys = dayKeysRef.current;
@@ -727,7 +724,6 @@ export default function ChatWithMyselfPane({
         prevKeys.length && wEnd > wStart
           ? prevKeys.slice(wStart, wEnd).filter((d) => unique.includes(d))
           : [];
-      // @ts-expect-error TS(2322) FIXME: Type 'unknown' is not assignable to type 'string'.
       if (!loadDates.length && unique[0]) loadDates = [unique[0]];
 
       const parts = await Promise.all(
@@ -744,8 +740,10 @@ export default function ChatWithMyselfPane({
       let windowEnd = 0;
       let jumpDate = null;
       if (loadDates.length) {
-        const firstIdx = unique.indexOf(loadDates[0]);
-        const lastIdx = unique.indexOf(loadDates[loadDates.length - 1]);
+        const firstDate = loadDates[0]!;
+        const lastDate = loadDates[loadDates.length - 1]!;
+        const firstIdx = unique.indexOf(firstDate);
+        const lastIdx = unique.indexOf(lastDate);
         windowNewest = firstIdx >= 0 ? firstIdx : 0;
         windowEnd = lastIdx >= 0 ? lastIdx + 1 : unique[0] ? 1 : 0;
         jumpDate = loadDates[0] || unique[0] || null;
@@ -763,11 +761,9 @@ export default function ChatWithMyselfPane({
       setMessages(msgs);
       setWindowNewestIndex(windowNewest);
       setLoadedDayIndex(windowEnd);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
       setActiveJumpDate(jumpDate);
     } catch (e) {
-      // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-      setError(e?.message || '새로고침 실패');
+      setError(e instanceof Error ? e.message : '새로고침 실패');
     } finally {
       const elapsed = Date.now() - started;
       if (elapsed < 450) {
@@ -1700,21 +1696,23 @@ export default function ChatWithMyselfPane({
 
       const hit = await findMessageById(ctx, messageId);
       if (!hit?.msg) return null;
+      const dateStr = hit.dateStr;
+      if (!dateStr) return null;
 
-      if (!dayKeysRef.current.includes(hit.dateStr)) {
+      if (!dayKeysRef.current.includes(dateStr)) {
         setDayKeys((prev) => {
-          const next = [...prev, hit.dateStr];
+          const next = [...prev, dateStr];
           next.sort().reverse();
           return next;
         });
         // Allow dayKeysRef to update before jump indexes resolve.
-        dayKeysRef.current = [...dayKeysRef.current, hit.dateStr]
+        dayKeysRef.current = [...dayKeysRef.current, dateStr]
           .filter((v, i, a) => a.indexOf(v) === i)
           .sort()
           .reverse();
       }
 
-      await jumpToDate(hit.dateStr, messageId);
+      await jumpToDate(dateStr, messageId);
       return (
         messagesRef.current.find((m) => m.id === messageId) || hit.msg
       );
@@ -2067,7 +2065,7 @@ export default function ChatWithMyselfPane({
       const persist = async () => {
         const toWrite = nextReactions
           .map((r: any) => normalizeReaction(r))
-          .filter(Boolean);
+          .filter((r): r is ChatReaction => r != null);
         const rollbackToBase = () => {
           const base = reactionBaseRef.current.get(message.id) || {
             reactions: prevReactions,

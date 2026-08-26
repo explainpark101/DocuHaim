@@ -4,6 +4,13 @@ import {
   sniffImageMimeFromFile,
 } from '@/utils/editorImageUpload';
 
+type LocalEditorImageOptions = {
+  maxSizeBytes?: number;
+  imagePathPrefix?: string;
+  onProgress?: (percent: number) => void;
+  signal?: AbortSignal;
+};
+
 /**
  * @param {FileSystemDirectoryHandle} rootHandle
  * @param {string} relativePath
@@ -45,22 +52,23 @@ export async function getLocalFileHandleForPath(rootHandle: any, relativePath: a
  * @param {{ maxSizeBytes?: number, imagePathPrefix?: string, onProgress?: (percent: number) => void, signal?: AbortSignal }} [options]
  * @returns {Promise<string>}
  */
-export async function uploadLocalEditorImage(rootHandle: any, file: any, options = {}) {
+export async function uploadLocalEditorImage(
+  rootHandle: FileSystemDirectoryHandle,
+  file: File,
+  options: LocalEditorImageOptions = {},
+) {
   if (!rootHandle) {
     throw new Error('로컬 폴더가 열려 있지 않습니다.');
   }
 
-  // @ts-expect-error TS(2339): Property 'maxSizeBytes' does not exist on type '{}... Remove this comment to see the full error message
   const maxSizeBytes = options.maxSizeBytes ?? 10 * 1024 * 1024;
   if (file.size > maxSizeBytes) {
     throw new Error(`이미지 크기는 ${Math.round(maxSizeBytes / 1024 / 1024)}MB 이하여야 합니다.`);
   }
-  // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
   if (options.signal?.aborted) {
     throw new DOMException('Aborted', 'AbortError');
   }
 
-  // @ts-expect-error TS(2339): Property 'imagePathPrefix' does not exist on type ... Remove this comment to see the full error message
   const prefix = normalizeEditorImagePathPrefix(options.imagePathPrefix);
   const uuid =
     typeof crypto !== 'undefined' && crypto.randomUUID
@@ -73,10 +81,8 @@ export async function uploadLocalEditorImage(rootHandle: any, file: any, options
   const ext = getExtensionFromMime(mime);
   const relativePath = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
 
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(0);
   const fileHandle = await getLocalFileHandleForPath(rootHandle, relativePath, { create: true });
-  // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
   if (options.signal?.aborted) {
     throw new DOMException('Aborted', 'AbortError');
   }
@@ -88,12 +94,10 @@ export async function uploadLocalEditorImage(rootHandle: any, file: any, options
     await writable.close();
   }
 
-  // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
   if (options.signal?.aborted) {
     throw new DOMException('Aborted', 'AbortError');
   }
 
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(100);
   return relativePath;
 }

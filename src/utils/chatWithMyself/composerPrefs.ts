@@ -189,9 +189,9 @@ export function getComposerLightweightEnabled() {
   return defaultChatPerfReduceEnabled();
 }
 
-/** @typedef {'group'|'date'|'search'|'pinned'} ChatRailId */
+export type ChatRailId = 'group' | 'date' | 'search' | 'pinned';
 
-const RAIL_OPEN_KEYS = {
+const RAIL_OPEN_KEYS: Record<ChatRailId, string> = {
   group: CHAT_PREF_KEYS.railGroupOpen,
   date: CHAT_PREF_KEYS.railDateOpen,
   search: CHAT_PREF_KEYS.railSearchOpen,
@@ -199,15 +199,13 @@ const RAIL_OPEN_KEYS = {
 };
 
 /** Stored rail open preference, or null if unset. */
-export function readChatRailOpenPref(railId: any) {
-  // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
+export function readChatRailOpenPref(railId: ChatRailId) {
   const key = RAIL_OPEN_KEYS[railId];
   if (!key) return null;
   return readBoolPref(key);
 }
 
-export function writeChatRailOpenPref(railId: any, open: any) {
-  // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
+export function writeChatRailOpenPref(railId: ChatRailId, open: boolean) {
   const key = RAIL_OPEN_KEYS[railId];
   if (!key) return;
   writeBoolPref(key, Boolean(open));

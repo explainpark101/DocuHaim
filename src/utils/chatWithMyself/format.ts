@@ -1,8 +1,11 @@
 import { SELF_GROUP } from '@/utils/chatWithMyself/paths';
+import type { ChatMessage } from '@/utils/chatWithMyself/messageTypes';
 import {
   parseReactionsAttr,
   serializeReactionsAttr,
 } from '@/utils/chatWithMyself/reactions';
+
+export type { ChatMessage };
 
 const MSG_START =
   /<!--\s*chat-msg\s+([^>]*?)-->\s*/g;
@@ -21,13 +24,15 @@ const MAX_MERGE_TS = (msg: any) => {
   return Math.max(a, b, c, d);
 };
 
-function parseAttrs(attrStr: any) {
-  const attrs = {};
+function parseAttrs(attrStr: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
   const re = /([\w-]+)="([^"]*)"/g;
-  let m;
+  let m: RegExpExecArray | null;
   while ((m = re.exec(attrStr))) {
-    // @ts-expect-error TS(2538): Type 'undefined' cannot be used as an index type.
-    attrs[m[1]] = m[2];
+    const key = m[1];
+    if (key !== undefined) {
+      attrs[key] = m[2] ?? '';
+    }
   }
   return attrs;
 }
@@ -117,86 +122,65 @@ function parseEditHistoryPayload(raw: any) {
  * @param {string} content
  * @returns {{ messages: ChatMessage[], deletedIds: string[], deletedAtById: Record<string, string> }}
  */
-export function parseDayFile(content: any) {
+export function parseDayFile(content: string | null | undefined) {
   if (!content || !String(content).trim()) {
-    return { messages: [], deletedIds: [], deletedAtById: {} };
+    return { messages: [] as ChatMessage[], deletedIds: [] as string[], deletedAtById: {} as Record<string, string> };
   }
   const text = String(content);
-  const deletedAtById = {};
+  const deletedAtById: Record<string, string> = {};
   for (const match of text.matchAll(MSG_DELETED)) {
     const attrs = parseAttrs(match[1] || '');
-    // @ts-expect-error TS(2339): Property 'id' does not exist on type '{}'.
     const id = attrs.id;
     if (!id) continue;
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     deletedAtById[id] = attrs.at || new Date(0).toISOString();
   }
   const deletedIds = Object.keys(deletedAtById);
 
-  const messages = [];
+  const messages: ChatMessage[] = [];
   const matches = [...text.matchAll(MSG_START)];
   for (let i = 0; i < matches.length; i++) {
     const match = matches[i];
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
+    if (!match) continue;
     const attrs = parseAttrs(match[1] || '');
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
     const start = match.index + match[0].length;
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
-    const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
+    const nextMatch = matches[i + 1];
+    const end = nextMatch?.index ?? text.length;
     let body = text.slice(start, end).replace(/^\n/, '').replace(/\n+$/, '');
     // Strip interleaved tombstones from body slice
     body = body
       .replace(/<!--\s*chat-msg-deleted\s+([^>]*?)-->/g, '')
       .replace(/^\n/, '')
       .replace(/\n+$/, '');
-    let editHistory: any = [];
+    let editHistory: ChatMessage['editHistory'] = [];
     const editsMatch = body.match(EDITS_BLOCK);
     if (editsMatch) {
       const editsId = editsMatch[1] || '';
-      // @ts-expect-error TS(2339): Property 'id' does not exist on type '{}'.
       const msgId = attrs.id || '';
       if (!msgId || !editsId || editsId === msgId) {
         editHistory = parseEditHistoryPayload(editsMatch[2]);
       }
       body = body.slice(0, editsMatch.index).replace(/\n+$/, '');
     }
-    // @ts-expect-error TS(2339): Property 'id' does not exist on type '{}'.
     const id = attrs.id || `msg-${i}-${attrs.at || start}`;
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     if (deletedAtById[id]) continue;
     messages.push({
       id,
-      // @ts-expect-error TS(2339): Property 'at' does not exist on type '{}'.
       at: attrs.at || new Date(0).toISOString(),
-      // @ts-expect-error TS(2339): Property 'tz' does not exist on type '{}'.
       tz: attrs.tz || '',
-      // @ts-expect-error TS(2339): Property 'source' does not exist on type '{}'.
       source: attrs.source || 'compose',
-      // @ts-expect-error TS(2339): Property 'group' does not exist on type '{}'.
       group: attrs.group || SELF_GROUP,
-      // @ts-expect-error TS(2339): Property 'replyTo' does not exist on type '{}'.
       replyTo: attrs.replyTo || '',
-      // @ts-expect-error TS(2339): Property 'replySnippet' does not exist on type '{}... Remove this comment to see the full error message
       replySnippet: unescapeAttr(attrs.replySnippet || ''),
-      // @ts-expect-error TS(2339): Property 'replyGroup' does not exist on type '{}'.
       replyGroup: unescapeAttr(attrs.replyGroup || ''),
-      // @ts-expect-error TS(2339): Property 'editedAt' does not exist on type '{}'.
       editedAt: attrs.editedAt || '',
-      // @ts-expect-error TS(2339): Property 'pinnedAt' does not exist on type '{}'.
       pinnedAt: attrs.pinnedAt || '',
-      // @ts-expect-error TS(2339): Property 'notePath' does not exist on type '{}'.
       notePath: attrs.notePath || '',
-      // @ts-expect-error TS(2339): Property 'collapsed' does not exist on type '{}'.
       collapsed: attrs.collapsed === '1' || attrs.collapsed === 'true' ? '1' : '',
       markdown:
-        // @ts-expect-error TS(2339): Property 'markdown' does not exist on type '{}'.
         attrs.markdown === '1' || attrs.markdown === 'true',
       encrypted:
-        // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type '{}'.
         attrs.encrypted === '1' || attrs.encrypted === 'true',
-      // @ts-expect-error TS(2339): Property 'reactions' does not exist on type '{}'.
       reactions: parseReactionsAttr(attrs.reactions || ''),
-      // @ts-expect-error TS(2339): Property 'reactionsAt' does not exist on type '{}'... Remove this comment to see the full error message
       reactionsAt: attrs.reactionsAt || '',
       editHistory,
       body,
@@ -262,7 +246,10 @@ export function serializeMessage(msg: any) {
  * @param {string[] | Record<string, string>} [deletedIdsOrMap]
  * @returns {string}
  */
-export function serializeDayFile(messages: any, deletedIdsOrMap = []) {
+export function serializeDayFile(
+  messages: ChatMessage[],
+  deletedIdsOrMap: string[] | Record<string, string> = [],
+) {
   const tombstones = [];
   if (Array.isArray(deletedIdsOrMap)) {
     for (const id of deletedIdsOrMap) {
@@ -270,8 +257,7 @@ export function serializeDayFile(messages: any, deletedIdsOrMap = []) {
     }
   } else if (deletedIdsOrMap && typeof deletedIdsOrMap === 'object') {
     for (const [id, at] of Object.entries(deletedIdsOrMap)) {
-      // @ts-expect-error TS(2345): Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
-      if (id) tombstones.push(serializeDeletedMarker(id, at));
+      if (id) tombstones.push(serializeDeletedMarker(id, String(at ?? '')));
     }
   }
   const live = (messages || []).map(serializeMessage).join('');
@@ -406,13 +392,11 @@ export function noteViewHref(notePath: any) {
  * Chat message body that renders as a shared-note card.
  * @param {{ path?: string, name?: string }} input
  */
-export function formatNoteShareChatBody(input = {}) {
-  // @ts-expect-error TS(2339): Property 'path' does not exist on type '{}'.
+export function formatNoteShareChatBody(input: { path?: string; name?: string } = {}) {
   const notePath = String(input.path || '')
     .replace(/^\/+/, '')
     .replace(/[[\]|]/g, '_');
   const rawName =
-    // @ts-expect-error TS(2339): Property 'name' does not exist on type '{}'.
     String(input.name || '').trim() ||
     notePath.split('/').filter(Boolean).pop() ||
     'note';
@@ -426,15 +410,13 @@ export function formatNoteShareChatBody(input = {}) {
  * Path is normalized to end with `/`.
  * @param {{ path?: string, name?: string }} input
  */
-export function formatFolderShareChatBody(input = {}) {
-  // @ts-expect-error TS(2339): Property 'path' does not exist on type '{}'.
+export function formatFolderShareChatBody(input: { path?: string; name?: string } = {}) {
   let folderPath = String(input.path || '')
     .replace(/\\/g, '/')
     .replace(/^\/+/, '')
     .replace(/[[\]|]/g, '_');
   if (folderPath && !folderPath.endsWith('/')) folderPath = `${folderPath}/`;
   const rawName =
-    // @ts-expect-error TS(2339): Property 'name' does not exist on type '{}'.
     String(input.name || '').trim() ||
     folderPath.replace(/\/+$/, '').split('/').filter(Boolean).pop() ||
     'folder';
@@ -471,11 +453,11 @@ export function parseAppViewPath(href: any) {
     if (!pathname.startsWith('/')) pathname = `/${pathname}`;
     const m = pathname.match(/^\/view\/(.+)$/);
     if (!m) return null;
+    const encodedPath = m[1] ?? '';
     try {
-      // @ts-expect-error TS(2769): No overload matches this call.
-      return decodeURIComponent(m[1]);
+      return decodeURIComponent(encodedPath);
     } catch {
-      return m[1];
+      return encodedPath;
     }
   } catch {
     return null;
@@ -542,20 +524,14 @@ export function parseChatWithMyselfNoteMeta(markdown: any) {
   const match = text.match(/<!--\s*chat-with-myself\s+([^>]*?)-->/);
   if (!match) return null;
   const attrs = parseAttrs(match[1] || '');
-  // @ts-expect-error TS(2339): Property 'id' does not exist on type '{}'.
   const id = attrs.id || '';
-  // @ts-expect-error TS(2339): Property 'href' does not exist on type '{}'.
   if (!id && !attrs.href) return null;
-  // @ts-expect-error TS(2339): Property 'href' does not exist on type '{}'.
   const href = attrs.href || chatMessageUrl(id);
   return {
     id,
-    // @ts-expect-error TS(2339): Property 'at' does not exist on type '{}'.
     at: attrs.at || '',
-    // @ts-expect-error TS(2339): Property 'group' does not exist on type '{}'.
     group: unescapeAttr(attrs.group || ''),
     href,
-    // @ts-expect-error TS(2339): Property 'notePath' does not exist on type '{}'.
     notePath: unescapeAttr(attrs.notePath || attrs['note-path'] || ''),
   };
 }
@@ -597,10 +573,10 @@ export function chatSavedNoteLinkTo(meta: any) {
  * @param {{ threadMessages?: ChatMessage[] }} [options]
  */
 export function formatChatMessageAsNoteMarkdown(
-  msg: any,
-  timeZone: any,
+  msg: ChatMessage,
+  timeZone?: string,
   notePath = '',
-  options = {},
+  options: { threadMessages?: ChatMessage[] } = {},
 ) {
   const group = msg?.group || '나';
   const at = msg?.at || '';
@@ -609,9 +585,7 @@ export function formatChatMessageAsNoteMarkdown(
   const when = formatNoteDateTime(at, timeZone);
   const body = String(msg?.body ?? '').replace(/\n+$/, '');
   const notePathAttr = notePath ? ` notePath="${escapeAttr(notePath)}"` : '';
-  // @ts-expect-error TS(2339): Property 'threadMessages' does not exist on type '... Remove this comment to see the full error message
   const threadMessages = Array.isArray(options.threadMessages)
-    // @ts-expect-error TS(2339): Property 'threadMessages' does not exist on type '... Remove this comment to see the full error message
     ? options.threadMessages.filter(Boolean)
     : [];
 

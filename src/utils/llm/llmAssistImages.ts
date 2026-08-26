@@ -5,7 +5,7 @@ export const LLM_ASSIST_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/we
 const RESIZE_THRESHOLD_BYTES = 1.5 * 1024 * 1024;
 const RESIZE_MAX_DIMENSION = 2048;
 
-function readFileAsDataUrl(file: any) {
+function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
@@ -14,7 +14,7 @@ function readFileAsDataUrl(file: any) {
   });
 }
 
-function loadImageFromDataUrl(dataUrl: any) {
+function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
@@ -23,10 +23,10 @@ function loadImageFromDataUrl(dataUrl: any) {
   });
 }
 
-function canvasToBlob(canvas: any, mimeType: any, quality: any) {
+function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality?: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob: any) => {
+      (blob) => {
         if (!blob) reject(new Error('이미지 압축에 실패했습니다.'));
         else resolve(blob);
       },
@@ -36,27 +36,22 @@ function canvasToBlob(canvas: any, mimeType: any, quality: any) {
   });
 }
 
-async function resizeImageFile(file: any) {
+async function resizeImageFile(file: File) {
   const dataUrl = await readFileAsDataUrl(file);
   const img = await loadImageFromDataUrl(dataUrl);
-  // @ts-expect-error TS(2571): Object is of type 'unknown'.
   const scale = Math.min(1, RESIZE_MAX_DIMENSION / Math.max(img.width, img.height));
-  // @ts-expect-error TS(2571): Object is of type 'unknown'.
   const width = Math.max(1, Math.round(img.width * scale));
-  // @ts-expect-error TS(2571): Object is of type 'unknown'.
   const height = Math.max(1, Math.round(img.height * scale));
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('이미지 리사이즈에 실패했습니다.');
-  // @ts-expect-error TS(2769): No overload matches this call.
   ctx.drawImage(img, 0, 0, width, height);
 
   const outputMime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
   const quality = outputMime === 'image/jpeg' ? 0.88 : undefined;
   const blob = await canvasToBlob(canvas, outputMime, quality);
-  // @ts-expect-error TS(2322): Type 'unknown' is not assignable to type 'BlobPart... Remove this comment to see the full error message
   return readFileAsDataUrl(new File([blob], file.name, { type: outputMime }));
 }
 

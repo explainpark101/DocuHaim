@@ -7,18 +7,44 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   CopyObjectCommand,
+  type PutObjectCommandInput,
+  type S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
+import type { S3ListContentItem } from '@/utils/vault/vaultTreeTypes';
+
+type S3Credentials = {
+  accessKeyId: string;
+  secretAccessKey: string;
+  region?: string;
+  endpoint?: string;
+};
+
+type AwsLikeError = {
+  name?: string;
+  Code?: string;
+  message?: string;
+  $metadata?: { httpStatusCode?: number };
+};
+
+type PutObjectProgressOptions = {
+  onProgress?: (percent: number) => void;
+  signal?: AbortSignal;
+};
+
+function asAwsError(e: unknown): AwsLikeError {
+  return (e && typeof e === 'object' ? e : {}) as AwsLikeError;
+}
 
 /**
  * Create an S3 client from credentials.
  * @param {{ accessKeyId: string, secretAccessKey: string, region: string, endpoint?: string }} creds
  * @returns {S3Client | null}
  */
-export function createS3Client(creds: any) {
+export function createS3Client(creds: S3Credentials | null | undefined) {
   if (!creds?.accessKeyId || !creds?.secretAccessKey) return null;
-  const config = {
+  const config: S3ClientConfig = {
     region: creds.region || 'ap-northeast-2',
     credentials: {
       accessKeyId: creds.accessKeyId,
@@ -26,9 +52,7 @@ export function createS3Client(creds: any) {
     },
   };
   if (creds.endpoint) {
-    // @ts-expect-error TS(2339): Property 'endpoint' does not exist on type '{ regi... Remove this comment to see the full error message
     config.endpoint = creds.endpoint;
-    // @ts-expect-error TS(2339): Property 'forcePathStyle' does not exist on type '... Remove this comment to see the full error message
     config.forcePathStyle = true;
   }
   return new S3Client(config);
@@ -41,21 +65,25 @@ export function createS3Client(creds: any) {
  * @param {string} prefix
  * @returns {Promise<{ Key: string, LastModified?: Date, Size?: number }[]>}
  */
-export async function listObjectsV2(client: any, bucket: any, prefix = '') {
-  const contents = [];
-  let continuationToken;
+export async function listObjectsV2(client: S3Client, bucket: string, prefix = '') {
+  const contents: S3ListContentItem[] = [];
+  let continuationToken: string | undefined;
 
   do {
-    // @ts-expect-error TS(7022): 'command' implicitly has type 'any' because it doe... Remove this comment to see the full error message
     const command = new ListObjectsV2Command({
       Bucket: bucket,
       Prefix: prefix,
       ContinuationToken: continuationToken,
     });
-    // @ts-expect-error TS(7022): 'data' implicitly has type 'any' because it does n... Remove this comment to see the full error message
     const data = await client.send(command);
     if (data.Contents?.length) {
-      contents.push(...data.Contents.filter((item: any) => !!item.Key));
+      contents.push(
+        ...data.Contents.filter((item) => item.Key).map((item) => ({
+          Key: item.Key!,
+          LastModified: item.LastModified,
+          Size: item.Size,
+        })),
+      );
     }
     continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined;
   } while (continuationToken);
@@ -69,12 +97,11 @@ export async function listObjectsV2(client: any, bucket: any, prefix = '') {
  * @param {FileList | File[]} files
  * @returns {string[]}
  */
-export function collectS3DirectoryMarkersFromUpload(parentPath: any, files: any) {
-  const dirs = new Set();
+export function collectS3DirectoryMarkersFromUpload(parentPath: string, files: FileList | File[]) {
+  const dirs = new Set<string>();
   const fileList = Array.from(files);
   for (const file of fileList) {
     const relPath = normalizePathToNfc(
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       (file.webkitRelativePath || file.name).replace(/\\/g, '/'),
     );
     const parts = relPath.replace(/\/$/, '').split('/').filter(Boolean);
@@ -148,15 +175,10 @@ export async function headObject(client: any, bucket: any, key: any) {
       ETag: response.ETag,
     };
   } catch (e) {
-    if (
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      e?.name === 'NotFound' ||
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      e?.Code === 'NoSuchKey' ||
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      e?.$metadata?.httpStatusCode === 404
-    )
+    const err = asAwsError(e);
+    if (err.name === 'NotFound' || err.Code === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
       return null;
+    }
     throw e;
   }
 }
@@ -174,17 +196,10 @@ export async function putObject(client: any, params: any) {
     const response = await client.send(new PutObjectCommand(withCache));
     return { ETag: response.ETag };
   } catch (e) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    const status = e?.$metadata?.httpStatusCode;
-    if (
-      status === 412 ||
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      e?.name === 'PreconditionFailed' ||
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      e?.Code === 'PreconditionFailed'
-    ) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      throw new S3PreconditionFailedError(e?.message || 'Precondition Failed');
+    const err = asAwsError(e);
+    const status = err.$metadata?.httpStatusCode;
+    if (status === 412 || err.name === 'PreconditionFailed' || err.Code === 'PreconditionFailed') {
+      throw new S3PreconditionFailedError(err.message || 'Precondition Failed');
     }
     throw e;
   }
@@ -211,7 +226,11 @@ export async function getSignedPutUrl(client: any, params: any, expiresIn = 300)
  * @param {{ Bucket: string, Key: string, Body: string | Uint8Array, ContentType?: string, CacheControl?: string }} params
  * @param {{ onProgress?: (percent: number) => void, signal?: AbortSignal }} [options]
  */
-export async function putObjectWithProgress(client: any, params: any, options = {}) {
+export async function putObjectWithProgress(
+  client: S3Client,
+  params: PutObjectCommandInput,
+  options: PutObjectProgressOptions = {},
+) {
   const signedUrl = await getSignedPutUrl(
     client,
     {
@@ -226,7 +245,11 @@ export async function putObjectWithProgress(client: any, params: any, options = 
   const totalBytes =
     typeof body === 'string'
       ? new TextEncoder().encode(body).byteLength
-      : body?.byteLength ?? 0;
+      : body instanceof Uint8Array
+        ? body.byteLength
+        : body instanceof Blob
+          ? body.size
+          : 0;
 
   await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -235,55 +258,44 @@ export async function putObjectWithProgress(client: any, params: any, options = 
     if (params.CacheControl) xhr.setRequestHeader('Cache-Control', params.CacheControl);
 
     const abortBySignal = () => xhr.abort();
-    // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
     if (options.signal) {
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
       if (options.signal.aborted) {
         reject(new DOMException('Aborted', 'AbortError'));
         return;
       }
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
       options.signal.addEventListener('abort', abortBySignal, { once: true });
     }
 
     xhr.upload.onprogress = (event) => {
-      // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
       if (!options.onProgress) return;
       if (event.lengthComputable && event.total > 0) {
-        // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
         options.onProgress(Math.min(100, (event.loaded / event.total) * 100));
         return;
       }
       if (totalBytes > 0) {
-        // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
         options.onProgress(Math.min(100, (event.loaded / totalBytes) * 100));
       }
     };
 
     xhr.onload = () => {
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
       if (options.signal) options.signal.removeEventListener('abort', abortBySignal);
       if (xhr.status >= 200 && xhr.status < 300) {
-        // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
         if (options.onProgress) options.onProgress(100);
-        // @ts-expect-error TS(2794): Expected 1 arguments, but got 0. Did you forget to... Remove this comment to see the full error message
-        resolve();
+        resolve(undefined);
       } else {
         reject(new Error(`PUT upload failed with status ${xhr.status}`));
       }
     };
     xhr.onerror = () => {
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
       if (options.signal) options.signal.removeEventListener('abort', abortBySignal);
       reject(new Error('PUT upload failed due to network error'));
     };
     xhr.onabort = () => {
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
       if (options.signal) options.signal.removeEventListener('abort', abortBySignal);
       reject(new DOMException('Aborted', 'AbortError'));
     };
 
-    xhr.send(body);
+    xhr.send(body as XMLHttpRequestBodyInit);
   });
 }
 

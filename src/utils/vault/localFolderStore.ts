@@ -101,8 +101,15 @@ export async function pickLocalRootDirectory(options = {}) {
   if (typeof window === 'undefined' || !('showDirectoryPicker' in window)) {
     throw new Error('이 브라우저는 폴더 선택을 지원하지 않습니다.');
   }
-  // @ts-expect-error TS(2339): Property 'showDirectoryPicker' does not exist on t... Remove this comment to see the full error message
-  const dirHandle = await window.showDirectoryPicker({
+  const dirHandle = await (
+    window as Window & {
+      showDirectoryPicker: (options?: {
+        id?: string;
+        startIn?: string | FileSystemHandle;
+        mode?: 'read' | 'readwrite';
+      }) => Promise<FileSystemDirectoryHandle>;
+    }
+  ).showDirectoryPicker({
     ...options,
     mode: 'readwrite',
   });

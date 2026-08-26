@@ -26,15 +26,13 @@ export function ogArchiveKey(urlHash: any) {
 }
 
 /** Prefix for chat-attached images: `.chat-with-myself/images/YYYY-MM-DD/` */
-export function chatImagePathPrefix(dateStr: any) {
-  // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
+export function chatImagePathPrefix(dateStr?: string) {
   const day = dateStr || localDateString(new Date());
   return `${CHAT_FOLDER}/${IMAGES_FOLDER}/${day}/`;
 }
 
 /** Prefix for chat-attached files: `.chat-with-myself/files/YYYY-MM-DD/` */
-export function chatFilePathPrefix(dateStr: any) {
-  // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
+export function chatFilePathPrefix(dateStr?: string) {
   const day = dateStr || localDateString(new Date());
   return `${CHAT_FOLDER}/${FILES_FOLDER}/${day}/`;
 }
@@ -85,7 +83,7 @@ export function editVersionAtFromFileName(fileName: any) {
 }
 
 /** Local calendar date YYYY-MM-DD */
-export function localDateString(date = new Date(), timeZone: any) {
+export function localDateString(date = new Date(), timeZone?: string) {
   try {
     const fmt = new Intl.DateTimeFormat('en-CA', {
       timeZone: timeZone || undefined,

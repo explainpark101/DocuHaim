@@ -389,8 +389,7 @@ export function wikiImagePlugin(md: any) {
     });
   });
 
-  // @ts-expect-error TS(6133): 'options' is declared but its value is never read.
-  md.renderer.rules.wiki_image = (tokens: any, idx: any, options: any, env: any, self: any) => {
+  md.renderer.rules.wiki_image = (tokens: any, idx: any, _options: any, _env: any, self: any) => {
     const token = tokens[idx];
     return '<img ' + self.renderAttrs(token) + '>';
   };

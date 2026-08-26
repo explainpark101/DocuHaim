@@ -1,6 +1,14 @@
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
 import { putObjectWithProgress } from '@/utils/vault/s3Client';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
+import type { S3Client } from '@aws-sdk/client-s3';
+
+type EditorImageUploadOptions = {
+  maxSizeBytes?: number;
+  imagePathPrefix?: string;
+  onProgress?: (percent: number) => void;
+  signal?: AbortSignal;
+};
 
 /**
  * 파일 앞부분 바이트로 image/* MIME 추정 (클립보드 File.type 비어 있을 때 사용)
@@ -76,14 +84,17 @@ export function buildEditorImagePathPrefix(mdPath: any) {
  *   - imagePathPrefix: '.images/<md경로>/<md이름>/' 형태. 미지정 시 '.images/note/' 사용
  * @returns {Promise<string>} S3 Object Key (path)
  */
-export async function uploadEditorImage(client: any, bucket: any, file: any, options = {}) {
-  // @ts-expect-error TS(2339): Property 'maxSizeBytes' does not exist on type '{}... Remove this comment to see the full error message
+export async function uploadEditorImage(
+  client: S3Client,
+  bucket: string,
+  file: File,
+  options: EditorImageUploadOptions = {},
+) {
   const maxSizeBytes = options.maxSizeBytes ?? 10 * 1024 * 1024;
   if (file.size > maxSizeBytes) {
     throw new Error(`이미지 크기는 ${Math.round(maxSizeBytes / 1024 / 1024)}MB 이하여야 합니다.`);
   }
 
-  // @ts-expect-error TS(2339): Property 'imagePathPrefix' does not exist on type ... Remove this comment to see the full error message
   const prefix = normalizeEditorImagePathPrefix(options.imagePathPrefix);
   const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -117,11 +128,9 @@ export async function uploadEditorImage(client: any, bucket: any, file: any, opt
       ContentType: contentType,
     },
     {
-      // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
-      onProgress: options.onProgress,
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
-      signal: options.signal,
-    }
+      ...(options.onProgress ? { onProgress: options.onProgress } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
+    },
   );
 
   dbgClipboard('upload:done', { key, contentType, bodyBytes: body.byteLength });
@@ -136,15 +145,14 @@ export function normalizeEditorImagePathPrefix(imagePathPrefix: any) {
   return normalizePathToNfc(raw);
 }
 
-export function getExtensionFromMime(mime: any) {
+export function getExtensionFromMime(mime: string | undefined) {
   if (!mime) return '.png';
-  const map = {
+  const map: Record<string, string> = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/gif': '.gif',
     'image/webp': '.webp',
     'image/svg+xml': '.svg',
   };
-  // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
   return map[mime] || '.png';
 }

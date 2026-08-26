@@ -235,7 +235,9 @@ export function useTreeOpsDomain(): TreeOpsDomainValue {
       const bucket = s3Creds.bucket;
       const prefix = node.path || '';
       const contents = await listObjectsV2(client, bucket, prefix);
-      const fileObjects = (contents || []).filter((item: any) => item.Key && !item.Key.endsWith('/'));
+      const fileObjects = (contents || []).filter(
+        (item): item is { Key: string } => Boolean(item.Key && !item.Key.endsWith('/')),
+      );
       const totalFiles = fileObjects.length;
       let completed = 0;
       for (const { Key } of fileObjects) {
@@ -390,6 +392,7 @@ export function useTreeOpsDomain(): TreeOpsDomainValue {
 
     const keysToDelete = [];
     for (const { Key } of contents) {
+      if (!Key) continue;
       const relative = Key.slice(prefix.length);
       const newKey = newFolderPrefix + relative;
       if (newKey === Key) continue;
@@ -527,6 +530,7 @@ export function useTreeOpsDomain(): TreeOpsDomainValue {
     await putObject(client, { Bucket: bucket, Key: newFolderPrefix, Body: '' });
     const contents = await listObjectsV2(client, bucket, prefix);
     for (const { Key } of contents) {
+      if (!Key) continue;
       const relative = Key.slice(prefix.length);
       const newKey = newFolderPrefix + relative;
       if (!relative || newKey === Key) continue;
@@ -720,7 +724,9 @@ export function useTreeOpsDomain(): TreeOpsDomainValue {
               const bucket = s3Creds.bucket;
               const prefix = node.path || '';
               const contents = await listObjectsV2(client, bucket, prefix);
-              const fileObjects = (contents || []).filter((item: any) => item.Key && !item.Key.endsWith('/'));
+              const fileObjects = (contents || []).filter(
+                (item): item is { Key: string } => Boolean(item.Key && !item.Key.endsWith('/')),
+              );
               const totalFiles = fileObjects.length;
               if (totalFiles === 0) {
                 setOperationStatus(`다운로드 완료: ${folderName} (빈 폴더)`);
@@ -961,6 +967,7 @@ export function useTreeOpsDomain(): TreeOpsDomainValue {
           await putObject(client, { Bucket: bucket, Key: destPrefix, Body: '' });
           const contents = await listObjectsV2(client, bucket, prefix);
           for (const { Key } of contents) {
+            if (!Key) continue;
             const relative = Key.slice(prefix.length);
             const newKey = destPrefix + relative;
             await copyObject(client, bucket, Key, newKey);

@@ -106,8 +106,7 @@ export async function drainRecordingUploadQueue({
           status: 'failed',
           attempts: nextAttempts,
           nextAttemptAt,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          error: e?.message ? String(e.message) : String(e),
+          error: e instanceof Error ? e.message : String(e),
         });
       }
     }

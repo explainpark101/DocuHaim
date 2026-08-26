@@ -14,6 +14,17 @@ import {
 const MAX_CHAT_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_GROUP_ICON_BYTES = 5 * 1024 * 1024;
 
+type ChatUploadOptions = {
+  dateStr?: string;
+  onProgress?: (n: number) => void;
+  signal?: AbortSignal;
+};
+
+type GroupIconUploadOptions = {
+  onProgress?: (n: number) => void;
+  signal?: AbortSignal;
+};
+
 /**
  * Upload an image for chat-with-myself. Uploads only when send is pressed (caller timing).
  * @param {import('@/utils/chatWithMyself/storage').ChatStorageCtx} ctx
@@ -21,7 +32,7 @@ const MAX_GROUP_ICON_BYTES = 5 * 1024 * 1024;
  * @param {{ dateStr?: string, onProgress?: (n: number) => void, signal?: AbortSignal }} [options]
  * @returns {Promise<string>} object key / relative path
  */
-export async function uploadChatImage(ctx: any, file: any, options = {}) {
+export async function uploadChatImage(ctx: any, file: File, options: ChatUploadOptions = {}) {
   if (!file) throw new Error('파일이 없습니다.');
   if (file.size > MAX_CHAT_IMAGE_BYTES) {
     throw new Error(
@@ -30,7 +41,6 @@ export async function uploadChatImage(ctx: any, file: any, options = {}) {
   }
 
   const dateStr =
-    // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
     options.dateStr || localDateString(new Date(), detectTimeZone());
   const prefix = chatImagePathPrefix(dateStr);
   const uuid =
@@ -50,22 +60,18 @@ export async function uploadChatImage(ctx: any, file: any, options = {}) {
     return uploadLocalEditorImage(ctx.localRootHandle, file, {
       imagePathPrefix: prefix,
       maxSizeBytes: MAX_CHAT_IMAGE_BYTES,
-      // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
-      onProgress: options.onProgress,
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
-      signal: options.signal,
+      ...(options.onProgress ? { onProgress: options.onProgress } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
     });
   }
 
   const contentType =
     mime && mime.startsWith('image/') ? mime : 'application/octet-stream';
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(0);
   const body = new Uint8Array(await file.arrayBuffer());
   const backend = createChatBackend(ctx);
   await backend.ensureChatFolder();
   await backend.putBinary(key, body, contentType);
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(100);
   return key;
 }
@@ -88,7 +94,7 @@ export function chatImagesToMarkdown(paths: any) {
  * @param {{ onProgress?: (n: number) => void, signal?: AbortSignal }} [options]
  * @returns {Promise<string>} object key / relative path
  */
-export async function uploadGroupIcon(ctx: any, file: any, options = {}) {
+export async function uploadGroupIcon(ctx: any, file: File, options: GroupIconUploadOptions = {}) {
   if (!file) throw new Error('파일이 없습니다.');
   if (file.size > MAX_GROUP_ICON_BYTES) {
     throw new Error(
@@ -114,22 +120,18 @@ export async function uploadGroupIcon(ctx: any, file: any, options = {}) {
     return uploadLocalEditorImage(ctx.localRootHandle, file, {
       imagePathPrefix: prefix,
       maxSizeBytes: MAX_GROUP_ICON_BYTES,
-      // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
-      onProgress: options.onProgress,
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
-      signal: options.signal,
+      ...(options.onProgress ? { onProgress: options.onProgress } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
     });
   }
 
   const contentType =
     mime && mime.startsWith('image/') ? mime : 'image/jpeg';
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(0);
   const body = new Uint8Array(await file.arrayBuffer());
   const backend = createChatBackend(ctx);
   await backend.ensureChatFolder();
   await backend.putBinary(key, body, contentType);
-  // @ts-expect-error TS(2339): Property 'onProgress' does not exist on type '{}'.
   options.onProgress?.(100);
   return key;
 }

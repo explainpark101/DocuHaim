@@ -11,6 +11,10 @@ export function getChatSyncTabId() {
   return TAB_ID;
 }
 
+type ChatSyncExtra = {
+  dateStr?: string;
+};
+
 /**
  * @returns {BroadcastChannel | null}
  */
@@ -28,13 +32,12 @@ export function openChatSyncChannel() {
  * @param {'day' | 'meta'} type
  * @param {{ dateStr?: string }} [extra]
  */
-export function postChatSyncEvent(type: any, extra = {}) {
+export function postChatSyncEvent(type: 'day' | 'meta', extra: ChatSyncExtra = {}) {
   const ch = openChatSyncChannel();
   if (!ch) return;
   try {
     ch.postMessage({
       type,
-      // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
       dateStr: extra.dateStr || null,
       originTabId: TAB_ID,
       at: Date.now(),
@@ -55,14 +58,13 @@ export function postChatSyncEvent(type: any, extra = {}) {
  * @param {'day' | 'meta'} type
  * @param {{ dateStr?: string }} [extra]
  */
-export function postChatLocalSyncEvent(type: any, extra = {}) {
+export function postChatLocalSyncEvent(type: 'day' | 'meta', extra: ChatSyncExtra = {}) {
   if (typeof window === 'undefined') return;
   try {
     window.dispatchEvent(
       new CustomEvent(CHAT_LOCAL_SYNC_EVENT, {
         detail: {
           type,
-          // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
           dateStr: extra.dateStr || null,
           at: Date.now(),
         },

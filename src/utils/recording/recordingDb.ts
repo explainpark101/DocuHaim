@@ -134,10 +134,8 @@ export async function getPendingRecording(noteKey: any) {
  * @param {number} [params.limit]
  * @returns {Promise<RecordingRecord[]>}
  */
-export async function listUploadableRecordings(params = {}) {
-  // @ts-expect-error TS(2339): Property 'now' does not exist on type '{}'.
+export async function listUploadableRecordings(params: { now?: number; limit?: number } = {}) {
   const now = params.now ?? Date.now();
-  // @ts-expect-error TS(2339): Property 'limit' does not exist on type '{}'.
   const limit = params.limit ?? 10;
   const list = await db.recordings
     .where('status')

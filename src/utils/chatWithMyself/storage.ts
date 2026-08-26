@@ -1,7 +1,10 @@
 import {
   ChatPreconditionFailedError,
   createChatBackend,
+  type ChatStorageCtx,
 } from '@/utils/chatWithMyself/backends/index';
+import type { ChatGroup, ChatMessage } from '@/utils/chatWithMyself/messageTypes';
+import type { ChatReaction } from '@/utils/chatWithMyself/reactions';
 import {
   CHAT_FOLDER,
   dayFileKey,
@@ -15,6 +18,8 @@ import {
 } from '@/utils/chatWithMyself/paths';
 import {
   createMessageId,
+  isChatMessageEncrypted,
+  isChatMessageMarkdown,
   mergeDayMessages,
   parseDayFile,
   serializeDayFile,
@@ -33,6 +38,56 @@ import { notifyAdvancedSearchChange } from '@/utils/advancedSearch/notify';
 
 const MAX_WRITE_RETRIES = 5;
 
+export type { ChatStorageCtx };
+
+type ChatMetaPayload = {
+  timezone: string;
+  groups: ChatGroup[];
+};
+
+type MessageMetaPatch = {
+  pinnedAt?: string | Date | null | false;
+  notePath?: string | null;
+  collapsed?: string | boolean;
+  reactions?: ChatReaction[];
+  reactionsAt?: string | Date | null;
+};
+
+type MessageUpdatePatch = {
+  body?: string;
+  group?: string;
+  markdown?: boolean | string;
+  encrypted?: boolean | string;
+};
+
+type EditHistoryEntry = {
+  at: string;
+  body: string;
+  group: string;
+  key?: string;
+};
+
+type EditHistoryPageOptions = {
+  offset?: number;
+  limit?: number;
+  legacyEntries?: Array<{ at?: string; body?: string; group?: string }>;
+};
+
+type EditHistoryDeleteOptions = {
+  dateStr?: string;
+};
+
+function errorMessage(err: unknown) {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+function getHttpStatus(err: unknown) {
+  if (!err || typeof err !== 'object') return undefined;
+  const e = err as { status?: number; $metadata?: { httpStatusCode?: number } };
+  return e.status ?? e.$metadata?.httpStatusCode;
+}
+
 /**
  * @typedef {Object} ChatStorageCtx
  * @property {'s3'|'local'|'webdav'} mode
@@ -45,24 +100,38 @@ const MAX_WRITE_RETRIES = 5;
 /**
  * @param {ChatStorageCtx} ctx
  */
-function backend(ctx: any) {
+function backend(ctx: ChatStorageCtx) {
   return createChatBackend(ctx);
 }
 
-function scopeOf(ctx: any) {
-  return getStorageScopeId({
-    mode: ctx?.mode,
-    bucket: ctx?.bucket,
-    localRootHandle: ctx?.localRootHandle,
-    webdavConfig: ctx?.webdavConfig,
-  });
+function scopeOf(ctx: ChatStorageCtx) {
+  const input: {
+    mode: string;
+    bucket?: string;
+    localRootHandle?: FileSystemDirectoryHandle;
+    webdavConfig?: {
+      endpoint: string;
+      username: string;
+      password: string;
+      basePath: string;
+    };
+  } = { mode: ctx.mode };
+  if (ctx.bucket !== undefined) input.bucket = ctx.bucket;
+  if (ctx.localRootHandle !== undefined) input.localRootHandle = ctx.localRootHandle;
+  if (ctx.webdavConfig !== undefined) input.webdavConfig = ctx.webdavConfig;
+  return getStorageScopeId(input);
 }
 
-async function readText(ctx: any, key: any) {
+async function readText(ctx: ChatStorageCtx, key: string) {
   return backend(ctx).getText(key);
 }
 
-async function writeTextUnconditional(ctx: any, key: any, content: any, contentType: any) {
+async function writeTextUnconditional(
+  ctx: ChatStorageCtx,
+  key: string,
+  content: string,
+  contentType: string,
+) {
   const b = backend(ctx);
   await b.ensureChatFolder();
   if (ctx.mode === 'local') {
@@ -74,8 +143,7 @@ async function writeTextUnconditional(ctx: any, key: any, content: any, contentT
       key,
       content,
       contentType,
-      // @ts-expect-error TS(2345): Argument of type 'string | null' is not assignable... Remove this comment to see the full error message
-      meta?.etag || null,
+      meta?.etag ?? null,
     );
   } catch (e) {
     if (e instanceof ChatPreconditionFailedError) throw e;
@@ -90,7 +158,11 @@ async function writeTextUnconditional(ctx: any, key: any, content: any, contentT
  * @param {string} dateStr
  * @param {(parsed: ReturnType<typeof parseDayFile>) => ReturnType<typeof parseDayFile>} mutator
  */
-async function mutateDayFile(ctx: any, dateStr: any, mutator: any) {
+async function mutateDayFile(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  mutator: (parsed: ReturnType<typeof parseDayFile>) => ReturnType<typeof parseDayFile>,
+) {
   const key = dayFileKey(dateStr);
   const b = backend(ctx);
   await b.ensureChatFolder();
@@ -115,8 +187,7 @@ async function mutateDayFile(ctx: any, dateStr: any, mutator: any) {
           key,
           content,
           'text/markdown; charset=utf-8',
-          // @ts-expect-error TS(2345): Argument of type 'string | null' is not assignable... Remove this comment to see the full error message
-          meta?.etag || null,
+          meta?.etag ?? null,
         );
       }
       await cacheDay(scopeOf(ctx), key, content);
@@ -139,7 +210,10 @@ async function mutateDayFile(ctx: any, dateStr: any, mutator: any) {
  * @param {ChatStorageCtx} ctx
  * @param {(meta: { timezone: string, groups: ChatGroup[] }) => { timezone: string, groups: ChatGroup[] }} mutator
  */
-async function mutateMeta(ctx: any, mutator: any) {
+async function mutateMeta(
+  ctx: ChatStorageCtx,
+  mutator: (meta: ChatMetaPayload) => ChatMetaPayload,
+) {
   const key = metaKey();
   const b = backend(ctx);
   await b.ensureChatFolder();
@@ -166,8 +240,7 @@ async function mutateMeta(ctx: any, mutator: any) {
           key,
           content,
           'application/json',
-          // @ts-expect-error TS(2345): Argument of type 'string | null' is not assignable... Remove this comment to see the full error message
-          fileMeta?.etag || null,
+          fileMeta?.etag ?? null,
         );
       }
       return payload;
@@ -204,13 +277,10 @@ export function createGroupId() {
 }
 
 /** @param {ChatGroup} g */
-function serializeGroup(g: any) {
-  /** @type {{ id: string, name: string, iconPath?: string, aliases?: string[] }} */
-  const row = { id: g.id, name: g.name };
-  // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{ id: ... Remove this comment to see the full error message
+function serializeGroup(g: ChatGroup): ChatGroup {
+  const row: ChatGroup = { id: g.id, name: g.name };
   if (g.iconPath) row.iconPath = g.iconPath;
   if (Array.isArray(g.aliases) && g.aliases.length) {
-    // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
     row.aliases = [...g.aliases];
   }
   return row;
@@ -221,26 +291,25 @@ function serializeGroup(g: any) {
  * @param {unknown} raw
  * @returns {ChatGroup[]}
  */
-export function normalizeGroups(raw: any) {
+export function normalizeGroups(raw: unknown): ChatGroup[] {
   if (!Array.isArray(raw)) return [];
-  const seenIds = new Set();
-  const seenNames = new Set();
-  /** @type {ChatGroup[]} */
-  const out = [];
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  const out: ChatGroup[] = [];
   for (const item of raw) {
     let name = '';
-    /** @type {string|undefined} */
-    let id;
-    /** @type {string|undefined} */
-    let iconPath;
-    /** @type {string[]} */
-    let aliases = [];
+    let id: string | undefined;
+    let iconPath: string | undefined;
+    let aliases: string[] = [];
     if (typeof item === 'string') {
       name = item.trim();
     } else if (item && typeof item === 'object') {
-      const obj = /** @type {{ id?: unknown, name?: unknown, iconPath?: unknown, aliases?: unknown }} */ (
-        item
-      );
+      const obj = item as {
+        id?: unknown;
+        name?: unknown;
+        iconPath?: unknown;
+        aliases?: unknown;
+      };
       name = String(obj.name || '').trim();
       if (typeof obj.id === 'string' && obj.id.trim()) id = obj.id.trim();
       if (typeof obj.iconPath === 'string' && obj.iconPath.trim()) {
@@ -248,8 +317,8 @@ export function normalizeGroups(raw: any) {
       }
       if (Array.isArray(obj.aliases)) {
         aliases = obj.aliases
-          .map((a: any) => String(a || '').trim())
-          .filter((a: any) => a && a !== SELF_GROUP && a !== name);
+          .map((a) => String(a || '').trim())
+          .filter((a) => a && a !== SELF_GROUP && a !== name);
       }
     }
     if (!name || name === SELF_GROUP) continue;
@@ -258,11 +327,8 @@ export function normalizeGroups(raw: any) {
     if (seenIds.has(resolvedId)) continue;
     seenIds.add(resolvedId);
     seenNames.add(name);
-    /** @type {ChatGroup} */
-    const row = { id: resolvedId, name };
-    // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{ id: ... Remove this comment to see the full error message
+    const row: ChatGroup = { id: resolvedId, name };
     if (iconPath) row.iconPath = iconPath;
-    // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
     if (aliases.length) row.aliases = [...new Set(aliases)];
     out.push(row);
   }
@@ -274,14 +340,13 @@ export function normalizeGroups(raw: any) {
  * @param {string} key group id, display name, or legacy alias
  * @returns {ChatGroup|null}
  */
-export function findGroup(groups: any, key: any) {
+export function findGroup(groups: ChatGroup[] | string[] | unknown, key: string): ChatGroup | null {
   const raw = String(key || '').trim();
   if (!raw || raw === SELF_GROUP) return null;
   const list = normalizeGroups(groups);
   return (
     list.find((g) => g.id === raw) ||
     list.find((g) => g.name === raw) ||
-    // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
     list.find((g) => (g.aliases || []).includes(raw)) ||
     null
   );
@@ -347,31 +412,24 @@ export function groupNames(groups: any) {
 }
 
 /** @param {ChatGroup[]|string[]|unknown} groups @returns {Map<string, string>} id|name|alias → iconPath */
-export function groupIconMap(groups: any) {
-  /** @type {Map<string, string>} */
-  const map = new Map();
+export function groupIconMap(groups: ChatGroup[] | string[] | unknown) {
+  const map = new Map<string, string>();
   for (const g of normalizeGroups(groups)) {
-    // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{ id: ... Remove this comment to see the full error message
     if (!g.iconPath) continue;
-    // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{ id: ... Remove this comment to see the full error message
     map.set(g.id, g.iconPath);
-    // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{ id: ... Remove this comment to see the full error message
     map.set(g.name, g.iconPath);
-    // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
     for (const a of g.aliases || []) map.set(a, g.iconPath);
   }
   return map;
 }
 
 /** @param {ChatGroup[]|string[]|unknown} groups @returns {Map<string, string>} id|name|alias → display name */
-export function groupLabelMap(groups: any) {
-  /** @type {Map<string, string>} */
-  const map = new Map();
+export function groupLabelMap(groups: ChatGroup[] | string[] | unknown) {
+  const map = new Map<string, string>();
   map.set(SELF_GROUP, SELF_GROUP);
   for (const g of normalizeGroups(groups)) {
     map.set(g.id, g.name);
     map.set(g.name, g.name);
-    // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
     for (const a of g.aliases || []) map.set(a, g.name);
   }
   return map;
@@ -403,33 +461,31 @@ export async function touchTimezone(ctx: any) {
  * @param {{ iconPath?: string }} [options]
  * @returns {Promise<ChatGroup[]>}
  */
-export async function addGroup(ctx: any, name: any, options = {}) {
+export async function addGroup(
+  ctx: ChatStorageCtx,
+  name: string,
+  options: { iconPath?: string } = {},
+) {
   const trimmed = String(name || '').trim();
   if (!trimmed || trimmed === SELF_GROUP) {
     throw new Error('Invalid group name');
   }
   const iconPath =
-    // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{}'.
     typeof options.iconPath === 'string' && options.iconPath.trim()
-      // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{}'.
       ? options.iconPath.trim()
       : undefined;
-  const payload = await mutateMeta(ctx, (meta: any) => {
+  const payload = await mutateMeta(ctx, (meta) => {
     const groups = normalizeGroups(meta.groups);
     const existing = groups.find(
-      // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
       (g) => g.name === trimmed || (g.aliases || []).includes(trimmed),
     );
     if (existing) {
       if (iconPath) {
-        // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{ id: ... Remove this comment to see the full error message
         existing.iconPath = iconPath;
       }
       return { timezone: detectTimeZone(), groups };
     }
-    /** @type {ChatGroup} */
-    const row = { id: createGroupId(), name: trimmed };
-    // @ts-expect-error TS(2339): Property 'iconPath' does not exist on type '{ id: ... Remove this comment to see the full error message
+    const row: ChatGroup = { id: createGroupId(), name: trimmed };
     if (iconPath) row.iconPath = iconPath;
     groups.push(row);
     return { timezone: detectTimeZone(), groups };
@@ -452,17 +508,15 @@ export async function setGroupIcon(ctx: any, groupId: any, iconPath: any) {
   if (!path) {
     throw new Error('Invalid icon path');
   }
-  const payload = await mutateMeta(ctx, (meta: any) => {
+  const payload = await mutateMeta(ctx, (meta) => {
     const groups = normalizeGroups(meta.groups);
     const idx = groups.findIndex(
-      // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
       (g) => g.id === id || g.name === id || (g.aliases || []).includes(id),
     );
     if (idx < 0) {
       throw new Error('Group not found');
     }
-    // @ts-expect-error TS(2322): Type '{ iconPath: string; id?: any; name?: string;... Remove this comment to see the full error message
-    groups[idx] = { ...groups[idx], iconPath: path };
+    groups[idx] = { ...groups[idx]!, iconPath: path };
     return { timezone: detectTimeZone(), groups };
   });
   return sortGroupsKo(payload.groups);
@@ -484,17 +538,15 @@ export async function renameGroup(ctx: any, groupId: any, newName: any) {
   if (!trimmed || trimmed === SELF_GROUP) {
     throw new Error('Invalid group name');
   }
-  const payload = await mutateMeta(ctx, (meta: any) => {
+  const payload = await mutateMeta(ctx, (meta) => {
     const groups = normalizeGroups(meta.groups);
     const idx = groups.findIndex(
-      // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
       (g) => g.id === id || g.name === id || (g.aliases || []).includes(id),
     );
     if (idx < 0) {
       throw new Error('Group not found');
     }
-    const prev = groups[idx];
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
+    const prev = groups[idx]!;
     if (prev.name === trimmed) {
       return { timezone: detectTimeZone(), groups };
     }
@@ -502,21 +554,17 @@ export async function renameGroup(ctx: any, groupId: any, newName: any) {
       groups.some(
         (g, i) =>
           i !== idx &&
-          // @ts-expect-error TS(2339): Property 'aliases' does not exist on type '{ id: a... Remove this comment to see the full error message
           (g.name === trimmed || (g.aliases || []).includes(trimmed)),
       )
     ) {
       throw new Error('Group name already exists');
     }
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
     const aliases = new Set(prev.aliases || []);
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
     aliases.add(prev.name);
     aliases.delete(trimmed);
     groups[idx] = {
       ...prev,
       name: trimmed,
-      // @ts-expect-error TS(2322): Type '{ name: string; aliases: unknown[]; id?: any... Remove this comment to see the full error message
       aliases: [...aliases],
     };
     return { timezone: detectTimeZone(), groups };
@@ -524,7 +572,7 @@ export async function renameGroup(ctx: any, groupId: any, newName: any) {
   return sortGroupsKo(payload.groups);
 }
 
-export async function listDayKeys(ctx: any) {
+export async function listDayKeys(ctx: any): Promise<string[]> {
   return backend(ctx).listDayKeys();
 }
 
@@ -631,8 +679,7 @@ export async function appendChatMessages(ctx: any, items: any[] = []) {
           dayKey: key,
           dateStr,
           message: msg,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          error: String(err?.message || err),
+          error: errorMessage(err),
         });
       } catch {
         /* ignore */
@@ -672,56 +719,45 @@ export async function deleteChatMessage(ctx: any, dateStr: any, messageId: any) 
  * Patch message metadata without creating edit history (pin, note link, etc.).
  * @returns {Promise<object | null>}
  */
-export async function patchChatMessageMeta(ctx: any, dateStr: any, messageId: any, fields = {}) {
+export async function patchChatMessageMeta(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messageId: string,
+  fields: MessageMetaPatch = {},
+) {
   if (!dateStr || !messageId) return null;
-  /** @type {object | null} */
-  let updated = null;
-  await mutateDayFile(ctx, dateStr, (parsed: any) => {
+  let updated: ChatMessage | null = null;
+  await mutateDayFile(ctx, dateStr, (parsed) => {
     updated = null;
-    const idx = parsed.messages.findIndex((m: any) => m.id === messageId);
+    const idx = parsed.messages.findIndex((m) => m.id === messageId);
     if (idx < 0) return parsed;
-    const prev = parsed.messages[idx];
-    const next = { ...prev, dateStr };
-    // @ts-expect-error TS(2339): Property 'pinnedAt' does not exist on type '{}'.
+    const prev = parsed.messages[idx]!;
+    const next: ChatMessage = { ...prev, dateStr };
     if (fields.pinnedAt !== undefined) {
-      // @ts-expect-error TS(2339): Property 'pinnedAt' does not exist on type '{}'.
       next.pinnedAt = fields.pinnedAt ? String(fields.pinnedAt) : '';
     }
-    // @ts-expect-error TS(2339): Property 'notePath' does not exist on type '{}'.
     if (fields.notePath !== undefined) {
-      // @ts-expect-error TS(2339): Property 'notePath' does not exist on type '{}'.
       next.notePath = fields.notePath ? String(fields.notePath) : '';
     }
-    // @ts-expect-error TS(2339): Property 'collapsed' does not exist on type '{}'.
     if (fields.collapsed !== undefined) {
       next.collapsed =
-        // @ts-expect-error TS(2339): Property 'collapsed' does not exist on type '{}'.
         fields.collapsed === '1' ||
-        // @ts-expect-error TS(2339): Property 'collapsed' does not exist on type '{}'.
         fields.collapsed === true ||
-        // @ts-expect-error TS(2339): Property 'collapsed' does not exist on type '{}'.
         fields.collapsed === 'true'
           ? '1'
           : '';
     }
-    // @ts-expect-error TS(2339): Property 'reactions' does not exist on type '{}'.
     if (fields.reactions !== undefined) {
-      // @ts-expect-error TS(2339): Property 'reactions' does not exist on type '{}'.
       next.reactions = Array.isArray(fields.reactions) ? fields.reactions : [];
       next.reactionsAt =
-        // @ts-expect-error TS(2339): Property 'reactionsAt' does not exist on type '{}'... Remove this comment to see the full error message
         fields.reactionsAt !== undefined
-          // @ts-expect-error TS(2339): Property 'reactionsAt' does not exist on type '{}'... Remove this comment to see the full error message
           ? fields.reactionsAt
-            // @ts-expect-error TS(2339): Property 'reactionsAt' does not exist on type '{}'... Remove this comment to see the full error message
             ? String(fields.reactionsAt)
             : ''
           : next.reactions.length > 0
             ? new Date().toISOString()
             : '';
-    // @ts-expect-error TS(2339): Property 'reactionsAt' does not exist on type '{}'... Remove this comment to see the full error message
     } else if (fields.reactionsAt !== undefined) {
-      // @ts-expect-error TS(2339): Property 'reactionsAt' does not exist on type '{}'... Remove this comment to see the full error message
       next.reactionsAt = fields.reactionsAt ? String(fields.reactionsAt) : '';
     }
     updated = next;
@@ -742,59 +778,42 @@ export async function patchChatMessageMeta(ctx: any, dateStr: any, messageId: an
  * Previous body/group is archived under `.chat-with-myself/edits/<id>/<editedAt>.md`.
  * @returns {Promise<object | null>} updated message or null
  */
-export async function updateChatMessage(ctx: any, dateStr: any, messageId: any, patch = {}) {
+export async function updateChatMessage(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messageId: string,
+  patch: MessageUpdatePatch = {},
+) {
   if (!dateStr || !messageId) return null;
-  /** @type {object | null} */
-  let updated = null;
-  /** @type {{ at: string, body: string, group: string } | null} */
-  let archived = null;
-  await mutateDayFile(ctx, dateStr, (parsed: any) => {
+  let updated: ChatMessage | null = null;
+  let archived: { at: string; body: string; group: string } | null = null;
+  await mutateDayFile(ctx, dateStr, (parsed) => {
     updated = null;
     archived = null;
-    const idx = parsed.messages.findIndex((m: any) => m.id === messageId);
+    const idx = parsed.messages.findIndex((m) => m.id === messageId);
     if (idx < 0) return parsed;
-    const prev = parsed.messages[idx];
+    const prev = parsed.messages[idx]!;
     const nextBody =
-      // @ts-expect-error TS(2339): Property 'body' does not exist on type '{}'.
       patch.body !== undefined ? String(patch.body ?? '') : prev.body;
     const nextGroup =
-      // @ts-expect-error TS(2339): Property 'group' does not exist on type '{}'.
       patch.group !== undefined ? patch.group || SELF_GROUP : prev.group;
     const nextMarkdown =
-      // @ts-expect-error TS(2339): Property 'markdown' does not exist on type '{}'.
       patch.markdown !== undefined
-        // @ts-expect-error TS(2339): Property 'markdown' does not exist on type '{}'.
         ? patch.markdown === true ||
-          // @ts-expect-error TS(2339): Property 'markdown' does not exist on type '{}'.
           patch.markdown === '1' ||
-          // @ts-expect-error TS(2339): Property 'markdown' does not exist on type '{}'.
           patch.markdown === 'true'
-        : prev.markdown === true ||
-          prev.markdown === '1' ||
-          prev.markdown === 'true';
+        : isChatMessageMarkdown(prev);
     const nextEncrypted =
-      // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type '{}'.
       patch.encrypted !== undefined
-        // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type '{}'.
         ? patch.encrypted === true ||
-          // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type '{}'.
           patch.encrypted === '1' ||
-          // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type '{}'.
           patch.encrypted === 'true'
-        : prev.encrypted === true ||
-          prev.encrypted === '1' ||
-          prev.encrypted === 'true';
+        : isChatMessageEncrypted(prev);
     const bodyChanged = nextBody !== prev.body;
     const groupChanged = nextGroup !== (prev.group || SELF_GROUP);
-    const prevMarkdown =
-      prev.markdown === true ||
-      prev.markdown === '1' ||
-      prev.markdown === 'true';
+    const prevMarkdown = isChatMessageMarkdown(prev);
     const markdownChanged = nextMarkdown !== prevMarkdown;
-    const prevEncrypted =
-      prev.encrypted === true ||
-      prev.encrypted === '1' ||
-      prev.encrypted === 'true';
+    const prevEncrypted = isChatMessageEncrypted(prev);
     const encryptedChanged = nextEncrypted !== prevEncrypted;
     if (bodyChanged || groupChanged || markdownChanged || encryptedChanged) {
       archived = {
@@ -861,16 +880,14 @@ export async function writeMessageEditVersion(ctx: any, messageId: any, entry: a
  * @param {string} messageId
  * @returns {Promise<string[]>}
  */
-export async function listMessageEditVersionKeys(ctx: any, messageId: any) {
+export async function listMessageEditVersionKeys(ctx: ChatStorageCtx, messageId: string) {
   const id = String(messageId || '').trim();
   if (!id) return [];
   const prefix = messageEditsFolder(id);
   try {
     const keys = await backend(ctx).listKeys(prefix);
     return keys
-      // @ts-expect-error TS(7006): Parameter 'k' implicitly has an 'any' type.
       .filter((k) => k.toLowerCase().endsWith('.md'))
-      // @ts-expect-error TS(7006): Parameter 'a' implicitly has an 'any' type.
       .sort((a, b) => b.localeCompare(a));
   } catch {
     return [];
@@ -891,46 +908,45 @@ export async function listMessageEditVersionKeys(ctx: any, messageId: any) {
  * @returns {Promise<{ entries: Array<{ at: string, body: string, group: string, key?: string }>, nextOffset: number, hasMore: boolean, total: number }>}
  */
 export async function loadMessageEditHistoryPage(
-  ctx: any,
-  messageId: any,
-  options = {},
+  ctx: ChatStorageCtx,
+  messageId: string,
+  options: EditHistoryPageOptions = {},
 ) {
-  // @ts-expect-error TS(2339): Property 'offset' does not exist on type '{}'.
   const offset = Math.max(0, Number(options.offset) || 0);
-  // @ts-expect-error TS(2339): Property 'limit' does not exist on type '{}'.
   const limit = Math.min(50, Math.max(1, Number(options.limit) || 10));
   const keys = await listMessageEditVersionKeys(ctx, messageId);
 
-  // @ts-expect-error TS(2339): Property 'legacyEntries' does not exist on type '{... Remove this comment to see the full error message
   const legacyRaw = Array.isArray(options.legacyEntries)
-    // @ts-expect-error TS(2339): Property 'legacyEntries' does not exist on type '{... Remove this comment to see the full error message
     ? options.legacyEntries
     : [];
   const keyAts = new Set(
-    // @ts-expect-error TS(7006): Parameter 'k' implicitly has an 'any' type.
     keys.map((k) => editVersionAtFromFileName(k)).filter(Boolean),
   );
   const legacy = legacyRaw
-    .map((e: any) => ({
-    at: String(e?.at || ''),
-    body: String(e?.body ?? ''),
-    group: String(e?.group || SELF_GROUP)
-  }))
-    .filter((e: any) => e.at && !keyAts.has(e.at))
-    .sort((a: any, b: any) => String(b.at).localeCompare(String(a.at)));
+    .map((e) => ({
+      at: String(e?.at || ''),
+      body: String(e?.body ?? ''),
+      group: String(e?.group || SELF_GROUP),
+    }))
+    .filter((e) => e.at && !keyAts.has(e.at))
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
   const total = keys.length + legacy.length;
   if (offset >= total) {
     return { entries: [], nextOffset: offset, hasMore: false, total };
   }
 
-  /** @type {Array<{ at: string, body: string, group: string, key?: string }>} */
-  const entries = [];
+  /** @type {EditHistoryEntry[]} */
+  const entries: EditHistoryEntry[] = [];
   let cursor = offset;
 
   while (entries.length < limit && cursor < total) {
     if (cursor < keys.length) {
       const key = keys[cursor];
+      if (!key) {
+        cursor += 1;
+        continue;
+      }
       cursor += 1;
       const raw = await readText(ctx, key);
       if (raw == null) continue;
@@ -961,14 +977,13 @@ export async function loadMessageEditHistoryPage(
  * @param {ChatStorageCtx} ctx
  * @param {string} key
  */
-export async function deleteMessageEditVersion(ctx: any, key: any) {
+export async function deleteMessageEditVersion(ctx: ChatStorageCtx, key: string) {
   const path = String(key || '').trim();
   if (!path) return;
   try {
     await backend(ctx).deleteKey(path);
   } catch (e) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    const status = e?.status ?? e?.$metadata?.httpStatusCode;
+    const status = getHttpStatus(e);
     if (status === 404) return;
     throw e;
   }
@@ -1050,10 +1065,10 @@ export async function clearLegacyEditHistory(ctx: any, dateStr: any, messageId: 
  * @returns {Promise<{ updatedMessage: object | null }>}
  */
 export async function deleteMessageEditHistoryEntry(
-  ctx: any,
-  messageId: any,
-  entry: any,
-  options = {},
+  ctx: ChatStorageCtx,
+  messageId: string,
+  entry: { key?: string; at?: string },
+  options: EditHistoryDeleteOptions = {},
 ) {
   const id = String(messageId || '').trim();
   if (!id) return { updatedMessage: null };
@@ -1062,12 +1077,10 @@ export async function deleteMessageEditHistoryEntry(
     await deleteMessageEditVersion(ctx, entry.key);
   }
 
-  let updatedMessage = null;
-  // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
+  let updatedMessage: ChatMessage | null = null;
   if (!entry?.key && entry?.at && options.dateStr) {
     updatedMessage = await removeLegacyEditHistoryEntry(
       ctx,
-      // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
       options.dateStr,
       id,
       entry.at,
@@ -1084,9 +1097,9 @@ export async function deleteMessageEditHistoryEntry(
  * @returns {Promise<{ deletedKeys: number, updatedMessage: object | null }>}
  */
 export async function deleteAllMessageEditHistory(
-  ctx: any,
-  messageId: any,
-  options = {},
+  ctx: ChatStorageCtx,
+  messageId: string,
+  options: EditHistoryDeleteOptions = {},
 ) {
   const id = String(messageId || '').trim();
   if (!id) return { deletedKeys: 0, updatedMessage: null };
@@ -1102,10 +1115,8 @@ export async function deleteAllMessageEditHistory(
     }
   }
 
-  let updatedMessage = null;
-  // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
+  let updatedMessage: ChatMessage | null = null;
   if (options.dateStr) {
-    // @ts-expect-error TS(2339): Property 'dateStr' does not exist on type '{}'.
     updatedMessage = await clearLegacyEditHistory(ctx, options.dateStr, id);
   }
   return { deletedKeys, updatedMessage };
@@ -1217,7 +1228,7 @@ export async function flushPendingMessages(ctx: any, db: any) {
   const pending = await db.getPendingMessages();
   if (!pending?.length) return { flushed: 0, dateStrs: [] };
   let flushed = 0;
-  const dateStrs = new Set();
+  const dateStrs = new Set<string>();
   for (const row of pending) {
     const msg = row.message;
     if (!msg?.id) {

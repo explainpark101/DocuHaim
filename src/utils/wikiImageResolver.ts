@@ -67,7 +67,11 @@ function forgetResolvedWikiImageUrl(path: any) {
  * @param {(path: string) => Promise<string|null>} getPresignedUrl
  * @param {{ skipCache?: boolean }} [opts]
  */
-export function resolveWikiImageUrl(path: any, getPresignedUrl: any, opts = {}) {
+export function resolveWikiImageUrl(
+  path: string,
+  getPresignedUrl: (path: string) => Promise<string | null>,
+  opts: { skipCache?: boolean } = {},
+) {
   if (!path) {
     return Promise.resolve(null);
   }
@@ -79,7 +83,6 @@ export function resolveWikiImageUrl(path: any, getPresignedUrl: any, opts = {}) 
   if (typeof getPresignedUrl !== 'function') {
     return Promise.resolve(null);
   }
-  // @ts-expect-error TS(2339): Property 'skipCache' does not exist on type '{}'.
   const skipCache = opts.skipCache === true;
   if (!skipCache) {
     const mem = memoryUrlByPath.get(trimmed);

@@ -8,10 +8,10 @@ function getEditorApiFromRef(editorRef: any) {
   return editorRef?.current?.value ?? editorRef?.current ?? null;
 }
 
-function getMdEditorRootFromRef(editorRef: any, view = null) {
-  // @ts-expect-error TS(2339): Property 'dom' does not exist on type 'never'.
+import type { EditorView } from '@codemirror/view';
+
+function getMdEditorRootFromRef(editorRef: any, view: EditorView | null = null) {
   if (view?.dom) {
-    // @ts-expect-error TS(2339): Property 'dom' does not exist on type 'never'.
     return view.dom.closest('.md-editor');
   }
   const api = getEditorApiFromRef(editorRef);

@@ -31,9 +31,12 @@ export async function saveAuthSession({
     return;
   }
 
-  const sessionPayload = { creds, password: password || '' };
+  const sessionPayload: {
+    creds: object;
+    password: string;
+    webdavConfig?: object;
+  } = { creds, password: password || '' };
   if (webdavConfig && typeof webdavConfig === 'object') {
-    // @ts-expect-error TS(2339): Property 'webdavConfig' does not exist on type '{ ... Remove this comment to see the full error message
     sessionPayload.webdavConfig = webdavConfig;
   }
 

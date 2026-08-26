@@ -47,15 +47,19 @@ export function normalizeShareFiles(items: any) {
   return out;
 }
 
+type ShareChatPayload = {
+  body?: string;
+  files?: unknown[];
+  group?: string;
+};
+
 /**
  * Upload share attachments and append one chat message.
  * @param {import('@/utils/chatWithMyself/pendingShares').ChatStorageCtxLike} ctx
  * @param {{ body?: string, files?: unknown[], group?: string }} payload
  */
-export async function appendShareChatMessage(ctx: any, payload = {}) {
-  // @ts-expect-error TS(2339): Property 'body' does not exist on type '{}'.
+export async function appendShareChatMessage(ctx: any, payload: ShareChatPayload = {}) {
   const text = String(payload.body || '').trim();
-  // @ts-expect-error TS(2339): Property 'files' does not exist on type '{}'.
   const files = normalizeShareFiles(payload.files);
   if (!text && !files.length) {
     throw new Error('공유할 내용이 없습니다.');
@@ -71,7 +75,6 @@ export async function appendShareChatMessage(ctx: any, payload = {}) {
 
   return appendChatMessage(ctx, {
     body: finalBody,
-    // @ts-expect-error TS(2339): Property 'group' does not exist on type '{}'.
     group: payload.group || SELF_GROUP,
     source: 'share',
   });

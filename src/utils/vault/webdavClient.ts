@@ -35,18 +35,50 @@ export class WebdavHttpError extends Error {
  * @typedef {{ endpoint: string, username: string, password: string, basePath: string }} WebdavConfig
  */
 
+export type WebdavConfig = {
+  endpoint: string;
+  username: string;
+  password: string;
+  basePath: string;
+};
+
+export type WebdavPropfindEntry = {
+  key: string;
+  etag: string | null;
+  mtime: number | null;
+  isCollection: boolean;
+  size?: number;
+};
+
+type WebdavFetchOptions = {
+  headers?: Record<string, string>;
+  body?: BodyInit | null;
+  signal?: AbortSignal;
+};
+
+type WebdavPutOptions = {
+  contentType?: string;
+  ifMatch?: string | null;
+  ifNoneMatch?: string | null;
+};
+
+type PropfindParseOptions = {
+  directChildrenOnly?: boolean;
+};
+
 /**
  * @param {WebdavConfig} config
  * @returns {string}
  */
-function authHeader(config: any) {
+function authHeader(config: WebdavConfig) {
   const user = config?.username ?? '';
   const pass = config?.password ?? '';
   // btoa only accepts Latin1; encode Unicode credentials safely
   const bytes = new TextEncoder().encode(`${user}:${pass}`);
   let bin = '';
-  // @ts-expect-error TS(2769): No overload matches this call.
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  for (const byte of bytes) {
+    bin += String.fromCharCode(byte);
+  }
   if (typeof btoa !== 'function') {
     throw new Error('WebDAV Basic Auth requires btoa in this environment');
   }
@@ -58,7 +90,7 @@ function authHeader(config: any) {
  * @param {WebdavConfig} config
  * @param {string} key
  */
-export function webdavUrl(config: any, key = '') {
+export function webdavUrl(config: WebdavConfig, key = '') {
   const endpoint = String(config?.endpoint || '').replace(/\/+$/, '');
   if (!endpoint) throw new Error('WebDAV endpoint is required');
   const base = String(config?.basePath || '')
@@ -79,25 +111,22 @@ export function webdavUrl(config: any, key = '') {
  * @param {string} key
  * @param {{ headers?: Record<string, string>, body?: BodyInit | null, signal?: AbortSignal }} [opts]
  */
-async function webdavFetch(config: any, method: any, key: any, opts = {}) {
+async function webdavFetch(config: WebdavConfig, method: string, key: string, opts: WebdavFetchOptions = {}) {
   const url = webdavUrl(config, key);
   let response;
   try {
-    response = await fetch(url, {
+    const init: RequestInit = {
       method,
       headers: {
         Authorization: authHeader(config),
-        // @ts-expect-error TS(2339): Property 'headers' does not exist on type '{}'.
         ...(opts.headers || {}),
       },
-      // @ts-expect-error TS(2339): Property 'body' does not exist on type '{}'.
-      body: opts.body ?? undefined,
-      // @ts-expect-error TS(2339): Property 'signal' does not exist on type '{}'.
-      signal: opts.signal,
-    });
+    };
+    if (opts.body != null) init.body = opts.body;
+    if (opts.signal != null) init.signal = opts.signal;
+    response = await fetch(url, init);
   } catch (err) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    const msg = String(err?.message || err);
+    const msg = err instanceof Error ? err.message : String(err);
     if (/Failed to fetch|NetworkError|CORS/i.test(msg)) {
       throw new WebdavHttpError(
         0,
@@ -189,13 +218,15 @@ export async function webdavGetBinary(config: any, key: any) {
  * @param {{ contentType?: string, ifMatch?: string | null, ifNoneMatch?: string | null }} [options]
  * @returns {Promise<{ etag: string | null }>}
  */
-export async function webdavPut(config: any, key: any, body: any, options = {}) {
-  const headers = {};
-  // @ts-expect-error TS(2339): Property 'contentType' does not exist on type '{}'... Remove this comment to see the full error message
+export async function webdavPut(
+  config: WebdavConfig,
+  key: string,
+  body: BodyInit,
+  options: WebdavPutOptions = {},
+) {
+  const headers: Record<string, string> = {};
   if (options.contentType) headers['Content-Type'] = options.contentType;
-  // @ts-expect-error TS(2339): Property 'ifMatch' does not exist on type '{}'.
   if (options.ifMatch) headers['If-Match'] = options.ifMatch;
-  // @ts-expect-error TS(2339): Property 'ifNoneMatch' does not exist on type '{}'... Remove this comment to see the full error message
   if (options.ifNoneMatch) headers['If-None-Match'] = options.ifNoneMatch;
 
   const response = await webdavFetch(config, 'PUT', key, {
@@ -253,8 +284,9 @@ export async function webdavEnsureParentDirs(config: any, fileKey: any) {
   if (parts.length <= 1) return;
   let acc = '';
   for (let i = 0; i < parts.length - 1; i++) {
-    // @ts-expect-error TS(2322): Type 'string | undefined' is not assignable to typ... Remove this comment to see the full error message
-    acc = acc ? `${acc}/${parts[i]}` : parts[i];
+    const part = parts[i];
+    if (!part) continue;
+    acc = acc ? `${acc}/${part}` : part;
     await webdavMkcol(config, acc);
   }
 }
@@ -298,13 +330,17 @@ export async function webdavPropfind(config: any, dirKey = '') {
  * @param {WebdavConfig} config
  * @param {string} dirKey
  */
-function parsePropfindResponse(xml: any, config: any, dirKey: any, options = {}) {
-  const results: any = [];
+function parsePropfindResponse(
+  xml: string,
+  config: WebdavConfig,
+  dirKey: string,
+  options: PropfindParseOptions = {},
+) {
+  const results: WebdavPropfindEntry[] = [];
   if (typeof DOMParser === 'undefined') return results;
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   const responses = collectDavResponses(doc);
   const listingUrl = webdavUrl(config, dirKey).replace(/\/?$/, '/');
-  // @ts-expect-error TS(2339): Property 'directChildrenOnly' does not exist on ty... Remove this comment to see the full error message
   const directChildrenOnly = options.directChildrenOnly !== false;
 
   for (const node of responses) {
@@ -327,7 +363,9 @@ function parsePropfindResponse(xml: any, config: any, dirKey: any, options = {})
     const sizeParsed = sizeRaw != null && sizeRaw !== '' ? Number(sizeRaw) : NaN;
     const size = Number.isFinite(sizeParsed) ? sizeParsed : undefined;
 
-    results.push({ key, etag, mtime, isCollection, size });
+    const entry: WebdavPropfindEntry = { key, etag, mtime, isCollection };
+    if (size !== undefined) entry.size = size;
+    results.push(entry);
   }
   return results;
 }

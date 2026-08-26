@@ -10,15 +10,18 @@ import {
   webdavPropfind,
   webdavPut,
   webdavPropfindDeep,
+  type WebdavConfig,
+  type WebdavPropfindEntry,
 } from '@/utils/vault/webdavClient';
 import { buildS3Tree } from '@/utils/vault/s3Tree';
+import type { S3ListContentItem } from '@/utils/vault/vaultTreeTypes';
 import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities';
 import { buildWebdavTreeNodesFromPropfind } from '@/utils/vault/webdavTree';
 
 /**
  * @param {{ endpoint: string, username: string, password: string, basePath: string } | null | undefined} config
  */
-export function createWebdavBackend(config: any) {
+export function createWebdavBackend(config: WebdavConfig | null | undefined) {
   const cfg = config || { endpoint: '', username: '', password: '', basePath: '' };
 
   return {
@@ -35,18 +38,15 @@ export function createWebdavBackend(config: any) {
     },
 
     async listAll() {
-      const entries = await webdavPropfindDeep(cfg, '');
-      const contents = entries
-        // @ts-expect-error TS(7006): Parameter 'e' implicitly has an 'any' type.
+      const entries: WebdavPropfindEntry[] = await webdavPropfindDeep(cfg, '');
+      const contents: S3ListContentItem[] = entries
         .filter((e) => !e.isCollection)
-        // @ts-expect-error TS(7006): Parameter 'e' implicitly has an 'any' type.
         .map((e) => ({
           Key: e.key,
           LastModified: e.mtime ? new Date(e.mtime) : undefined,
           Size: e.size ?? undefined,
         }));
       // Also include empty folder markers
-      // @ts-expect-error TS(7006): Parameter 'x' implicitly has an 'any' type.
       for (const e of entries.filter((x) => x.isCollection && x.key)) {
         const folderKey = e.key.endsWith('/') ? e.key : `${e.key}/`;
         contents.push({ Key: folderKey });
@@ -141,13 +141,12 @@ export function createWebdavBackend(config: any) {
       }
     },
 
-    async trash(path: any, { additionalKeys = [] } = {}) {
+    async trash(path: string, { additionalKeys = [] }: { additionalKeys?: string[] } = {}) {
       await this.ensureTrash();
       const dest = `.trash/${path.replace(/^\//, '')}`;
       await this.move(path, dest);
       for (const key of additionalKeys) {
         try {
-          // @ts-expect-error TS(2339): Property 'replace' does not exist on type 'never'.
           await this.move(key, `.trash/${key.replace(/^\//, '')}`);
         } catch {
           /* missing ok */
