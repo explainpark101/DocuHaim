@@ -1,8 +1,10 @@
-function folderPathFromParts(parts: any, index: any) {
+import type { VaultTreeNode, S3ListContentItem } from '@/utils/vault/vaultTreeTypes';
+
+function folderPathFromParts(parts: string[], index: number): string {
   return `${parts.slice(0, index + 1).join('/')}/`;
 }
 
-function upgradeNodeToFolder(node: any, folderPath: any) {
+function upgradeNodeToFolder(node: VaultTreeNode, folderPath: string): VaultTreeNode {
   if (node.type === 'folder') {
     if (!node.children) node.children = [];
     return node;
@@ -15,17 +17,17 @@ function upgradeNodeToFolder(node: any, folderPath: any) {
   return node;
 }
 
-function ensureFolderPath(root: any, key: any) {
+function ensureFolderPath(root: VaultTreeNode, key: string): void {
   const parts = key.replace(/\/$/, '').split('/').filter(Boolean);
   if (!parts.length) return;
 
   let current = root;
   for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
+    const part = parts[i]!;
     const folderPath = folderPathFromParts(parts, i);
     if (!current.children) current.children = [];
 
-    let child = current.children.find((c: any) => c.name === part);
+    let child = current.children.find((c) => c.name === part);
     if (!child) {
       child = {
         name: part,
@@ -42,100 +44,90 @@ function ensureFolderPath(root: any, key: any) {
   }
 }
 
-export const buildS3Tree = (contents: any) => {
-  const root = { name: 'root', type: 'folder', path: '', children: [] };
+export const buildS3Tree = (contents: S3ListContentItem[]): VaultTreeNode[] => {
+  const root: VaultTreeNode = { name: 'root', type: 'folder', path: '', children: [] };
 
-  contents.forEach((item: any) => {
+  contents.forEach((item) => {
     if (!item?.Key) return;
     const parts = item.Key.split('/').filter(Boolean);
     if (!parts.length) return;
 
-    let current = root;
+    let current: VaultTreeNode = root;
 
     for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
+      const part = parts[i]!;
       const isFolder = i < parts.length - 1 || item.Key.endsWith('/');
       const nodePath = parts.slice(0, i + 1).join('/') + (isFolder ? '/' : '');
 
       if (!current.children) current.children = [];
 
-      // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-      let child = current.children.find((c) => c.name === part);
+      let child: VaultTreeNode | undefined = current.children.find((c) => c.name === part);
       if (!child) {
-        // @ts-expect-error TS(2322): Type '{ lastModified?: any; size?: any; name: any;... Remove this comment to see the full error message
-        child = {
+        const created: VaultTreeNode = {
           name: part,
           type: isFolder ? 'folder' : 'file',
           path: nodePath,
-          children: isFolder ? [] : undefined,
           key: item.Key,
-          ...(isFolder
-            ? {}
-            : {
-                lastModified: item.LastModified,
-                size: item.Size,
-              }),
         };
-        // @ts-expect-error TS(2769): No overload matches this call.
-        current.children.push(child);
-      // @ts-expect-error TS(2339): Property 'type' does not exist on type 'never'.
+        if (isFolder) {
+          created.children = [];
+        } else {
+          if (item.LastModified != null) created.lastModified = item.LastModified;
+          if (item.Size != null) created.size = item.Size;
+        }
+        current.children.push(created);
+        child = created;
       } else if (isFolder && child.type === 'file') {
         upgradeNodeToFolder(child, nodePath);
-      // @ts-expect-error TS(2339): Property 'type' does not exist on type 'never'.
       } else if (!isFolder && child.type === 'file') {
-        // @ts-expect-error TS(2339): Property 'lastModified' does not exist on type 'ne... Remove this comment to see the full error message
-        child.lastModified = item.LastModified;
-        // @ts-expect-error TS(2339): Property 'size' does not exist on type 'never'.
-        child.size = item.Size;
-        // @ts-expect-error TS(2339): Property 'key' does not exist on type 'never'.
+        if (item.LastModified != null) child.lastModified = item.LastModified;
+        if (item.Size != null) child.size = item.Size;
         child.key = item.Key;
-      // @ts-expect-error TS(2339): Property 'type' does not exist on type 'never'.
       } else if (isFolder && child.type === 'folder' && !child.children) {
-        // @ts-expect-error TS(2339): Property 'children' does not exist on type 'never'... Remove this comment to see the full error message
         child.children = [];
       }
 
-      // @ts-expect-error TS(2322): Type 'undefined' is not assignable to type '{ name... Remove this comment to see the full error message
       current = child;
     }
   });
 
-  contents.forEach((item: any) => {
+  contents.forEach((item) => {
     if (item?.Key?.endsWith('/')) {
       ensureFolderPath(root, item.Key);
     }
   });
 
-  const sortChildren = (nodes: any) => {
-    nodes.sort((a: any, b: any) => {
+  const sortChildren = (nodes: VaultTreeNode[]) => {
+    nodes.sort((a, b) => {
       if (a.type === 'folder' && b.type !== 'folder') return -1;
       if (a.type !== 'folder' && b.type === 'folder') return 1;
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
     });
-    nodes.forEach((n: any) => {
+    nodes.forEach((n) => {
       if (n.children && n.children.length > 0) {
         sortChildren(n.children);
       }
     });
   };
 
-  sortChildren(root.children);
+  sortChildren(root.children ?? []);
 
-  return root.children;
+  return root.children ?? [];
 };
 
 /**
  * Collect path -> lastModified for all file nodes in the tree.
- * @param {Array} nodes - Tree nodes (from buildS3Tree)
- * @returns {Map<string, Date>}
  */
-export const getFileLastModifiedMap = (nodes: any) => {
-  const map = new Map();
-  const walk = (list: any) => {
+export const getFileLastModifiedMap = (nodes: VaultTreeNode[] | null | undefined): Map<string, Date> => {
+  const map = new Map<string, Date>();
+  const walk = (list: VaultTreeNode[] | null | undefined) => {
     if (!list) return;
     for (const node of list) {
       if (node.type === 'file' && node.path != null && node.lastModified != null) {
-        map.set(node.path, node.lastModified instanceof Date ? node.lastModified : new Date(node.lastModified));
+        map.set(
+          node.path,
+          node.lastModified instanceof Date ? node.lastModified : new Date(node.lastModified),
+        );
       }
       if (node.children) walk(node.children);
     }
@@ -146,16 +138,18 @@ export const getFileLastModifiedMap = (nodes: any) => {
 
 /**
  * Collect all file nodes from the tree.
- * @param {Array} nodes
- * @returns {{ path: string, lastModified?: Date }[]}
  */
-const getAllFileNodes = (nodes: any) => {
-  const result: any = [];
-  const walk = (list: any) => {
+const getAllFileNodes = (
+  nodes: VaultTreeNode[] | null | undefined,
+): { path: string; lastModified?: Date | string }[] => {
+  const result: { path: string; lastModified?: Date | string }[] = [];
+  const walk = (list: VaultTreeNode[] | null | undefined) => {
     if (!list) return;
     for (const node of list) {
       if (node.type === 'file' && node.path) {
-        result.push({ path: node.path, lastModified: node.lastModified });
+        const entry: { path: string; lastModified?: Date | string } = { path: node.path };
+        if (node.lastModified != null) entry.lastModified = node.lastModified;
+        result.push(entry);
       }
       if (node.children) walk(node.children);
     }
@@ -167,37 +161,37 @@ const getAllFileNodes = (nodes: any) => {
 /**
  * noteKey에 해당하는 녹음 파일 키 목록 (최신순)
  * 패턴: {base}-rec-{timestamp}.m4a | .webm
- * @param {Array} nodes - s3Tree
- * @param {string} noteKey - 예: notes/회의록.md
- * @returns {{ key: string, timestamp: number, lastModified?: Date }[]}
  */
-export const getRecordingKeysFromTree = (nodes: any, noteKey: any) => {
+export const getRecordingKeysFromTree = (
+  nodes: VaultTreeNode[] | null | undefined,
+  noteKey: string | null | undefined,
+): { key: string; timestamp: number; lastModified?: Date | string }[] => {
   const base = !noteKey || typeof noteKey !== 'string' ? '' : noteKey.replace(/\.[^.]+$/, '') || noteKey;
   if (!base) return [];
   const prefix = base + '-rec-';
   const suffixRegex = /\.(m4a|webm)$/;
   const files = getAllFileNodes(nodes);
-  const results = [];
+  const results: { key: string; timestamp: number; lastModified?: Date | string }[] = [];
   for (const { path, lastModified } of files) {
     if (!path.startsWith(prefix) || !suffixRegex.test(path)) continue;
     const match = path.match(/-rec-(\d+)\.(m4a|webm)$/);
-    if (match) {
-      results.push({
+    if (match?.[1]) {
+      const entry: { key: string; timestamp: number; lastModified?: Date | string } = {
         key: path,
         timestamp: parseInt(match[1], 10),
-        lastModified,
-      });
+      };
+      if (lastModified != null) entry.lastModified = lastModified;
+      results.push(entry);
     }
   }
-  results.sort((a, b) => (b.timestamp - a.timestamp));
+  results.sort((a, b) => b.timestamp - a.timestamp);
   return results;
 };
 
 /**
  * 노트 파일 경로에서 확장자를 뺀 베이스 (`notes/a.md` → `notes/a`, 녹음 키 prefix와 동일)
- * @param {string} filePath
  */
-export function getFilePathBaseForRecordingLookup(filePath: any) {
+export function getFilePathBaseForRecordingLookup(filePath: string | null | undefined): string {
   if (!filePath || typeof filePath !== 'string') return '';
   const lastDot = filePath.lastIndexOf('.');
   return lastDot <= 0 ? filePath : filePath.slice(0, lastDot);
@@ -205,17 +199,15 @@ export function getFilePathBaseForRecordingLookup(filePath: any) {
 
 /**
  * 트리에 있는 녹음 오디오 파일(`…-rec-{ts}.m4a|webm|mp4`)을 스캔해 베이스 경로 Set
- * @param {Array} nodes
- * @returns {Set<string>}
  */
-export function buildRecordingBasePathSet(nodes: any) {
-  const set = new Set();
-  const walk = (list: any) => {
+export function buildRecordingBasePathSet(nodes: VaultTreeNode[] | null | undefined): Set<string> {
+  const set = new Set<string>();
+  const walk = (list: VaultTreeNode[] | null | undefined) => {
     if (!list?.length) return;
     for (const node of list) {
       if (node.type === 'file' && node.path) {
         const m = node.path.match(/^(.*)-rec-\d+\.(m4a|webm|mp4)$/i);
-        if (m) set.add(m[1]);
+        if (m?.[1]) set.add(m[1]);
       }
       if (node.children?.length) walk(node.children);
     }
@@ -227,7 +219,10 @@ export function buildRecordingBasePathSet(nodes: any) {
 /**
  * S3 + 로컬 트리에서 녹음이 연결된 노트 베이스 경로 합집합
  */
-export function buildRecordingBasePathSetFromTrees(s3Nodes: any, localNodes: any) {
+export function buildRecordingBasePathSetFromTrees(
+  s3Nodes: VaultTreeNode[] | null | undefined,
+  localNodes: VaultTreeNode[] | null | undefined,
+): Set<string> {
   const set = buildRecordingBasePathSet(s3Nodes || []);
   for (const base of buildRecordingBasePathSet(localNodes || [])) {
     set.add(base);
@@ -239,27 +234,25 @@ export function buildRecordingBasePathSetFromTrees(s3Nodes: any, localNodes: any
  * 녹음 동반 S3/로컬 파일인지 (트리에서 숨김 처리용)
  * 오디오: …-rec-{ts}.m4a|webm|mp4
  * 필기 동기화: …-rec-{ts}.sync.pb|.sync.json
- * @param {string} path
  */
-export function isRecordingCompanionFileKey(path: any) {
+export function isRecordingCompanionFileKey(path: string | null | undefined): boolean {
   if (!path || typeof path !== 'string') return false;
-  return /-rec-\d+\.(m4a|webm|mp4)$/i.test(path) ||
-  /-rec-\d+\.sync\.(pb|json)$/i.test(path);
+  return (
+    /-rec-\d+\.(m4a|webm|mp4)$/i.test(path) || /-rec-\d+\.sync\.(pb|json)$/i.test(path)
+  );
 }
 
 /**
  * Find a file node by path in the tree.
- * @param {Array} nodes
- * @param {string} path
- * @returns {{ lastModified?: Date, size?: number } | null}
  */
-export const findFileNodeByPath = (nodes: any, path: any) => {
-  // @ts-expect-error TS(7023): 'walk' implicitly has return type 'any' because it... Remove this comment to see the full error message
-  const walk = (list: any) => {
+export const findFileNodeByPath = (
+  nodes: VaultTreeNode[] | null | undefined,
+  path: string,
+): VaultTreeNode | null => {
+  const walk = (list: VaultTreeNode[] | null | undefined): VaultTreeNode | null => {
     if (!list) return null;
     for (const node of list) {
       if (node.type === 'file' && node.path === path) return node;
-      // @ts-expect-error TS(7022): 'found' implicitly has type 'any' because it does ... Remove this comment to see the full error message
       const found = node.children ? walk(node.children) : null;
       if (found) return found;
     }
@@ -270,12 +263,10 @@ export const findFileNodeByPath = (nodes: any, path: any) => {
 
 /**
  * Flatten tree to array of paths in display order (depth-first).
- * @param {Array} nodes
- * @returns {string[]}
  */
-export const flattenTreeToPaths = (nodes: any) => {
-  const result: any = [];
-  const walk = (list: any) => {
+export const flattenTreeToPaths = (nodes: VaultTreeNode[] | null | undefined): string[] => {
+  const result: string[] = [];
+  const walk = (list: VaultTreeNode[] | null | undefined) => {
     if (!list) return;
     for (const node of list) {
       if (node.path) result.push(node.path);
@@ -288,17 +279,15 @@ export const flattenTreeToPaths = (nodes: any) => {
 
 /**
  * Find any node (file or folder) by path in the tree.
- * @param {Array} nodes
- * @param {string} path - e.g. "notes/foo.md" or "notes/"
- * @returns {object | null}
  */
-export const findNodeByPath = (nodes: any, path: any) => {
-  // @ts-expect-error TS(7023): 'walk' implicitly has return type 'any' because it... Remove this comment to see the full error message
-  const walk = (list: any) => {
+export const findNodeByPath = (
+  nodes: VaultTreeNode[] | null | undefined,
+  path: string,
+): VaultTreeNode | null => {
+  const walk = (list: VaultTreeNode[] | null | undefined): VaultTreeNode | null => {
     if (!list) return null;
     for (const node of list) {
       if (node.path === path) return node;
-      // @ts-expect-error TS(7022): 'found' implicitly has type 'any' because it does ... Remove this comment to see the full error message
       const found = node.children ? walk(node.children) : null;
       if (found) return found;
     }
@@ -306,4 +295,3 @@ export const findNodeByPath = (nodes: any, path: any) => {
   };
   return walk(nodes);
 };
-

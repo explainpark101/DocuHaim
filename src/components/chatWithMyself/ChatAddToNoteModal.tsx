@@ -17,6 +17,7 @@ import {
 import { IconFolderPlus } from '@/components/icons';
 import { FolderInput, RotateCcw } from 'lucide-react';
 import { findNodeByPath } from '@/utils/vault/s3Tree';
+import type { VaultTreeNode } from '@/utils/vault/vaultTreeTypes';
 import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import {
   resolveDragItems,
@@ -126,7 +127,7 @@ export default function ChatAddToNoteModal({
   );
 
   const [fileName, setFileName] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState<VaultTreeNode | null>(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [error, setError] = useState('');
   const [confirmReplaceName, setConfirmReplaceName] = useState(false);
@@ -215,15 +216,11 @@ export default function ChatAddToNoteModal({
       });
     }, 280);
     return () => clearTimeout(timer);
-  // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
   }, [selectedFolder?.path, isOpen]);
 
   const selectedIds = useMemo(() => {
-    // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
     if (selectedRoot || !selectedFolder?.path) return EMPTY_SELECTED_IDS;
-    // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
     return new Set([toTreeSelectKey(storageType, selectedFolder.path)]);
-  // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
   }, [selectedRoot, selectedFolder?.path, storageType]);
 
   const activeDragItemIds = useMemo(() => {
@@ -368,14 +365,10 @@ export default function ChatAddToNoteModal({
   if (!isOpen || !message) return null;
 
   const isReplyMessage = Boolean(message.replyTo);
-  // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
   const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
-  // @ts-expect-error TS(2339) FIXME: Property 'handle' does not exist on type 'never'.
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
   const canCreateFolder = isS3 || parentDirHandle != null;
-  // @ts-expect-error TS(2339) FIXME: Property 'handle' does not exist on type 'never'.
   const canSubmit = isS3 ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
-  // @ts-expect-error TS(2339) FIXME: Property 'type' does not exist on type 'never'.
   const canMoveFolder = !selectedRoot && selectedFolder?.type === 'folder';
 
   const applyDefaultFileName = () => {

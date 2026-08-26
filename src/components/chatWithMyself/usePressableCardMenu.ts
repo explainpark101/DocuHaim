@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
+import type { MotionTransition } from '@/utils/motionTypes';
 
 /** Shrink feedback starts at this hold duration. */
 export const PRESSABLE_CARD_THRESHOLD_MS = 250;
@@ -18,7 +19,7 @@ export const PRESSABLE_CARD_SHAPE_SPRING = {
   stiffness: 420,
   damping: 28,
   mass: 0.85,
-};
+} satisfies MotionTransition;
 
 export const PRESSABLE_CARD_RADIUS = '0.75rem';
 export const PRESSABLE_CARD_RADIUS_PRESSED = '0.9rem';

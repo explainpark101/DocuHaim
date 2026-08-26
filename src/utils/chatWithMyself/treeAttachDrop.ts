@@ -21,11 +21,15 @@ export type TreeAttachSourceItem = {
 };
 
 export type TreeFileNode = {
-  path?: string;
-  name?: string;
-  type?: string;
-  handle?: { getFile?: () => Promise<File> } | null;
-  children?: TreeFileNode[] | null;
+  path?: string | undefined;
+  name?: string | undefined;
+  type?: string | undefined;
+  handle?: { getFile?: () => Promise<File> } | null | undefined;
+  children?: TreeFileNode[] | null | undefined;
+  lastModified?: Date | string | undefined;
+  size?: number | undefined;
+  key?: string | undefined;
+  childrenLoaded?: boolean | undefined;
 };
 
 function isTrashPath(path: string): boolean {
