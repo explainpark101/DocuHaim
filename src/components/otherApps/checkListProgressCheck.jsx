@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { copyText } from '@/utils/copyText';
 import { 
   CheckCircle2, 
   Circle, 
@@ -108,9 +109,11 @@ export default function App() {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(markdown);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    void copyText(markdown, false).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const handleReset = () => {

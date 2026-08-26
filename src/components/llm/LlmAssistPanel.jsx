@@ -19,6 +19,7 @@ import {
   ScrollText,
   Sparkles,
   Eye,
+  FilePlus,
   FileText,
   TextCursorInput,
   Trash2,
@@ -103,6 +104,7 @@ export default function LlmAssistPanel({
   onApplyResult,
   onAppendResult,
   onCopyResult,
+  onCreateNoteFromResult,
   presentation = 'floating',
   canInsertIntoDocument = true,
   remoteMode = false,
@@ -659,6 +661,15 @@ export default function LlmAssistPanel({
                 <Copy size={14} aria-hidden />
                 복사하기
               </button>
+              <button
+                type="button"
+                onClick={onCreateNoteFromResult}
+                disabled={!result}
+                className="inline-flex items-center gap-1.5 rounded border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/60"
+              >
+                <FilePlus size={14} aria-hidden />
+                새 노트로
+              </button>
             </>
           ) : (
             <>
@@ -679,6 +690,15 @@ export default function LlmAssistPanel({
               >
                 <ArrowDownToLine size={14} aria-hidden />
                 문서 가장 하단에 삽입
+              </button>
+              <button
+                type="button"
+                onClick={onCreateNoteFromResult}
+                disabled={!result}
+                className="inline-flex items-center gap-1.5 rounded border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/60"
+              >
+                <FilePlus size={14} aria-hidden />
+                새 노트로
               </button>
             </>
           )}

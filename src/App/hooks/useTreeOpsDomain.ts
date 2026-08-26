@@ -1010,7 +1010,14 @@ export function useTreeOpsDomain() {
     }
   };
 
-  const createItem = async (storageType, parentPath, parentDirHandle, type, nameInput) => {
+  const createItem = async (
+    storageType,
+    parentPath,
+    parentDirHandle,
+    type,
+    nameInput,
+    options = {},
+  ) => {
     const resolved = resolveCreateItemPath(parentPath, nameInput, type === 'folder' ? 'folder' : 'file');
     if (!resolved.ok) {
       if (resolved.reason === 'outside-root') {
@@ -1022,8 +1029,11 @@ export function useTreeOpsDomain() {
     const { path: newPath, parentDirPath, baseName: finalName } = resolved;
     const expandParent = parentDirPath || parentPath || '';
 
-    let initialBody = '';
-    let openContent = '';
+    const seedContent =
+      typeof options.initialContent === 'string' ? options.initialContent : '';
+
+    let initialBody = seedContent;
+    let openContent = seedContent;
     if (type !== 'folder' && isEncMdPath(newPath)) {
       let password;
       try {
@@ -1036,9 +1046,9 @@ export function useTreeOpsDomain() {
       } catch {
         return;
       }
-      initialBody = await encryptEncMdContent('', password);
+      initialBody = await encryptEncMdContent(seedContent, password);
       setEncMdPassword(newPath, password);
-      openContent = '';
+      openContent = seedContent;
     }
 
     const openCreatedFile = (file) => {
@@ -1168,11 +1178,10 @@ export function useTreeOpsDomain() {
     setCreateModalOpen(true);
   };
 
-  const requestAdvancedSearchCreateItem = useCallback(
-    (type, parentPath) => {
+  const resolveCreateItemParentDirHandle = useCallback(
+    (parentPath) => {
       const path = String(parentPath || '').replace(/^\/+/, '').replace(/\\/g, '/');
-      const normalized =
-        path && !path.endsWith('/') ? `${path}/` : path;
+      const normalized = path && !path.endsWith('/') ? `${path}/` : path;
       let parentDirHandle = null;
       if (storageMode === STORAGE_MODE_LOCAL) {
         if (!normalized) {
@@ -1185,9 +1194,17 @@ export function useTreeOpsDomain() {
           parentDirHandle = node?.handle || null;
         }
       }
-      requestCreateItem(storageMode, normalized, parentDirHandle, type);
+      return { normalized, parentDirHandle };
     },
     [storageMode, localRootHandle, localTree],
+  );
+
+  const requestAdvancedSearchCreateItem = useCallback(
+    (type, parentPath) => {
+      const { normalized, parentDirHandle } = resolveCreateItemParentDirHandle(parentPath);
+      requestCreateItem(storageMode, normalized, parentDirHandle, type);
+    },
+    [storageMode, resolveCreateItemParentDirHandle],
   );
 
   const newFileDefaultParentPath = useMemo(
@@ -1208,6 +1225,29 @@ export function useTreeOpsDomain() {
     ],
   );
 
+
+  const requestCreateFileWithContent = useCallback(
+    (content) => {
+      const { normalized, parentDirHandle } = resolveCreateItemParentDirHandle(
+        newFileDefaultParentPath,
+      );
+      setCreateModalContext({
+        storageType: storageMode,
+        parentPath: normalized,
+        parentDirHandle,
+        type: 'file',
+        initialContent: typeof content === 'string' ? content : '',
+      });
+      setCreateModalOpen(true);
+    },
+    [
+      storageMode,
+      newFileDefaultParentPath,
+      resolveCreateItemParentDirHandle,
+      setCreateModalContext,
+      setCreateModalOpen,
+    ],
+  );
 
   const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
     setUploadTarget({ storageType, parentPath, parentDirHandle });
@@ -1322,10 +1362,13 @@ export function useTreeOpsDomain() {
       fromMoveModal,
       fromAddToNoteModal,
       fromSaveSessionModal,
+      initialContent,
     } = createModalContext;
     setIsCreateSubmitting(true);
     try {
-      await createItem(storageType, parentPath, parentDirHandle, type, nameInput);
+      await createItem(storageType, parentPath, parentDirHandle, type, nameInput, {
+        ...(typeof initialContent === 'string' ? { initialContent } : {}),
+      });
       if (type === 'folder') {
         const resolved = resolveCreateItemPath(parentPath, nameInput, 'folder');
         if (resolved.ok) {
@@ -2982,6 +3025,7 @@ export function useTreeOpsDomain() {
     createItem,
     requestCreateItem,
     requestAdvancedSearchCreateItem,
+    requestCreateFileWithContent,
     newFileDefaultParentPath,
     requestNewFile,
     requestUploadFile,

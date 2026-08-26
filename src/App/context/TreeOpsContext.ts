@@ -15,6 +15,7 @@ export type TreeOpsValue = {
   requestCreateItem: (...args: any[]) => any;
   requestNewFile: (...args: any[]) => any;
   requestAdvancedSearchCreateItem: (...args: any[]) => any;
+  requestCreateFileWithContent: (content: string) => void;
   newFileDefaultParentPath: string;
   requestUploadFile: (...args: any[]) => any;
   requestUploadFolder: (...args: any[]) => any;

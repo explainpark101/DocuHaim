@@ -42,6 +42,7 @@ import { AnimatePresence, motion as Motion } from 'motion/react';
 import { normalizeImageAttachment, readImageFilesAsAttachments } from '@/utils/llmAssistImages';
 import { copyText } from '@/utils/copyText';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import { useTreeOps } from '@/App/hooks/useTreeOps';
 import {
   LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
   normalizeRequestOptions,
@@ -79,6 +80,7 @@ export default function LlmAssistModal({
   theme = 'light',
 }) {
   const session = useLlmAssistSessionOptional();
+  const { requestCreateFileWithContent } = useTreeOps();
   const open = session ? session.open : Boolean(openProp);
   const onOpenChange = session ? session.setOpen : onOpenChangeProp;
   const presentation = session?.presentation ?? 'floating';
@@ -464,6 +466,11 @@ export default function LlmAssistModal({
     if (!ok) setError('클립보드에 복사하지 못했습니다.');
   }, [result]);
 
+  const handleCreateNoteFromResult = useCallback(() => {
+    if (!result) return;
+    requestCreateFileWithContent(result);
+  }, [result, requestCreateFileWithContent]);
+
   const handleLoadTemplate = useCallback(
     (id) => {
       setSelectedTemplateId(id);
@@ -572,6 +579,9 @@ export default function LlmAssistModal({
         case 'append-result':
           handleAppendResult();
           break;
+        case 'create-note-from-result':
+          handleCreateNoteFromResult();
+          break;
         case 'set-instruction':
           setInstruction(typeof payload.value === 'string' ? payload.value : '');
           break;
@@ -636,6 +646,7 @@ export default function LlmAssistModal({
       handleCancelGeneration,
       handleApplyResult,
       handleAppendResult,
+      handleCreateNoteFromResult,
       handleModelChange,
       setProfileId,
       handleLoadTemplate,
@@ -785,6 +796,7 @@ export default function LlmAssistModal({
     onApplyResult: handleApplyResult,
     onAppendResult: handleAppendResult,
     onCopyResult: handleCopyResult,
+    onCreateNoteFromResult: handleCreateNoteFromResult,
     presentation,
     canInsertIntoDocument,
   };

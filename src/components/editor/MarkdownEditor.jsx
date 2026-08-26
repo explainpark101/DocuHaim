@@ -197,6 +197,8 @@ import {
   wrapBracketsForSelection,
   wrapParenthesesForSelection,
   wrapBracesForSelection,
+  wrapSingleQuoteForSelection,
+  wrapDoubleQuoteForSelection,
 } from '@/utils/editorMarkdownStyle';
 
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
@@ -282,7 +284,7 @@ function isInlineCodeFenceTriggerKey(e) {
   return false;
 }
 
-/** Wrap the current selection when typing $, [, (, or {. Empty selection: no-op. */
+/** Wrap the current selection when typing $, [, (, {, ', or ". Empty selection: no-op. */
 function wrapSelectionWithPairIfTriggerKey(view, event) {
   if (event.defaultPrevented) return false;
   if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
@@ -295,7 +297,16 @@ function wrapSelectionWithPairIfTriggerKey(view, event) {
       return wrapParenthesesForSelection(view);
     case '{':
       return wrapBracesForSelection(view);
+    case "'":
+      return wrapSingleQuoteForSelection(view);
+    case '"':
+      return wrapDoubleQuoteForSelection(view);
     default:
+      if (event.code === 'Quote') {
+        return event.shiftKey
+          ? wrapDoubleQuoteForSelection(view)
+          : wrapSingleQuoteForSelection(view);
+      }
       return false;
   }
 }

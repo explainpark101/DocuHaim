@@ -21,6 +21,7 @@ export function TreeOpsProvider({ children }: Props) {
       requestCreateItem: domain.requestCreateItem,
       requestNewFile: domain.requestNewFile,
       requestAdvancedSearchCreateItem: domain.requestAdvancedSearchCreateItem,
+      requestCreateFileWithContent: domain.requestCreateFileWithContent,
       newFileDefaultParentPath: domain.newFileDefaultParentPath,
       requestUploadFile: domain.requestUploadFile,
       requestUploadFolder: domain.requestUploadFolder,

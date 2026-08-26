@@ -386,3 +386,11 @@ export function wrapParenthesesForSelection(view: EditorView): boolean {
 export function wrapBracesForSelection(view: EditorView): boolean {
   return wrapInlineSelection(view, '{', '}');
 }
+
+export function wrapSingleQuoteForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, "'");
+}
+
+export function wrapDoubleQuoteForSelection(view: EditorView): boolean {
+  return wrapInlineSelection(view, '"');
+}
