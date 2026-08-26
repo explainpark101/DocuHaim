@@ -20,6 +20,7 @@ llmPromptTemplatesDb.version(1).stores({
  * @property {string} id
  * @property {string} name
  * @property {string} instruction
+ * @property {string} [systemPrompt]
  * @property {number} updatedAt
  */
 
@@ -155,6 +156,7 @@ export function createEmptyLlmPromptTemplate() {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     name: '',
     instruction: '',
+    systemPrompt: '',
     updatedAt: Date.now(),
   };
 }
@@ -172,6 +174,7 @@ function normalizeTemplate(value) {
     id,
     name: typeof row.name === 'string' ? row.name : '',
     instruction: typeof row.instruction === 'string' ? row.instruction : '',
+    systemPrompt: typeof row.systemPrompt === 'string' ? row.systemPrompt : '',
     updatedAt: typeof row.updatedAt === 'number' && Number.isFinite(row.updatedAt) ? row.updatedAt : Date.now(),
   };
 }
@@ -372,6 +375,7 @@ export async function saveLlmPromptTemplate(template) {
     ...template,
     name: (template.name || '').trim(),
     instruction: (template.instruction || '').trim(),
+    systemPrompt: (template.systemPrompt || '').trim(),
     updatedAt: Date.now(),
   };
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, Loader2, RefreshCw, Replace, Sparkles, Eye, FileText, X } from 'lucide-react';
+import { ArrowDownToLine, ClipboardPaste, ImagePlus, Loader2, RefreshCw, Replace, Sparkles, Eye, FileText, X } from 'lucide-react';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
@@ -13,6 +13,7 @@ import {
   extractImageFilesFromClipboard,
   LLM_ASSIST_MAX_IMAGES,
   readImageFilesAsAttachments,
+  readImageFilesFromClipboardApi,
 } from '@/utils/llmAssistImages';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
@@ -32,6 +33,8 @@ export default function LlmAssistPanel({
   onRemoveImage,
   instruction,
   onInstructionChange,
+  systemPrompt = '',
+  onSystemPromptChange,
   result,
   onResultChange,
   resultViewMode = 'text',
@@ -49,10 +52,11 @@ export default function LlmAssistPanel({
   onDeleteTemplate,
   onRun,
   onApplyResult,
+  onAppendResult,
   remoteMode = false,
   modelSelectAutoLoad = true,
 }) {
-  const resultReadOnly = remoteMode ? false : !result;
+  const resultReadOnly = loading || (remoteMode ? false : !result);
   const panelRef = useRef(null);
   const resultPreviewRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -82,6 +86,25 @@ export default function LlmAssistPanel({
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [onAddImages]);
+
+  const handlePasteFromClipboard = useCallback(async () => {
+    if (!onAddImages || addingImages || attachedCountRef.current >= LLM_ASSIST_MAX_IMAGES) return;
+    setImageError('');
+    setAddingImages(true);
+    try {
+      const files = await readImageFilesFromClipboardApi();
+      if (!files.length) {
+        setImageError('클립보드에 이미지가 없습니다. Ctrl/Cmd+V로 붙여넣을 수도 있습니다.');
+        return;
+      }
+      const next = await readImageFilesAsAttachments(files, attachedCountRef.current);
+      await onAddImages(next);
+    } catch (err) {
+      setImageError(err?.message || '클립보드 이미지를 붙여넣을 수 없습니다.');
+    } finally {
+      setAddingImages(false);
+    }
+  }, [onAddImages, addingImages]);
 
   const handleImageDrop = async (e) => {
     e.preventDefault();
@@ -181,15 +204,26 @@ export default function LlmAssistPanel({
               ({attachedImages.length}/{LLM_ASSIST_MAX_IMAGES})
             </span>
           </label>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={addingImages || attachedImages.length >= LLM_ASSIST_MAX_IMAGES}
-            className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
-          >
-            {addingImages ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
-            추가
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void handlePasteFromClipboard()}
+              disabled={addingImages || attachedImages.length >= LLM_ASSIST_MAX_IMAGES}
+              className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
+            >
+              {addingImages ? <Loader2 size={12} className="animate-spin" /> : <ClipboardPaste size={12} />}
+              클립보드에서 붙여넣기
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={addingImages || attachedImages.length >= LLM_ASSIST_MAX_IMAGES}
+              className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
+            >
+              {addingImages ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+              추가
+            </button>
+          </div>
         </div>
         <input
           ref={fileInputRef}
@@ -240,7 +274,7 @@ export default function LlmAssistPanel({
             <p className="py-3 text-center text-[11px] text-gray-500 dark:text-odp-muted">
               이미지를 드래그하거나 「추가」로 선택하세요.
               <br />
-              Ctrl+V로 클립보드 이미지를 붙여넣을 수 있습니다.
+              「클립보드에서 붙여넣기」또는 Ctrl+V로 붙여넣을 수 있습니다.
             </p>
           )}
         </div>
@@ -277,13 +311,30 @@ export default function LlmAssistPanel({
           placeholder="템플릿 이름"
           className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
         />
-        <textarea
-          value={instruction}
-          onChange={(e) => onInstructionChange?.(e.target.value)}
-          rows={4}
-          placeholder="지시사항 (예: 이미지를 설명하거나, 선택한 텍스트를 다시 써 주세요)"
-          className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-        />
+        <div>
+          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">
+            시스템 프롬프트
+          </label>
+          <textarea
+            value={systemPrompt}
+            onChange={(e) => onSystemPromptChange?.(e.target.value)}
+            rows={3}
+            placeholder="선택 사항. 모델의 역할·톤·제약 등 (system instruction)"
+            className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">
+            지시사항
+          </label>
+          <textarea
+            value={instruction}
+            onChange={(e) => onInstructionChange?.(e.target.value)}
+            rows={4}
+            placeholder="지시사항 (예: 이미지를 설명하거나, 선택한 텍스트를 다시 써 주세요)"
+            className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+          />
+        </div>
         <div className="flex flex-wrap gap-1.5 justify-end">
           <button
             type="button"
@@ -394,15 +445,26 @@ export default function LlmAssistPanel({
           />
         )}
 
-        <button
-          type="button"
-          onClick={onApplyResult}
-          disabled={!result}
-          className="mt-2 inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
-        >
-          <Replace size={14} aria-hidden />
-          선택 영역 바꿔치기
-        </button>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={onApplyResult}
+            disabled={!result}
+            className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+          >
+            <Replace size={14} aria-hidden />
+            선택 영역 바꿔치기
+          </button>
+          <button
+            type="button"
+            onClick={onAppendResult}
+            disabled={!result}
+            className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+          >
+            <ArrowDownToLine size={14} aria-hidden />
+            문서 가장 하단에 삽입
+          </button>
+        </div>
       </div>
     </div>
   );

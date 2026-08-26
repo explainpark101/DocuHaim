@@ -118,6 +118,39 @@ export function extractImageFilesFromClipboard(clipboardData) {
 }
 
 /**
+ * Read image files via the Async Clipboard API (button-triggered paste).
+ * @returns {Promise<File[]>}
+ */
+export async function readImageFilesFromClipboardApi() {
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.read) {
+    throw new Error(
+      '이 브라우저는 클립보드 이미지 읽기를 지원하지 않습니다. Ctrl/Cmd+V로 붙여넣어 주세요.',
+    );
+  }
+
+  try {
+    const items = await navigator.clipboard.read();
+    const files = [];
+    for (const item of items) {
+      const type = item.types.find((t) => LLM_ASSIST_IMAGE_MIME_TYPES.includes(t));
+      if (!type) continue;
+      const blob = await item.getType(type);
+      const mime = blob.type || type;
+      if (!LLM_ASSIST_IMAGE_MIME_TYPES.includes(mime)) continue;
+      files.push(withClipboardFileName(new File([blob], '', { type: mime })));
+    }
+    return files;
+  } catch (err) {
+    if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+      throw new Error(
+        '클립보드 접근이 거부되었습니다. Ctrl/Cmd+V로 붙여넣거나 파일을 선택해 주세요.',
+      );
+    }
+    throw err;
+  }
+}
+
+/**
  * @param {ClipboardEvent} event
  * @param {number} currentCount
  */

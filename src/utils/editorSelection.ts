@@ -29,6 +29,8 @@ export type ApplyLlmResultToEditorOptions = {
   result: string;
   onChange?: (markdown: string) => void;
   getMarkdown?: () => string;
+  /** When true, always insert at document end (ignore source-Editor focus). */
+  forceAppendAtEnd?: boolean;
 };
 
 function getEditorApiFromRef(editorRef: EditorRefLike | null | undefined): MdEditorApi | null {
@@ -95,16 +97,19 @@ function clampRange(
 
 /**
  * Apply LLM output: replace last source-Editor focus range, or append at
- * document end when preview-only or the source Editor was never focused.
+ * document end when preview-only, the source Editor was never focused, or
+ * forceAppendAtEnd is set.
  */
 export function applyLlmResultToEditor({
   editorRef,
   result,
   onChange,
   getMarkdown,
+  forceAppendAtEnd = false,
 }: ApplyLlmResultToEditorOptions): boolean {
   const { view } = getEditorSelectionFromRef(editorRef);
-  const appendAtEnd = shouldAppendLlmResultAtDocEnd(editorRef, { view });
+  const appendAtEnd =
+    forceAppendAtEnd || shouldAppendLlmResultAtDocEnd(editorRef, { view });
 
   if (appendAtEnd) {
     const docText =

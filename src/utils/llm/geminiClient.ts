@@ -132,39 +132,64 @@ function buildContentParts({
   return parts;
 }
 
-async function generateGeminiContent(
+async function generateGeminiContentStream(
   apiKey: string,
   modelId: string,
   parts: Part[],
+  systemPrompt = '',
+  onChunk?: (accumulated: string) => void,
 ): Promise<string> {
   const ai = createGeminiClient(apiKey);
-  const response = await ai.models.generateContent({
+  const trimmedSystem = (systemPrompt || '').trim();
+  const stream = await ai.models.generateContentStream({
     model: modelId,
     contents: [{ role: 'user', parts }],
     config: {
       temperature: 0.4,
+      ...(trimmedSystem ? { systemInstruction: trimmedSystem } : {}),
     },
   });
 
-  const text = response.text;
-  if (typeof text !== 'string' || !text.trim()) {
+  let accumulated = '';
+  for await (const chunk of stream) {
+    const delta = chunk.text;
+    if (typeof delta !== 'string' || !delta) continue;
+    accumulated += delta;
+    onChunk?.(accumulated);
+  }
+
+  const text = accumulated.trim();
+  if (!text) {
     throw new Error('Gemini API가 빈 응답을 반환했습니다.');
   }
-  return text.trim();
+  return text;
 }
 
-async function generateGeminiContentWithRetry(
+async function generateGeminiContentStreamWithRetry(
   apiKey: string,
   modelId: string,
   parts: Part[],
+  systemPrompt = '',
+  onChunk?: (accumulated: string) => void,
 ): Promise<string> {
   let attempt = 0;
   while (true) {
+    let receivedChunk = false;
     try {
-      return await generateGeminiContent(apiKey, modelId, parts);
+      return await generateGeminiContentStream(
+        apiKey,
+        modelId,
+        parts,
+        systemPrompt,
+        (text) => {
+          receivedChunk = true;
+          onChunk?.(text);
+        },
+      );
     } catch (err) {
       const typed = toGeminiApiError(err, modelId);
       const canRetry =
+        !receivedChunk &&
         typed.status === 429 &&
         attempt < MAX_RATE_LIMIT_RETRIES &&
         typed.retryAfterSec &&
@@ -182,14 +207,19 @@ export async function generateGeminiTransform({
   apiKey,
   model,
   instruction,
+  systemPrompt,
   selectedText,
   images,
+  onChunk,
 }: {
   apiKey: string;
   model?: string;
   instruction: string;
+  systemPrompt?: string;
   selectedText?: string;
   images?: GeminiTransformImage[];
+  /** Called with accumulated text as stream chunks arrive. */
+  onChunk?: (accumulated: string) => void;
 }): Promise<string> {
   const modelId = (model || loadLastUsedGeminiModel()).trim() || DEFAULT_GEMINI_MODEL;
   const trimmedInstruction = (instruction || '').trim();
@@ -207,7 +237,13 @@ export async function generateGeminiTransform({
   });
 
   try {
-    return await generateGeminiContentWithRetry(apiKey, modelId, parts);
+    return await generateGeminiContentStreamWithRetry(
+      apiKey,
+      modelId,
+      parts,
+      systemPrompt || '',
+      onChunk,
+    );
   } catch (err) {
     throw toGeminiApiError(err, modelId);
   }

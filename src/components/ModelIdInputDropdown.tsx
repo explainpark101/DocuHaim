@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Popover } from 'radix-ui';
 
 export type ModelIdOption = { id: string; displayName: string };
@@ -28,6 +28,7 @@ export function ModelIdInputDropdown({
   maxItems = 30,
 }: ModelIdInputDropdownProps) {
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const query = (value || '').trim().toLowerCase();
 
@@ -50,6 +51,11 @@ export function ModelIdInputDropdown({
     [onChange],
   );
 
+  const isAnchorTarget = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof Node)) return false;
+    return Boolean(inputRef.current?.contains(target));
+  }, []);
+
   const showEmptyState = !loading && (query ? filtered.length === 0 : options.length === 0);
   const emptyLabel = query ? '일치하는 모델이 없습니다.' : '모델 목록이 비어 있습니다.';
 
@@ -57,6 +63,7 @@ export function ModelIdInputDropdown({
     <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
       <Popover.Anchor asChild>
         <input
+          ref={inputRef}
           type="text"
           autoComplete="off"
           spellCheck={false}
@@ -82,6 +89,22 @@ export function ModelIdInputDropdown({
           sideOffset={4}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
+          // Keep list open while focus stays on the anchor input (search-as-you-type).
+          // Without this, Radix treats the focused Anchor as "outside" Content and closes immediately.
+          onFocusOutside={(e) => {
+            if (
+              document.activeElement === inputRef.current
+              || isAnchorTarget(e.target)
+            ) {
+              e.preventDefault();
+            }
+          }}
+          onPointerDownOutside={(e) => {
+            if (isAnchorTarget(e.target)) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (isAnchorTarget(e.target)) e.preventDefault();
+          }}
         >
           {loading ? (
             <div className="px-2 py-1.5 text-xs text-gray-500 dark:text-odp-muted">

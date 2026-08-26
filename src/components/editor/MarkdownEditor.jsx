@@ -61,7 +61,6 @@ import {
 import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
-import { createSelectionHeightDebugProbe } from '@/utils/debugSelectionHeightProbe';
 import {
   markMirrorEditCaretFromEditor,
   markMirrorEditCaretFromPreview,
@@ -174,7 +173,10 @@ import {
   attachMdEditorSourceFocusTracking,
   clearMdEditorSourceFocus,
 } from '@/utils/mdEditorSourceFocus';
-import { registerMirrorEditCaretHandler } from '@/utils/mirrorEditCaretBridge';
+import {
+  notifyMirrorEditCaretUpdate,
+  registerMirrorEditCaretHandler,
+} from '@/utils/mirrorEditCaretBridge';
 import { createMirrorEditPreviewRemirror } from '@/utils/mirrorEditPreviewRemirror';
 import { createPreviewScrollFollow } from '@/utils/previewScrollFollow';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
@@ -496,13 +498,6 @@ config({
       nextExtensions.push({
         type: 'drawSelection',
         extension: drawSelection(),
-      });
-    }
-
-    if (!nextExtensions.some((item) => item.type === 'selectionHeightDebugProbe')) {
-      nextExtensions.push({
-        type: 'selectionHeightDebugProbe',
-        extension: createSelectionHeightDebugProbe(),
       });
     }
 

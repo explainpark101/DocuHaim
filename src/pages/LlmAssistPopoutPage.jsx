@@ -17,6 +17,7 @@ const EMPTY_STATE = {
   selectionRange: { from: 0, to: 0 },
   attachedImages: [],
   instruction: '',
+  systemPrompt: '',
   result: '',
   resultViewMode: 'text',
   loading: false,
@@ -39,6 +40,7 @@ function postActionToOpener(action, payload = {}) {
 export default function LlmAssistPopoutPage() {
   const [remoteState, setRemoteState] = useState(EMPTY_STATE);
   const [instruction, setInstruction] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [result, setResult] = useState('');
   const [resultViewMode, setResultViewMode] = useState('text');
@@ -64,6 +66,7 @@ export default function LlmAssistPopoutPage() {
         const next = { ...EMPTY_STATE, ...event.data.state };
         setRemoteState(next);
         setInstruction(next.instruction);
+        setSystemPrompt(typeof next.systemPrompt === 'string' ? next.systemPrompt : '');
         setTemplateName(next.templateName);
         setResult(next.result);
         setResultViewMode(next.resultViewMode);
@@ -102,6 +105,14 @@ export default function LlmAssistPopoutPage() {
     (value) => {
       setInstruction(value);
       sendAction('set-instruction', { value });
+    },
+    [sendAction],
+  );
+
+  const handleSystemPromptChange = useCallback(
+    (value) => {
+      setSystemPrompt(value);
+      sendAction('set-system-prompt', { value });
     },
     [sendAction],
   );
@@ -170,6 +181,8 @@ export default function LlmAssistPopoutPage() {
           onRemoveImage={(id) => sendAction('remove-image', { id })}
           instruction={instruction}
           onInstructionChange={handleInstructionChange}
+          systemPrompt={systemPrompt}
+          onSystemPromptChange={handleSystemPromptChange}
           result={result}
           onResultChange={handleResultChange}
           resultViewMode={resultViewMode}
@@ -190,6 +203,7 @@ export default function LlmAssistPopoutPage() {
           onDeleteTemplate={() => sendAction('delete-template')}
           onRun={() => sendAction('run')}
           onApplyResult={() => sendAction('apply-result')}
+          onAppendResult={() => sendAction('append-result')}
           remoteMode
           modelSelectAutoLoad={false}
         />

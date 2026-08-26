@@ -157,4 +157,17 @@ describe('applyLlmResultToEditor', () => {
     expect(dispatches).toEqual([{ from: 3, to: 3, insert: '\ntail' }]);
     expect(getText()).toBe('doc\ntail');
   });
+
+  it('forceAppendAtEnd appends even with focus history', () => {
+    const { view, dispatches, getText } = createMockView('hello');
+    recordMdEditorSourceFocus(view, 2, 2);
+    const ok = applyLlmResultToEditor({
+      editorRef: editorRefFor(view),
+      result: 'X',
+      forceAppendAtEnd: true,
+    });
+    expect(ok).toBe(true);
+    expect(dispatches).toEqual([{ from: 5, to: 5, insert: '\nX' }]);
+    expect(getText()).toBe('hello\nX');
+  });
 });

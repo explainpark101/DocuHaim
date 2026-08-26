@@ -51,6 +51,7 @@ export default function LlmAssistModal({
   const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
   const [attachedImages, setAttachedImages] = useState([]);
   const [instruction, setInstruction] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState('');
   const [result, setResult] = useState('');
   const [resultViewMode, setResultViewMode] = useState('text');
   const [loading, setLoading] = useState(false);
@@ -74,6 +75,7 @@ export default function LlmAssistModal({
     startPositionDrag,
     startPositionTouchDrag,
     startCornerResize,
+    startEdgeResize,
     refreshBounds,
   } = useLlmAssistModalLayout(editorRef, { enabled: open });
 
@@ -83,6 +85,7 @@ export default function LlmAssistModal({
       selectionRange,
       attachedImages,
       instruction,
+      systemPrompt,
       result,
       resultViewMode,
       loading,
@@ -106,6 +109,7 @@ export default function LlmAssistModal({
       selectionRange,
       attachedImages,
       instruction,
+      systemPrompt,
       result,
       resultViewMode,
       loading,
@@ -243,6 +247,7 @@ export default function LlmAssistModal({
 
   const handleRun = useCallback(async () => {
     setError('');
+    setResult('');
     setLoading(true);
     try {
       const text = refreshSelection();
@@ -266,8 +271,10 @@ export default function LlmAssistModal({
               apiKey,
               model,
               instruction,
+              systemPrompt,
               selectedText: text,
               images: attachedImages,
+              onChunk: setResult,
             }),
           {
             allowEmpty: true,
@@ -293,8 +300,10 @@ export default function LlmAssistModal({
             apiKey,
             model,
             instruction,
+            systemPrompt,
             selectedText: text,
             images: attachedImages,
+            onChunk: setResult,
           }),
         {
           missingKeyMessage:
@@ -307,7 +316,7 @@ export default function LlmAssistModal({
     } finally {
       setLoading(false);
     }
-  }, [refreshSelection, attachedImages, selectedProfile, model, instruction]);
+  }, [refreshSelection, attachedImages, selectedProfile, model, instruction, systemPrompt]);
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
@@ -324,12 +333,29 @@ export default function LlmAssistModal({
     refreshSelection();
   }, [result, editorRef, onChange, getMarkdown, refreshSelection]);
 
+  const handleAppendResult = useCallback(() => {
+    if (!result) return;
+    const ok = applyLlmResultToEditor({
+      editorRef,
+      result,
+      onChange,
+      getMarkdown,
+      forceAppendAtEnd: true,
+    });
+    if (!ok) {
+      setError('에디터에 결과를 삽입할 수 없습니다.');
+      return;
+    }
+    refreshSelection();
+  }, [result, editorRef, onChange, getMarkdown, refreshSelection]);
+
   const handleLoadTemplate = useCallback(
     (id) => {
       setSelectedTemplateId(id);
       const tpl = templates.find((t) => t.id === id);
       if (tpl) {
         setInstruction(tpl.instruction);
+        setSystemPrompt(typeof tpl.systemPrompt === 'string' ? tpl.systemPrompt : '');
         setTemplateName(tpl.name);
         setEditingTemplateId(tpl.id);
       }
@@ -349,6 +375,7 @@ export default function LlmAssistModal({
         id: editingTemplateId || createEmptyLlmPromptTemplate().id,
         name,
         instruction: inst,
+        systemPrompt: systemPrompt.trim(),
         updatedAt: Date.now(),
       });
       setEditingTemplateId(saved.id);
@@ -357,13 +384,14 @@ export default function LlmAssistModal({
     } catch (err) {
       alert(err?.message || '템플릿 저장에 실패했습니다.');
     }
-  }, [templateName, instruction, editingTemplateId, loadTemplates]);
+  }, [templateName, instruction, systemPrompt, editingTemplateId, loadTemplates]);
 
   const handleNewTemplate = useCallback(() => {
     setEditingTemplateId(null);
     setSelectedTemplateId('');
     setTemplateName('');
     setInstruction('');
+    setSystemPrompt('');
   }, []);
 
   const handleDeleteTemplate = useCallback(async () => {
@@ -404,8 +432,14 @@ export default function LlmAssistModal({
         case 'apply-result':
           handleApplyResult();
           break;
+        case 'append-result':
+          handleAppendResult();
+          break;
         case 'set-instruction':
           setInstruction(typeof payload.value === 'string' ? payload.value : '');
+          break;
+        case 'set-system-prompt':
+          setSystemPrompt(typeof payload.value === 'string' ? payload.value : '');
           break;
         case 'set-result':
           setResult(typeof payload.value === 'string' ? payload.value : '');
@@ -457,6 +491,7 @@ export default function LlmAssistModal({
       refreshSelection,
       handleRun,
       handleApplyResult,
+      handleAppendResult,
       handleModelChange,
       setProfileId,
       handleLoadTemplate,
@@ -544,6 +579,8 @@ export default function LlmAssistModal({
     onRemoveImage: handleRemoveImage,
     instruction,
     onInstructionChange: setInstruction,
+    systemPrompt,
+    onSystemPromptChange: setSystemPrompt,
     result,
     onResultChange: setResult,
     resultViewMode,
@@ -561,6 +598,7 @@ export default function LlmAssistModal({
     onDeleteTemplate: handleDeleteTemplate,
     onRun: handleRun,
     onApplyResult: handleApplyResult,
+    onAppendResult: handleAppendResult,
   };
 
   if (!open) return null;
@@ -658,16 +696,30 @@ export default function LlmAssistModal({
 
       <div
         role="separator"
+        aria-orientation="vertical"
+        aria-label="너비 조절 (왼쪽)"
+        className="absolute top-0 bottom-0 left-0 z-20 w-2 touch-none cursor-ew-resize!"
+        onPointerDown={(e) => startEdgeResize('w', e)}
+      />
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="너비 조절 (오른쪽)"
+        className="absolute top-0 bottom-0 right-0 z-20 w-2 touch-none cursor-ew-resize!"
+        onPointerDown={(e) => startEdgeResize('e', e)}
+      />
+      <div
+        role="separator"
         aria-orientation="horizontal"
         aria-label="크기 조절"
-        className="absolute bottom-0 left-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
+        className="absolute bottom-0 left-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
         onPointerDown={(e) => startCornerResize('sw', e)}
       />
       <div
         role="separator"
         aria-orientation="horizontal"
         aria-label="크기 조절"
-        className="absolute bottom-0 right-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
+        className="absolute bottom-0 right-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
         onPointerDown={(e) => startCornerResize('se', e)}
       />
     </div>
