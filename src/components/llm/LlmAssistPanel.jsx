@@ -15,6 +15,7 @@ import {
   Plus,
   RefreshCw,
   Replace,
+  RotateCcw,
   Save,
   ScrollText,
   Sparkles,
@@ -26,6 +27,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { MdPreview } from 'md-editor-rt';
+import { Tooltip } from 'radix-ui';
 import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
@@ -44,7 +46,6 @@ import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
 import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
-import { Tooltip } from 'radix-ui';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
 
@@ -184,6 +185,22 @@ export default function LlmAssistPanel({
     document.addEventListener('paste', onPaste);
     return () => document.removeEventListener('paste', onPaste);
   }, [onAddImages, addingImages]);
+
+  const isDefaultSystemPrompt =
+    systemPrompt.trim() === getDefaultLlmAssistSystemPrompt();
+
+  const restoreDefaultSystemPromptButton = (
+    <button
+      type="button"
+      disabled={isDefaultSystemPrompt}
+      onClick={() => onSystemPromptChange?.(getDefaultLlmAssistSystemPrompt())}
+      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:disabled:hover:bg-transparent"
+      aria-label="기본값으로 되돌리기"
+    >
+      <RotateCcw size={11} aria-hidden />
+      기본값으로 되돌리기
+    </button>
+  );
 
   const panelBody = (
       <div ref={panelRef} className="space-y-3 text-xs">
@@ -390,9 +407,7 @@ export default function LlmAssistPanel({
               <PanelLabel icon={ScrollText}>시스템 프롬프트</PanelLabel>
               {!systemPromptOpen && systemPrompt.trim() ? (
                 <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
-                  {systemPrompt.trim() === getDefaultLlmAssistSystemPrompt()
-                    ? '(기본)'
-                    : '(수정됨)'}
+                  {isDefaultSystemPrompt ? '(기본)' : '(수정됨)'}
                 </span>
               ) : null}
             </span>
@@ -415,13 +430,29 @@ export default function LlmAssistPanel({
                 className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
               />
               <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => onSystemPromptChange?.(getDefaultLlmAssistSystemPrompt())}
-                  className="rounded border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50 dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft"
-                >
-                  기본값으로 되돌리기
-                </button>
+                {isDefaultSystemPrompt ? (
+                  <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+                    <Tooltip.Root>
+                      <Tooltip.Trigger asChild>
+                        <span className="inline-flex cursor-not-allowed">
+                          {restoreDefaultSystemPromptButton}
+                        </span>
+                      </Tooltip.Trigger>
+                      <Tooltip.Portal>
+                        <Tooltip.Content
+                          side="top"
+                          sideOffset={6}
+                          className="z-100010 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] leading-snug text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
+                        >
+                          이미 기본값입니다.
+                          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                        </Tooltip.Content>
+                      </Tooltip.Portal>
+                    </Tooltip.Root>
+                  </Tooltip.Provider>
+                ) : (
+                  restoreDefaultSystemPromptButton
+                )}
               </div>
             </div>
           </LlmAssistCollapsible>
