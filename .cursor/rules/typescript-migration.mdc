@@ -1,42 +1,31 @@
 ---
-description: Incremental TypeScript adoption — prefer .ts/.tsx for new work and low-cost conversions
+description: TypeScript-only src — no new JS/JSX, no @ts-nocheck
 alwaysApply: true
 ---
 
 # TypeScript migration
 
-Do **not** mass-convert the codebase to TypeScript. Prefer incremental adoption while feature work continues.
+`src/` implementation files are **TypeScript only**. New JS/JSX under `src/` is forbidden. `@ts-nocheck` is forbidden.
 
 ## Policy
 
-1. **New files** — use `.ts` / `.tsx` only (no new `.js` / `.jsx` unless matching an existing colocated pattern that cannot move yet).
-2. **Existing files — convert when cheap or when editing heavily**
-   - **Substantial edit** of a module → convert that file to `.ts` / `.tsx` in the same change.
-   - **Modest edit** (small surface, clear types, few import sites, not a giant UI pane) → prefer converting / recreating as `.ts` / `.tsx` rather than deepening the JS file.
-   - **Do not** rename/convert for typing alone across huge UI (`App`, `Sidebar`, `ChatWithMyselfPane`, editors) or when the typing cost would dwarf the feature change.
-3. **Boundaries first** — prefer typing DB schemas, storage contracts, API/S3 clients, and shared utils before large UI components.
-4. **Keep `allowJs`** — `checkJs` stays off project-wide for now (full JS type-checking floods ~1.8k inference errors). Undeclared / unused checks for JS are gated by ESLint (`no-undef`, `no-unused-vars`) via `bun run check` / pre-push. Enable `checkJs` only when deliberately fixing a scoped area.
-5. **Large UI later** — defer opportunistic conversion of giant panes unless the change already rewrites most of the file.
+1. **New files under `src/`** — `.ts` / `.tsx` only. Never add `.js` / `.jsx` in `src/`.
+2. **`@ts-nocheck`** — do not add. Prefer real types, boundary `any`, or a single-line `@ts-expect-error` with a reason (see `ts-expect-error-cleanup` rule).
+3. **`allowJs: true`** — kept for non-`src` / tooling edge cases; `checkJs` stays off. Do not use `allowJs` as a reason to grow JS in `src/`.
+4. **When editing** — improve types at the touch point when cheap; do not reintroduce nocheck or JS.
+5. Prefer **English** in new code comments if Korean Unicode might corrupt.
 
-## Checklist when touching a `.js` / `.jsx` module
+## Out of scope (separate tracks)
 
-1. Is this a **new** module? → write `.ts` / `.tsx`.
-2. Is the file **small/medium** and the change already rewrites a meaningful chunk? → convert in place (`.js`→`.ts` / `.jsx`→`.tsx`), update imports, delete the old file.
-3. Is the file a **huge UI shell** and the change is a few lines? → keep JS; extract new logic into a new `.ts` / `.tsx` helper instead.
-4. Prefer **English** in new code comments if Korean Unicode might corrupt.
+- Mass removal of `$TSFixMe` / leftover `@ts-expect-error` from ts-migrate
+- Turning on project-wide `checkJs`
 
 ## Examples
 
 ```text
-❌ BAD — rewrite all of src/**/*.jsx to .tsx in one pass
-❌ BAD — mechanical .jsx → .tsx rename with `any` everywhere
-❌ BAD — turn on project-wide `checkJs` without a fix plan for inference/`never` errors
-❌ BAD — keep growing a modest util as .js when a typed rewrite fits in the same PR
-✅ GOOD — add src/utils/chatWithMyself/sync.ts for new sync logic
-✅ GOOD — while editing chatDb.js heavily, convert that file to chatDb.ts
-✅ GOOD — while rewriting og.js fetch path, ship og.ts and drop og.js
-✅ GOOD — one-line fix in App.jsx: leave App.jsx; put new helper in a .ts module
-✅ GOOD — rely on ESLint for unused/undeclared in remaining JS; tsc for .ts/.tsx
+❌ BAD — add src/features/foo.js or restore @ts-nocheck on a domain hook
+❌ BAD — new .jsx "just for now" under src/components
+✅ GOOD — new helper as .ts / .tsx
+✅ GOOD — line @ts-expect-error with a short reason when a vendor type is wrong
+✅ GOOD — eslint ban-ts-comment blocks @ts-nocheck project-wide
 ```
-
-`tsconfig` is strict (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`). Prefer real types at module boundaries; avoid littering `any` just to silence errors.

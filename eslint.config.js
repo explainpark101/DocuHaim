@@ -1,11 +1,10 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-/** Domain compose hooks: catch bag wiring bugs (@ts-nocheck skips tsc name checks). */
+/** AppLogic domain hooks: keep no-undef gated (no @ts-nocheck). */
 const appLogicHookGlobs = [
   'src/App/hooks/use*Domain.ts',
   'src/App/hooks/useAppLogicSharedState.ts',
@@ -36,38 +35,16 @@ export default defineConfig([
     },
   },
   {
-    files: ['**/*.{js,jsx}'],
-    extends: [
-      js.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
+    files: ['server/**/*.{js,mjs}'],
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
+      globals: {
+        ...globals.node,
+        Bun: 'readonly',
       },
     },
     rules: {
-      // Undeclared identifiers (pre-push gate). Unused bindings are not gated —
-      // destructuring placeholders (e.g. map callbacks) are too noisy otherwise.
       'no-undef': 'error',
       'no-unused-vars': 'off',
-      'no-empty': ['error', { allowEmptyCatch: true }],
-
-      // Known debt in Move* modals; keep visible but do not block push yet
-      'react-hooks/rules-of-hooks': 'warn',
-
-      // Keep React Compiler-oriented rules visible but non-blocking for push
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/exhaustive-deps': 'warn',
-      'react-refresh/only-export-components': 'warn',
     },
   },
   {
@@ -93,6 +70,17 @@ export default defineConfig([
       'react-hooks/exhaustive-deps': 'off',
       'no-unused-vars': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
+      // Ban file-level nocheck; allow documented line expect-error / ignore.
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-nocheck': true,
+          'ts-check': false,
+          'ts-expect-error': 'allow-with-description',
+          'ts-ignore': 'allow-with-description',
+          minimumDescriptionLength: 3,
+        },
+      ],
     },
   },
   {
