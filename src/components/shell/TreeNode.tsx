@@ -147,9 +147,9 @@ export default function TreeNode({
     ? node.name.slice(node.name.lastIndexOf('.'))
     : '';
 
-  const titleContainerRef = useRef(null);
-  const rowRef = useRef(null);
-  const scrollTimerRef = useRef(null);
+  const titleContainerRef = useRef<HTMLDivElement | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const scrollTimerRef = useRef<number | null>(null);
   const scrollDirectionRef = useRef(1);
 
   const isUnderDeletingFolder =
@@ -405,7 +405,6 @@ export default function TreeNode({
   const startTitleScroll = () => {
     const el = titleContainerRef.current;
     if (!el) return;
-    // @ts-expect-error TS(2339): Property 'scrollWidth' does not exist on type 'nev... Remove this comment to see the full error message
     if (el.scrollWidth <= el.clientWidth) return;
 
     if (scrollTimerRef.current) {
@@ -413,26 +412,21 @@ export default function TreeNode({
     }
 
     scrollDirectionRef.current = 1;
-    // @ts-expect-error TS(2322): Type 'number' is not assignable to type 'null'.
     scrollTimerRef.current = window.setInterval(() => {
       const target = titleContainerRef.current;
       if (!target) return;
 
       const dir = scrollDirectionRef.current;
       if (dir > 0) {
-        // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
         if (target.scrollLeft + target.clientWidth >= target.scrollWidth) {
           scrollDirectionRef.current = -1;
         } else {
-          // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
           target.scrollLeft += 1;
         }
       } else {
-        // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
         if (target.scrollLeft <= 0) {
           scrollDirectionRef.current = 1;
         } else {
-          // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
           target.scrollLeft -= 1;
         }
       }
@@ -445,7 +439,6 @@ export default function TreeNode({
       scrollTimerRef.current = null;
     }
     if (titleContainerRef.current) {
-      // @ts-expect-error TS(2339): Property 'scrollLeft' does not exist on type 'neve... Remove this comment to see the full error message
       titleContainerRef.current.scrollLeft = 0;
     }
   };
@@ -629,7 +622,6 @@ export default function TreeNode({
     const updatePinnedState = () => {
       const nodeEl = rowRef.current;
       if (!nodeEl) return;
-      // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
       const nodeTop = nodeEl.getBoundingClientRect().top;
       const threshold = stickyTopOffset + level * 30;
       setIsStickyPinned(nodeTop <= threshold + 0.5);

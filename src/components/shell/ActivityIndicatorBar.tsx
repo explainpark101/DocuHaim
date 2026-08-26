@@ -7,7 +7,7 @@
  */
 import { useState } from 'react';
 import { Tooltip } from 'radix-ui';
-import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
+import { useActivityIndicator, ActivityTypes, type ActivityIndicatorItem, type ActivityType } from '@/contexts/ActivityIndicatorContext';
 import Button from '@/components/Button';
 import Modal from '@/components/shared/modals/Modal';
 import {
@@ -26,7 +26,10 @@ import {
   IconCloud,
 } from '@/components/icons';
 
-const typeConfig = {
+const typeConfig: Record<
+  ActivityType,
+  { icon: typeof IconUpload; label: string }
+> = {
   [ActivityTypes.FILE_UPLOAD]: {
     icon: IconUpload,
     label: '파일 업로드',
@@ -119,11 +122,12 @@ function IndicatorChipContent({
 }
 
 function IndicatorItem({
-  indicator
-}: any) {
+  indicator,
+}: {
+  indicator: ActivityIndicatorItem;
+}) {
   const [reasonOpen, setReasonOpen] = useState(false);
-  // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-  const config = typeConfig[indicator.type] || {
+  const config = typeConfig[indicator.type] ?? {
     icon: IconLoader,
     label: indicator.label || '처리 중',
   };
@@ -209,7 +213,6 @@ export default function ActivityIndicatorBar() {
   const { indicators } = useActivityIndicator();
   const visibleIndicators = indicators.filter(
     (i) =>
-      // @ts-expect-error TS(2339): Property 'pin' does not exist on type 'ActivityInd... Remove this comment to see the full error message
       i.pin ||
       i.status === 'pending' ||
       i.status === 'processing' ||

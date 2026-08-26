@@ -41,6 +41,8 @@ export type ActivityIndicatorItem = {
   status: ActivityStatus;
   detail?: string;
   progress?: number;
+  /** When true, chip stays visible after status becomes done. */
+  pin?: boolean;
 };
 
 export type AddActivityIndicatorInput = {
@@ -50,10 +52,11 @@ export type AddActivityIndicatorInput = {
   status?: ActivityStatus;
   detail?: string;
   progress?: number;
+  pin?: boolean;
 };
 
 export type ActivityIndicatorUpdates = Partial<
-  Pick<ActivityIndicatorItem, 'label' | 'status' | 'detail' | 'progress'>
+  Pick<ActivityIndicatorItem, 'label' | 'status' | 'detail' | 'progress' | 'pin' | 'type'>
 >;
 
 export type ActivityIndicatorContextValue = {
@@ -110,6 +113,7 @@ export function ActivityIndicatorProvider({ children }: { children: ReactNode })
       status: payload.status ?? Status.PROCESSING,
       ...(payload.detail !== undefined ? { detail: payload.detail } : {}),
       ...(payload.progress !== undefined ? { progress: payload.progress } : {}),
+      ...(payload.pin !== undefined ? { pin: payload.pin } : {}),
     };
     dispatch({ type: 'ADD', payload: item });
     return id;

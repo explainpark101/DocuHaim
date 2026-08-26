@@ -65,6 +65,46 @@ import {
   getAppNameByStorageMode,
 } from '@/utils/vault/storageSettings';
 import { isLocalVaultReady } from '@/utils/vault/localVaultReady';
+import type { VaultTreeNode } from '@/utils/vault/vaultTreeTypes';
+
+type VaultStorageType = 's3' | 'local' | 'webdav' | 'session';
+
+type LocalFocusedFolder = {
+  path: string;
+  handle: VaultTreeNode['handle'];
+};
+
+type ActivatedTreeNode = {
+  storageType: VaultStorageType;
+  node: VaultTreeNode;
+};
+
+type SidebarContextMenuState = {
+  x: number | null;
+  y: number | null;
+  node: VaultTreeNode;
+  storageType: VaultStorageType;
+  modal: boolean;
+  onCloseTab: (() => void) | null;
+};
+
+type RenameTargetState = {
+  storageType: VaultStorageType;
+  node: VaultTreeNode;
+};
+
+type TreeDragItem = {
+  storageType: string;
+  path: string;
+  nodeType: string;
+  name?: string;
+};
+
+type ExpandedChangeHandler = (
+  storageType: string,
+  path: string,
+  isOpen: boolean,
+) => void;
 
 const EMPTY_SELECTED_IDS = new Set();
 
@@ -88,7 +128,7 @@ function getParentPathFromFilePath(filePath: any) {
   return getParentFolderPath(filePath);
 }
 
-function isRenameableTreeNode(node: any) {
+function isRenameableTreeNode(node: VaultTreeNode | null | undefined) {
   if (!node || node.path === '.trash/' || node.path === '') return false;
   return node.type === 'file' || node.type === 'folder';
 }
@@ -301,9 +341,9 @@ export default function Sidebar({
   const mobileTree = isMobileLayout || coarsePointer;
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
-  const brandLongPressTimerRef = useRef(null);
+  const brandLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const brandLongPressOpenedRef = useRef(false);
-  const brandPressStartRef = useRef(null);
+  const brandPressStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const clearBrandLongPress = useCallback(() => {
     if (brandLongPressTimerRef.current) {
@@ -319,35 +359,35 @@ export default function Sidebar({
   const [searchTerm, setSearchTerm] = useState('');
   const isSearchPending = searchInput !== searchTerm;
   /** null = no explicit folder; '' = bucket/project root selected */
-  const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState(null);
+  const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState<string | null>(null);
   /** null = no explicit folder; { path: '', handle } = project root */
-  const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState(null);
+  const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState<LocalFocusedFolder | null>(null);
   /** null = no explicit folder; '' = WebDAV root selected */
-  const [lastFocusedWebdavFolderPath, setLastFocusedWebdavFolderPath] = useState(null);
+  const [lastFocusedWebdavFolderPath, setLastFocusedWebdavFolderPath] = useState<string | null>(null);
 
   // While Chat with Myself is open, tree must not show another file/folder as selected.
   const treeSelectedIds = chatWithMyselfActive ? EMPTY_SELECTED_IDS : selectedIds;
   const treeCurrentFile = chatWithMyselfActive ? null : currentFile;
 
   const [expandedPaths, setExpandedPaths] = useState(loadExpandedFolderPaths);
-  const [contextMenu, setContextMenu] = useState(null);
-  const [renameTarget, setRenameTarget] = useState(null);
-  const [lastActivatedNode, setLastActivatedNode] = useState(null);
+  const [contextMenu, setContextMenu] = useState<SidebarContextMenuState | null>(null);
+  const [renameTarget, setRenameTarget] = useState<RenameTargetState | null>(null);
+  const [lastActivatedNode, setLastActivatedNode] = useState<ActivatedTreeNode | null>(null);
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
-  const [activeDragItems, setActiveDragItems] = useState<any>(null);
+  const [activeDragItems, setActiveDragItems] = useState<TreeDragItem[] | null>(null);
   const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
     useTreeCopyDragModifier(Boolean(activeDragItems?.length));
-  const scrollContainerRef = useRef(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const isDraggingRef = useRef(false);
-  const activeDragItemsRef = useRef(null);
-  const autoScrollIntervalRef = useRef(null);
-  const hoverExpandTimerRef = useRef(null);
-  const hoverExpandKeyRef = useRef(null);
+  const activeDragItemsRef = useRef<TreeDragItem[] | null>(null);
+  const autoScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hoverExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverExpandKeyRef = useRef<string | null>(null);
   const hoverExpandDelayMsRef = useRef(hoverExpandDelayMs);
   const expandedPathsRef = useRef(expandedPaths);
   const searchTermRef = useRef(searchTerm);
-  const handleExpandedChangeRef = useRef(null);
+  const handleExpandedChangeRef = useRef<ExpandedChangeHandler | null>(null);
 
   expandedPathsRef.current = expandedPaths;
   searchTermRef.current = searchTerm;
@@ -383,14 +423,11 @@ export default function Sidebar({
       if (hoverExpandKeyRef.current === key) return;
 
       clearHoverExpandTimer();
-      // @ts-expect-error TS(2322): Type 'string' is not assignable to type 'null'.
       hoverExpandKeyRef.current = key;
       const delayMs = Math.max(0, Number(hoverExpandDelayMsRef.current) || 0);
-      // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
       hoverExpandTimerRef.current = setTimeout(() => {
         hoverExpandTimerRef.current = null;
         hoverExpandKeyRef.current = null;
-        // @ts-expect-error TS(2349): This expression is not callable.
         handleExpandedChangeRef.current?.(storageType, folderPath, true);
       }, delayMs);
     },
@@ -556,7 +593,6 @@ export default function Sidebar({
       clearHoverExpandTimer();
       handleDragEndNode();
 
-      // @ts-expect-error TS(2339): Property 'length' does not exist on type 'never'.
       if (!over || !items?.length) {
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
@@ -617,7 +653,6 @@ export default function Sidebar({
     if (!el) return;
     const onWheel = (e: any) => {
       if (!isDraggingRef.current) return;
-      // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
       const rect = el.getBoundingClientRect();
       const isOver =
         e.clientX >= rect.left &&
@@ -625,7 +660,6 @@ export default function Sidebar({
         e.clientY >= rect.top &&
         e.clientY <= rect.bottom;
       if (isOver) {
-        // @ts-expect-error TS(2339): Property 'scrollTop' does not exist on type 'never... Remove this comment to see the full error message
         el.scrollTop += e.deltaY;
         e.preventDefault();
       }
@@ -661,11 +695,9 @@ export default function Sidebar({
     const hasDragData =
       e.dataTransfer?.types?.includes?.('Files') && e.dataTransfer?.items?.length > 0;
     if (!el || !hasDragData) return;
-    // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
     const rect = el.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const threshold = EDGE_THRESHOLD;
-    // @ts-expect-error TS(2339): Property 'scrollHeight' does not exist on type 'ne... Remove this comment to see the full error message
     const maxScroll = el.scrollHeight - el.clientHeight;
     if (maxScroll <= 0) return;
 
@@ -678,10 +710,8 @@ export default function Sidebar({
 
     if (y < threshold) {
       if (!autoScrollIntervalRef.current) {
-        // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
         autoScrollIntervalRef.current = setInterval(() => {
           if (el) {
-            // @ts-expect-error TS(2339): Property 'scrollTop' does not exist on type 'never... Remove this comment to see the full error message
             el.scrollTop = Math.max(0, el.scrollTop - AUTO_SCROLL_SPEED);
           } else {
             stopAutoScroll();
@@ -690,10 +720,8 @@ export default function Sidebar({
       }
     } else if (y > rect.height - threshold) {
       if (!autoScrollIntervalRef.current) {
-        // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
         autoScrollIntervalRef.current = setInterval(() => {
           if (el) {
-            // @ts-expect-error TS(2339): Property 'scrollTop' does not exist on type 'never... Remove this comment to see the full error message
             el.scrollTop = Math.min(el.scrollHeight - el.clientHeight, el.scrollTop + AUTO_SCROLL_SPEED);
           } else {
             stopAutoScroll();
@@ -734,7 +762,6 @@ export default function Sidebar({
     }
   }, [localTree, webdavTree, onLoadLocalFolderChildren, onLoadWebdavFolderChildren]);
 
-  // @ts-expect-error TS(2322): Type '(storageType: any, path: any, isOpen: any) =... Remove this comment to see the full error message
   handleExpandedChangeRef.current = handleExpandedChange;
 
   useEffect(() => {
@@ -867,9 +894,7 @@ export default function Sidebar({
     webdavTree,
   );
 
-  // @ts-expect-error TS(2339): Property 'node' does not exist on type 'never'.
   const contextMenuNode = contextMenu?.node;
-  // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
   const contextMenuStorageType = contextMenu?.storageType;
   const getCreateTargetForStorage = useCallback(
     (storageType: any) => {
@@ -901,9 +926,7 @@ export default function Sidebar({
 
       if (lastFocusedLocalFolder !== null) {
         return {
-          // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
           parentPath: lastFocusedLocalFolder.path,
-          // @ts-expect-error TS(2339): Property 'handle' does not exist on type 'never'.
           parentDirHandle: lastFocusedLocalFolder.handle,
         };
       }
@@ -931,22 +954,24 @@ export default function Sidebar({
   const isWebdavMode = storageMode === 'webdav';
   const localVaultReady = isLocalVaultReady(localRootHandle, localVaultFsPath);
 
-  const activateTreeNode = useCallback((storageType: any, node: any) => {
-    // @ts-expect-error TS(2345): Argument of type '{ storageType: any; node: any; }... Remove this comment to see the full error message
+  const activateTreeNode = useCallback((storageType: VaultStorageType, node: VaultTreeNode) => {
     setLastActivatedNode({ storageType, node });
   }, []);
 
   const openTreeContextMenu = useCallback(
-    (storageType: any, node: any, event: any, extras = {}) => {
+    (
+      storageType: VaultStorageType,
+      node: VaultTreeNode,
+      event: { clientX?: number; clientY?: number } | null,
+      extras: { onCloseTab?: () => void } = {},
+    ) => {
       activateTreeNode(storageType, node);
       setContextMenu({
-        // @ts-expect-error TS(2345): Argument of type '{ x: any; y: any; node: any; sto... Remove this comment to see the full error message
         x: mobileTree ? null : event?.clientX ?? null,
         y: mobileTree ? null : event?.clientY ?? null,
         node,
         storageType,
         modal: mobileContextMenu,
-        // @ts-expect-error TS(2339): Property 'onCloseTab' does not exist on type '{}'.
         onCloseTab: typeof extras.onCloseTab === 'function' ? extras.onCloseTab : null,
       });
     },
@@ -1020,11 +1045,9 @@ export default function Sidebar({
           return;
         }
         if (!isRenameableTreeNode(node)) return;
-        // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
         if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
 
         e.preventDefault();
-        // @ts-expect-error TS(2345): Argument of type '{ storageType: never; node: neve... Remove this comment to see the full error message
         setRenameTarget({ storageType, node });
         return;
       }
@@ -1047,15 +1070,12 @@ export default function Sidebar({
 
         // Prefer last activated node if it is in the selection; else first selected;
         // else last activated node alone (folder click expands without selecting).
-        let storageType = null;
-        let node = null;
+        let storageType: VaultStorageType | null = null;
+        let node: VaultTreeNode | null = null;
         if (lastActivatedNode) {
-          // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
           const key = toTreeSelectKey(lastActivatedNode.storageType, lastActivatedNode.node.path);
           if (!selectedIds?.size || selectedIds.has(key)) {
-            // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
             storageType = lastActivatedNode.storageType;
-            // @ts-expect-error TS(2339): Property 'node' does not exist on type 'never'.
             node = lastActivatedNode.node;
           }
         }
@@ -1069,9 +1089,7 @@ export default function Sidebar({
           }
         }
         if (!node && lastActivatedNode) {
-          // @ts-expect-error TS(2339): Property 'storageType' does not exist on type 'nev... Remove this comment to see the full error message
           storageType = lastActivatedNode.storageType;
-          // @ts-expect-error TS(2339): Property 'node' does not exist on type 'never'.
           node = lastActivatedNode.node;
         }
         if (!node || !storageType) {
@@ -1081,13 +1099,10 @@ export default function Sidebar({
             node = findTreeNode('s3', lastFocusedS3FolderPath);
           } else if (
             isLocalMode &&
-            // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
             lastFocusedLocalFolder?.path != null &&
-            // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
             lastFocusedLocalFolder.path !== ''
           ) {
             storageType = 'local';
-            // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
             node = findTreeNode('local', lastFocusedLocalFolder.path);
           } else if (
             isWebdavMode &&
@@ -1136,15 +1151,12 @@ export default function Sidebar({
       data-sidebar-root
       className="w-full h-full min-h-0 bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter flex flex-col"
     >
-      {contextMenu && contextMenuNode && (
+      {contextMenu && contextMenuNode && contextMenuStorageType ? (
         <SidebarContextMenu
-          // @ts-expect-error TS(2339): Property 'x' does not exist on type 'never'.
           x={contextMenu.x}
-          // @ts-expect-error TS(2339): Property 'y' does not exist on type 'never'.
           y={contextMenu.y}
           node={contextMenuNode}
           storageType={contextMenuStorageType}
-          // @ts-expect-error TS(2339): Property 'modal' does not exist on type 'never'.
           mobileDialog={contextMenu.modal ?? mobileContextMenu}
           isTrashRoot={contextMenuNode.path === '.trash/'}
           deleteCount={
@@ -1160,7 +1172,6 @@ export default function Sidebar({
           }
           onClose={() => setContextMenu(null)}
           onCloseTab={
-            // @ts-expect-error TS(2339): Property 'onCloseTab' does not exist on type 'neve... Remove this comment to see the full error message
             typeof contextMenu.onCloseTab === 'function' ? contextMenu.onCloseTab : undefined
           }
           onCreateFile={
@@ -1174,7 +1185,6 @@ export default function Sidebar({
               : undefined
           }
           onDownload={onDownloadNode ? () => onDownloadNode(contextMenuStorageType, contextMenuNode) : undefined}
-          // @ts-expect-error TS(2345): Argument of type '{ storageType: any; node: any; }... Remove this comment to see the full error message
           onRename={() => setRenameTarget({ storageType: contextMenuStorageType, node: contextMenuNode })}
           onDelete={() => requestDeleteNode(contextMenuNode, contextMenuStorageType)}
           onEmptyTrash={
@@ -1197,7 +1207,7 @@ export default function Sidebar({
               : undefined
           }
         />
-      )}
+      ) : null}
       <div className="flex flex-col bg-gray-50 dark:bg-odp-surface shrink-0">
         <div className="p-4 flex flex-col gap-3">
           <div className="flex justify-between items-center gap-2" data-sidebar-header-row>
@@ -1233,9 +1243,7 @@ export default function Sidebar({
                         if (e.button !== 0 && e.button !== -1) return;
                         brandLongPressOpenedRef.current = false;
                         clearBrandLongPress();
-                        // @ts-expect-error TS(2322): Type '{ x: any; y: any; }' is not assignable to ty... Remove this comment to see the full error message
                         brandPressStartRef.current = { x: e.clientX, y: e.clientY };
-                        // @ts-expect-error TS(2322): Type 'Timeout' is not assignable to type 'null'.
                         brandLongPressTimerRef.current = setTimeout(() => {
                           brandLongPressTimerRef.current = null;
                           brandLongPressOpenedRef.current = true;
@@ -1247,9 +1255,7 @@ export default function Sidebar({
                         const start = brandPressStartRef.current;
                         if (!start || !brandLongPressTimerRef.current) return;
                         if (
-                          // @ts-expect-error TS(2339): Property 'x' does not exist on type 'never'.
                           Math.abs(e.clientX - start.x) > 10 ||
-                          // @ts-expect-error TS(2339): Property 'y' does not exist on type 'never'.
                           Math.abs(e.clientY - start.y) > 10
                         ) {
                           clearBrandLongPress();
@@ -1403,7 +1409,6 @@ export default function Sidebar({
         onDragOver={handleScrollAreaDragOver}
         onPointerDownCapture={() => {
           // Move focus into the tree so Delete/Backspace target selection, not the editor.
-          // @ts-expect-error TS(2339): Property 'focus' does not exist on type 'never'.
           scrollContainerRef.current?.focus({ preventScroll: true });
         }}
         onClick={(e: any) => {
@@ -1547,10 +1552,8 @@ export default function Sidebar({
                 isFocused={
                   !chatWithMyselfActive && lastFocusedS3FolderPath === ''
                 }
-                // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                 onFocusRoot={() => setLastFocusedS3FolderPath('')}
                 onContextMenu={(e: any, rootNode: any) => {
-                  // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                   setLastFocusedS3FolderPath('');
                   openTreeContextMenu('s3', rootNode, e);
                 }}
@@ -1700,17 +1703,13 @@ export default function Sidebar({
               isFocused={
                 !chatWithMyselfActive &&
                 lastFocusedLocalFolder !== null &&
-                // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
                 lastFocusedLocalFolder.path === '' &&
-                // @ts-expect-error TS(2339): Property 'handle' does not exist on type 'never'.
                 lastFocusedLocalFolder.handle === localRootHandle
               }
               onFocusRoot={() =>
-                // @ts-expect-error TS(2345): Argument of type '{ path: string; handle: any; }' ... Remove this comment to see the full error message
                 setLastFocusedLocalFolder({ path: '', handle: localRootHandle })
               }
               onContextMenu={(e: any, rootNode: any) => {
-                // @ts-expect-error TS(2345): Argument of type '{ path: string; handle: any; }' ... Remove this comment to see the full error message
                 setLastFocusedLocalFolder({ path: '', handle: localRootHandle });
                 openTreeContextMenu('local', rootNode, e);
               }}
@@ -1748,14 +1747,12 @@ export default function Sidebar({
                   expandedPaths={effectiveExpandedLocal}
                   onExpandedChange={handleExpandedChange}
                   onFolderFocus={(node: any) => setLastFocusedLocalFolder(
-                    // @ts-expect-error TS(2345): Argument of type '{ path: any; handle: any; } | nu... Remove this comment to see the full error message
                     node ? { path: node.path || '', handle: node.handle } : null,
                   )
                   }
                   focusedFolderPath={
                     chatWithMyselfActive
                       ? undefined
-                      // @ts-expect-error TS(2339): Property 'path' does not exist on type 'never'.
                       : (lastFocusedLocalFolder?.path ?? undefined)
                   }
                   onDropOnFolder={onDropOnFolder}
@@ -1865,10 +1862,8 @@ export default function Sidebar({
                 isFocused={
                   !chatWithMyselfActive && lastFocusedWebdavFolderPath === ''
                 }
-                // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                 onFocusRoot={() => setLastFocusedWebdavFolderPath('')}
                 onContextMenu={(e: any, rootNode: any) => {
-                  // @ts-expect-error TS(2345): Argument of type '""' is not assignable to paramet... Remove this comment to see the full error message
                   setLastFocusedWebdavFolderPath('');
                   openTreeContextMenu('webdav', rootNode, e);
                 }}
@@ -1938,7 +1933,6 @@ export default function Sidebar({
             document.body,
           )
         : null}
-      // @ts-expect-error TS(2339): Property 'length' does not exist on type 'never'.
       {chatWithMyselfActive && activeDragItems?.length ? (
         <ChatTreeAttachDroppable
           host={chatAttachDropHost}

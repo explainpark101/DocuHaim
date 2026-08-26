@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import TocResizeHandle from '@/components/print/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
@@ -82,8 +82,11 @@ function computeSidebarBounds(panelEl: any) {
   return { min, max, collapseBelow };
 }
 
-// @ts-expect-error TS(2769): No overload matches this call.
-const SidebarContentSlot = memo(function SidebarContentSlot({ children }) {
+const SidebarContentSlot = memo(function SidebarContentSlot({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{children}</div>;
 });
 
@@ -112,8 +115,8 @@ export default function ResizableSidebarPanel({
   children,
   mobileHeader = null
 }: any) {
-  const panelRef = useRef(null);
-  const liveWidthRef = useRef(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const liveWidthRef = useRef<number | null>(null);
   const collapsedRef = useRef(collapsed);
   const [snapCollapse, setSnapCollapse] = useState(false);
   const [bounds, setBounds] = useState(() => ({
@@ -135,7 +138,7 @@ export default function ResizableSidebarPanel({
     refreshBounds();
     window.addEventListener('resize', refreshBounds);
     const panel = panelRef.current;
-    const observers: any = [];
+    const observers: Array<() => void> = [];
 
     if (panel && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
@@ -155,7 +158,6 @@ export default function ResizableSidebarPanel({
 
     return () => {
       window.removeEventListener('resize', refreshBounds);
-      // @ts-expect-error TS(7006): Parameter 'dispose' implicitly has an 'any' type.
       observers.forEach((dispose) => dispose());
     };
   }, [refreshBounds]);
@@ -165,7 +167,6 @@ export default function ResizableSidebarPanel({
       liveWidthRef.current = nextWidth;
       const el = panelRef.current;
       if (!el || isMobile || collapsed || snapCollapse) return;
-      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'never'.
       el.style.width = `${nextWidth}px`;
     },
     [collapsed, isMobile, snapCollapse],
@@ -175,7 +176,6 @@ export default function ResizableSidebarPanel({
     setSnapCollapse(true);
     const el = panelRef.current;
     if (el && !isMobile) {
-      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'never'.
       el.style.width = '0px';
     }
     onRequestCollapse?.();

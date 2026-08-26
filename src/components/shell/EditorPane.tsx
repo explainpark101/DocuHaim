@@ -30,12 +30,14 @@ import {
   convertAllMarkdownImagesToWiki,
   countStandardMarkdownImages,
   hasStandardMarkdownImages,
+  type ConvertMarkdownImagesToWikiResult,
 } from '@/utils/convertMarkdownImagesToWiki';
 import { copyCurrentPageAsFormattedHtml } from '@/utils/copyFormattedPageHtml';
 import {
   collectImgbbCopyCandidates,
   ensureMermaidSvgMarkup,
   findMermaidHostByReplaceKey,
+  type ImgbbCopyCandidate,
 } from '@/utils/imgbbCopyCandidates';
 import { uploadImageToImgbb } from '@/utils/imgbbUpload';
 import {
@@ -124,23 +126,25 @@ export default function EditorPane({
 }: any) {
   const effectiveEditorType = editorType ?? loadEditorType();
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
-  const pdfIframeRef = useRef(null);
+  const pdfIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [recordingViewMode, setRecordingViewMode] = useState(false);
   const [showRecordingToolbar, setShowRecordingToolbar] = useState(false);
-  const recordingAudioRef = useRef(null);
+  const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
   const [fileManagementOpen, setFileManagementOpen] = useState(false);
-  const fileManagementRef = useRef(null);
+  const fileManagementRef = useRef<HTMLDivElement | null>(null);
   const [novelTocVisible, setNovelTocVisible] = useState(true);
-  const editorTopChromeRef = useRef(null);
-  const novelFlushBeforeSaveRef = useRef(null);
-  const convertAllImagesToWikiRef = useRef(null);
+  const editorTopChromeRef = useRef<HTMLDivElement | null>(null);
+  const novelFlushBeforeSaveRef = useRef<(() => void) | null>(null);
+  const convertAllImagesToWikiRef = useRef<
+    (() => Promise<ConvertMarkdownImagesToWikiResult>) | null
+  >(null);
   const [convertAllImagesConfirmOpen, setConvertAllImagesConfirmOpen] = useState(false);
   const [convertingAllImages, setConvertingAllImages] = useState(false);
   const [copyingFormattedHtml, setCopyingFormattedHtml] = useState(false);
   const [imgbbCopyConfirmOpen, setImgbbCopyConfirmOpen] = useState(false);
-  const [imgbbCopyCandidates, setImgbbCopyCandidates] = useState<any[]>([]);
+  const [imgbbCopyCandidates, setImgbbCopyCandidates] = useState<ImgbbCopyCandidate[]>([]);
   const [imgbbCopyUploading, setImgbbCopyUploading] = useState(false);
-  const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
+  const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState<number | null>(null);
   const [documentSettingsOpen, setDocumentSettingsOpen] = useState(false);
   const { showAlert } = useAlertModal();
 
@@ -150,19 +154,16 @@ export default function EditorPane({
   }, [editorContent]);
 
   const handleToolbarSave = useCallback(() => {
-    // @ts-expect-error TS(2349): This expression is not callable.
     novelFlushBeforeSaveRef.current?.();
     onSave?.();
   }, [onSave]);
 
   const handleToolbarRefreshFromDisk = useCallback(() => {
-    // @ts-expect-error TS(2349): This expression is not callable.
     novelFlushBeforeSaveRef.current?.();
     onRefreshFromDisk?.();
   }, [onRefreshFromDisk]);
 
   const handlePullFromRemote = useCallback(() => {
-    // @ts-expect-error TS(2349): This expression is not callable.
     novelFlushBeforeSaveRef.current?.();
     onPullFromRemote?.();
   }, [onPullFromRemote]);
@@ -174,14 +175,13 @@ export default function EditorPane({
     setFileManagementOpen(false);
   }, [editorContent, onChangeEditor]);
 
-  const finishCopyFormattedHtml = useCallback(async (imageSrcReplacements = null) => {
+  const finishCopyFormattedHtml = useCallback(async (imageSrcReplacements: Map<string, string> | null = null) => {
     await copyCurrentPageAsFormattedHtml(document, {
       imageSrcReplacements: imageSrcReplacements || undefined,
     });
     setFileManagementOpen(false);
     showAlert({
       title: '서식 유지 복사',
-      // @ts-expect-error TS(2339): Property 'size' does not exist on type 'never'.
       message: imageSrcReplacements?.size
         ? 'ImgBB 업로드 후 원본에 원격 링크를 저장하고, 페이지를 HTML 서식으로 복사했습니다.'
         : '현재 페이지를 HTML 서식과 이미지 포함 형태로 복사했습니다.',
@@ -192,7 +192,6 @@ export default function EditorPane({
     if (copyingFormattedHtml || imgbbCopyUploading) return;
     setCopyingFormattedHtml(true);
     try {
-      // @ts-expect-error TS(2349): This expression is not callable.
       novelFlushBeforeSaveRef.current?.();
       const candidates = collectImgbbCopyCandidates();
       if (candidates.length > 0) {
@@ -239,7 +238,7 @@ export default function EditorPane({
           continue;
         }
 
-        let uploadImage = candidate.fetchSrc;
+        let uploadImage: string | Blob | File = candidate.fetchSrc;
         if (candidate.kind === 'mermaid') {
           const host = findMermaidHostByReplaceKey(document, candidate.replaceKey);
           if (!host) {
@@ -250,14 +249,12 @@ export default function EditorPane({
           uploadImage = pngFile;
         }
 
-        // @ts-expect-error TS(2379): Argument of type '{ apiKey: string; image: any; na... Remove this comment to see the full error message
         const uploaded = await uploadImageToImgbb({
           apiKey,
           image: uploadImage,
-          name:
-            candidate.kind === 'base64' || candidate.kind === 'mermaid'
-              ? 'image'
-              : undefined,
+          ...(candidate.kind === 'base64' || candidate.kind === 'mermaid'
+            ? { name: 'image' as const }
+            : {}),
         });
         replacements.set(candidate.replaceKey, uploaded.url);
         sidecarItems.push({
@@ -277,7 +274,6 @@ export default function EditorPane({
 
       setImgbbCopyConfirmOpen(false);
       setImgbbCopyCandidates([]);
-      // @ts-expect-error TS(2345): Argument of type 'Map<any, any>' is not assignable... Remove this comment to see the full error message
       await finishCopyFormattedHtml(replacements);
     } catch (err) {
       const message =
@@ -333,10 +329,8 @@ export default function EditorPane({
     try {
       let result;
       if (typeof convertAllImagesToWikiRef.current === 'function') {
-        // @ts-expect-error TS(2349): This expression is not callable.
         result = await convertAllImagesToWikiRef.current();
       } else {
-        // @ts-expect-error TS(2349): This expression is not callable.
         novelFlushBeforeSaveRef.current?.();
         if (typeof onUploadImage !== 'function') {
           throw new Error('이미지 업로드를 사용할 수 없습니다.');
@@ -393,7 +387,6 @@ export default function EditorPane({
     const update = () => {
       const node = editorTopChromeRef.current;
       if (!node) return;
-      // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
       const r = node.getBoundingClientRect();
       setMobileTocOverlayTopPx(r.bottom);
     };
@@ -420,9 +413,13 @@ export default function EditorPane({
 
   useEffect(() => {
     if (!fileManagementOpen) return;
-    const handleClickOutside = (e: any) => {
-      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
-      if (fileManagementRef.current && !fileManagementRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target;
+      if (
+        fileManagementRef.current &&
+        target instanceof Node &&
+        !fileManagementRef.current.contains(target)
+      ) {
         setFileManagementOpen(false);
       }
     };
@@ -610,9 +607,7 @@ export default function EditorPane({
 
   const handlePdfRefresh = () => {
     try {
-      // @ts-expect-error TS(2339): Property 'contentWindow' does not exist on type 'n... Remove this comment to see the full error message
       if (pdfIframeRef.current?.contentWindow) {
-        // @ts-expect-error TS(2339): Property 'contentWindow' does not exist on type 'n... Remove this comment to see the full error message
         pdfIframeRef.current.contentWindow.location.reload();
       }
     } catch {
@@ -923,8 +918,7 @@ export default function EditorPane({
             value={selectedRecordingKey ?? ''}
             onChange={(e: any) => onSelectRecording?.(e.target.value || null)}
           >
-            // @ts-expect-error TS(7006): Parameter 'r' implicitly has an 'any' type.
-            {recordingsList.map((r: any) => (
+            {recordingsList.map((r: { key: string }) => (
               <option key={r.key} value={r.key}>
                 {formatRecordingLabel(r)}
               </option>
@@ -1218,7 +1212,6 @@ export default function EditorPane({
                 className="flex flex-col gap-1 rounded-md border border-gray-100 bg-gray-50 p-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
               >
                 <div className="flex h-20 items-center justify-center overflow-hidden rounded bg-white dark:bg-odp-surface">
-                  // @ts-expect-error TS(2339): Property 'previewSrc' does not exist on type 'neve... Remove this comment to see the full error message
                   {item.previewSrc ? (
                     <img
                       src={item.previewSrc}
@@ -1230,7 +1223,6 @@ export default function EditorPane({
                   )}
                 </div>
                 <p className="truncate text-[10px] text-gray-600 dark:text-odp-muted" title={item.label}>
-                  // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
                   {item.kind} · {item.label}
                 </p>
               </li>

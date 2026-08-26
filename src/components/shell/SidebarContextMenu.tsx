@@ -1,11 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
-import {
-  // @ts-expect-error TS(6133): 'MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS' is declare... Remove this comment to see the full error message
-  MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
-  MOBILE_CONTEXT_MENU_ITEM_CLASS,
-} from '@/components/shared/contextMenu/mobileContextMenuStyles';
+import { MOBILE_CONTEXT_MENU_ITEM_CLASS } from '@/components/shared/contextMenu/mobileContextMenuStyles';
+import type { VaultTreeNode } from '@/utils/vault/vaultTreeTypes';
 import {
   IconFilePlus,
   IconFolderPlus,
@@ -18,8 +15,7 @@ import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucid
 
 const VIEWPORT_PADDING = 8;
 
-// @ts-expect-error TS(6133): 'storageType' is declared but its value is never r... Remove this comment to see the full error message
-function formatTreeNodePath(node: any, storageType: any) {
+function formatTreeNodePath(node: VaultTreeNode | null | undefined) {
   if (!node) return '';
   if (node.path === '.trash/') return '.trash/';
   if (!node.path) return '/';
@@ -230,12 +226,12 @@ export default function SidebarContextMenu({
   onShareToChatWithMyself,
   deleteCount = 1
 }: any) {
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState({ left: x, top: y });
 
   const isOpen = Boolean(node);
   const displayName = isTrashRoot ? '쓰레기통' : node?.name;
-  const pathLabel = formatTreeNodePath(node, storageType);
+  const pathLabel = formatTreeNodePath(node);
 
   const itemClass = mobileDialog
     ? MOBILE_CONTEXT_MENU_ITEM_CLASS
@@ -265,9 +261,13 @@ export default function SidebarContextMenu({
 
   useEffect(() => {
     if (!isOpen || mobileDialog) return undefined;
-    const handleClickOutside = (e: any) => {
-      // @ts-expect-error TS(2339): Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target;
+      if (
+        menuRef.current &&
+        target instanceof Node &&
+        !menuRef.current.contains(target)
+      ) {
         onClose();
       }
     };
@@ -287,7 +287,6 @@ export default function SidebarContextMenu({
     const el = menuRef.current;
     if (!el) return;
 
-    // @ts-expect-error TS(2339): Property 'getBoundingClientRect' does not exist on... Remove this comment to see the full error message
     const { width, height } = el.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
