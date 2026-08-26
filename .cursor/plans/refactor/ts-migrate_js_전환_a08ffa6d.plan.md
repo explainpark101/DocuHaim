@@ -4,47 +4,80 @@ overview: "`src/` 잔존 JS/JSX(~232파일)를 `ts-migrate`로 `.ts`/`.tsx` 전�
 todos:
   - id: setup-ts-migrate
     content: ts-migrate devDependency 추가, migrate 헬퍼 스크립트·tsconfig.migrate.json 준비
-    status: pending
+    status: completed
   - id: phase0-stubs
     content: 56개 re-export 스텁 import 경로 canonical화 후 삭제, check 통과
-    status: pending
+    status: completed
   - id: wave1-utils
     content: "웨이브 1: src/utils/**/*.js rename+migrate, typecheck/check"
-    status: pending
+    status: completed
   - id: wave2-hooks-ext
     content: "웨이브 2: hooks/extensions/config rename+migrate"
-    status: pending
+    status: completed
   - id: wave3-modals
     content: "웨이브 3: shared/modals canonical 컴포넌트 rename+migrate"
-    status: pending
+    status: completed
   - id: wave4-shell
     content: "웨이브 4: shell/workspace 컴포넌트 rename+migrate"
-    status: pending
+    status: completed
   - id: wave5-editors
     content: "웨이브 5: editor/print/recording/llm 컴포넌트 rename+migrate"
-    status: pending
+    status: completed
   - id: wave6-chat
     content: "웨이브 6: chatWithMyself 전체 rename+migrate (대형 파일)"
-    status: pending
+    status: completed
   - id: wave7-pages
     content: "웨이브 7: pages 및 잔여 components rename+migrate"
-    status: pending
+    status: completed
   - id: phase9-nocheck-hooks
     content: "Phase 9a: App/hooks 15개 domain hook @ts-nocheck 제거 — context/value 타입 정의 후 tsc 통과"
-    status: pending
+    status: completed
   - id: phase9-nocheck-components
     content: "Phase 9b: App/components 3개 @ts-nocheck 제거 — Sidebar(.tsx) 타입화 후 AppLayout/AppModals/SidebarConnected"
-    status: pending
+    status: completed
   - id: phase9-nocheck-gate
     content: "grep @ts-nocheck src 0건 확인, eslint @ts-nocheck 금지 규칙 추가"
+    status: in_progress
+  - id: fix-typecheck-87
+    content: "잔여 87건 tsc 오류 수정 (useState never[], motion Transition, CoverPlaceMode 등)"
     status: pending
   - id: phase8-cleanup
-    content: eslint/js 블록 정리, typescript-migration 규칙 업데이트, JS 잔존 0 확인
+    content: eslint/js 블록 정리, typescript-migration 규칙 업데이트, bun run check 통과
     status: pending
 isProject: false
 ---
 
 # ts-migrate로 잔존 JS/JSX 전량 TypeScript 전환 계획
+
+## 진행 현황 (2026-08-26)
+
+| 항목 | 상태 |
+|------|------|
+| `src/` JS/JSX | **0** (610 TS/TSX) |
+| `@ts-nocheck` in `src/` | **0** |
+| `ts-migrate` + `tsconfig.migrate.json` | 완료 |
+| `bun run typecheck` | **87 errors** (33 files) — **차단 요인** |
+| `bun run check` | typecheck 실패로 미통과 |
+
+**잔여 87건 오류 패턴 (수동 수정 대상, `ts-migrate reignore` 재실행 금지)**
+
+- `useState([])` / `useState(null)` → `never[]` / `null` (`ChatWithMyselfPane`, `ChatComposer`, `ExportPDFPage` 등)
+- `motion` `Transition` + `exactOptionalPropertyTypes` (chat 컴포넌트 다수)
+- `forwardRef` props 미타입 (`ChatMessageList`, `ChatComposer`)
+- `CoverPlaceMode`, `RebuildCheckpointInfo` state 타입 (`ExportPDFPage`, `SettingsPage`)
+- CSS custom properties on `style` (`ExportPDFPage`)
+
+**권장 다음 작업 (Agent 모드)**
+
+1. [`src/utils/chatWithMyself/messageTypes.ts`](src/utils/chatWithMyself/messageTypes.ts) 추가 — `ChatMessage`, `ChatGroup`, `ComposerImageQueueItem`, `ChecklistTask`
+2. `OGData`에 `embedHtml?` 추가 ([`og.ts`](src/utils/chatWithMyself/og.ts))
+3. 위 33파일 `useState`/`useRef` 제네릭 보강 + motion `as Transition`
+4. eslint `@typescript-eslint/ban-ts-comment` (`@ts-nocheck` error)
+5. `bun run check` 통과 확인
+
+**주의:** `ts-migrate reignore`를 대량 재실행하면 JSX 내부에 `// @ts-expect-error` 텍스트 노드가 섞이고 unused directive가 폭증함. 오류는 **타입 보강** 또는 **해당 줄만** `@ts-expect-error`로 처리.
+
+---
 
 **도구 확정:** npm에 `@tscity/cli`는 없음 → **Airbnb [`ts-migrate`](https://github.com/airbnb/ts-migrate)** 사용 (사용자 확인).
 
