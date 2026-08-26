@@ -166,10 +166,8 @@ function LucideIconGrid({
 
 function PickerBody({
   onSelect,
-  autoFocusSearch,
 }: {
   onSelect: (reaction: ChatReaction) => void;
-  autoFocusSearch?: boolean;
 }) {
   const [tab, setTab] = useState<TabId>('emoji');
   const [lucideQuery, setLucideQuery] = useState('');
@@ -231,7 +229,7 @@ function PickerBody({
             emojiSize={22}
             emojiButtonSize={34}
             maxFrequentRows={2}
-            autoFocus={Boolean(autoFocusSearch)}
+            autoFocus={false}
             onEmojiSelect={(emoji) => {
               const native = String(emoji?.native || '').trim();
               if (!native) return;
@@ -257,7 +255,6 @@ function PickerBody({
               onChange={(e) => setLucideQuery(e.target.value)}
               placeholder="아이콘 이름 검색 (예: heart, star)"
               className={`${chatFieldInputClass} pl-7`}
-              autoFocus={autoFocusSearch && tab === 'lucide'}
             />
           </label>
         </div>
@@ -326,7 +323,7 @@ export default function ChatReactionPicker({
             onEscapeKeyDown={() => onOpenChange(false)}
           >
             <Dialog.Title className="sr-only">{title}</Dialog.Title>
-            <PickerBody onSelect={handleSelect} autoFocusSearch />
+            <PickerBody onSelect={handleSelect} />
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
@@ -350,7 +347,7 @@ export default function ChatReactionPicker({
           onInteractOutside={() => onOpenChange(false)}
           onEscapeKeyDown={() => onOpenChange(false)}
         >
-          <PickerBody onSelect={handleSelect} autoFocusSearch />
+          <PickerBody onSelect={handleSelect} />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

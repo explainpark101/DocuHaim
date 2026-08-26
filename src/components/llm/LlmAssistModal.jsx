@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { GripHorizontal, Sparkles, X, EyeOff, SquareArrowOutUpRight } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GripHorizontal, PanelRight, Sparkles, X, EyeOff, SquareArrowOutUpRight, PanelTop } from 'lucide-react';
 import {
   createEmptyLlmPromptTemplate,
   deleteLlmPromptTemplate,
@@ -24,33 +24,88 @@ import {
   saveLastUsedModelForProfile,
 } from '@/utils/llmProviderProfiles';
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import { LLM_ASSIST_MSG } from '@/utils/llmAssistBridge';
 import {
-  getLlmAssistPopoutUrl,
-  isLlmAssistMessage,
-  LLM_ASSIST_MSG,
-  LLM_ASSIST_POPOUT_FEATURES,
-  LLM_ASSIST_POPOUT_NAME,
-  postLlmAssistMessage,
-} from '@/utils/llmAssistBridge';
+  closeLlmAssistPopoutWindow,
+  focusLlmAssistPopoutWindow,
+  isLlmAssistPopoutWindowOpen,
+  notifyLlmAssistPopoutParentClosing,
+  openLlmAssistPopoutWindow,
+  subscribeLlmAssistPopoutFromChild,
+  syncLlmAssistPopoutWindow,
+} from '@/utils/llm/llmAssistPopoutHost';
 import LlmAssistPanel from '@/components/LlmAssistPanel';
-import { LLM_ASSIST_MAX_IMAGES, normalizeImageAttachment } from '@/utils/llmAssistImages';
+import LlmAssistDockShell from '@/components/llm/LlmAssistDockShell';
+import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
+import { AnimatePresence, motion as Motion } from 'motion/react';
+import { normalizeImageAttachment, readImageFilesAsAttachments } from '@/utils/llmAssistImages';
+import { copyText } from '@/utils/copyText';
+import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import {
+  LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
+  normalizeRequestOptions,
+} from '@/utils/llm/llmAssistRequestOptions';
+import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
+import {
+  createLlmAssistAbortError,
+  isLlmAssistAbortError,
+} from '@/utils/llm/llmAssistAbort';
 
+const FLOAT_EASE = [0.4, 0, 0.2, 1];
+const FLOAT_TRANSITION = { duration: 0.28, ease: FLOAT_EASE };
+
+/**
+ * Global LLM Assist host: floating modal or right dock.
+ * Prefer mounting once under AppLayout with LlmAssistSessionProvider.
+ *
+ * @param {{
+ *   editorRef?: import('react').RefObject<unknown> | null;
+ *   onChange?: (markdown: string) => void;
+ *   getMarkdown?: () => string;
+ *   llmProviderProfiles?: unknown[];
+ *   open?: boolean;
+ *   onOpenChange?: (open: boolean) => void;
+ *   theme?: string;
+ * }} props
+ */
 export default function LlmAssistModal({
-  editorRef,
-  onChange,
-  getMarkdown,
-  llmProviderProfiles = [],
-  open,
-  onOpenChange,
+  editorRef: editorRefProp = null,
+  onChange: onChangeProp,
+  getMarkdown: getMarkdownProp,
+  llmProviderProfiles,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
   theme = 'light',
 }) {
-  const profiles = Array.isArray(llmProviderProfiles) ? llmProviderProfiles : [];
+  const session = useLlmAssistSessionOptional();
+  const open = session ? session.open : Boolean(openProp);
+  const onOpenChange = session ? session.setOpen : onOpenChangeProp;
+  const presentation = session?.presentation ?? 'floating';
+  const dockToRight = session?.dockToRight;
+  const undockToFloating = session?.undockToFloating;
+  const canInsertIntoDocument = session
+    ? session.canInsertIntoDocument
+    : Boolean(editorRefProp);
+
+  const editorRef = session?.editorBridge?.editorRef ?? editorRefProp;
+  const onChange = session?.editorBridge?.onChange ?? onChangeProp;
+  const getMarkdown = session?.editorBridge?.getMarkdown ?? getMarkdownProp;
+
+  const profiles = useMemo(
+    () => (Array.isArray(llmProviderProfiles) ? llmProviderProfiles : []),
+    [llmProviderProfiles],
+  );
   const [hidden, setHidden] = useState(() => loadLlmModalHidden());
   const [popoutActive, setPopoutActive] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
   const [attachedImages, setAttachedImages] = useState([]);
   const [instruction, setInstruction] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState(() => getDefaultLlmAssistSystemPrompt());
+  const [requestOptions, setRequestOptions] = useState(() => ({
+    ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
+  }));
   const [result, setResult] = useState('');
   const [resultViewMode, setResultViewMode] = useState('text');
   const [loading, setLoading] = useState(false);
@@ -68,14 +123,19 @@ export default function LlmAssistModal({
   );
 
   const popoutRef = useRef(null);
+  const popoutUsesTauriRef = useRef(false);
+  const runAbortRef = useRef(null);
   const {
     panelRef,
     panelStyle,
     startPositionDrag,
     startPositionTouchDrag,
     startCornerResize,
+    startEdgeResize,
     refreshBounds,
-  } = useLlmAssistModalLayout(editorRef, { enabled: open });
+  } = useLlmAssistModalLayout(editorRef, {
+    enabled: open && presentation === 'floating',
+  });
 
   const buildSyncPayload = useCallback(
     () => ({
@@ -83,6 +143,8 @@ export default function LlmAssistModal({
       selectionRange,
       attachedImages,
       instruction,
+      systemPrompt,
+      requestOptions,
       result,
       resultViewMode,
       loading,
@@ -106,6 +168,8 @@ export default function LlmAssistModal({
       selectionRange,
       attachedImages,
       instruction,
+      systemPrompt,
+      requestOptions,
       result,
       resultViewMode,
       loading,
@@ -122,25 +186,30 @@ export default function LlmAssistModal({
   );
 
   const syncToPopout = useCallback(() => {
+    if (popoutUsesTauriRef.current) {
+      syncLlmAssistPopoutWindow(null, buildSyncPayload());
+      return;
+    }
     const win = popoutRef.current;
     if (!win || win.closed) return;
-    postLlmAssistMessage(win, LLM_ASSIST_MSG.SYNC, { state: buildSyncPayload() });
+    syncLlmAssistPopoutWindow(win, buildSyncPayload());
   }, [buildSyncPayload]);
 
   const closePopout = useCallback(() => {
-    const win = popoutRef.current;
-    if (win && !win.closed) {
-      try {
-        win.close();
-      } catch {
-        // ignore
-      }
-    }
+    const win = popoutUsesTauriRef.current ? null : popoutRef.current;
     popoutRef.current = null;
-    setPopoutActive(false);
+    popoutUsesTauriRef.current = false;
+    void closeLlmAssistPopoutWindow(win).finally(() => {
+      setPopoutActive(false);
+    });
   }, []);
 
   const refreshSelection = useCallback(() => {
+    if (!editorRef) {
+      setSelectedText('');
+      setSelectionRange({ from: 0, to: 0 });
+      return '';
+    }
     const { text, from, to } = getEditorSelectionFromRef(editorRef);
     setSelectedText(text);
     setSelectionRange({ from, to });
@@ -154,7 +223,7 @@ export default function LlmAssistModal({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || presentation === 'docked') return;
     setHidden(false);
     saveLlmModalHidden(false);
     refreshBounds();
@@ -162,7 +231,15 @@ export default function LlmAssistModal({
     refreshSelection();
     loadTemplates();
     setError('');
-  }, [open, refreshBounds, refreshSelection, loadTemplates, syncProfileId]);
+  }, [open, presentation, refreshBounds, refreshSelection, loadTemplates, syncProfileId]);
+
+  useEffect(() => {
+    if (!open || presentation !== 'docked') return;
+    syncProfileId();
+    refreshSelection();
+    loadTemplates();
+    setError('');
+  }, [open, presentation, refreshSelection, loadTemplates, syncProfileId]);
 
   useEffect(() => {
     if (!selectedProfile?.id || !selectedProfile?.kind) {
@@ -185,11 +262,17 @@ export default function LlmAssistModal({
   }, [loadTemplates]);
 
   useEffect(() => {
-    if (!open || hidden || popoutActive) return undefined;
+    if (!open || hidden || popoutActive || presentation === 'docked') return undefined;
     const onSelectionChange = () => refreshSelection();
     const interval = setInterval(onSelectionChange, 600);
     return () => clearInterval(interval);
-  }, [open, hidden, popoutActive, refreshSelection]);
+  }, [open, hidden, popoutActive, presentation, refreshSelection]);
+
+  useEffect(() => {
+    if (!open || presentation !== 'docked') return undefined;
+    const interval = setInterval(() => refreshSelection(), 800);
+    return () => clearInterval(interval);
+  }, [open, presentation, refreshSelection]);
 
   useEffect(() => {
     syncToPopout();
@@ -198,11 +281,15 @@ export default function LlmAssistModal({
   useEffect(() => {
     if (!popoutActive) return undefined;
     const interval = setInterval(() => {
-      const win = popoutRef.current;
-      if (!win || win.closed) {
-        popoutRef.current = null;
-        setPopoutActive(false);
-      }
+      void isLlmAssistPopoutWindowOpen(
+        popoutUsesTauriRef.current ? null : popoutRef.current,
+      ).then((open) => {
+        if (!open) {
+          popoutRef.current = null;
+          popoutUsesTauriRef.current = false;
+          setPopoutActive(false);
+        }
+      });
     }, 400);
     return () => clearInterval(interval);
   }, [popoutActive]);
@@ -214,15 +301,9 @@ export default function LlmAssistModal({
     }
 
     const onBeforeUnload = () => {
-      const win = popoutRef.current;
-      if (win && !win.closed) {
-        postLlmAssistMessage(win, LLM_ASSIST_MSG.PARENT_CLOSING);
-        try {
-          win.close();
-        } catch {
-          // ignore
-        }
-      }
+      notifyLlmAssistPopoutParentClosing(
+        popoutUsesTauriRef.current ? null : popoutRef.current,
+      );
     };
 
     window.addEventListener('beforeunload', onBeforeUnload);
@@ -241,8 +322,22 @@ export default function LlmAssistModal({
     [selectedProfile],
   );
 
+  const handleCancelGeneration = useCallback(() => {
+    const controller = runAbortRef.current;
+    if (!controller || controller.signal.aborted) return;
+    controller.abort(createLlmAssistAbortError());
+  }, []);
+
   const handleRun = useCallback(async () => {
+    if (runAbortRef.current) {
+      runAbortRef.current.abort(createLlmAssistAbortError());
+      runAbortRef.current = null;
+    }
+    const controller = new AbortController();
+    runAbortRef.current = controller;
+
     setError('');
+    setResult('');
     setLoading(true);
     try {
       const text = refreshSelection();
@@ -266,8 +361,12 @@ export default function LlmAssistModal({
               apiKey,
               model,
               instruction,
+              systemPrompt,
               selectedText: text,
               images: attachedImages,
+              requestOptions,
+              onChunk: setResult,
+              signal: controller.signal,
             }),
           {
             allowEmpty: true,
@@ -293,8 +392,12 @@ export default function LlmAssistModal({
             apiKey,
             model,
             instruction,
+            systemPrompt,
             selectedText: text,
             images: attachedImages,
+            requestOptions,
+            onChunk: setResult,
+            signal: controller.signal,
           }),
         {
           missingKeyMessage:
@@ -303,19 +406,27 @@ export default function LlmAssistModal({
       );
       setResult(output);
     } catch (err) {
+      if (isLlmAssistAbortError(err)) {
+        setError('생성이 취소되었습니다.');
+        return;
+      }
       setError(err?.message || 'LLM 요청에 실패했습니다.');
     } finally {
+      if (runAbortRef.current === controller) {
+        runAbortRef.current = null;
+      }
       setLoading(false);
     }
-  }, [refreshSelection, attachedImages, selectedProfile, model, instruction]);
+  }, [refreshSelection, attachedImages, selectedProfile, model, instruction, systemPrompt, requestOptions]);
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
-    const { from, to } = selectionRange;
+    if (!editorRef || !canInsertIntoDocument) {
+      setError('삽입할 문서 에디터가 열려 있지 않습니다.');
+      return;
+    }
     const ok = applyLlmResultToEditor({
       editorRef,
-      from,
-      to,
       result,
       onChange,
       getMarkdown,
@@ -325,7 +436,33 @@ export default function LlmAssistModal({
       return;
     }
     refreshSelection();
-  }, [result, editorRef, selectionRange, onChange, getMarkdown, refreshSelection]);
+  }, [result, editorRef, canInsertIntoDocument, onChange, getMarkdown, refreshSelection]);
+
+  const handleAppendResult = useCallback(() => {
+    if (!result) return;
+    if (!editorRef || !canInsertIntoDocument) {
+      setError('삽입할 문서 에디터가 열려 있지 않습니다.');
+      return;
+    }
+    const ok = applyLlmResultToEditor({
+      editorRef,
+      result,
+      onChange,
+      getMarkdown,
+      forceAppendAtEnd: true,
+    });
+    if (!ok) {
+      setError('에디터에 결과를 삽입할 수 없습니다.');
+      return;
+    }
+    refreshSelection();
+  }, [result, editorRef, canInsertIntoDocument, onChange, getMarkdown, refreshSelection]);
+
+  const handleCopyResult = useCallback(async () => {
+    if (!result) return;
+    const ok = await copyText(result, { message: '결과를 복사했습니다' });
+    if (!ok) setError('클립보드에 복사하지 못했습니다.');
+  }, [result]);
 
   const handleLoadTemplate = useCallback(
     (id) => {
@@ -333,6 +470,12 @@ export default function LlmAssistModal({
       const tpl = templates.find((t) => t.id === id);
       if (tpl) {
         setInstruction(tpl.instruction);
+        setSystemPrompt(
+          typeof tpl.systemPrompt === 'string' && tpl.systemPrompt.trim()
+            ? tpl.systemPrompt
+            : getDefaultLlmAssistSystemPrompt(),
+        );
+        setRequestOptions(normalizeRequestOptions(tpl.requestOptions));
         setTemplateName(tpl.name);
         setEditingTemplateId(tpl.id);
       }
@@ -352,6 +495,8 @@ export default function LlmAssistModal({
         id: editingTemplateId || createEmptyLlmPromptTemplate().id,
         name,
         instruction: inst,
+        systemPrompt: systemPrompt.trim(),
+        requestOptions: normalizeRequestOptions(requestOptions),
         updatedAt: Date.now(),
       });
       setEditingTemplateId(saved.id);
@@ -360,13 +505,15 @@ export default function LlmAssistModal({
     } catch (err) {
       alert(err?.message || '템플릿 저장에 실패했습니다.');
     }
-  }, [templateName, instruction, editingTemplateId, loadTemplates]);
+  }, [templateName, instruction, systemPrompt, requestOptions, editingTemplateId, loadTemplates]);
 
   const handleNewTemplate = useCallback(() => {
     setEditingTemplateId(null);
     setSelectedTemplateId('');
     setTemplateName('');
     setInstruction('');
+    setSystemPrompt(getDefaultLlmAssistSystemPrompt());
+    setRequestOptions({ ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS });
   }, []);
 
   const handleDeleteTemplate = useCallback(async () => {
@@ -383,17 +530,29 @@ export default function LlmAssistModal({
 
   const handleAddImages = useCallback(async (images) => {
     if (!Array.isArray(images) || !images.length) return;
-    setAttachedImages((prev) => {
-      const remaining = LLM_ASSIST_MAX_IMAGES - prev.length;
-      if (remaining <= 0) return prev;
-      return [...prev, ...images.slice(0, remaining)];
-    });
+    setAttachedImages((prev) => [...prev, ...images]);
   }, []);
 
   const handleRemoveImage = useCallback((id) => {
     if (!id) return;
     setAttachedImages((prev) => prev.filter((img) => img.id !== id));
   }, []);
+
+  const handleClearImages = useCallback(() => {
+    setAttachedImages([]);
+  }, []);
+
+  const handleOsImageFilesDrop = useCallback(
+    async (files) => {
+      try {
+        const next = await readImageFilesAsAttachments(files);
+        await handleAddImages(next);
+      } catch (err) {
+        setError(err?.message || '이미지를 추가할 수 없습니다.');
+      }
+    },
+    [handleAddImages],
+  );
 
   const handlePopoutAction = useCallback(
     async (action, payload = {}) => {
@@ -404,11 +563,23 @@ export default function LlmAssistModal({
         case 'run':
           await handleRun();
           break;
+        case 'cancel-run':
+          handleCancelGeneration();
+          break;
         case 'apply-result':
           handleApplyResult();
           break;
+        case 'append-result':
+          handleAppendResult();
+          break;
         case 'set-instruction':
           setInstruction(typeof payload.value === 'string' ? payload.value : '');
+          break;
+        case 'set-system-prompt':
+          setSystemPrompt(typeof payload.value === 'string' ? payload.value : '');
+          break;
+        case 'set-request-options':
+          setRequestOptions(normalizeRequestOptions(payload.value));
           break;
         case 'set-result':
           setResult(typeof payload.value === 'string' ? payload.value : '');
@@ -449,6 +620,9 @@ export default function LlmAssistModal({
         case 'remove-image':
           handleRemoveImage(payload.id);
           break;
+        case 'clear-images':
+          handleClearImages();
+          break;
         case 'close':
           onOpenChange?.(false);
           break;
@@ -459,7 +633,9 @@ export default function LlmAssistModal({
     [
       refreshSelection,
       handleRun,
+      handleCancelGeneration,
       handleApplyResult,
+      handleAppendResult,
       handleModelChange,
       setProfileId,
       handleLoadTemplate,
@@ -468,6 +644,7 @@ export default function LlmAssistModal({
       handleDeleteTemplate,
       handleAddImages,
       handleRemoveImage,
+      handleClearImages,
       onOpenChange,
     ],
   );
@@ -475,26 +652,41 @@ export default function LlmAssistModal({
   useEffect(() => {
     if (!open) return undefined;
 
-    const onMessage = (event) => {
-      if (event.origin !== window.location.origin) return;
-      if (!isLlmAssistMessage(event.data)) return;
+    let unsubBridge = () => {};
+    let cancelled = false;
 
-      if (event.data.type === LLM_ASSIST_MSG.READY) {
-        if (event.source && typeof event.source.postMessage === 'function') {
-          popoutRef.current = event.source;
-          setPopoutActive(true);
-          postLlmAssistMessage(event.source, LLM_ASSIST_MSG.SYNC, { state: buildSyncPayload() });
+    void subscribeLlmAssistPopoutFromChild((message) => {
+      if (message.type === LLM_ASSIST_MSG.READY) {
+        if (message.source && typeof message.source.postMessage === 'function') {
+          popoutRef.current = message.source;
+          popoutUsesTauriRef.current = false;
+        } else if (isDesktopApp()) {
+          popoutRef.current = null;
+          popoutUsesTauriRef.current = true;
         }
+        setPopoutActive(true);
+        syncLlmAssistPopoutWindow(
+          popoutUsesTauriRef.current ? null : popoutRef.current,
+          buildSyncPayload(),
+        );
         return;
       }
 
-      if (event.data.type === LLM_ASSIST_MSG.ACTION) {
-        handlePopoutAction(event.data.action, event.data.payload);
+      if (message.type === LLM_ASSIST_MSG.ACTION) {
+        handlePopoutAction(message.action, message.payload);
       }
-    };
+    }).then((unsub) => {
+      if (cancelled) {
+        unsub();
+        return;
+      }
+      unsubBridge = unsub;
+    });
 
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    return () => {
+      cancelled = true;
+      unsubBridge();
+    };
   }, [open, buildSyncPayload, handlePopoutAction]);
 
   const handleHide = () => {
@@ -509,27 +701,48 @@ export default function LlmAssistModal({
   };
 
   const handleClose = () => {
+    handleCancelGeneration();
     closePopout();
     onOpenChange?.(false);
   };
 
   const handleOpenPopout = () => {
-    let win = popoutRef.current;
-    if (win && !win.closed) {
-      win.focus();
-      syncToPopout();
-      setPopoutActive(true);
-      return;
-    }
+    void (async () => {
+      if (isDesktopApp()) {
+        const alreadyOpen = await isLlmAssistPopoutWindowOpen(null);
+        if (alreadyOpen) {
+          popoutUsesTauriRef.current = true;
+          popoutRef.current = null;
+          await focusLlmAssistPopoutWindow(null);
+          syncToPopout();
+          setPopoutActive(true);
+          return;
+        }
+      }
 
-    const url = getLlmAssistPopoutUrl();
-    win = window.open(url, LLM_ASSIST_POPOUT_NAME, LLM_ASSIST_POPOUT_FEATURES);
-    if (!win) {
-      alert('팝업이 차단되어 새 창을 열 수 없습니다.');
-      return;
-    }
-    popoutRef.current = win;
-    setPopoutActive(true);
+      const win = popoutRef.current;
+      if (win && !win.closed) {
+        await focusLlmAssistPopoutWindow(win);
+        syncToPopout();
+        setPopoutActive(true);
+        return;
+      }
+
+      const opened = await openLlmAssistPopoutWindow();
+      if (!opened) {
+        alert('팝업이 차단되어 새 창을 열 수 없습니다.');
+        return;
+      }
+
+      if (opened === 'tauri') {
+        popoutUsesTauriRef.current = true;
+        popoutRef.current = null;
+      } else {
+        popoutUsesTauriRef.current = false;
+        popoutRef.current = opened;
+      }
+      setPopoutActive(true);
+    })();
   };
 
   const panelProps = {
@@ -545,8 +758,13 @@ export default function LlmAssistModal({
     attachedImages,
     onAddImages: handleAddImages,
     onRemoveImage: handleRemoveImage,
+    onClearImages: handleClearImages,
     instruction,
     onInstructionChange: setInstruction,
+    systemPrompt,
+    onSystemPromptChange: setSystemPrompt,
+    requestOptions,
+    onRequestOptionsChange: setRequestOptions,
     result,
     onResultChange: setResult,
     resultViewMode,
@@ -563,116 +781,221 @@ export default function LlmAssistModal({
     onNewTemplate: handleNewTemplate,
     onDeleteTemplate: handleDeleteTemplate,
     onRun: handleRun,
+    onCancelGeneration: handleCancelGeneration,
     onApplyResult: handleApplyResult,
+    onAppendResult: handleAppendResult,
+    onCopyResult: handleCopyResult,
+    presentation,
+    canInsertIntoDocument,
   };
 
-  if (!open) return null;
-
-  if (hidden || popoutActive) {
-    const chipLabel = popoutActive ? 'AI (새창)' : 'AI';
-    const chipTitle = popoutActive
-      ? '드래그: 이동 · 클릭: AI 도우미 표시 (새 창 닫으면 복귀)'
-      : '드래그: 이동 · 클릭: AI 도우미 표시';
-
-    return (
-      <div
-        role="button"
-        tabIndex={0}
-        onPointerDown={(e) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
-        onTouchStart={(e) => startPositionTouchDrag(e, { onTap: popoutActive ? undefined : handleShow })}
-        onKeyDown={(e) => {
-          if (popoutActive) return;
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleShow();
-          }
-        }}
-        className="fixed z-10050 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
-        style={{ left: panelStyle.left, top: panelStyle.top }}
-        title={chipTitle}
-        aria-label={chipLabel}
+  const headerActions = (
+    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+      {presentation === 'floating' && typeof dockToRight === 'function' ? (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => dockToRight()}
+          className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
+          title="우측에 고정"
+          aria-label="우측에 고정"
+        >
+          <PanelRight size={15} />
+        </button>
+      ) : null}
+      {presentation === 'docked' && typeof undockToFloating === 'function' ? (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => undockToFloating()}
+          className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
+          title="플로팅 창으로"
+          aria-label="플로팅 창으로"
+        >
+          <PanelTop size={15} />
+        </button>
+      ) : null}
+      {presentation === 'floating' ? (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={handleOpenPopout}
+          disabled={popoutActive}
+          className="rounded p-1 text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-violet-200 dark:hover:bg-violet-900/50"
+          title={popoutActive ? '새 창에서 열려 있음' : '새 창으로 열기'}
+          aria-label="새 창으로 열기"
+        >
+          <SquareArrowOutUpRight size={15} />
+        </button>
+      ) : null}
+      {presentation === 'floating' ? (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={handleHide}
+          className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
+          title="숨기기"
+          aria-label="숨기기"
+        >
+          <EyeOff size={15} />
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onClick={handleClose}
+        className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
+        title="닫기"
+        aria-label="닫기"
       >
-        <Sparkles size={14} aria-hidden />
-        {chipLabel}
+        <X size={15} />
+      </button>
+    </div>
+  );
+
+  const dockOpen = Boolean(open && presentation === 'docked');
+  const floatingVisible = Boolean(
+    open && presentation === 'floating' && !hidden && !popoutActive,
+  );
+  const chipVisible = Boolean(
+    open && presentation === 'floating' && (hidden || popoutActive),
+  );
+  const chipLabel = popoutActive ? 'AI (새창)' : 'AI';
+  const chipTitle = popoutActive
+    ? '드래그: 이동 · 클릭: AI 도우미 표시 (새 창 닫으면 복귀)'
+    : '드래그: 이동 · 클릭: AI 도우미 표시';
+
+  const dockBody = (
+    <LlmAssistImageDropZone
+      className="flex h-full min-h-0 flex-col"
+      disabled={!open}
+      onFilesDrop={handleOsImageFilesDrop}
+    >
+      <div className="flex h-full min-h-0 flex-col" role="complementary" aria-label="AI 텍스트 도우미">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40">
+          <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
+            <Sparkles size={16} className="shrink-0" aria-hidden />
+            <span className="whitespace-nowrap">AI 도우미</span>
+          </div>
+          {headerActions}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+        </div>
       </div>
-    );
-  }
+    </LlmAssistImageDropZone>
+  );
 
   return (
-    <div
-      ref={panelRef}
-      className="fixed z-10050 flex flex-col rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95"
-      style={panelStyle}
-      role="dialog"
-      aria-modal="false"
-      aria-label="AI 텍스트 도우미"
-    >
-      <div
-        className="flex touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
-        onPointerDown={(e) => startPositionDrag(e)}
-        onTouchStart={(e) => startPositionTouchDrag(e)}
-      >
-        <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
-          <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
-          <Sparkles size={16} className="shrink-0" aria-hidden />
-          <span className="truncate">AI 도우미</span>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={handleOpenPopout}
-            disabled={popoutActive}
-            className="rounded p-1 text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-violet-200 dark:hover:bg-violet-900/50"
-            title={popoutActive ? '새 창에서 열려 있음' : '새 창으로 열기'}
-            aria-label="새 창으로 열기"
-          >
-            <SquareArrowOutUpRight size={15} />
-          </button>
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={handleHide}
-            className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
-            title="숨기기"
-            aria-label="숨기기"
-          >
-            <EyeOff size={15} />
-          </button>
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={handleClose}
-            className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
-            title="닫기"
-            aria-label="닫기"
-          >
-            <X size={15} />
-          </button>
-        </div>
-      </div>
+    <>
+      <LlmAssistDockShell open={dockOpen} onClose={handleClose}>
+        {dockBody}
+      </LlmAssistDockShell>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        <LlmAssistPanel {...panelProps} />
-      </div>
+      <AnimatePresence>
+        {chipVisible ? (
+          <Motion.div
+            key="llm-assist-chip"
+            role="button"
+            tabIndex={0}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={FLOAT_TRANSITION}
+            onPointerDown={(e) => startPositionDrag(e, { onTap: popoutActive ? undefined : handleShow })}
+            onTouchStart={(e) => startPositionTouchDrag(e, { onTap: popoutActive ? undefined : handleShow })}
+            onKeyDown={(e) => {
+              if (popoutActive) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleShow();
+              }
+            }}
+            className="fixed z-10050 flex touch-none cursor-grab select-none items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-1.5 text-xs font-medium text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 active:cursor-grabbing"
+            style={{ left: panelStyle.left, top: panelStyle.top }}
+            title={chipTitle}
+            aria-label={chipLabel}
+          >
+            <Sparkles size={14} aria-hidden />
+            {chipLabel}
+          </Motion.div>
+        ) : null}
+      </AnimatePresence>
 
-      <div
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="크기 조절"
-        className="absolute bottom-0 left-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
-        onPointerDown={(e) => startCornerResize('sw', e)}
-      />
-      <div
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="크기 조절"
-        className="absolute bottom-0 right-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
-        onPointerDown={(e) => startCornerResize('se', e)}
-      />
-    </div>
+      <AnimatePresence>
+        {floatingVisible ? (
+          <Motion.div
+            key="llm-assist-floating"
+            ref={panelRef}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={FLOAT_TRANSITION}
+            className="fixed z-10050 flex flex-col rounded-lg border border-violet-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-700/60 dark:bg-odp-surface/95 origin-center"
+            style={panelStyle}
+            role="dialog"
+            aria-modal="false"
+            aria-label="AI 텍스트 도우미"
+          >
+            <LlmAssistImageDropZone
+              className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg"
+              disabled={!open}
+              onFilesDrop={handleOsImageFilesDrop}
+            >
+              <div
+                className="flex flex-wrap touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
+                onPointerDown={(e) => startPositionDrag(e)}
+                onTouchStart={(e) => startPositionTouchDrag(e)}
+              >
+                <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
+                  <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
+                  <Sparkles size={16} className="shrink-0" aria-hidden />
+                  <span className="whitespace-nowrap">AI 도우미</span>
+                </div>
+                {headerActions}
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+              </div>
+            </LlmAssistImageDropZone>
+
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="너비 조절 (왼쪽)"
+              className="absolute top-0 bottom-0 left-0 z-20 w-2 touch-none cursor-ew-resize!"
+              onPointerDown={(e) => startEdgeResize('w', e)}
+            />
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="너비 조절 (오른쪽)"
+              className="absolute top-0 bottom-0 right-0 z-20 w-2 touch-none cursor-ew-resize!"
+              onPointerDown={(e) => startEdgeResize('e', e)}
+            />
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="크기 조절"
+              className="absolute bottom-0 left-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
+              onPointerDown={(e) => startCornerResize('sw', e)}
+            />
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="크기 조절"
+              className="absolute bottom-0 right-0 z-30 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
+              onPointerDown={(e) => startCornerResize('se', e)}
+            />
+          </Motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 }

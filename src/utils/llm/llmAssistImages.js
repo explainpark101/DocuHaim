@@ -1,4 +1,3 @@
-export const LLM_ASSIST_MAX_IMAGES = 4;
 export const LLM_ASSIST_MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 export const LLM_ASSIST_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -118,6 +117,39 @@ export function extractImageFilesFromClipboard(clipboardData) {
 }
 
 /**
+ * Read image files via the Async Clipboard API (button-triggered paste).
+ * @returns {Promise<File[]>}
+ */
+export async function readImageFilesFromClipboardApi() {
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.read) {
+    throw new Error(
+      '이 브라우저는 클립보드 이미지 읽기를 지원하지 않습니다. Ctrl/Cmd+V로 붙여넣어 주세요.',
+    );
+  }
+
+  try {
+    const items = await navigator.clipboard.read();
+    const files = [];
+    for (const item of items) {
+      const type = item.types.find((t) => LLM_ASSIST_IMAGE_MIME_TYPES.includes(t));
+      if (!type) continue;
+      const blob = await item.getType(type);
+      const mime = blob.type || type;
+      if (!LLM_ASSIST_IMAGE_MIME_TYPES.includes(mime)) continue;
+      files.push(withClipboardFileName(new File([blob], '', { type: mime })));
+    }
+    return files;
+  } catch (err) {
+    if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+      throw new Error(
+        '클립보드 접근이 거부되었습니다. Ctrl/Cmd+V로 붙여넣거나 파일을 선택해 주세요.',
+      );
+    }
+    throw err;
+  }
+}
+
+/**
  * @param {ClipboardEvent} event
  * @param {number} currentCount
  */
@@ -157,20 +189,12 @@ export async function readImageFileAsAttachment(file) {
 
 /**
  * @param {FileList | File[]} files
- * @param {number} currentCount
+ * @param {number} [_currentCount] unused; kept for call-site compatibility
  * @returns {Promise<{ id: string, name: string, mimeType: string, dataBase64: string, previewDataUrl: string }[]>}
  */
-export async function readImageFilesAsAttachments(files, currentCount = 0) {
+export async function readImageFilesAsAttachments(files, _currentCount = 0) {
   const list = [...files].filter((f) => f.type.startsWith('image/'));
   if (!list.length) throw new Error('이미지 파일을 선택하세요.');
-
-  const remaining = LLM_ASSIST_MAX_IMAGES - currentCount;
-  if (remaining <= 0) {
-    throw new Error(`이미지는 최대 ${LLM_ASSIST_MAX_IMAGES}장까지 첨부할 수 있습니다.`);
-  }
-  if (list.length > remaining) {
-    throw new Error(`이미지는 최대 ${LLM_ASSIST_MAX_IMAGES}장까지 첨부할 수 있습니다. (현재 ${currentCount}장)`);
-  }
 
   const attachments = [];
   for (const file of list) {

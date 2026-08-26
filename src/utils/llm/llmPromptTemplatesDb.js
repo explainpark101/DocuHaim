@@ -1,6 +1,7 @@
 import Dexie from 'dexie';
 import { createStorageBackend } from '@/utils/storage/createStorageBackend.js';
 import { tryGetStorageScopeId } from '@/utils/storageScope';
+import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
 
 export const LLM_PROMPT_TEMPLATES_KEY = '.settings/llm-prompt-templates.json';
 
@@ -20,6 +21,8 @@ llmPromptTemplatesDb.version(1).stores({
  * @property {string} id
  * @property {string} name
  * @property {string} instruction
+ * @property {string} [systemPrompt]
+ * @property {Record<string, unknown>} [requestOptions]
  * @property {number} updatedAt
  */
 
@@ -155,8 +158,28 @@ export function createEmptyLlmPromptTemplate() {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     name: '',
     instruction: '',
+    systemPrompt: getDefaultLlmAssistSystemPrompt(),
+    requestOptions: { temperature: 0.4 },
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * @param {unknown} value
+ * @returns {Record<string, unknown>}
+ */
+function normalizeRequestOptionsField(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { temperature: 0.4 };
+  }
+  /** @type {Record<string, unknown>} */
+  const out = {};
+  for (const [key, v] of Object.entries(/** @type {Record<string, unknown>} */ (value))) {
+    const k = typeof key === 'string' ? key.trim() : '';
+    if (!k) continue;
+    out[k] = v;
+  }
+  return Object.keys(out).length ? out : { temperature: 0.4 };
 }
 
 /**
@@ -172,6 +195,8 @@ function normalizeTemplate(value) {
     id,
     name: typeof row.name === 'string' ? row.name : '',
     instruction: typeof row.instruction === 'string' ? row.instruction : '',
+    systemPrompt: typeof row.systemPrompt === 'string' ? row.systemPrompt : '',
+    requestOptions: normalizeRequestOptionsField(row.requestOptions),
     updatedAt: typeof row.updatedAt === 'number' && Number.isFinite(row.updatedAt) ? row.updatedAt : Date.now(),
   };
 }
@@ -372,6 +397,8 @@ export async function saveLlmPromptTemplate(template) {
     ...template,
     name: (template.name || '').trim(),
     instruction: (template.instruction || '').trim(),
+    systemPrompt: (template.systemPrompt || '').trim(),
+    requestOptions: normalizeRequestOptionsField(template.requestOptions),
     updatedAt: Date.now(),
   };
 

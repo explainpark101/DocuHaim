@@ -8,7 +8,7 @@ import {
 import { getLlmAssistEditorBounds } from '@/utils/llmAssistEditorBounds';
 
 const DRAG_THRESHOLD_PX = 5;
-type BottomCorner = 'sw' | 'se';
+type ResizeHandle = 'sw' | 'se' | 'w' | 'e';
 
 type DragState = {
   active: boolean;
@@ -19,7 +19,7 @@ type DragState = {
 };
 
 type ResizeState = {
-  corner: BottomCorner;
+  corner: ResizeHandle;
   startX: number;
   startY: number;
   startLayout: LlmModalLayout;
@@ -41,13 +41,14 @@ function ensureResizeCursorStyle() {
   document.head.appendChild(style);
 }
 
-function resizeCursorForCorner(corner: BottomCorner): string {
-  return corner === 'se' ? 'nwse-resize' : 'nesw-resize';
+function resizeCursorForHandle(handle: ResizeHandle): string {
+  if (handle === 'e' || handle === 'w') return 'ew-resize';
+  return handle === 'se' ? 'nwse-resize' : 'nesw-resize';
 }
 
-function lockResizeCursor(corner: BottomCorner) {
+function lockResizeCursor(handle: ResizeHandle) {
   ensureResizeCursorStyle();
-  const cursor = resizeCursorForCorner(corner);
+  const cursor = resizeCursorForHandle(handle);
   document.documentElement.style.setProperty('--llm-assist-resize-cursor', cursor);
   document.documentElement.classList.add(RESIZE_ROOT_CLASS);
   document.body.style.userSelect = 'none';
@@ -96,12 +97,18 @@ export function useLlmAssistModalLayout(
       null;
 
     let resizeObserver: ResizeObserver | null = null;
-    if (root && typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(onWindowChange);
-      resizeObserver.observe(root);
-      const toolbar =
-        root.querySelector('.md-editor-toolbar-wrapper') || root.querySelector('.md-editor-toolbar');
-      if (toolbar) resizeObserver.observe(toolbar);
+      if (root) {
+        resizeObserver.observe(root);
+        const toolbar =
+          root.querySelector('.md-editor-toolbar-wrapper') || root.querySelector('.md-editor-toolbar');
+        if (toolbar) resizeObserver.observe(toolbar);
+      }
+      const navbar = document.querySelector('[data-app-editor-navbar]');
+      if (navbar) resizeObserver.observe(navbar);
+      const statusBar = document.querySelector('[data-app-status-bar]');
+      if (statusBar) resizeObserver.observe(statusBar);
     }
 
     return () => {
@@ -247,32 +254,47 @@ export function useLlmAssistModalLayout(
         widthPx: start.widthPx + dx,
         heightPx: start.heightPx + dy,
       };
-    } else {
+    } else if (resize.corner === 'sw') {
       next = {
         leftPx: start.leftPx + dx,
         topPx: start.topPx,
         widthPx: start.widthPx - dx,
         heightPx: start.heightPx + dy,
       };
+    } else if (resize.corner === 'e') {
+      next = {
+        leftPx: start.leftPx,
+        topPx: start.topPx,
+        widthPx: start.widthPx + dx,
+        heightPx: start.heightPx,
+      };
+    } else {
+      // 'w'
+      next = {
+        leftPx: start.leftPx + dx,
+        topPx: start.topPx,
+        widthPx: start.widthPx - dx,
+        heightPx: start.heightPx,
+      };
     }
 
     setLayout(clampLlmModalLayout(next, boundsRef.current));
   }, []);
 
-  const startCornerResize = useCallback(
-    (corner: BottomCorner, e: React.PointerEvent) => {
+  const startEdgeResize = useCallback(
+    (handle: ResizeHandle, e: React.PointerEvent) => {
       if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
 
       resizeRef.current = {
-        corner,
+        corner: handle,
         startX: e.clientX,
         startY: e.clientY,
         startLayout: layout,
       };
 
-      lockResizeCursor(corner);
+      lockResizeCursor(handle);
 
       const target = e.currentTarget;
       if (target instanceof HTMLElement && typeof target.setPointerCapture === 'function') {
@@ -305,6 +327,12 @@ export function useLlmAssistModalLayout(
     [applyResizeDelta, layout, persistLayout],
   );
 
+  /** @deprecated Prefer startEdgeResize; kept for existing bottom-corner callers. */
+  const startCornerResize = useCallback(
+    (corner: 'sw' | 'se', e: React.PointerEvent) => startEdgeResize(corner, e),
+    [startEdgeResize],
+  );
+
   const panelStyle = {
     left: layout.leftPx,
     top: layout.topPx,
@@ -319,6 +347,7 @@ export function useLlmAssistModalLayout(
     startPositionDrag,
     startPositionTouchDrag,
     startCornerResize,
+    startEdgeResize,
     refreshBounds,
   };
 }

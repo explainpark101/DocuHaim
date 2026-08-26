@@ -1,3 +1,6 @@
+import { getAppEditorNavbarBottom, getAppEditorNavbarElement } from '@/utils/appEditorNavbar';
+import { getAppStatusBarTop } from '@/utils/appStatusBar';
+
 export type LlmAssistEditorBounds = {
   left: number;
   top: number;
@@ -16,29 +19,35 @@ function getMdEditorRootFromRef(editorRef: { current?: unknown } | null | undefi
   return null;
 }
 
-/** Editor content area below the md-editor toolbar (fixed viewport coords). */
+/**
+ * Drag/resize bounds for the floating LLM Assist panel (viewport coords).
+ * - top: bottom of the editor filename navbar (panel must not overlap it)
+ * - bottom: top of the app status bar (purple header must stay visible above it)
+ * - left/right: editor root when available, else viewport margins
+ */
 export function getLlmAssistEditorBounds(
   editorRef: { current?: unknown } | null | undefined,
 ): LlmAssistEditorBounds {
   const margin = 8;
+  const navbarBottom = getAppEditorNavbarBottom();
+  const statusBarTop = getAppStatusBarTop();
+  const bottom = Math.max(navbarBottom + 1, statusBarTop);
+
   const fallback: LlmAssistEditorBounds = {
     left: margin,
-    top: margin,
+    top: Math.max(margin, navbarBottom),
     right: Math.max(margin, window.innerWidth - margin),
-    bottom: Math.max(margin, window.innerHeight - margin),
+    bottom,
     width: Math.max(0, window.innerWidth - margin * 2),
-    height: Math.max(0, window.innerHeight - margin * 2),
+    height: Math.max(0, bottom - Math.max(margin, navbarBottom)),
   };
 
   const root = getMdEditorRootFromRef(editorRef);
   if (!root) return fallback;
 
   const rootRect = root.getBoundingClientRect();
-  const toolbar =
-    root.querySelector('.md-editor-toolbar-wrapper') || root.querySelector('.md-editor-toolbar');
-  const toolbarRect = toolbar?.getBoundingClientRect();
-  const top = toolbarRect ? toolbarRect.bottom : rootRect.top;
-  const bottom = rootRect.bottom;
+  const navbarEl = getAppEditorNavbarElement();
+  const top = navbarEl ? navbarEl.getBoundingClientRect().bottom : Math.max(rootRect.top, navbarBottom);
   const left = rootRect.left;
   const right = rootRect.right;
 

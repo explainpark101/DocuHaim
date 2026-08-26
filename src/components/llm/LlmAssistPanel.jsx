@@ -1,6 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, Loader2, RefreshCw, Replace, Sparkles, Eye, FileText, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import {
+  ArrowDownToLine,
+  Bookmark,
+  Bot,
+  BrainCircuit,
+  ClipboardPaste,
+  Copy,
+  Image as ImageIcon,
+  ImageOff,
+  ImagePlus,
+  Loader2,
+  MessageSquareText,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  ScrollText,
+  Sparkles,
+  Eye,
+  FileText,
+  TextCursorInput,
+  Trash2,
+  X,
+  ChevronUp,
+  TextCursor,
+  CornerLeftDown,
+} from 'lucide-react';
 import { MdPreview } from 'md-editor-rt';
+import { Tooltip } from 'radix-ui';
 import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
@@ -11,11 +39,29 @@ import LlmProviderSelect from '@/components/LlmProviderSelect';
 import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
 import {
   extractImageFilesFromClipboard,
-  LLM_ASSIST_MAX_IMAGES,
   readImageFilesAsAttachments,
+  readImageFilesFromClipboardApi,
 } from '@/utils/llmAssistImages';
+import LlmAssistAdvancedOptions from '@/components/llm/LlmAssistAdvancedOptions';
+import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
+import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
+
+const LABEL_ICON_CLASS = 'shrink-0 opacity-70';
+
+function PanelLabel({ icon: Icon, children, className = '' }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-odp-fgStrong ${className}`}
+    >
+      {Icon ? <Icon size={13} className={LABEL_ICON_CLASS} aria-hidden /> : null}
+      {children}
+    </span>
+  );
+}
 
 export default function LlmAssistPanel({
   theme = 'light',
@@ -30,8 +76,13 @@ export default function LlmAssistPanel({
   attachedImages = [],
   onAddImages,
   onRemoveImage,
+  onClearImages,
   instruction,
   onInstructionChange,
+  systemPrompt = '',
+  onSystemPromptChange,
+  requestOptions = { temperature: 0.4 },
+  onRequestOptionsChange,
   result,
   onResultChange,
   resultViewMode = 'text',
@@ -48,32 +99,40 @@ export default function LlmAssistPanel({
   onNewTemplate,
   onDeleteTemplate,
   onRun,
+  onCancelGeneration,
   onApplyResult,
+  onAppendResult,
+  onCopyResult,
+  presentation = 'floating',
+  canInsertIntoDocument = true,
   remoteMode = false,
   modelSelectAutoLoad = true,
+  /** When false, parent chrome owns OS image drop (dock / floating shell). */
+  enableImageDropZone = true,
 }) {
-  const resultReadOnly = remoteMode ? false : !result;
+  const resultReadOnly = loading || (remoteMode ? false : !result);
   const panelRef = useRef(null);
   const resultPreviewRef = useRef(null);
   const fileInputRef = useRef(null);
-  const attachedCountRef = useRef(attachedImages.length);
   const [imageError, setImageError] = useState('');
   const [addingImages, setAddingImages] = useState(false);
+  const [systemPromptOpen, setSystemPromptOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading) setCancelConfirmOpen(false);
+  }, [loading]);
 
   useLazyMermaidRender(resultPreviewRef, {
     layoutKey: `${theme}|${result || ''}|${resultViewMode}`,
   });
-
-  useEffect(() => {
-    attachedCountRef.current = attachedImages.length;
-  }, [attachedImages.length]);
 
   const handlePickImages = useCallback(async (fileList) => {
     if (!fileList?.length || !onAddImages) return;
     setImageError('');
     setAddingImages(true);
     try {
-      const next = await readImageFilesAsAttachments(fileList, attachedCountRef.current);
+      const next = await readImageFilesAsAttachments(fileList);
       await onAddImages(next);
     } catch (err) {
       setImageError(err?.message || '이미지를 추가할 수 없습니다.');
@@ -83,17 +142,30 @@ export default function LlmAssistPanel({
     }
   }, [onAddImages]);
 
-  const handleImageDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await handlePickImages(e.dataTransfer?.files);
-  };
+  const handlePasteFromClipboard = useCallback(async () => {
+    if (!onAddImages || addingImages) return;
+    setImageError('');
+    setAddingImages(true);
+    try {
+      const files = await readImageFilesFromClipboardApi();
+      if (!files.length) {
+        setImageError('클립보드에 이미지가 없습니다. Ctrl/Cmd+V로 붙여넣을 수도 있습니다.');
+        return;
+      }
+      const next = await readImageFilesAsAttachments(files);
+      await onAddImages(next);
+    } catch (err) {
+      setImageError(err?.message || '클립보드 이미지를 붙여넣을 수 없습니다.');
+    } finally {
+      setAddingImages(false);
+    }
+  }, [onAddImages, addingImages]);
 
   useEffect(() => {
     const onPaste = async (e) => {
       if (!onAddImages || !panelRef.current) return;
       if (!panelRef.current.contains(e.target)) return;
-      if (addingImages || attachedCountRef.current >= LLM_ASSIST_MAX_IMAGES) return;
+      if (addingImages) return;
 
       const files = extractImageFilesFromClipboard(e.clipboardData);
       if (!files.length) return;
@@ -102,7 +174,7 @@ export default function LlmAssistPanel({
       setImageError('');
       setAddingImages(true);
       try {
-        const next = await readImageFilesAsAttachments(files, attachedCountRef.current);
+        const next = await readImageFilesAsAttachments(files);
         await onAddImages(next);
       } catch (err) {
         setImageError(err?.message || '클립보드 이미지를 붙여넣을 수 없습니다.');
@@ -115,10 +187,28 @@ export default function LlmAssistPanel({
     return () => document.removeEventListener('paste', onPaste);
   }, [onAddImages, addingImages]);
 
-  return (
-    <div ref={panelRef} className="space-y-3 text-xs">
+  const isDefaultSystemPrompt =
+    systemPrompt.trim() === getDefaultLlmAssistSystemPrompt();
+
+  const restoreDefaultSystemPromptButton = (
+    <button
+      type="button"
+      disabled={isDefaultSystemPrompt}
+      onClick={() => onSystemPromptChange?.(getDefaultLlmAssistSystemPrompt())}
+      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:disabled:hover:bg-transparent"
+      aria-label="기본값으로 되돌리기"
+    >
+      <RotateCcw size={11} aria-hidden />
+      기본값으로 되돌리기
+    </button>
+  );
+
+  const panelBody = (
+      <div ref={panelRef} className="space-y-3 text-xs">
       <div>
-        <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">제공자</label>
+        <label className="mb-1 block">
+          <PanelLabel icon={Bot}>제공자</PanelLabel>
+        </label>
         <LlmProviderSelect
           profiles={profiles}
           value={selectedProfileId}
@@ -128,7 +218,9 @@ export default function LlmAssistPanel({
 
       {selectedProfile ? (
         <div>
-          <label className="mb-1 block font-semibold text-gray-700 dark:text-odp-fgStrong">모델</label>
+          <label className="mb-1 block">
+            <PanelLabel icon={BrainCircuit}>모델</PanelLabel>
+          </label>
           {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
             <OpenAiCompatibleModelSelect
               key={`${selectedProfile.id}-openai`}
@@ -153,8 +245,10 @@ export default function LlmAssistPanel({
       ) : null}
 
       <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="font-semibold text-gray-700 dark:text-odp-fgStrong">선택된 텍스트</label>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={TextCursorInput}>선택된 텍스트</PanelLabel>
+          </label>
           <button
             type="button"
             onClick={onRefreshSelection}
@@ -174,22 +268,47 @@ export default function LlmAssistPanel({
       </div>
 
       <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="font-semibold text-gray-700 dark:text-odp-fgStrong">
-            입력 이미지
-            <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
-              ({attachedImages.length}/{LLM_ASSIST_MAX_IMAGES})
-            </span>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={ImageIcon}>
+              입력 이미지
+              {attachedImages.length > 0 ? (
+                <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
+                  ({attachedImages.length})
+                </span>
+              ) : null}
+            </PanelLabel>
           </label>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={addingImages || attachedImages.length >= LLM_ASSIST_MAX_IMAGES}
-            className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
-          >
-            {addingImages ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
-            추가
-          </button>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => void handlePasteFromClipboard()}
+              disabled={addingImages}
+              className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
+            >
+              {addingImages ? <Loader2 size={12} className="animate-spin" /> : <ClipboardPaste size={12} />}
+              클립보드에서 붙여넣기
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={addingImages}
+              className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
+            >
+              {addingImages ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+              추가
+            </button>
+            <button
+              type="button"
+              onClick={() => onClearImages?.()}
+              disabled={!attachedImages.length || addingImages}
+              className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
+              title="첨부 이미지 모두 제거"
+            >
+              <ImageOff size={12} aria-hidden />
+              초기화
+            </button>
+          </div>
         </div>
         <input
           ref={fileInputRef}
@@ -200,11 +319,6 @@ export default function LlmAssistPanel({
           onChange={(e) => handlePickImages(e.target.files)}
         />
         <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onDrop={handleImageDrop}
           className={`rounded border border-dashed p-2 dark:border-odp-borderSoft ${
             attachedImages.length ? 'border-gray-200 bg-gray-50/50 dark:bg-odp-bgSoft/40' : 'border-gray-300 bg-gray-50 dark:bg-odp-bgSoft'
           }`}
@@ -238,9 +352,9 @@ export default function LlmAssistPanel({
             </div>
           ) : (
             <p className="py-3 text-center text-[11px] text-gray-500 dark:text-odp-muted">
-              이미지를 드래그하거나 「추가」로 선택하세요.
+              AI 도우미 어디에든 이미지를 놓거나 「추가」로 선택하세요.
               <br />
-              Ctrl+V로 클립보드 이미지를 붙여넣을 수 있습니다.
+              「클립보드에서 붙여넣기」또는 Ctrl+V로 붙여넣을 수 있습니다.
             </p>
           )}
         </div>
@@ -250,12 +364,14 @@ export default function LlmAssistPanel({
       </div>
 
       <div className="space-y-2 rounded border border-gray-200 p-2 dark:border-odp-borderSoft">
-        <div className="flex items-center gap-2">
-          <label className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">템플릿</label>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={Bookmark}>템플릿</PanelLabel>
+          </label>
           <select
             value={selectedTemplateId}
             onChange={(e) => onLoadTemplate?.(e.target.value)}
-            className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+            className="min-w-0 flex-1 basis-[12rem] rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
           >
             <option value="">— 불러오기 —</option>
             {templates.map((t) => (
@@ -277,49 +393,159 @@ export default function LlmAssistPanel({
           placeholder="템플릿 이름"
           className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-[11px] dark:border-odp-borderStrong dark:bg-odp-bgSoft"
         />
-        <textarea
-          value={instruction}
-          onChange={(e) => onInstructionChange?.(e.target.value)}
-          rows={4}
-          placeholder="지시사항 (예: 이미지를 설명하거나, 선택한 텍스트를 다시 써 주세요)"
-          className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-        />
+        <div>
+          <button
+            type="button"
+            onClick={() => setSystemPromptOpen((v) => !v)}
+            className={`mb-1 flex w-full items-center justify-between gap-x-2 gap-y-1 rounded px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-odp-fgStrong ${
+              systemPromptOpen
+                ? 'bg-transparent'
+                : 'bg-slate-300/90 dark:bg-slate-950/40'
+            }`}
+            aria-expanded={systemPromptOpen}
+          >
+            <span className="min-w-0 shrink-0 whitespace-nowrap">
+              <PanelLabel icon={ScrollText}>시스템 프롬프트</PanelLabel>
+              {!systemPromptOpen && systemPrompt.trim() ? (
+                <span className="ml-1 font-normal text-gray-500 dark:text-odp-muted">
+                  {isDefaultSystemPrompt ? '(기본)' : '(수정됨)'}
+                </span>
+              ) : null}
+            </span>
+            <ChevronUp
+              size={14}
+              aria-hidden
+              className={`shrink-0 opacity-70 transition-transform ${systemPromptOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+          <LlmAssistCollapsible open={systemPromptOpen}>
+            <div className="space-y-1.5">
+              <p className="text-[10px] leading-snug text-gray-500 dark:text-odp-muted">
+                템플릿마다 다르게 저장할 수 있습니다. 비우면 시스템 프롬프트 없이 실행됩니다.
+              </p>
+              <textarea
+                value={systemPrompt}
+                onChange={(e) => onSystemPromptChange?.(e.target.value)}
+                rows={10}
+                placeholder={getDefaultLlmAssistSystemPrompt()}
+                className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+              />
+              <div className="flex justify-end">
+                {isDefaultSystemPrompt ? (
+                  <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+                    <Tooltip.Root>
+                      <Tooltip.Trigger asChild>
+                        <span className="inline-flex cursor-not-allowed">
+                          {restoreDefaultSystemPromptButton}
+                        </span>
+                      </Tooltip.Trigger>
+                      <Tooltip.Portal>
+                        <Tooltip.Content
+                          side="top"
+                          sideOffset={6}
+                          className="z-100010 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] leading-snug text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
+                        >
+                          이미 기본값입니다.
+                          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                        </Tooltip.Content>
+                      </Tooltip.Portal>
+                    </Tooltip.Root>
+                  </Tooltip.Provider>
+                ) : (
+                  restoreDefaultSystemPromptButton
+                )}
+              </div>
+            </div>
+          </LlmAssistCollapsible>
+        </div>
+        <div>
+          <label className="mb-1 block">
+            <PanelLabel icon={MessageSquareText}>지시사항</PanelLabel>
+          </label>
+          <textarea
+            value={instruction}
+            onChange={(e) => onInstructionChange?.(e.target.value)}
+            rows={4}
+            placeholder="지시사항 (예: 이미지를 설명하거나, 선택한 텍스트를 다시 써 주세요)"
+            className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+          />
+        </div>
         <div className="flex flex-wrap gap-1.5 justify-end">
           <button
             type="button"
-            onClick={onSaveTemplate}
-            className="rounded bg-violet-600 px-2 py-1 text-[11px] text-white hover:bg-violet-700"
+            onClick={onNewTemplate}
+            className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
           >
-            템플릿 저장
+            <Plus size={12} aria-hidden />
+            새 템플릿
           </button>
           <button
             type="button"
-            onClick={onNewTemplate}
-            className="rounded border border-gray-300 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-odp-borderStrong dark:hover:bg-odp-bgSoft"
+            onClick={onSaveTemplate}
+            className="inline-flex items-center gap-1 rounded bg-violet-600 px-2 py-1 text-[11px] text-white hover:bg-violet-700"
           >
-            새 템플릿
+            <Save size={12} aria-hidden />
+            템플릿 저장
           </button>
+          
           {editingTemplateId && (
             <button
               type="button"
               onClick={onDeleteTemplate}
-              className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400"
+              className="inline-flex items-center gap-1 rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400"
             >
+              <Trash2 size={12} aria-hidden />
               삭제
             </button>
           )}
         </div>
+        <LlmAssistAdvancedOptions
+          value={requestOptions}
+          onChange={(next) => onRequestOptionsChange?.(next)}
+        />
       </div>
 
-      <button
-        type="button"
-        onClick={onRun}
-        disabled={loading || !selectedProfile}
-        className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-        {loading ? '생성 중…' : 'Gemini 실행'}
-      </button>
+      {loading ? (
+        <button
+          type="button"
+          onClick={() => setCancelConfirmOpen(true)}
+          disabled={!selectedProfile}
+          className="flex w-full items-center justify-center gap-2 rounded bg-violet-700 px-3 py-2 text-sm font-medium text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="생성 중 — 클릭하여 취소"
+        >
+          <Loader2 size={16} className="animate-spin" aria-hidden />
+          생성 중…
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onRun?.()}
+          disabled={!selectedProfile}
+          className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Sparkles size={16} aria-hidden />
+          실행
+        </button>
+      )}
+
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <ConfirmModal
+              isOpen={cancelConfirmOpen}
+              title="생성 취소"
+              message="진행 중인 생성을 취소할까요? 지금까지 받은 결과는 유지됩니다."
+              confirmLabel="생성 취소"
+              cancelLabel="계속 생성"
+              variant="danger"
+              onConfirm={() => {
+                setCancelConfirmOpen(false);
+                onCancelGeneration?.();
+              }}
+              onCancel={() => setCancelConfirmOpen(false)}
+            />,
+            document.body,
+          )
+        : null}
 
       {error && (
         <p className="rounded border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] whitespace-pre-line text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-300">
@@ -328,8 +554,10 @@ export default function LlmAssistPanel({
       )}
 
       <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="font-semibold text-gray-700 dark:text-odp-fgStrong">결과</label>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <label className="shrink-0 whitespace-nowrap">
+            <PanelLabel icon={Sparkles}>결과</PanelLabel>
+          </label>
           <div className="inline-flex rounded border border-gray-300 dark:border-odp-borderStrong">
             <button
               type="button"
@@ -394,16 +622,80 @@ export default function LlmAssistPanel({
           />
         )}
 
-        <button
-          type="button"
-          onClick={onApplyResult}
-          disabled={!result}
-          className="mt-2 inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
-        >
-          <Replace size={14} aria-hidden />
-          선택 영역 바꿔치기
-        </button>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {presentation === 'docked' ? (
+            <>
+              {canInsertIntoDocument ? (
+                <button
+                  type="button"
+                  onClick={onApplyResult}
+                  disabled={!result}
+                  className={[
+                    `inline-flex items-center gap-1.5 rounded border  px-3 py-1.5 text-[11px] font-medium  disabled:cursor-not-allowed disabled:opacity-50`,
+                    (selectedText.trim() 
+                    ? `border-violet-400 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60`
+                    : `border-sky-400 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-600 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-900/60`)
+                  ].join(" ")}
+                >
+                  {selectedText.trim() ? (
+                    <>
+                      <CornerLeftDown size={14} aria-hidden />
+                      대체하기
+                    </>
+                  ) : (
+                    <>
+                      <TextCursor size={14} aria-hidden />
+                      삽입하기
+                    </>
+                  )}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onCopyResult}
+                disabled={!result}
+                className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+              >
+                <Copy size={14} aria-hidden />
+                복사하기
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onApplyResult}
+                disabled={!result}
+                className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+              >
+                <CornerLeftDown size={14} aria-hidden />
+                선택 영역 바꿔치기
+              </button>
+              <button
+                type="button"
+                onClick={onAppendResult}
+                disabled={!result}
+                className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+              >
+                <ArrowDownToLine size={14} aria-hidden />
+                문서 가장 하단에 삽입
+              </button>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+      </div>
+  );
+
+  if (!enableImageDropZone) return panelBody;
+
+  return (
+    <LlmAssistImageDropZone
+      className="min-h-0"
+      disabled={!onAddImages || addingImages}
+      onFilesDrop={(files) => void handlePickImages(files)}
+    >
+      {panelBody}
+    </LlmAssistImageDropZone>
   );
 }

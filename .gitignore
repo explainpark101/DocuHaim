@@ -38,6 +38,7 @@ public/coi-serviceworker.js
 
 # Tauri
 src-tauri/target
+src-tauri/gen/schemas/
 
 # Private design / ops notes (not for VitePress or public repo)
 /private/

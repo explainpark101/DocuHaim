@@ -11,13 +11,17 @@ import { ToastProvider } from '@/contexts/ToastContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
+import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
 import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
+import { initMdEditorToolbarScroll } from '@/utils/initMdEditorToolbarScroll'
 import { isDesktopApp } from '@/utils/isDesktopApp'
 import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
 
 initEditorAutocompleteDomFlag()
 initTouchLongPressHaptics()
+initDesktopExternalLinks()
 initMdEditorCodeCopy()
+initMdEditorToolbarScroll()
 void startDesktopOpenFilesBridge()
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'

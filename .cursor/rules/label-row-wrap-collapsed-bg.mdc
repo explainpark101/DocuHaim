@@ -1,0 +1,59 @@
+---
+description: Label+control wrap preference; collapsed section background
+globs: src/**/*.{jsx,js,tsx,ts}
+alwaysApply: false
+---
+
+# Label rows & collapsed sections
+
+## Label + control on one row
+
+When a **label** shares a row with controls (buttons, select, toggles, …) and width is tight:
+
+1. Prefer **breaking the row** (`flex-wrap`) so the label and the control(s) land on **separate rows**.
+2. Do **not** rely on label `word-break` / mid-word wrapping to keep them on one cramped line.
+
+### Pattern
+
+```tsx
+// ❌ BAD — label wraps mid-word while controls stay beside it
+<div className="flex items-center justify-between gap-2">
+  <label className="break-words">선택된 텍스트</label>
+  <button>새로고침</button>
+</div>
+
+// ✅ GOOD — wrap the row; keep label text intact
+<div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+  <label className="shrink-0 whitespace-nowrap font-semibold …">선택된 텍스트</label>
+  <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
+    <button>…</button>
+  </div>
+</div>
+```
+
+- Label: `shrink-0 whitespace-nowrap` (or truncate only when the label itself is a long path/title and truncation is intentional).
+- Row: `flex flex-wrap` + `gap-x-* gap-y-*`.
+- Controls group may use `flex-wrap` too for its own buttons.
+
+## Collapsed disclosure sections
+
+Collapsible blocks (system prompt, advanced settings, similar “접기” headers) must use a **distinct background when collapsed** so they are not mistaken for ordinary labels or static fields.
+
+```tsx
+// ✅ collapsed = tinted surface; expanded = neutral / open content
+<button
+  type="button"
+  className={`flex w-full … rounded px-2 py-1.5 ${
+    open
+      ? 'bg-transparent'
+      : 'bg-slate-300/90 dark:bg-slate-950/40'
+  }`}
+>
+  …
+</button>
+```
+
+- Apply the tint to the **collapsed header/chrome**, not only a text color change.
+- Expanded state may drop the tint or keep a lighter border-only treatment; collapsed must stay visually distinct.
+
+Prefer **English** in new code comments if Korean Unicode might corrupt.

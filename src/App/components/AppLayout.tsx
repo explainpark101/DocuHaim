@@ -46,6 +46,7 @@ import {
   disableWebAuthnUnlock,
 } from '@/utils/webauthn';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
+import LlmAssistModal from '@/components/LlmAssistModal';
 
 /** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
 export function AppLayout({ children }: { children?: ReactNode }) {
@@ -539,7 +540,11 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           )}
 
                     {/* Main Content Routes (z-50: above closed mobile sidebar z-40 so toolbar buttons receive taps) */}
-          <div className="relative z-50 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div
+            data-llm-assist-layout-root=""
+            className="relative z-50 flex min-h-0 min-w-0 flex-1 overflow-hidden"
+          >
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
             <Route
               path="*"
@@ -833,6 +838,11 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               }
             />
           </Routes>
+          </div>
+          <LlmAssistModal
+            llmProviderProfiles={llmProviderProfiles}
+            theme={theme}
+          />
           </div>
         </div>
 

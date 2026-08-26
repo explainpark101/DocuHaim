@@ -1,0 +1,12 @@
+/**
+ * Type-check JS/JSX import paths and named exports without enabling full checkJs on tsc.
+ * Used by scripts/check-js-imports.ts (see package.json typecheck).
+ */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "checkJs": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

@@ -19,6 +19,7 @@ import '@/styles/md-editor-rt/mermaid-base64-fold.css';
 import '@/styles/md-editor-rt/footnotes.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';
+import '@/styles/md-editor-rt/toolbar-scroll.css';
 
 config({
   editorExtensions: {

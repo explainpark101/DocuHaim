@@ -10,7 +10,6 @@ import { bindCatalogClickScrollFix } from '@/utils/catalogClickScrollFix';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
-import LlmAssistModal from '@/components/LlmAssistModal';
 import LlmAssistToolbar from '@/components/LlmAssistToolbar';
 import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloatingPanel';
 import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
@@ -61,7 +60,6 @@ import {
 import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
-import { notifyMirrorEditCaretUpdate } from '@/utils/mirrorEditCaretBridge';
 import {
   markMirrorEditCaretFromEditor,
   markMirrorEditCaretFromPreview,
@@ -160,6 +158,7 @@ import {
 } from '@/utils/previewSelectionSync';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
+import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import {
   attachPreviewMirrorEdit,
   abandonDetachedPreviewMirrorEdit,
@@ -170,7 +169,14 @@ import {
   isMirrorEditActiveIn,
   isMirrorEditTarget,
 } from '@/utils/previewMirrorEdit';
-import { registerMirrorEditCaretHandler } from '@/utils/mirrorEditCaretBridge';
+import {
+  attachMdEditorSourceFocusTracking,
+  clearMdEditorSourceFocus,
+} from '@/utils/mdEditorSourceFocus';
+import {
+  notifyMirrorEditCaretUpdate,
+  registerMirrorEditCaretHandler,
+} from '@/utils/mirrorEditCaretBridge';
 import { createMirrorEditPreviewRemirror } from '@/utils/mirrorEditPreviewRemirror';
 import { createPreviewScrollFollow } from '@/utils/previewScrollFollow';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
@@ -571,12 +577,14 @@ export default function MarkdownEditor({
   onCancelUploadImage,
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
-  llmProviderProfiles = [],
+  llmProviderProfiles: _llmProviderProfiles = [],
   getImgbbApiKey,
   onOpenViewPath,
   onRequestConvertAllImagesToWiki,
   onRegisterConvertAllImagesToWiki,
+  isActiveFile = true,
 }) {
+  const llmAssist = useLlmAssistSessionOptional();
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
   // Unique per keep-alive mount so catalog getElementById / preview-wrapper
@@ -652,7 +660,6 @@ export default function MarkdownEditor({
     openHaimTablePreviewRef.current = haimTableEdit.openPreviewTable;
   }, [haimTableEdit.openAtOffset, haimTableEdit.openPreviewTable]);
   const handleToolbarImageUploadRef = useRef(null);
-  const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
   /** Snapshot of CM selection when opening heading remap ({ from, to, text } or null). */
   const [headingRemapSelection, setHeadingRemapSelection] = useState(null);
@@ -779,7 +786,7 @@ export default function MarkdownEditor({
       view.focus();
       redo(view);
     };
-    handlers['editor-llm-assist'] = () => setLlmAssistOpen(true);
+    handlers['editor-llm-assist'] = () => llmAssist?.toggleAssist?.();
     handlers['editor-export-pdf'] = openExport;
     handlers['editor-pgbr'] = () => {
       restoreSelectionIfNeeded();
@@ -863,7 +870,21 @@ export default function MarkdownEditor({
     };
 
     return registerEditorActions(handlers);
-  }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki]);
+  }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist]);
+
+  // Register active markdown editor with the global LLM Assist host.
+  useEffect(() => {
+    if (previewOnly || !isActiveFile || !llmAssist?.registerEditorBridge) return undefined;
+    return llmAssist.registerEditorBridge({
+      editorRef,
+      onChange: onChangeWithUndoHistory,
+      getMarkdown: () => {
+        const api = editorRef.current?.value ?? editorRef.current;
+        const view = api?.getEditorView?.();
+        return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
+      },
+    });
+  }, [previewOnly, isActiveFile, llmAssist, onChangeWithUndoHistory]);
 
   useEffect(() => {
     if (previewOnly) return undefined;
@@ -1118,6 +1139,45 @@ export default function MarkdownEditor({
     const timers = [50, 200, 500, 1000].map((delay) => setTimeout(apply, delay));
     return () => timers.forEach((t) => clearTimeout(t));
   }, [currentFile?.id, currentFile?.type, previewOnly]);
+
+  // Reset source-Editor focus history when switching documents (same CM view may be reused).
+  useEffect(() => {
+    if (previewOnly) return undefined;
+    const api = editorRef.current?.value ?? editorRef.current;
+    const view = api?.getEditorView?.();
+    clearMdEditorSourceFocus(view);
+    return undefined;
+  }, [currentFile?.id, previewOnly]);
+
+  // Track last source-Editor focus position for LLM apply (even after panel steals focus).
+  useEffect(() => {
+    if (previewOnly) return undefined;
+
+    let detach = null;
+    let attachedView = null;
+
+    const tryAttach = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      const view = api?.getEditorView?.();
+      if (!view || view === attachedView) return Boolean(view);
+      detach?.();
+      attachedView = view;
+      detach = attachMdEditorSourceFocusTracking(view);
+      return true;
+    };
+
+    if (tryAttach()) {
+      return () => {
+        detach?.();
+      };
+    }
+
+    const timers = [50, 200, 500, 1000].map((delay) => setTimeout(tryAttach, delay));
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+      detach?.();
+    };
+  }, [previewOnly, currentFile?.id]);
 
   // Preview heading fold chevrons (persist collapsed ids per document).
   // Do not depend on `value` ? tearing down on every keystroke flashes chevrons.
@@ -2344,8 +2404,9 @@ export default function MarkdownEditor({
     />,
     <LlmAssistToolbar
       key="llm-assist"
-      onOpen={() => {
-        setLlmAssistOpen(true);
+      active={Boolean(llmAssist?.open)}
+      onToggle={() => {
+        llmAssist?.toggleAssist?.();
       }}
     />,
     <ChecklistProgressToolbar
@@ -2406,6 +2467,8 @@ export default function MarkdownEditor({
     onUploadImage,
     handleToolbarImageUpload,
     openHeadingRemap,
+    llmAssist?.open,
+    llmAssist?.toggleAssist,
   ]);
 
   const toolbars = useMemo(() => [
@@ -2666,19 +2729,6 @@ export default function MarkdownEditor({
           setHeadingRemapOpen(false);
           setHeadingRemapSelection(null);
         }}
-      />
-      <LlmAssistModal
-        editorRef={editorRef}
-        onChange={onChangeWithUndoHistory}
-        getMarkdown={() => {
-          const api = editorRef.current?.value ?? editorRef.current;
-          const view = api?.getEditorView?.();
-          return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
-        }}
-        llmProviderProfiles={llmProviderProfiles}
-        open={llmAssistOpen}
-        onOpenChange={setLlmAssistOpen}
-        theme={theme}
       />
       <ChecklistProgressFloatingPanel
         editorRef={editorRef}
