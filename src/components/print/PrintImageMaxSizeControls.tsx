@@ -127,13 +127,9 @@ export default function PrintImageMaxSizeControls({
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="shrink-0 text-xs text-gray-500 dark:text-odp-muted">이미지 최대 (px)</span>
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <label className="flex items-center gap-1">
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <span className="text-xs text-gray-500 dark:text-odp-muted">W</span>
-        // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
         <input
           ref={widthRef}
           type="text"
@@ -170,13 +166,9 @@ export default function PrintImageMaxSizeControls({
               : 'border-gray-300 dark:border-odp-borderStrong'
           }`}
         />
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       </label>
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <label className="flex items-center gap-1">
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <span className="text-xs text-gray-500 dark:text-odp-muted">H</span>
-        // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
         <input
           ref={heightRef}
           type="text"
@@ -212,9 +204,7 @@ export default function PrintImageMaxSizeControls({
               : 'border-gray-300 dark:border-odp-borderStrong'
           }`}
         />
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       </label>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

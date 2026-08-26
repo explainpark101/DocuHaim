@@ -31,7 +31,6 @@ export default function PrintButton({
       aria-label="프린트"
     >
       {trigger ?? <Printer className="size-4" aria-hidden />}
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }

@@ -105,12 +105,10 @@ function IndicatorChipContent({
       ) : (
         <_Icon size={12} className="shrink-0" />
       )}
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="truncate max-w-[120px] md:max-w-[180px]">{displayLabel}</span>
       {indicator.detail && !isError && (
         <span className="hidden md:inline truncate max-w-[120px] text-gray-500 dark:text-odp-muted">
           {indicator.detail}
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
       )}
       {indicator.progress != null && indicator.progress < 100 && (
@@ -155,7 +153,6 @@ function IndicatorItem({
         title={indicator.detail || displayLabel}
       >
         {content}
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </span>
     );
   }
@@ -164,7 +161,6 @@ function IndicatorItem({
     <>
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             className={`${chipClassName({ isError, isDone })} cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60`}
@@ -172,7 +168,6 @@ function IndicatorItem({
             onClick={() => setReasonOpen(true)}
           >
             {content}
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
@@ -192,26 +187,18 @@ function IndicatorItem({
         onClose={() => setReasonOpen(false)}
         onConfirm={() => setReasonOpen(false)}
       >
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="p-6">
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
             {displayLabel}
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </h2>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="mb-4 whitespace-pre-line text-sm text-gray-600 dark:text-gray-400">
             {reason}
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex justify-end">
             <Button type="button" variant="primary" size="md" onClick={() => setReasonOpen(false)}>
               확인
             </Button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       </Modal>
     </>
@@ -234,12 +221,10 @@ export default function ActivityIndicatorBar() {
 
   return (
     <Tooltip.Provider delayDuration={280} skipDelayDuration={120}>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex min-w-0 shrink-0 items-center gap-1.5 overflow-x-auto">
         {visibleIndicators.map((indicator) => (
           <IndicatorItem key={indicator.id} indicator={indicator} />
         ))}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     </Tooltip.Provider>
   );

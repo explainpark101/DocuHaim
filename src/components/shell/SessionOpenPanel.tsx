@@ -75,21 +75,14 @@ export default function SessionOpenPanel({
         }`}
       >
         <Upload className="mx-auto text-gray-400 dark:text-odp-muted" size={28} aria-hidden />
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         <p className="mt-3 text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
           Markdown, ZIP, 폴더를 드래그해서 열기
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         </p>
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         <p className="mt-1 text-xs text-gray-500 dark:text-odp-muted">
           편집 후 저장하면 다운로드로 내려받습니다. 저장소 연결 없이 사용할 수 있습니다.
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         </p>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <label className="flex-1">
-            // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <input
               type="file"
               accept=".md,.markdown,text/markdown"
@@ -101,17 +94,12 @@ export default function SessionOpenPanel({
                 event.target.value = '';
               }}
             />
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700">
               <FileText size={16} aria-hidden />
               MD 열기
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <label className="flex-1">
-            // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <input
               type="file"
               accept=".zip,application/zip"
@@ -123,13 +111,10 @@ export default function SessionOpenPanel({
                 event.target.value = '';
               }}
             />
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-200 dark:bg-odp-bgSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg">
               <Archive size={16} aria-hidden />
               ZIP 열기
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
           {typeof onOpenDirectoryHandle === 'function' ? (
             <Button
@@ -145,7 +130,6 @@ export default function SessionOpenPanel({
             </Button>
           ) : (
             <label className="flex-1">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="file"
                 className="sr-only"
@@ -157,16 +141,12 @@ export default function SessionOpenPanel({
                   event.target.value = '';
                 }}
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-200 dark:bg-odp-bgSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg">
                 <FolderOpen size={16} aria-hidden />
                 폴더 열기
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       </Motion.div>
 

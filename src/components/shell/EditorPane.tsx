@@ -63,7 +63,6 @@ function EditorPaneSuspenseFallback() {
   return (
     <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted">
       에디터 로딩 중…
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
@@ -468,7 +467,6 @@ export default function EditorPane({
       <div className="flex min-h-0 flex-1 flex-col text-gray-400">
         {showMobileSidebarOpen && (
           <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 py-2 dark:border-odp-bgSofter dark:bg-odp-surface">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               aria-label="사이드바 열기"
@@ -476,9 +474,7 @@ export default function EditorPane({
               className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
             >
               <IconMenu size={22} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
         <Motion.div
@@ -491,7 +487,6 @@ export default function EditorPane({
             className="flex items-center gap-3 sm:gap-4"
             variants={emptyHomeItemVariants}
           >
-            // @ts-expect-error TS(2339): Property 'img' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <img
               src={`${import.meta.env.BASE_URL}vite.svg`}
               alt=""
@@ -500,10 +495,8 @@ export default function EditorPane({
               className="h-12 w-12 shrink-0 drop-shadow-[0_8px_18px_rgba(15,23,42,0.28)] sm:h-14 sm:w-14 dark:drop-shadow-[0_0_22px_rgba(56,189,248,0.55)]"
               decoding="async"
             />
-            // @ts-expect-error TS(2339): Property 'h1' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             <h1 className="font-display text-3xl font-bold tracking-tight text-gray-800 dark:text-odp-fgStrong sm:text-4xl">
               Docu Haim
-            // @ts-expect-error TS(2339): Property 'h1' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             </h1>
           </Motion.div>
           <Motion.p
@@ -577,7 +570,6 @@ export default function EditorPane({
             )}
           </Motion.div>
         </Motion.div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -630,11 +622,8 @@ export default function EditorPane({
   
   return (
     <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden">
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div ref={editorTopChromeRef} className="shrink-0 flex flex-col">
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className={`relative z-10100 flex min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 dark:border-odp-bgSofter dark:bg-odp-surface sm:px-6 pointer-events-auto transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex min-w-0 flex-1 items-center gap-2 font-medium text-gray-700 dark:text-odp-fgStrong sm:gap-3">
           {showMobileSidebarOpen && (
             <button
@@ -644,7 +633,6 @@ export default function EditorPane({
               className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
             >
               <IconMenu size={22} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
           {isRecording ? (
@@ -659,7 +647,6 @@ export default function EditorPane({
                 className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-md p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fg"
               >
                 <IconCloud className={isPullingFromRemote ? 'animate-pulse' : undefined} />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
             ) : (
               <IconCloud />
@@ -669,11 +656,8 @@ export default function EditorPane({
           ) : (
             <IconFolder />
           )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex min-w-0 flex-1 items-baseline gap-1">
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             {hasUnsavedChanges && <span className="text-red-500 text-xl leading-none shrink-0">*</span>}
-            // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <input
               className="min-w-[3em] w-full border-none bg-transparent text-sm font-medium outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500 md:text-base"
               value={editedFileName ?? ''}
@@ -687,11 +671,8 @@ export default function EditorPane({
               }}
               placeholder="파일명"
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 overflow-visible touch-manipulation">
           {typeof onToggleRecording === 'function' && (
             <RecordingDropdownButton
@@ -713,7 +694,6 @@ export default function EditorPane({
               title="PDF 뷰어 새로고침"
             >
               <IconRefresh size={14} />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="hidden md:inline"> 새로고침</span>
             </Button>
           )}
@@ -728,7 +708,6 @@ export default function EditorPane({
               className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"
             >
               <IconRefresh size={14} className={isRefreshingFromDisk ? 'animate-spin' : undefined} />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="hidden md:inline"> {isRefreshingFromDisk ? '새로고침 중...' : '새로고침'}</span>
             </Button>
           )}
@@ -742,7 +721,6 @@ export default function EditorPane({
               title="파일 관리"
             >
               <IconMenu size={14} />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="hidden md:inline"> 파일 관리</span>
               <IconChevronDown size={12} className="ml-0.5" />
             </Button>
@@ -762,7 +740,6 @@ export default function EditorPane({
                   >
                     <IconSave size={14} />
                     내 노트에 저장
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 ) : null}
                 {isSessionMarkdown && typeof onRequestSessionTransformDownload === 'function' ? (
@@ -776,7 +753,6 @@ export default function EditorPane({
                   >
                     <ArrowLeftRight size={14} />
                     변형 다운로드
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 ) : null}
                 {currentFile.type === 'session' && onRequestDownload ? (
@@ -790,7 +766,6 @@ export default function EditorPane({
                   >
                     <IconDownload size={14} />
                     다운로드
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 ) : null}
                 {currentFile.type !== 'session' ? (
@@ -804,7 +779,6 @@ export default function EditorPane({
                 >
                   <IconFolder size={14} />
                   파일 이동
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
                 ) : null}
                 {onRequestDownload && currentFile.type !== 'session' && (
@@ -818,7 +792,6 @@ export default function EditorPane({
                   >
                     <IconDownload size={14} />
                     다운로드
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 )}
                 {viewer === 'markdown' ? (
@@ -836,7 +809,6 @@ export default function EditorPane({
                       <ClipboardCopy size={14} />
                     )}
                     서식 유지 복사
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 ) : null}
                 {currentFile.type !== 'session' ? (
@@ -850,7 +822,6 @@ export default function EditorPane({
                 >
                   <Settings size={14} />
                   문서 설정
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
                 ) : null}
                 {onShareToChatWithMyself && currentFile.type !== 'session' && (
@@ -864,7 +835,6 @@ export default function EditorPane({
                   >
                     <IconMessage size={14} />
                     나와의 채팅에 공유하기
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 )}
                 {showConvertAllImagesToWiki ? (
@@ -880,7 +850,6 @@ export default function EditorPane({
                       <ImagePlus size={14} />
                     )}
                     모든 image를 wiki image로
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 ) : null}
                 {currentFile.type !== 'session' ? (
@@ -894,13 +863,10 @@ export default function EditorPane({
                 >
                   <IconTrash size={14} />
                   삭제
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
                 ) : null}
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           )}
           <Button
@@ -919,11 +885,9 @@ export default function EditorPane({
             className="shrink-0 touch-manipulation max-md:min-h-[44px] max-md:min-w-[44px] max-md:px-3 max-md:py-2.5"
           >
             <IconSave />
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="hidden md:inline">
               {' '}
               {isSaving ? '저장 중...' : '저장'}
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
           </Button>
           {!previewOnly && (
@@ -938,13 +902,10 @@ export default function EditorPane({
               <X size={16} />
             </Button>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
       {viewer === 'markdown' && showRecordingToolbar && recordingsList.length > 0 && (
         <div className="shrink-0 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50 dark:bg-odp-bgSoft flex flex-wrap items-center gap-2 w-full">
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             className="text-gray-500 hover:text-gray-700 dark:hover:text-odp-fgStrong p-1 shrink-0"
@@ -956,9 +917,7 @@ export default function EditorPane({
             aria-label="녹음 툴바 닫기"
           >
             <X size={16} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-          // @ts-expect-error TS(2339): Property 'select' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <select
             className="text-sm rounded border border-gray-300 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft px-2 py-1 shrink-0"
             value={selectedRecordingKey ?? ''}
@@ -968,10 +927,8 @@ export default function EditorPane({
             {recordingsList.map((r: any) => (
               <option key={r.key} value={r.key}>
                 {formatRecordingLabel(r)}
-              // @ts-expect-error TS(2339): Property 'option' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </option>
             ))}
-          // @ts-expect-error TS(2339): Property 'select' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </select>
           <Button
             type="button"
@@ -982,16 +939,13 @@ export default function EditorPane({
             className="shrink-0"
           >
             <IconEye size={14} />
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="hidden md:inline">
               {recordingViewMode ? '편집' : '동기화 보기'}
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
           </Button>
           {recordingViewMode && recordingAudioUrl && (
             <RecordingPlayer audioUrl={recordingAudioUrl} audioRef={recordingAudioRef} />
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
       {viewer === 'markdown' && effectiveEditorType === EDITOR_TYPE_NOVEL && !recordingViewMode && (
@@ -1000,29 +954,21 @@ export default function EditorPane({
           role="toolbar"
           aria-label="Markdown 편집기"
         >
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex items-center gap-2 min-w-0">
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="inline-flex items-center gap-1.5 rounded-md bg-white dark:bg-odp-surface px-2 py-0.5 text-xs font-semibold text-gray-800 dark:text-odp-fgStrong border border-gray-200 dark:border-odp-borderSoft shadow-sm shrink-0">
               <PenLine className="size-3.5 opacity-85" aria-hidden />
               Markdown
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="text-xs text-gray-500 dark:text-odp-muted truncate hidden sm:inline">
               `/` 로 커맨드 입력
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex items-center gap-2">
             <PrintButton
               value={editorContent}
               theme={theme}
               currentFile={currentFile}
             />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
@@ -1036,27 +982,19 @@ export default function EditorPane({
               aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
             >
               <ListTree className="size-4" aria-hidden />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-odp-surface h-full">
         {viewer === 'loading' ? (
           <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3">
             <Loader2 size={18} className="animate-spin text-gray-400 dark:text-gray-500" aria-hidden />
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="text-sm text-gray-500 dark:text-odp-muted">파일 불러오는 중…</div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'markdown' ? (
           <>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex-1 min-h-0">
               {recordingViewMode && recordingAudioUrl ? (
                 <RecordingSyncView
@@ -1119,22 +1057,18 @@ export default function EditorPane({
                   )}
                 </Suspense>
               )}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           </>
         ) : viewer === 'image' && currentFile.objectUrl ? (
           <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-            // @ts-expect-error TS(2339): Property 'img' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <img
               src={currentFile.objectUrl}
               alt={currentFile.name}
               className="max-w-full max-h-full object-contain rounded border border-gray-200 dark:border-odp-borderSoft bg-black/5 dark:bg-black/20"
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'pdf' && currentFile.objectUrl ? (
           <div className="flex-1 overflow-hidden">
-            // @ts-expect-error TS(2339): Property 'iframe' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <iframe
               ref={pdfIframeRef}
               key={pdfIframeKey}
@@ -1142,7 +1076,6 @@ export default function EditorPane({
               title={currentFile.name}
               className="w-full h-full border-0 bg-white dark:bg-black"
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'json' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
@@ -1156,7 +1089,6 @@ export default function EditorPane({
                 onSave={onSave}
               />
             </Suspense>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'html' || viewer === 'svg' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
@@ -1171,27 +1103,22 @@ export default function EditorPane({
                 onSave={onSave}
               />
             </Suspense>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'audio' && currentFile.objectUrl ? (
           <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-            // @ts-expect-error TS(2339): Property 'audio' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <audio
               src={currentFile.objectUrl}
               controls
               className="w-full max-w-lg"
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'video' && currentFile.objectUrl ? (
           <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-            // @ts-expect-error TS(2339): Property 'video' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <video
               src={currentFile.objectUrl}
               controls
               className="max-w-full max-h-full rounded border border-gray-200 dark:border-odp-borderSoft"
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'raw' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
@@ -1205,16 +1132,12 @@ export default function EditorPane({
                 onSave={onSave}
               />
             </Suspense>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : viewer === 'unsupported' ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             <p className="text-sm text-gray-500 dark:text-odp-muted">
               이 파일 형식은 에디터에서 미리보기를 지원하지 않습니다.
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </p>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex items-center gap-3 flex-wrap">
               <Button
                 type="button"
@@ -1234,17 +1157,13 @@ export default function EditorPane({
                   <IconDownload size={16} /> 다운로드
                 </Button>
               )}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-xs text-gray-500 dark:text-odp-muted">
             이 파일 형식은 에디터에서 미리보기를 지원하지 않습니다.
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
       <DocumentSettingsModal
         isOpen={documentSettingsOpen}
@@ -1291,16 +1210,13 @@ export default function EditorPane({
           void handleSkipImgbbCopyUpload();
         }}
       >
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="max-h-[min(50vh,320px)] overflow-y-auto rounded-lg border border-gray-200 dark:border-odp-borderSoft">
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <ul className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3">
             {imgbbCopyCandidates.map((item) => (
               <li
                 key={item.id}
                 className="flex flex-col gap-1 rounded-md border border-gray-100 bg-gray-50 p-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
               >
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div className="flex h-20 items-center justify-center overflow-hidden rounded bg-white dark:bg-odp-surface">
                   // @ts-expect-error TS(2339): Property 'previewSrc' does not exist on type 'neve... Remove this comment to see the full error message
                   {item.previewSrc ? (
@@ -1312,23 +1228,16 @@ export default function EditorPane({
                   ) : (
                     <span className="text-[10px] text-gray-400">미리보기 없음</span>
                   )}
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                 <p className="truncate text-[10px] text-gray-600 dark:text-odp-muted" title={item.label}>
                   // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
                   {item.kind} · {item.label}
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                 </p>
-              // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
               </li>
             ))}
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </ul>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       </ConfirmModal>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

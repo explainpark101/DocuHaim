@@ -59,26 +59,20 @@ export default function DesktopTitlebar({
             variant="titlebar"
           />
           {/* Empty gutter: window drag (tabs themselves are interactive). */}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div data-tauri-drag-region className="min-w-8 flex-1" />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : (
         <div
           data-tauri-drag-region
           className="flex min-w-0 flex-1 items-center px-3 text-xs font-medium text-gray-500 dark:text-odp-muted"
         >
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span data-tauri-drag-region className="truncate">
             {appName}
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
 
       <DesktopWindowControls />
-    // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </header>
   );
 }

@@ -24,7 +24,6 @@ export default function PrintPreviewFirstPageSingleSwitch({
 }: Props) {
   return (
     <label className="inline-flex items-center gap-2">
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="shrink-0 text-xs text-gray-500 dark:text-odp-muted">첫장 단면</span>
       <Switch.Root
         className={switchRootClass(checked)}
@@ -36,7 +35,6 @@ export default function PrintPreviewFirstPageSingleSwitch({
       >
         <Switch.Thumb className={switchThumbClass} />
       </Switch.Root>
-    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
     </label>
   );
 }

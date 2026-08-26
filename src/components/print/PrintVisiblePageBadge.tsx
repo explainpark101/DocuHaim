@@ -131,7 +131,6 @@ export default function PrintVisiblePageBadge({
       aria-live="polite"
     >
       {label}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

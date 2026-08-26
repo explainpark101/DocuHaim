@@ -38,7 +38,6 @@ export default function UserWebfontStyles() {
   return (
     <style id="s3haim-user-webfonts" data-s3haim-webfonts="1">
       {css}
-    // @ts-expect-error TS(2339): Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
     </style>
   );
 }

@@ -114,7 +114,6 @@ export default function FontFamilyInput({
       <Form.Root onSubmit={(e: any) => e.preventDefault()}>
         <Form.Field name={fieldName}>
           <Form.Control asChild>
-            // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <input
               type="text"
               id={id}
@@ -135,7 +134,6 @@ export default function FontFamilyInput({
           </Form.Control>
         </Form.Field>
       </Form.Root>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         id={id ? `${id}-listbox` : undefined}
         role="listbox"
@@ -146,7 +144,6 @@ export default function FontFamilyInput({
         {filtered.length === 0 && !allowAddWebfont ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-odp-muted">
             제안 목록 없음 (직접 입력한 값 사용)
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : (
           <>
@@ -164,7 +161,6 @@ export default function FontFamilyInput({
                 }}
               >
                 {font}
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
             ))}
             {allowAddWebfont ? (
@@ -181,12 +177,10 @@ export default function FontFamilyInput({
               >
                 <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 웹폰트 추가
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
             ) : null}
           </>
         )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
       <WebfontCssEditorModal
@@ -201,7 +195,6 @@ export default function FontFamilyInput({
           setOptionsTick((t) => t + 1);
         }}
       />
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

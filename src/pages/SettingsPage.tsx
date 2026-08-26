@@ -955,7 +955,6 @@ export default function SettingsPage({
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
               문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>
-              // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               (note-cover 아래)로 문서별 각주 on/off를 지정합니다. 여기서는 본문 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">[^N]</code> 표기
               방식만 고릅니다.
             </p>

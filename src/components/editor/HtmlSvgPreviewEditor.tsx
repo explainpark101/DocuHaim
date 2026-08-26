@@ -112,16 +112,13 @@ export default function HtmlSvgPreviewEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-gray-50/90 px-3 py-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft/90"
         role="toolbar"
         aria-label={mode === 'svg' ? 'SVG editor' : 'HTML editor'}
       >
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <span className="text-xs font-medium text-gray-600 dark:text-odp-muted">
           {mode === 'svg' ? 'SVG' : 'HTML'}
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
         <Button
           type="button"
@@ -132,13 +129,10 @@ export default function HtmlSvgPreviewEditor({
           aria-label={meta.title}
         >
           <ModeIcon size={14} aria-hidden />
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="hidden sm:inline"> {meta.label}</span>
         </Button>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showEditor && (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col p-2">
@@ -150,7 +144,6 @@ export default function HtmlSvgPreviewEditor({
               onChange={onChange}
               onSave={onSave}
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
 
@@ -164,32 +157,26 @@ export default function HtmlSvgPreviewEditor({
               isResizing={isResizing}
               label="Resize preview panel"
             />
-            // @ts-expect-error TS(2339): Property 'iframe' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <iframe
               title={iframeTitle}
               srcDoc={srcDoc}
               sandbox="allow-scripts allow-forms allow-modals"
               className="h-full w-full border-0 bg-white dark:bg-odp-bg"
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
 
         {!showEditor && showPreview && (
           <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-            // @ts-expect-error TS(2339): Property 'iframe' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <iframe
               title={iframeTitle}
               srcDoc={srcDoc}
               sandbox="allow-scripts allow-forms allow-modals"
               className="h-full w-full border-0 bg-white dark:bg-odp-bg"
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

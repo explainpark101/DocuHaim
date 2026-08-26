@@ -267,7 +267,6 @@ export default function ResizableSidebarPanel({
           label="사이드바 너비 조절"
         />
       )}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

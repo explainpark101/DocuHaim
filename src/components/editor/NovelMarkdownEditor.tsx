@@ -917,7 +917,6 @@ export default function NovelMarkdownEditor({
           aria-live="polite"
         >
           <Loader2 size={16} className="animate-spin shrink-0" />
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span>이미지 업로드 중… {Math.max(0, Math.min(100, Math.round(uploadImagePercent)))}%</span>
           {typeof onCancelUploadImage === 'function' && (
             <button
@@ -926,10 +925,8 @@ export default function NovelMarkdownEditor({
               className="ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950"
             >
               취소
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
       <EditorRoot key={documentKey ?? 'novel'}>
@@ -994,18 +991,12 @@ export default function NovelMarkdownEditor({
                 onCommand={(payload: any) => item.command?.(payload)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-100 aria-selected:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-bgSoft dark:aria-selected:bg-odp-bgSoft"
               >
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
                   {item.icon}
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div className="min-w-0 flex-1">
-                  // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                   <p className="font-medium leading-snug">{item.title}</p>
-                  // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                   <p className="text-xs text-gray-500 dark:text-odp-muted">{item.description}</p>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
               </EditorCommandItem>)}
             </EditorCommandList>
@@ -1034,7 +1025,6 @@ export default function NovelMarkdownEditor({
         onCrop={handleCropWikiImage}
         onConvertToImgbb={handleConvertToImgbb}
       />
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

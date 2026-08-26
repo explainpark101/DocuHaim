@@ -13,7 +13,6 @@ function RouteSuspenseFallback() {
   return (
     <div className="flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted">
       로딩 중…
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
@@ -64,14 +63,12 @@ export default function WorkspaceMainPanels({
               <Suspense fallback={<RouteSuspenseFallback />}>
                 <SettingsPage {...settingsPaneProps} />
               </Suspense>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : isChatRoute ? (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
               <Suspense fallback={<RouteSuspenseFallback />}>
                 <ChatWithMyselfPane {...chatPaneProps} isActive />
               </Suspense>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -85,11 +82,9 @@ export default function WorkspaceMainPanels({
                   isActiveFile: true,
                 })}
               />
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
         </WorkspaceTabHost>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -167,11 +162,9 @@ export default function WorkspaceMainPanels({
                 isActiveFile: true,
               })}
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
       </WorkspaceTabHost>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

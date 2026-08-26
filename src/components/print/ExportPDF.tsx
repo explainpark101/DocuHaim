@@ -31,7 +31,6 @@ export default function ExportPDF({
       aria-label="PDF로 내보내기"
     >
       {trigger ?? <Printer className="md-editor-icon" size={16} />}
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }

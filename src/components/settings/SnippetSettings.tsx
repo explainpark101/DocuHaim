@@ -180,7 +180,6 @@ export default function SnippetSettings({
             아직 등록된 스니펫이 없습니다. 아래 &quot;스니펫 추가&quot; 버튼을 눌러 새 스니펫을 만들어 보세요.
           </p>
         )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         {snippets.map((s: any) => <div
           key={s.id}
           className="border border-gray-200 dark:border-odp-borderSoft rounded-md p-3 bg-white dark:bg-odp-bgSoft space-y-2"

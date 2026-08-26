@@ -228,9 +228,7 @@ function SortableWorkspaceTab({
           aria-label="저장되지 않은 변경"
         />
       ) : null}
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="truncate">{title}</span>
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 
@@ -271,7 +269,6 @@ function SortableWorkspaceTab({
       )}
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             aria-label={`${title} 탭 닫기`}
@@ -285,7 +282,6 @@ function SortableWorkspaceTab({
             }}
           >
             <X size={12} aria-hidden />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
@@ -295,7 +291,6 @@ function SortableWorkspaceTab({
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
@@ -341,7 +336,6 @@ export default function WorkspaceTabBar({
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div role="tablist" aria-label="워크스페이스 탭" className={listClass}>
             {tabs.map((tab) => (
               <SortableWorkspaceTab
@@ -355,7 +349,6 @@ export default function WorkspaceTabBar({
                 mobileContextMenu={mobileContextMenu}
               />
             ))}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         </SortableContext>
       </DndContext>

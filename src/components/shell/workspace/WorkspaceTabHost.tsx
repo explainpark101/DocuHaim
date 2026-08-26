@@ -13,7 +13,6 @@ export default function WorkspaceTabHost({ children }: WorkspaceTabHostProps) {
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-odp-bgSofter">
       {children}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
@@ -41,7 +40,6 @@ export function WorkspaceKeepAlivePanel({
       {...inactiveProps}
     >
       {children}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

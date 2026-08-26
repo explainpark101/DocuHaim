@@ -353,7 +353,6 @@ export function PrintPgbrContextMenu({
     >
       <Trash2 className={ICON_XS} aria-hidden />
       페이지 나누기 삭제
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   ) : (
     <button
@@ -366,7 +365,6 @@ export function PrintPgbrContextMenu({
     >
       <Scissors className={ICON_XS} aria-hidden />
       페이지 나누기 삽입
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 
@@ -382,17 +380,13 @@ export function PrintPgbrContextMenu({
             }}
             aria-hidden
           >
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div
               className="border-t-2 border-dashed border-red-500 bg-red-500/10"
               style={{ height: 12 }}
             />
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="mt-0.5 inline-block rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white shadow-sm">
               페이지 분할 미리보기
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>,
           document.body,
         )
@@ -411,7 +405,6 @@ export function PrintPgbrContextMenu({
             role="menu"
           >
             {actionButton}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>,
           document.body,
         )
@@ -429,7 +422,6 @@ export function PrintPgbrContextMenu({
         title={target?.label || '페이지 나누기'}
         subtitle="인쇄 미리보기"
       >
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           data-print-pgbr-menu="1"
           onPointerEnter={() => {
@@ -438,7 +430,6 @@ export function PrintPgbrContextMenu({
           onPointerLeave={() => setHoverPreview(false)}
         >
           {actionButton}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       </MobileContextMenuModal>
     ) : (

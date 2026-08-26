@@ -624,7 +624,6 @@ export default function LlmAssistModal({
       >
         <Sparkles size={14} aria-hidden />
         {chipLabel}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -638,23 +637,17 @@ export default function LlmAssistModal({
       aria-modal="false"
       aria-label="AI 텍스트 도우미"
     >
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className="flex touch-none cursor-grab active:cursor-grabbing items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40"
         onPointerDown={(e: any) => startPositionDrag(e)}
         onTouchStart={(e: any) => startPositionTouchDrag(e)}
       >
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
           <Sparkles size={16} className="shrink-0" aria-hidden />
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="truncate">AI 도우미</span>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex shrink-0 items-center gap-1">
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onPointerDown={(e: any) => e.stopPropagation()}
@@ -666,9 +659,7 @@ export default function LlmAssistModal({
             aria-label="새 창으로 열기"
           >
             <SquareArrowOutUpRight size={15} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onPointerDown={(e: any) => e.stopPropagation()}
@@ -679,9 +670,7 @@ export default function LlmAssistModal({
             aria-label="숨기기"
           >
             <EyeOff size={15} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onPointerDown={(e: any) => e.stopPropagation()}
@@ -692,20 +681,14 @@ export default function LlmAssistModal({
             aria-label="닫기"
           >
             <X size={15} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         <LlmAssistPanel {...panelProps} />
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         role="separator"
         aria-orientation="horizontal"
@@ -713,7 +696,6 @@ export default function LlmAssistModal({
         className="absolute bottom-0 left-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nesw-resize!"
         onPointerDown={(e: any) => startCornerResize('sw', e)}
       />
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         role="separator"
         aria-orientation="horizontal"
@@ -721,7 +703,6 @@ export default function LlmAssistModal({
         className="absolute bottom-0 right-0 z-20 h-6 w-6 touch-none opacity-0 cursor-nwse-resize!"
         onPointerDown={(e: any) => startCornerResize('se', e)}
       />
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

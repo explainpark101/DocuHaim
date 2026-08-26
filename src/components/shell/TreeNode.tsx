@@ -38,7 +38,6 @@ function EmptyItemHint({
     <Tooltip.Provider delayDuration={280} skipDelayDuration={120}>
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             className="inline-flex shrink-0 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 rounded-full"
@@ -47,7 +46,6 @@ function EmptyItemHint({
             onPointerDown={(e: any) => e.stopPropagation()}
           >
             <AlertCircle size={12} strokeWidth={2.5} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
@@ -717,12 +715,9 @@ export default function TreeNode({
                 style={{ left: `${offset}px` }}
               />
             ))}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex items-center gap-1.5 overflow-hidden">
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="text-gray-400 dark:text-gray-500 w-4 flex justify-center shrink-0">
             {node.type === 'folder' ? (
               isLoadingChildren ? (
@@ -733,15 +728,12 @@ export default function TreeNode({
                 <IconChevronRight />
               )
             ) : null}
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className={`${iconColorClass} shrink-0 inline-flex items-center gap-0.5`}>
             {isTransferBusy ? (
               <Tooltip.Provider delayDuration={200} skipDelayDuration={80}>
                 <Tooltip.Root>
                   <Tooltip.Trigger asChild>
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     <span
                       className="inline-flex"
                       aria-label={transferBusyHint || '전송 중'}
@@ -749,7 +741,6 @@ export default function TreeNode({
                       onPointerDown={(e: any) => e.stopPropagation()}
                     >
                       <Loader2 size={14} className="animate-spin text-blue-500 dark:text-blue-400" />
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     </span>
                   </Tooltip.Trigger>
                   <Tooltip.Portal>
@@ -776,11 +767,9 @@ export default function TreeNode({
             {!isTransferBusy && emptyHintLabel ? (
               <EmptyItemHint label={emptyHintLabel} />
             ) : null}
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
           {isRenaming && !isTrashRoot && (node.type === 'file' || node.type === 'folder') ? (
             <span className="flex items-baseline gap-1 min-w-0">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 className="bg-transparent border-none outline-none text-sm font-medium truncate placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 value={tempName}
@@ -794,14 +783,11 @@ export default function TreeNode({
               {node.type === 'file' && extension && (
                 <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
                   {extension}
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 </span>
               )}
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
           ) : (
             <span className="flex min-w-0 flex-col overflow-hidden">
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 ref={titleContainerRef}
                 className={`text-sm select-none overflow-hidden whitespace-nowrap ${
@@ -816,7 +802,6 @@ export default function TreeNode({
                 onMouseLeave={stopTitleScroll}
               >
                 {displayName}
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
               {showModifiedDate && node.type === 'file' && !isTrashRoot && node.lastModified ? (
                 <TreeNodeModifiedLabel
@@ -824,13 +809,10 @@ export default function TreeNode({
                   className="text-gray-400/75 dark:text-gray-500/80"
                 />
               ) : null}
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="hidden opacity-100 flex items-center gap-1 shrink-0 transition-opacity">
           {node.type === 'folder' && !isTrashRoot && onRequestMoveFolder && (
             <button
@@ -844,7 +826,6 @@ export default function TreeNode({
               aria-label="폴더 위치 이동"
             >
               <ArrowRightToLine size={12} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
           {node.type === 'file' && !isTrashRoot && (
@@ -855,7 +836,6 @@ export default function TreeNode({
               aria-label="파일명 수정"
             >
               <PencilIcon className="size-3.5" />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
           {node.type === 'folder' && !isTrashRoot && (
@@ -866,10 +846,8 @@ export default function TreeNode({
               aria-label="폴더명 수정"
             >
               <PencilIcon className="size-3.5" />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             onClick={(e: any) => {
               e.stopPropagation();
@@ -885,9 +863,7 @@ export default function TreeNode({
             aria-label="삭제"
           >
             <IconTrash />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       </Motion.div>
 
@@ -935,7 +911,6 @@ export default function TreeNode({
           mobileTree={mobileTree}
           transferBusyItems={transferBusyItems}
         />)}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

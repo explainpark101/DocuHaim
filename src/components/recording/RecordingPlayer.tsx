@@ -126,9 +126,7 @@ export default function RecordingPlayer({
 
   return (
     <div className="flex-1 min-w-0 flex items-center gap-2">
-      // @ts-expect-error TS(2339): Property 'audio' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <audio ref={ref} src={audioUrl} preload="auto" className="hidden" />
-      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
       <button
         type="button"
         onClick={handlePlayPause}
@@ -143,27 +141,18 @@ export default function RecordingPlayer({
         ) : (
           <IconPlay size={16} />
         )}
-      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
       </button>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex-1 min-w-0 flex items-center gap-2">
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <span className="text-xs text-gray-600 dark:text-odp-muted shrink-0">
           {formatTime(currentTime)} / {formatTime(duration)}
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex-1 min-w-0 h-1 bg-gray-200 dark:bg-odp-borderSoft rounded-full overflow-hidden">
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             className="h-full bg-blue-500 dark:bg-blue-400 transition-all duration-150"
             style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
           />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

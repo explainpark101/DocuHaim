@@ -26,7 +26,6 @@ export default function PrintPreviewNavSelect({
 
   return (
     <label className="flex min-w-0 items-center gap-2">
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="shrink-0 text-xs text-gray-500 dark:text-odp-muted">보기</span>
       <Select.Root
         value={value}
@@ -40,11 +39,9 @@ export default function PrintPreviewNavSelect({
           data-print-toolbar="view-nav"
           className="inline-flex h-8 min-w-32 items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
         >
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <current.Icon size={14} className="shrink-0 text-gray-500 dark:text-odp-muted" aria-hidden />
             <Select.Value />
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
           <Select.Icon className="text-gray-500">
             <ChevronDown size={14} />
@@ -74,7 +71,6 @@ export default function PrintPreviewNavSelect({
           </Select.Content>
         </Select.Portal>
       </Select.Root>
-    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
     </label>
   );
 }

@@ -142,14 +142,10 @@ function ChatWithMyselfEntry({
       }`}
       style={{ paddingLeft: '8px' }}
     >
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="text-violet-400 dark:text-violet-500 w-4 flex justify-center shrink-0">
         <MessageCircle size={14} />
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </span>
-      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <span className="text-gray-500 dark:text-gray-400 truncate">나와의 채팅</span>
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }
@@ -1202,13 +1198,9 @@ export default function Sidebar({
           }
         />
       )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex flex-col bg-gray-50 dark:bg-odp-surface shrink-0">
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="p-4 flex flex-col gap-3">
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex justify-between items-center gap-2" data-sidebar-header-row>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex items-center gap-1 min-w-0" data-sidebar-header-left>
               {typeof onRequestCollapseSidebar === 'function' && (
                 <button
@@ -1219,7 +1211,6 @@ export default function Sidebar({
                   aria-label="사이드바 접기"
                 >
                   <ChevronsLeft size={18} />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               )}
               {typeof onBrandClick === 'function' || typeof onStorageModeChange === 'function' ? (
@@ -1275,7 +1266,6 @@ export default function Sidebar({
                       aria-label={`${appName} 홈으로`}
                     >
                       {appName}
-                    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                     </button>
                   );
 
@@ -1310,12 +1300,9 @@ export default function Sidebar({
                               onStorageModeChange(mode);
                             }}
                           >
-                            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                             <span className="inline-flex w-4 shrink-0 items-center justify-center">
                               {selected ? <IconCheck size={14} aria-hidden /> : null}
-                            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                             </span>
-                            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                             <span className="min-w-0 flex-1 truncate">{label}</span>
                           </AdaptiveMenuItem>
                         );
@@ -1329,42 +1316,30 @@ export default function Sidebar({
                   className="font-bold text-lg text-gray-700 dark:text-odp-fgStrong truncate"
                 >
                   {appName}
-                // @ts-expect-error TS(2339): Property 'h1' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
                 </h1>
               )}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex items-center gap-1.5" data-sidebar-header-right>
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={onToggleTheme}
                 className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
                 title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
               >
                 {theme !== 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={onOpenSettings}
                 className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition"
               >
                 <IconSettings />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {selectedFolderForMove && onRequestMoveFolder && (
             <div className="flex items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-1.5 text-xs">
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-blue-700 dark:text-blue-300 truncate flex-1 min-w-0">
                 폴더 선택됨: {selectedFolderForMove.node.name}
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={() => onRequestMoveFolder(selectedFolderForMove.node, selectedFolderForMove.storageType)}
@@ -1373,17 +1348,12 @@ export default function Sidebar({
               >
                 <ArrowRightToLine size={12} />
                 이동
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex items-center gap-2 w-full border-y border-gray-400 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm text-gray-700 dark:text-odp-fgStrong">
           <AdvancedSearchSidebarTrigger />
-          // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <input
             type="text"
             value={searchInput}
@@ -1410,12 +1380,9 @@ export default function Sidebar({
               aria-label="검색어 지우기"
             >
               <X size={16} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           ) : null}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
       <DndContext
@@ -1427,7 +1394,6 @@ export default function Sidebar({
         onDragCancel={handleDndDragCancel}
         autoScroll
       >
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         ref={scrollContainerRef}
         data-sidebar-tree-scroll
@@ -1458,14 +1424,10 @@ export default function Sidebar({
       >
         {sessionWorkspace ? (
           <div>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="sticky top-0 z-9999 mb-1 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:border-odp-surface dark:bg-odp-bgSoft">
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="flex min-w-0 items-center gap-1">
                 <Download size={14} />
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="truncate">다운로드 세션</span>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
               {typeof onCloseSessionWorkspace === 'function' ? (
                 <button
@@ -1476,35 +1438,26 @@ export default function Sidebar({
                   onClick={onCloseSessionWorkspace}
                 >
                   <X size={14} />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               ) : null}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             <p className="px-3 pb-1 text-[11px] text-gray-400 dark:text-odp-muted truncate" title={sessionWorkspace.originName}>
               {sessionWorkspace.originName}
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </p>
             <SessionTreeList
               nodes={sessionTree}
               currentPath={treeCurrentFile?.type === 'session' ? treeCurrentFile.id : null}
               onSelectFile={(node: any) => onSelectFile?.('session', node, {})}
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
         {/* S3 Section */}
         {isS3Mode && (
         <div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="flex items-center gap-1">
               <IconCloud /> S3
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex gap-1">
               {onRefreshS3 && s3Bucket && (
                 <button
@@ -1536,10 +1489,8 @@ export default function Sidebar({
                           : ''
                     }`}
                   />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               )}
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const { parentPath } = getCreateTargetForStorage('s3');
@@ -1549,9 +1500,7 @@ export default function Sidebar({
                 title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
               >
                 <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const { parentPath } = getCreateTargetForStorage('s3');
@@ -1561,9 +1510,7 @@ export default function Sidebar({
                 title="선택된 폴더에 폴더 업로드 (폴더 전체)"
               >
                 <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const target = getCreateTargetForStorage('s3');
@@ -1573,9 +1520,7 @@ export default function Sidebar({
                 title="선택된 폴더에 파일 생성"
               >
                 <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={() => {
                   const target = getCreateTargetForStorage('s3');
@@ -1585,11 +1530,8 @@ export default function Sidebar({
                 title="선택된 폴더에 폴더 생성"
               >
                 <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {s3Bucket ? (
             <div className="space-y-0.5">
@@ -1659,24 +1601,19 @@ export default function Sidebar({
               ) : (
                 <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
               )}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : (
             <p className="text-xs text-gray-400 px-4 py-2">설정에서 연동하세요.</p>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         )}
 
         {/* Local Section */}
         {isLocalMode && (
         <div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="flex items-center gap-1">
               <IconFolder /> Local Folder
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
             {localVaultReady && (
               <div className="flex gap-1">
@@ -1695,10 +1632,8 @@ export default function Sidebar({
                       size={22}
                       className={`shrink-0 w-5 h-5 md:w-[14px] md:h-[14px] ${isLocalTreeLoading ? 'animate-spin' : ''}`}
                     />
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 )}
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath, parentDirHandle } = getCreateTargetForStorage('local');
@@ -1708,9 +1643,7 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
                 >
                   <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath, parentDirHandle } = getCreateTargetForStorage('local');
@@ -1720,9 +1653,7 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 업로드 (폴더 전체)"
                 >
                   <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('local');
@@ -1732,9 +1663,7 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 생성"
                 >
                   <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('local');
@@ -1744,27 +1673,20 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 생성"
                 >
                   <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {!localVaultReady && (
             <div className="px-3 mb-2">
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 onClick={onOpenLocalFolder}
                 className="w-full bg-white dark:bg-odp-surface border border-gray-300 dark:border-odp-borderStrong text-gray-700 dark:text-odp-fgStrong text-sm py-1.5 px-3 rounded shadow-sm hover:bg-gray-50 dark:hover:bg-odp-focusBg transition flex items-center justify-center gap-2"
               >
                 <IconFolder /> 폴더 선택
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="space-y-0.5">
             <ChatWithMyselfEntry
               isActive={chatWithMyselfActive}
@@ -1855,20 +1777,15 @@ export default function Sidebar({
                 <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
               )
             ) : null}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         )}
 
         {isWebdavMode && (
         <div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="flex items-center gap-1">
               <IconCloud /> WebDAV
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
             {webdavReady && (
               <div className="flex gap-1">
@@ -1889,10 +1806,8 @@ export default function Sidebar({
                         isWebdavTreeLoading ? 'animate-spin' : ''
                       }`}
                     />
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 )}
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath } = getCreateTargetForStorage('webdav');
@@ -1902,9 +1817,7 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
                 >
                   <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const { parentPath } = getCreateTargetForStorage('webdav');
@@ -1914,9 +1827,7 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 업로드 (폴더 전체)"
                 >
                   <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('webdav');
@@ -1926,9 +1837,7 @@ export default function Sidebar({
                   title="선택된 폴더에 파일 생성"
                 >
                   <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   onClick={() => {
                     const target = getCreateTargetForStorage('webdav');
@@ -1938,12 +1847,9 @@ export default function Sidebar({
                   title="선택된 폴더에 폴더 생성"
                 >
                   <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {webdavReady ? (
             <div className="space-y-0.5">
@@ -2017,15 +1923,12 @@ export default function Sidebar({
               ) : !isWebdavTreeLoading ? (
                 <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
               ) : null}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : (
             <p className="text-xs text-gray-400 px-4 py-2">설정에서 WebDAV 연결 정보를 저장해 주세요.</p>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
       {typeof document !== 'undefined'
         ? createPortal(
@@ -2043,7 +1946,6 @@ export default function Sidebar({
         />
       ) : null}
       </DndContext>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

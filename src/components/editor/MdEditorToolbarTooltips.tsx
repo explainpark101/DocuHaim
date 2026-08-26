@@ -283,7 +283,6 @@ export default function MdEditorToolbarTooltips({ containerRef }: Props) {
         }}
       >
         <Tooltip.Trigger asChild>
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span
             aria-hidden
             className="pointer-events-none fixed z-100049"

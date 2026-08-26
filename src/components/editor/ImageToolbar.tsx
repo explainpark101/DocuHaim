@@ -40,7 +40,6 @@ export default function ImageToolbar({
           role="menu"
           onClick={close}
         >
-          // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <li
             className="md-editor-menu-item md-editor-menu-item-image"
             role="menuitem"
@@ -54,9 +53,7 @@ export default function ImageToolbar({
             }}
           >
             링크 추가
-          // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </li>
-          // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <li
             className="md-editor-menu-item md-editor-menu-item-image"
             role="menuitem"
@@ -70,9 +67,7 @@ export default function ImageToolbar({
             }}
           >
             이미지 업로드
-          // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </li>
-          // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <li
             className="md-editor-menu-item md-editor-menu-item-image"
             role="menuitem"
@@ -86,15 +81,12 @@ export default function ImageToolbar({
             }}
           >
             잘라서 업로드
-          // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </li>
-        // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
         </ul>
       )}
     >
       <ImageIcon className="md-editor-icon" size={16} aria-hidden />
     </DropdownToolbar>
-    // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
     <input
       ref={uploadInputRef}
       type="file"
@@ -110,7 +102,6 @@ export default function ImageToolbar({
         if (files.length) onRequestUpload(files);
       }}
     />
-    // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
     <input
       ref={clipInputRef}
       type="file"

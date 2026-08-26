@@ -127,7 +127,6 @@ export default function RecordingSyncView({
 
   return (
     <div className="flex h-full">
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         ref={containerRef}
         className="flex-1 overflow-auto p-4 font-mono text-sm min-w-0"
@@ -161,19 +160,14 @@ export default function RecordingSyncView({
               }`}
               title={canSeek ? '클릭하여 해당 시점으로 이동' : undefined}
             >
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="select-none text-gray-400 dark:text-odp-muted w-8 inline-block mr-2">
                 {i + 1}
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
               {line || '\u00A0'}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           );
         })}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
