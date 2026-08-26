@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { IconUpload } from '@/components/icons';
+import { IconDownload } from '@/components/icons';
 import Modal from '@/components/shared/modals/Modal';
 
-export function ImportPasswordModal({ isOpen, onConfirm, onCancel }) {
+export function ExportPasswordModal({
+  isOpen,
+  onConfirm,
+  onCancel
+}: any) {
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
     if (!password.trim()) return;
     onConfirm(password.trim());
@@ -20,23 +24,25 @@ export function ImportPasswordModal({ isOpen, onConfirm, onCancel }) {
   return (
     <Modal isOpen={isOpen} onClose={handleClose}>
       <div className="p-8 text-center">
-        <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <IconUpload size={32} />
+        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <IconDownload size={32} />
         </div>
-        <h2 className="text-xl font-bold text-gray-800 dark:text-odp-fgStrong mb-2">백업 파일 불러오기</h2>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-odp-fgStrong mb-2">백업 파일 내보내기</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          내보낼 때 사용한 비밀번호를 입력하세요.
+          내보낸 JSON 파일을 암호화할 비밀번호를 입력하세요.
+          <br />
+          복원 시 이 비밀번호가 필요합니다.
         </p>
 
         <form onSubmit={handleSubmit}>
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e: any) => setPassword(e.target.value)}
             required
             autoFocus
-            placeholder="백업 파일 비밀번호"
-            className="w-full border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fgStrong rounded-lg px-4 py-3 text-center mb-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition"
+            placeholder="내보내기 비밀번호"
+            className="w-full border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fgStrong rounded-lg px-4 py-3 text-center mb-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-800 transition"
           />
           <div className="flex gap-2">
             <button
@@ -48,9 +54,9 @@ export function ImportPasswordModal({ isOpen, onConfirm, onCancel }) {
             </button>
             <button
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition shadow-sm"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition shadow-sm"
             >
-              복원
+              내보내기
             </button>
           </div>
         </form>

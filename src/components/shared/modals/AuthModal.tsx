@@ -4,7 +4,16 @@ import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import Modal from '@/components/shared/modals/Modal';
 
-export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, autoPromptWebAuthn = true, fileInputRef }) {
+export function AuthModal({
+  isOpen,
+  onUnlock,
+  onUnlockWithWebAuthn,
+  onCloseWithoutUnlock,
+  canUnlockWithWebAuthn,
+  isPasswordMode = true,
+  autoPromptWebAuthn = true,
+  fileInputRef
+}: any) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const webauthnLabel = getWebAuthnEncryptLabel();
 
@@ -16,7 +25,7 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
       let promise;
       try {
         promise = onUnlockWithWebAuthn();
-      } catch (e) {
+      } catch (e: any) {
         setWebauthnLoading(false);
         if (e?.message && !/cancel|abort|user|denied|dismissed/i.test(String(e.message))) {
           alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
@@ -41,14 +50,14 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
     let promise;
     try {
       promise = onUnlockWithWebAuthn();
-    } catch (e) {
+    } catch (e: any) {
       alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
       return;
     }
     setWebauthnLoading(true);
     try {
       await promise;
-    } catch (e) {
+    } catch (e: any) {
       alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
     } finally {
       setWebauthnLoading(false);
@@ -83,7 +92,7 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
 
         {isPasswordMode && (
           <form
-            onSubmit={(e) => {
+            onSubmit={(e: any) => {
               e.preventDefault();
               onUnlock(e.target.password.value);
             }}

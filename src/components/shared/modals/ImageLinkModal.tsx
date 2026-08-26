@@ -44,7 +44,7 @@ export default function ImageLinkModal({ isOpen, onClose, onConfirm }: Props) {
           <input
             type="text"
             value={desc}
-            onChange={(event) => setDesc(event.target.value)}
+            onChange={(event: any) => setDesc(event.target.value)}
             placeholder="선택"
             className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-odp-borderStrong dark:bg-odp-bgSoft"
           />
@@ -56,7 +56,7 @@ export default function ImageLinkModal({ isOpen, onClose, onConfirm }: Props) {
           <input
             type="text"
             value={url}
-            onChange={(event) => setUrl(event.target.value)}
+            onChange={(event: any) => setUrl(event.target.value)}
             placeholder="https://…"
             className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-odp-borderStrong dark:bg-odp-bgSoft"
           />

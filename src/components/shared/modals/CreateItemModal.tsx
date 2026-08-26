@@ -43,8 +43,8 @@ export function CreateItemModal({
   ensureFolderLoaded,
   onClose,
   onSubmit,
-  isSubmitting = false,
-}) {
+  isSubmitting = false
+}: any) {
   const listboxId = useId();
   const [name, setName] = useState('');
   const [fileFormatId, setFileFormatId] = useState(
@@ -54,7 +54,7 @@ export function CreateItemModal({
   const [activeSuggest, setActiveSuggest] = useState(0);
   const [folderLoadTick, setFolderLoadTick] = useState(0);
   const wasBlockedRef = useRef(false);
-  const wrapRef = useRef(null);
+  const wrapRef = useRef<any>(null);
   const shakeControls = useAnimationControls();
 
   useEffect(() => {
@@ -96,7 +96,7 @@ export function CreateItemModal({
   const isOutsideRoot = resolved?.ok === false && resolved.reason === 'outside-root';
   const isDuplicate =
     Boolean(resolved?.ok)
-    && isCreateItemPathTaken(trees, resolved, itemType);
+    && isCreateItemPathTaken(trees, resolved as any, itemType);
   const isBlocked = isOutsideRoot || isDuplicate;
 
   const autocomplete = useMemo(
@@ -167,14 +167,14 @@ export function CreateItemModal({
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
-    const onPointerDown = (e) => {
+    const onPointerDown = (e: any) => {
       if (!el.contains(e.target)) setSuggestOpen(false);
     };
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
-  const applySuggestion = (item) => {
+  const applySuggestion = (item: any) => {
     if (!autocomplete.ok) return;
     const next = `${autocomplete.stem}${item.name}/`;
     setName(next);
@@ -182,13 +182,13 @@ export function CreateItemModal({
     setActiveSuggest(0);
   };
 
-  const selectFileFormat = (formatId) => {
+  const selectFileFormat = (formatId: any) => {
     setFileFormatId(formatId);
     if (!name.trim()) return;
     setName(applyCreateFileFormat(name, formatId));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -215,7 +215,7 @@ export function CreateItemModal({
     onSubmit(toSubmit);
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: any) => {
     if (!suggestOpen || suggestions.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -297,7 +297,7 @@ export function CreateItemModal({
               <input
                 type="text"
                 value={name}
-                onChange={(e) => {
+                onChange={(e: any) => {
                   setName(e.target.value);
                   setSuggestOpen(true);
                 }}
@@ -362,7 +362,7 @@ export function CreateItemModal({
                           ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100'
                           : 'text-gray-800 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg'
                       }`}
-                      onMouseDown={(e) => {
+                      onMouseDown={(e: any) => {
                         e.preventDefault();
                         applySuggestion(item);
                       }}

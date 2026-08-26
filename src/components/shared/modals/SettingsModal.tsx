@@ -11,8 +11,8 @@ export function SettingsModal({
   onCancel,
   onSubmit,
   onExportCreds,
-  onImportClick,
-}) {
+  onImportClick
+}: any) {
   return (
     <Modal isOpen={isOpen} onClose={onCancel}>
       <div className="w-full max-w-md max-h-[90vh] flex flex-col">
@@ -26,7 +26,7 @@ export function SettingsModal({
           {/* S3 Form */}
           <form
             id="settings-form"
-            onSubmit={(e) => {
+            onSubmit={(e: any) => {
               e.preventDefault();
               onSubmit();
             }}
@@ -46,7 +46,7 @@ export function SettingsModal({
                     required
                     className="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-odp-bgSoft border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong"
                     value={s3Creds.accessKeyId}
-                    onChange={(e) => onChangeCreds('accessKeyId', e.target.value)}
+                    onChange={(e: any) => onChangeCreds('accessKeyId', e.target.value)}
                   />
                 </div>
                 <div>
@@ -58,7 +58,7 @@ export function SettingsModal({
                     required
                     className="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-odp-bgSoft border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong"
                     value={s3Creds.secretAccessKey}
-                    onChange={(e) => onChangeCreds('secretAccessKey', e.target.value)}
+                    onChange={(e: any) => onChangeCreds('secretAccessKey', e.target.value)}
                   />
                 </div>
                 <div>
@@ -70,7 +70,7 @@ export function SettingsModal({
                     required
                     className="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-odp-bgSoft border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong"
                     value={s3Creds.region}
-                    onChange={(e) => onChangeCreds('region', e.target.value)}
+                    onChange={(e: any) => onChangeCreds('region', e.target.value)}
                   />
                 </div>
                 <div>
@@ -82,7 +82,7 @@ export function SettingsModal({
                     required
                     className="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-odp-bgSoft border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong"
                     value={s3Creds.bucket}
-                    onChange={(e) => onChangeCreds('bucket', e.target.value)}
+                    onChange={(e: any) => onChangeCreds('bucket', e.target.value)}
                   />
                 </div>
                 <div>
@@ -94,7 +94,7 @@ export function SettingsModal({
                     placeholder="https://..."
                     className="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-odp-bgSoft border-gray-300 dark:border-odp-borderStrong text-gray-800 dark:text-odp-fgStrong"
                     value={s3Creds.endpoint || ''}
-                    onChange={(e) => onChangeCreds('endpoint', e.target.value)}
+                    onChange={(e: any) => onChangeCreds('endpoint', e.target.value)}
                   />
                 </div>
               </div>

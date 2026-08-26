@@ -10,8 +10,8 @@ export function SaveMethodModal({
   creds,
   webauthnSupported,
   onSaveWithWebAuthn,
-  onSaveWithPassword,
-}) {
+  onSaveWithPassword
+}: any) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported ?? false);
   const webauthnLabel = getWebAuthnEncryptLabel();
@@ -30,7 +30,7 @@ export function SaveMethodModal({
     let promise;
     try {
       promise = onSaveWithWebAuthn(creds);
-    } catch (e) {
+    } catch (e: any) {
       alert(e?.message || '저장에 실패했습니다.');
       return;
     }
@@ -38,7 +38,7 @@ export function SaveMethodModal({
     try {
       await promise;
       onClose();
-    } catch (e) {
+    } catch (e: any) {
       alert(e?.message || '저장에 실패했습니다.');
     } finally {
       setWebauthnLoading(false);

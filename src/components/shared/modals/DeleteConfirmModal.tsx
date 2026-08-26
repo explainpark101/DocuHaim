@@ -12,10 +12,10 @@ const CLOSE_ANIMATION_MS = 200;
  * @param {unknown} target
  * @returns {Array<{ node: { path?: string, name?: string, type?: string }, type: string }>}
  */
-export function normalizeDeleteTargets(target) {
+export function normalizeDeleteTargets(target: any) {
   if (!target) return [];
   if (Array.isArray(target.targets) && target.targets.length) {
-    return target.targets.filter((t) => t?.node && t?.type);
+    return target.targets.filter((t: any) => t?.node && t?.type);
   }
   if (target.node && target.type) return [target];
   return [];
@@ -26,8 +26,8 @@ export function DeleteConfirmModal({
   associatedRecordings = [],
   onCancel,
   onConfirm,
-  isProcessing = false,
-}) {
+  isProcessing = false
+}: any) {
   const [displayTarget, setDisplayTarget] = useState(null);
   const [deleteWithRecordings, setDeleteWithRecordings] = useState(true);
 
@@ -49,9 +49,9 @@ export function DeleteConfirmModal({
 
   const isMulti = targets.length > 1;
   const primary = targets[0];
-  const isInTrash = targets.every((t) => t.node.path?.startsWith('.trash/'));
+  const isInTrash = targets.every((t: any) => t.node.path?.startsWith('.trash/'));
   const isTrashRoot = !isMulti && primary.node.path === '.trash/';
-  const hasFolder = targets.some((t) => t.node.type === 'folder');
+  const hasFolder = targets.some((t: any) => t.node.type === 'folder');
   const hasRecordings = associatedRecordings.length > 0;
 
   const handleConfirm = () => {
@@ -59,7 +59,7 @@ export function DeleteConfirmModal({
   };
 
   const nameListPreview = () => {
-    const names = targets.map((t) => t.node.name).filter(Boolean);
+    const names = targets.map((t: any) => t.node.name).filter(Boolean);
     if (names.length <= 3) return names.join(', ');
     return `${names.slice(0, 3).join(', ')} 외 ${names.length - 3}개`;
   };
@@ -125,7 +125,7 @@ export function DeleteConfirmModal({
               <input
                 type="checkbox"
                 checked={deleteWithRecordings}
-                onChange={(e) => setDeleteWithRecordings(e.target.checked)}
+                onChange={(e: any) => setDeleteWithRecordings(e.target.checked)}
                 className="mt-1 rounded border-amber-300"
               />
               <span className="text-sm text-amber-800 dark:text-amber-200">

@@ -74,7 +74,7 @@ export default function EmptyTrashConfirmModal({
       <RadioGroup.Root
         className="space-y-2"
         value={options.mode}
-        onValueChange={(next) => {
+        onValueChange={(next: any) => {
           const mode = next as EmptyTrashMode;
           setOptions((prev) => ({ ...prev, mode }));
         }}
@@ -106,7 +106,7 @@ export default function EmptyTrashConfirmModal({
             min={0}
             step="any"
             value={options.thresholdValue ?? ''}
-            onChange={(e) => {
+            onChange={(e: any) => {
               const raw = e.target.value;
               if (raw === '') {
                 setOptions((prev) => {
@@ -129,7 +129,7 @@ export default function EmptyTrashConfirmModal({
           <RadioGroup.Root
             className="flex flex-wrap items-center gap-2"
             value={options.thresholdUnit ?? 'MB'}
-            onValueChange={(next) => {
+            onValueChange={(next: any) => {
               const unit = next as EmptyTrashSizeUnit;
               if (!UNIT_OPTIONS.includes(unit)) return;
               setOptions((prev) => ({ ...prev, thresholdUnit: unit }));

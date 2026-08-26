@@ -2,7 +2,12 @@ import { useState, useMemo } from 'react';
 import Modal from '@/components/shared/modals/Modal';
 import { IconFolder } from '@/components/icons';
 
-function FolderNode({ node, level, onSelect, selectedPath }) {
+function FolderNode({
+  node,
+  level,
+  onSelect,
+  selectedPath
+}: any) {
   if (node.type !== 'folder') return null;
 
   const [open, setOpen] = useState(true);
@@ -13,7 +18,7 @@ function FolderNode({ node, level, onSelect, selectedPath }) {
     setOpen((prev) => !prev);
   };
 
-  const handleSelect = (e) => {
+  const handleSelect = (e: any) => {
     e.stopPropagation();
     onSelect(node);
   };
@@ -46,22 +51,21 @@ function FolderNode({ node, level, onSelect, selectedPath }) {
         </div>
       </div>
       {open &&
-        node.children?.map((child) =>
-          child.type === 'folder' ? (
-            <FolderNode
-              key={child.path}
-              node={child}
-              level={level + 1}
-              onSelect={onSelect}
-              selectedPath={selectedPath}
-            />
-          ) : null,
+        node.children?.map((child: any) => child.type === 'folder' ? (
+          <FolderNode
+            key={child.path}
+            node={child}
+            level={level + 1}
+            onSelect={onSelect}
+            selectedPath={selectedPath}
+          />
+        ) : null,
         )}
     </div>
   );
 }
 
-function filterFoldersForMove(nodes, movingFolderPath) {
+function filterFoldersForMove(nodes: any, movingFolderPath: any): any {
   if (!nodes || !Array.isArray(nodes)) return [];
   return nodes
     .filter(
@@ -99,8 +103,8 @@ export function MoveFolderModal({
   localRootHandle,
   folderNode,
   onClose,
-  onConfirm,
-}) {
+  onConfirm
+}: any) {
   if (!folderNode || folderNode.type !== 'folder') return null;
 
   const isS3 = storageType === 's3';
@@ -111,7 +115,7 @@ export function MoveFolderModal({
     [tree, folderNode.path],
   );
 
-  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState<any>(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
 
   const handleSelectRoot = () => {
@@ -119,7 +123,7 @@ export function MoveFolderModal({
     setSelectedFolder(null);
   };
 
-  const handleSelectFolder = (node) => {
+  const handleSelectFolder = (node: any) => {
     setSelectedRoot(false);
     setSelectedFolder(node);
   };
@@ -171,15 +175,13 @@ export function MoveFolderModal({
           </button>
           <div className="flex-1 overflow-auto py-1">
             {filteredTree && filteredTree.length > 0 ? (
-              filteredTree.map((node) => (
-                <FolderNode
-                  key={node.path}
-                  node={node}
-                  level={0}
-                  onSelect={handleSelectFolder}
-                  selectedPath={!selectedRoot ? selectedFolder?.path : null}
-                />
-              ))
+              filteredTree.map((node: any) => <FolderNode
+                key={node.path}
+                node={node}
+                level={0}
+                onSelect={handleSelectFolder}
+                selectedPath={!selectedRoot ? selectedFolder?.path : null}
+              />)
             ) : (
               <div className="px-3 py-4 text-xs text-gray-400 dark:text-odp-muted">
                 사용할 수 있는 폴더가 없습니다.

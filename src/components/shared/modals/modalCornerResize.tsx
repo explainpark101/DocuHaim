@@ -61,14 +61,14 @@ export const CORNER_HANDLES = /** @type {const} */ ([
  * @returns {ModalBox}
  */
 export function boxFromCornerDrag(
-  corner,
-  startLeft,
-  startTop,
-  startW,
-  startH,
-  dx,
-  dy,
-  limits = {},
+  corner: any,
+  startLeft: any,
+  startTop: any,
+  startW: any,
+  startH: any,
+  dx: any,
+  dy: any,
+  limits: any = {},
 ) {
   const resizeHeight = Boolean(limits.resizeHeight);
   const baselineW = limits.baselineWidth ?? startW;
@@ -122,20 +122,11 @@ export function boxFromCornerDrag(
  * @param {boolean} [enabled=true]
  * @param {ModalResizeLimits} [limits]
  */
-export function useModalCornerResize(enabled = true, limits = {}) {
-  /** @type {[null | ModalBox, Function]} */
-  const [box, setBox] = useState(null);
-  const panelRef = useRef(/** @type {HTMLElement | null} */ (null));
-  const baselineRef = useRef(/** @type {null | { width: number, height: number }} */ (null));
-  const dragRef = useRef(/** @type {null | {
-    corner: CornerId,
-    startX: number,
-    startY: number,
-    startW: number,
-    startH: number,
-    startLeft: number,
-    startTop: number,
-  }} */ (null));
+export function useModalCornerResize(enabled = true, limits: any = {}) {
+  const [box, setBox] = useState<any>(null);
+  const panelRef = useRef<any>(null);
+  const baselineRef = useRef<any>(null);
+  const dragRef = useRef<any>(null);
   const limitsRef = useRef(limits);
   limitsRef.current = limits;
 
@@ -162,7 +153,7 @@ export function useModalCornerResize(enabled = true, limits = {}) {
   useEffect(() => {
     if (!enabled) return undefined;
 
-    const onMove = (event) => {
+    const onMove = (event: any) => {
       const drag = dragRef.current;
       if (!drag) return;
       event.preventDefault();
@@ -202,7 +193,7 @@ export function useModalCornerResize(enabled = true, limits = {}) {
   }, [enabled]);
 
   /** @param {CornerId} corner @param {PointerEvent} event */
-  const beginResize = useCallback((corner, event) => {
+  const beginResize = useCallback((corner: any, event: any) => {
     const el = panelRef.current;
     if (!el) return;
     event.preventDefault();
@@ -266,7 +257,10 @@ export function useModalCornerResize(enabled = true, limits = {}) {
  *   resizeHeight?: boolean,
  * }} props
  */
-export function ModalCornerResizeHandles({ onBeginResize, resizeHeight = false }) {
+export function ModalCornerResizeHandles({
+  onBeginResize,
+  resizeHeight = false
+}: any) {
   return CORNER_HANDLES.map((handle) => {
     const cursorClass = resizeHeight
       ? (handle.id === 'nw' || handle.id === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize')
@@ -281,7 +275,7 @@ export function ModalCornerResizeHandles({ onBeginResize, resizeHeight = false }
         aria-label={`resize-${handle.id}`}
         className={`pointer-events-auto absolute z-30 h-7 w-7 touch-none bg-blue-500/90 shadow-sm transition-colors hover:bg-blue-600 dark:bg-blue-400/90 dark:hover:bg-blue-300 ${posClass} ${cursorClass}`}
         style={{ clipPath: handle.clipPath }}
-        onPointerDown={(event) => onBeginResize(handle.id, event)}
+        onPointerDown={(event: any) => onBeginResize(handle.id, event)}
       />
     );
   });

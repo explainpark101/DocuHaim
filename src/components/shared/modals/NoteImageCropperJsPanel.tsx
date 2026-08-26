@@ -402,7 +402,7 @@ export default function NoteImageCropperJsPanel({
         <Switch.Root
           className={switchRootClass}
           checked={keepTransparency}
-          onCheckedChange={(next) => setKeepTransparency(Boolean(next))}
+          onCheckedChange={(next: any) => setKeepTransparency(Boolean(next))}
           aria-label="PNG 투명 배경 유지"
         >
           <Switch.Thumb className={switchThumbClass} />

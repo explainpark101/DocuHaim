@@ -9,9 +9,9 @@ import {
 } from '@/components/shared/modals/modalCornerResize';
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
-const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
+const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 } as const;
 
-function isDangerConfirm(variant, confirmLabel) {
+function isDangerConfirm(variant: any, confirmLabel: any) {
   if (variant === 'danger') return true;
   const label = String(confirmLabel ?? '');
   return /삭제|비우기/.test(label);
@@ -46,8 +46,8 @@ export function ConfirmModal({
   onDiscard,
   children,
   confirmDisabled = false,
-  resizable = true,
-}) {
+  resizable = true
+}: any) {
   const hasDiscard = discardLabel && typeof onDiscard === 'function';
   const danger = isDangerConfirm(variant, confirmLabel);
   const {
@@ -89,7 +89,7 @@ export function ConfirmModal({
             className={`relative z-10 flex w-full max-w-md max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl dark:bg-odp-surface dark:text-odp-fgStrong ${
               positioned ? 'max-w-none!' : ''
             }`}
-            style={positionedStyle}
+            style={positionedStyle as any}
             initial={positioned ? false : { opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}

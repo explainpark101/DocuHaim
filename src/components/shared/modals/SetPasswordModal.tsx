@@ -1,7 +1,12 @@
 import { IconKey } from '@/components/icons';
 import Modal from '@/components/shared/modals/Modal';
 
-export function SetPasswordModal({ isOpen, masterPassword, onCancel, onSubmit }) {
+export function SetPasswordModal({
+  isOpen,
+  masterPassword,
+  onCancel,
+  onSubmit
+}: any) {
   return (
     <Modal isOpen={isOpen} onClose={onCancel}>
       <div className="p-8 text-center">
@@ -16,7 +21,7 @@ export function SetPasswordModal({ isOpen, masterPassword, onCancel, onSubmit })
         </p>
 
         <form
-          onSubmit={(e) => {
+          onSubmit={(e: any) => {
             e.preventDefault();
             onSubmit(e.target.password.value);
           }}

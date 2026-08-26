@@ -89,7 +89,7 @@ export default function PromptModal({
           </p>
         ) : null}
         <form
-          onSubmit={(e) => {
+          onSubmit={(e: any) => {
             e.preventDefault();
             submit();
           }}
@@ -102,7 +102,7 @@ export default function PromptModal({
             id={inputId}
             type={inputType}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e: any) => setValue(e.target.value)}
             autoComplete={inputType === 'password' ? 'current-password' : 'off'}
             placeholder={placeholder}
             className="mb-2 w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-gray-800 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fgStrong dark:focus:ring-blue-800"

@@ -34,8 +34,8 @@ export default function Modal({
   ignoreEnterInFields = false,
   resizable = true,
   resizeHeight = false,
-  layoutKey,
-}) {
+  layoutKey
+}: any) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const {
@@ -108,7 +108,7 @@ export default function Modal({
         positioned ? '' : 'flex items-center justify-center p-4'
       } ${visible ? 'opacity-100 bg-black/40' : 'opacity-0 bg-black/0'} ${overlayClassName}`}
       aria-hidden={!visible}
-      onClick={(e) => {
+      onClick={(e: any) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
@@ -124,7 +124,7 @@ export default function Modal({
             }`
         }`}
         style={mergedStyle}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: any) => e.stopPropagation()}
       >
         {children}
         {resizable ? (

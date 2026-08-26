@@ -210,7 +210,7 @@ export default function WikiImageSizeModal({
           imageSrc={imageSrc}
           fileName={isDataImageUri(path) ? 'image' : path}
           onCancel={() => setCropMode(false)}
-          onConfirm={async (file, area) => {
+          onConfirm={async (file: any, area: any) => {
             await onCrop?.({
               file,
               widthPx: area.width,
@@ -232,7 +232,7 @@ export default function WikiImageSizeModal({
             <input
               type="text"
               value={widthInput}
-              onChange={(e) => setWidthInput(e.target.value)}
+              onChange={(e: any) => setWidthInput(e.target.value)}
               placeholder="예: 320 / 320px / 50% / 60vw"
               disabled={busy}
               className="w-full rounded border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
@@ -246,7 +246,7 @@ export default function WikiImageSizeModal({
             <input
               type="text"
               value={heightInput}
-              onChange={(e) => setHeightInput(e.target.value)}
+              onChange={(e: any) => setHeightInput(e.target.value)}
               placeholder="예: 240 / 240px / 40% / 40vh"
               disabled={busy}
               className="w-full rounded border border-gray-300 dark:border-odp-borderStrong bg-white dark:bg-odp-bgSoft px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"

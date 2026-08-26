@@ -427,7 +427,7 @@ export function DownloadMethodModal({
                 </label>
                 <Select.Root
                   value={String(headingMax)}
-                  onValueChange={(next) => {
+                  onValueChange={(next: any) => {
                     const parsed = Number(next);
                     if (isExportHeadingLevel(parsed)) setHeadingMax(parsed);
                   }}

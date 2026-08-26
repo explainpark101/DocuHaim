@@ -3,14 +3,14 @@ import Modal from '@/components/shared/modals/Modal';
 import { IconFolder, IconFolderPlus } from '@/components/icons';
 import { findNodeByPath } from '@/utils/vault/s3Tree';
 
-function getParentFolderPath(filePath) {
+function getParentFolderPath(filePath: any) {
   if (!filePath || typeof filePath !== 'string') return '';
   const parts = filePath.split('/').filter(Boolean);
   if (parts.length <= 1) return '';
   return parts.slice(0, -1).join('/') + '/';
 }
 
-function getAncestorPathsToExpand(path) {
+function getAncestorPathsToExpand(path: any) {
   if (!path || path === '') return [];
   const parts = path.replace(/\/$/, '').split('/').filter(Boolean);
   if (parts.length <= 1) return [];
@@ -23,7 +23,14 @@ function getAncestorPathsToExpand(path) {
   return result;
 }
 
-function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, selectedRowRef }) {
+function FolderNode({
+  node,
+  level,
+  onSelect,
+  selectedPath,
+  expandedPaths,
+  selectedRowRef
+}: any) {
   if (node.type !== 'folder') return null;
 
   const mustBeOpen = expandedPaths?.has(node.path);
@@ -32,7 +39,7 @@ function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, select
   const paddingLeft = `${level * 12 + 8}px`;
   const isSelected = selectedPath === node.path;
 
-  const rowRef = (el) => {
+  const rowRef = (el: any) => {
     if (isSelected && selectedRowRef && el) {
       selectedRowRef.current = el;
     }
@@ -43,7 +50,7 @@ function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, select
     setUserOpen((prev) => !prev);
   };
 
-  const handleSelect = (e) => {
+  const handleSelect = (e: any) => {
     e.stopPropagation();
     onSelect(node);
   };
@@ -77,18 +84,17 @@ function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, select
         </div>
       </div>
       {isOpen &&
-        node.children?.map((child) =>
-          child.type === 'folder' ? (
-            <FolderNode
-              key={child.path}
-              node={child}
-              level={level + 1}
-              onSelect={onSelect}
-              selectedPath={selectedPath}
-              expandedPaths={expandedPaths}
-              selectedRowRef={selectedRowRef}
-            />
-          ) : null,
+        node.children?.map((child: any) => child.type === 'folder' ? (
+          <FolderNode
+            key={child.path}
+            node={child}
+            level={level + 1}
+            onSelect={onSelect}
+            selectedPath={selectedPath}
+            expandedPaths={expandedPaths}
+            selectedRowRef={selectedRowRef}
+          />
+        ) : null,
         )}
     </div>
   );
@@ -125,8 +131,8 @@ export function MoveFileModal({
   onConfirm,
   onRequestCreateFolder,
   selectPathAfterCreate,
-  onSelectPathAfterCreateApplied,
-}) {
+  onSelectPathAfterCreateApplied
+}: any) {
   const effectiveFile = fileToMove || currentFile;
   if (!effectiveFile) return null;
 
@@ -134,11 +140,11 @@ export function MoveFileModal({
   const isWebdav = storageType === 'webdav';
   const tree = isS3 ? s3Tree : isWebdav ? webdavTree : localTree;
 
-  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState<any>(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
   const hasInitializedRef = useRef(false);
-  const selectedRowRef = useRef(null);
-  const scrollContainerRef = useRef(null);
+  const selectedRowRef = useRef<any>(null);
+  const scrollContainerRef = useRef<any>(null);
 
   useEffect(() => {
     hasInitializedRef.current = false;
@@ -199,7 +205,7 @@ export function MoveFileModal({
     setSelectedFolder(null);
   };
 
-  const handleSelectFolder = (node) => {
+  const handleSelectFolder = (node: any) => {
     setSelectedRoot(false);
     setSelectedFolder(node);
   };
@@ -281,18 +287,16 @@ export function MoveFileModal({
           <div ref={scrollContainerRef} className="flex-1 overflow-auto py-1">
             {tree && tree.length > 0 ? (
               tree
-                .filter((n) => n.type === 'folder')
-                .map((node) => (
-                  <FolderNode
-                    key={node.path}
-                    node={node}
-                    level={0}
-                    onSelect={handleSelectFolder}
-                    selectedPath={!selectedRoot ? selectedFolder?.path : null}
-                    expandedPaths={expandedPaths}
-                    selectedRowRef={selectedRowRef}
-                  />
-                ))
+                .filter((n: any) => n.type === 'folder')
+                .map((node: any) => <FolderNode
+                key={node.path}
+                node={node}
+                level={0}
+                onSelect={handleSelectFolder}
+                selectedPath={!selectedRoot ? selectedFolder?.path : null}
+                expandedPaths={expandedPaths}
+                selectedRowRef={selectedRowRef}
+              />)
             ) : (
               <div className="px-3 py-4 text-xs text-gray-400 dark:text-odp-muted">
                 사용할 수 있는 폴더가 없습니다.

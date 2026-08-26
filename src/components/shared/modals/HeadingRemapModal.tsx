@@ -267,7 +267,7 @@ export default function HeadingRemapModal({
             </label>
             <Select.Root
               value={String(headingMax)}
-              onValueChange={(next) => {
+              onValueChange={(next: any) => {
                 const parsed = Number(next);
                 if (isAppHeadingLevel(parsed)) setHeadingMax(parsed);
               }}
@@ -336,7 +336,7 @@ export default function HeadingRemapModal({
                   <RadioGroup.Root
                     className="flex items-center gap-2"
                     value={outlineStyle}
-                    onValueChange={(next) => {
+                    onValueChange={(next: any) => {
                       if (next === 'flat' || next === 'nested') setOutlineStyle(next);
                     }}
                     aria-label="최대 heading 번호 형식"
@@ -376,7 +376,7 @@ export default function HeadingRemapModal({
                   <RadioGroup.Root
                     className="flex items-center gap-2"
                     value={String(outlineStart)}
-                    onValueChange={(next) => {
+                    onValueChange={(next: any) => {
                       if (next === '1') setOutlineStart(1);
                       if (next === '2') setOutlineStart(2);
                     }}

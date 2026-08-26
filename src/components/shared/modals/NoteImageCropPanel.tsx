@@ -769,7 +769,7 @@ export default function NoteImageCropPanel({
       <h2 className="shrink-0 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">이미지 자르기</h2>
       <Tabs.Root
         value={editorTab}
-        onValueChange={(value) => {
+        onValueChange={(value: any) => {
           setEditorTab(value === 'editor' ? 'editor' : 'easy');
           setError('');
           setBusy(false);
@@ -835,7 +835,7 @@ export default function NoteImageCropPanel({
               cropAreaStyle: { overflow: 'visible' },
             }}
             onCropChange={handleCropChange}
-            onZoomChange={(next) => {
+            onZoomChange={(next: any) => {
               // Ignore library zoom while resizing the crop window (same as onCropChange).
               if (freezeCropRef.current || dragRef.current || snappingRef.current) return;
               zoomRef.current = next;
@@ -851,7 +851,7 @@ export default function NoteImageCropPanel({
                 recordNow();
               });
             }}
-            onMediaLoaded={(media) => {
+            onMediaLoaded={(media: any) => {
               mediaRef.current = media;
               const meta = padMetaRef.current ?? padMeta;
               if (didInitCropRef.current || !meta) return;
@@ -873,7 +873,7 @@ export default function NoteImageCropPanel({
                 type="button"
                 aria-label={`crop-handle-${handle.id}`}
                 className={`pointer-events-auto absolute z-20 h-3.5 w-3.5 touch-none rounded-sm border border-white bg-blue-500 shadow ${handle.className}`}
-                onPointerDown={(event) => {
+                onPointerDown={(event: any) => {
                   event.preventDefault();
                   event.stopPropagation();
                   event.currentTarget.setPointerCapture(event.pointerId);
@@ -916,7 +916,7 @@ export default function NoteImageCropPanel({
           max={4}
           step={0.01}
           value={zoom}
-          onChange={(event) => {
+          onChange={(event: any) => {
             const next = Number(event.target.value);
             zoomRef.current = next;
             setZoom(next);
@@ -939,7 +939,7 @@ export default function NoteImageCropPanel({
         <Switch.Root
           className={switchRootClass}
           checked={lockRatio}
-          onCheckedChange={(next) => {
+          onCheckedChange={(next: any) => {
             const value = Boolean(next);
             lockRatioRef.current = value;
             setLockRatio(value);
@@ -964,7 +964,7 @@ export default function NoteImageCropPanel({
         <Switch.Root
           className={switchRootClass}
           checked={keepTransparency}
-          onCheckedChange={(next) => {
+          onCheckedChange={(next: any) => {
             setKeepTransparency(Boolean(next));
             // Checkpoint is recorded after composite rebuild + crop re-init.
           }}

@@ -63,7 +63,7 @@ export default function FootnoteComposeModal({ isOpen, onClose, onConfirm }: Pro
             ref={firstRef}
             type="text"
             value={line1}
-            onChange={(event) => {
+            onChange={(event: any) => {
               setLine1(event.target.value);
               if (error) setError('');
             }}
@@ -79,7 +79,7 @@ export default function FootnoteComposeModal({ isOpen, onClose, onConfirm }: Pro
           <input
             type="text"
             value={line2}
-            onChange={(event) => {
+            onChange={(event: any) => {
               setLine2(event.target.value);
               if (error) setError('');
             }}
