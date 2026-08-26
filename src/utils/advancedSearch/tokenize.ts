@@ -1,4 +1,4 @@
-import { isStopword } from './stopwords';
+import { isStopword } from '@/utils/advancedSearch/stopwords';
 
 type GaruLike = {
   tokenize: (text: string) => string[];

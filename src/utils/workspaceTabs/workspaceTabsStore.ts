@@ -5,7 +5,7 @@ import {
   type FileWorkspaceTab,
   type WorkspaceTab,
   type WorkspaceTabsState,
-} from './types';
+} from '@/utils/workspaceTabs/types';
 import {
   createChatTab,
   createFileTab,
@@ -13,7 +13,7 @@ import {
   isFileTab,
   isFileTabDirty,
   revokeFileTabObjectUrl,
-} from './helpers';
+} from '@/utils/workspaceTabs/helpers';
 
 export const emptyWorkspaceTabsState = (): WorkspaceTabsState => ({
   tabs: [],

@@ -1,5 +1,5 @@
-import { extractChatBodyAttachments } from './attachments.js';
-import { extractUrls } from './og';
+import { extractChatBodyAttachments } from '@/utils/chatWithMyself/attachments.js';
+import { extractUrls } from '@/utils/chatWithMyself/og';
 
 export type CollectionMediaFlags = {
   hasLinks: boolean;

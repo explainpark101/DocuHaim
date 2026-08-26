@@ -3,7 +3,7 @@
  * Loaded only when indexing is enabled and cross-origin isolation is ready.
  */
 
-import { isSearchIsolationReady, searchIsolationBlockedReason } from './isolation';
+import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
 
 export const LUCIVY_OPFS_PATH = '/s3haim-advanced-search';
 

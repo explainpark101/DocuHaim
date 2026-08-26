@@ -1,8 +1,8 @@
 import {
   extractLeadingYamlFrontmatter,
   parsePlanFrontmatterYaml,
-} from './parse';
-import { buildPlanFrontmatterHtml } from './renderHtml';
+} from '@/utils/planFrontmatter/parse';
+import { buildPlanFrontmatterHtml } from '@/utils/planFrontmatter/renderHtml';
 
 type MdStateBlock = {
   src: string;

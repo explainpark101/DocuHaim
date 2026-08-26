@@ -3,7 +3,7 @@
  * Stores Lucivy LUCE snapshot + docs meta so a crashed build can resume.
  */
 import Dexie from 'dexie';
-import { INDEX_SCHEMA_VERSION } from './types';
+import { INDEX_SCHEMA_VERSION } from '@/utils/advancedSearch/types';
 
 export const rebuildCheckpointDb = new Dexie('s3haim-advanced-search-rebuild');
 

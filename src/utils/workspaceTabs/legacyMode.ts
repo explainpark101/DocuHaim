@@ -4,9 +4,9 @@ import {
   type FileWorkspaceTab,
   type WorkspaceTab,
   type WorkspaceTabsState,
-} from './types';
-import { isFileTab, revokeFileTabObjectUrl } from './helpers';
-import { getActiveTab } from './workspaceTabsStore';
+} from '@/utils/workspaceTabs/types';
+import { isFileTab, revokeFileTabObjectUrl } from '@/utils/workspaceTabs/helpers';
+import { getActiveTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 
 /**
  * Collapse multi-tab state to legacy single-slot:

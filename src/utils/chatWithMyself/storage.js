@@ -1,7 +1,7 @@
 import {
   ChatPreconditionFailedError,
   createChatBackend,
-} from './backends/index.js';
+} from '@/utils/chatWithMyself/backends/index.js';
 import {
   CHAT_FOLDER,
   dayFileKey,
@@ -12,22 +12,22 @@ import {
   messageEditVersionKey,
   editVersionAtFromFileName,
   SELF_GROUP,
-} from './paths.js';
+} from '@/utils/chatWithMyself/paths.js';
 import {
   createMessageId,
   mergeDayMessages,
   parseDayFile,
   serializeDayFile,
-} from './format.js';
+} from '@/utils/chatWithMyself/format.js';
 import {
   parseEditVersion,
   serializeEditVersion,
-} from './editHistory.js';
-import { cacheDay, getCachedDay, savePendingMessage } from './chatDb.js';
+} from '@/utils/chatWithMyself/editHistory.js';
+import { cacheDay, getCachedDay, savePendingMessage } from '@/utils/chatWithMyself/chatDb.js';
 import {
   messageNeedsNoteUnlink,
   pathAffectedByDelete,
-} from './noteRefs.js';
+} from '@/utils/chatWithMyself/noteRefs.js';
 import { getStorageScopeId } from '@/utils/storageScope';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch/notify';
 
@@ -502,7 +502,7 @@ export async function listDayKeys(ctx) {
 }
 
 /**
- * @returns {Promise<import('./format.js').ChatMessage[]>}
+ * @returns {Promise<import('@/utils/chatWithMyself/format.js').ChatMessage[]>}
  */
 export async function readDayMessages(ctx, dateStr) {
   const key = dayFileKey(dateStr);
@@ -1229,4 +1229,4 @@ export async function unlinkChatNotesForDeletedPaths(ctx, scope) {
 }
 
 export { ChatPreconditionFailedError, createChatBackend, CHAT_FOLDER };
-export { mergeDayMessages, parseDayFile, serializeDeletedMarker } from './format.js';
+export { mergeDayMessages, parseDayFile, serializeDeletedMarker } from '@/utils/chatWithMyself/format.js';

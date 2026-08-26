@@ -7,7 +7,7 @@ import {
   type SettingsWorkspaceTab,
   type WorkspaceTab,
   isEditableViewer,
-} from './types';
+} from '@/utils/workspaceTabs/types';
 
 export function fileTabId(storageType: string, path: string): string {
   return `${storageType}:${path}`;

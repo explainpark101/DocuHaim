@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noImplicitAny": false
+  },
+  "include": [
+    "src/App/hooks/appLogicGlue.ts",
+    "src/App/hooks/autoSaveBridge.ts"
+  ]
+}

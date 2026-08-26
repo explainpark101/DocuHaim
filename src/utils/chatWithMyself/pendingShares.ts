@@ -2,19 +2,19 @@ import {
   deletePendingShare,
   getPendingShares,
   savePendingShare,
-} from './chatDb.js';
-import { SELF_GROUP } from './paths.js';
-import { sharePayloadFromSearch } from './sharePayload.js';
+} from '@/utils/chatWithMyself/chatDb.js';
+import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
+import { sharePayloadFromSearch } from '@/utils/chatWithMyself/sharePayload.js';
 import {
   appendShareChatMessage,
   normalizeShareFiles,
   sharePromptHasContent,
-} from './shareSend.js';
-import { postChatLocalSyncEvent, postChatSyncEvent } from './syncChannel.js';
+} from '@/utils/chatWithMyself/shareSend.js';
+import { postChatLocalSyncEvent, postChatSyncEvent } from '@/utils/chatWithMyself/syncChannel.js';
 import {
   SHARE_TARGET_FLAG,
   takeShareTargetFiles,
-} from './shareTargetCache.js';
+} from '@/utils/chatWithMyself/shareTargetCache.ts';
 
 export type PendingShareIntent = 'choose' | 'sendSelf' | 'compose';
 

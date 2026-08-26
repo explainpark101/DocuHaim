@@ -7,7 +7,7 @@ export {
   postingsKey,
   fileDocId,
   chatDocId,
-} from './paths';
+} from '@/utils/advancedSearch/paths';
 export {
   loadAdvancedSearchIndexEnabled,
   saveAdvancedSearchIndexEnabled,
@@ -15,7 +15,7 @@ export {
   saveAdvancedSearchIncludeOtherFiles,
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
-} from './settings';
+} from '@/utils/advancedSearch/settings';
 export {
   advancedSearchEngine,
   notifyAdvancedSearchChange,
@@ -25,25 +25,25 @@ export {
   type BuildLogLevel,
   type RebuildOptions,
   type RebuildCheckpointInfo,
-} from './engine';
-export { subscribeAdvancedSearchChanges } from './notify';
-export { collectSearchableFileEntries, isIndexableFilePath } from './collectSources';
+} from '@/utils/advancedSearch/engine';
+export { subscribeAdvancedSearchChanges } from '@/utils/advancedSearch/notify';
+export { collectSearchableFileEntries, isIndexableFilePath } from '@/utils/advancedSearch/collectSources';
 export {
   APP_COMMANDS,
   matchAppCommands,
   matchAppCommandsRanked,
   getAppCommands,
   scoreCommandRelevance,
-} from './commands';
-export type { AppCommand, AppCommandId, AppCommandContext, RankedAppCommand } from './commands';
+} from '@/utils/advancedSearch/commands';
+export type { AppCommand, AppCommandId, AppCommandContext, RankedAppCommand } from '@/utils/advancedSearch/commands';
 export {
   registerEditorActions,
   runEditorAction,
   hasEditorActions,
   subscribeEditorActions,
   EDITOR_ACTION_COMMANDS,
-} from './editorActions';
-export type { EditorActionId } from './editorActions';
+} from '@/utils/advancedSearch/editorActions';
+export type { EditorActionId } from '@/utils/advancedSearch/editorActions';
 export {
   registerPrintActions,
   registerPrintTocProvider,
@@ -55,23 +55,23 @@ export {
   scrollPrintHeading,
   PRINT_ACTION_COMMANDS,
   PRINT_PAPER_SIZE_COMMANDS,
-} from './printActions';
-export type { PrintActionId, PrintTocEntry, PrintPreviewNavigator } from './printActions';
+} from '@/utils/advancedSearch/printActions';
+export type { PrintActionId, PrintTocEntry, PrintPreviewNavigator } from '@/utils/advancedSearch/printActions';
 export {
   registerChatActions,
   runChatAction,
   hasChatActions,
   subscribeChatActions,
   CHAT_ACTION_COMMANDS,
-} from './chatActions';
-export type { ChatActionId } from './chatActions';
+} from '@/utils/advancedSearch/chatActions';
+export type { ChatActionId } from '@/utils/advancedSearch/chatActions';
 export {
   listBrowseDirectoryHits,
   findBrowseFolderNode,
   getBrowseChildren,
   normalizeDirPath,
-} from './browseDirectory';
-export type { BrowseTreeNode } from './browseDirectory';
+} from '@/utils/advancedSearch/browseDirectory';
+export type { BrowseTreeNode } from '@/utils/advancedSearch/browseDirectory';
 export {
   listChatGroupHits,
   chatGroupHashPath,
@@ -81,8 +81,8 @@ export {
   CHAT_SELECT_GROUP_COMMAND_ID,
   CHAT_SELECT_GROUP_ITEM_COMMAND_ID,
   CHAT_CLEAR_GROUP_COMMAND_ID,
-} from './chatGroups';
-export type { ChatGroupEntry } from './chatGroups';
+} from '@/utils/advancedSearch/chatGroups';
+export type { ChatGroupEntry } from '@/utils/advancedSearch/chatGroups';
 export {
   listFootnoteInsertChoiceHits,
   listExistingFootnoteHits,
@@ -98,15 +98,15 @@ export {
   FOOTNOTE_INSERT_PICK_EXISTING_ID,
   FOOTNOTE_INSERT_COMPOSE_ID,
   FOOTNOTE_INSERT_EXISTING_ITEM_ID,
-} from './footnoteInsert';
-export type { FootnoteInsertCommandId } from './footnoteInsert';
+} from '@/utils/advancedSearch/footnoteInsert';
+export type { FootnoteInsertCommandId } from '@/utils/advancedSearch/footnoteInsert';
 export {
   listCircleNumberHits,
   isCircleNumberInsertCommandId,
   CIRCLE_NUMBER_INSERT_COMMAND_ID,
   CIRCLE_NUMBER_INSERT_ITEM_ID,
-} from './circleNumberInsert';
-export type { CircleNumberInsertCommandId } from './circleNumberInsert';
+} from '@/utils/advancedSearch/circleNumberInsert';
+export type { CircleNumberInsertCommandId } from '@/utils/advancedSearch/circleNumberInsert';
 export {
   SETTINGS_TOGGLE_DEFS,
   isSettingsToggleId,
@@ -123,24 +123,24 @@ export {
   getFootnoteDisplayModeCommands,
   applyFootnoteDisplayModeCommand,
   footnoteDisplayModeFromCommandId,
-} from './settingsToggles';
+} from '@/utils/advancedSearch/settingsToggles';
 export type {
   SettingsToggleId,
   SettingsToggleDef,
   WorkspaceTabsAutoSaveCommandId,
   FootnoteDisplayModeCommandId,
-} from './settingsToggles';
+} from '@/utils/advancedSearch/settingsToggles';
 export {
   fuzzyMatchText,
   fuzzyMatchTokensInHaystacks,
   scoreFuzzyRelevance,
   scoreFuzzyFields,
-} from './fuzzyMatch';
+} from '@/utils/advancedSearch/fuzzyMatch';
 export {
   requestOpenAdvancedSearch,
   subscribeOpenAdvancedSearch,
-} from './openRequest';
+} from '@/utils/advancedSearch/openRequest';
 export type {
   AdvancedSearchOpenDetail,
   AdvancedSearchOpenMode,
-} from './openRequest';
+} from '@/utils/advancedSearch/openRequest';

@@ -15,7 +15,7 @@ export {
   messageEditVersionKey,
   messageEditVersionFileName,
   editVersionAtFromFileName,
-} from './paths.js';
+} from '@/utils/chatWithMyself/paths.js';
 export {
   parseDayFile,
   serializeMessage,
@@ -40,8 +40,8 @@ export {
   formatNoteShareChatBody,
   formatFolderShareChatBody,
   parseAppViewPath,
-} from './format.js';
-export { normalizeSharePayload, sharePayloadFromSearch } from './sharePayload.js';
+} from '@/utils/chatWithMyself/format.js';
+export { normalizeSharePayload, sharePayloadFromSearch } from '@/utils/chatWithMyself/sharePayload.js';
 export {
   hasShareSearchParams,
   hasShareTargetFlag,
@@ -57,29 +57,29 @@ export {
   flushSendSelfPendingShares,
   sharePromptHasContent,
   normalizeShareFiles,
-} from './pendingShares.js';
-export { appendShareChatMessage } from './shareSend.js';
+} from '@/utils/chatWithMyself/pendingShares.js';
+export { appendShareChatMessage } from '@/utils/chatWithMyself/shareSend.js';
 export {
   canOpenShareFilesAsSession,
   filesForShareTargetSession,
   isShareTargetMarkdownFile,
   isShareTargetMarkdownMime,
   sessionOriginForShareTargetFiles,
-} from './shareTargetSession.js';
-export { canOfferWebShare, shareChatMessage } from './shareChatMessage.js';
+} from '@/utils/chatWithMyself/shareTargetSession.js';
+export { canOfferWebShare, shareChatMessage } from '@/utils/chatWithMyself/shareChatMessage.js';
 export {
   SHARE_TARGET_CACHE,
   SHARE_TARGET_FLAG,
   SHARE_TARGET_FILE_PARAM,
   takeShareTargetFiles,
   storeShareTargetFiles,
-} from './shareTargetCache.js';
+} from '@/utils/chatWithMyself/shareTargetCache.js';
 export {
   normalizeStoragePath,
   deletedNoteScopeFromNode,
   pathAffectedByDelete,
   messageNeedsNoteUnlink,
-} from './noteRefs.js';
+} from '@/utils/chatWithMyself/noteRefs.js';
 export {
   extractUrls,
   splitTextWithUrls,
@@ -93,7 +93,7 @@ export {
   reloadOgCache,
   reloadOgCacheForMessageBody,
   hashUrl,
-} from './og';
+} from '@/utils/chatWithMyself/og';
 export {
   readMeta,
   writeMeta,
@@ -135,14 +135,14 @@ export {
   writeDayMessages,
   flushPendingMessages,
   createChatBackend,
-} from './storage.js';
-export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from './format.js';
+} from '@/utils/chatWithMyself/storage.js';
+export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from '@/utils/chatWithMyself/format.js';
 export {
   ENCRYPTED_MESSAGE_LABEL,
   parseEncryptedChatPayload,
   encryptChatMessageBody,
   decryptChatMessageBody,
-} from './encryptedMessage.js';
+} from '@/utils/chatWithMyself/encryptedMessage.js';
 export {
   parseReactionsAttr,
   serializeReactionsAttr,
@@ -150,17 +150,17 @@ export {
   hasReaction,
   reactionKey,
   normalizeReaction,
-} from './reactions.js';
+} from '@/utils/chatWithMyself/reactions.js';
 export {
   postChatSyncEvent,
   postChatLocalSyncEvent,
   CHAT_SYNC_CHANNEL,
   CHAT_LOCAL_SYNC_EVENT,
   getChatSyncTabId,
-} from './syncChannel.js';
-export { uploadChatImage, uploadGroupIcon, chatImagesToMarkdown } from './images.js';
-export { getCroppedImg, getCroppedImgFromPadMeta, fileFromCroppedCanvas } from './cropImage.js';
-export { serializeEditVersion, parseEditVersion } from './editHistory.js';
+} from '@/utils/chatWithMyself/syncChannel.js';
+export { uploadChatImage, uploadGroupIcon, chatImagesToMarkdown } from '@/utils/chatWithMyself/images.js';
+export { getCroppedImg, getCroppedImgFromPadMeta, fileFromCroppedCanvas } from '@/utils/chatWithMyself/cropImage.js';
+export { serializeEditVersion, parseEditVersion } from '@/utils/chatWithMyself/editHistory.js';
 export {
   uploadChatFile,
   uploadChatAttachment,
@@ -171,11 +171,11 @@ export {
   parseChatFileToken,
   extractChatBodyAttachments,
   deleteChatAttachment,
-} from './attachments.js';
+} from '@/utils/chatWithMyself/attachments.js';
 export {
   getCollectionMediaFlags,
   upsertCollectionMembership,
-} from './collectionScan.js';
+} from '@/utils/chatWithMyself/collectionScan.js';
 export {
   fuzzyMatchText,
   splitSearchTokens,
@@ -187,9 +187,9 @@ export {
   loadMessageOgSearchText,
   loadOgSearchText,
   ogDataToSearchText,
-} from './search.js';
-export { reactionsToSearchText } from './reactionSearch.js';
-export { groupColor, isSelfGroupName } from './groupAvatar.js';
+} from '@/utils/chatWithMyself/search.js';
+export { reactionsToSearchText } from '@/utils/chatWithMyself/reactionSearch.js';
+export { groupColor, isSelfGroupName } from '@/utils/chatWithMyself/groupAvatar.js';
 export {
   COMPOSER_DRAFT_LS_KEY,
   readComposerDraftMeta,
@@ -198,8 +198,8 @@ export {
   syncComposerDraftImages,
   loadComposerDraftImageQueue,
   composerDraftHasContent,
-} from './composerDraft.js';
-export { looksLikeMarkdown } from './markdownDetect.js';
+} from '@/utils/chatWithMyself/composerDraft.js';
+export { looksLikeMarkdown } from '@/utils/chatWithMyself/markdownDetect.js';
 export {
   CHAT_TREE_ATTACH_DROPPABLE_ID,
   isChatTreeAttachDroppableId,
@@ -208,7 +208,7 @@ export {
   resolveTreeAttachFileNodes,
   buildTreeNoteShareBodies,
   buildTreeShareItems,
-} from './treeAttachDrop.js';
+} from '@/utils/chatWithMyself/treeAttachDrop.js';
 export {
   CHAT_PREF_PREFIX,
   CHAT_PREF_KEYS,
@@ -239,9 +239,9 @@ export {
   readChatRailOpenPref,
   writeChatRailOpenPref,
   getChatRailOpen,
-} from './composerPrefs.js';
+} from '@/utils/chatWithMyself/composerPrefs.js';
 export {
   createPretextMeasurer,
   decideTabDensity,
   splitLabelChars,
-} from './tabPretext.js';
+} from '@/utils/chatWithMyself/tabPretext.js';

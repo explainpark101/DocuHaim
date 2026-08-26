@@ -2,12 +2,12 @@
  * IndexedDB에 저장된 업로드 실패 파일을 S3에 동기화
  * 서버 파일이 더 최신이면 .tmp.{ISOTime}.{suffix} 형태로 업로드
  */
-import { putObject, headObject } from './s3Client';
+import { putObject, headObject } from '@/utils/s3Client';
 import {
   getPendingUploads,
   deletePendingUpload,
-} from './pendingUploadsDb';
-import { deleteMemoDraft, getDraftKey } from './memoDraftsDb';
+} from '@/utils/pendingUploadsDb';
+import { deleteMemoDraft, getDraftKey } from '@/utils/memoDraftsDb';
 
 /**
  * key에서 suffix(확장자) 추출

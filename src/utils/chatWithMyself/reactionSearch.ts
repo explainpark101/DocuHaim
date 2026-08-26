@@ -1,6 +1,6 @@
 import data from '@emoji-mart/data';
-import type { ChatReaction } from './reactions';
-import { normalizeReaction } from './reactions';
+import type { ChatReaction } from '@/utils/chatWithMyself/reactions';
+import { normalizeReaction } from '@/utils/chatWithMyself/reactions';
 
 type EmojiMartSkin = { unified?: string; native?: string };
 type EmojiMartEmoji = {

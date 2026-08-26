@@ -2,4 +2,4 @@ export {
   clearGeminiApiKeySession,
   initGeminiApiKeySession,
   withGeminiApiKey,
-} from '@/utils/llmApiKeySession';
+} from '@/utils/llm/llmApiKeySession';

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "vitest/globals"],
+    "noEmit": true
+  },
+  "include": ["src", "tests/**/*.ts", "tests/**/*.tsx"],
+  "exclude": [
+    "dist",
+    "release",
+    "node_modules",
+    "src/sw.ts",
+    ".vitepress",
+    "docs/.vitepress",
+    "**/.vitepress/**",
+    ".vitepress/**/*"
+  ]
+}

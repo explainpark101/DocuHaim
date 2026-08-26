@@ -1,7 +1,7 @@
 import { renderAppMarkdown } from '@/utils/createAppMarkdownIt';
-import { getCachedOg } from './chatDb.js';
-import { extractUrls, hashUrl } from './og';
-import { ogArchiveKey } from './paths.js';
+import { getCachedOg } from '@/utils/chatWithMyself/chatDb.js';
+import { extractUrls, hashUrl } from '@/utils/chatWithMyself/og';
+import { ogArchiveKey } from '@/utils/chatWithMyself/paths.js';
 
 /**
  * VS Code-style fuzzy / partial match: every needle char appears in order

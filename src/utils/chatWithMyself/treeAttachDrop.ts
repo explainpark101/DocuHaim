@@ -2,8 +2,8 @@
  * Sidebar TreeNode → chat note/folder share (dnd-kit droppable id + resolve).
  */
 
-import { formatFolderShareChatBody, formatNoteShareChatBody } from './format.js';
-import { normalizeStoragePath } from './noteRefs.js';
+import { formatFolderShareChatBody, formatNoteShareChatBody } from '@/utils/chatWithMyself/format.js';
+import { normalizeStoragePath } from '@/utils/chatWithMyself/noteRefs.ts';
 
 export const CHAT_TREE_ATTACH_DROPPABLE_ID = 'chat-tree-attach-drop';
 

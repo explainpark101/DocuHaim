@@ -2,7 +2,17 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+
+/** Domain compose hooks: catch bag wiring bugs (@ts-nocheck skips tsc name checks). */
+const appLogicHookGlobs = [
+  'src/App/hooks/use*Domain.ts',
+  'src/App/hooks/useAppLogicSharedState.ts',
+  'src/App/hooks/useAppLogicSetupDomain.ts',
+  'src/App/hooks/appLogicGlue.ts',
+  'src/App/hooks/autoSaveBridge.ts',
+]
 
 export default defineConfig([
   globalIgnores([
@@ -32,8 +42,6 @@ export default defineConfig([
     },
   },
   {
-    // JS/JSX only until typescript-eslint is added; .ts/.tsx (incl. vite.config.ts)
-    // are gated by `tsc` / tsconfig.node.json — do not lint them with espree.
     files: ['**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
@@ -66,6 +74,49 @@ export default defineConfig([
       'react-hooks/immutability': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
       'react-refresh/only-export-components': 'warn',
+    },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      'react-hooks': reactHooks,
+    },
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+      globals: {
+        ...globals.browser,
+      },
+    },
+    rules: {
+      // Satisfy existing file-level disables; not enforced project-wide.
+      '@typescript-eslint/no-explicit-any': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+      'no-unused-vars': 'off',
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+  {
+    files: ['vite.config.ts', 'vitest.config.ts', 'scripts/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
+    files: ['**/*.d.ts'],
+    rules: {
+      'no-undef': 'off',
+    },
+  },
+  {
+    files: appLogicHookGlobs,
+    rules: {
+      'no-undef': 'error',
     },
   },
 ])

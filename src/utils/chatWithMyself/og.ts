@@ -1,6 +1,6 @@
-import { cacheOg, deleteCachedOg, getCachedOg } from './chatDb.js';
-import { ogArchiveKey } from './paths.js';
-import { parseAppViewPath } from './format.js';
+import { cacheOg, deleteCachedOg, getCachedOg } from '@/utils/chatWithMyself/chatDb.js';
+import { ogArchiveKey } from '@/utils/chatWithMyself/paths.js';
+import { parseAppViewPath } from '@/utils/chatWithMyself/format.js';
 import { parseWikiImageInner } from '@/utils/wikiImageSyntax';
 import {
   buildOgWorkerInspectUrl,

@@ -2,9 +2,9 @@
  * List folder/file entries for Advanced Search "Browse Directory" mode.
  */
 
-import type { AdvancedSearchHit } from './query';
-import type { AppCommandId } from './commands';
-import { fuzzyMatchText, scoreFuzzyRelevance } from './fuzzyMatch';
+import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
+import type { AppCommandId } from '@/utils/advancedSearch/commands';
+import { fuzzyMatchText, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 
 export type BrowseTreeNode = {
   type?: string;

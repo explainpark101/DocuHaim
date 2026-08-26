@@ -12,7 +12,7 @@ import {
   webdavPropfindDeep,
 } from '@/utils/webdavClient';
 import { buildS3Tree } from '@/utils/s3Tree';
-import { STORAGE_CAPABILITIES } from './capabilities.js';
+import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 import { buildWebdavTreeNodesFromPropfind } from '@/utils/webdavTree';
 
 /**
