@@ -1,5 +1,6 @@
-// @ts-nocheck — tree ops domain actions; tighten with TreeOpsValue
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useMemo, useRef } from 'react';
+import type { TreeOpsDomainValue } from '@/App/context/TreeOpsContext';
 import { useNavigate, useLocation } from 'react-router';
 import { getParentPathsToExpand } from '@/App/helpers';
 import { useVault } from '@/App/hooks/useVault';
@@ -78,11 +79,15 @@ import {
 import { STORAGE_MODE_LOCAL } from '@/utils/storageSettings';
 import { getActiveTab, getActiveFileTab } from '@/utils/workspaceTabs';
 
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 /**
  * Owns tree CRUD / DnD / select / create-upload request handlers.
  * Reads chrome/modals/fileSession + late-bound owned refs — no register*BridgeDeps.
  */
-export function useTreeOpsDomain() {
+export function useTreeOpsDomain(): TreeOpsDomainValue {
   const navigate = useNavigate();
   const location = useLocation();
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
@@ -189,16 +194,16 @@ export function useTreeOpsDomain() {
     webdavConfig,
   });
 
-  const lastSelectedIdRef = useRef(null);
-  const treeNameConflictResolverRef = useRef(null);
+  const lastSelectedIdRef = useRef<string | null>(null);
+  const treeNameConflictResolverRef = useRef<any>(null);
   const selectFileRawRef = useRef(selectFileRaw);
   selectFileRawRef.current = selectFileRaw;
-  const applyWorkspaceFilePathRetargetLocalRef = useRef(null);
-  const applyWorkspaceFolderPathRetargetLocalRef = useRef(null);
+  const applyWorkspaceFilePathRetargetLocalRef = useRef<any>(null);
+  const applyWorkspaceFolderPathRetargetLocalRef = useRef<any>(null);
 
-  const expandPaths = (type, paths) => expandPathsRef.current?.(type, paths);
+  const expandPaths = (type: any, paths: any) => expandPathsRef.current?.(type, paths);
 
-  const triggerBlobDownload = useCallback((blob, fileName) => {
+  const triggerBlobDownload = useCallback((blob: any, fileName: any) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -220,7 +225,7 @@ export function useTreeOpsDomain() {
     });
   }, [setDownloadResultModal]);
 
-  const downloadFolderAsZip = useCallback(async (storageType, node, folderName, indicatorId) => {
+  const downloadFolderAsZip = useCallback(async (storageType: any, node: any, folderName: any, indicatorId: any) => {
     const entries = [];
     const nfcFolderName = normalizeUnicodeNfc(String(folderName || 'folder'));
 
@@ -230,7 +235,7 @@ export function useTreeOpsDomain() {
       const bucket = s3Creds.bucket;
       const prefix = node.path || '';
       const contents = await listObjectsV2(client, bucket, prefix);
-      const fileObjects = (contents || []).filter((item) => item.Key && !item.Key.endsWith('/'));
+      const fileObjects = (contents || []).filter((item: any) => item.Key && !item.Key.endsWith('/'));
       const totalFiles = fileObjects.length;
       let completed = 0;
       for (const { Key } of fileObjects) {
@@ -250,7 +255,7 @@ export function useTreeOpsDomain() {
     } else if (storageType === 'local') {
       const sourceDirHandle = node.handle || (node.path === '' ? localRootHandle : null);
       if (!sourceDirHandle) throw new Error('원본 폴더 핸들을 찾을 수 없습니다.');
-      const collectLocalFiles = async (dirHandle, basePath = '') => {
+      const collectLocalFiles = async (dirHandle: any, basePath: any = '') => {
         for await (const entry of dirHandle.values()) {
           if (entry.kind === 'file') {
             const file = await entry.getFile();
@@ -276,17 +281,17 @@ export function useTreeOpsDomain() {
     triggerBlobDownload(zipBlob, `${nfcFolderName}.zip`);
   }, [localRootHandle, s3Creds, triggerBlobDownload, updateIndicator]);
 
-  const beginTreeTransferBusy = useCallback((entry) => {
-    setTreeTransferBusy((prev) => upsertTreeTransferBusy(prev, entry));
+  const beginTreeTransferBusy = useCallback((entry: any) => {
+    setTreeTransferBusy((prev: any) => upsertTreeTransferBusy(prev, entry));
   }, []);
 
-  const endTreeTransferBusy = useCallback((storageType, path) => {
-    setTreeTransferBusy((prev) => removeTreeTransferBusy(prev, storageType, path));
+  const endTreeTransferBusy = useCallback((storageType: any, path: any) => {
+    setTreeTransferBusy((prev: any) => removeTreeTransferBusy(prev, storageType, path));
   }, []);
 
   /** Reload editor when an open file was overwritten by move/copy into its path. */
   const reloadOpenFileIfPath = useCallback(
-    async (storageType, filePath) => {
+    async (storageType: any, filePath: any) => {
       const cur = currentFileRef.current;
       if (!cur || !filePath) return;
       if (cur.type !== storageType || cur.id !== filePath) return;
@@ -296,7 +301,7 @@ export function useTreeOpsDomain() {
           : storageType === 'webdav'
             ? webdavTree
             : localTree;
-      let node = findNodeByPath(tree, filePath) || findFileNodeByPath(tree, filePath);
+      let node: any = findNodeByPath(tree, filePath) || findFileNodeByPath(tree, filePath);
       if ((!node || node.type !== 'file') && storageType === 'local') {
         node = await resolveLocalFileNode(localRootHandle, filePath);
       }
@@ -313,7 +318,7 @@ export function useTreeOpsDomain() {
     [s3Tree, webdavTree, localTree, localRootHandle],
   );
 
-  const moveS3FileToFolder = async (file, destFolderPath, destFileName) => {
+  const moveS3FileToFolder = async (file: any, destFolderPath: any, destFileName: any) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
     const bucket = s3Creds.bucket;
@@ -331,7 +336,7 @@ export function useTreeOpsDomain() {
     return { ...file, id: newKey, name: fileName };
   };
 
-  const moveLocalFileToFolder = async (file, destDirHandle, destDirPath, destFileName) => {
+  const moveLocalFileToFolder = async (file: any, destDirHandle: any, destDirPath: any, destFileName: any) => {
     const sourceDir = file.parentHandle || localRootHandle;
     if (!sourceDir) throw new Error('원본 폴더를 찾을 수 없습니다.');
     if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
@@ -365,7 +370,7 @@ export function useTreeOpsDomain() {
     };
   };
 
-  const moveS3FolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+  const moveS3FolderToFolder = async (folderNode: any, destParentPath: any, newFolderName: any) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
     const bucket = s3Creds.bucket;
@@ -397,7 +402,7 @@ export function useTreeOpsDomain() {
     await loadS3Files();
   };
 
-  const moveLocalFolderToFolder = async (folderNode, destDirHandle, destDirPath, newFolderName) => {
+  const moveLocalFolderToFolder = async (folderNode: any, destDirHandle: any, destDirPath: any, newFolderName: any) => {
     const sourceDir = folderNode.parentHandle || localRootHandle;
     if (!sourceDir) throw new Error('원본 폴더를 찾을 수 없습니다.');
     if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
@@ -412,7 +417,7 @@ export function useTreeOpsDomain() {
     }
 
     const newFolderHandle = await destDirHandle.getDirectoryHandle(nameToUse, { create: true });
-    const copyDirRecursive = async (srcHandle, destHandle) => {
+    const copyDirRecursive = async (srcHandle: any, destHandle: any) => {
       for await (const entry of srcHandle.values()) {
         if (entry.kind === 'file') {
           const file = await entry.getFile();
@@ -431,7 +436,7 @@ export function useTreeOpsDomain() {
     await refreshLocalTree();
   };
 
-  const moveWebdavFileToFolder = async (file, destFolderPath, destFileName) => {
+  const moveWebdavFileToFolder = async (file: any, destFolderPath: any, destFileName: any) => {
     const backend = createWebdavBackend(webdavConfig);
     const fileName = destFileName || file.name;
     const destPrefix = destFolderPath || '';
@@ -443,7 +448,7 @@ export function useTreeOpsDomain() {
     return { ...file, id: newKey, name: fileName };
   };
 
-  const moveWebdavFolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+  const moveWebdavFolderToFolder = async (folderNode: any, destParentPath: any, newFolderName: any) => {
     const backend = createWebdavBackend(webdavConfig);
     const prefix = folderNode.path;
     if (!prefix) return;
@@ -455,9 +460,9 @@ export function useTreeOpsDomain() {
     }
     const entries = await webdavPropfindDeep(webdavConfig, prefix);
     const fileKeys = entries
-      .filter((e) => e.key && !e.isCollection && e.key !== prefix)
-      .map((e) => e.key)
-      .sort((a, b) => b.length - a.length);
+      .filter((e: any) => e.key && !e.isCollection && e.key !== prefix)
+      .map((e: any) => e.key)
+      .sort((a: any, b: any) => b.length - a.length);
     for (const key of fileKeys) {
       const relative = key.startsWith(prefix) ? key.slice(prefix.length) : key;
       await backend.move(key, destPrefix + relative);
@@ -470,7 +475,7 @@ export function useTreeOpsDomain() {
     await refreshWebdavTree();
   };
 
-  const copyS3FileToFolder = async (file, destFolderPath, destFileName) => {
+  const copyS3FileToFolder = async (file: any, destFolderPath: any, destFileName: any) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
     const bucket = s3Creds.bucket;
@@ -483,7 +488,7 @@ export function useTreeOpsDomain() {
     return { ...file, id: newKey };
   };
 
-  const copyLocalFileToFolder = async (file, destDirHandle, destDirPath, destFileName) => {
+  const copyLocalFileToFolder = async (file: any, destDirHandle: any, destDirPath: any, destFileName: any) => {
     if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
     if (!file.handle) throw new Error('원본 파일을 찾을 수 없습니다.');
     const fileName = destFileName || file.name;
@@ -507,7 +512,7 @@ export function useTreeOpsDomain() {
     };
   };
 
-  const copyS3FolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+  const copyS3FolderToFolder = async (folderNode: any, destParentPath: any, newFolderName: any) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
     const bucket = s3Creds.bucket;
@@ -530,7 +535,7 @@ export function useTreeOpsDomain() {
     await loadS3Files();
   };
 
-  const copyLocalFolderToFolder = async (folderNode, destDirHandle, destDirPath, newFolderName) => {
+  const copyLocalFolderToFolder = async (folderNode: any, destDirHandle: any, destDirPath: any, newFolderName: any) => {
     if (!destDirHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
     if (!folderNode.handle) throw new Error('원본 폴더를 찾을 수 없습니다.');
     const nameToUse = newFolderName != null ? newFolderName : folderNode.name;
@@ -543,7 +548,7 @@ export function useTreeOpsDomain() {
       throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 복제할 수 없습니다.');
     }
     const newFolderHandle = await destDirHandle.getDirectoryHandle(nameToUse, { create: true });
-    const copyDirRecursive = async (srcHandle, destHandle) => {
+    const copyDirRecursive = async (srcHandle: any, destHandle: any) => {
       for await (const entry of srcHandle.values()) {
         if (entry.kind === 'file') {
           const file = await entry.getFile();
@@ -561,7 +566,7 @@ export function useTreeOpsDomain() {
     await refreshLocalTree();
   };
 
-  const copyWebdavFileToFolder = async (file, destFolderPath, destFileName) => {
+  const copyWebdavFileToFolder = async (file: any, destFolderPath: any, destFileName: any) => {
     const backend = createWebdavBackend(webdavConfig);
     const fileName = destFileName || file.name;
     const newKey = `${destFolderPath || ''}${fileName}`;
@@ -572,7 +577,7 @@ export function useTreeOpsDomain() {
     return { ...file, id: newKey };
   };
 
-  const copyWebdavFolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+  const copyWebdavFolderToFolder = async (folderNode: any, destParentPath: any, newFolderName: any) => {
     const backend = createWebdavBackend(webdavConfig);
     const prefix = folderNode.path;
     if (!prefix) return;
@@ -589,9 +594,9 @@ export function useTreeOpsDomain() {
     }
     const entries = await webdavPropfindDeep(webdavConfig, prefix);
     const fileKeys = entries
-      .filter((e) => e.key && !e.isCollection && e.key !== prefix)
-      .map((e) => e.key)
-      .sort((a, b) => a.length - b.length);
+      .filter((e: any) => e.key && !e.isCollection && e.key !== prefix)
+      .map((e: any) => e.key)
+      .sort((a: any, b: any) => a.length - b.length);
     for (const key of fileKeys) {
       const relative = key.startsWith(prefix) ? key.slice(prefix.length) : key;
       await backend.copy(key, destPrefix + relative);
@@ -599,10 +604,10 @@ export function useTreeOpsDomain() {
     await refreshWebdavTree();
   };
 
-  const toSelectKey = (storageType, path) => `${storageType}:${path}`;
+  const toSelectKey = (storageType: any, path: any) => `${storageType}:${path}`;
 
   const handleTreeNodeSelect = useCallback(
-    async (storageType, node, modifiers = {}) => {
+    async (storageType: any, node: any, modifiers: any = {}) => {
       const { ctrlKey = false, metaKey = false, shiftKey = false } = modifiers;
       const isRange = shiftKey;
 
@@ -629,7 +634,7 @@ export function useTreeOpsDomain() {
           const anchorIdx = flatPaths.indexOf(lastPath);
           const clickIdx = flatPaths.indexOf(path);
           if (anchorIdx >= 0 && clickIdx >= 0) {
-            setSelectedIds((prev) => {
+            setSelectedIds((prev: Set<string>): Set<string> => {
               const next = new Set(prev);
               const [lo, hi] = anchorIdx <= clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
               for (let i = lo; i <= hi; i++) {
@@ -650,7 +655,7 @@ export function useTreeOpsDomain() {
       }
 
       if (ctrlKey || metaKey) {
-        setSelectedIds((prev) => {
+        setSelectedIds((prev: Set<string>): Set<string> => {
           const next = new Set(prev);
           if (next.has(key)) next.delete(key);
           else next.add(key);
@@ -672,11 +677,11 @@ export function useTreeOpsDomain() {
     [s3Tree, localTree, webdavTree, sessionWorkspace, selectFileRaw, saveCurrentMarkdownBeforeSwitch, isMobile, setSidebarOpen]
   );
 
-  const handleDownloadNode = async (storageType, node) => {
+  const handleDownloadNode = async (storageType: any, node: any) => {
     const downloadedName = normalizeUnicodeNfc(
       node?.name || node?.path?.split('/').filter(Boolean).pop() || (node?.type === 'folder' ? '폴더' : '파일'),
     );
-    const showDownloadCompleteModal = (title, message) => {
+    const showDownloadCompleteModal = (title: any, message: any) => {
       setDownloadResultModal({
         isOpen: true,
         title,
@@ -686,7 +691,7 @@ export function useTreeOpsDomain() {
 
     if (node.type === 'folder') {
       const shouldUseZipFallback = isAndroidBrowser() || !('showDirectoryPicker' in window);
-      const ensureDirReadWritePermission = async (dirHandle) => {
+      const ensureDirReadWritePermission = async (dirHandle: any) => {
         const ok = await ensureDirectoryReadWritePermission(dirHandle);
         if (!ok) {
           throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
@@ -704,7 +709,7 @@ export function useTreeOpsDomain() {
           if (shouldUseZipFallback) {
             await downloadFolderAsZip(storageType, node, folderName, indicatorId);
           } else {
-            const selectedDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            const selectedDirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
             await ensureDirReadWritePermission(selectedDirHandle);
             const targetRootDirHandle = await selectedDirHandle.getDirectoryHandle(folderName, { create: true });
             await ensureDirReadWritePermission(targetRootDirHandle);
@@ -715,7 +720,7 @@ export function useTreeOpsDomain() {
               const bucket = s3Creds.bucket;
               const prefix = node.path || '';
               const contents = await listObjectsV2(client, bucket, prefix);
-              const fileObjects = (contents || []).filter((item) => item.Key && !item.Key.endsWith('/'));
+              const fileObjects = (contents || []).filter((item: any) => item.Key && !item.Key.endsWith('/'));
               const totalFiles = fileObjects.length;
               if (totalFiles === 0) {
                 setOperationStatus(`다운로드 완료: ${folderName} (빈 폴더)`);
@@ -753,7 +758,7 @@ export function useTreeOpsDomain() {
               const sourceDirHandle = node.handle || (node.path === '' ? localRootHandle : null);
               if (!sourceDirHandle) throw new Error('원본 폴더 핸들을 찾을 수 없습니다.');
 
-              const copyLocalDirRecursive = async (srcDirHandle, destDirHandle) => {
+              const copyLocalDirRecursive = async (srcDirHandle: any, destDirHandle: any) => {
                 for await (const entry of srcDirHandle.values()) {
                   const nfcName = normalizeUnicodeNfc(entry.name);
                   if (entry.kind === 'file') {
@@ -782,9 +787,9 @@ export function useTreeOpsDomain() {
         } finally {
           removeIndicator(indicatorId);
         }
-      } catch (e) {
-        if (e?.name === 'AbortError') return;
-        const message = String(e?.message || e || '');
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        const message = errorMessage(e);
         if (message.toLowerCase().includes('state chached') || message.toLowerCase().includes('state cached')) {
           try {
             const fallbackRootName = storageType === 's3' ? 's3-root' : 'local-root';
@@ -810,7 +815,7 @@ export function useTreeOpsDomain() {
           }
         }
         console.error('폴더 다운로드 실패:', e);
-        alert('폴더 다운로드에 실패했습니다: ' + (e?.message || e));
+        alert('폴더 다운로드에 실패했습니다: ' + errorMessage(e));
       }
       return;
     }
@@ -836,7 +841,7 @@ export function useTreeOpsDomain() {
 
       if (storageType === 's3') {
         const body = await readBackendBytesRef.current?.(storageType, node.path);
-        triggerBlobDownload(new Blob([body]), fileName);
+        triggerBlobDownload(new Blob([body! as any]), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
         showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
         return;
@@ -850,24 +855,24 @@ export function useTreeOpsDomain() {
       }
       if (storageType === 'webdav') {
         const body = await readBackendBytesRef.current?.(storageType, node.path);
-        triggerBlobDownload(new Blob([body]), fileName);
+        triggerBlobDownload(new Blob([body! as any]), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
         showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('파일 다운로드 실패:', e);
-      alert('파일 다운로드에 실패했습니다: ' + (e?.message || e));
+      alert('파일 다운로드에 실패했습니다: ' + errorMessage(e));
     }
   };
 
-  const getParentPath = (path) => {
+  const getParentPath = (path: any) => {
     const trimmed = (path || '').replace(/\/$/, '');
     const parts = trimmed.split('/').filter(Boolean);
     parts.pop();
     return parts.length ? parts.join('/') + '/' : '';
   };
 
-  const handleDuplicateNode = async (storageType, node) => {
+  const handleDuplicateNode = async (storageType: any, node: any) => {
     const parentPath = getParentPath(node.path);
     const copySuffix = ' (복사본)';
     beginTreeTransferBusy({
@@ -889,7 +894,7 @@ export function useTreeOpsDomain() {
           let newPath = parentPath + newName;
           const bucket = s3Creds.bucket;
           const contents = await listObjectsV2(client, bucket, parentPath);
-          const existingNames = new Set((contents || []).map((c) => c.Key?.replace(parentPath, '').replace(/\/$/, '')).filter(Boolean));
+          const existingNames = new Set((contents || []).map((c: any) => c.Key?.replace(parentPath, '').replace(/\/$/, '')).filter(Boolean));
           let counter = 1;
           while (existingNames.has(newName)) {
             newName = baseName + copySuffix + ` (${counter})` + ext;
@@ -899,7 +904,7 @@ export function useTreeOpsDomain() {
           const { body } = await getObjectBody(client, bucket, node.path);
           await putObject(client, { Bucket: bucket, Key: newPath, Body: body });
           loadS3Files();
-          const parentPaths = parentPath ? [parentPath.replace(/\/$/, '')].filter(Boolean).map((p) => p + '/') : [];
+          const parentPaths = parentPath ? [parentPath.replace(/\/$/, '')].filter(Boolean).map((p: any) => p + '/') : [];
           expandPaths(storageType, parentPaths);
           setOperationStatus(`복제 완료: ${newName}`);
         } else if (storageType === 'local') {
@@ -943,8 +948,8 @@ export function useTreeOpsDomain() {
           const parentContents = await listObjectsV2(client, bucket, parentPath);
           const existingDirs = new Set(
             (parentContents || [])
-              .filter((c) => c.Key?.endsWith('/'))
-              .map((c) => c.Key?.slice(parentPath.length).split('/')[0])
+              .filter((c: any) => c.Key?.endsWith('/'))
+              .map((c: any) => c.Key?.slice(parentPath.length).split('/')[0])
               .filter(Boolean)
           );
           let counter = 1;
@@ -961,7 +966,7 @@ export function useTreeOpsDomain() {
             await copyObject(client, bucket, Key, newKey);
           }
           loadS3Files();
-          expandPaths(storageType, [parentPath.replace(/\/$/, '')].filter(Boolean).map((p) => p + '/'));
+          expandPaths(storageType, [parentPath.replace(/\/$/, '')].filter(Boolean).map((p: any) => p + '/'));
           setOperationStatus(`폴더 복제 완료: ${destFolderName}`);
         } else if (storageType === 'local') {
           const pHandle = node.parentHandle || localRootHandle;
@@ -984,7 +989,7 @@ export function useTreeOpsDomain() {
             // name is free
           }
           const newDirHandle = await pHandle.getDirectoryHandle(destFolderName, { create: true });
-          const copyDirRecursive = async (srcHandle, destHandle) => {
+          const copyDirRecursive = async (srcHandle: any, destHandle: any) => {
             for await (const entry of srcHandle.values()) {
               if (entry.kind === 'file') {
                 const file = await entry.getFile();
@@ -1003,14 +1008,14 @@ export function useTreeOpsDomain() {
           setOperationStatus(`폴더 복제 완료: ${destFolderName}`);
         }
       }
-    } catch (e) {
-      alert('복제 실패: ' + (e?.message || e));
+    } catch (e: unknown) {
+      alert('복제 실패: ' + errorMessage(e));
     } finally {
       endTreeTransferBusy(storageType, node.path);
     }
   };
 
-  const createItem = async (storageType, parentPath, parentDirHandle, type, nameInput) => {
+  const createItem = async (storageType: any, parentPath: any, parentDirHandle: any, type: any, nameInput: any) => {
     const resolved = resolveCreateItemPath(parentPath, nameInput, type === 'folder' ? 'folder' : 'file');
     if (!resolved.ok) {
       if (resolved.reason === 'outside-root') {
@@ -1036,12 +1041,12 @@ export function useTreeOpsDomain() {
       } catch {
         return;
       }
-      initialBody = await encryptEncMdContent('', password);
-      setEncMdPassword(newPath, password);
+      initialBody = await encryptEncMdContent('', password!);
+      setEncMdPassword(newPath, password!);
       openContent = '';
     }
 
-    const openCreatedFile = (file) => {
+    const openCreatedFile = (file: any) => {
       const content =
         typeof file.content === 'string' ? file.content : openContent;
       if (commitOpenFile({ ...file, ...(isEncMdPath(newPath) ? { encMd: true } : {}) }, content)) {
@@ -1049,7 +1054,7 @@ export function useTreeOpsDomain() {
       }
     };
 
-    const ensureLocalDir = async (dirPath) => {
+    const ensureLocalDir = async (dirPath: any) => {
       if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
       const parts = String(dirPath || '')
         .replace(/\/$/, '')
@@ -1157,19 +1162,19 @@ export function useTreeOpsDomain() {
           });
         }
       }
-    } catch (e) {
-      alert('생성 실패: ' + e.message);
+    } catch (e: unknown) {
+      alert('생성 실패: ' + errorMessage(e));
       throw e;
     }
   };
 
-  const requestCreateItem = (storageType, parentPath, parentDirHandle, type) => {
+  const requestCreateItem = (storageType: any, parentPath: any, parentDirHandle: any, type: any) => {
     setCreateModalContext({ storageType, parentPath, parentDirHandle, type });
     setCreateModalOpen(true);
   };
 
   const requestAdvancedSearchCreateItem = useCallback(
-    (type, parentPath) => {
+    (type: any, parentPath: any) => {
       const path = String(parentPath || '').replace(/^\/+/, '').replace(/\\/g, '/');
       const normalized =
         path && !path.endsWith('/') ? `${path}/` : path;
@@ -1178,7 +1183,7 @@ export function useTreeOpsDomain() {
         if (!normalized) {
           parentDirHandle = localRootHandle;
         } else {
-          const node =
+          const node: any =
             findNodeByPath(localTree, normalized) ||
             findNodeByPath(localTree, normalized.replace(/\/$/, '')) ||
             findNodeByPath(localTree, `${normalized.replace(/\/$/, '')}/`);
@@ -1209,28 +1214,28 @@ export function useTreeOpsDomain() {
   );
 
 
-  const requestUploadFile = (storageType, parentPath, parentDirHandle) => {
+  const requestUploadFile = (storageType: any, parentPath: any, parentDirHandle: any) => {
     setUploadTarget({ storageType, parentPath, parentDirHandle });
     const input = uploadFileInputRef.current;
     if (input) input.value = '';
     input?.click();
   };
 
-  const requestUploadFolder = (storageType, parentPath, parentDirHandle) => {
+  const requestUploadFolder = (storageType: any, parentPath: any, parentDirHandle: any) => {
     setUploadTarget({ storageType, parentPath, parentDirHandle });
     const input = uploadFolderInputRef.current;
     if (input) input.value = '';
     input?.click();
   };
 
-  const askTreeNameConflict = useCallback((payload) => {
-    return new Promise((resolve) => {
+  const askTreeNameConflict = useCallback((payload: any) => {
+    return new Promise((resolve: any) => {
       treeNameConflictResolverRef.current = resolve;
       setTreeNameConflict(payload);
     });
   }, []);
 
-  const settleTreeNameConflict = useCallback((choice) => {
+  const settleTreeNameConflict = useCallback((choice: any) => {
     const resolve = treeNameConflictResolverRef.current;
     treeNameConflictResolverRef.current = null;
     setTreeNameConflict(null);
@@ -1239,7 +1244,7 @@ export function useTreeOpsDomain() {
 
   /** Upload flow: same modal, without text compare. */
   const askUploadNameConflict = useCallback(
-    (fileName, renameAs) =>
+    (fileName: any, renameAs: any) =>
       askTreeNameConflict({
         name: fileName,
         renameAs,
@@ -1250,7 +1255,7 @@ export function useTreeOpsDomain() {
   );
 
   const getUploadTreeForStorage = useCallback(
-    (storageType) => {
+    (storageType: any) => {
       if (storageType === 's3') return s3Tree;
       if (storageType === 'webdav') return webdavTree;
       return localTree;
@@ -1259,7 +1264,7 @@ export function useTreeOpsDomain() {
   );
 
   const readVaultFileBytes = useCallback(
-    async (storageType, path, nodeHint = null) => {
+    async (storageType: any, path: any, nodeHint: any = null) => {
       const key = String(path || '');
       if (!key) return null;
       if (storageType === 's3') {
@@ -1293,9 +1298,9 @@ export function useTreeOpsDomain() {
       incomingNode,
       existingLabel,
       incomingLabel,
-    }) => {
+    }: any) => {
       const existingPath = `${destFolderPath || ''}${fileName}`;
-      const existingNode =
+      const existingNode: any =
         findNodeByPath(getUploadTreeForStorage(storageType), existingPath) ||
         findFileNodeByPath(getUploadTreeForStorage(storageType), existingPath);
       const [existingBytes, incomingBytes] = await Promise.all([
@@ -1312,7 +1317,7 @@ export function useTreeOpsDomain() {
     [getUploadTreeForStorage, readVaultFileBytes],
   );
 
-  const handleCreateItemSubmit = async (nameInput) => {
+  const handleCreateItemSubmit = async (nameInput: any) => {
     if (!createModalContext) return;
     const {
       storageType,
@@ -1343,7 +1348,7 @@ export function useTreeOpsDomain() {
     }
   };
 
-  const renameTreeItem = async (storageType, node, newTitle) => {
+  const renameTreeItem = async (storageType: any, node: any, newTitle: any) => {
     const trimmed = newTitle.trim();
     if (!trimmed) return;
     try {
@@ -1554,17 +1559,17 @@ export function useTreeOpsDomain() {
           });
         }
       }
-    } catch (e) {
-      alert("이름 변경 실패: " + e.message);
+    } catch (e: unknown) {
+      alert("이름 변경 실패: " + errorMessage(e));
     }
   };
 
-  const handleRequestMoveFolder = (node, storageType) => {
+  const handleRequestMoveFolder = (node: any, storageType: any) => {
     if (!node || node.type !== 'folder') return;
     setMoveFolderTarget({ node, storageType });
   };
 
-  const handleDropOnFolder = async (targetNode, targetStorageType, action, payload) => {
+  const handleDropOnFolder = async (targetNode: any, targetStorageType: any, action: any, payload: any) => {
     if (action === 'dragOver') {
       if (!targetNode) return;
       setDropTarget({ folderPath: targetNode.path, storageType: targetStorageType });
@@ -1586,7 +1591,7 @@ export function useTreeOpsDomain() {
         if (!destPath) {
           destHandle = localRootHandle;
         } else {
-          destHandle = findNodeByPath(localTree, destPath)?.handle || localRootHandle;
+          destHandle = (findNodeByPath(localTree, destPath) as any)?.handle || localRootHandle;
         }
       }
     }
@@ -1600,7 +1605,7 @@ export function useTreeOpsDomain() {
     if (rawItems) {
       const isCopy = Boolean(payload?.copy);
       const verb = isCopy ? '복제' : '이동';
-      const items = pruneNestedMovePaths(rawItems).filter((item) => {
+      const items = pruneNestedMovePaths(rawItems).filter((item: any) => {
         if (item.storageType !== targetStorageType) return false;
         if (item.path === destPath) return false;
         if (item.nodeType === 'folder' && (destPath === item.path || destPath.startsWith(item.path))) {
@@ -1617,10 +1622,10 @@ export function useTreeOpsDomain() {
           : targetStorageType === 'webdav'
             ? webdavTree
             : localTree;
-      const usedDestNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
+      const usedDestNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath as any));
       let successCount = 0;
       let failCount = 0;
-      let lastError = null;
+      let lastError: any = null;
       let lastSuccessName = null;
 
       if (items.length > 1) {
@@ -1629,7 +1634,7 @@ export function useTreeOpsDomain() {
 
       for (const item of items) {
         const { storageType: srcStorageType, path: srcPath, nodeType } = item;
-        const srcNode = findNodeByPath(tree, srcPath);
+        const srcNode: any = findNodeByPath(tree, srcPath);
         if (!srcNode) {
           failCount += 1;
           lastError = new Error(`${verb}할 항목을 트리에서 찾을 수 없습니다.`);
@@ -1663,7 +1668,7 @@ export function useTreeOpsDomain() {
               usedNames: usedDestNames,
               kind: isFolder ? 'folder' : 'file',
               action: isCopy ? 'copy' : 'move',
-              askConflict: askTreeNameConflict,
+              askConflict: askTreeNameConflict as any,
               loadCompare: isFolder
                 ? undefined
                 : () =>
@@ -1678,7 +1683,7 @@ export function useTreeOpsDomain() {
                         ? `복제할 "${srcNode.name}"`
                         : `이동할 "${srcNode.name}"`,
                     }),
-            });
+            } as any);
             if (!resolved) {
               continue;
             }
@@ -1810,7 +1815,7 @@ export function useTreeOpsDomain() {
           } finally {
             endTreeTransferBusy(srcStorageType, srcPath);
           }
-        } catch (e) {
+        } catch (e: unknown) {
           failCount += 1;
           lastError = e;
           endTreeTransferBusy(srcStorageType, srcPath);
@@ -1831,7 +1836,7 @@ export function useTreeOpsDomain() {
         setOperationStatus(
           successCount > 1
             ? `${successCount}개 항목 ${verb} 완료`
-            : `${items[0].nodeType === 'folder' ? '폴더' : '파일'} ${verb} 완료: ${lastSuccessName || items[0].name || items[0].path}`,
+            : `${items[0]!.nodeType === 'folder' ? '폴더' : '파일'} ${verb} 완료: ${lastSuccessName || items[0]!.name || items[0]!.path}`,
         );
       } else if (successCount === 0) {
         alert(`${verb} 실패: ` + (lastError?.message || '알 수 없는 오류'));
@@ -1856,7 +1861,7 @@ export function useTreeOpsDomain() {
           getTreeChildNames(
             getUploadTreeForStorage(targetStorageType),
             destPath || '',
-            findNodeByPath,
+            findNodeByPath as any,
           ),
         );
         let uploadedCount = 0;
@@ -1865,7 +1870,7 @@ export function useTreeOpsDomain() {
         if (targetStorageType === 's3') {
           const client = getS3Client();
           if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-          const uploadFile = async (file, prefix, destName = normalizeUnicodeNfc(file.name)) => {
+          const uploadFile = async (file: any, prefix: any, destName: any = normalizeUnicodeNfc(file.name)) => {
             const key = prefix + normalizeUnicodeNfc(destName);
             const body = await file.arrayBuffer();
             await putObject(client, {
@@ -1875,7 +1880,7 @@ export function useTreeOpsDomain() {
               ContentType: file.type || 'application/octet-stream',
             });
           };
-          const uploadDir = async (dirHandle, prefix) => {
+          const uploadDir = async (dirHandle: any, prefix: any) => {
             for await (const entry of dirHandle.values()) {
               const nfcName = normalizeUnicodeNfc(entry.name);
               if (entry.kind === 'file') {
@@ -1890,7 +1895,7 @@ export function useTreeOpsDomain() {
             const destName = await resolveUploadDestFileName(
               file.name,
               usedNames,
-              askUploadNameConflict,
+              askUploadNameConflict as any,
             );
             if (!destName) {
               skippedCount += 1;
@@ -1911,12 +1916,12 @@ export function useTreeOpsDomain() {
           expandPaths(targetStorageType, parentPaths);
         } else if (targetStorageType === 'webdav') {
           const backend = createWebdavBackend(webdavConfig);
-          const uploadFile = async (file, prefix, destName = normalizeUnicodeNfc(file.name)) => {
+          const uploadFile = async (file: any, prefix: any, destName: any = normalizeUnicodeNfc(file.name)) => {
             const key = prefix + normalizeUnicodeNfc(destName);
             const body = new Uint8Array(await file.arrayBuffer());
             await backend.writeBytes(key, body, file.type || 'application/octet-stream');
           };
-          const uploadDir = async (dirHandle, prefix) => {
+          const uploadDir = async (dirHandle: any, prefix: any) => {
             for await (const entry of dirHandle.values()) {
               const nfcName = normalizeUnicodeNfc(entry.name);
               if (entry.kind === 'file') {
@@ -1931,7 +1936,7 @@ export function useTreeOpsDomain() {
             const destName = await resolveUploadDestFileName(
               file.name,
               usedNames,
-              askUploadNameConflict,
+              askUploadNameConflict as any,
             );
             if (!destName) {
               skippedCount += 1;
@@ -1953,14 +1958,14 @@ export function useTreeOpsDomain() {
         } else {
           const targetDirHandle = destHandle || localRootHandle;
           if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
-          const copyFile = async (file, dirHandle, destName = normalizeUnicodeNfc(file.name)) => {
+          const copyFile = async (file: any, dirHandle: any, destName: any = normalizeUnicodeNfc(file.name)) => {
             const nfcName = normalizeUnicodeNfc(destName);
             const newFileHandle = await dirHandle.getFileHandle(nfcName, { create: true });
             const writable = await newFileHandle.createWritable();
             await writable.write(await file.arrayBuffer());
             await writable.close();
           };
-          const copyDir = async (dirHandle, destDirHandle) => {
+          const copyDir = async (dirHandle: any, destDirHandle: any) => {
             const nfcDirName = normalizeUnicodeNfc(dirHandle.name);
             const newDir = await destDirHandle.getDirectoryHandle(nfcDirName, { create: true });
             for await (const entry of dirHandle.values()) {
@@ -1980,7 +1985,7 @@ export function useTreeOpsDomain() {
             const destName = await resolveUploadDestFileName(
               file.name,
               usedNames,
-              askUploadNameConflict,
+              askUploadNameConflict as any,
             );
             if (!destName) {
               skippedCount += 1;
@@ -2006,9 +2011,9 @@ export function useTreeOpsDomain() {
         } else {
           setOperationStatus('업로드 완료');
         }
-      } catch (e) {
-        alert('업로드 실패: ' + e.message);
-        setOperationStatus(`업로드 실패: ${e.message}`);
+      } catch (e: unknown) {
+        alert('업로드 실패: ' + errorMessage(e));
+        setOperationStatus(`업로드 실패: ${errorMessage(e)}`);
       } finally {
         if (treeNameConflictResolverRef.current) {
           settleTreeNameConflict('cancel');
@@ -2027,7 +2032,7 @@ export function useTreeOpsDomain() {
     requestAdvancedSearchCreateItem('file', newFileDefaultParentPath);
   }, [requestAdvancedSearchCreateItem, newFileDefaultParentPath]);
 
-  const applyWorkspaceFilePathRetarget = (storageType, oldPath, newPath, filePatch = null) => {
+  const applyWorkspaceFilePathRetarget = (storageType: any, oldPath: any, newPath: any, filePatch: any = null) => {
     if (!storageType || !oldPath || !newPath) return;
     const next = retargetFileTab(workspaceTabsRef.current, storageType, oldPath, {
       path: newPath,
@@ -2044,7 +2049,7 @@ export function useTreeOpsDomain() {
     setWorkspaceTabs(next);
   };
 
-  const applyWorkspaceFolderPathRetarget = (storageType, oldPrefix, newPrefix) => {
+  const applyWorkspaceFolderPathRetarget = (storageType: any, oldPrefix: any, newPrefix: any) => {
     if (!storageType || !oldPrefix || !newPrefix || oldPrefix === newPrefix) return;
     const from = oldPrefix.endsWith('/') ? oldPrefix : `${oldPrefix}/`;
     const to = newPrefix.endsWith('/') ? newPrefix : `${newPrefix}/`;
@@ -2058,7 +2063,7 @@ export function useTreeOpsDomain() {
   applyWorkspaceFolderPathRetargetLocalRef.current = applyWorkspaceFolderPathRetarget;
   applyWorkspaceFilePathRetargetRef.current = applyWorkspaceFilePathRetarget;
 
-  const handleUploadFileSelect = async (e) => {
+  const handleUploadFileSelect = async (e: any) => {
     const files = e.target.files;
     if (!files?.length || !uploadTarget) return;
     const { storageType, parentPath, parentDirHandle } = uploadTarget;
@@ -2071,7 +2076,7 @@ export function useTreeOpsDomain() {
     });
     try {
       const usedNames = new Set(
-        getTreeChildNames(getUploadTreeForStorage(storageType), parentPath || '', findNodeByPath),
+        getTreeChildNames(getUploadTreeForStorage(storageType), parentPath || '', findNodeByPath as any),
       );
       let uploadedCount = 0;
       let skippedCount = 0;
@@ -2084,7 +2089,7 @@ export function useTreeOpsDomain() {
           const destName = await resolveUploadDestFileName(
             file.name,
             usedNames,
-            askUploadNameConflict,
+            askUploadNameConflict as any,
           );
           if (!destName) {
             skippedCount += 1;
@@ -2112,7 +2117,7 @@ export function useTreeOpsDomain() {
             const destName = await resolveUploadDestFileName(
               file.name,
               usedNames,
-              askUploadNameConflict,
+              askUploadNameConflict as any,
             );
             if (!destName) {
               skippedCount += 1;
@@ -2134,7 +2139,7 @@ export function useTreeOpsDomain() {
             const destName = await resolveUploadDestFileName(
               file.name,
               usedNames,
-              askUploadNameConflict,
+              askUploadNameConflict as any,
             );
             if (!destName) {
               skippedCount += 1;
@@ -2157,7 +2162,7 @@ export function useTreeOpsDomain() {
           const destName = await resolveUploadDestFileName(
             file.name,
             usedNames,
-            askUploadNameConflict,
+            askUploadNameConflict as any,
           );
           if (!destName) {
             skippedCount += 1;
@@ -2187,8 +2192,8 @@ export function useTreeOpsDomain() {
           uploadedCount > 1 ? `${uploadedCount}개 파일 업로드 완료` : '업로드 완료',
         );
       }
-    } catch (err) {
-      alert('업로드 실패: ' + err.message);
+    } catch (err: unknown) {
+      alert('업로드 실패: ' + errorMessage(err));
     } finally {
       settleTreeNameConflict('cancel');
       removeIndicator(indicatorId);
@@ -2196,7 +2201,7 @@ export function useTreeOpsDomain() {
     }
   };
 
-  const handleUploadFolderSelect = async (e) => {
+  const handleUploadFolderSelect = async (e: any) => {
     const files = e.target.files;
     if (!files?.length || !uploadTarget) return;
     const { storageType, parentPath, parentDirHandle } = uploadTarget;
@@ -2273,8 +2278,8 @@ export function useTreeOpsDomain() {
       const parentPaths = getParentPathsToExpand(parentPath);
       expandPaths(storageType, parentPaths);
       setOperationStatus(`${files.length}개 파일 업로드 완료`);
-    } catch (err) {
-      alert('폴더 업로드 실패: ' + err.message);
+    } catch (err: unknown) {
+      alert('폴더 업로드 실패: ' + errorMessage(err));
     } finally {
       removeIndicator(indicatorId);
       e.target.value = '';
@@ -2288,7 +2293,7 @@ export function useTreeOpsDomain() {
     return localRootHandle.getDirectoryHandle('.trash', { create: true });
   };
 
-  const moveLocalEntryToTrash = async (node) => {
+  const moveLocalEntryToTrash = async (node: any) => {
     const trashRoot = await ensureLocalTrashDir();
     const relativePath = node.path.replace(/\/$/, ''); // remove trailing slash for folders
     const segments = relativePath.split('/'); // e.g. ['foo', 'bar.md'] or ['foo','bar']
@@ -2312,7 +2317,7 @@ export function useTreeOpsDomain() {
       const sourceDir = node.handle;
       const targetDirForFolder = await targetDir.getDirectoryHandle(name, { create: true });
 
-      const copyDirRecursive = async (srcHandle, destHandle) => {
+      const copyDirRecursive = async (srcHandle: any, destHandle: any) => {
         for await (const entry of srcHandle.values()) {
           if (entry.kind === 'file') {
             const file = await entry.getFile();
@@ -2334,13 +2339,13 @@ export function useTreeOpsDomain() {
     }
   };
 
-  const moveS3KeyToTrash = async (client, bucket, key) => {
+  const moveS3KeyToTrash = async (client: any, bucket: any, key: any) => {
     const destKey = `.trash/${key}`;
     await copyObject(client, bucket, key, destKey);
     await deleteObject(client, bucket, key);
   };
 
-  const moveS3EntryToTrash = async (node, additionalKeys = []) => {
+  const moveS3EntryToTrash = async (node: any, additionalKeys: any = []) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
 
@@ -2362,14 +2367,14 @@ export function useTreeOpsDomain() {
           const destKey = `.trash/${Key}`;
           await copyObject(client, bucket, Key, destKey);
         }
-        await deleteObjects(client, bucket, contents.map(({ Key }) => ({ Key })));
+        await deleteObjects(client, bucket, contents.map(({ Key }: any) => ({ Key })));
       }
     }
     for (const key of additionalKeys) {
       try {
         await moveS3KeyToTrash(client, bucket, key);
-      } catch (e) {
-        if (e?.$metadata?.httpStatusCode !== 404) throw e;
+      } catch (e: unknown) {
+        if ((e as any)?.$metadata?.httpStatusCode !== 404) throw e;
       }
     }
   };
@@ -2378,12 +2383,12 @@ export function useTreeOpsDomain() {
     const targets = normalizeDeleteTargets(deleteTarget);
     if (!targets.length) return [];
     const seen = new Set();
-    const recordings = [];
+    const recordings: any[] = [];
     for (const t of targets) {
       if (!['s3', 'local', 'webdav'].includes(t.type) || t.node.type !== 'file') continue;
       const tree =
         t.type === 's3' ? s3Tree : t.type === 'webdav' ? webdavTree : localTree;
-      for (const r of getRecordingKeysFromTree(tree, t.node.path)) {
+      for (const r of getRecordingKeysFromTree(tree, t.node.path!)) {
         if (seen.has(r.key)) continue;
         seen.add(r.key);
         recordings.push(r);
@@ -2392,7 +2397,7 @@ export function useTreeOpsDomain() {
     return recordings;
   })();
 
-  const confirmDelete = async (options = {}) => {
+  const confirmDelete = async (options: any = {}) => {
     const targets = normalizeDeleteTargets(deleteTarget);
     if (!targets.length) return;
     const { deleteWithRecordings = false } = options;
@@ -2401,15 +2406,15 @@ export function useTreeOpsDomain() {
     let closeTimer = null;
 
     // Trash root emptying uses EmptyTrashConfirmModal (context menu / dedicated flow).
-    if (targets.length === 1 && targets[0].node.path === '.trash/') {
+    if (targets.length === 1 && targets[0]!.node.path === '.trash/') {
       closeModal();
       return;
     }
 
-    const workTargets = targets.filter((t) => t.node.path !== '.trash/');
+    const workTargets = targets.filter((t: any) => t.node.path !== '.trash/');
     if (!workTargets.length) return;
 
-    if (workTargets.some((t) => t.node.type === 'folder') && isDeletingFolder) return;
+    if (workTargets.some((t: any) => t.node.type === 'folder') && isDeletingFolder) return;
 
     setIsDeleting(true);
     const multi = workTargets.length > 1;
@@ -2421,32 +2426,31 @@ export function useTreeOpsDomain() {
 
     let successCount = 0;
     let failCount = 0;
-    let lastError = null;
+    let lastError: any = null;
     let anyFolder = false;
     const isChatRoute = chatSurfaceActive;
     let openFileAffected = false;
-    /** @type {Array<{ path?: string, type?: string, name?: string }>} */
-    const deletedNodesForChat = [];
+    const deletedNodesForChat: any[] = [];
 
-    const treeFor = (type) =>
+    const treeFor = (type: any) =>
       type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
 
-    const recordingKeysForNode = (node, type) => {
+    const recordingKeysForNode = (node: any, type: any) => {
       if (!deleteWithRecordings || node.type !== 'file') return [];
-      return getRecordingKeysFromTree(treeFor(type), node.path).flatMap((r) => {
+      return getRecordingKeysFromTree(treeFor(type), node.path).flatMap((r: any) => {
         const syncKey = getSyncKeyForRecording(r.key);
         return syncKey ? [r.key, syncKey] : [r.key];
       });
     };
 
-    const companionKeysForNode = (node, type) => {
+    const companionKeysForNode = (node: any, type: any) => {
       if (!loadOrphanImageAutoDeleteEnabled()) return [];
       return collectCompanionImageKeysForDelete(node, treeFor(type));
     };
 
-    const mergeAdditionalKeys = (node, type) => {
+    const mergeAdditionalKeys = (node: any, type: any) => {
       const seen = new Set();
-      const out = [];
+      const out: string[] = [];
       for (const key of [...recordingKeysForNode(node, type), ...companionKeysForNode(node, type)]) {
         if (!key || seen.has(key) || key === node.path) continue;
         seen.add(key);
@@ -2458,15 +2462,16 @@ export function useTreeOpsDomain() {
     try {
       const storagesTouched = new Set();
 
-      for (const { node, type } of workTargets) {
-        const isInTrash = node.path.startsWith('.trash/');
+      for (const { node: rawNode, type } of workTargets) {
+        const node = rawNode as any;
+        const isInTrash = String(node.path || '').startsWith('.trash/');
         const isFolder = node.type === 'folder';
         const additionalKeys = mergeAdditionalKeys(node, type);
 
         if (isFolder) {
           anyFolder = true;
           setIsDeletingFolder(true);
-          setDeletingFolderPath(node.path);
+          setDeletingFolderPath(node.path ?? null);
           if (!multi) setOperationStatus(`폴더 삭제 중: ${node.path}`);
         } else if (!multi) {
           setOperationStatus(isInTrash ? `영구 삭제 중: ${node.path}` : `삭제 중: ${node.path}`);
@@ -2481,18 +2486,18 @@ export function useTreeOpsDomain() {
               if (node.type === 'folder') {
                 const contents = await listObjectsV2(client, s3Creds.bucket, node.path);
                 const keys = [
-                  ...contents.map(({ Key }) => Key),
+                  ...contents.map(({ Key }: any) => Key),
                   ...additionalKeys,
                 ].filter(Boolean);
                 if (keys.length > 0) {
-                  await deleteObjects(client, s3Creds.bucket, keys.map((Key) => ({ Key })));
+                  await deleteObjects(client, s3Creds.bucket, keys.map((Key: any) => ({ Key })));
                 }
               } else {
                 const keysToDelete =
                   additionalKeys.length > 0
                     ? [node.path, ...additionalKeys]
                     : [node.path];
-                await deleteObjects(client, s3Creds.bucket, keysToDelete.map((Key) => ({ Key })));
+                await deleteObjects(client, s3Creds.bucket, keysToDelete.map((Key: any) => ({ Key })));
               }
             } else {
               await moveS3EntryToTrash(node, additionalKeys);
@@ -2520,7 +2525,7 @@ export function useTreeOpsDomain() {
                   node.type === 'folder'
                     ? `${String(node.path || '').replace(/\/+$/, '')}/`
                     : node.path;
-                await backend.trash(trashPath, { additionalKeys });
+                await backend.trash(trashPath, { additionalKeys } as any);
               }
             } else {
               if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
@@ -2544,7 +2549,7 @@ export function useTreeOpsDomain() {
                   node.type === 'folder'
                     ? `${String(node.path || '').replace(/\/+$/, '')}/`
                     : node.path;
-                await backend.trash(trashPath, { additionalKeys });
+                await backend.trash(trashPath, { additionalKeys } as any);
               } else {
                 await moveLocalEntryToTrash(node);
               }
@@ -2558,8 +2563,8 @@ export function useTreeOpsDomain() {
                 for (const key of additionalKeys) {
                   try {
                     await backend.delete(key);
-                  } catch (e) {
-                    if (e?.$metadata?.httpStatusCode !== 404) throw e;
+                  } catch (e: unknown) {
+                    if ((e as any)?.$metadata?.httpStatusCode !== 404) throw e;
                   }
                 }
               } else {
@@ -2570,13 +2575,13 @@ export function useTreeOpsDomain() {
                 for (const key of keysToDelete) {
                   try {
                     await backend.delete(key);
-                  } catch (e) {
-                    if (e?.$metadata?.httpStatusCode !== 404) throw e;
+                  } catch (e: unknown) {
+                    if ((e as any)?.$metadata?.httpStatusCode !== 404) throw e;
                   }
                 }
               }
             } else {
-              await backend.trash(node.path, { additionalKeys });
+              await backend.trash(node.path, { additionalKeys } as any);
             }
             storagesTouched.add('webdav');
           }
@@ -2592,7 +2597,7 @@ export function useTreeOpsDomain() {
           ) {
             openFileAffected = true;
           }
-        } catch (e) {
+        } catch (e: unknown) {
           failCount += 1;
           lastError = e;
         }
@@ -2621,7 +2626,7 @@ export function useTreeOpsDomain() {
         try {
           for (const node of deletedNodesForChat) {
             const scope = deletedNoteScopeFromNode(node);
-            const { dateStrs } = await unlinkChatNotesForDeletedPaths(chatStorageCtx, scope);
+            const { dateStrs } = await unlinkChatNotesForDeletedPaths(chatStorageCtx as any, scope);
             for (const dateStr of dateStrs) {
               postChatSyncEvent('day', { dateStr });
               postChatLocalSyncEvent('day', { dateStr });
@@ -2645,7 +2650,7 @@ export function useTreeOpsDomain() {
       }
       if (failCount === 0 && successCount > 0) {
         setOperationStatus(
-          multi ? `${successCount}개 항목 삭제 완료` : `삭제 완료: ${workTargets[0].node.path}`,
+          multi ? `${successCount}개 항목 삭제 완료` : `삭제 완료: ${workTargets[0]!.node.path}`,
         );
       } else if (successCount === 0 && lastError) {
         alert('삭제 실패: ' + lastError.message);
@@ -2660,7 +2665,7 @@ export function useTreeOpsDomain() {
     }
   };
 
-  const confirmEmptyTrash = async (options) => {
+  const confirmEmptyTrash = async (options: any) => {
     if (!emptyTrashTarget?.storageType || isEmptyingTrash) return;
     const storageType = emptyTrashTarget.storageType;
     setIsEmptyingTrash(true);
@@ -2692,9 +2697,9 @@ export function useTreeOpsDomain() {
           ? `쓰레기통 정리 완료 (${deletedCount}개 삭제)`
           : '쓰레기통 정리 완료 (삭제할 항목 없음)',
       );
-    } catch (e) {
-      alert('쓰레기통 비우기 실패: ' + (e?.message || e));
-      setOperationStatus(`쓰레기통 비우기 실패: ${e?.message || e}`);
+    } catch (e: unknown) {
+      alert('쓰레기통 비우기 실패: ' + errorMessage(e));
+      setOperationStatus(`쓰레기통 비우기 실패: ${errorMessage(e)}`);
     } finally {
       setIsEmptyingTrash(false);
     }
@@ -2712,17 +2717,17 @@ export function useTreeOpsDomain() {
     setIsMoveModalOpen(true);
   };
 
-  const handleRequestMoveFileFromSidebar = (node, storageType) => {
+  const handleRequestMoveFileFromSidebar = (node: any, storageType: any) => {
     setMoveFileTarget({ node, storageType });
     setIsMoveModalOpen(true);
   };
 
-  const handleConfirmMoveFileFromSidebar = async (dest) => {
+  const handleConfirmMoveFileFromSidebar = async (dest: any) => {
     if (!moveFileTarget || !dest) return;
     const { node, storageType } = moveFileTarget;
     const destPath = dest.path || '';
     const tree = getUploadTreeForStorage(storageType);
-    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
+    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath as any));
     const destFilePath = `${destPath}${node.name}`;
     if (destFilePath === node.path) {
       setMoveFileTarget(null);
@@ -2738,7 +2743,7 @@ export function useTreeOpsDomain() {
           usedNames,
           kind: 'file',
           action: 'move',
-          askConflict: askTreeNameConflict,
+          askConflict: askTreeNameConflict as any,
           loadCompare: () =>
             loadFileCompareForDest({
               storageType,
@@ -2749,7 +2754,7 @@ export function useTreeOpsDomain() {
               existingLabel: `대상 폴더의 "${node.name}"`,
               incomingLabel: `이동할 "${node.name}"`,
             }),
-        });
+        } as any);
         if (!resolved) return;
         destName = resolved;
       }
@@ -2773,7 +2778,7 @@ export function useTreeOpsDomain() {
         if (storageType === 's3') {
           await moveS3FileToFolder(fileToMove, destPath, destName);
           if (currentFileRef.current?.type === 's3' && currentFileRef.current.id === node.path) {
-            setCurrentFile((prev) =>
+            setCurrentFile((prev: any) =>
               prev && prev.id === node.path
                 ? { ...prev, id: destFilePath, name: destName }
                 : prev,
@@ -2807,19 +2812,19 @@ export function useTreeOpsDomain() {
       } finally {
         endTreeTransferBusy(storageType, node.path);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       endTreeTransferBusy(storageType, node.path);
-      alert('파일 이동 실패: ' + e.message);
-      setOperationStatus(`파일 이동 실패: ${e.message}`);
+      alert('파일 이동 실패: ' + errorMessage(e));
+      setOperationStatus(`파일 이동 실패: ${errorMessage(e)}`);
     }
   };
 
-  const handleConfirmMoveFolder = async (dest) => {
+  const handleConfirmMoveFolder = async (dest: any) => {
     if (!moveFolderTarget || !dest) return;
     const { node, storageType } = moveFolderTarget;
     const destPath = dest.path || '';
     const tree = getUploadTreeForStorage(storageType);
-    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
+    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath as any));
     const destFolderPrefix = `${destPath}${node.name}/`;
     if (destFolderPrefix === node.path) {
       setMoveFolderTarget(null);
@@ -2834,8 +2839,8 @@ export function useTreeOpsDomain() {
           usedNames,
           kind: 'folder',
           action: 'move',
-          askConflict: askTreeNameConflict,
-        });
+          askConflict: askTreeNameConflict as any,
+        } as any);
         if (!resolved) return;
         destName = resolved;
       }
@@ -2884,18 +2889,18 @@ export function useTreeOpsDomain() {
       } finally {
         endTreeTransferBusy(storageType, node.path);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       endTreeTransferBusy(storageType, node.path);
-      alert('폴더 이동 실패: ' + e.message);
-      setOperationStatus(`폴더 이동 실패: ${e.message}`);
+      alert('폴더 이동 실패: ' + errorMessage(e));
+      setOperationStatus(`폴더 이동 실패: ${errorMessage(e)}`);
     }
   };
 
-  const handleConfirmMove = async (dest) => {
+  const handleConfirmMove = async (dest: any) => {
     if (!currentFile || !dest) return;
     const destPath = dest.path || '';
     const tree = getUploadTreeForStorage(currentFile.type);
-    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
+    const usedNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath as any));
     const fileName = currentFile.name;
     const destFilePath = `${destPath}${fileName}`;
     if (destFilePath === currentFile.id) {
@@ -2911,7 +2916,7 @@ export function useTreeOpsDomain() {
           usedNames,
           kind: 'file',
           action: 'move',
-          askConflict: askTreeNameConflict,
+          askConflict: askTreeNameConflict as any,
           loadCompare: () =>
             loadFileCompareForDest({
               storageType: currentFile.type,
@@ -2922,13 +2927,12 @@ export function useTreeOpsDomain() {
               existingLabel: `대상 폴더의 "${fileName}"`,
               incomingLabel: `이동할 "${fileName}"`,
             }),
-        });
+        } as any);
         if (!resolved) return;
         destName = resolved;
       }
 
       const srcPath = currentFile.id;
-      const destFilePath = `${destPath}${destName}`;
       beginTreeTransferBusy({
         storageType: currentFile.type,
         path: srcPath,
@@ -2967,10 +2971,10 @@ export function useTreeOpsDomain() {
       } finally {
         endTreeTransferBusy(currentFile.type, srcPath);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       endTreeTransferBusy(currentFile.type, currentFile.id);
-      alert('파일 이동 실패: ' + e.message);
-      setOperationStatus(`파일 이동 실패: ${e.message}`);
+      alert('파일 이동 실패: ' + errorMessage(e));
+      setOperationStatus(`파일 이동 실패: ${errorMessage(e)}`);
     }
   };
 
@@ -3025,5 +3029,5 @@ export function useTreeOpsDomain() {
     copyWebdavFolderToFolder,
     lastSelectedIdRef,
     toSelectKey,
-  };
+  } as TreeOpsDomainValue;
 }
