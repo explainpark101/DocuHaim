@@ -70,15 +70,14 @@ export default defineConfig([
       'react-hooks/exhaustive-deps': 'off',
       'no-unused-vars': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
-      // Ban file-level nocheck; allow documented line expect-error / ignore.
+      // Ban all TypeScript directive suppressions in app source.
       '@typescript-eslint/ban-ts-comment': [
         'error',
         {
           'ts-nocheck': true,
           'ts-check': false,
-          'ts-expect-error': 'allow-with-description',
-          'ts-ignore': 'allow-with-description',
-          minimumDescriptionLength: 3,
+          'ts-expect-error': true,
+          'ts-ignore': true,
         },
       ],
     },

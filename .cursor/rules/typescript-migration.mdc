@@ -1,31 +1,31 @@
 ---
-description: TypeScript-only src — no new JS/JSX, no @ts-nocheck
+description: TypeScript-only src — no new JS/JSX, no @ts-nocheck / @ts-expect-error
 alwaysApply: true
 ---
 
 # TypeScript migration
 
-`src/` implementation files are **TypeScript only**. New JS/JSX under `src/` is forbidden. `@ts-nocheck` is forbidden.
+`src/` implementation files are **TypeScript only**. New JS/JSX under `src/` is forbidden.
+`@ts-nocheck`, `@ts-expect-error`, and `@ts-ignore` are **forbidden** (count must stay **0**).
 
 ## Policy
 
 1. **New files under `src/`** — `.ts` / `.tsx` only. Never add `.js` / `.jsx` in `src/`.
-2. **`@ts-nocheck`** — do not add. Prefer real types, boundary `any`, or a single-line `@ts-expect-error` with a reason (see `ts-expect-error-cleanup` rule).
+2. **Directive suppressions** — do not add. Prefer real types, `src/types/*.d.ts` augmentation, or a narrow boundary cast (see `ts-expect-error-cleanup` rule).
 3. **`allowJs: true`** — kept for non-`src` / tooling edge cases; `checkJs` stays off. Do not use `allowJs` as a reason to grow JS in `src/`.
-4. **When editing** — improve types at the touch point when cheap; do not reintroduce nocheck or JS.
+4. **When editing** — improve types at the touch point when cheap; do not reintroduce nocheck/expect-error or JS.
 5. Prefer **English** in new code comments if Korean Unicode might corrupt.
 
 ## Out of scope (separate tracks)
 
-- Mass removal of `$TSFixMe` / leftover `@ts-expect-error` from ts-migrate
 - Turning on project-wide `checkJs`
 
 ## Examples
 
 ```text
-❌ BAD — add src/features/foo.js or restore @ts-nocheck on a domain hook
+❌ BAD — add src/features/foo.js or restore @ts-nocheck / @ts-expect-error
 ❌ BAD — new .jsx "just for now" under src/components
 ✅ GOOD — new helper as .ts / .tsx
-✅ GOOD — line @ts-expect-error with a short reason when a vendor type is wrong
-✅ GOOD — eslint ban-ts-comment blocks @ts-nocheck project-wide
+✅ GOOD — vendor gaps via src/types/*.d.ts or narrow cast
+✅ GOOD — eslint ban-ts-comment blocks nocheck and expect-error project-wide
 ```
