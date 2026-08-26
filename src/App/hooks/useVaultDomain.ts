@@ -1,4 +1,3 @@
-// @ts-nocheck — vault domain handlers; tighten with VaultValue gradually
 import { useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
@@ -34,11 +33,12 @@ import {
   pickTauriLocalVaultDirectory,
   readTauriLocalDirectoryTree,
 } from '@/utils/storage/tauriLocalBackend';
+import type { VaultValue } from '@/App/context/VaultContext';
 
 /**
  * Vault load / backend handlers. Consumes AppVaultStateProvider + Auth.
  */
-export function useVaultDomain() {
+export function useVaultDomain(): VaultValue {
   const { s3Creds } = useAuth();
   const owned = useVaultOwned();
   const {
@@ -67,7 +67,7 @@ export function useVaultDomain() {
     setWebdavFolderLoadingPath,
   } = owned;
 
-  const localFolderLoadInFlightRef = useRef(new Set());
+  const localFolderLoadInFlightRef = useRef<Set<string>>(new Set());
 
   const webdavReady = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
 
@@ -77,7 +77,7 @@ export function useVaultDomain() {
   );
 
   const getBackendForType = useCallback(
-    (type) =>
+    (type: string) =>
       createStorageBackendForType(type, {
         getS3Client,
         s3Creds,
@@ -103,16 +103,17 @@ export function useVaultDomain() {
   }, [webdavReady, webdavConfig, setIsWebdavTreeLoading, setWebdavTree]);
 
   const loadWebdavFolderChildren = useCallback(
-    async (folderNode) => {
+    async (folderNode: any) => {
       if (!folderNode?.path || folderNode.childrenLoaded === true || !webdavReady) return;
-      setWebdavFolderLoadingPath(folderNode.path);
+      const folderPath = folderNode.path as string;
+      setWebdavFolderLoadingPath(folderPath);
       try {
         const backend = createWebdavBackend(webdavConfig);
-        const children = await backend.listChildren(folderNode.path);
-        setWebdavTree((prev) => patchWebdavTreeChildren(prev, folderNode.path, children));
+        const children = await backend.listChildren(folderPath);
+        setWebdavTree((prev) => patchWebdavTreeChildren(prev, folderPath, children));
       } finally {
         setWebdavFolderLoadingPath((current) =>
-          current === folderNode.path ? null : current,
+          current === folderPath ? null : current,
         );
       }
     },
@@ -134,7 +135,7 @@ export function useVaultDomain() {
   );
 
   const attachLocalRootFolder = useCallback(
-    async (dirHandle, { fullScan = false } = {}) => {
+    async (dirHandle: FileSystemDirectoryHandle, { fullScan = false } = {}) => {
       const canWrite = await ensureDirectoryReadWritePermission(dirHandle);
       if (!canWrite) {
         throw new Error(
@@ -163,7 +164,7 @@ export function useVaultDomain() {
   );
 
   const loadLocalFolderChildren = useCallback(
-    async (folderNode) => {
+    async (folderNode: any) => {
       if (!folderNode?.handle || folderNode.childrenLoaded === true) return;
       const folderPath = folderNode.path;
       if (!folderPath || localFolderLoadInFlightRef.current.has(folderPath)) return;
@@ -209,10 +210,10 @@ export function useVaultDomain() {
       setLocalVaultFsPath('');
       setStorageMode(STORAGE_MODE_LOCAL);
       await attachLocalRootFolder(dirHandle);
-    } catch (e) {
-      if (e?.name === 'AbortError') return;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return;
       console.error('Local folder selection cancelled or failed:', e);
-      alert(e?.message || '로컬 폴더를 열지 못했습니다.');
+      alert(e instanceof Error ? e.message : '로컬 폴더를 열지 못했습니다.');
     }
   }, [
     attachLocalRootFolder,
