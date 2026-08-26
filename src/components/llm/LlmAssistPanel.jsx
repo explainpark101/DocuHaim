@@ -14,7 +14,6 @@ import {
   MessageSquareText,
   Plus,
   RefreshCw,
-  Replace,
   RotateCcw,
   Save,
   ScrollText,
@@ -25,6 +24,8 @@ import {
   Trash2,
   X,
   ChevronUp,
+  TextCursor,
+  CornerLeftDown,
 } from 'lucide-react';
 import { MdPreview } from 'md-editor-rt';
 import { Tooltip } from 'radix-ui';
@@ -631,8 +632,17 @@ export default function LlmAssistPanel({
                   disabled={!result}
                   className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
                 >
-                  <Replace size={14} aria-hidden />
-                  삽입하기
+                  {selectedText.trim() ? (
+                    <>
+                      <CornerLeftDown size={14} aria-hidden />
+                      대체하기
+                    </>
+                  ) : (
+                    <>
+                      <TextCursor size={14} aria-hidden />
+                      삽입하기
+                    </>
+                  )}
                 </button>
               ) : null}
               <button
@@ -653,7 +663,7 @@ export default function LlmAssistPanel({
                 disabled={!result}
                 className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
               >
-                <Replace size={14} aria-hidden />
+                <CornerLeftDown size={14} aria-hidden />
                 선택 영역 바꿔치기
               </button>
               <button
