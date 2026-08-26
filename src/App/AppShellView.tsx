@@ -3,6 +3,7 @@ import { AppLayout } from '@/App/components/AppLayout';
 import { ExportPdfGate, shouldShowExportPdfGate } from '@/App/components/ExportPdfGate';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useLocation } from 'react-router';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 
 /**
  * Thin shell: gates + layout + modals. Domain state comes from AppProviders.
@@ -13,7 +14,11 @@ export function AppShellView() {
 
   if (!bootstrap.scriptsLoaded) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-500 dark:bg-odp-bgSofter dark:text-odp-fg">
+      <div
+        className={`flex items-center justify-center bg-gray-50 text-gray-500 dark:bg-odp-bgSofter dark:text-odp-fg ${
+          isDesktopApp() ? 'h-dvh max-h-dvh overflow-hidden' : 'h-screen'
+        }`}
+      >
         로딩 중...
       </div>
     );

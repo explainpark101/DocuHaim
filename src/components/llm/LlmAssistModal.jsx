@@ -208,13 +208,13 @@ export default function LlmAssistModal({
 
   const refreshSelection = useCallback(() => {
     if (!editorRef) {
-      setSelectedText('');
-      setSelectionRange({ from: 0, to: 0 });
+      setSelectedText((prev) => (prev === '' ? prev : ''));
+      setSelectionRange((prev) => (prev.from === 0 && prev.to === 0 ? prev : { from: 0, to: 0 }));
       return '';
     }
     const { text, from, to } = getEditorSelectionFromRef(editorRef);
-    setSelectedText(text);
-    setSelectionRange({ from, to });
+    setSelectedText((prev) => (prev === text ? prev : text));
+    setSelectionRange((prev) => (prev.from === from && prev.to === to ? prev : { from, to }));
     return text;
   }, [editorRef]);
 
@@ -579,6 +579,9 @@ export default function LlmAssistModal({
         case 'append-result':
           handleAppendResult();
           break;
+        case 'copy-result':
+          void handleCopyResult();
+          break;
         case 'create-note-from-result':
           handleCreateNoteFromResult();
           break;
@@ -646,6 +649,7 @@ export default function LlmAssistModal({
       handleCancelGeneration,
       handleApplyResult,
       handleAppendResult,
+      handleCopyResult,
       handleCreateNoteFromResult,
       handleModelChange,
       setProfileId,

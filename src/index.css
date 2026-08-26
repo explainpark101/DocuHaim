@@ -19,6 +19,28 @@
     --desktop-titlebar-h: 2rem;
   }
 
+  /* Tauri / desktop shell: cap the page at the dynamic viewport; scroll inside panes only. */
+  html.desktop-app {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  html.desktop-app body {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  html.desktop-app #root {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   body {
     @apply bg-gray-50 text-gray-800 dark:bg-odp-bgSofter dark:text-odp-fg font-sans print:bg-white print:dark:bg-white;
   }

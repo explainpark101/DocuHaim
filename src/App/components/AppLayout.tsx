@@ -306,8 +306,10 @@ export function AppLayout({ children }: { children?: ReactNode }) {
       className={`flex min-h-0 bg-gray-50 dark:bg-odp-bgSofter text-gray-800 dark:text-odp-fg font-sans ${
         lockChatViewport
           ? 'fixed inset-x-0 z-0 flex-col overflow-hidden'
-          : isTauriDesktopPlatform()
-            ? 'relative h-screen flex-col'
+          : isDesktopApp()
+            ? `relative h-dvh max-h-dvh min-h-0 overflow-hidden${
+                isTauriDesktopPlatform() ? ' flex-col' : ''
+              }`
             : 'relative h-screen'
       }`}
       style={

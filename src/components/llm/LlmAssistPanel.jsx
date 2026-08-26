@@ -46,6 +46,7 @@ import {
 import LlmAssistAdvancedOptions from '@/components/llm/LlmAssistAdvancedOptions';
 import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
 import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
+import { useReliableButtonAction } from '@/components/llm/useReliableButtonAction';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
 
@@ -191,6 +192,12 @@ export default function LlmAssistPanel({
 
   const isDefaultSystemPrompt =
     systemPrompt.trim() === getDefaultLlmAssistSystemPrompt();
+
+  const resultActionsDisabled = !result;
+  const applyResultPress = useReliableButtonAction(onApplyResult, resultActionsDisabled);
+  const copyResultPress = useReliableButtonAction(onCopyResult, resultActionsDisabled);
+  const appendResultPress = useReliableButtonAction(onAppendResult, resultActionsDisabled);
+  const createNotePress = useReliableButtonAction(onCreateNoteFromResult, resultActionsDisabled);
 
   const restoreDefaultSystemPromptButton = (
     <button
@@ -630,8 +637,8 @@ export default function LlmAssistPanel({
               {canInsertIntoDocument ? (
                 <button
                   type="button"
-                  onClick={onApplyResult}
-                  disabled={!result}
+                  disabled={resultActionsDisabled}
+                  {...applyResultPress}
                   className={[
                     `inline-flex items-center gap-1.5 rounded border  px-3 py-1.5 text-[11px] font-medium  disabled:cursor-not-allowed disabled:opacity-50`,
                     (selectedText.trim() 
@@ -654,8 +661,8 @@ export default function LlmAssistPanel({
               ) : null}
               <button
                 type="button"
-                onClick={onCopyResult}
-                disabled={!result}
+                disabled={resultActionsDisabled}
+                {...copyResultPress}
                 className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
               >
                 <Copy size={14} aria-hidden />
@@ -663,8 +670,8 @@ export default function LlmAssistPanel({
               </button>
               <button
                 type="button"
-                onClick={onCreateNoteFromResult}
-                disabled={!result}
+                disabled={resultActionsDisabled}
+                {...createNotePress}
                 className="inline-flex items-center gap-1.5 rounded border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/60"
               >
                 <FilePlus size={14} aria-hidden />
@@ -675,8 +682,8 @@ export default function LlmAssistPanel({
             <>
               <button
                 type="button"
-                onClick={onApplyResult}
-                disabled={!result}
+                disabled={resultActionsDisabled}
+                {...applyResultPress}
                 className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
               >
                 <CornerLeftDown size={14} aria-hidden />
@@ -684,8 +691,8 @@ export default function LlmAssistPanel({
               </button>
               <button
                 type="button"
-                onClick={onAppendResult}
-                disabled={!result}
+                disabled={resultActionsDisabled}
+                {...appendResultPress}
                 className="inline-flex items-center gap-1.5 rounded border border-violet-400 bg-violet-50 px-3 py-1.5 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
               >
                 <ArrowDownToLine size={14} aria-hidden />
@@ -693,8 +700,8 @@ export default function LlmAssistPanel({
               </button>
               <button
                 type="button"
-                onClick={onCreateNoteFromResult}
-                disabled={!result}
+                disabled={resultActionsDisabled}
+                {...createNotePress}
                 className="inline-flex items-center gap-1.5 rounded border border-emerald-400 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/60"
               >
                 <FilePlus size={14} aria-hidden />

@@ -12,6 +12,7 @@ import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
+import { initDesktopViewport } from '@/utils/initDesktopViewport'
 import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
 import { initMdEditorToolbarScroll } from '@/utils/initMdEditorToolbarScroll'
 import { isDesktopApp } from '@/utils/isDesktopApp'
@@ -19,6 +20,7 @@ import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
 
 initEditorAutocompleteDomFlag()
 initTouchLongPressHaptics()
+initDesktopViewport()
 initDesktopExternalLinks()
 initMdEditorCodeCopy()
 initMdEditorToolbarScroll()

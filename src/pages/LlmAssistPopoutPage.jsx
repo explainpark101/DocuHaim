@@ -282,6 +282,7 @@ export default function LlmAssistPopoutPage() {
           onCancelGeneration={() => sendAction('cancel-run')}
           onApplyResult={() => sendAction('apply-result')}
           onAppendResult={() => sendAction('append-result')}
+          onCopyResult={() => sendAction('copy-result')}
           onCreateNoteFromResult={() => sendAction('create-note-from-result')}
           remoteMode
           modelSelectAutoLoad={false}
