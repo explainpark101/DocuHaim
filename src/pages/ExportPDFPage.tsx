@@ -485,18 +485,19 @@ export default function ExportPDFPage({
   const [fontModalOpen, setFontModalOpen] = useState(false);
   const [tocVisible, setTocVisible] = useState(true);
   const [tocTopPx, setTocTopPx] = useState(0);
-  const [tocItems, setTocItems] = useState([]);
+  const [tocItems, setTocItems] = useState<any[]>([]);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
-  const [visibleHeadingIds, setVisibleHeadingIds] = useState([]);
-  const [wikiImageModalState, setWikiImageModalState] = useState(null);
+  const [visibleHeadingIds, setVisibleHeadingIds] = useState<string[]>([]);
+  const [wikiImageModalState, setWikiImageModalState] = useState<any>(null);
   /** TOC right-click: insert `<pgbr/>` before a heading (ConfirmModal). */
   const [headingPgbrModalState, setHeadingPgbrModalState] = useState(null);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
   const [coverEditMode, setCoverEditMode] = useState(() => Boolean(openCoverEdit));
-  const [coverSelectedIds, setCoverSelectedIds] = useState([]);
-  const [coverPlaceMode, setCoverPlaceMode] = useState(null);
+  const [coverSelectedIds, setCoverSelectedIds] = useState<string[]>([]);
+  // @ts-expect-error TS(2304) FIXME: Cannot find name 'CoverPlaceMode'.
+  const [coverPlaceMode, setCoverPlaceMode] = useState<CoverPlaceMode>(null);
   const [coverCenterSnap, setCoverCenterSnap] = useState(() => loadCoverCenterSnapEnabled());
   const [coverCenterSnapTolerance, setCoverCenterSnapTolerance] = useState(() =>
     loadCoverCenterSnapTolerance(),
@@ -512,7 +513,7 @@ export default function ExportPDFPage({
   const [coverLayersDetached, setCoverLayersDetached] = useState(() => loadCoverLayersDetached());
   const [previewView, setPreviewView] = useState(() => loadPrintPreviewView());
   const [flipIndex, setFlipIndex] = useState(0);
-  const [stageVisiblePages, setStageVisiblePages] = useState(null);
+  const [stageVisiblePages, setStageVisiblePages] = useState<number[] | null>(null);
   const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
   const activeTransformRef = useRef(null);
   const headerRef = useRef(null);
@@ -925,7 +926,6 @@ export default function ExportPDFPage({
     }
 
     const headingEls = tocItems
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       .map((item) => document.getElementById(item.id))
       .filter(Boolean);
 
@@ -940,7 +940,6 @@ export default function ExportPDFPage({
     const applyActiveHeading = () => {
       const activeId = getActiveHeadingId(headingEls);
       const nextIds = activeId ? [activeId] : [];
-      // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
       setVisibleHeadingIds((prev) => (
         prev.length === nextIds.length && prev.every((id, index) => id === nextIds[index])
           ? prev
@@ -987,7 +986,6 @@ export default function ExportPDFPage({
     const tocList = tocListRef.current;
     if (!tocList) return;
 
-    // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
     const firstVisibleId = tocItems.find((item) => visibleHeadingIds.includes(item.id))?.id;
     if (!firstVisibleId) return;
 
@@ -1173,7 +1171,6 @@ export default function ExportPDFPage({
             ? getWikiImageOccurrenceInContainer(contentRoot, img, attrs.key)
             : getMarkdownImageOccurrenceInContainer(contentRoot, img, attrs.key);
         setWikiImageModalState({
-          // @ts-expect-error TS(2345) FIXME: Argument of type '{ kind: string; key: any; width:... Remove this comment to see the full error message
           kind: attrs.kind,
           key: attrs.key,
           width: attrs.width,
@@ -1195,23 +1192,17 @@ export default function ExportPDFPage({
       height
     }: any) => {
       const modal = wikiImageModalState;
-      // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
       if (!modal?.key) return;
       const next =
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         modal.kind === 'wiki'
           ? updateWikiImageSizeInMarkdown(previewValue, {
-              // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
               path: modal.key,
-              // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               width,
               height,
             })
           : updateMarkdownImageSizeInMarkdown(previewValue, {
-              // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
               src: modal.key,
-              // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               width,
               height,
@@ -1231,25 +1222,19 @@ export default function ExportPDFPage({
       file
     }: any) => {
       const modal = wikiImageModalState;
-      // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
       if (!modal?.key) {
         throw new Error('자를 이미지를 찾을 수 없습니다.');
       }
       const nextPath = await uploadPrintEditorImage(file, currentFile);
       const next =
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         modal.kind === 'wiki'
           ? updateWikiImagePathInMarkdown(previewValue, {
-              // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
               path: modal.key,
-              // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               nextPath,
             })
           : replaceMarkdownImageWithWikiPath(previewValue, {
-              // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
               src: modal.key,
-              // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
               occurrence: modal.occurrence ?? 0,
               nextPath,
             });
@@ -1269,14 +1254,11 @@ export default function ExportPDFPage({
       height
     }: any) => {
       const modal = wikiImageModalState;
-      // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
       if (!modal?.key || modal.kind !== 'markdown') {
         throw new Error('변환할 이미지를 찾을 수 없습니다.');
       }
       const prepared = await prepareMarkdownImageForWikiConvert({
-        // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
         markdownSrc: modal.key,
-        // @ts-expect-error TS(2339) FIXME: Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
         displaySrc: modal.imageSrc,
         currentNotePath: currentFile?.id ?? null,
       });
@@ -1290,9 +1272,7 @@ export default function ExportPDFPage({
         }
       }
       const next = replaceMarkdownImageWithWikiPath(previewValue, {
-        // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
         src: modal.key,
-        // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
         occurrence: modal.occurrence ?? 0,
         nextPath,
         width,
@@ -1316,7 +1296,6 @@ export default function ExportPDFPage({
       height
     }: any) => {
       const modal = wikiImageModalState;
-      // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
       if (!modal?.key || !modal?.kind) {
         throw new Error('변환할 이미지를 찾을 수 없습니다.');
       }
@@ -1325,9 +1304,7 @@ export default function ExportPDFPage({
         throw new Error('ImgBB API 키가 없습니다. 설정에서 키를 저장하세요.');
       }
       const fetchSrc = resolveImgbbFetchSrc({
-        // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
         path: modal.key,
-        // @ts-expect-error TS(2339) FIXME: Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
         imageSrc: modal.imageSrc,
       });
       if (!fetchSrc) {
@@ -1337,25 +1314,20 @@ export default function ExportPDFPage({
       const uploaded = await uploadImageToImgbb({
         apiKey,
         image: fetchSrc,
-        // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
         name: isDataImageUri(modal.key) ? 'image' : undefined,
       });
       const nextUrl = uploaded.url;
-      // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
       const occurrence = modal.occurrence ?? 0;
       let nextMarkdown = previewValue;
       const sized =
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         modal.kind === 'wiki'
           ? updateWikiImageSizeInMarkdown(nextMarkdown, {
-              // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
               path: modal.key,
               occurrence,
               width,
               height,
             })
           : updateMarkdownImageSizeInMarkdown(nextMarkdown, {
-              // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
               src: modal.key,
               occurrence,
               width,
@@ -1365,9 +1337,7 @@ export default function ExportPDFPage({
       const sidecar = await upsertRemoteImageComment(
         nextMarkdown,
         {
-          // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
           kind: modal.kind === 'wiki' ? 'wiki' : 'markdown',
-          // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
           key: modal.key,
           occurrence,
         },
@@ -1404,7 +1374,6 @@ export default function ExportPDFPage({
 
   const startFreeTransform = useCallback(() => {
     const modal = wikiImageModalState;
-    // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
     if (!modal?.kind || !modal?.key) return;
     const img = findResizableImageElement(modal);
     if (!img) return;
@@ -1412,11 +1381,8 @@ export default function ExportPDFPage({
     const widthPx = Math.max(24, Math.round(rect.width));
     const heightPx = Math.max(24, Math.round(rect.height));
     const next = {
-      // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
       kind: modal.kind,
-      // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
       key: modal.key,
-      // @ts-expect-error TS(2339) FIXME: Property 'occurrence' does not exist on type 'neve... Remove this comment to see the full error message
       occurrence: modal.occurrence ?? 0,
       widthPx,
       heightPx,
@@ -1690,16 +1656,15 @@ export default function ExportPDFPage({
         if (!coverEditMode) {
           toggleCoverEditMode();
         }
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: null) => { kind: string; ... Remove this comment to see the full error message
+        // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
         setCoverPlaceMode((prev) => (prev?.kind === 'text' ? null : { kind: 'text' }));
       },
       'print-cover-place-rect': () => {
         if (!coverEditMode) {
           toggleCoverEditMode();
         }
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: null) => { kind: string; ... Remove this comment to see the full error message
+        // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
         setCoverPlaceMode((prev) => (
-          // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
           prev?.kind === 'shape' && prev.shapeType === 'rect'
             ? null
             : { kind: 'shape', shapeType: 'rect' }
@@ -1709,9 +1674,8 @@ export default function ExportPDFPage({
         if (!coverEditMode) {
           toggleCoverEditMode();
         }
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: null) => { kind: string; ... Remove this comment to see the full error message
+        // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
         setCoverPlaceMode((prev) => (
-          // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
           prev?.kind === 'shape' && prev.shapeType === 'ellipse'
             ? null
             : { kind: 'shape', shapeType: 'ellipse' }
@@ -1771,11 +1735,8 @@ export default function ExportPDFPage({
   useEffect(() => {
     return registerPrintTocProvider(() =>
       tocItems.map((item) => ({
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         id: item.id,
-        // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
         text: item.text,
-        // @ts-expect-error TS(2339) FIXME: Property 'level' does not exist on type 'never'.
         level: item.level,
       })),
     );
@@ -1804,7 +1765,7 @@ export default function ExportPDFPage({
   // Space+drag always; middle-mouse pan only in cover add/edit mode.
   useScrollPointerPan(previewPanRoot, true, { middleClick: Boolean(coverEditMode) });
 
-  const fontStyleVars = {
+  const fontStyleVars: any = {
     ...buildPrintLayoutCssVars(printLayout),
     '--print-font-body': withFontFallback(documentSettings.fonts?.body || fonts.body),
     '--print-font-heading': withFontFallback(documentSettings.fonts?.heading || fonts.heading),
@@ -1815,15 +1776,7 @@ export default function ExportPDFPage({
   if (isDocumentLoading) {
     return (
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800">
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         <p className="text-sm text-gray-600 dark:text-odp-fg">문서를 불러오는 중…</p>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -1831,21 +1784,9 @@ export default function ExportPDFPage({
   if (!hasNavigationSession && locationState == null && !routeExportPath && !previewValue) {
     return (
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800">
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         <p className="text-sm text-gray-600 dark:text-odp-fg">
           인쇄 미리보기 세션이 없습니다. 편집기에서 다시 열어 주세요.
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         </p>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={handleBack}
@@ -1853,15 +1794,7 @@ export default function ExportPDFPage({
         >
           <ArrowLeft size={18} />
           뒤로 가기
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -1874,30 +1807,10 @@ export default function ExportPDFPage({
       {documentSettings.webfontCss ? (
         <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>
       ) : null}
-      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <style>{printFontStyles}</style>
-      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'style' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <style>{buildPrintPageAtRule(printLayout.pageSizeId)}</style>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div ref={headerRef} className="sticky top-0 z-20 flex flex-col gap-2 px-4 py-3 border-b border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shrink-0 print:hidden">
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex items-center justify-between gap-4">
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={handleBack}
@@ -1907,31 +1820,11 @@ export default function ExportPDFPage({
           >
             <ArrowLeft size={18} />
             뒤로 가기
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h2 className="font-semibold text-gray-800 dark:text-odp-fg truncate flex-1 text-center">
             PDF로 내보내기
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </h2>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex items-center gap-2">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => setFontModalOpen(true)}
@@ -1941,15 +1834,7 @@ export default function ExportPDFPage({
             >
               <Settings size={16} />
               폰트 설정
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={handleSave}
@@ -1961,15 +1846,7 @@ export default function ExportPDFPage({
             >
               <Save size={16} />
               {isSaving ? '저장 중…' : '저장'}
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               className="md-editor-btn inline-flex items-center gap-1.5"
@@ -1979,35 +1856,11 @@ export default function ExportPDFPage({
             >
               <Printer size={16} />
               내보내기
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={toggleCoverEditMode}
@@ -2023,10 +1876,6 @@ export default function ExportPDFPage({
             >
               <LayoutTemplate size={16} />
               {parsedCover ? '표지 편집' : '표지 추가'}
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
             <PrintPageSizeSelect
               value={printLayout.pageSizeId}
@@ -2074,15 +1923,7 @@ export default function ExportPDFPage({
                 imageMaxHeight: maxHeight,
               })}
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={() => setTocVisible((v) => !v)}
@@ -2094,37 +1935,17 @@ export default function ExportPDFPage({
           >
             <ListTree size={16} />
             목차
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className="relative flex min-h-0 flex-1 flex-col"
         style={{
           '--export-toc-width': `${tocWidth}px`,
           '--export-cover-sidebar-width': `${coverChromeWidth}px`,
-        }}
+        } as any}
       >
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           ref={setPreviewContainerRef}
           className={`export-pdf-preview-scroll relative px-4 py-6 min-h-0 flex-1 bg-neutral-200 dark:bg-neutral-800 text-gray-900 print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
@@ -2163,16 +1984,8 @@ export default function ExportPDFPage({
                 onFlipIndexChange={setFlipIndex}
                 onVisibleLogicalPagesChange={setStageVisiblePages}
               />
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : null}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             className={`export-pdf-cover-stack mx-auto w-full print:mx-0 ${
               isLiveScroll1 ? '' : 'export-pdf-source-measure'
@@ -2187,10 +2000,6 @@ export default function ExportPDFPage({
             {activeCover?.enabled || coverEditMode ? (
               coverEditMode && activeCover ? (
                 <>
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   <div ref={coverPageRef}>
                     <PrintCoverPageChrome
                       showPageMarker={hasEnabledCover && isLiveScroll1}
@@ -2216,10 +2025,6 @@ export default function ExportPDFPage({
                         className="mx-auto print:hidden print:mx-0"
                       />
                     </PrintCoverPageChrome>
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   </div>
                   {activeCover.enabled ? (
                     <CoverSlide
@@ -2241,27 +2046,15 @@ export default function ExportPDFPage({
                       className="mx-auto shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
                     />
                   </PrintCoverPageChrome>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
               ) : null
             ) : null}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div
               ref={pagesHostRef}
               data-export-pdf-pages="1"
               className="export-pdf-pages w-full"
             />
             {/* Staging: continuous MdPreview for measure/fit; never printed. */}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div
               className="export-pdf-paper export-pdf-staging relative mx-auto bg-white text-gray-900 print:hidden"
               style={{
@@ -2277,24 +2070,12 @@ export default function ExportPDFPage({
               }}
               aria-hidden
             >
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div
                 ref={metricRef}
                 className="export-pdf-paper-metric pointer-events-none absolute top-0 left-0 -z-10 w-px opacity-0"
                 aria-hidden
               />
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div ref={paperContentRef} className="export-pdf-paper-content relative">
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div
                   ref={imageMaxProbeRef}
                   className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
@@ -2317,25 +2098,9 @@ export default function ExportPDFPage({
                   codeFoldable={false}
                   showCodeRowNumber={false}
                 />
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         <PrintVisiblePageBadge
           pagesHostRef={pagesHostRef}
@@ -2392,26 +2157,10 @@ export default function ExportPDFPage({
               visibleOnHover
               label="목차 너비 조절"
             />
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="relative flex flex-col w-full min-h-0 p-2 pl-2.5">
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex items-center justify-between gap-2 px-1.5 py-1">
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div className="text-xs font-semibold tracking-wide text-gray-700 dark:text-odp-fgStrong uppercase">
                   목차
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
                 <TocTitleWrapToggle
                   checked={wrapTitles}
@@ -2421,15 +2170,7 @@ export default function ExportPDFPage({
                     document.documentElement.classList.contains('dark')
                   }
                 />
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-              // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
               <ul
                 ref={tocListRef}
                 onScroll={() => {
@@ -2450,24 +2191,15 @@ export default function ExportPDFPage({
                 ) : (
                   tocItems.map((item, i) => (
                     <li
-                      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                       key={`${item.id}-${i}`}
-                      // @ts-expect-error TS(2339) FIXME: Property 'level' does not exist on type 'never'.
                       style={{ paddingLeft: `${Math.min(item.level - 1, 5) * 0.45}rem` }}
                     >
-                      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                       <button
                         type="button"
-                        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                         data-toc-id={item.id}
-                        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                         onClick={() => handleTocItemClick(item.id)}
                         onContextMenu={(event: any) => {
                           event.preventDefault();
-                          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                           const idMatch = String(item.id || '').match(/^pdf-ex-heading-(\d+)$/i);
                           const fromId = idMatch?.[1] ? Number(idMatch[1]) : null;
                           const headingIndex =
@@ -2476,69 +2208,33 @@ export default function ExportPDFPage({
                           setHeadingPgbrModalState({
                             // @ts-expect-error TS(2345) FIXME: Argument of type '{ headingIndex: number | null; h... Remove this comment to see the full error message
                             headingIndex,
-                            // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
                             headingText: item.text || '',
                           });
                         }}
                         className={`group relative w-full text-left rounded px-1.5 py-1 text-sm transition ${tocTitleTextClass(wrapTitles)} ${
-                          // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
                           visibleHeadingIds.includes(item.id)
                             ? 'font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-odp-focusBg'
                             : 'text-gray-700 dark:text-odp-fg hover:bg-gray-100 dark:hover:bg-odp-focusBg'
                         }`}
-                        // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
                         title={item.text}
                       >
-                        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                         <span
                           className={`absolute left-0 w-0.5 rounded ${
                             wrapTitles ? 'top-2 h-4' : 'top-1/2 h-4 -translate-y-1/2'
                           } ${
-                            // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
                             visibleHeadingIds.includes(item.id) ? 'bg-red-500' : 'bg-transparent'
                           }`}
                           aria-hidden
                         />
-                        // @ts-expect-error TS(2339): Property 'text' does not exist on type 'never'.
-                        // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
-                        // @ts-expect-error TS(2339): Property 'text' does not exist on type 'never'.
-                        // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
                         {item.text}
-                      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                       </button>
-                    // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
                     </li>
                   ))
                 )}
-              // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
               </ul>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-          // @ts-expect-error TS(2339): Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </aside>
         )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
       <PrintFontOptionsModal
@@ -2550,21 +2246,15 @@ export default function ExportPDFPage({
       <WikiImageSizeModal
         key={
           wikiImageModalState
-            // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
             ? `${wikiImageModalState.kind}|${wikiImageModalState.key}|${wikiImageModalState.width ?? ''}|${wikiImageModalState.height ?? ''}|${wikiImageModalState.occurrence ?? 0}`
             : 'wiki-image-size-modal'
         }
         isOpen={Boolean(wikiImageModalState)}
         onClose={() => setWikiImageModalState(null)}
-        // @ts-expect-error TS(2339) FIXME: Property 'key' does not exist on type 'never'.
         path={wikiImageModalState?.key ?? ''}
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         kind={wikiImageModalState?.kind ?? 'wiki'}
-        // @ts-expect-error TS(2339) FIXME: Property 'width' does not exist on type 'never'.
         initialWidth={wikiImageModalState?.width ?? ''}
-        // @ts-expect-error TS(2339) FIXME: Property 'height' does not exist on type 'never'.
         initialHeight={wikiImageModalState?.height ?? ''}
-        // @ts-expect-error TS(2339) FIXME: Property 'imageSrc' does not exist on type 'never'... Remove this comment to see the full error message
         imageSrc={wikiImageModalState?.imageSrc ?? ''}
         onApply={handleApplyWikiImageSize}
         onStartFreeTransform={startFreeTransform}
@@ -2608,10 +2298,6 @@ export default function ExportPDFPage({
               aria-label={`transform-${dir}`}
             />
           ))}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
       {freeTransformState && (
@@ -2620,30 +2306,10 @@ export default function ExportPDFPage({
           onClick={() => setFreeTransformConfirmOpen(true)}
           className="fixed z-70 bottom-4 left-1/2 -translate-x-1/2 max-w-[min(92vw,680px)] rounded-lg border border-blue-300/60 bg-blue-950/85 px-3 py-2 text-left text-[11px] leading-4 text-blue-50 shadow-lg backdrop-blur-sm print:hidden"
         >
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block font-semibold mb-1">이미지 자유변형 안내</span>
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block">- Shift + 드래그: 원본 비율 유지 / 일반 드래그: 비율 무시</span>
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block">- 터치 드래그: 원본 비율 유지</span>
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="block">- 다른 곳 클릭(이 토스트 포함): 변형 완료 확인</span>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       )}
       <ConfirmModal
@@ -2698,10 +2364,6 @@ export default function ExportPDFPage({
         containerRef={previewContainerRef}
         rootEl={previewPanRoot}
       />
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

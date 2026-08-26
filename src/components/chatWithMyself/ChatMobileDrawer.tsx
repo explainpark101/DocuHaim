@@ -1,6 +1,6 @@
 import { AnimatePresence, motion as Motion } from 'motion/react';
 
-const SPRING = { type: 'spring', stiffness: 380, damping: 36 };
+const SPRING: any = { type: 'spring', stiffness: 380, damping: 36 };
 
 /**
  * Mobile right-edge drawer with backdrop + slide animation (Motion).
@@ -25,10 +25,6 @@ export default function ChatMobileDrawer({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
         >
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             className="absolute inset-0 bg-black/35"

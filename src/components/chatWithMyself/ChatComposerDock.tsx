@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from 'react';
 import { motion as Motion } from 'motion/react';
 import { useResizablePanelHeight } from '@/hooks/useResizablePanelHeight';
 
@@ -8,7 +8,7 @@ const MIN_H = 140;
 /** Floor while auto-fitting: edit banner + group row + min editor + padding. */
 const MIN_FIT_H = 160;
 
-const HEIGHT_TRANSITION = {
+const HEIGHT_TRANSITION: any = {
   duration: 0.32,
   ease: [0.22, 1, 0.36, 1],
 };
@@ -136,9 +136,8 @@ export default function ChatComposerDock({
       style={{ maxHeight }}
     >
       {!autoFit ? (
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
-          {...handleProps}
+          {...(handleProps as ComponentProps<'div'>)}
           aria-label="채팅 입력창 높이 조절"
           title="채팅 입력창 높이 조절"
           className={[
@@ -146,10 +145,6 @@ export default function ChatComposerDock({
             'pointer-fine:h-2.5',
           ].join(' ')}
         >
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span
             className={[
               'mt-1 h-1 w-10 rounded-full transition-colors',
@@ -159,16 +154,8 @@ export default function ChatComposerDock({
             ].join(' ')}
             aria-hidden
           />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : null}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         ref={contentRef}
         className={
@@ -177,21 +164,9 @@ export default function ChatComposerDock({
             : 'flex h-full min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
         }
       >
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className={autoFit ? 'flex shrink-0 flex-col' : 'flex h-full min-h-0 flex-col'}>
           {children}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     </Motion.div>
   );

@@ -117,10 +117,9 @@ export async function clearComposerDraft(scope: any) {
  * @param {string} scope
  * @param {{ id: string, file: File|Blob }[]} queue
  */
-export async function syncComposerDraftImages(scope: any, queue = []) {
+export async function syncComposerDraftImages(scope: any, queue: any[] = []) {
   if (!scope) return;
   const items = Array.isArray(queue) ? queue : [];
-  // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
   const keep = new Set(items.map((i) => i.id).filter(Boolean));
 
   try {
@@ -133,20 +132,14 @@ export async function syncComposerDraftImages(scope: any, queue = []) {
   }
 
   for (const item of items) {
-    // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
     if (!item?.id || !item.file) continue;
     try {
       await putComposerDraftImage({
         scope,
-        // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
         id: item.id,
-        // @ts-expect-error TS(2339): Property 'file' does not exist on type 'never'.
         blob: item.file,
-        // @ts-expect-error TS(2339): Property 'file' does not exist on type 'never'.
         name: item.file.name || 'image.png',
-        // @ts-expect-error TS(2339): Property 'file' does not exist on type 'never'.
         type: item.file.type || 'image/png',
-        // @ts-expect-error TS(2339): Property 'file' does not exist on type 'never'.
         size: item.file.size || 0,
       });
     } catch {

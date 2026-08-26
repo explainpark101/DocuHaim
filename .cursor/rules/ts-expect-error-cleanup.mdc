@@ -1,0 +1,34 @@
+---
+description: When editing a file that has @ts-expect-error, fix real types in the same change
+alwaysApply: true
+---
+
+# `@ts-expect-error` cleanup on touch
+
+When you **edit** a `src/**/*.ts` / `src/**/*.tsx` file that already contains `@ts-expect-error` (or `@ts-ignore`), treat those directives as **debt to pay down in the same change** — do not leave them untouched while only changing nearby logic.
+
+## Required workflow
+
+1. Before finishing the edit, search the file for `@ts-expect-error` / `@ts-ignore`.
+2. For each hit in (or clearly related to) the code you touched: **remove the directive** and fix the underlying type (generics, interfaces, casts at the boundary, correct `useRef`/`useState` types, etc.).
+3. Prefer real types over `any`. Use a **narrow** cast (`as SpecificType`) only at third-party / DOM boundaries when a proper type is unavailable.
+4. Keep a line `@ts-expect-error` **only** when a third-party type is wrong and a short description remains; never reintroduce file-level `@ts-nocheck` (see `typescript-migration`).
+5. Do **not** run bulk `ts-migrate reignore` — it injects comments into JSX as text nodes.
+
+## Scope
+
+| In scope | Out of scope |
+|----------|----------------|
+| Directives in the file(s) you are editing | Unrelated files you did not open for the task |
+| Same-PR follow-through for touched regions | Repo-wide expect-error elimination as a side quest |
+
+If the file has many directives but you only change a small region, fix at least those in that region and any that become unused (TS2578) after your change.
+
+```text
+❌ BAD — edit ChatComposer.tsx and leave //@ts-expect-error on the props you just wired
+❌ BAD — add more @ts-expect-error to silence new errors from your change
+✅ GOOD — add useState<ChatMessage[]>([]) / forwardRef types and delete the directive
+✅ GOOD — third-party only: // @ts-expect-error md-editor-rt missing X prop
+```
+
+Prefer **English** in new code comments if Korean Unicode might corrupt.

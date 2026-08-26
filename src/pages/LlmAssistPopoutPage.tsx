@@ -129,34 +129,14 @@ export default function LlmAssistPopoutPage() {
 
   return (
     <div className="llm-assist-popout-page flex min-h-screen flex-col bg-white dark:bg-odp-bgSofter">
-      // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-violet-200/60 bg-violet-50/90 px-4 py-2.5 dark:border-violet-800/50 dark:bg-violet-950/40">
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
           <Sparkles size={16} className="shrink-0" aria-hidden />
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="truncate">AI 도우미</span>
           {!connected && (
             <span className="text-[10px] font-normal text-violet-600 dark:text-violet-300">연결 중…</span>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={handleClose}
@@ -165,21 +145,9 @@ export default function LlmAssistPopoutPage() {
           aria-label="닫기"
         >
           <X size={16} />
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-      // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
       </header>
 
-      // @ts-expect-error TS(2339): Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       <main className="min-h-0 flex-1 overflow-y-auto p-4">
         <LlmAssistPanel
           theme={remoteState.theme}
@@ -226,15 +194,7 @@ export default function LlmAssistPopoutPage() {
           remoteMode
           modelSelectAutoLoad={false}
         />
-      // @ts-expect-error TS(2339): Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'main' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
       </main>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

@@ -161,8 +161,8 @@ export default function SettingsPage({
   );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
-  const [checkpointInfo, setCheckpointInfo] = useState(
-    /** @type {import('@/utils/advancedSearch/engine').RebuildCheckpointInfo | null} */ (null),
+  const [checkpointInfo, setCheckpointInfo] = useState<import('@/utils/advancedSearch/engine').RebuildCheckpointInfo | null>(
+    null,
   );
   const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
   const [s3ConnOpen, setS3ConnOpen] = useState(true);
@@ -304,15 +304,7 @@ export default function SettingsPage({
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-odp-bgSofter min-w-0 max-h-full">
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className={`px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0 transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function' && (
             <button
@@ -322,32 +314,12 @@ export default function SettingsPage({
               className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
             >
               <IconMenu size={22} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           )}
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h2 className="font-bold text-gray-700 dark:text-odp-fgStrong flex min-w-0 items-center gap-2">
             <IconSettings /> 설정 및 암호화
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </h2>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           // @ts-expect-error TS(2554) FIXME: Expected 1 arguments, but got 0.
@@ -355,63 +327,23 @@ export default function SettingsPage({
           className="text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition"
         >
           <X size={16} />
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="p-6 overflow-y-auto space-y-6 flex-1">
         <DesktopAppEntryLockSettings s3Creds={s3Creds} webdavConfig={webdavConfig} />
 
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-storage"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">기본 저장소 선택 (3중 택1)</h3>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
             앱에서 기본으로 동작할 저장소를 선택합니다. 선택은 저장되어 다음 접속 시 자동 복원됩니다.
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-center gap-2 cursor-pointer">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="radio"
                 name="storageMode"
@@ -419,25 +351,9 @@ export default function SettingsPage({
                 checked={storageMode === STORAGE_MODE_S3}
                 onChange={() => onStorageModeChange?.(STORAGE_MODE_S3)}
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="font-semibold">S3 Haim</span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-center gap-2 cursor-pointer">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="radio"
                 name="storageMode"
@@ -445,25 +361,9 @@ export default function SettingsPage({
                 checked={storageMode === STORAGE_MODE_LOCAL}
                 onChange={() => onStorageModeChange?.(STORAGE_MODE_LOCAL)}
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="font-semibold">Local Haim</span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-center gap-2 cursor-pointer">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="radio"
                 name="storageMode"
@@ -471,33 +371,13 @@ export default function SettingsPage({
                 checked={storageMode === STORAGE_MODE_WEBDAV}
                 onChange={() => onStorageModeChange?.(STORAGE_MODE_WEBDAV)}
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="font-semibold">WebDAV Haim</span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
         {/* S3 Form */}
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <form
           id="settings-s3"
           tabIndex={-1}
@@ -508,10 +388,6 @@ export default function SettingsPage({
           }}
           className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={() => setS3ConnOpen((v) => !v)}
@@ -523,49 +399,17 @@ export default function SettingsPage({
             ) : (
               <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
             )}
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
               S3 연결 정보
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             </h3>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
           {s3ConnOpen ? (
             <>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="space-y-3">
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Access Key ID
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="text"
                     required
@@ -576,31 +420,11 @@ export default function SettingsPage({
                       accessKeyId: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Secret Access Key
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="password"
                     required
@@ -612,31 +436,11 @@ export default function SettingsPage({
                     }))
                     }
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Region
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="text"
                     required
@@ -647,31 +451,11 @@ export default function SettingsPage({
                       region: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Bucket Name
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="text"
                     required
@@ -682,31 +466,11 @@ export default function SettingsPage({
                       bucket: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Endpoint URL (선택)
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="text"
                     placeholder="https://..."
@@ -717,26 +481,10 @@ export default function SettingsPage({
                       endpoint: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
 
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex justify-end gap-2 pt-2">
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   // @ts-expect-error TS(2554) FIXME: Expected 1 arguments, but got 0.
@@ -744,43 +492,19 @@ export default function SettingsPage({
                   className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition dark:text-odp-muted dark:hover:bg-odp-focusBg"
                 >
                   취소
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   저장
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             </>
           ) : null}
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </form>
 
 
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <form
           id="settings-webdav"
           tabIndex={-1}
@@ -790,10 +514,6 @@ export default function SettingsPage({
           }}
           className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={() => setWebdavConnOpen((v) => !v)}
@@ -805,58 +525,22 @@ export default function SettingsPage({
             ) : (
               <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
             )}
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
               WebDAV 연결 정보
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             </h3>
             {!webdavConnOpen ? (
               <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
                 접힘
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
             ) : null}
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
           {webdavConnOpen ? (
             <>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="space-y-3">
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Endpoint URL
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="text"
                     placeholder="https://webdav.example.com"
@@ -867,31 +551,11 @@ export default function SettingsPage({
                       endpoint: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Username
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="text"
                     className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
@@ -901,31 +565,11 @@ export default function SettingsPage({
                       username: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Password
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="password"
                     className="w-full border rounded px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
@@ -935,31 +579,11 @@ export default function SettingsPage({
                       password: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div>
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                     Base Path (선택)
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   </label>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="text"
                     placeholder="/remote.php/dav/files/username/"
@@ -970,25 +594,9 @@ export default function SettingsPage({
                       basePath: e.target.value
                     }))}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex justify-end gap-2 pt-2">
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition dark:border-odp-borderStrong dark:hover:bg-odp-focusBg"
@@ -1015,53 +623,25 @@ export default function SettingsPage({
                   }}
                 >
                   연결 테스트
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   WebDAV 저장
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             </>
           ) : null}
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </form>
 
 
         {/* Local folder connection */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-local"
           tabIndex={-1}
           className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={() => setLocalConnOpen((v) => !v)}
@@ -1073,66 +653,26 @@ export default function SettingsPage({
             ) : (
               <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
             )}
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
               Local 연결 정보
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             </h3>
             {!localConnOpen ? (
               <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
                 접힘
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
             ) : null}
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
           {localConnOpen ? (
             <>
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               <p className="text-xs text-gray-600 dark:text-odp-muted">
                 {desktopApp
                   ? 'Local Haim은 OS 폴더 선택 대화상자로 vault 루트를 지정합니다. 선택한 폴더의 전체 경로가 저장되며, 앱을 다시 열면 같은 위치를 복원합니다.'
                   : 'Local Haim은 브라우저 File System Access API로 연 폴더를 사용합니다. 보안상 OS 전체 경로는 제공되지 않으며, 폴더 이름으로 열린 위치를 확인할 수 있습니다.'}
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               </p>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div>
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
                   현재 열린 폴더
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 </label>
-                // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 <input
                   type="text"
                   readOnly
@@ -1148,30 +688,14 @@ export default function SettingsPage({
                       : '현재 열린 로컬 폴더 이름'
                   }
                 />
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
               {!canPickLocalFolder ? (
                 <p className="text-xs text-amber-700 dark:text-amber-300">
                   이 브라우저는 폴더 선택을 지원하지 않습니다. Chromium 계열 브라우저를 사용해
                   주세요.
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                 </p>
               ) : null}
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex justify-end gap-2 pt-2">
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   disabled={!canPickLocalFolder || typeof onOpenLocalFolder !== 'function'}
@@ -1180,82 +704,34 @@ export default function SettingsPage({
                 >
                   <IconFolder size={16} />
                   {localFolderDisplay ? '다른 폴더 열기' : '폴더 선택'}
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             </>
           ) : null}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
         {/* Import / Export Section */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-backup"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">데이터 백업/복원</h3>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex gap-2">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               onClick={onExportCreds}
               className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
             >
               <IconDownload /> S3 연결정보 내보내기
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               onClick={onImportClick}
               className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-semibold py-2 rounded transition"
             >
               <IconUpload /> S3 연결정보 불러오기
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
@@ -1266,59 +742,27 @@ export default function SettingsPage({
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">지문 / 보안 키</h3>
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
               {webauthnStorageOnly
                 ? 'S3 연결 정보가 보안 키로만 암호화되어 있습니다. 데이터 백업/복원 시에는 비밀번호를 사용합니다.'
                 : '지문, Windows Hello, Touch ID 등으로 앱 잠금 해제를 사용할 수 있습니다. 데이터 백업/복원 시에는 비밀번호를 사용합니다.'}
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </p>
             {webauthnStorageOnly ? (
               <p className="text-xs text-gray-600 dark:text-odp-muted">저장소: 보안 키로 보호됨</p>
             ) : webauthnEnabled ? (
               <div className="flex items-center gap-2 flex-wrap">
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="text-xs text-gray-700 dark:text-odp-fg">지문/보안 키로 잠금 해제 사용 중</span>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   onClick={() => onDisableWebAuthn?.()}
                   className="text-xs text-red-600 dark:text-red-400 hover:underline"
                 >
                   사용 해제
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   disabled={webauthnLoading}
@@ -1346,21 +790,9 @@ export default function SettingsPage({
                   aria-label="지문/보안 키로 잠금 해제 등록"
                 >
                   {webauthnLoading ? '등록 중…' : '지문/보안 키로 잠금 해제 사용 (등록)'}
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
 
@@ -1373,10 +805,6 @@ export default function SettingsPage({
               canScan={canScanStorageUsage}
               onOpenFile={onOpenStorageUsageFile}
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
 
@@ -1403,10 +831,6 @@ export default function SettingsPage({
         />
 
 
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <form
           id="settings-imgbb"
           tabIndex={-1}
@@ -1422,10 +846,6 @@ export default function SettingsPage({
           }}
           className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={() => setImgbbConnOpen((v) => !v)}
@@ -1437,35 +857,15 @@ export default function SettingsPage({
             ) : (
               <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
             )}
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
               ImgBB
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
             </h3>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
           {imgbbConnOpen ? (
             <>
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               <p className="text-xs text-gray-600 dark:text-odp-muted">
                 ImgBB API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시
                 표시되지 않습니다. 키는{' '}
-                // @ts-expect-error TS(2339): Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                 <a
                   href="https://api.imgbb.com/"
                   target="_blank"
@@ -1473,37 +873,13 @@ export default function SettingsPage({
                   className="text-blue-600 underline dark:text-blue-400"
                 >
                   api.imgbb.com
-                // @ts-expect-error TS(2339): Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                 </a>
                 에서 발급할 수 있습니다.
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               </p>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div>
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted mb-1">
                   API Key
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 </label>
-                // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 <input
                   type="password"
                   autoComplete="off"
@@ -1514,84 +890,32 @@ export default function SettingsPage({
                     hasStoredImgbbKey ? '저장됨 — 변경 시 새 키 입력' : 'ImgBB API 키 입력'
                   }
                 />
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex justify-end pt-1">
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   API 키 저장
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             </>
           ) : null}
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'form' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </form>
 
 
         {/* Markdown 에디터 종류 */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-editor"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">마크다운 에디터</h3>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
             .md 파일을 편집할 때 사용할 에디터를 고릅니다.
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-start gap-2 cursor-pointer">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="radio"
                 name="editorType"
@@ -1604,50 +928,14 @@ export default function SettingsPage({
                 }}
                 className="mt-0.5 shrink-0"
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span>
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="font-semibold">md-editor-rt</span>
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                   기본 에디터. 미리보기, 위키 이미지 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> / <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>, 스니펫 단축키 등이 이 구성에 맞춰져 있습니다.
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 </span>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-start gap-2 cursor-not-allowed opacity-60">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="radio"
                 name="editorType"
@@ -1656,84 +944,25 @@ export default function SettingsPage({
                 disabled
                 className="mt-0.5 shrink-0"
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span>
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="font-semibold">novel</span>
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                   준비중입니다.
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 </span>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
-              // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>
               // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               (note-cover 아래)로 문서별 각주 on/off를 지정합니다. 여기서는 본문 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">[^N]</code> 표기
               방식만 고릅니다.
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </p>
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">각주 표기 방식</p>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
               {FOOTNOTE_DISPLAY_MODE_OPTIONS.map((opt) => (
                 <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="radio"
                     name="footnoteDisplayMode"
@@ -1745,114 +974,38 @@ export default function SettingsPage({
                     }}
                     className="mt-0.5 shrink-0"
                   />
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                   <span>
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     <span className="font-semibold">{opt.label}</span>
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                       {opt.description}
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     </span>
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                   </span>
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 </label>
               ))}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
         {/* Advanced Search */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-advanced-search"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">
             Advanced Search
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </h3>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
-            // @ts-expect-error TS(2339): Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <kbd className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">⌘K</kbd>
             {' / '}
-            // @ts-expect-error TS(2339): Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'kbd' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <kbd className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Ctrl+K</kbd>
             로 Spotlight 검색을 엽니다. 역색인(Lucivy)이 켜져 있으면 문서·채팅 저장 시 해당 항목만 증분
             색인하고, 「색인」으로 볼트 전체를 백그라운드에서 만듭니다. 인덱스는{' '}
-            // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <code className="text-[11px]">.advanced-search/</code>
             (LUCE 스냅샷)에 저장됩니다.
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => {
@@ -1866,53 +1019,21 @@ export default function SettingsPage({
               aria-pressed={advancedSearchUiAnimation}
               aria-label="열기/닫기 애니메이션"
             >
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                   advancedSearchUiAnimation ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
               열기/닫기 애니메이션 (기본 켜짐)
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                 Spotlight 패널이 부드럽게 나타나고 사라집니다. 끄면 즉시 전환됩니다.
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
           {!isTauriAndroid() && (
           <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => {
@@ -1929,64 +1050,28 @@ export default function SettingsPage({
               aria-pressed={advancedSearchStatus.enabled}
               aria-label="역색인 사용"
             >
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                   advancedSearchStatus.enabled ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
               역색인 사용 (기본 켜짐)
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                 끄면 파일명·경로만 검색합니다. 켜져 있으면 저장 시 항상 증분 색인합니다.
                 폴더 경로(예: notes/회의)로도 찾을 수 있습니다.
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
           )}
           {isTauriAndroid() && (
             <p className="mt-3 text-[11px] text-gray-500 dark:text-odp-muted">
               Android 앱에서는 Lucivy 역색인을 사용하지 않습니다. 파일명·경로·커맨드만 검색합니다.
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </p>
           )}
           {!isTauriAndroid() && (
           <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => {
@@ -2004,10 +1089,6 @@ export default function SettingsPage({
               aria-pressed={advancedSearchStatus.includeOtherFiles}
               aria-label="기타 파일 색인 포함"
             >
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                   advancedSearchStatus.includeOtherFiles
@@ -2015,46 +1096,18 @@ export default function SettingsPage({
                     : 'translate-x-0.5'
                 }`}
               />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
               기타 파일 색인 포함
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                 기본은 Markdown만입니다. 켜면 txt · json · html · svg · csv 등도 본문 색인에
                 넣습니다. 변경 후 「다시 색인」이 필요합니다.
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
           )}
           {!isTauriAndroid() && (
           <>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             className={`mt-3 rounded-md border px-3 py-2 text-xs ${
               advancedSearchStatus.building
@@ -2097,20 +1150,8 @@ export default function SettingsPage({
             {advancedSearchStatus.hasCheckpoint && !advancedSearchStatus.building
               ? ` · 중지된 체크포인트 ${advancedSearchStatus.checkpointProcessedCount}개`
               : ''}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="mt-3 flex flex-wrap gap-2">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               disabled={
@@ -2145,10 +1186,6 @@ export default function SettingsPage({
                 : advancedSearchStatus.hasIndex
                   ? '다시 색인'
                   : '색인'}
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
             {advancedSearchStatus.building ? (
               <button
@@ -2159,16 +1196,8 @@ export default function SettingsPage({
               >
                 <IconSquare size={14} />
                 중지
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
             ) : null}
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               disabled={
@@ -2192,15 +1221,7 @@ export default function SettingsPage({
               className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:bg-odp-bgSoft dark:text-red-300 dark:hover:bg-red-950/30"
             >
               역색인 캐시 삭제
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           <RebuildCheckpointChoiceModal
             isOpen={checkpointChoiceOpen}
@@ -2249,55 +1270,23 @@ export default function SettingsPage({
           />
           </>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
         {/* Wiki 이미지 캐싱 방식 */}
 
         {/* Navigation */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-navigation"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">네비게이션</h3>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
             키보드로 에디터 안의 커서 위치를 조절하거나, 열린 파일 사이를 이동하는 옵션입니다.
             탭 기능을 켜면 여러 파일과 「나와의 채팅」을 동시에 열어 두고 전환할 수 있습니다.
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="space-y-4">
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={() => {
@@ -2311,57 +1300,21 @@ export default function SettingsPage({
                 aria-pressed={altVimNavigationEnabled}
                 aria-label="Alt+Vim 커서 이동"
               >
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                     altVimNavigationEnabled ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
                 Alt + H/J/K/L Vim 커서 이동
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                   md-editor-rt 편집 중 H·L은 한 글자씩, J·K는 위·아래 줄로 커서만 이동합니다.
                   줄 단위 선택·이동(Alt+화살표)과는 다릅니다.
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 </span>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={() => {
@@ -2375,61 +1328,25 @@ export default function SettingsPage({
                 aria-pressed={workspaceTabsEnabled}
                 aria-label="탭 기능"
               >
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                     workspaceTabsEnabled ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
                 탭 기능
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                   여러 파일과 「나와의 채팅」을 탭으로 동시에 열어 둘 수 있습니다. 끄면 기존처럼
                   한 번에 하나의 파일(또는 채팅)만 표시합니다.
                   Ctrl+W 닫기 · Ctrl+Tab / Ctrl+Shift+Tab 전환 · Ctrl+Shift+T 닫은 탭 다시 열기.
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 </span>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
             {workspaceTabsEnabled ? (
               <div className="pl-12 space-y-2">
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                 <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
                   탭 자동 저장 설정
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
                 </p>
                 <RadioGroup.Root
                   className="flex flex-col gap-2"
@@ -2461,86 +1378,34 @@ export default function SettingsPage({
                             : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
                         ].join(' ')}
                       >
-                        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                         <div className={selected ? '' : 'opacity-50'}>
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                           <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
                             {opt.label}
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                           </div>
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                           <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
                             {opt.description}
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                           </div>
-                        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                         </div>
                       </RadioGroup.Item>
                     );
                   })}
                 </RadioGroup.Root>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             ) : null}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
         {/* Display Options */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-display"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <label
             className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
           >
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={onToggleTrashFolder}
@@ -2552,47 +1417,19 @@ export default function SettingsPage({
               aria-pressed={showTrashFolder}
               aria-label="쓰레기통 보기 토글"
             >
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                   showTrashFolder ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
               쓰레기통 보기 (`.trash` 폴더)
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <label
             className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
           >
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={onToggleHiddenFolders}
@@ -2604,44 +1441,20 @@ export default function SettingsPage({
               aria-pressed={showHiddenFolders}
               aria-label="숨김 폴더 보기 토글"
             >
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                   showHiddenFolders ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
               숨김 폴더 보기 (이름이 `.` 으로 시작하는 폴더, `.trash` 제외)
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
           {typeof onToggleHideRecordingCompanions === 'function' && (
             <label
               className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
             >
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={onToggleHideRecordingCompanions}
@@ -2653,45 +1466,21 @@ export default function SettingsPage({
                 aria-pressed={hideRecordingCompanions}
                 aria-label="녹음·필기 동반 파일 숨기기"
               >
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                     hideRecordingCompanions ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
                 녹음·필기 동기화 파일 숨기기 (사이드바 목록·녹음 UI·동기화 보기에서 제외)
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
           )}
           {typeof onToggleTreeStickyFolderPath === 'function' && (
             <label
               className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
             >
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={onToggleTreeStickyFolderPath}
@@ -2703,45 +1492,21 @@ export default function SettingsPage({
                 aria-pressed={treeStickyFolderPathEnabled}
                 aria-label="트리 폴더 경로 sticky 표시"
               >
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                     treeStickyFolderPathEnabled ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
                 트리에서 열린 폴더 경로 sticky 표시 (스크롤 시 현재 경로 고정)
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
           )}
           {typeof onToggleShowTreeModifiedDate === 'function' && (
             <label
               className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
             >
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={onToggleShowTreeModifiedDate}
@@ -2753,81 +1518,29 @@ export default function SettingsPage({
                 aria-pressed={showTreeModifiedDate}
                 aria-label="트리 수정 날짜 표시"
               >
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                     showTreeModifiedDate ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
                 트리 파일명 아래 수정 날짜 표시 (yy-MM-dd hh:mm:ss, 공간에 따라 축약)
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
           )}
           {typeof onTreeHoverExpandSettingsChange === 'function' && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               <p className="text-xs font-semibold text-gray-700 dark:text-odp-fg mb-1">
                 사이드바 파일 이동 드래그 시 폴더 자동 펼침 대기 시간
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               </p>
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               <p className="text-[11px] text-gray-500 dark:text-odp-muted mb-3">
                 파일을 드래그한 채로 접힌 폴더 위에 올려두면, 설정한 시간 후 해당 폴더가 펼쳐집니다.
                 기본 단위는 초(s)입니다.
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
               </p>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex flex-wrap items-center gap-3">
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-odp-fg">
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                   <span className="sr-only">대기 시간</span>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     type="number"
                     min={0}
@@ -2843,15 +1556,7 @@ export default function SettingsPage({
                     className="w-24 border border-gray-300 dark:border-odp-borderSoft rounded px-2 py-1.5 text-sm bg-white dark:bg-odp-bgSoft text-gray-800 dark:text-odp-fg"
                     aria-label="폴더 자동 펼침 대기 시간"
                   />
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 </label>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg">
                   <RadioGroup.Root
                     className="flex items-center gap-3"
@@ -2870,10 +1575,6 @@ export default function SettingsPage({
                     }}
                     aria-label="대기 시간 단위"
                   >
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <RadioGroup.Item
                         value="s"
@@ -2881,20 +1582,8 @@ export default function SettingsPage({
                       >
                         <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
                       </RadioGroup.Item>
-                      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                       <span>초 (s)</span>
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                     </label>
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <RadioGroup.Item
                         value="ms"
@@ -2902,99 +1591,31 @@ export default function SettingsPage({
                       >
                         <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
                       </RadioGroup.Item>
-                      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                       <span>밀리초 (ms)</span>
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                     </label>
                   </RadioGroup.Root>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 <span className="text-[11px] text-gray-500 dark:text-odp-muted">
                   = {treeHoverExpandSettingsToMs(treeHoverExpandSettings)} ms
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                 </span>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-wiki-image"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">위키 이미지 캐싱 방식</h3>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
-            // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             md 문서의 <code className="px-1 mx-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">![[path]]</code>{' '}
-            // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'code' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             / <code className="px-1 mx-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">![[path|320x200]]</code> 이미지에 대해 어떤 방식으로 캐싱할지 선택합니다.
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="space-y-1 text-xs text-gray-700 dark:text-odp-fg">
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-center gap-2 cursor-pointer">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="radio"
                 name="wikiImageCacheMode"
@@ -3005,36 +1626,12 @@ export default function SettingsPage({
                   saveWikiImageCacheMode(WIKI_IMAGE_CACHE_MODE_BLOB);
                 }}
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="font-semibold">Blob 캐시 (권장)</span>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-[11px] text-gray-500 dark:text-odp-muted">
                 S3에서 이미지를 Blob으로 받아 IndexedDB에 저장합니다. 만료 후에도 로컬에서 바로 불러올 수 있어 트래픽이 줄어듭니다.
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             <label className="flex items-center gap-2 cursor-pointer">
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
               <input
                 type="radio"
                 name="wikiImageCacheMode"
@@ -3045,43 +1642,15 @@ export default function SettingsPage({
                   saveWikiImageCacheMode(WIKI_IMAGE_CACHE_MODE_URL);
                 }}
               />
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="font-semibold">Presigned URL 캐시</span>
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-[11px] text-gray-500 dark:text-odp-muted">
                 Presigned URL과 만료 시각만 저장합니다. Blob은 캐싱하지 않지만, URL이 유효한 동안에는 재요청 없이 빠르게 표시됩니다.
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
             </label>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div id="settings-snippets" tabIndex={-1} className="scroll-mt-4">
           <SnippetSettings
             value={snippetConfig}
@@ -3090,10 +1659,6 @@ export default function SettingsPage({
             isSaving={isSavingSnippets}
             isLoaded={snippetConfigLoaded}
           />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
@@ -3107,40 +1672,16 @@ export default function SettingsPage({
 
 
         {/* Chat with myself */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-chat"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">나와의 채팅</h3>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
             채팅 입력창 아래 단축키 안내 문구 표시 여부를 설정합니다.
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => {
@@ -3154,51 +1695,19 @@ export default function SettingsPage({
               aria-pressed={composerHelperTextVisible}
               aria-label="입력창 단축키 안내 표시"
             >
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
                   composerHelperTextVisible ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
               입력창 단축키 안내 표시
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
                 끄면 입력창 아래 helper text가 숨겨집니다. 채팅에서 X로 닫은 뒤에도 여기서 다시 켤 수 있습니다.
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
               </span>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           </label>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
 
@@ -3206,83 +1715,27 @@ export default function SettingsPage({
 
 
         {/* App update */}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           id="settings-app-update"
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h3' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">앱 업데이트</h3>
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
             배포 빌드 해시와 서비스 워커(PWA) 캐시를 확인해 최신 버전이 있는지 확인하고, 바로 적용할 수 있습니다.
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
           </p>
-          // @ts-expect-error TS(2339): Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <dl className="mb-3 space-y-1 text-xs text-gray-600 dark:text-odp-muted">
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-              // @ts-expect-error TS(2339): Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
               <dt className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">현재 버전</dt>
-              // @ts-expect-error TS(2339): Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
               <dd className="min-w-0 break-all font-mono">{getLocalAppBuildId() || '알 수 없음'}</dd>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
             {latestAppBuildId ? (
               <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                // @ts-expect-error TS(2339): Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'dt' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
                 <dt className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">최신 버전</dt>
-                // @ts-expect-error TS(2339): Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'dd' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
                 <dd className="min-w-0 break-all font-mono">{latestAppBuildId}</dd>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             ) : null}
-          // @ts-expect-error TS(2339): Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'dl' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </dl>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={() => onCheckAppUpdate?.()}
@@ -3291,26 +1744,10 @@ export default function SettingsPage({
           >
             <IconRefresh size={16} />
             {isCheckingAppUpdate ? '최신 버전 확인 중...' : '최신 버전 확인 및 즉시 업데이트'}
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

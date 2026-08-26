@@ -137,35 +137,15 @@ export default function ChatShareGroupSendModal({
       onClose={busy ? undefined : onClose}
       onConfirm={busy || !hasContent ? undefined : () => void handleSend()}
     >      <div className="p-6">
-        // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
         <h2 className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
           그룹에 보내기
-        // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
         </h2>
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
           보낼 그룹을 선택한 뒤 전송하세요.
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
         </p>
         {preview ? (
           <pre className="mb-3 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg">
             {preview}
-          // @ts-expect-error TS(2339): Property 'pre' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'pre' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'pre' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'pre' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </pre>
         ) : null}
         {fileList.length > 0 ? (
@@ -179,53 +159,21 @@ export default function ChatShareGroupSendModal({
                   className="flex items-center gap-2 text-xs text-gray-700 dark:text-odp-fg"
                 >
                   <FileIcon size={14} className="shrink-0 opacity-70" aria-hidden />
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                   <span className="min-w-0 flex-1 truncate">{name}</span>
                   {sizeLabel ? (
                     <span className="shrink-0 text-gray-500 dark:text-odp-muted">
                       {sizeLabel}
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     </span>
                   ) : null}
-                // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
                 </li>
               );
             })}
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </ul>
         ) : null}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="mb-4 space-y-1">
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="text-[11px] font-medium text-gray-600 dark:text-odp-muted">
             그룹
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex items-center gap-1.5">
             <ChatSelect
               ariaLabel="그룹 선택"
@@ -239,10 +187,6 @@ export default function ChatShareGroupSendModal({
             />
             {inlineAddOpen ? (
               <>
-                // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                 <input
                   ref={inlineGroupInputRef}
                   type="text"
@@ -262,10 +206,6 @@ export default function ChatShareGroupSendModal({
                   className="w-[7.5rem] shrink-0 rounded-md border border-gray-300 bg-transparent px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 dark:border-odp-borderStrong dark:text-odp-fgStrong"
                   aria-label="그룹 직접 추가"
                 />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   title="그룹 추가"
@@ -276,27 +216,11 @@ export default function ChatShareGroupSendModal({
                   className="inline-flex shrink-0 items-center justify-center rounded p-1 text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-900/30"
                 >
                   <Check size={16} />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               </>
             ) : null}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex flex-col gap-2">
           <Button
             type="button"
@@ -320,15 +244,7 @@ export default function ChatShareGroupSendModal({
             <X size={16} aria-hidden />
             취소
           </Button>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     </Modal>
   );

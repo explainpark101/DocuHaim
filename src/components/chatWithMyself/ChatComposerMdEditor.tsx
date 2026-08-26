@@ -54,17 +54,13 @@ export default function ChatComposerMdEditor({
         language="ko-KR"
         customIcon={MD_EDITOR_CUSTOM_ICONS}
         preview={false}
-        toolbars={showToolbar ? CHAT_COMPOSER_TOOLBARS : []}
+        toolbars={(showToolbar ? CHAT_COMPOSER_TOOLBARS : []) as any}
         footers={[]}
         placeholder="메시지 입력…"
         style={{ height: '100%' }}
         onUploadImg={onUploadImg}
       />
       {showToolbar ? <MdEditorToolbarTooltips containerRef={containerRef} /> : null}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

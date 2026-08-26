@@ -130,15 +130,14 @@ export default function ChatAddToNoteModal({
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [error, setError] = useState('');
   const [confirmReplaceName, setConfirmReplaceName] = useState(false);
-  const [pendingMove, setPendingMove] = useState(null);
+  const [pendingMove, setPendingMove] = useState<any>(null);
   const [expandedPaths, setExpandedPaths] = useState(() => new Set());
-  const [activeDragItems, setActiveDragItems] = useState(null);
+  const [activeDragItems, setActiveDragItems] = useState<any[] | null>(null);
   const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
-    // @ts-expect-error TS(2339) FIXME: Property 'length' does not exist on type 'never'.
     useTreeCopyDragModifier(Boolean(activeDragItems?.length));
   const [includeReplyThread, setIncludeReplyThread] = useState(true);
   const hasInitializedRef = useRef(false);
-  const activeDragItemsRef = useRef(null);
+  const activeDragItemsRef = useRef<any[] | null>(null);
   const scrollContainerRef = useRef(null);
   const dragDisabled = useIsMobileDragDisabled();
 
@@ -228,9 +227,7 @@ export default function ChatAddToNoteModal({
   }, [selectedRoot, selectedFolder?.path, storageType]);
 
   const activeDragItemIds = useMemo(() => {
-    // @ts-expect-error TS(2339) FIXME: Property 'length' does not exist on type 'never'.
     if (!activeDragItems?.length) return null;
-    // @ts-expect-error TS(2339) FIXME: Property 'map' does not exist on type 'never'.
     return new Set(activeDragItems.map((item: any) => toTreeSelectKey(item.storageType, item.path)));
   }, [activeDragItems]);
 
@@ -333,7 +330,6 @@ export default function ChatAddToNoteModal({
       setActiveDragItems(null);
       onDropOnFolder?.(null, null, 'dragLeave');
 
-      // @ts-expect-error TS(2339) FIXME: Property 'length' does not exist on type 'never'.
       if (dragDisabled || !over || !items?.length) return;
 
       const parsed = parseDroppableId(String(over.id));
@@ -343,7 +339,6 @@ export default function ChatAddToNoteModal({
       if (!targetNode) return;
 
       setPendingMove({
-        // @ts-expect-error TS(2345) FIXME: Argument of type '{ targetNode: any; targetStorage... Remove this comment to see the full error message
         targetNode,
         targetStorageType: parsed.storageType,
         items,
@@ -421,60 +416,20 @@ export default function ChatAddToNoteModal({
 
   return <>
   <Modal isOpen={isOpen} onClose={isSubmitting ? undefined : onClose} onConfirm={canSubmit && !isSubmitting ? handleSubmit : undefined}>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     <div className="flex max-h-[90vh] flex-col gap-4 p-6">
-      // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
       <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
         노트로 추가
-      // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
       </h2>
-      // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
       <p className="text-xs text-gray-500 dark:text-odp-muted">
         폴더를 선택한 뒤 노트를 생성합니다. 새 폴더 만들기·폴더 이동이 가능하며,
         데스크톱에서는 드래그로 폴더를 옮길 수 있습니다(확인 후 적용).
-      // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
       </p>
 
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       <label className="block space-y-1">
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <span className="text-[11px] font-medium text-gray-600 dark:text-odp-muted">
           파일명
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex items-center gap-1">
-          // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
           <input
             value={fileName}
             onChange={(e: any) => setFileName(e.target.value)}
@@ -482,10 +437,6 @@ export default function ChatAddToNoteModal({
             className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
             autoFocus
           />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={applyDefaultFileName}
@@ -494,36 +445,12 @@ export default function ChatAddToNoteModal({
             aria-label="기본 이름 적용"
           >
             <RotateCcw size={15} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="shrink-0 text-xs text-gray-400">.md</span>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
       </label>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex min-h-[200px] max-h-[320px] flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft">
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex items-center justify-end gap-1 border-b border-gray-100 bg-gray-50 px-2 py-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
           {onRequestMoveFolder ? (
             <button
@@ -538,10 +465,6 @@ export default function ChatAddToNoteModal({
             >
               <FolderInput size={14} />
               폴더 이동
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           ) : null}
           {onRequestCreateFolder ? (
@@ -556,16 +479,8 @@ export default function ChatAddToNoteModal({
             >
               <IconFolderPlus size={14} />
               새 폴더
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
           ) : null}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
 
         <DndContext
@@ -577,10 +492,6 @@ export default function ChatAddToNoteModal({
           onDragCancel={handleDndDragCancel}
           autoScroll
         >
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div ref={scrollContainerRef} className="flex-1 overflow-auto py-1">
             <RootDropZone
               storageType={storageType}
@@ -622,34 +533,18 @@ export default function ChatAddToNoteModal({
             ) : (
               <div className="px-3 py-4 text-xs text-gray-400 dark:text-odp-muted">
                 사용할 수 있는 폴더가 없습니다.
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           <DragOverlay
             dropAnimation={null}
             style={{ zIndex: DRAG_OVERLAY_Z_INDEX }}
           >
-            // @ts-expect-error TS(2339): Property 'length' does not exist on type 'never'.
-            // @ts-expect-error TS(2339) FIXME: Property 'length' does not exist on type 'never'.
-            // @ts-expect-error TS(2339): Property 'length' does not exist on type 'never'.
-            // @ts-expect-error TS(2339) FIXME: Property 'length' does not exist on type 'never'.
             {activeDragItems?.length ? (
               <TreeDragOverlayPreview items={activeDragItems} isCopy={isCopyDrag} />
             ) : null}
           </DragOverlay>
         </DndContext>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
       {isReplyMessage ? (
@@ -657,37 +552,13 @@ export default function ChatAddToNoteModal({
           htmlFor="chat-add-to-note-include-thread"
           className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-odp-borderSoft dark:bg-odp-bg/40"
         >
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           <span className="min-w-0">
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="block text-sm font-medium text-gray-800 dark:text-odp-fgStrong">
               원본 메시지 쓰레드도 노트에 포함
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="mt-0.5 block text-xs text-gray-500 dark:text-odp-muted">
               답장 대상과 그 상위 원본을 노트 본문에 함께 넣습니다.
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
           </span>
           <Switch.Root
             id="chat-add-to-note-include-thread"
@@ -698,10 +569,6 @@ export default function ChatAddToNoteModal({
           >
             <Switch.Thumb className={switchThumbClass} />
           </Switch.Root>
-        // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'label' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
         </label>
       ) : null}
 
@@ -709,15 +576,7 @@ export default function ChatAddToNoteModal({
         <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
       ) : null}
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex justify-end gap-2 pt-1">
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={onClose}
@@ -725,15 +584,7 @@ export default function ChatAddToNoteModal({
           className="rounded bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 dark:bg-odp-bgSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
         >
           취소
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={handleSubmit}
@@ -745,20 +596,8 @@ export default function ChatAddToNoteModal({
           }`}
         >
           {isSubmitting ? '생성 중…' : '노트 생성'}
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   </Modal>
     <ConfirmModal
@@ -775,23 +614,17 @@ export default function ChatAddToNoteModal({
     />
     <ConfirmModal
       isOpen={Boolean(pendingMove)}
-      // @ts-expect-error TS(2339) FIXME: Property 'copy' does not exist on type 'never'.
       title={pendingMove?.copy ? '폴더 복제' : '폴더 이동'}
       message={
         pendingMove
           ? formatMoveConfirmMessage(
-              // @ts-expect-error TS(2339) FIXME: Property 'items' does not exist on type 'never'.
               pendingMove.items,
-              // @ts-expect-error TS(2339) FIXME: Property 'targetNode' does not exist on type 'neve... Remove this comment to see the full error message
               pendingMove.targetNode,
-              // @ts-expect-error TS(2339) FIXME: Property 'targetStorageType' does not exist on typ... Remove this comment to see the full error message
               pendingMove.targetStorageType,
-              // @ts-expect-error TS(2339) FIXME: Property 'copy' does not exist on type 'never'.
               { copy: Boolean(pendingMove.copy) },
             )
           : ''
       }
-      // @ts-expect-error TS(2339) FIXME: Property 'copy' does not exist on type 'never'.
       confirmLabel={pendingMove?.copy ? '복제' : '이동'}
       cancelLabel="취소"
       onConfirm={handleConfirmMove}

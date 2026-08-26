@@ -40,7 +40,7 @@ export default function NovelEditorToc({
   onWidthChange
 }: any) {
   const { editor } = useEditor();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<any[]>([]);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
   const {
     width: tocWidth,
@@ -119,10 +119,6 @@ export default function NovelEditorToc({
           onClick={onRequestClose}
         />
       )}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className={`novel-editor-toc-shell relative max-h-full overflow-hidden ${
           open
@@ -134,10 +130,6 @@ export default function NovelEditorToc({
         style={mobileShellStyle}
         aria-hidden={!open}
       >
-        // @ts-expect-error TS(2339): Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
         <aside
           className={`novel-editor-toc novel-editor-toc-panel relative flex h-full w-full flex-col border-l py-2.5 pl-2.5 pr-1.5 text-base leading-snug ${
             isDark
@@ -155,50 +147,28 @@ export default function NovelEditorToc({
               className="hidden md:block"
             />
           )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             className={`mb-2 flex shrink-0 items-center justify-between gap-2 px-0.5 pl-1 ${
               isDark ? 'text-odp-fg' : 'text-gray-800'
             }`}
           >
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="text-sm font-semibold uppercase tracking-wide">목차</span>
             <TocTitleWrapToggle
               checked={wrapTitles}
               onChange={setWrapTitles}
               isDark={isDark}
             />
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <ul className="novel-editor-toc-list m-0 max-h-full min-h-0 flex-1 list-none space-y-1 overflow-y-auto p-0 pr-0.5">
             {items.length === 0 ? (
               <li className="px-0.5 text-sm opacity-70">제목 없음</li>
             ) : (
               items.map((item, i) => (
                 <li
-                  // @ts-expect-error TS(2339) FIXME: Property 'pos' does not exist on type 'never'.
                   key={`${item.pos}-${i}`}
                   className="min-w-0"
-                  // @ts-expect-error TS(2339) FIXME: Property 'level' does not exist on type 'never'.
                   style={{ paddingLeft: `${Math.min(item.level - 1, 9) * 0.45}rem` }}
                 >
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   <button
                     type="button"
                     className={`w-full max-w-full rounded px-1 py-0.5 text-left text-base transition hover:underline focus:outline-none focus-visible:ring-1 ${tocTitleTextClass(wrapTitles)} ${
@@ -206,42 +176,16 @@ export default function NovelEditorToc({
                         ? 'text-odp-fg ring-odp-borderStrong hover:text-white'
                         : 'text-gray-700 ring-gray-300 hover:text-gray-900'
                     }`}
-                    // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
                     title={item.text}
-                    // @ts-expect-error TS(2339) FIXME: Property 'pos' does not exist on type 'never'.
                     onClick={() => handleHeadingClick(item.pos)}
                   >
-                    // @ts-expect-error TS(2339): Property 'text' does not exist on type 'never'.
-                    // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
-                    // @ts-expect-error TS(2339): Property 'text' does not exist on type 'never'.
-                    // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
                     {item.text}
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
-                // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'li' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
                 </li>
               ))
             )}
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'ul' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </ul>
-        // @ts-expect-error TS(2339): Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'aside' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
         </aside>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     </>
   );

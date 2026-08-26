@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChatGroup, ChatMessage } from '@/utils/chatWithMyself/messageTypes';
 import { useLocation } from 'react-router';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import {
@@ -370,18 +371,18 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx],
   );
 
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [timeZone, setTimeZone] = useState(detectTimeZone);
   const [selectedGroup, setSelectedGroup] = useState(SELF_GROUP);
   /** null = show all groups; otherwise only that group's messages */
-  const [viewGroupFilter, setViewGroupFilter] = useState(null);
-  const [dayKeys, setDayKeys] = useState([]);
-  const [dayCounts, setDayCounts] = useState({});
+  const [viewGroupFilter, setViewGroupFilter] = useState<string | null>(null);
+  const [dayKeys, setDayKeys] = useState<string[]>([]);
+  const [dayCounts, setDayCounts] = useState<Record<string, number>>({});
   /** Inclusive index of newest day currently in the message window. */
   const [windowNewestIndex, setWindowNewestIndex] = useState(0);
   /** Exclusive end index of oldest day in the window (same role as former loadedDayIndex). */
   const [loadedDayIndex, setLoadedDayIndex] = useState(0);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [loadingNewer, setLoadingNewer] = useState(false);
   const [booting, setBooting] = useState(false);
@@ -420,9 +421,9 @@ export default function ChatWithMyselfPane({
     getComposerLightweightEnabled,
   );
   const [composerSettingsOpen, setComposerSettingsOpen] = useState(false);
-  const [activeJumpDate, setActiveJumpDate] = useState(null);
-  const [searchFilters, setSearchFilters] = useState(null);
-  const [searchResults, setSearchResults] = useState([]);
+  const [activeJumpDate, setActiveJumpDate] = useState<string | null>(null);
+  const [searchFilters, setSearchFilters] = useState<any>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchCursor, setSearchCursor] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
   // Persist across rail/drawer unmount so open/close never wipes the search form.
@@ -433,53 +434,51 @@ export default function ChatWithMyselfPane({
   const [searchToDt, setSearchToDt] = useState('');
   const [searchNoReactionsOnly, setSearchNoReactionsOnly] = useState(false);
   const [searchFiltersUiOpen, setSearchFiltersUiOpen] = useState(false);
-  const [highlightId, setHighlightId] = useState(null);
-  const [replyTo, setReplyTo] = useState(null);
-  const [editTarget, setEditTarget] = useState(null);
-  const [addToNoteMessage, setAddToNoteMessage] = useState(null);
-  const [historyMessage, setHistoryMessage] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [editTarget, setEditTarget] = useState<ChatMessage | null>(null);
+  const [addToNoteMessage, setAddToNoteMessage] = useState<ChatMessage | null>(null);
+  const [historyMessage, setHistoryMessage] = useState<ChatMessage | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deletingCount, setDeletingCount] = useState(0);
   /** @type {[Record<string, string>, Function]} session-only decrypted plaintext by message id */
-  const [decryptedById, setDecryptedById] = useState({});
-  const [decryptTarget, setDecryptTarget] = useState(null);
+  const [decryptedById, setDecryptedById] = useState<Record<string, string>>({});
+  const [decryptTarget, setDecryptTarget] = useState<ChatMessage | null>(null);
   const [decryptError, setDecryptError] = useState('');
   const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
-  const [composerSeed, setComposerSeed] = useState(null);
-  const [shareGroupModal, setShareGroupModal] = useState(null);
-  const [pinnedResults, setPinnedResults] = useState([]);
-  const [notedResults, setNotedResults] = useState([]);
-  const [editedResults, setEditedResults] = useState([]);
-  const [linkResults, setLinkResults] = useState([]);
-  const [fileResults, setFileResults] = useState([]);
-  const [photoResults, setPhotoResults] = useState([]);
+  const [composerSeed, setComposerSeed] = useState<any>(null);
+  const [shareGroupModal, setShareGroupModal] = useState<any>(null);
+  const [pinnedResults, setPinnedResults] = useState<any[]>([]);
+  const [notedResults, setNotedResults] = useState<any[]>([]);
+  const [editedResults, setEditedResults] = useState<any[]>([]);
+  const [linkResults, setLinkResults] = useState<any[]>([]);
+  const [fileResults, setFileResults] = useState<any[]>([]);
+  const [photoResults, setPhotoResults] = useState<any[]>([]);
   const [pinnedLoading, setPinnedLoading] = useState(false);
-  const searchDayKeysRef = useRef([]);
+  const searchDayKeysRef = useRef<string[]>([]);
   const searchGenRef = useRef(0);
-  const pinnedDayKeysRef = useRef([]);
+  const pinnedDayKeysRef = useRef<string[]>([]);
   const messagesRef = useRef(messages);
   const dayKeysRef = useRef(dayKeys);
   const loadedDayIndexRef = useRef(loadedDayIndex);
   const windowNewestIndexRef = useRef(windowNewestIndex);
-  const sendQueueRef = useRef([]);
+  const sendQueueRef = useRef<any[]>([]);
   const flushingSendRef = useRef(false);
-  const reactionChainRef = useRef(new Map());
-  const reactionGenRef = useRef(new Map());
-  const reactionBaseRef = useRef(new Map());
-  const syncApiRef = useRef(null);
-  const localTombstonesRef = useRef(new Set());
+  const reactionChainRef = useRef(new Map<string, Promise<unknown>>());
+  const reactionGenRef = useRef(new Map<string, number>());
+  const reactionBaseRef = useRef(new Map<string, any>());
+  const syncApiRef = useRef<any>(null);
+  const localTombstonesRef = useRef(new Set<string>());
   const loadingOlderRef = useRef(false);
   const loadingNewerRef = useRef(false);
   /** @type {React.MutableRefObject<import('@/utils/chatWithMyself/scrollToMessage').ChatMessageListHandle | null>} */
-  const messageListRef = useRef(null);
-  const composerRef = useRef(null);
+  const messageListRef = useRef<any>(null);
+  const composerRef = useRef<any>(null);
 
   const noteLocalDayWrite = useCallback((dateStr: any) => {
-    // @ts-expect-error TS(2339) FIXME: Property 'invalidateDay' does not exist on type 'n... Remove this comment to see the full error message
     if (dateStr) syncApiRef.current?.invalidateDay(dateStr);
   }, []);
   const noteLocalMetaWrite = useCallback(() => {
-    // @ts-expect-error TS(2339) FIXME: Property 'invalidateMeta' does not exist on type '... Remove this comment to see the full error message
     syncApiRef.current?.invalidateMeta();
   }, []);
 
@@ -491,7 +490,6 @@ export default function ChatWithMyselfPane({
           findNodeByPath(fileTree, path) || findFileNodeByPath(fileTree, path),
         );
         if (!shareItems.length) return;
-        // @ts-expect-error TS(2339) FIXME: Property 'enqueueShareItems' does not exist on typ... Remove this comment to see the full error message
         composerRef.current?.enqueueShareItems?.(shareItems);
       } catch (err) {
         console.warn('Tree → chat share stage failed:', err);
@@ -604,19 +602,16 @@ export default function ChatWithMyselfPane({
     const source = !viewGroupFilter
       ? messages
       : messages.filter((m) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'group' does not exist on type 'never'.
           groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter),
         );
     return dedupeMessagesById(source);
   }, [messages, viewGroupFilter, groups]);
 
   const pendingSend = useMemo(
-    // @ts-expect-error TS(2339) FIXME: Property 'pendingSync' does not exist on type 'nev... Remove this comment to see the full error message
     () => messages.some((m) => m.pendingSync === 'send'),
     [messages],
   );
   const pendingEdit = useMemo(
-    // @ts-expect-error TS(2339) FIXME: Property 'pendingSync' does not exist on type 'nev... Remove this comment to see the full error message
     () => messages.some((m) => m.pendingSync === 'edit'),
     [messages],
   );
@@ -732,7 +727,7 @@ export default function ChatWithMyselfPane({
         prevKeys.length && wEnd > wStart
           ? prevKeys.slice(wStart, wEnd).filter((d) => unique.includes(d))
           : [];
-      // @ts-expect-error TS(2322) FIXME: Type 'unknown' is not assignable to type 'never'.
+      // @ts-expect-error TS(2322) FIXME: Type 'unknown' is not assignable to type 'string'.
       if (!loadDates.length && unique[0]) loadDates = [unique[0]];
 
       const parts = await Promise.all(
@@ -845,7 +840,6 @@ export default function ChatWithMyselfPane({
         localTombstonesRef.current.delete(id);
       }
     }
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setMessages((prev) => {
       const next = mergeMessagesForDate(
         prev,
@@ -913,8 +907,8 @@ export default function ChatWithMyselfPane({
       Array.isArray(shareGroupSend.files) && shareGroupSend.files.length > 0;
     if (!hasBody && !hasFiles) return;
     setEditTarget(null);
+    // @ts-expect-error TS(7006) FIXME: Parameter 'prev' implicitly has an 'any' type.
     setShareGroupModal((prev) =>
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       prev?.id === shareGroupSend.id ? prev : shareGroupSend,
     );
   }, [shareGroupSend]);
@@ -1006,10 +1000,9 @@ export default function ChatWithMyselfPane({
     }
   }, [storageReady, ctx]);
 
-  const scrollToDayFirstMessage = useCallback((dateStr: any, messageId = null) => {
+  const scrollToDayFirstMessage = useCallback((dateStr: any, messageId: string | null = null) => {
     const id =
       messageId ||
-      // @ts-expect-error TS(2339) FIXME: Property 'dateStr' does not exist on type 'never'.
       messagesRef.current.find((m) => m.dateStr === dateStr)?.id ||
       null;
     if (id) {
@@ -1022,7 +1015,6 @@ export default function ChatWithMyselfPane({
       return;
     }
     requestAnimationFrame(() => {
-      // @ts-expect-error TS(2339) FIXME: Property 'scrollToDateStr' does not exist on type ... Remove this comment to see the full error message
       messageListRef.current?.scrollToDateStr(dateStr);
     });
   }, []);
@@ -1033,11 +1025,10 @@ export default function ChatWithMyselfPane({
    * days load via infinite scroll.
    */
   const jumpToDate = useCallback(
-    async (dateStr: any, messageId = null) => {
+    async (dateStr: any, messageId: string | null = null) => {
       if (!storageReady || !dateStr) return;
       setActiveJumpDate(dateStr);
       const keys = dayKeysRef.current;
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
       const idx = keys.indexOf(dateStr);
       if (idx < 0) return;
 
@@ -1071,7 +1062,6 @@ export default function ChatWithMyselfPane({
           );
         } else {
           requestAnimationFrame(() => {
-            // @ts-expect-error TS(2339) FIXME: Property 'scrollToDateStr' does not exist on type ... Remove this comment to see the full error message
             messageListRef.current?.scrollToDateStr(dateStr);
           });
         }
@@ -1210,17 +1200,13 @@ export default function ChatWithMyselfPane({
   const confirmPendingMessages = useCallback((msgs: any, dateStr: any) => {
     if (!msgs?.length || !dateStr) return;
     const byId = new Map(msgs.map((m: any) => [m.id, m]));
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setMessages((prev) => {
       if (windowNewestIndexRef.current !== 0) {
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         return prev.filter((m) => !byId.has(m.id));
       }
       return prev.map((m) => {
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         const confirmed = byId.get(m.id);
         if (!confirmed) return m;
-        // @ts-expect-error TS(2698) FIXME: Spread types may only be created from object types... Remove this comment to see the full error message
         const next = { ...m, ...confirmed, dateStr };
         delete next.pendingSync;
         return next;
@@ -1228,12 +1214,9 @@ export default function ChatWithMyselfPane({
     });
     setDayCounts((prev) => ({
       ...prev,
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       [dateStr]: (prev[dateStr] || 0) + msgs.length,
     }));
-    // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
     if (dayKeysRef.current.includes(dateStr)) return;
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setDayKeys((prev) => [dateStr, ...prev.filter((d) => d !== dateStr)]);
     if (windowNewestIndexRef.current === 0) {
       setWindowNewestIndex(0);
@@ -1251,13 +1234,11 @@ export default function ChatWithMyselfPane({
       while (sendQueueRef.current.length > 0) {
         const batch = sendQueueRef.current.splice(0, sendQueueRef.current.length);
         setError('');
-        // @ts-expect-error TS(2339) FIXME: Property 'clientId' does not exist on type 'never'... Remove this comment to see the full error message
         const batchIds = batch.map((item) => item.clientId);
         try {
-          const prepared = [];
+          const prepared: Array<Record<string, unknown>> = [];
           for (const item of batch) {
             const uploaded = [];
-            // @ts-expect-error TS(2339) FIXME: Property 'files' does not exist on type 'never'.
             for (const attachment of item.files) {
               const uploadedItem = await uploadChatAttachment(ctx, attachment.file);
               uploaded.push({
@@ -1266,26 +1247,19 @@ export default function ChatWithMyselfPane({
               });
             }
             const attachMd = chatAttachmentsToMarkdown(uploaded);
-            // @ts-expect-error TS(2339) FIXME: Property 'text' does not exist on type 'never'.
             let finalBody = [attachMd, item.text].filter(Boolean).join('\n\n');
-            // @ts-expect-error TS(2339) FIXME: Property 'encrypted' does not exist on type 'never... Remove this comment to see the full error message
             let encrypted = Boolean(item.encrypted);
-            // @ts-expect-error TS(2339) FIXME: Property 'encryptPassword' does not exist on type ... Remove this comment to see the full error message
             if (item.encryptPassword) {
               finalBody = await encryptChatMessageBody(
                 finalBody,
-                // @ts-expect-error TS(2339) FIXME: Property 'encryptPassword' does not exist on type ... Remove this comment to see the full error message
                 item.encryptPassword,
               );
               encrypted = true;
             }
-            // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
             setMessages((prev) =>
               prev.map((m) =>
-                // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                 m.id === item.clientId
                   ? {
-                      // @ts-expect-error TS(2698) FIXME: Spread types may only be created from object types... Remove this comment to see the full error message
                       ...m,
                       body: finalBody,
                       encrypted,
@@ -1295,29 +1269,20 @@ export default function ChatWithMyselfPane({
               ),
             );
             prepared.push({
-              // @ts-expect-error TS(2339) FIXME: Property 'clientId' does not exist on type 'never'... Remove this comment to see the full error message
               id: item.clientId,
-              // @ts-expect-error TS(2339) FIXME: Property 'at' does not exist on type 'never'.
               at: item.at,
-              // @ts-expect-error TS(2339) FIXME: Property 'tz' does not exist on type 'never'.
               tz: item.tz,
               body: finalBody,
-              // @ts-expect-error TS(2339) FIXME: Property 'group' does not exist on type 'never'.
               group: item.group,
               source: 'compose',
-              // @ts-expect-error TS(2339) FIXME: Property 'markdown' does not exist on type 'never'... Remove this comment to see the full error message
               markdown: Boolean(item.markdown),
               encrypted,
-              // @ts-expect-error TS(2339) FIXME: Property 'replyTarget' does not exist on type 'nev... Remove this comment to see the full error message
               replyTo: item.replyTarget?.id || '',
-              // @ts-expect-error TS(2339) FIXME: Property 'replyTarget' does not exist on type 'nev... Remove this comment to see the full error message
               replySnippet: item.replyTarget
                 ? makeReplySnippet(
-                    // @ts-expect-error TS(2339) FIXME: Property 'replyTarget' does not exist on type 'nev... Remove this comment to see the full error message
                     item.replyTarget.snippet || item.replyTarget.body,
                   )
                 : '',
-              // @ts-expect-error TS(2339) FIXME: Property 'replyTarget' does not exist on type 'nev... Remove this comment to see the full error message
               replyGroup: item.replyTarget?.group || '',
             });
           }
@@ -1328,7 +1293,6 @@ export default function ChatWithMyselfPane({
             postChatSyncEvent('day', { dateStr });
           }
         } catch (e) {
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           setMessages((prev) => prev.filter((m) => !batchIds.includes(m.id)));
           // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
           setError(e?.message || '전송 실패');
@@ -1404,12 +1368,9 @@ export default function ChatWithMyselfPane({
       };
 
       if (windowNewestIndexRef.current === 0) {
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => { id: any; at... Remove this comment to see the full error message
         setMessages((prev) => [...prev, optimistic]);
       }
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
       if (!dayKeysRef.current.includes(dateStr)) {
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setDayKeys((prev) => [dateStr, ...prev.filter((d) => d !== dateStr)]);
         setWindowNewestIndex(0);
         setLoadedDayIndex((i) => Math.max(i, 1));
@@ -1435,13 +1396,12 @@ export default function ChatWithMyselfPane({
   const handleReply = useCallback((message: any) => {
     setEditTarget(null);
     const locked =
-      // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
       isChatMessageEncrypted(message) && !decryptedById[message.id];
     setReplyTo({
-      // @ts-expect-error TS(2345) FIXME: Argument of type '{ id: any; group: any; body: any... Remove this comment to see the full error message
       id: message.id,
       group: message.group || SELF_GROUP,
       body: locked ? ENCRYPTED_MESSAGE_LABEL : message.body,
+      // @ts-expect-error TS(2345) FIXME: Argument of type '{ id: any; group: any; body: any... Remove this comment to see the full error message
       snippet: makeReplySnippet(
         locked ? ENCRYPTED_MESSAGE_LABEL : message.body,
       ),
@@ -1454,7 +1414,6 @@ export default function ChatWithMyselfPane({
     (message: any) => {
       if (!message?.id) return;
       if (isChatMessageEncrypted(message)) {
-        // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
         const plain = decryptedById[message.id];
         if (!plain) return;
         setReplyTo(null);
@@ -1475,7 +1434,6 @@ export default function ChatWithMyselfPane({
 
   const handleRequestDecrypt = useCallback((message: any) => {
     if (!message?.id || !isChatMessageEncrypted(message)) return;
-    // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     if (decryptedById[message.id]) return;
     if (!parseEncryptedChatPayload(message.body)) return;
     setDecryptError('');
@@ -1484,14 +1442,11 @@ export default function ChatWithMyselfPane({
 
   const handleConfirmDecrypt = useCallback(
     async (password: any) => {
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       if (!decryptTarget?.id) return;
       try {
-        // @ts-expect-error TS(2339) FIXME: Property 'body' does not exist on type 'never'.
         const plain = await decryptChatMessageBody(decryptTarget.body, password);
         setDecryptedById((prev) => ({
           ...prev,
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           [decryptTarget.id]: plain,
         }));
         setDecryptTarget(null);
@@ -1526,7 +1481,6 @@ export default function ChatWithMyselfPane({
         options.markdown === 'true';
       if (!text && files.length === 0 && !existingMarkdown) return;
 
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       const snapshot = messagesRef.current.find((m) => m.id === target.id) || target;
       const attachHint =
         files.length > 0
@@ -1537,13 +1491,10 @@ export default function ChatWithMyselfPane({
 
       setEditTarget(null);
       setError('');
-      // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
       setMessages((prev) =>
         prev.map((m) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           m.id === target.id
             ? {
-                // @ts-expect-error TS(2698) FIXME: Spread types may only be created from object types... Remove this comment to see the full error message
                 ...m,
                 body: optimisticBody,
                 group: group || SELF_GROUP,
@@ -1572,12 +1523,9 @@ export default function ChatWithMyselfPane({
           .filter(Boolean)
           .join('\n\n');
         if (finalBody !== optimisticBody) {
-          // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
           setMessages((prev) =>
             prev.map((m) =>
-              // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
               m.id === target.id
-                // @ts-expect-error TS(2698) FIXME: Spread types may only be created from object types... Remove this comment to see the full error message
                 ? { ...m, body: finalBody, encrypted: false, pendingSync: 'edit' }
                 : m,
             ),
@@ -1591,9 +1539,7 @@ export default function ChatWithMyselfPane({
           encrypted: false,
         });
         if (!updated) {
-          // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
           setMessages((prev) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             prev.map((m) => (m.id === target.id ? { ...snapshot } : m)),
           );
           setError('메시지를 찾지 못했습니다.');
@@ -1602,45 +1548,41 @@ export default function ChatWithMyselfPane({
         setDecryptedById((prev) => {
           if (!(target.id in prev)) return prev;
           const next = { ...prev };
-          // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           delete next[target.id];
           return next;
         });
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setMessages((prev) =>
           prev.map((m) => {
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             if (m.id !== target.id) return m;
-            // @ts-expect-error TS(2698) FIXME: Spread types may only be created from object types... Remove this comment to see the full error message
-            const next = { ...m, ...updated, dateStr };
+            const next = { ...m, ...(updated as Record<string, unknown>), dateStr };
             delete next.pendingSync;
             return next;
           }),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setEditedResults((prev) => {
-          const row = { ...updated, dateStr };
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
+          const row = { ...(updated as Record<string, unknown>), dateStr };
           const next = prev.filter((m) => m.id !== target.id);
           return [row, ...next];
         });
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setPinnedResults((prev) =>
           prev.map((m) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
-            m.id === target.id ? { ...m, ...updated, dateStr } : m,
+            m.id === target.id
+              ? { ...m, ...(updated as Record<string, unknown>), dateStr }
+              : m,
           ),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setNotedResults((prev) =>
           prev.map((m) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
-            m.id === target.id ? { ...m, ...updated, dateStr } : m,
+            m.id === target.id
+              ? { ...m, ...(updated as Record<string, unknown>), dateStr }
+              : m,
           ),
         );
         {
-          const row = { ...updated, dateStr };
-          const media = getCollectionMediaFlags(updated.body);
+          const row = { ...(updated as Record<string, unknown>), dateStr };
+          const media = getCollectionMediaFlags(
+            String((updated as Record<string, unknown>).body ?? ''),
+          );
           setLinkResults((prev) =>
             upsertCollectionMembership(prev, row, media.hasLinks),
           );
@@ -1662,9 +1604,7 @@ export default function ChatWithMyselfPane({
           }
         }
       } catch (e) {
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setMessages((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === target.id ? { ...snapshot } : m)),
         );
         // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
@@ -1686,58 +1626,41 @@ export default function ChatWithMyselfPane({
       // Close confirm immediately; keep bubble in a disabled deleting state.
       setDeleteTarget(null);
       setError('');
-      // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
       setMessages((prev) =>
         prev.map((m) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           m.id === message.id ? { ...m, pendingSync: 'delete' } : m,
         ),
       );
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       if (replyTo?.id === message.id) setReplyTo(null);
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       if (editTarget?.id === message.id) setEditTarget(null);
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       if (historyMessage?.id === message.id) setHistoryMessage(null);
       setDeletingCount((c) => c + 1);
 
       try {
         const ok = await deleteChatMessage(ctx, dateStr, message.id);
         if (!ok) {
-          // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
           setMessages((prev) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
           );
           setError('메시지를 찾지 못했습니다.');
           return;
         }
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         setMessages((prev) => prev.filter((m) => m.id !== message.id));
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         setPinnedResults((prev) => prev.filter((m) => m.id !== message.id));
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         setNotedResults((prev) => prev.filter((m) => m.id !== message.id));
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         setEditedResults((prev) => prev.filter((m) => m.id !== message.id));
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         setLinkResults((prev) => prev.filter((m) => m.id !== message.id));
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         setFileResults((prev) => prev.filter((m) => m.id !== message.id));
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         setPhotoResults((prev) => prev.filter((m) => m.id !== message.id));
         setDayCounts((prev) => ({
           ...prev,
-          // @ts-expect-error TS(7053) FIXME: Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
           [dateStr]: Math.max(0, (prev[dateStr] || 1) - 1),
         }));
         localTombstonesRef.current.add(message.id);
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
       } catch (e) {
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setMessages((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
         );
         // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
@@ -1772,23 +1695,19 @@ export default function ChatWithMyselfPane({
 
   const ensureMessageLoaded = useCallback(
     async (messageId: any) => {
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       const existing = messagesRef.current.find((m) => m.id === messageId);
       if (existing) return existing;
 
       const hit = await findMessageById(ctx, messageId);
       if (!hit?.msg) return null;
 
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
       if (!dayKeysRef.current.includes(hit.dateStr)) {
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setDayKeys((prev) => {
           const next = [...prev, hit.dateStr];
           next.sort().reverse();
           return next;
         });
         // Allow dayKeysRef to update before jump indexes resolve.
-        // @ts-expect-error TS(2322) FIXME: Type 'any[]' is not assignable to type 'never[]'.
         dayKeysRef.current = [...dayKeysRef.current, hit.dateStr]
           .filter((v, i, a) => a.indexOf(v) === i)
           .sort()
@@ -1797,7 +1716,6 @@ export default function ChatWithMyselfPane({
 
       await jumpToDate(hit.dateStr, messageId);
       return (
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         messagesRef.current.find((m) => m.id === messageId) || hit.msg
       );
     },
@@ -1814,7 +1732,6 @@ export default function ChatWithMyselfPane({
       }
       setHighlightId(replyToId);
       requestAnimationFrame(() => {
-        // @ts-expect-error TS(2339) FIXME: Property 'scrollToMessageId' does not exist on typ... Remove this comment to see the full error message
         messageListRef.current?.scrollToMessageId(replyToId, {
           align: 'center',
         });
@@ -1839,8 +1756,7 @@ export default function ChatWithMyselfPane({
           iconPath = await uploadGroupIcon(ctx, options.iconFile);
         } catch (e) {
           // Keep the group name; fall back to initials if icon upload fails.
-          // @ts-expect-error TS(2571) FIXME: Object is of type 'unknown'.
-          setError(e?.message || '그룹 아이콘 업로드 실패 (그룹은 추가됩니다)');
+          setError((e as Error)?.message || '그룹 아이콘 업로드 실패 (그룹은 추가됩니다)');
         }
       }
       const next = await addGroup(ctx, name, iconPath ? { iconPath } : {});
@@ -1905,24 +1821,19 @@ export default function ChatWithMyselfPane({
 
   const applyUpdatedHistoryMessage = useCallback((messageId: any, updated: any, dateStr: any) => {
     if (!updated) return;
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setMessages((prev) =>
       prev.map((m) =>
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
       ),
     );
     setHistoryMessage((prev) =>
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       prev?.id === messageId
-        // @ts-expect-error TS(2698) FIXME: Spread types may only be created from object types... Remove this comment to see the full error message
+        // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
         ? { ...prev, ...updated, dateStr: dateStr || prev.dateStr }
         : prev,
     );
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setEditedResults((prev) =>
       prev.map((m) =>
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
       ),
     );
@@ -1998,47 +1909,34 @@ export default function ChatWithMyselfPane({
           setError('메시지를 찾지 못했습니다.');
           return;
         }
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setMessages((prev) =>
           prev.map((m) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
-            m.id === message.id ? { ...m, ...updated, dateStr } : m,
+            m.id === message.id
+              ? { ...m, ...(updated as Record<string, unknown>), dateStr }
+              : m,
           ),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setPinnedResults((prev) => {
           if (!nextPinnedAt) {
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             return prev.filter((m) => m.id !== message.id);
           }
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           const next = prev.filter((m) => m.id !== message.id);
-          return [{ ...updated, dateStr }, ...next];
+          return [{ ...(updated as Record<string, unknown>), dateStr }, ...next];
         });
-        const pinPatch = { ...updated, dateStr };
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
+        const pinPatch = { ...(updated as Record<string, unknown>), dateStr };
         setLinkResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setFileResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setPhotoResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setNotedResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setEditedResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
         noteLocalDayWrite(dateStr);
@@ -2066,45 +1964,29 @@ export default function ChatWithMyselfPane({
           setError('메시지를 찾지 못했습니다.');
           return;
         }
-        const patch = { ...updated, dateStr };
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
+        const patch = { ...(updated as Record<string, unknown>), dateStr };
         setMessages((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setPinnedResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setNotedResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setEditedResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setLinkResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setFileResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setPhotoResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setSearchResults((prev) =>
-          // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
           prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
         noteLocalDayWrite(dateStr);
@@ -2136,7 +2018,6 @@ export default function ChatWithMyselfPane({
       if (!normalized) return;
       const key = reactionKey(normalized);
       const latest =
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         messagesRef.current.find((m) => m.id === message.id) || message;
       if ((latest.reactions || []).some((r: any) => reactionKey(r) === key && r.pending)) {
         return;
@@ -2175,9 +2056,7 @@ export default function ChatWithMyselfPane({
         pendingReactionSync: true,
         dateStr,
       };
-      // @ts-expect-error TS(2322) FIXME: Type 'any[]' is not assignable to type 'never[]'.
       messagesRef.current = messagesRef.current.map((m) =>
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         m.id === message.id ? { ...m, ...optimistic } : m,
       );
       applyMessageLists(message.id, (m: any) => ({
@@ -2201,9 +2080,7 @@ export default function ChatWithMyselfPane({
             pendingReactionSync: false,
             dateStr,
           };
-          // @ts-expect-error TS(2322) FIXME: Type 'any[]' is not assignable to type 'never[]'.
           messagesRef.current = messagesRef.current.map((m) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             m.id === message.id ? { ...m, ...rolled } : m,
           );
           applyMessageLists(message.id, (m: any) => ({
@@ -2229,18 +2106,16 @@ export default function ChatWithMyselfPane({
           });
           if (reactionGenRef.current.get(message.id) !== gen) return;
           reactionBaseRef.current.delete(message.id);
-          const confirmed = (updated.reactions || [])
+          const confirmed = ((updated as { reactions?: unknown[] }).reactions || [])
             .map((r: any) => normalizeReaction(r))
             .filter(Boolean);
           const patch = {
-            ...updated,
+            ...(updated as Record<string, unknown>),
             dateStr,
             reactions: confirmed,
             pendingReactionSync: false,
           };
-          // @ts-expect-error TS(2322) FIXME: Type 'any[]' is not assignable to type 'never[]'.
           messagesRef.current = messagesRef.current.map((m) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             m.id === message.id ? { ...m, ...patch } : m,
           );
           applyMessageLists(message.id, (m: any) => ({
@@ -2314,17 +2189,11 @@ export default function ChatWithMyselfPane({
       links.sort(byAtDesc);
       files.sort(byAtDesc);
       photos.sort(byAtDesc);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any[]' is not assignable to para... Remove this comment to see the full error message
       setPinnedResults(pinned);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any[]' is not assignable to para... Remove this comment to see the full error message
       setNotedResults(noted);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any[]' is not assignable to para... Remove this comment to see the full error message
       setEditedResults(edited);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any[]' is not assignable to para... Remove this comment to see the full error message
       setLinkResults(links);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any[]' is not assignable to para... Remove this comment to see the full error message
       setFileResults(files);
-      // @ts-expect-error TS(2345) FIXME: Argument of type 'any[]' is not assignable to para... Remove this comment to see the full error message
       setPhotoResults(photos);
     } finally {
       setPinnedLoading(false);
@@ -2349,9 +2218,7 @@ export default function ChatWithMyselfPane({
         postChatSyncEvent('day', { dateStr });
         const msgs = await readDayMessages(ctx, dateStr);
         setMessages(msgs);
-        // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
         setDayKeys((prev) =>
-          // @ts-expect-error TS(2345) FIXME: Argument of type 'any' is not assignable to parame... Remove this comment to see the full error message
           prev.includes(dateStr) ? prev : [dateStr, ...prev].sort().reverse(),
         );
         setWindowNewestIndex(0);
@@ -2383,6 +2250,7 @@ export default function ChatWithMyselfPane({
               dateStr,
               filters,
               ogStorage,
+              // @ts-expect-error TS(2345) FIXME: Argument of type 'ChatGroup[]' is not assignable t... Remove this comment to see the full error message
               groups,
             );
             if (hit.ok) {
@@ -2649,7 +2517,6 @@ export default function ChatWithMyselfPane({
   );
 
   const handleComposerFilesDrop = useCallback((files: any) => {
-    // @ts-expect-error TS(2339) FIXME: Property 'enqueueFiles' does not exist on type 'ne... Remove this comment to see the full error message
     void composerRef.current?.enqueueFiles?.(files);
   }, []);
 
@@ -2662,10 +2529,6 @@ export default function ChatWithMyselfPane({
       onFilesDrop={handleComposerFilesDrop}
       rootRef={setAttachDropHostNode}
     >
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 dark:border-odp-borderSoft px-3 py-2">
         {isMobileLayout && !sidebarOpen ? (
           <button
@@ -2675,43 +2538,15 @@ export default function ChatWithMyselfPane({
             aria-label="사이드바 열기"
           >
             <Menu size={18} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
         ) : null}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="flex min-w-0 flex-1 items-center gap-0.5">
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           <h2 className="min-w-0 truncate text-sm font-bold text-gray-800 dark:text-odp-fgStrong">
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             <span className="flex items-center gap-1">
               <MessageCircleMore size={18} className="shrink-0 text-gray-500 dark:text-gray-400" />
               나와의 채팅
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
             </span>
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'h2' does not exist on type 'JSX.Intrinsi... Remove this comment to see the full error message
           </h2>
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           <button
             type="button"
             onClick={handleRefresh}
@@ -2725,15 +2560,7 @@ export default function ChatWithMyselfPane({
               className={refreshing ? 'animate-spin' : undefined}
               aria-hidden
             />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         {isMobileLayout ? (
           <button
@@ -2745,10 +2572,6 @@ export default function ChatWithMyselfPane({
             aria-pressed={composerSettingsOpen}
           >
             <Settings size={18} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
         ) : (
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
@@ -2773,10 +2596,6 @@ export default function ChatWithMyselfPane({
               checked={openLinksInNewWindow}
               onCheckedChange={toggleOpenLinksInNewWindow}
             />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => setComposerSettingsOpen(true)}
@@ -2786,21 +2605,9 @@ export default function ChatWithMyselfPane({
               aria-pressed={composerSettingsOpen}
             >
               <Settings size={18} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         )}
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={() => toggleMobileRail('date', dateOpen, setDateOpen)}
@@ -2810,15 +2617,7 @@ export default function ChatWithMyselfPane({
           aria-pressed={dateOpen}
         >
           <CalendarDays size={18} />
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={() => toggleMobileRail('group', groupOpen, setGroupOpen)}
@@ -2828,15 +2627,7 @@ export default function ChatWithMyselfPane({
           aria-pressed={groupOpen}
         >
           <Users size={18} />
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={() => toggleMobileRail('search', searchOpen, setSearchOpen)}
@@ -2846,15 +2637,7 @@ export default function ChatWithMyselfPane({
           aria-pressed={searchOpen}
         >
           <Search size={18} />
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           onClick={() => toggleMobileRail('pinned', pinnedOpen, setPinnedOpen)}
@@ -2864,41 +2647,21 @@ export default function ChatWithMyselfPane({
           aria-pressed={pinnedOpen}
         >
           <Pin size={18} />
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
       {error ? (
         <div className="shrink-0 bg-red-50 px-3 py-1.5 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
           {error}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : null}
 
       {!storageReady ? (
         <div className="flex flex-1 items-center justify-center p-6 text-sm text-gray-500">
           {storageNotReadyHint}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : (
         <div className="flex min-h-0 max-h-full flex-1 overflow-hidden" data-chat-rails-root>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-[#b9cfe0] dark:bg-[#0b1220]">
             <ChatMessageList
               ref={messageListRef}
@@ -2906,7 +2669,6 @@ export default function ChatWithMyselfPane({
               ogStorage={ogStorage}
               timeZone={timeZone}
               highlightId={highlightId}
-              // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
               editingMessageId={editTarget?.id || null}
               onReachTop={handleLoadOlder}
               onFillOlder={handleFillOlder}
@@ -2943,13 +2705,8 @@ export default function ChatWithMyselfPane({
             />
             <ChatComposerDock
               autoFit={Boolean(editTarget)}
-              // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
               fitKey={editTarget?.id || ''}
             >
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div
                 className={
                   editTarget
@@ -2957,10 +2714,6 @@ export default function ChatWithMyselfPane({
                     : 'mx-auto flex h-full min-h-0 w-full max-w-full px-2 md:max-w-[min(100%,50vw)] md:px-3'
                 }
               >
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div
                   className={
                     editTarget
@@ -2996,21 +2749,9 @@ export default function ChatWithMyselfPane({
                     seedBody={composerSeed}
                     onSeedConsumed={() => setComposerSeed(null)}
                   />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             </ChatComposerDock>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           {!isMobileLayout ? (
             <>
@@ -3140,10 +2881,6 @@ export default function ChatWithMyselfPane({
               </ChatMobileDrawer>
             </>
           )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       )}
 
@@ -3180,16 +2917,12 @@ export default function ChatWithMyselfPane({
                   detectTimeZone(),
                 );
               const nextMsg = { ...payload.message, notePath, dateStr };
-              // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
               setMessages((prev) =>
                 prev.map((m) =>
-                  // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                   m.id === payload.message.id ? { ...m, notePath } : m,
                 ),
               );
-              // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
               setNotedResults((prev) => {
-                // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                 const next = prev.filter((m) => m.id !== payload.message.id);
                 return [nextMsg, ...next];
               });
@@ -3203,16 +2936,11 @@ export default function ChatWithMyselfPane({
       <ChatShareGroupSendModal
         isOpen={Boolean(
           shareGroupModal &&
-            // @ts-expect-error TS(2339) FIXME: Property 'body' does not exist on type 'never'.
             (String(shareGroupModal.body || '').trim() ||
-              // @ts-expect-error TS(2339) FIXME: Property 'files' does not exist on type 'never'.
               (Array.isArray(shareGroupModal.files) &&
-                // @ts-expect-error TS(2339) FIXME: Property 'files' does not exist on type 'never'.
                 shareGroupModal.files.length > 0)),
         )}
-        // @ts-expect-error TS(2339) FIXME: Property 'body' does not exist on type 'never'.
         body={shareGroupModal?.body || ''}
-        // @ts-expect-error TS(2339) FIXME: Property 'files' does not exist on type 'never'.
         files={shareGroupModal?.files || []}
         groups={groups}
         onAddGroup={handleAddGroup}
@@ -3240,7 +2968,6 @@ export default function ChatWithMyselfPane({
         open={Boolean(historyMessage)}
         message={
           historyMessage
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             ? messages.find((m) => m.id === historyMessage.id) || historyMessage
             : null
         }
@@ -3262,7 +2989,6 @@ export default function ChatWithMyselfPane({
             ? `이 메시지를 삭제할까요?\n\n${
                 isChatMessageEncrypted(deleteTarget)
                   ? ENCRYPTED_MESSAGE_LABEL
-                  // @ts-expect-error TS(2339) FIXME: Property 'body' does not exist on type 'never'.
                   : (deleteTarget.body || '')
                       .replace(/\s+/g, ' ')
                       .trim()

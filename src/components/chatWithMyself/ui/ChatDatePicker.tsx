@@ -93,10 +93,6 @@ export default function ChatDatePicker({
             }}
           >
             <X size={14} />
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
           </button>
         ) : null}
         <Button className={iconBtnClass} aria-label="달력 열기">
@@ -106,10 +102,6 @@ export default function ChatDatePicker({
       <Popover className={popoverClass} placement="bottom start">
         <Dialog className="outline-none">
           <Calendar className="w-fit">
-            // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <header className="mb-2 flex items-center gap-1">
               <Button slot="previous" className={iconBtnClass} aria-label="이전 달">
                 <ChevronLeft size={16} />
@@ -118,10 +110,6 @@ export default function ChatDatePicker({
               <Button slot="next" className={iconBtnClass} aria-label="다음 달">
                 <ChevronRight size={16} />
               </Button>
-            // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'header' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </header>
             <CalendarGrid className="border-separate border-spacing-1">
               <CalendarGridHeader>

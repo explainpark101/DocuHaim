@@ -13,7 +13,7 @@ const CHAT_RAIL_MAX_VW = 50;
 /** Keep at least this much room for the message column when fitting rails. */
 const CHAT_MAIN_MIN_WIDTH = 280;
 
-const OPEN_SPRING = { type: 'spring', stiffness: 420, damping: 38, mass: 0.85 };
+const OPEN_SPRING: any = { type: 'spring', stiffness: 420, damping: 38, mass: 0.85 };
 
 function vwPx(vw: any) {
   if (typeof window === 'undefined') return vw * 5;
@@ -143,10 +143,6 @@ export default function ChatRailShell({
           transition={isResizing ? { duration: 0 } : OPEN_SPRING}
         >
           {/* Fixed inner width so content does not squash while the outer clip grows. */}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             ref={shellRef}
             className={`relative flex h-full min-h-0 flex-col overflow-hidden border-l border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft ${className}`}
@@ -163,15 +159,7 @@ export default function ChatRailShell({
               visibleOnHover
               label={label}
             />
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         </Motion.div>
       ) : null}

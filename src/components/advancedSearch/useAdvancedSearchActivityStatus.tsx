@@ -16,8 +16,8 @@ export function useAdvancedSearchActivityStatus() {
   const { addIndicator, removeIndicator, updateIndicator } =
     useActivityIndicator();
   const wasBuildingRef = useRef(false);
-  const shownErrorRef = useRef(/** @type {string | null} */ (null));
-  const hideTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null));
+  const shownErrorRef = useRef<string | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const clearHideTimer = () => {
@@ -30,7 +30,6 @@ export function useAdvancedSearchActivityStatus() {
     /** @param {number} ms */
     const scheduleHide = (ms: any) => {
       clearHideTimer();
-      // @ts-expect-error TS(2322) FIXME: Type 'number' is not assignable to type 'null'.
       hideTimerRef.current = setTimeout(() => {
         removeIndicator(INDICATOR_ID);
         hideTimerRef.current = null;

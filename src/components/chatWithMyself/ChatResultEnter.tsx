@@ -1,6 +1,6 @@
 import { motion as Motion } from 'motion/react';
 
-const ENTER = {
+const ENTER: any = {
   duration: 0.32,
   ease: [0.22, 1, 0.36, 1],
 };

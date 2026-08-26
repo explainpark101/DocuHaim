@@ -85,7 +85,7 @@ const SWIPE_REPLY_MAX = 72;
 const GROUP_CLUSTER_MS = 10 * 60 * 1000;
 
 /** Soft morph for long-press / selected bubble shape. */
-const BUBBLE_SHAPE_SPRING = {
+const BUBBLE_SHAPE_SPRING: any = {
   type: 'spring',
   stiffness: 420,
   damping: 28,
@@ -353,42 +353,14 @@ function ReplyPreview({
       }}
       className="mb-1.5 flex w-full min-w-0 max-w-full items-stretch gap-1.5 overflow-hidden rounded-md border border-blue-200/80 border-l-4 border-l-blue-500 bg-blue-100 px-2 py-1 text-left shadow-sm dark:border-blue-800/60 dark:border-l-blue-400 dark:bg-blue-950 dark:shadow-none"
     >
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div className="min-w-0 flex-1 overflow-hidden">
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="truncate text-[11px] font-semibold text-blue-700 dark:text-blue-300">
           {label}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div className="line-clamp-3 whitespace-pre-wrap wrap-anywhere text-[11px] text-gray-600 dark:text-gray-300">
           {snippet}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }
@@ -410,10 +382,6 @@ function MessageReplyButton({
       aria-label="답장"
     >
       <Reply size={16} />
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }
@@ -449,10 +417,6 @@ function MessageMoreButton({
         aria-label="메시지 옵션"
       >
         <MoreHorizontal size={16} />
-      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
       </button>
     );
   }
@@ -460,10 +424,6 @@ function MessageMoreButton({
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         <button
           type="button"
           className={iconBtnClass}
@@ -472,10 +432,6 @@ function MessageMoreButton({
           onContextMenu={(e: any) => e.stopPropagation()}
         >
           <MoreHorizontal size={16} />
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -567,141 +523,76 @@ function MessageSideActions({
     return (
       <div className="flex shrink-0 flex-col items-center gap-0.5">
         {timeNode}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         {!syncing ? <div className="flex items-center gap-0.5">{buttons}</div> : null}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
 
   return (
     <div className="relative flex h-10 w-auto shrink-0 flex-col items-center justify-end">
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className={`flex items-center justify-center transition-transform duration-150 ease-out ${
           syncing ? '' : 'group-hover:-translate-y-4'
         }`}
       >
         {timeNode}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
       {!syncing ? (
         <div className="pointer-events-none absolute bottom-0 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
           {buttons}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : null}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }
 
 const MessageBubble = memo(function MessageBubble({
-  // @ts-expect-error TS(2339) FIXME: Property 'msg' does not exist on type '{}'.
   msg,
-  // @ts-expect-error TS(2339) FIXME: Property 'showName' does not exist on type '{}'.
   showName,
-  // @ts-expect-error TS(2339) FIXME: Property 'clustered' does not exist on type '{}'.
   clustered = false,
-  // @ts-expect-error TS(2339) FIXME: Property 'highlight' does not exist on type '{}'.
   highlight,
-  // @ts-expect-error TS(2339) FIXME: Property 'ogStorage' does not exist on type '{}'.
   ogStorage,
-  // @ts-expect-error TS(2339) FIXME: Property 'timeZone' does not exist on type '{}'.
   timeZone,
-  // @ts-expect-error TS(2339) FIXME: Property 'onReply' does not exist on type '{}'.
   onReply,
-  // @ts-expect-error TS(2339) FIXME: Property 'onDelete' does not exist on type '{}'.
   onDelete,
-  // @ts-expect-error TS(2339) FIXME: Property 'onEdit' does not exist on type '{}'.
   onEdit,
-  // @ts-expect-error TS(2339) FIXME: Property 'onAddToNote' does not exist on type '{}'... Remove this comment to see the full error message
   onAddToNote,
-  // @ts-expect-error TS(2339) FIXME: Property 'onViewEditHistory' does not exist on typ... Remove this comment to see the full error message
   onViewEditHistory,
-  // @ts-expect-error TS(2339) FIXME: Property 'onTogglePin' does not exist on type '{}'... Remove this comment to see the full error message
   onTogglePin,
-  // @ts-expect-error TS(2339) FIXME: Property 'onToggleCollapse' does not exist on type... Remove this comment to see the full error message
   onToggleCollapse,
-  // @ts-expect-error TS(2339) FIXME: Property 'onToggleReaction' does not exist on type... Remove this comment to see the full error message
   onToggleReaction,
-  // @ts-expect-error TS(2339) FIXME: Property 'onOpenNote' does not exist on type '{}'.
   onOpenNote,
-  // @ts-expect-error TS(2339) FIXME: Property 'onOpenReply' does not exist on type '{}'... Remove this comment to see the full error message
   onOpenReply,
-  // @ts-expect-error TS(2339) FIXME: Property 'onOpenMobileSheet' does not exist on typ... Remove this comment to see the full error message
   onOpenMobileSheet,
-  // @ts-expect-error TS(2339) FIXME: Property 'onSelectCopy' does not exist on type '{}... Remove this comment to see the full error message
   onSelectCopy,
-  // @ts-expect-error TS(2339) FIXME: Property 'onReloadOg' does not exist on type '{}'.
   onReloadOg,
-  // @ts-expect-error TS(2339) FIXME: Property 'onBubbleActivate' does not exist on type... Remove this comment to see the full error message
   onBubbleActivate,
-  // @ts-expect-error TS(2339) FIXME: Property 'onRequestDecrypt' does not exist on type... Remove this comment to see the full error message
   onRequestDecrypt,
   /** Session plaintext when message is encrypted. */
-  // @ts-expect-error TS(2339) FIXME: Property 'decryptedBody' does not exist on type '{... Remove this comment to see the full error message
   decryptedBody = null,
   /** Session-only expand for a persisted-collapsed message (not saved). */
-  // @ts-expect-error TS(2339) FIXME: Property 'peeked' does not exist on type '{}'.
   peeked = false,
-  // @ts-expect-error TS(2339) FIXME: Property 'ogReloadKey' does not exist on type '{}'... Remove this comment to see the full error message
   ogReloadKey = 0,
-  // @ts-expect-error TS(2339) FIXME: Property 'shiftHeldRef' does not exist on type '{}... Remove this comment to see the full error message
   shiftHeldRef,
-  // @ts-expect-error TS(2339) FIXME: Property 'coarse' does not exist on type '{}'.
   coarse,
-  // @ts-expect-error TS(2339) FIXME: Property 'mobileContextMenu' does not exist on typ... Remove this comment to see the full error message
   mobileContextMenu = false,
-  // @ts-expect-error TS(2339) FIXME: Property 'rowSelected' does not exist on type '{}'... Remove this comment to see the full error message
   rowSelected = false,
-  // @ts-expect-error TS(2339) FIXME: Property 'isEditing' does not exist on type '{}'.
   isEditing = false,
-  // @ts-expect-error TS(2339) FIXME: Property 'getPresignedUrl' does not exist on type ... Remove this comment to see the full error message
   getPresignedUrl,
-  // @ts-expect-error TS(2339) FIXME: Property 'groupIconPath' does not exist on type '{... Remove this comment to see the full error message
   groupIconPath = null,
-  // @ts-expect-error TS(2339) FIXME: Property 'groupLabel' does not exist on type '{}'.
   groupLabel = null,
-  // @ts-expect-error TS(2339) FIXME: Property 'replyGroupLabel' does not exist on type ... Remove this comment to see the full error message
   replyGroupLabel = null,
-  // @ts-expect-error TS(2339) FIXME: Property 'externalReactionPickerOpen' does not exi... Remove this comment to see the full error message
   externalReactionPickerOpen = false,
-  // @ts-expect-error TS(2339) FIXME: Property 'onReactionPickerOpenChange' does not exi... Remove this comment to see the full error message
   onReactionPickerOpenChange,
-  // @ts-expect-error TS(2339) FIXME: Property 'noteExists' does not exist on type '{}'.
   noteExists,
-  // @ts-expect-error TS(2339) FIXME: Property 'folderExists' does not exist on type '{}... Remove this comment to see the full error message
   folderExists,
-  // @ts-expect-error TS(2339) FIXME: Property 'listFolderFiles' does not exist on type ... Remove this comment to see the full error message
   listFolderFiles,
-  // @ts-expect-error TS(2339) FIXME: Property 'allowOgEmbed' does not exist on type '{}... Remove this comment to see the full error message
   allowOgEmbed = true,
   /** will-change + brightness press filter (perf toggle). */
-  // @ts-expect-error TS(2339) FIXME: Property 'enableBubblePressFx' does not exist on t... Remove this comment to see the full error message
   enableBubblePressFx = true,
   /** Reserve empty reaction-row height (typically the last list message). */
-  // @ts-expect-error TS(2339) FIXME: Property 'reserveReactionSpace' does not exist on ... Remove this comment to see the full error message
   reserveReactionSpace = false,
-}) {
+}: any) {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
   const encrypted = isChatMessageEncrypted(msg);
@@ -857,10 +748,6 @@ const MessageBubble = memo(function MessageBubble({
     >
       <Trash2 size={12} className="shrink-0" aria-hidden />
       <Loader2 size={12} className="animate-spin shrink-0" aria-hidden />
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 
@@ -1000,10 +887,6 @@ const MessageBubble = memo(function MessageBubble({
         }
       }}
     >
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className={`pointer-events-none absolute inset-y-0 flex items-center ${
           swipeIconSide === 'left' ? 'left-3' : 'right-3'
@@ -1011,27 +894,11 @@ const MessageBubble = memo(function MessageBubble({
         style={{ opacity: swipeIconOpacity }}
         aria-hidden
       >
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         <span className="rounded-full bg-blue-500/90 p-1.5 text-white shadow">
           <Reply size={16} />
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
         </span>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
 
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className={`flex min-w-0 w-full max-w-full gap-2 ${self ? 'justify-end' : 'justify-start'}`}
         style={{
@@ -1051,10 +918,6 @@ const MessageBubble = memo(function MessageBubble({
         ) : (
           <div className="w-8 shrink-0" aria-hidden />
         )}
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           className={`flex min-w-0 max-w-[min(85%,100%)] flex-1 flex-col ${
             self ? 'items-end' : 'items-start'
@@ -1063,16 +926,8 @@ const MessageBubble = memo(function MessageBubble({
           {showName && !self ? (
             <div className="mb-0.5 max-w-full truncate px-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
               {displayName}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           ) : null}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div className="flex min-w-0 max-w-full items-end gap-1">
             {self && !isDeleting ? (
               <MessageSideActions
@@ -1131,7 +986,7 @@ const MessageBubble = memo(function MessageBubble({
                   : { filter: 'none' }),
               }}
               transition={BUBBLE_SHAPE_SPRING}
-              style={dimmed ? { opacity: 0.7 } : undefined}
+              style={(dimmed ? { opacity: 0.7 } : undefined) as any}
             >
               {!collapsed ? (
                 <ReplyPreview
@@ -1144,20 +999,12 @@ const MessageBubble = memo(function MessageBubble({
                 <div className="mb-1 inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-300">
                   <Pin size={10} className="fill-current" />
                   고정됨
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
               ) : null}
               {collapsed ? (
                 <div className="mb-1 inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400">
                   <ChevronsDownUp size={10} />
                   접힘
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
               ) : null}
               {encryptedLocked ? (
@@ -1167,24 +1014,12 @@ const MessageBubble = memo(function MessageBubble({
                   } ${isDeleting ? 'select-none' : 'select-none'}`}
                 >
                   <IconLock size={14} className="shrink-0 opacity-70" />
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                   <span>{ENCRYPTED_MESSAGE_LABEL}</span>
                   {!collapsed && !msg.pendingSync ? (
                     <span className="text-[10px] text-gray-500 dark:text-gray-400">
                       · 클릭하여 잠금 해제
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'span' does not exist on type 'JSX.Intrin... Remove this comment to see the full error message
                     </span>
                   ) : null}
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
               ) : (
                 <ChatMessageBody
@@ -1222,10 +1057,6 @@ const MessageBubble = memo(function MessageBubble({
                 >
                   <ExternalLink size={10} />
                   노트 열기
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               ) : null}
               {!collapsed && msg.editedAt && !isDeleting ? (
@@ -1238,10 +1069,6 @@ const MessageBubble = memo(function MessageBubble({
                   }}
                 >
                   수정됨
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
               ) : null}
               {!collapsed
@@ -1277,10 +1104,6 @@ const MessageBubble = memo(function MessageBubble({
             ) : !self && isDeleting ? (
               deletingStatus
             ) : null}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
           <ChatMessageReactions
             reactions={msg.reactions}
@@ -1292,20 +1115,8 @@ const MessageBubble = memo(function MessageBubble({
             onPickerOpenChange={setReactionPickerOpen}
             onToggle={(reaction: any) => onToggleReaction?.(msg, reaction)}
           />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 
@@ -1364,82 +1175,49 @@ const MessageBubble = memo(function MessageBubble({
     </ContextMenu.Root>
   );
 });
-const ChatMessageList = forwardRef(function ChatMessageList(
+const ChatMessageList = forwardRef<any, any>(function ChatMessageList(
   {
-    // @ts-expect-error TS(2339) FIXME: Property 'messages' does not exist on type '{}'.
     messages,
-    // @ts-expect-error TS(2339) FIXME: Property 'ogStorage' does not exist on type '{}'.
     ogStorage,
-    // @ts-expect-error TS(2339) FIXME: Property 'timeZone' does not exist on type '{}'.
     timeZone,
-    // @ts-expect-error TS(2339) FIXME: Property 'highlightId' does not exist on type '{}'... Remove this comment to see the full error message
     highlightId,
-    // @ts-expect-error TS(2339) FIXME: Property 'editingMessageId' does not exist on type... Remove this comment to see the full error message
     editingMessageId = null,
-    // @ts-expect-error TS(2339) FIXME: Property 'onReachTop' does not exist on type '{}'.
     onReachTop,
     /** Silent multi-day older load for viewport fill (no loadingOlder UI). */
-    // @ts-expect-error TS(2339) FIXME: Property 'onFillOlder' does not exist on type '{}'... Remove this comment to see the full error message
     onFillOlder,
-    // @ts-expect-error TS(2339) FIXME: Property 'onReachBottom' does not exist on type '{... Remove this comment to see the full error message
     onReachBottom,
-    // @ts-expect-error TS(2339) FIXME: Property 'loadingOlder' does not exist on type '{}... Remove this comment to see the full error message
     loadingOlder = false,
-    // @ts-expect-error TS(2339) FIXME: Property 'loadingNewer' does not exist on type '{}... Remove this comment to see the full error message
     loadingNewer = false,
-    // @ts-expect-error TS(2339) FIXME: Property 'hasMore' does not exist on type '{}'.
     hasMore = false,
-    // @ts-expect-error TS(2339) FIXME: Property 'hasMoreNewer' does not exist on type '{}... Remove this comment to see the full error message
     hasMoreNewer = false,
-    // @ts-expect-error TS(2339) FIXME: Property 'onReply' does not exist on type '{}'.
     onReply,
-    // @ts-expect-error TS(2339) FIXME: Property 'onDelete' does not exist on type '{}'.
     onDelete,
-    // @ts-expect-error TS(2339) FIXME: Property 'onEdit' does not exist on type '{}'.
     onEdit,
-    // @ts-expect-error TS(2339) FIXME: Property 'onAddToNote' does not exist on type '{}'... Remove this comment to see the full error message
     onAddToNote,
-    // @ts-expect-error TS(2339) FIXME: Property 'onViewEditHistory' does not exist on typ... Remove this comment to see the full error message
     onViewEditHistory,
-    // @ts-expect-error TS(2339) FIXME: Property 'onTogglePin' does not exist on type '{}'... Remove this comment to see the full error message
     onTogglePin,
-    // @ts-expect-error TS(2339) FIXME: Property 'onToggleCollapse' does not exist on type... Remove this comment to see the full error message
     onToggleCollapse,
-    // @ts-expect-error TS(2339) FIXME: Property 'onToggleReaction' does not exist on type... Remove this comment to see the full error message
     onToggleReaction,
-    // @ts-expect-error TS(2339) FIXME: Property 'onOpenNote' does not exist on type '{}'.
     onOpenNote,
-    // @ts-expect-error TS(2339) FIXME: Property 'onOpenReplyTarget' does not exist on typ... Remove this comment to see the full error message
     onOpenReplyTarget,
-    // @ts-expect-error TS(2339) FIXME: Property 'onRequestDecrypt' does not exist on type... Remove this comment to see the full error message
     onRequestDecrypt,
     /** @type {Record<string, string>} */
-    // @ts-expect-error TS(2339) FIXME: Property 'decryptedById' does not exist on type '{... Remove this comment to see the full error message
     decryptedById = {},
-    // @ts-expect-error TS(2339) FIXME: Property 'emptyHint' does not exist on type '{}'.
     emptyHint,
-    // @ts-expect-error TS(2339) FIXME: Property 'getPresignedUrl' does not exist on type ... Remove this comment to see the full error message
     getPresignedUrl,
     /** @type {Map<string, string>|Record<string, string>|null} */
-    // @ts-expect-error TS(2339) FIXME: Property 'groupIconByName' does not exist on type ... Remove this comment to see the full error message
     groupIconByName = null,
     /** @type {Map<string, string>|Record<string, string>|null} */
-    // @ts-expect-error TS(2339) FIXME: Property 'groupLabelByKey' does not exist on type ... Remove this comment to see the full error message
     groupLabelByKey = null,
     /** @type {((path: string) => boolean) | null | undefined} */
-    // @ts-expect-error TS(2339) FIXME: Property 'noteExists' does not exist on type '{}'.
     noteExists,
     /** @type {((path: string) => boolean) | null | undefined} */
-    // @ts-expect-error TS(2339) FIXME: Property 'folderExists' does not exist on type '{}... Remove this comment to see the full error message
     folderExists,
     /** @type {((folderPath: string) => Array<{ path: string, name: string }>) | null | undefined} */
-    // @ts-expect-error TS(2339) FIXME: Property 'listFolderFiles' does not exist on type ... Remove this comment to see the full error message
     listFolderFiles,
     /** Kept for settings API; virtualized path never uses layout/popLayout. */
-    // @ts-expect-error TS(2339) FIXME: Property 'enableMessageLayoutAnim' does not exist ... Remove this comment to see the full error message
     enableMessageLayoutAnim: _enableMessageLayoutAnim = true,
     /** Bubble will-change + brightness press filter. */
-    // @ts-expect-error TS(2339) FIXME: Property 'enableBubblePressFx' does not exist on t... Remove this comment to see the full error message
     enableBubblePressFx = true,
   },
   ref,
@@ -1915,10 +1693,6 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             className="mx-auto w-full max-w-full px-3 py-1 text-center text-[10px] text-gray-400 md:max-w-[min(100%,50vw)]"
           >
             더 이상 없음
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         );
       }
@@ -1929,10 +1703,6 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             className="mx-auto w-full max-w-full px-3 py-16 text-center text-sm text-gray-400 md:max-w-[min(100%,50vw)]"
           >
             {emptyHint || '아직 채팅이 없습니다'}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         );
       }
@@ -2019,10 +1789,6 @@ const ChatMessageList = forwardRef(function ChatMessageList(
                 : groupLabelByKey?.[row.msg.replyGroup] || row.msg.replyGroup
             }
           />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       );
     },
@@ -2074,20 +1840,17 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     highlightIndex != null ? [highlightIndex] : undefined;
 
   return <>
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     <div
       ref={listHostRef}
       className="relative min-h-0 max-h-full flex-1 overflow-hidden"
     >
+      {/* VList row-union / keepMounted typing is loose after JS migrate */}
       <VList
-        ref={listRef}
+        ref={listRef as any}
         className="h-full max-h-full overscroll-contain"
-        data={rows}
+        data={rows as any}
         shift={shift}
-        keepMounted={keepMounted}
+        keepMounted={keepMounted as any}
         onScroll={handleScroll}
         style={{ overflowX: 'clip' }}
       >
@@ -2101,10 +1864,6 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             label={overlayDate.label}
             className="pointer-events-none shadow-sm"
           />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : null}
       {loadingOlder ? (
@@ -2114,10 +1873,6 @@ const ChatMessageList = forwardRef(function ChatMessageList(
           role="status"
         >
           <Loader2 size={16} className="animate-spin text-gray-400" />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : null}
       {loadingNewer ? (
@@ -2127,16 +1882,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
           role="status"
         >
           <Loader2 size={16} className="animate-spin text-gray-400" />
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
       ) : null}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
     <ChatMessageContextMenu
       open={Boolean(sheetMessage)}

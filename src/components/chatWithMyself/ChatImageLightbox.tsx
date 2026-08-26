@@ -17,10 +17,10 @@ import ChatImageBackgroundPicker, {
 import { useAppStatusBarInset } from '@/hooks/useAppStatusBarInset';
 import { normalizeCssHexColor } from '@/utils/cssColor';
 
-const ChatImageLightboxContext = createContext(null);
+const ChatImageLightboxContext = createContext<((url: any, options?: any) => void) | null>(null);
 
-const OVERLAY_TRANSITION = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
-const PANEL_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
+const OVERLAY_TRANSITION: any = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
+const PANEL_TRANSITION: any = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
 
 const CHECKERBOARD_STYLE = {
   backgroundColor: '#ffffff',
@@ -49,14 +49,13 @@ export function ChatImageLightbox({
   const visible = Boolean(open && src);
   const color = normalizeCssHexColor(backgroundColor);
   const statusBarInset = useAppStatusBarInset(visible);
-  const [frameEl, setFrameEl] = useState(null);
+  const [frameEl, setFrameEl] = useState<HTMLDivElement | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const stageStyle = { bottom: statusBarInset };
 
   useLayoutEffect(() => {
     if (!visible || !frameEl) return undefined;
     const update = () => {
-      // @ts-expect-error TS(2339) FIXME: Property 'clientWidth' does not exist on type 'nev... Remove this comment to see the full error message
       setFrameSize({ width: frameEl.clientWidth, height: frameEl.clientHeight });
     };
     update();
@@ -119,25 +118,13 @@ export function ChatImageLightbox({
                 <Dialog.Description className="sr-only">
                   이미지를 확대해 보는 화면입니다. Esc 또는 닫기로 종료할 수 있습니다.
                 </Dialog.Description>
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   className="absolute inset-0 cursor-zoom-out"
                   aria-label="닫기"
                   onClick={() => onClose?.()}
                 />
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div className="pointer-events-none relative z-[1] flex min-h-0 min-w-0 flex-1 p-4 sm:p-8">
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   <div
                     ref={setFrameEl}
                     className="flex min-h-0 min-w-0 flex-1 items-center justify-center"
@@ -158,34 +145,14 @@ export function ChatImageLightbox({
                           }}
                           draggable={false}
                         />
-                      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                       </div>
                     ) : null}
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div
                   className="pointer-events-auto relative z-[2] flex shrink-0 justify-center p-3 sm:p-4"
                   onClick={(e: any) => e.stopPropagation()}
                 >
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   <div className="max-w-full rounded-xl bg-black/70 px-3 py-2 shadow-lg backdrop-blur-sm">
                     <ChatImageBackgroundPicker
                       value={color}
@@ -194,31 +161,15 @@ export function ChatImageLightbox({
                       tone="dark"
                       label={backgroundLabel}
                     />
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   </div>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
                 <Dialog.Close asChild>
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   <button
                     type="button"
                     className="absolute right-3 top-3 z-[2] inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                     aria-label="닫기"
                   >
                     <X size={20} />
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 </Dialog.Close>
               </Motion.div>

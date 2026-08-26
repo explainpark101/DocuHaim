@@ -568,7 +568,6 @@ export async function appendChatMessage(
   }: any,
 ) {
   const result = await appendChatMessages(ctx, [
-    // @ts-expect-error TS(2322): Type 'any' is not assignable to type 'never'.
     { body, group, source, replyTo, replySnippet, replyGroup },
   ]);
   return {
@@ -583,7 +582,7 @@ export async function appendChatMessage(
  * @param {ChatStorageCtx} ctx
  * @param {Array<{ id?: string, body: string, group?: string, source?: string, replyTo?: string, replySnippet?: string, replyGroup?: string, at?: string, tz?: string }>} items
  */
-export async function appendChatMessages(ctx: any, items = []) {
+export async function appendChatMessages(ctx: any, items: any[] = []) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!list.length) return { msgs: [], dateStr: null, key: null };
 
@@ -592,32 +591,19 @@ export async function appendChatMessages(ctx: any, items = []) {
   const key = dayFileKey(dateStr);
   const baseMs = Date.now();
   const msgs = list.map((item, i) => ({
-    // @ts-expect-error TS(2339): Property 'id' does not exist on type 'never'.
     id: item.id || createMessageId(),
-    // @ts-expect-error TS(2339): Property 'at' does not exist on type 'never'.
     at: item.at || new Date(baseMs + i).toISOString(),
-    // @ts-expect-error TS(2339): Property 'tz' does not exist on type 'never'.
     tz: item.tz || tz,
-    // @ts-expect-error TS(2339): Property 'source' does not exist on type 'never'.
     source: item.source || 'compose',
-    // @ts-expect-error TS(2339): Property 'group' does not exist on type 'never'.
     group: item.group || SELF_GROUP,
-    // @ts-expect-error TS(2339): Property 'body' does not exist on type 'never'.
     body: String(item.body ?? ''),
-    // @ts-expect-error TS(2339): Property 'markdown' does not exist on type 'never'... Remove this comment to see the full error message
     markdown: item.markdown === true || item.markdown === '1' || item.markdown === 'true',
     encrypted:
-      // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type 'never... Remove this comment to see the full error message
       item.encrypted === true ||
-      // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type 'never... Remove this comment to see the full error message
       item.encrypted === '1' ||
-      // @ts-expect-error TS(2339): Property 'encrypted' does not exist on type 'never... Remove this comment to see the full error message
       item.encrypted === 'true',
-    // @ts-expect-error TS(2339): Property 'replyTo' does not exist on type 'never'.
     replyTo: item.replyTo || '',
-    // @ts-expect-error TS(2339): Property 'replySnippet' does not exist on type 'ne... Remove this comment to see the full error message
     replySnippet: item.replySnippet || '',
-    // @ts-expect-error TS(2339): Property 'replyGroup' does not exist on type 'neve... Remove this comment to see the full error message
     replyGroup: item.replyGroup || '',
     dateStr,
   }));

@@ -16,7 +16,7 @@ export default function ChatWikiImage({
   const parsed = parseWikiImageInner(path) || { path, background: null };
   const storagePath = parsed.path || path;
   const displayBg = normalizeCssHexColor(background ?? parsed.background);
-  const [url, setUrl] = useState(null);
+  const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const openChatImage = useChatImageLightbox();
 
@@ -47,10 +47,6 @@ export default function ChatWikiImage({
     return (
       <div className="mt-1 rounded border border-dashed border-gray-300 px-2 py-1 text-[11px] text-gray-400 dark:border-odp-borderSoft">
         이미지 로드 실패: {storagePath}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -65,25 +61,20 @@ export default function ChatWikiImage({
     <button
       type="button"
       className="mt-1 block max-w-full overflow-hidden rounded-md text-left"
-      style={displayBg ? { backgroundColor: displayBg } : undefined}
+      style={(displayBg ? { backgroundColor: displayBg } : undefined) as any}
       onClick={(e: any) => {
         e.stopPropagation();
-        // @ts-expect-error TS(2349) FIXME: This expression is not callable.
         openChatImage?.(url, { alt: storagePath || '', backgroundColor: displayBg });
       }}
       aria-label="이미지 크게 보기"
     >
       <ChatImageFade
-        src={url}
+        src={url || ''}
         alt=""
         className="max-h-64 max-w-full rounded-md object-contain"
-        style={displayBg ? { backgroundColor: displayBg } : undefined}
+        style={(displayBg ? { backgroundColor: displayBg } : undefined) as any}
         loading="lazy"
       />
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
     </button>
   );
 }

@@ -84,10 +84,6 @@ export default function ChatLinkedText({
         title={firstLine || undefined}
       >
         {display}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
     );
   }
@@ -172,10 +168,6 @@ export default function ChatLinkedText({
               title={part.label ? href : undefined}
             >
               {label}
-            // @ts-expect-error TS(2339): Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'a' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </a>
           );
         }
@@ -202,10 +194,6 @@ export default function ChatLinkedText({
         }
         return <span key={`t-${i}`}>{part.value}</span>;
       })}
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 }

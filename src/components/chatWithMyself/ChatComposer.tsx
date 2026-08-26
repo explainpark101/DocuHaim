@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { ComposerImageQueueItem } from '@/utils/chatWithMyself/messageTypes';
 import { Check, Paperclip, Pencil, Send, X, FileText, Folder } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { Compartment, StateEffect } from '@codemirror/state';
@@ -171,61 +172,38 @@ function makeQueueId() {
  * }} ChatComposerHandle
  */
 
-const ChatComposer = forwardRef(function ChatComposer(
+const ChatComposer = forwardRef<any, any>(function ChatComposer(
   {
-    // @ts-expect-error TS(2339) FIXME: Property 'groups' does not exist on type '{}'.
     groups = [],
-    // @ts-expect-error TS(2339) FIXME: Property 'selectedGroup' does not exist on type '{... Remove this comment to see the full error message
     selectedGroup,
-    // @ts-expect-error TS(2339) FIXME: Property 'onSelectedGroupChange' does not exist on... Remove this comment to see the full error message
     onSelectedGroupChange,
-    // @ts-expect-error TS(2339) FIXME: Property 'onAddGroup' does not exist on type '{}'.
     onAddGroup,
-    // @ts-expect-error TS(2339) FIXME: Property 'onSend' does not exist on type '{}'.
     onSend,
-    // @ts-expect-error TS(2339) FIXME: Property '_sending' does not exist on type '{}'.
+    // @ts-expect-error TS(6133) FIXME: '_sending' is declared but its value is never read... Remove this comment to see the full error message
     _sending = false,
-    // @ts-expect-error TS(2339) FIXME: Property 'theme' does not exist on type '{}'.
     theme,
-    // @ts-expect-error TS(2339) FIXME: Property 'replyTo' does not exist on type '{}'.
     replyTo = null,
-    // @ts-expect-error TS(2339) FIXME: Property 'onClearReply' does not exist on type '{}... Remove this comment to see the full error message
     onClearReply,
-    // @ts-expect-error TS(2339) FIXME: Property 'editTarget' does not exist on type '{}'.
     editTarget = null,
-    // @ts-expect-error TS(2339) FIXME: Property 'onClearEdit' does not exist on type '{}'... Remove this comment to see the full error message
     onClearEdit,
-    // @ts-expect-error TS(2339) FIXME: Property 'onSaveEdit' does not exist on type '{}'.
     onSaveEdit,
-    // @ts-expect-error TS(2339) FIXME: Property 'ogStorage' does not exist on type '{}'.
     ogStorage = null,
-    // @ts-expect-error TS(2339) FIXME: Property 'timeZone' does not exist on type '{}'.
     timeZone,
-    // @ts-expect-error TS(2339) FIXME: Property 'getPresignedUrl' does not exist on type ... Remove this comment to see the full error message
     getPresignedUrl,
     /** When true, outer bar has no bg (parent paints full-bleed). */
-    // @ts-expect-error TS(2339) FIXME: Property 'bare' does not exist on type '{}'.
     bare = false,
-    // @ts-expect-error TS(2339) FIXME: Property 'showToolbar' does not exist on type '{}'... Remove this comment to see the full error message
     showToolbar = true,
-    // @ts-expect-error TS(2339) FIXME: Property 'showLineNumbers' does not exist on type ... Remove this comment to see the full error message
     showLineNumbers = false,
     /** Prefer native textarea over MdEditor/CodeMirror (perf). */
-    // @ts-expect-error TS(2339) FIXME: Property 'lightweight' does not exist on type '{}'... Remove this comment to see the full error message
     lightweight = false,
     /** Share-target (or similar) seed: replace compose body once consumed. */
-    // @ts-expect-error TS(2339) FIXME: Property 'seedBody' does not exist on type '{}'.
     seedBody = null,
-    // @ts-expect-error TS(2339) FIXME: Property 'onSeedConsumed' does not exist on type '... Remove this comment to see the full error message
     onSeedConsumed,
     /** Fill parent height (resizable dock); editor expands to remaining space. */
-    // @ts-expect-error TS(2339) FIXME: Property 'fillParent' does not exist on type '{}'.
     fillParent = false,
     /** Storage-backend scope so drafts never cross S3 / Local / WebDAV. */
-    // @ts-expect-error TS(2339) FIXME: Property 'draftScope' does not exist on type '{}'.
     draftScope = '',
     /** Focus the message input once when the chat composer becomes ready. */
-    // @ts-expect-error TS(2339) FIXME: Property 'autoFocusOnMount' does not exist on type... Remove this comment to see the full error message
     autoFocusOnMount = true,
   },
   ref,
@@ -239,15 +217,15 @@ const ChatComposer = forwardRef(function ChatComposer(
   const [contentMaxH, setContentMaxH] = useState(() =>
     getComposerContentMaxH({ editing: Boolean(editTarget) }),
   );
-  const [imageQueue, setImageQueue] = useState([]);
+  const [imageQueue, setImageQueue] = useState<ComposerImageQueueItem[]>([]);
   const [draftReady, setDraftReady] = useState(false);
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
   const [encryptPromptOpen, setEncryptPromptOpen] = useState(false);
   /** Markdown messages prefer MdEditor so toolbar formatting matches render. */
   const useLightweightEditor = lightweight && !markdownEnabled;
   const openChatImage = useChatImageLightbox();
-  const wrapRef = useRef(null);
-  const textareaRef = useRef(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef(null);
   const inlineGroupInputRef = useRef(null);
   const valueRef = useRef(value);
@@ -261,7 +239,7 @@ const ChatComposer = forwardRef(function ChatComposer(
   const prevEditTargetRef = useRef(editTarget);
   const didAutofocusOnMountRef = useRef(false);
   const removedExistingPathsRef = useRef([]);
-  const lineNumbersCompartmentRef = useRef(null);
+  const lineNumbersCompartmentRef = useRef<Compartment | null>(null);
   const lineNumbersViewsRef = useRef(new WeakSet());
   const appTheme = useDocumentTheme();
   const resolvedTheme = theme || appTheme;
@@ -419,9 +397,7 @@ const ChatComposer = forwardRef(function ChatComposer(
     setMarkdownEnabled(isChatMessageMarkdown(editTarget));
     setImageQueue((prev) => {
       prev.forEach((item) => {
-        // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
         if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
-          // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
           URL.revokeObjectURL(item.previewUrl);
         }
       });
@@ -436,9 +412,7 @@ const ChatComposer = forwardRef(function ChatComposer(
         try {
           const url = await resolveWikiImageUrl(item.path, resolver);
           if (cancelled || !url) continue;
-          // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
           setImageQueue((prev) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
             prev.map((p) => (p.id === item.id ? { ...p, previewUrl: url } : p)),
           );
         } catch {
@@ -460,9 +434,8 @@ const ChatComposer = forwardRef(function ChatComposer(
     if (!root) return undefined;
 
     const focusComposer = () => {
-      // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       const cmEl = root.querySelector('.cm-editor');
-      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+      const view = cmEl ? EditorView.findFromDOM(cmEl as HTMLElement) : null;
       if (view) view.focus();
       // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       else root.querySelector('.cm-content')?.focus?.();
@@ -494,9 +467,7 @@ const ChatComposer = forwardRef(function ChatComposer(
       markdownUserOffRef.current = false;
       setImageQueue((prevQueue) => {
         prevQueue.forEach((item) => {
-          // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
           if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
-            // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
             URL.revokeObjectURL(item.previewUrl);
           }
         });
@@ -517,7 +488,6 @@ const ChatComposer = forwardRef(function ChatComposer(
   useEffect(() => {
     return () => {
       imageQueueRef.current.forEach((item) => {
-        // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
         if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
       });
     };
@@ -527,7 +497,6 @@ const ChatComposer = forwardRef(function ChatComposer(
   useEffect(() => {
     if (!draftReady || editTarget) return undefined;
     const t = window.setTimeout(() => {
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       const imageIds = imageQueue.map((item) => item.id);
       writeComposerDraftMeta(draftScope, {
         body: value,
@@ -569,7 +538,6 @@ const ChatComposer = forwardRef(function ChatComposer(
               at: replyTo.at,
             }
           : null,
-        // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
         imageIds: imageQueueRef.current.map((item) => item.id),
         imageBackgrounds: imageBackgroundsFromQueue(imageQueueRef.current),
         markdown: markdownEnabledRef.current,
@@ -642,14 +610,12 @@ const ChatComposer = forwardRef(function ChatComposer(
 
   const focusComposerInput = useCallback(() => {
     if (useLightweightEditor) {
-      // @ts-expect-error TS(2339) FIXME: Property 'focus' does not exist on type 'never'.
       textareaRef.current?.focus?.();
     } else {
       const root = wrapRef.current;
       if (!root) return;
-      // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       const cmEl = root.querySelector('.cm-editor');
-      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+      const view = cmEl ? EditorView.findFromDOM(cmEl as HTMLElement) : null;
       if (view) {
         view.focus();
       } else {
@@ -727,22 +693,21 @@ const ChatComposer = forwardRef(function ChatComposer(
 
     const install = () => {
       if (cancelled) return;
-      // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       const cmEl = root.querySelector('.cm-editor');
       if (!cmEl) return;
-      const view = EditorView.findFromDOM(cmEl);
+      const view = EditorView.findFromDOM(cmEl as HTMLElement);
       if (!view) return;
       if (lineNumbersViewsRef.current.has(view)) return;
       // Global MarkdownEditor config may already provide lineNumbers.
-      // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
       if (root.querySelector('.cm-lineNumbers')) {
         lineNumbersViewsRef.current.add(view);
         return;
       }
+      const compartment = lineNumbersCompartmentRef.current;
+      if (!compartment) return;
       view.dispatch({
         effects: StateEffect.appendConfig.of(
-          // @ts-expect-error TS(2531) FIXME: Object is possibly 'null'.
-          lineNumbersCompartmentRef.current.of(lineNumbers()),
+          compartment.of(lineNumbers()),
         ),
       });
       lineNumbersViewsRef.current.add(view);
@@ -762,7 +727,6 @@ const ChatComposer = forwardRef(function ChatComposer(
   useEffect(() => {
     const root = wrapRef.current;
     if (!root || typeof ResizeObserver === 'undefined') return undefined;
-    // @ts-expect-error TS(2339) FIXME: Property 'querySelector' does not exist on type 'n... Remove this comment to see the full error message
     const content = root.querySelector('.cm-content');
     if (!content) {
       const t = window.setTimeout(syncEditorHeight, 50);
@@ -776,9 +740,7 @@ const ChatComposer = forwardRef(function ChatComposer(
   const clearImageQueue = useCallback(() => {
     setImageQueue((prev) => {
       prev.forEach((item) => {
-        // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
         if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
-          // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
           URL.revokeObjectURL(item.previewUrl);
         }
       });
@@ -801,7 +763,6 @@ const ChatComposer = forwardRef(function ChatComposer(
       });
     }
     if (!accepted.length) return;
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setImageQueue((prev) => [...prev, ...accepted]);
   }, []);
 
@@ -830,13 +791,10 @@ const ChatComposer = forwardRef(function ChatComposer(
       });
     }
     if (!accepted.length) return;
-    // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
     setImageQueue((prev) => {
       const seen = new Set(
         prev
-          // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
           .filter((p) => (p.kind === 'note' || p.kind === 'folder') && p.path)
-          // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
           .map((p) => `${p.kind}:${p.path}`),
       );
       const next = accepted.filter((a: any) => !seen.has(`${a.kind}:${a.path}`));
@@ -855,31 +813,24 @@ const ChatComposer = forwardRef(function ChatComposer(
 
   const removeQueuedImage = useCallback((id: any) => {
     setImageQueue((prev) => {
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       const target = prev.find((p) => p.id === id);
       // Only chat-uploaded image/file keys are safe to delete from storage.
       // Note shares are references to existing notes — do not delete them.
       if (
-        // @ts-expect-error TS(2339) FIXME: Property 'existing' does not exist on type 'never'... Remove this comment to see the full error message
         target?.existing &&
-        // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
         target.path &&
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         (target.kind === 'image' || target.kind === 'file')
       ) {
         removedExistingPathsRef.current = [
-          // @ts-expect-error TS(2322) FIXME: Type 'any' is not assignable to type 'never'.
+          // @ts-expect-error TS(2322) FIXME: Type 'string' is not assignable to type 'never'.
           ...removedExistingPathsRef.current,
-          // @ts-expect-error TS(2322) FIXME: Type 'any' is not assignable to type 'never'.
+          // @ts-expect-error TS(2322) FIXME: Type 'string' is not assignable to type 'never'.
           target.path,
         ];
       }
-      // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
       if (target?.previewUrl && target.previewUrl.startsWith('blob:')) {
-        // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
         URL.revokeObjectURL(target.previewUrl);
       }
-      // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
       return prev.filter((p) => p.id !== id);
     });
   }, []);
@@ -893,33 +844,23 @@ const ChatComposer = forwardRef(function ChatComposer(
     const markdown = Boolean(markdownEnabledRef.current);
     if (!body && queued.length === 0) return;
     const newAttachments = queued
-      // @ts-expect-error TS(2339) FIXME: Property 'file' does not exist on type 'never'.
       .filter((q) => q.file)
       .map((q) => ({
-        // @ts-expect-error TS(2339) FIXME: Property 'file' does not exist on type 'never'.
         file: q.file,
-        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
         background: q.kind === 'image' ? q.background || null : null,
       }));
     const stagedShareMarkdown = chatAttachmentsToMarkdown(
       queued
         .filter(
           (q) =>
-            // @ts-expect-error TS(2339) FIXME: Property 'file' does not exist on type 'never'.
             !q.file &&
-            // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
             q.path &&
-            // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
             (q.kind === 'note' || q.kind === 'folder') &&
-            // @ts-expect-error TS(2339) FIXME: Property 'existing' does not exist on type 'never'... Remove this comment to see the full error message
             !q.existing,
         )
         .map((q) => ({
-          // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
           kind: q.kind,
-          // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
           path: q.path,
-          // @ts-expect-error TS(2339) FIXME: Property 'name' does not exist on type 'never'.
           name: q.name,
           size: null,
         })),
@@ -927,18 +868,12 @@ const ChatComposer = forwardRef(function ChatComposer(
     if (editTarget) {
       const existingMarkdown = chatAttachmentsToMarkdown(
         queued
-          // @ts-expect-error TS(2339) FIXME: Property 'existing' does not exist on type 'never'... Remove this comment to see the full error message
           .filter((q) => q.existing && q.path)
           .map((q) => ({
-            // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
             kind: q.kind,
-            // @ts-expect-error TS(2339) FIXME: Property 'path' does not exist on type 'never'.
             path: q.path,
-            // @ts-expect-error TS(2339) FIXME: Property 'name' does not exist on type 'never'.
             name: q.name,
-            // @ts-expect-error TS(2339) FIXME: Property 'size' does not exist on type 'never'.
             size: q.size,
-            // @ts-expect-error TS(2339) FIXME: Property 'background' does not exist on type 'neve... Remove this comment to see the full error message
             background: q.background || null,
           })),
       );
@@ -1000,7 +935,6 @@ const ChatComposer = forwardRef(function ChatComposer(
     if (!el) return undefined;
     const onKeyDown = (e: any) => {
       if (e.isComposing) return;
-      // @ts-expect-error TS(2339) FIXME: Property 'contains' does not exist on type 'never'... Remove this comment to see the full error message
       if (!el.contains(e.target)) return;
 
       // Ctrl+M toggles Markdown (Ctrl on Mac too — not Cmd).
@@ -1089,9 +1023,7 @@ const ChatComposer = forwardRef(function ChatComposer(
       e.stopPropagation();
       doSend();
     };
-    // @ts-expect-error TS(2339) FIXME: Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     el.addEventListener('keydown', onKeyDown, true);
-    // @ts-expect-error TS(2339) FIXME: Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => el.removeEventListener('keydown', onKeyDown, true);
   }, [
     doSend,
@@ -1114,9 +1046,7 @@ const ChatComposer = forwardRef(function ChatComposer(
       e.stopPropagation();
       enqueueFiles(items);
     };
-    // @ts-expect-error TS(2339) FIXME: Property 'addEventListener' does not exist on type... Remove this comment to see the full error message
     el.addEventListener('paste', onPaste, true);
-    // @ts-expect-error TS(2339) FIXME: Property 'removeEventListener' does not exist on t... Remove this comment to see the full error message
     return () => el.removeEventListener('paste', onPaste, true);
   }, [enqueueFiles]);
 
@@ -1185,10 +1115,6 @@ const ChatComposer = forwardRef(function ChatComposer(
             : `shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
       }
     >
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       <div
         className={
           fillParent
@@ -1200,42 +1126,14 @@ const ChatComposer = forwardRef(function ChatComposer(
       >        {editTarget ? (
           <div className="mb-1 flex items-start gap-2 rounded-md border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 px-2 py-1 dark:border-amber-800/60 dark:border-l-amber-400 dark:bg-amber-950/40">
             <Pencil size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="min-w-0 flex-1">
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                 메시지 수정 중
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="truncate text-[10px] text-amber-700/80 dark:text-amber-300/80">
                 {(editTarget.body || '').replace(/\s+/g, ' ').slice(0, 80) || '(빈 메시지)'}
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => {
@@ -1250,52 +1148,20 @@ const ChatComposer = forwardRef(function ChatComposer(
               aria-label="수정 취소"
             >
               <X size={14} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
         {replyTo && !editTarget ? (
           <div className="mb-1 min-w-0 max-w-full overflow-hidden rounded-md border border-blue-200 border-l-4 border-l-blue-500 bg-blue-100 px-2 py-1 shadow-sm dark:border-blue-800/60 dark:border-l-blue-400 dark:bg-blue-950 dark:shadow-none">
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div className="flex min-w-0 items-start gap-2">
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="min-w-0 flex-1 overflow-hidden">
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 <div className="truncate text-[11px] font-semibold text-blue-700 dark:text-blue-300">
                   {resolveGroupLabel(groups, replyTo.group || SELF_GROUP)} 에게 답장
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
                 {replyWhen ? (
                   <div className="truncate text-[10px] text-gray-500 dark:text-gray-400">{replyWhen}</div>
                 ) : null}
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               <button
                 type="button"
                 onClick={onClearReply}
@@ -1303,15 +1169,7 @@ const ChatComposer = forwardRef(function ChatComposer(
                 aria-label="답장 취소"
               >
                 <X size={14} />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
             <ChatLinkedText
               text={replyTo.body || replyTo.snippet || ''}
@@ -1321,41 +1179,25 @@ const ChatComposer = forwardRef(function ChatComposer(
             {replyUrls.length > 0 ? (
               <div className="mt-1 space-y-1">
                 {replyUrls.map((u: any) => <ChatOgCard key={u} url={u} ogStorage={ogStorage} compact />)}
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             ) : null}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
 
         {imageQueue.length > 0 ? (
           <div className="mb-1 flex flex-wrap gap-2">
             {imageQueue.map((item) =>
-              // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
               item.kind === 'file' || item.kind === 'note' || item.kind === 'folder' ? (
                 <div
-                  // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                   key={item.id}
                   className={`relative flex max-w-[11rem] items-center gap-2 rounded-md border px-2 py-1.5 ${
-                    // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                     item.kind === 'note'
                       ? 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-800/50 dark:bg-emerald-950/40'
-                      // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                       : item.kind === 'folder'
                         ? 'border-amber-200 bg-amber-50/80 dark:border-amber-800/50 dark:bg-amber-950/40'
                         : 'border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bg/50'
                   }`}
                 >
-                  // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
-                  // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
-                  // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
-                  // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                   {item.kind === 'folder' ? (
                     <Folder
                       size={16}
@@ -1365,119 +1207,56 @@ const ChatComposer = forwardRef(function ChatComposer(
                     <FileText
                       size={16}
                       className={`shrink-0 ${
-                        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                         item.kind === 'note'
                           ? 'text-emerald-600 dark:text-emerald-300'
                           : 'text-blue-600 dark:text-blue-300'
                       }`}
                     />
                   )}
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   <div className="min-w-0 flex-1">
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                     <div className="truncate text-[11px] font-medium text-gray-800 dark:text-odp-fg">
-                      // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-                      // @ts-expect-error TS(2339) FIXME: Property 'name' does not exist on type 'never'.
-                      // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-                      // @ts-expect-error TS(2339) FIXME: Property 'name' does not exist on type 'never'.
                       {item.name ||
-                        // @ts-expect-error TS(2339) FIXME: Property 'file' does not exist on type 'never'.
                         item.file?.name ||
-                        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                         (item.kind === 'folder'
                           ? 'folder'
-                          // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                           : item.kind === 'note'
                             ? 'note'
                             : 'file')}
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                     </div>
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                     <div className="text-[10px] text-gray-400">
-                      // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
-                      // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
-                      // @ts-expect-error TS(2339): Property 'kind' does not exist on type 'never'.
-                      // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                       {item.kind === 'note'
                         ? '노트'
-                        // @ts-expect-error TS(2339) FIXME: Property 'kind' does not exist on type 'never'.
                         : item.kind === 'folder'
                           ? '폴더'
-                          // @ts-expect-error TS(2339) FIXME: Property 'size' does not exist on type 'never'.
                           : formatChatAttachmentSize(item.size ?? item.file?.size)}
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                     </div>
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                   </div>
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   <button
                     type="button"
-                    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                     onClick={() => removeQueuedImage(item.id)}
                     className="rounded-full p-0.5 text-gray-500 hover:bg-black/10 dark:hover:bg-white/10"
                     aria-label="첨부 제거"
                   >
                     <X size={12} />
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
               ) : (
                 <div
-                  // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                   key={item.id}
                   className="relative h-16 w-16 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft"
-                  // @ts-expect-error TS(2339) FIXME: Property 'background' does not exist on type 'neve... Remove this comment to see the full error message
-                  style={item.background ? { backgroundColor: item.background } : undefined}
+                  style={(item.background ? { backgroundColor: item.background } : undefined) as any}
                 >
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   <button
                     type="button"
                     className="h-full w-full"
                     onClick={() => {
-                      // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
                       if (!item.previewUrl) return;
-                      // @ts-expect-error TS(2349) FIXME: This expression is not callable.
                       openChatImage?.(item.previewUrl, {
-                        // @ts-expect-error TS(2339) FIXME: Property 'name' does not exist on type 'never'.
                         alt: item.name || item.file?.name || '첨부 이미지',
-                        // @ts-expect-error TS(2339) FIXME: Property 'background' does not exist on type 'neve... Remove this comment to see the full error message
                         backgroundColor: item.background || null,
                         onBackgroundColorChange: (next: any) => {
-                          // @ts-expect-error TS(2345) FIXME: Argument of type '(prev: never[]) => any[]' is not... Remove this comment to see the full error message
                           setImageQueue((prev) =>
                             prev.map((p) =>
-                              // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                               p.id === item.id ? { ...p, background: next || null } : p,
                             ),
                           );
@@ -1486,62 +1265,31 @@ const ChatComposer = forwardRef(function ChatComposer(
                     }}
                     aria-label="이미지 배경색 설정"
                   >
-                    // @ts-expect-error TS(2339): Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
                     {item.previewUrl ? (
                       <ChatImageFade
-                        // @ts-expect-error TS(2339) FIXME: Property 'previewUrl' does not exist on type 'neve... Remove this comment to see the full error message
                         src={item.previewUrl}
                         alt=""
                         className="h-full w-full object-cover"
-                        // @ts-expect-error TS(2339) FIXME: Property 'background' does not exist on type 'neve... Remove this comment to see the full error message
-                        style={item.background ? { backgroundColor: item.background } : undefined}
+                        style={(item.background ? { backgroundColor: item.background } : undefined) as any}
                       />
                     ) : (
                       <div className="h-full w-full animate-pulse bg-black/10 dark:bg-white/10" />
                     )}
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   <button
                     type="button"
-                    // @ts-expect-error TS(2339) FIXME: Property 'id' does not exist on type 'never'.
                     onClick={() => removeQueuedImage(item.id)}
                     className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white"
                     aria-label="첨부 제거"
                   >
                     <X size={12} />
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                 </div>
               ),
             )}
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
 
-        // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
         <input
           ref={fileInputRef}
           type="file"
@@ -1553,10 +1301,6 @@ const ChatComposer = forwardRef(function ChatComposer(
           }}
         />
 
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         <div
           className={
             showToolbar
@@ -1570,15 +1314,7 @@ const ChatComposer = forwardRef(function ChatComposer(
         >
           {showToolbar ? (
             <>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex items-center gap-2">
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 <button
                   type="button"
                   // @ts-expect-error TS(2339) FIXME: Property 'click' does not exist on type 'never'.
@@ -1588,20 +1324,8 @@ const ChatComposer = forwardRef(function ChatComposer(
                   aria-label="파일 첨부"
                 >
                   <Paperclip size={18} />
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                 </button>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               <div className="flex min-w-0 items-center gap-1.5">
                 <ChatSelect
                   id="chat-group-select"
@@ -1616,10 +1340,6 @@ const ChatComposer = forwardRef(function ChatComposer(
                 />
                 {inlineAddOpen ? (
                   <>
-                    // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                     <input
                       ref={inlineGroupInputRef}
                       type="text"
@@ -1639,10 +1359,6 @@ const ChatComposer = forwardRef(function ChatComposer(
                       className="w-[7.5rem] shrink-0 rounded-md border border-gray-300 bg-transparent px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 dark:border-odp-borderStrong dark:text-odp-fgStrong"
                       aria-label="그룹 직접 추가"
                     />
-                    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                     <button
                       type="button"
                       title="그룹 추가"
@@ -1653,19 +1369,11 @@ const ChatComposer = forwardRef(function ChatComposer(
                       className="inline-flex shrink-0 items-center justify-center rounded p-1 text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-900/30"
                     >
                       <Check size={16} />
-                    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                     </button>
                   </>
                 ) : (
                   markdownSwitch
                 )}
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
               </div>
             </>
           ) : (
@@ -1683,10 +1391,6 @@ const ChatComposer = forwardRef(function ChatComposer(
               />
               {inlineAddOpen ? (
                 <>
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'input' does not exist on type 'JSX.Intri... Remove this comment to see the full error message
                   <input
                     ref={inlineGroupInputRef}
                     type="text"
@@ -1706,10 +1410,6 @@ const ChatComposer = forwardRef(function ChatComposer(
                     className="min-w-0 flex-1 rounded-md border border-gray-300 bg-transparent px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40 dark:border-odp-borderStrong dark:text-odp-fgStrong"
                     aria-label="그룹 직접 추가"
                   />
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   <button
                     type="button"
                     title="그룹 추가"
@@ -1720,26 +1420,14 @@ const ChatComposer = forwardRef(function ChatComposer(
                     className="inline-flex shrink-0 items-center justify-center rounded p-1 text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-900/30"
                   >
                     <Check size={16} />
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 </>
               ) : (
                 markdownSwitch
               )}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
           )}
 
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           <div
             className={`flex items-start gap-2 ${
               showToolbar ? 'col-span-2' : ''
@@ -1755,16 +1443,8 @@ const ChatComposer = forwardRef(function ChatComposer(
                 aria-label="파일 첨부"
               >
                 <Paperclip size={18} />
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-              // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
               </button>
             ) : null}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             <div
               ref={wrapRef}
               className={`chat-composer-editor min-w-0 flex-1 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft ${
@@ -1810,10 +1490,6 @@ const ChatComposer = forwardRef(function ChatComposer(
                   fallback={
                     <div className="flex h-full items-center px-2.5 text-sm text-gray-400">
                       에디터 불러오는 중…
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-                    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
                     </div>
                   }
                 >
@@ -1829,18 +1505,10 @@ const ChatComposer = forwardRef(function ChatComposer(
                   />
                 </Suspense>
               )}
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
             </div>
             <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
               <Tooltip.Root>
                 <Tooltip.Trigger asChild>
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   <button
                     type="button"
                     onClick={() => doSend()}
@@ -1859,10 +1527,6 @@ const ChatComposer = forwardRef(function ChatComposer(
                     aria-label={editTarget ? '수정 완료' : '전송'}
                   >
                     {editTarget ? <Check size={18} /> : <Send size={18} />}
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-                  // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
                   </button>
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
@@ -1879,35 +1543,15 @@ const ChatComposer = forwardRef(function ChatComposer(
                 </Tooltip.Portal>
               </Tooltip.Root>
             </Tooltip.Provider>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-        // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
         </div>
         {!isMobile && showHelperText ? (
           <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
               {editTarget
                 ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈 · Ctrl+M 마크다운`
                 : `${sendModLabel} / Enter 전송 · Ctrl+Shift+Enter 암호화 · Shift+Enter 줄바꿈 · Ctrl+M 마크다운 · 첨부는 전송 시 업로드`}
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'p' does not exist on type 'JSX.Intrinsic... Remove this comment to see the full error message
             </p>
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             <button
               type="button"
               onClick={() => {
@@ -1918,21 +1562,9 @@ const ChatComposer = forwardRef(function ChatComposer(
               aria-label="단축키 안내 숨기기"
             >
               <X size={12} strokeWidth={2.25} />
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339): Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
-            // @ts-expect-error TS(2339) FIXME: Property 'button' does not exist on type 'JSX.Intr... Remove this comment to see the full error message
             </button>
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-          // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
           </div>
         ) : null}
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-      // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
       </div>
       <PromptModal
         isOpen={encryptPromptOpen}
@@ -1948,10 +1580,6 @@ const ChatComposer = forwardRef(function ChatComposer(
           void doSend({ encryptPassword: password });
         }}
       />
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339): Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
-    // @ts-expect-error TS(2339) FIXME: Property 'div' does not exist on type 'JSX.Intrins... Remove this comment to see the full error message
     </div>
   );
 });
