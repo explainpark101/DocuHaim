@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, createHashRouter, RouterProvider } from 'react-router'
 import '@/index.css'
@@ -57,16 +57,16 @@ function bailIfSpaShellOnDocsPath(): boolean {
 }
 
 function AppShell() {
-  return (
-    <ActivityIndicatorProvider>
-      <AlertModalProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </ToastProvider>
-      </AlertModalProvider>
-    </ActivityIndicatorProvider>
+  const providers = [
+    ActivityIndicatorProvider,
+    AlertModalProvider,
+    ToastProvider,
+    AuthProvider,
+  ]
+
+  return providers.reduceRight<ReactNode>(
+    (children, Provider) => <Provider>{children}</Provider>,
+    <App />,
   )
 }
 
