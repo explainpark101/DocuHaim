@@ -1,5 +1,5 @@
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
-import type { SessionOrigin } from '@/utils/sessionWorkspace';
+import type { SessionOrigin } from '@/utils/vault/sessionWorkspace';
 
 const MARKDOWN_MIME_TYPES = new Set([
   'text/markdown',

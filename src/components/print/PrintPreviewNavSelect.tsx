@@ -1,6 +1,6 @@
 import { Check, ChevronDown, GalleryHorizontalEnd, ScrollText } from 'lucide-react';
 import { Select } from 'radix-ui';
-import type { PrintPreviewNavigation } from '@/utils/printPreviewView';
+import type { PrintPreviewNavigation } from '@/utils/print/printPreviewView';
 
 type Props = {
   value: PrintPreviewNavigation;

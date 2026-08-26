@@ -16,11 +16,11 @@ import {
   TextSelect,
   Link2,
 } from 'lucide-react';
-import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
-} from '@/components/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';
 import {
   canOfferWebShare,
   ENCRYPTED_MESSAGE_LABEL,
@@ -30,7 +30,7 @@ import {
   isChatMessageEncrypted,
   shareChatMessage,
 } from '@/utils/chatWithMyself';
-import { copyText } from '@/utils/copyText';
+import { copyText } from '@/utils/shared/copyText';
 
 /** Briefly block selection after open (long-press residual selection). */
 const SELECT_NONE_MS = 200;

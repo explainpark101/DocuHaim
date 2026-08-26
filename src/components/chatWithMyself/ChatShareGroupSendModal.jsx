@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, FileIcon, Send, X } from 'lucide-react';
 import Button from '@/components/Button';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import {
   ADD_GROUP_VALUE,

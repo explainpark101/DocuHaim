@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { MdEditor, config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
-import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
+import MdEditorToolbarTooltips from '@/components/editor/MdEditorToolbarTooltips';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/style.css';
 

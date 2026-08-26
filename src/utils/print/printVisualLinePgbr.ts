@@ -1,4 +1,4 @@
-import { visibleInlineTextFromMarkdown } from '@/utils/printMarkdownVisibleText';
+import { visibleInlineTextFromMarkdown } from '@/utils/print/printMarkdownVisibleText';
 
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
 

@@ -21,9 +21,9 @@ import {
   type PrintPreviewNavigation,
   type PrintPreviewPageCount,
   type PrintSpreadPair,
-} from '@/utils/printPreviewView';
-import type { PrintPageSizeId } from '@/utils/printPageLayout';
-import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagePack';
+} from '@/utils/print/printPreviewView';
+import type { PrintPageSizeId } from '@/utils/print/printPageLayout';
+import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printPagePack';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 
 type Props = {

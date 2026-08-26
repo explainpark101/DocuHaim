@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useEditor } from 'novel';
-import TocResizeHandle from '@/components/TocResizeHandle';
+import TocResizeHandle from '@/components/print/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';

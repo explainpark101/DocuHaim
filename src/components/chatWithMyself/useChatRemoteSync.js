@@ -13,7 +13,7 @@ import {
   getChatSyncTabId,
   openChatSyncChannel,
 } from '@/utils/chatWithMyself/syncChannel.js';
-import { getStorageScopeId } from '@/utils/storageScope';
+import { getStorageScopeId } from '@/utils/vault/storageScope';
 
 const POLL_MS = 10_000;
 

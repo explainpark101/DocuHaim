@@ -9,7 +9,7 @@ export { FileSessionProvider } from '@/App/providers/FileSessionProvider';
 export { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 export { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 export { AppLogicProvider } from '@/App/providers/AppLogicProvider';
-export { useAppOrchestration } from '@/App/providers/useAppOrchestration';
+export { useAppLogicSharedState as useAppOrchestration } from '@/App/hooks/useAppLogicSharedState';
 export { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
 export { APP_LOGIC_PROVIDER_ORDER, APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 export { RecordingProvider } from '@/App/providers/RecordingProvider';

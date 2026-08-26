@@ -1,16 +1,16 @@
 import { ApiError, GoogleGenAI, type Model, type Part } from '@google/genai';
 
-import { DEFAULT_GEMINI_MODEL, loadLastUsedGeminiModel } from '@/utils/geminiModelSettings';
+import { DEFAULT_GEMINI_MODEL, loadLastUsedGeminiModel } from '@/utils/llm/geminiModelSettings';
 import {
   formatGeminiApiError,
   parseRetrySecondsFromGeminiError,
   sleep,
-} from '@/utils/geminiError';
-import { buildLlmTransformPrompt } from '@/utils/llmTransformPrompt';
+} from '@/utils/llm/geminiError';
+import { buildLlmTransformPrompt } from '@/utils/llm/llmTransformPrompt';
 import {
   ensureGeminiFetchShim,
   resolveGeminiHttpBaseUrl,
-} from '@/utils/geminiApiTransport';
+} from '@/utils/llm/geminiApiTransport';
 
 const MAX_RATE_LIMIT_RETRIES = 1;
 

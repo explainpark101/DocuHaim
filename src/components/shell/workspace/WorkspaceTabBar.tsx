@@ -41,7 +41,7 @@ import {
   tabDisplayTitle,
 } from '@/utils/workspaceTabs';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
-import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
 import { PRESSABLE_CARD_MENU_MS } from '@/components/chatWithMyself/usePressableCardMenu';
 
 type WorkspaceTabBarProps = {

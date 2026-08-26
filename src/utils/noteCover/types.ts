@@ -1,4 +1,4 @@
-import type { PrintPageSizeId } from '@/utils/printPageLayout';
+import type { PrintPageSizeId } from '@/utils/print/printPageLayout';
 
 export const NOTE_COVER_VERSION = 2 as const;
 

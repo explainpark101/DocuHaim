@@ -19,7 +19,7 @@ import {
   type NoteCoverWebfont,
 } from '@/utils/noteCover/types';
 import { ensureLayerTree } from '@/utils/noteCover/layerTree';
-import { isPrintPageSizeId, type PrintPageSizeId } from '@/utils/printPageLayout';
+import { isPrintPageSizeId, type PrintPageSizeId } from '@/utils/print/printPageLayout';
 import { syncNoteCoverWebfonts } from '@/utils/noteCover/webfonts';
 
 const COVER_COMMENT_RE =

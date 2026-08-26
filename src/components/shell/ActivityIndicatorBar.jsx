@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { Tooltip } from 'radix-ui';
 import { useActivityIndicator, ActivityTypes } from '@/contexts/ActivityIndicatorContext';
 import Button from '@/components/Button';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import {
   IconUpload,
   IconMic,

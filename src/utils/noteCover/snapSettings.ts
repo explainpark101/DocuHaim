@@ -7,7 +7,7 @@ import {
   COVER_SNAP_TOLERANCE_PX_DEFAULT,
   getCachedCoverSettings,
   patchCoverSettings,
-} from '@/utils/coverSettingsStore';
+} from '@/utils/noteCover/coverSettingsStore';
 
 export const COVER_CENTER_SNAP_TOLERANCE_DEFAULT = COVER_SNAP_TOLERANCE_PX_DEFAULT;
 export const COVER_OBJECT_SNAP_TOLERANCE_DEFAULT = COVER_SNAP_TOLERANCE_PX_DEFAULT;

@@ -7,7 +7,7 @@ import {
   minimizeDesktopWindow,
   toggleMaximizeDesktopWindow,
 } from '@/utils/tauriWindowControls';
-import { isTauriMacOS } from '@/utils/tauriPlatform';
+import { isTauriMacOS } from '@/utils/shared/tauriPlatform';
 
 const tooltipContentClass =
   'z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong';

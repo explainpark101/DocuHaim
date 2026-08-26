@@ -1,4 +1,4 @@
-import { decryptData, encryptData } from '@/utils/crypto';
+import { decryptData, encryptData } from '@/utils/shared/crypto';
 
 /** User-facing label when ciphertext is locked. */
 export const ENCRYPTED_MESSAGE_LABEL = '암호화된 메시지';

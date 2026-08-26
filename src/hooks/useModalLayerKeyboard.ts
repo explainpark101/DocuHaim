@@ -4,7 +4,7 @@ import {
   popModalLayer,
   pushModalLayer,
   type ModalLayerHandlers,
-} from '@/utils/modalLayerStack';
+} from '@/utils/shared/modalLayerStack';
 
 export type UseModalLayerKeyboardOptions = ModalLayerHandlers & {
   /** When false, this layer is not on the stack. */

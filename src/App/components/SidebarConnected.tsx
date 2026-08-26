@@ -4,7 +4,7 @@ import { useVault } from '@/App/hooks/useVault';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
-import { buildSessionTree } from '@/utils/sessionWorkspace';
+import { buildSessionTree } from '@/utils/vault/sessionWorkspace';
 
 /** Untyped Sidebar.jsx — accept wide props until Sidebar is typed. */
 const SidebarAny = Sidebar as any;

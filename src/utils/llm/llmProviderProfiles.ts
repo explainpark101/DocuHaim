@@ -1,8 +1,8 @@
-import { DEFAULT_GEMINI_MODEL, loadLastUsedGeminiModel } from '@/utils/geminiModelSettings';
+import { DEFAULT_GEMINI_MODEL, loadLastUsedGeminiModel } from '@/utils/llm/geminiModelSettings';
 import {
   loadLastUsedOpenAiCompatibleModel,
   normalizeOpenAiCompatibleBaseUrl,
-} from '@/utils/openaiCompatibleSettings';
+} from '@/utils/llm/openaiCompatibleSettings';
 
 export const LLM_PROVIDER_GEMINI = 'gemini';
 export const LLM_PROVIDER_OPENAI_COMPATIBLE = 'openai-compatible';

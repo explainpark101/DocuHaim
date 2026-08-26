@@ -5,8 +5,8 @@ import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useChatStorageCtx } from '@/components/chatWithMyself/ShareTargetGate';
-import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
-import { headObject } from '@/utils/s3Client';
+import { findFileNodeByPath, findNodeByPath } from '@/utils/vault/s3Tree';
+import { headObject } from '@/utils/vault/s3Client';
 import {
   CHAT_TAB_ID,
   SETTINGS_TAB_ID,
@@ -16,10 +16,10 @@ import {
 } from '@/utils/workspaceTabs';
 import { findFileTab } from '@/utils/workspaceTabs/appBridge';
 import { readMeta, sortGroupsKo } from '@/utils/chatWithMyself';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
-import { webdavHead } from '@/utils/webdavClient';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/vault/storageSettings';
+import { webdavHead } from '@/utils/vault/webdavClient';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { buildSessionTree } from '@/utils/sessionWorkspace';
+import { buildSessionTree } from '@/utils/vault/sessionWorkspace';
 
 /**
  * useAdvancedSearchTabsDomain: context-owned domain handlers.

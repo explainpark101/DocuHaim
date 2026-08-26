@@ -67,8 +67,8 @@ import { IconLock } from '@/components/icons';
 import {
   CHAT_MESSAGE_SCROLL_MARGIN,
 } from '@/utils/chatWithMyself/scrollToMessage';
-import { vibrateLongPressAction } from '@/utils/hapticFeedback';
-import { copyText, resolveAnchorHref } from '@/utils/copyText';
+import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
+import { copyText, resolveAnchorHref } from '@/utils/shared/copyText';
 
 /** Near-bottom threshold for stick-to-bottom (px). */
 const STICK_BOTTOM_PX = 80;

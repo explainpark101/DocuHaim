@@ -21,7 +21,7 @@ import {
 } from '@/utils/chatWithMyself/cropPadImage';
 import type { ImageCropUndoSnapshot } from '@/utils/imageCrop/imageCropUndoHistoryDb';
 
-const NoteImageCropperJsPanel = lazy(() => import('@/components/modals/NoteImageCropperJsPanel'));
+const NoteImageCropperJsPanel = lazy(() => import('@/components/shared/modals/NoteImageCropperJsPanel'));
 
 type CropEditorTab = 'easy' | 'editor';
 

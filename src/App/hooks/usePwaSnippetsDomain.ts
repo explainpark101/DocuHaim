@@ -10,8 +10,8 @@ import {
   checkAppBuildUpdate,
   checkServiceWorkerUpdate,
   getLocalAppBuildId,
-} from '@/utils/pwaUpdate';
-import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
+} from '@/utils/shared/pwaUpdate';
+import { getObjectBody, headObject, putObject } from '@/utils/vault/s3Client';
 import { createWebdavBackend } from '@/utils/storage';
 
 /** Owned setters/state passed from AppPwaSnippetsStateProvider (avoids circular import). */

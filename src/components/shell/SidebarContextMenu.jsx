@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
-} from '@/components/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';
 import {
   IconFilePlus,
   IconFolderPlus,

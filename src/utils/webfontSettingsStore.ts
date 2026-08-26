@@ -1,4 +1,4 @@
-import { deleteObject, getObjectBody, headObject, listObjectsV2, putObject } from '@/utils/s3Client';
+import { deleteObject, getObjectBody, headObject, listObjectsV2, putObject } from '@/utils/vault/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 
 const WEBFONTS_DIR = '.settings/webfonts';

@@ -3,7 +3,7 @@ import { Select } from 'radix-ui';
 import {
   PRINT_PAGE_SIZES,
   type PrintPageSizeId,
-} from '@/utils/printPageLayout';
+} from '@/utils/print/printPageLayout';
 
 type Props = {
   value: PrintPageSizeId;

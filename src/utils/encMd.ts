@@ -1,4 +1,4 @@
-import { decryptData, encryptData } from '@/utils/crypto';
+import { decryptData, encryptData } from '@/utils/shared/crypto';
 
 export type EncMdPayload = {
   ciphertext: string;

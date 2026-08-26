@@ -4,7 +4,7 @@ import {
   AdaptiveMenuItem,
   AdaptiveMenuSeparator,
   AdaptiveMenuSurfaceProvider,
-} from '@/components/contextMenu/AdaptiveContextMenu';
+} from '@/components/shared/contextMenu/AdaptiveContextMenu';
 import {
   AlignCenter,
   AlignCenterHorizontal,
@@ -40,7 +40,7 @@ import {
   chatMenuDangerItemClass,
   chatMenuItemClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
-import FontFamilyInput from '@/components/FontFamilyInput';
+import FontFamilyInput from '@/components/editor/FontFamilyInput';
 import NumberStepControls from '@/components/NumberStepControls';
 import SliderWithScrubInput from '@/components/SliderWithScrubInput';
 import {

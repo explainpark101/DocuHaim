@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { IconDownload, IconFolder, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
-import { loadLastLocalFolderName } from '@/utils/localFolderStore';
+import { loadLastLocalFolderName } from '@/utils/vault/localFolderStore';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
-import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
+import { isWebAuthnAvailableForSave } from '@/utils/shared/webauthn';
 import {
   loadWikiImageCacheMode,
   saveWikiImageCacheMode,
@@ -48,7 +48,7 @@ import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
-} from '@/utils/storageSettings';
+} from '@/utils/vault/storageSettings';
 import {
   DEFAULT_TREE_HOVER_EXPAND,
   convertTreeHoverExpandValue,
@@ -61,8 +61,8 @@ import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLo
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
-} from '@/utils/llmProviderProfiles';
-import { getLocalAppBuildId } from '@/utils/pwaUpdate';
+} from '@/utils/llm/llmProviderProfiles';
+import { getLocalAppBuildId } from '@/utils/shared/pwaUpdate';
 import { RadioGroup } from 'radix-ui';
 import {
   advancedSearchEngine,
@@ -70,9 +70,9 @@ import {
 } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import { isTauriAndroid } from '@/utils/tauriPlatform';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
+import { isTauriAndroid } from '@/utils/shared/tauriPlatform';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 
 export default function SettingsPage({
   s3Creds,

@@ -1,5 +1,5 @@
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
-import { putObjectWithProgress } from '@/utils/s3Client';
+import { putObjectWithProgress } from '@/utils/vault/s3Client';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
 
 /**

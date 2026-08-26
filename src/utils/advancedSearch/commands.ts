@@ -38,7 +38,7 @@ import {
   hasAppLockAction,
   type AppLockActionId,
 } from '@/utils/advancedSearch/appLockActions';
-import { hasDesktopAppEntryLock } from '@/utils/desktopAppEntryLock';
+import { hasDesktopAppEntryLock } from '@/utils/shared/desktopAppEntryLock';
 import { scoreFuzzyFields, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
 

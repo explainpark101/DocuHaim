@@ -19,14 +19,14 @@ import {
 import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { isEncMdPath } from '@/utils/encMd';
-import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
-import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
+import { getFilePathBaseForRecordingLookup } from '@/utils/vault/s3Tree';
+import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/vault/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
 import {
   findApplicableTransferBusy,
   transferBusyTooltipText,
 } from '@/utils/treeTransferBusy';
-import TreeNodeModifiedLabel from '@/components/TreeNodeModifiedLabel';
+import TreeNodeModifiedLabel from '@/components/shell/TreeNodeModifiedLabel';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;

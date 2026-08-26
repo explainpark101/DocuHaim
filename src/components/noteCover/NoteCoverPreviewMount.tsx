@@ -8,7 +8,7 @@ import {
   isPrintPageSizeId,
   loadPrintPageLayout,
   type PrintPageLayout,
-} from '@/utils/printPageLayout';
+} from '@/utils/print/printPageLayout';
 
 type GetPresignedUrl = ((path: string) => Promise<string | null>) | null | undefined;
 

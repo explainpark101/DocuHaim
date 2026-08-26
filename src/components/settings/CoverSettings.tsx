@@ -8,7 +8,7 @@ import {
   COVER_SNAP_TOLERANCE_PX_MIN,
   getCachedCoverSettings,
   type CoverAppSettings,
-} from '@/utils/coverSettingsStore';
+} from '@/utils/noteCover/coverSettingsStore';
 import { setSettingsToggle } from '@/utils/advancedSearch/settingsToggles';
 import {
   saveCoverCenterSnapTolerance,

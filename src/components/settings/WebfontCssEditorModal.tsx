@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Save, Type, X } from 'lucide-react';
 import { Form } from 'radix-ui';
-import Modal from '@/components/modals/Modal';
-import { CssCodeMirrorEditor } from '@/components/CssCodeMirrorEditor';
-import { formInputClassName } from '@/components/ui/RadixSelectField';
+import Modal from '@/components/shared/modals/Modal';
+import { CssCodeMirrorEditor } from '@/components/editor/CssCodeMirrorEditor';
+import { formInputClassName } from '@/components/shared/ui/RadixSelectField';
 import {
   extractFontFamilyNamesFromCss,
   saveWebfontFile,

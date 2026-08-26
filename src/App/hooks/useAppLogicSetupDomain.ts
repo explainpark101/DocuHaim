@@ -14,7 +14,7 @@ import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { getExt } from '@/App/helpers';
-import { clearAllLlmApiKeySessions } from '@/utils/llmApiKeySession';
+import { clearAllLlmApiKeySessions } from '@/utils/llm/llmApiKeySession';
 import {
   clearPlaintextWebdavConfig,
   loadWebdavConfig,
@@ -24,10 +24,10 @@ import {
   DEFAULT_STORAGE_MODE,
   getAppNameByStorageMode,
   saveStorageMode,
-} from '@/utils/storageSettings';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+} from '@/utils/vault/storageSettings';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import { registerAppLockAction } from '@/utils/advancedSearch/appLockActions';
-import { clearAuthSession, saveAuthSession, tryRestoreAuthSession } from '@/utils/authSession';
+import { clearAuthSession, saveAuthSession, tryRestoreAuthSession } from '@/utils/shared/authSession';
 import {
   CHAT_TAB_ID,
   SETTINGS_TAB_ID,
@@ -54,7 +54,7 @@ import {
   browserSupportsWebAuthn,
   getStoredWebAuthn,
   isStoredWithWebAuthn,
-} from '@/utils/webauthn';
+} from '@/utils/shared/webauthn';
 import {
   hasDesktopBiometricLockMarker,
   hasDesktopStoredCredsMarker,
@@ -62,9 +62,9 @@ import {
   loadPasswordEncryptedCredsBlob,
   migrateLegacyDesktopSecretsToStronghold,
   tryRestoreDesktopStrongholdSession,
-} from '@/utils/desktopStrongholdSecrets';
-import { hasDesktopAppEntryLock } from '@/utils/desktopAppEntryLock';
-import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
+} from '@/utils/shared/desktopStrongholdSecrets';
+import { hasDesktopAppEntryLock } from '@/utils/shared/desktopAppEntryLock';
+import { SESSION_STORAGE_TYPE } from '@/utils/vault/sessionWorkspace';
 
 type WebdavConfig = {
   endpoint: string;

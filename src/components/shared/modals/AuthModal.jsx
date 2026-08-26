@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { IconLock, IconFingerprint } from '@/components/icons';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
-import { isDesktopApp } from '@/utils/isDesktopApp';
-import Modal from '@/components/modals/Modal';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
+import Modal from '@/components/shared/modals/Modal';
 
 export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, autoPromptWebAuthn = true, fileInputRef }) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);

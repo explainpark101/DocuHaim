@@ -1,5 +1,5 @@
 import { isSettingsAppPathname } from '@/utils/appHref';
-import { getParentFolderPath } from '@/utils/treeMove';
+import { getParentFolderPath } from '@/utils/vault/treeMove';
 import { isFileTab, type WorkspaceTab } from '@/utils/workspaceTabs';
 
 export type ResolveNewFileDefaultParentPathInput = {

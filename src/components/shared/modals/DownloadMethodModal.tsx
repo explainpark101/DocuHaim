@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, ChevronDown, ClipboardCopy } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { RadioGroup, Select } from 'radix-ui';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import { IconCloud, IconDownload, IconFolder } from '@/components/icons';
 import {
   type DownloadImageMode,

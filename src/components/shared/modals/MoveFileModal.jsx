@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import { IconFolder, IconFolderPlus } from '@/components/icons';
-import { findNodeByPath } from '@/utils/s3Tree';
+import { findNodeByPath } from '@/utils/vault/s3Tree';
 
 function getParentFolderPath(filePath) {
   if (!filePath || typeof filePath !== 'string') return '';

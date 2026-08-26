@@ -9,28 +9,28 @@ import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate, useLocation } from 'react-router';
-import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
-import { getSignedGetUrl } from '@/utils/s3Client';
+import { findFileNodeByPath, findNodeByPath } from '@/utils/vault/s3Tree';
+import { getSignedGetUrl } from '@/utils/vault/s3Client';
 import {
   CHAT_TAB_ID,
   SETTINGS_TAB_ID,
   pickWorkspaceTabsRestoreSource,
   seedTabsRestoreQueueFromSnapshot,
 } from '@/utils/workspaceTabs';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/vault/storageSettings';
 import { createWebdavBackend } from '@/utils/storage';
-import { hasStoredLocalRootHandle, loadLastLocalFolderName } from '@/utils/localFolderStore';
-import { isDesktopApp } from '@/utils/isDesktopApp';
-import { isTauriAndroid } from '@/utils/tauriPlatform';
-import { loadLocalVaultFsPath } from '@/utils/localVaultPathStore';
+import { hasStoredLocalRootHandle, loadLastLocalFolderName } from '@/utils/vault/localFolderStore';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
+import { isTauriAndroid } from '@/utils/shared/tauriPlatform';
+import { loadLocalVaultFsPath } from '@/utils/vault/localVaultPathStore';
 import { readTauriLocalDirectoryTree } from '@/utils/storage/tauriLocalBackend';
 import { ensureAndroidDefaultLocalVaultRoot } from '@/utils/storage/androidLocalVault';
 import {
   resolveDesktopOpenPaths,
   subscribeDesktopOpenFiles,
   takeDesktopOpenPathQueue,
-} from '@/utils/desktopOpenFiles';
-import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
+} from '@/utils/shared/desktopOpenFiles';
+import { consumePendingPrintReturnState } from '@/utils/print/printNavigationState';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
 

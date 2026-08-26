@@ -1,5 +1,5 @@
 import { IconKey } from '@/components/icons';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 
 export function SetPasswordModal({ isOpen, masterPassword, onCancel, onSubmit }) {
   return (

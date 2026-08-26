@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isTreeCopyModifierHeld } from '@/utils/treeCopy';
+import { isTreeCopyModifierHeld } from '@/utils/vault/treeCopy';
 
 /**
  * Tracks Ctrl/Alt during a tree drag so drop can copy instead of move.

@@ -17,13 +17,13 @@ import {
   findNodeByPath,
   flattenTreeToPaths,
   getRecordingKeysFromTree,
-} from '@/utils/s3Tree';
-import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/treeMove';
+} from '@/utils/vault/s3Tree';
+import { pruneNestedMovePaths, getParentFolderPath } from '@/utils/vault/treeMove';
 import { resolveNewFileDefaultParentPath } from '@/utils/newFileDefaultParentPath';
-import { allocateUniqueCopyName, getTreeChildNames, treeChildNameTaken } from '@/utils/treeCopy';
+import { allocateUniqueCopyName, getTreeChildNames, treeChildNameTaken } from '@/utils/vault/treeCopy';
 import { resolveUploadDestFileName } from '@/utils/uploadNameConflict';
 import { normalizePathToNfc, normalizeUnicodeNfc } from '@/utils/unicodeNfc';
-import { resolveTreeDestName } from '@/utils/treeNameConflict';
+import { resolveTreeDestName } from '@/utils/vault/treeNameConflict';
 import { buildFileComparePayload } from '@/utils/buildFileComparePayload';
 import {
   upsertTreeTransferBusy,
@@ -39,10 +39,10 @@ import {
   deleteObject,
   deleteObjects,
   copyObject,
-} from '@/utils/s3Client';
-import { normalizeDeleteTargets } from '@/components/modals/DeleteConfirmModal';
+} from '@/utils/vault/s3Client';
+import { normalizeDeleteTargets } from '@/components/shared/modals/DeleteConfirmModal';
 import { executeEmptyTrash } from '@/utils/emptyTrashExecute';
-import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
+import { getSyncKeyForRecording } from '@/utils/recording/recordingPipeline';
 import { collectCompanionImageKeysForDelete } from '@/utils/unusedImageCleanup';
 import { loadOrphanImageAutoDeleteEnabled } from '@/utils/orphanImageCleanupSettings';
 import {
@@ -63,20 +63,20 @@ import {
   setEncMdPassword,
 } from '@/utils/encMd';
 import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
-import { webdavPropfindDeep } from '@/utils/webdavClient';
-import { ensureDirectoryReadWritePermission } from '@/utils/localFolderStore';
-import { isLocalVaultReady } from '@/utils/localVaultReady';
+import { webdavPropfindDeep } from '@/utils/vault/webdavClient';
+import { ensureDirectoryReadWritePermission } from '@/utils/vault/localFolderStore';
+import { isLocalVaultReady } from '@/utils/vault/localVaultReady';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
   SESSION_STORAGE_TYPE,
   buildSessionTree,
-} from '@/utils/sessionWorkspace';
+} from '@/utils/vault/sessionWorkspace';
 import {
   isMarkdownFileName,
   zipFileNameForMarkdown,
 } from '@/utils/markdownImageExport';
-import { STORAGE_MODE_LOCAL } from '@/utils/storageSettings';
+import { STORAGE_MODE_LOCAL } from '@/utils/vault/storageSettings';
 import { getActiveTab, getActiveFileTab } from '@/utils/workspaceTabs';
 
 function errorMessage(e: unknown): string {

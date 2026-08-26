@@ -7,13 +7,13 @@ import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
-import LlmProviderSelect from '@/components/LlmProviderSelect';
-import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
+import LlmProviderSelect from '@/components/llm/LlmProviderSelect';
+import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llm/llmProviderProfiles';
 import {
   extractImageFilesFromClipboard,
   LLM_ASSIST_MAX_IMAGES,
   readImageFilesAsAttachments,
-} from '@/utils/llmAssistImages';
+} from '@/utils/llm/llmAssistImages';
 
 const RESULT_PREVIEW_ID = 'llm-assist-result-preview';
 

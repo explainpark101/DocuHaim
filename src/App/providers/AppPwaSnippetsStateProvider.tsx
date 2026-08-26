@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { getLocalAppBuildId } from '@/utils/pwaUpdate';
+import { getLocalAppBuildId } from '@/utils/shared/pwaUpdate';
 import { usePwaSnippetsDomain } from '@/App/hooks/usePwaSnippetsDomain';
 
 export type PwaSnippetsOwnedApi = {

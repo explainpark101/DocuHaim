@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Button from '@/components/Button';
 import { IconBack, IconTrash } from '@/components/icons';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 
 const CLOSE_ANIMATION_MS = 200;
 

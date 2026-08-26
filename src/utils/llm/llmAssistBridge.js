@@ -1,4 +1,4 @@
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 /** postMessage bridge between parent tab and LLM assist popout window */
 
 export const LLM_ASSIST_CHANNEL = 's3haim-llm-assist';

@@ -3,11 +3,11 @@ import { Dialog } from 'radix-ui';
 import { Loader2, Trash2 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
-} from '@/components/contextMenu/AdaptiveContextMenu';
+} from '@/components/shared/contextMenu/AdaptiveContextMenu';
 import {
   chatDialogOverlayClass,
   chatMenuContentClass,

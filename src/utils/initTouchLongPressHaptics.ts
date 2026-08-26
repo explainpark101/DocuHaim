@@ -2,7 +2,7 @@ import {
   isTouchLikePointer,
   vibrateLongPressAction,
   wasLongPressHapticRecent,
-} from '@/utils/hapticFeedback';
+} from '@/utils/shared/hapticFeedback';
 
 /**
  * Global touch long-press haptics for native `contextmenu` (e.g. sidebar tree).

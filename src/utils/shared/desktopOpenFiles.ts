@@ -3,15 +3,15 @@
  * Routes paths under the Local vault to vault notes; otherwise session workspace.
  */
 
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
   loadLocalVaultFsPath,
   relativePathUnderVault,
-} from '@/utils/localVaultPathStore';
+} from '@/utils/vault/localVaultPathStore';
 import {
   workspaceFromInputFiles,
   type SessionWorkspace,
-} from '@/utils/sessionWorkspace';
+} from '@/utils/vault/sessionWorkspace';
 
 export const DESKTOP_OPEN_FILES_EVENT = 'desktop-open-files';
 

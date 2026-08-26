@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Printer } from 'lucide-react';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { setPendingPrintReturnState } from '@/utils/print/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 
 export default function ExportPDF({

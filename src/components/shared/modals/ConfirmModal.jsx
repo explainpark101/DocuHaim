@@ -6,7 +6,7 @@ import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
 import {
   ModalCornerResizeHandles,
   useModalCornerResize,
-} from '@/components/modals/modalCornerResize';
+} from '@/components/shared/modals/modalCornerResize';
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };

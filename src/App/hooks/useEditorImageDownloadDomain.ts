@@ -7,18 +7,18 @@ import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useTreeOpsOwned } from '@/App/providers/AppTreeOpsStateProvider';
 import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
-import { getSignedGetUrl } from '@/utils/s3Client';
+import { getSignedGetUrl } from '@/utils/vault/s3Client';
 import { createChatBackend } from '@/utils/chatWithMyself';
 import { getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
 import { isFileProbablyImage, uploadEditorImage, buildEditorImagePathPrefix, normalizeEditorImagePathPrefix, sniffImageMimeFromFile, getExtensionFromMime } from '@/utils/editorImageUpload';
 import { uploadLocalEditorImage, getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
-import { readLocalDirectoryTree } from '@/utils/localTree';
-import { isLocalVaultReady } from '@/utils/localVaultReady';
+import { readLocalDirectoryTree } from '@/utils/vault/localTree';
+import { isLocalVaultReady } from '@/utils/vault/localVaultReady';
 import { readTauriLocalDirectoryTree } from '@/utils/storage/tauriLocalBackend';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
-import { SESSION_STORAGE_TYPE, mimeForSessionFileName, putSessionFileBytes } from '@/utils/sessionWorkspace';
+import { SESSION_STORAGE_TYPE, mimeForSessionFileName, putSessionFileBytes } from '@/utils/vault/sessionWorkspace';
 
 /**
  * useEditorImageDownloadDomain: context-owned domain handlers.

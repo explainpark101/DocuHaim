@@ -5,7 +5,7 @@
 import {
   PRINT_PAGE_SIZES,
   type PrintPageSizeId,
-} from '@/utils/printPageLayout';
+} from '@/utils/print/printPageLayout';
 import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 
 export type PrintToolbarFocusTarget =

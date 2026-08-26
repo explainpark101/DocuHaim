@@ -1,5 +1,5 @@
 import { WrapText } from 'lucide-react';
-import MdEditorToolbarToggle from '@/components/MdEditorToolbarToggle';
+import MdEditorToolbarToggle from '@/components/editor/MdEditorToolbarToggle';
 
 /** md-editor-rt defToolbars: TOC title wrap switch (place after catalog). */
 export default function TocTitleWrapToolbar({

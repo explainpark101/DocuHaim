@@ -6,7 +6,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
 
 /** Shrink feedback starts at this hold duration. */
 export const PRESSABLE_CARD_THRESHOLD_MS = 250;

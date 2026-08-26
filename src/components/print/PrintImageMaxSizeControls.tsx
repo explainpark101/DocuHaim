@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { normalizePrintImageMaxPx, stepPrintImageMaxPx } from '@/utils/printPageLayout';
+import { normalizePrintImageMaxPx, stepPrintImageMaxPx } from '@/utils/print/printPageLayout';
 
 type Props = {
   maxWidth: string;

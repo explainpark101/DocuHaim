@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
-import LlmAssistPanel from '@/components/LlmAssistPanel';
+import LlmAssistPanel from '@/components/llm/LlmAssistPanel';
 import {
   isLlmAssistMessage,
   LLM_ASSIST_MSG,
   postLlmAssistMessage,
-} from '@/utils/llmAssistBridge';
+} from '@/utils/llm/llmAssistBridge';
 import { applyDocumentTheme, loadStoredTheme } from '@/utils/documentTheme';
 
 if (typeof document !== 'undefined') {

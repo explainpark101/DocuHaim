@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RadixSelectField } from '@/components/ui/RadixSelectField';
+import { RadixSelectField } from '@/components/shared/ui/RadixSelectField';
 import {
   LLM_LAST_PROFILE_CHANGED_EVENT,
   loadLastLlmProfileId,
   resolveSelectedLlmProfile,
   saveLastLlmProfileId,
   type LlmProviderProfile,
-} from '@/utils/llmProviderProfiles';
+} from '@/utils/llm/llmProviderProfiles';
 
 type LlmProviderSelectProps = {
   profiles: LlmProviderProfile[];

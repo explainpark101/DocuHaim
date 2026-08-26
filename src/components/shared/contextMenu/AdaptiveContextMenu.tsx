@@ -7,11 +7,11 @@ import {
 import { ContextMenu } from 'radix-ui';
 import MobileContextMenuModal, {
   useMobileContextMenuClose,
-} from '@/components/contextMenu/MobileContextMenuModal';
+} from '@/components/shared/contextMenu/MobileContextMenuModal';
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
-} from '@/components/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 
 type MenuSurface = 'desktop' | 'mobile';

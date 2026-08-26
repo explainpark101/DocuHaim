@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
-import { listGeminiModels } from '@/utils/geminiClient';
-import { withLlmProfileApiKey } from '@/utils/llmApiKeySession';
+import { listGeminiModels } from '@/utils/llm/geminiClient';
+import { withLlmProfileApiKey } from '@/utils/llm/llmApiKeySession';
 import {
   FALLBACK_GEMINI_MODELS,
   loadLastUsedGeminiModel,
   saveLastUsedGeminiModel,
-} from '@/utils/geminiModelSettings';
-import { isFreeTierBlockedModel } from '@/utils/geminiError';
+} from '@/utils/llm/geminiModelSettings';
+import { isFreeTierBlockedModel } from '@/utils/llm/geminiError';
 
 // Module-level cache so repeated mount/unmount (e.g. AI panel show/hide) doesn't spam model listing.
 let cachedGeminiModels = null;

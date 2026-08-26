@@ -1,4 +1,4 @@
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 
 /** Google AI Studio / Generative Language API origin (web calls this directly). */
 export const GEMINI_API_ORIGIN = 'https://generativelanguage.googleapis.com';

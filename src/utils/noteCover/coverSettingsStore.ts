@@ -1,4 +1,4 @@
-import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
+import { getObjectBody, headObject, putObject } from '@/utils/vault/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 
 const COVER_JSON_KEY = '.settings/cover.json';

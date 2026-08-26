@@ -1,4 +1,4 @@
-import type { LlmAssistEditorBounds } from '@/utils/llmAssistEditorBounds';
+import type { LlmAssistEditorBounds } from '@/utils/llm/llmAssistEditorBounds';
 
 const POSITION_KEY = 's3haim-llm-modal-position';
 const VISIBILITY_KEY = 's3haim-llm-modal-hidden';

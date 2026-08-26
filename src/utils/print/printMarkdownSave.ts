@@ -1,7 +1,7 @@
 import { deleteMemoDraft, getDraftKey } from '@/utils/memoDraftsDb';
 import { getLocalFileHandleForPath } from '@/utils/localEditorImage';
-import { getPrintSettingsStoreSnapshot } from '@/utils/printSettingsStore';
-import { putObject } from '@/utils/s3Client';
+import { getPrintSettingsStoreSnapshot } from '@/utils/print/printSettingsStore';
+import { putObject } from '@/utils/vault/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 
 export type PrintSaveFile = {

@@ -6,24 +6,24 @@ import {
   listLlmPromptTemplates,
   LLM_PROMPT_TEMPLATES_SCOPE_EVENT,
   saveLlmPromptTemplate,
-} from '@/utils/llmPromptTemplatesDb';
-import { withLlmProfileApiKey } from '@/utils/llmApiKeySession';
-import { generateGeminiTransform } from '@/utils/geminiClient';
-import { generateOpenAiCompatibleTransform } from '@/utils/openaiCompatibleClient';
-import { loadLlmModalHidden, saveLlmModalHidden } from '@/utils/llmModalLayout';
+} from '@/utils/llm/llmPromptTemplatesDb';
+import { withLlmProfileApiKey } from '@/utils/llm/llmApiKeySession';
+import { generateGeminiTransform } from '@/utils/llm/geminiClient';
+import { generateOpenAiCompatibleTransform } from '@/utils/llm/openaiCompatibleClient';
+import { loadLlmModalHidden, saveLlmModalHidden } from '@/utils/llm/llmModalLayout';
 import { useLlmAssistModalLayout } from '@/hooks/useLlmAssistModalLayout';
 import { applyLlmResultToEditor, getEditorSelectionFromRef } from '@/utils/editorSelection';
-import { useLlmProfileIdState } from '@/components/LlmProviderSelect';
-import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
-import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
+import { useLlmProfileIdState } from '@/components/llm/LlmProviderSelect';
+import { saveLastUsedGeminiModel } from '@/utils/llm/geminiModelSettings';
+import { saveLastUsedOpenAiCompatibleModel } from '@/utils/llm/openaiCompatibleSettings';
 import {
   LLM_PROVIDER_GEMINI,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   loadLastUsedModelForProfile,
   resolveSelectedLlmProfile,
   saveLastUsedModelForProfile,
-} from '@/utils/llmProviderProfiles';
-import { isFreeTierBlockedModel } from '@/utils/geminiError';
+} from '@/utils/llm/llmProviderProfiles';
+import { isFreeTierBlockedModel } from '@/utils/llm/geminiError';
 import {
   getLlmAssistPopoutUrl,
   isLlmAssistMessage,
@@ -31,9 +31,9 @@ import {
   LLM_ASSIST_POPOUT_FEATURES,
   LLM_ASSIST_POPOUT_NAME,
   postLlmAssistMessage,
-} from '@/utils/llmAssistBridge';
-import LlmAssistPanel from '@/components/LlmAssistPanel';
-import { LLM_ASSIST_MAX_IMAGES, normalizeImageAttachment } from '@/utils/llmAssistImages';
+} from '@/utils/llm/llmAssistBridge';
+import LlmAssistPanel from '@/components/llm/LlmAssistPanel';
+import { LLM_ASSIST_MAX_IMAGES, normalizeImageAttachment } from '@/utils/llm/llmAssistImages';
 
 export default function LlmAssistModal({
   editorRef,

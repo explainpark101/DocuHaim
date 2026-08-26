@@ -3,7 +3,7 @@ import { Check, ChevronDown } from 'lucide-react';
 import { RadioGroup, Select, Switch, Tooltip } from 'radix-ui';
 import Button from '@/components/Button';
 import { IconBack, IconCheck } from '@/components/icons';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import {
   APP_HEADING_LEVELS,
   MAX_APP_HEADING_LEVEL,

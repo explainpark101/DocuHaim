@@ -5,7 +5,7 @@ import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
-import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
+import PrintFontOptionsModal from '@/components/print/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintCoverPageChrome from '@/components/print/PrintCoverPageChrome';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
@@ -32,9 +32,9 @@ import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResi
 import { useCoverUndoHistory } from '@/hooks/useCoverUndoHistory';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
-import TocResizeHandle from '@/components/TocResizeHandle';
+import TocResizeHandle from '@/components/print/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
-import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver, getPrintSettingsStoreEpoch, PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/printSettingsStore';
+import { loadPrintFontsFromStorage, DEFAULT_PRINT_FONTS, getPresignedUrlResolver, getPrintSettingsStoreEpoch, PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/print/printSettingsStore';
 import {
   PRINT_PAGE_SIZES,
   buildPrintLayoutCssVars,
@@ -42,7 +42,7 @@ import {
   getPrintPageInnerSizePx,
   loadPrintPageLayout,
   savePrintPageLayout,
-} from '@/utils/printPageLayout';
+} from '@/utils/print/printPageLayout';
 import {
   paperActionId,
   registerPrintActions,
@@ -54,7 +54,7 @@ import {
   loadPrintPreviewView,
   savePrintPreviewView,
   stepZoomPercent,
-} from '@/utils/printPreviewView';
+} from '@/utils/print/printPreviewView';
 import { withFontFallback } from '@/utils/fontFallback';
 import {
   DEFAULT_DOCUMENT_SETTINGS_META,
@@ -70,11 +70,11 @@ import { usePrintPackedPages } from '@/hooks/usePrintPackedPages';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { tocTitleTextClass, useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import { parseExportPdfPathFromAppPathname } from '@/utils/appHref';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { savePrintMarkdownToStorage } from '@/utils/printMarkdownSave';
-import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
+import { setPendingPrintReturnState } from '@/utils/print/printNavigationState';
+import { savePrintMarkdownToStorage } from '@/utils/print/printMarkdownSave';
+import { uploadPrintEditorImage } from '@/utils/print/printEditorImageUpload';
 import { PrintPgbrContextMenu } from '@/components/print/PrintPgbrContextMenu';
-import { insertPgbrBeforeHeadingByText } from '@/utils/printPgbrInsert';
+import { insertPgbrBeforeHeadingByText } from '@/utils/print/printPgbrInsert';
 import {
   createDefaultNoteCover,
   formatNoteCoverIssues,
@@ -97,10 +97,10 @@ import {
 import {
   COVER_SETTINGS_CHANGED_EVENT,
   getCachedCoverSettings,
-} from '@/utils/coverSettingsStore';
+} from '@/utils/noteCover/coverSettingsStore';
 import { setSettingsToggle } from '@/utils/advancedSearch/settingsToggles';
-import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import WikiImageSizeModal from '@/components/shared/modals/WikiImageSizeModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import {
   getMarkdownImageOccurrenceInContainer,
@@ -117,7 +117,7 @@ import { upsertRemoteImageComment } from '@/utils/remoteImageComment';
 import { useAuth } from '@/contexts/AuthContext';
 import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
 import { FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT } from '@/utils/previewFootnotesSettings';
-import PreviewFootnoteTooltips from '@/components/PreviewFootnoteTooltips';
+import PreviewFootnoteTooltips from '@/components/editor/PreviewFootnoteTooltips';
 
 const EDITOR_ID = 'export-pdf-preview';
 const PRINT_TOC_WIDTH_KEY = 's3haim_print_toc_width';

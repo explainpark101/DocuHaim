@@ -13,12 +13,12 @@ import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
-} from '@/utils/storageSettings';
+} from '@/utils/vault/storageSettings';
 import StorageExtensionFilesModal from '@/components/settings/StorageExtensionFilesModal';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import type { RebuildCheckpointInfo } from '@/utils/advancedSearch/engine';
 
 type Props = {

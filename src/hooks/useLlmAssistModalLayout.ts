@@ -4,8 +4,8 @@ import {
   loadLlmModalLayout,
   saveLlmModalLayout,
   type LlmModalLayout,
-} from '@/utils/llmModalLayout';
-import { getLlmAssistEditorBounds } from '@/utils/llmAssistEditorBounds';
+} from '@/utils/llm/llmModalLayout';
+import { getLlmAssistEditorBounds } from '@/utils/llm/llmAssistEditorBounds';
 
 const DRAG_THRESHOLD_PX = 5;
 type BottomCorner = 'sw' | 'se';

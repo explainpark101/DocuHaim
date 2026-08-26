@@ -8,26 +8,26 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import TreeNode from '@/components/TreeNode';
+import TreeNode from '@/components/shell/TreeNode';
 import {
   RootDropZone,
   TreeDragOverlayPreview,
   treeCollisionDetection,
-} from '@/components/treeDnd';
+} from '@/components/shell/treeDnd';
 import ChatTreeAttachDroppable from '@/components/chatWithMyself/ChatTreeAttachDroppable';
 import { isChatTreeAttachDroppableId } from '@/utils/chatWithMyself';
 import {
   findNodeByPath,
   isRecordingCompanionFileKey,
   buildRecordingBasePathSetFromTrees,
-} from '@/utils/s3Tree';
+} from '@/utils/vault/s3Tree';
 import {
   getParentFolderPath,
   resolveDragItems,
   resolveDeleteTargets,
   parseDroppableId,
   toTreeSelectKey,
-} from '@/utils/treeMove';
+} from '@/utils/vault/treeMove';
 import { findApplicableTransferBusy } from '@/utils/treeTransferBusy';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
@@ -35,7 +35,7 @@ import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import {
   loadExpandedFolderPaths,
   saveExpandedFolderPaths,
-} from '@/utils/expandedFoldersStore';
+} from '@/utils/vault/expandedFoldersStore';
 import {
   IconCloud,
   IconFilePlus,
@@ -50,21 +50,21 @@ import {
 } from '@/components/icons';
 import { ArrowRightToLine, ChevronsLeft, Download, Loader2, MessageCircle, X } from 'lucide-react';
 import AdvancedSearchSidebarTrigger from '@/components/advancedSearch/AdvancedSearchSidebarTrigger';
-import SidebarContextMenu from '@/components/SidebarContextMenu';
-import SessionTreeList from '@/components/SessionTreeList';
+import SidebarContextMenu from '@/components/shell/SidebarContextMenu';
+import SessionTreeList from '@/components/shell/SessionTreeList';
 import {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
-} from '@/components/contextMenu/AdaptiveContextMenu';
-import { MOBILE_CONTEXT_MENU_ITEM_CLASS } from '@/components/contextMenu/mobileContextMenuStyles';
-import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+} from '@/components/shared/contextMenu/AdaptiveContextMenu';
+import { MOBILE_CONTEXT_MENU_ITEM_CLASS } from '@/components/shared/contextMenu/mobileContextMenuStyles';
+import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
   getAppNameByStorageMode,
-} from '@/utils/storageSettings';
-import { isLocalVaultReady } from '@/utils/localVaultReady';
+} from '@/utils/vault/storageSettings';
+import { isLocalVaultReady } from '@/utils/vault/localVaultReady';
 
 const EMPTY_SELECTED_IDS = new Set();
 

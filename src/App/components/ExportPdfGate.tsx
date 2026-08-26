@@ -1,10 +1,10 @@
 import { Suspense, lazy } from 'react';
 import { useLocation } from 'react-router';
-import { AuthModal } from '@/components/modals/AuthModal';
+import { AuthModal } from '@/components/shared/modals/AuthModal';
 import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
-import UserWebfontStyles from '@/components/UserWebfontStyles';
-import { isStoredWithWebAuthn } from '@/utils/webauthn';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import UserWebfontStyles from '@/components/editor/UserWebfontStyles';
+import { isStoredWithWebAuthn } from '@/utils/shared/webauthn';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/vault/storageSettings';
 import { RouteSuspenseFallback } from '@/App/RouteSuspenseFallback';
 import { isExportPdfAppPathname, parseExportPdfPathFromAppPathname } from '@/utils/appHref';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';

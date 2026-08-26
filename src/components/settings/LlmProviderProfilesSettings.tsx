@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { RadioGroup } from 'radix-ui';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import {
@@ -14,8 +14,8 @@ import {
   validateLlmProviderProfileDraft,
   type LlmProviderKind,
   type LlmProviderProfile,
-} from '@/utils/llmProviderProfiles';
-import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/openaiCompatibleSettings';
+} from '@/utils/llm/llmProviderProfiles';
+import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/llm/openaiCompatibleSettings';
 
 type Draft = {
   id: string;

@@ -1,7 +1,7 @@
 import { useDroppable, pointerWithin, closestCenter } from '@dnd-kit/core';
 import { motion as Motion } from 'motion/react';
 import { IconFolder } from '@/components/icons';
-import { toDroppableId } from '@/utils/treeMove';
+import { toDroppableId } from '@/utils/vault/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
 
 export function treeCollisionDetection(args) {

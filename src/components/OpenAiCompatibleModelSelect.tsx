@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
-import { listOpenAiCompatibleModels } from '@/utils/openaiCompatibleClient';
+import { listOpenAiCompatibleModels } from '@/utils/llm/openaiCompatibleClient';
 import {
   loadLastUsedOpenAiCompatibleModel,
   saveLastUsedOpenAiCompatibleModel,
-} from '@/utils/openaiCompatibleSettings';
+} from '@/utils/llm/openaiCompatibleSettings';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 
 type OpenAiCompatibleModelSelectProps = {

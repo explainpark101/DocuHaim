@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import {
   packPrintPages,
   pageStartsFromCount,
-} from '@/utils/printPagePack';
+} from '@/utils/print/printPagePack';
 
 export function usePrintPackedPages(
   stagingRootRef: RefObject<HTMLElement | null>,

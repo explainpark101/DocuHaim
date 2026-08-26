@@ -28,8 +28,8 @@ import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
 import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
 import { ChatUiPrefsProvider } from '@/components/chatWithMyself/ChatUiPrefsContext';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import PromptModal from '@/components/modals/PromptModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
+import PromptModal from '@/components/shared/modals/PromptModal';
 import { useChatActivityStatus } from '@/components/chatWithMyself/useChatActivityStatus';
 import {
   useChatRemoteSync,
@@ -111,8 +111,8 @@ import {
   getPendingMessages,
   deletePendingMessage,
 } from '@/utils/chatWithMyself/chatDb.js';
-import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
-import { getStorageScopeId } from '@/utils/storageScope';
+import { findFileNodeByPath, findNodeByPath } from '@/utils/vault/s3Tree';
+import { getStorageScopeId } from '@/utils/vault/storageScope';
 
 async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   if (!filters) return { ok: true, ogSearchText: '' };

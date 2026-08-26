@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileIcon, FileText, Send, Users, X } from 'lucide-react';
 import Button from '@/components/Button';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import { formatChatAttachmentSize } from '@/utils/chatWithMyself';
 
 const PREVIEW_MAX = 280;

@@ -1,6 +1,6 @@
 import { Check, ChevronDown, Columns2, File } from 'lucide-react';
 import { Select } from 'radix-ui';
-import type { PrintPreviewPageCount } from '@/utils/printPreviewView';
+import type { PrintPreviewPageCount } from '@/utils/print/printPreviewView';
 
 type Props = {
   value: PrintPreviewPageCount;

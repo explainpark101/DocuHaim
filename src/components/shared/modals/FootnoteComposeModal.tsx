@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Check, X } from 'lucide-react';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 
 type Props = {
   isOpen: boolean;

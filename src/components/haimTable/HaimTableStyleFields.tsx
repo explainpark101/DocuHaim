@@ -11,11 +11,11 @@ import {
 } from 'lucide-react';
 import { Form, Popover, Tooltip } from 'radix-ui';
 import { HexAlphaColorPicker, HexColorInput } from 'react-colorful';
-import FontFamilyInput from '@/components/FontFamilyInput';
+import FontFamilyInput from '@/components/editor/FontFamilyInput';
 import {
   formInputCompactClassName,
   RadixSelectField,
-} from '@/components/ui/RadixSelectField';
+} from '@/components/shared/ui/RadixSelectField';
 import { COVER_FONT_WEIGHT_OPTIONS } from '@/utils/fontOptions';
 import type { HaimTableStyle } from '@/utils/haimTable/types';
 import {

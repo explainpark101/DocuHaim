@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import TocResizeHandle from '@/components/TocResizeHandle';
+import TocResizeHandle from '@/components/print/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
 const SIDEBAR_WIDTH_KEY = 's3haim_sidebar_width';

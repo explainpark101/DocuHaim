@@ -2,7 +2,7 @@
  * IndexedDB에 저장된 업로드 실패 파일을 S3에 동기화
  * 서버 파일이 더 최신이면 .tmp.{ISOTime}.{suffix} 형태로 업로드
  */
-import { putObject, headObject } from '@/utils/s3Client';
+import { putObject, headObject } from '@/utils/vault/s3Client';
 import {
   getPendingUploads,
   deletePendingUpload,

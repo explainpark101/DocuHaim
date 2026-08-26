@@ -7,7 +7,7 @@ import {
   isDavCollection,
   joinWebdavStorageKey,
   webdavHrefToStorageKey,
-} from '@/utils/webdavHref';
+} from '@/utils/vault/webdavHref';
 
 export class WebdavPreconditionFailedError extends Error {
   constructor(message = 'Precondition Failed') {

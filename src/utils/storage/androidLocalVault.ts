@@ -3,11 +3,11 @@
  * Desktop keeps user-picked absolute folders; web keeps FSA handles.
  */
 
-import { isTauriAndroid } from '@/utils/tauriPlatform';
+import { isTauriAndroid } from '@/utils/shared/tauriPlatform';
 import {
   loadLocalVaultFsPath,
   saveLocalVaultFsPath,
-} from '@/utils/localVaultPathStore';
+} from '@/utils/vault/localVaultPathStore';
 
 const DEFAULT_FOLDER_NAME = 'LocalHaim';
 

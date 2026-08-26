@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Crop, ImagePlus, Loader2, Scaling, Upload, X } from 'lucide-react';
-import Modal from '@/components/modals/Modal';
-import NoteImageCropPanel from '@/components/modals/NoteImageCropPanel';
+import Modal from '@/components/shared/modals/Modal';
+import NoteImageCropPanel from '@/components/shared/modals/NoteImageCropPanel';
 import { isDataImageUri } from '@/utils/markdownImageExport';
 import { isPublicHttpImageUrl } from '@/utils/imgbbUpload';
 import { normalizeSizeValue } from '@/utils/wikiImageSyntax';

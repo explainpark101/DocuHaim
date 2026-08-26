@@ -5,9 +5,9 @@ import { useBootstrapOwned } from '@/App/providers/AppBootstrapStateProvider';
 import { useVault } from '@/App/hooks/useVault';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
-import { getRecordingQueueStats } from '@/utils/recordingDb';
-import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
-import { setPrintSettingsStore } from '@/utils/printSettingsStore';
+import { getRecordingQueueStats } from '@/utils/recording/recordingDb';
+import { drainRecordingUploadQueue } from '@/utils/recording/recordingUploadQueue';
+import { setPrintSettingsStore } from '@/utils/print/printSettingsStore';
 import {
   loadWebfontsFromStorage,
   notifyWebfontsChanged,
@@ -18,7 +18,7 @@ import {
   loadCoverSettingsFromStorage,
   notifyCoverSettingsChanged,
   setCoverSettingsStore,
-} from '@/utils/coverSettingsStore';
+} from '@/utils/noteCover/coverSettingsStore';
 import {
   loadOgWorkerSettingsFromStorage,
   notifyOgWorkerSettingsChanged,
@@ -27,9 +27,9 @@ import {
 import {
   setLlmPromptTemplatesStore,
   syncLlmPromptTemplatesToRemote,
-} from '@/utils/llmPromptTemplatesDb';
+} from '@/utils/llm/llmPromptTemplatesDb';
 import { createWebdavBackend } from '@/utils/storage';
-import { isLocalVaultReady } from '@/utils/localVaultReady';
+import { isLocalVaultReady } from '@/utils/vault/localVaultReady';
 
 /**
  * useChatIntegrationDomain: context-owned domain handlers.

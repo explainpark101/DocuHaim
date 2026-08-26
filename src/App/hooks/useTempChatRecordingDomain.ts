@@ -12,8 +12,8 @@ import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
 import { useNavigate } from 'react-router';
 import { useChatStorageCtx } from '@/components/chatWithMyself/ShareTargetGate';
-import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
-import { putObject } from '@/utils/s3Client';
+import { findFileNodeByPath, findNodeByPath } from '@/utils/vault/s3Tree';
+import { putObject } from '@/utils/vault/s3Client';
 import {
   detectTimeZone,
   formatChatMessageAsNoteMarkdown,
@@ -27,10 +27,10 @@ import {
   localDateString,
   resolveReplyThreadMessages,
 } from '@/utils/chatWithMyself';
-import { runEncodeAndWritePipeline } from '@/utils/recordingPipeline';
-import { deleteRecordingById, deleteRecordingFragments } from '@/utils/recordingDb';
-import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import { runEncodeAndWritePipeline } from '@/utils/recording/recordingPipeline';
+import { deleteRecordingById, deleteRecordingFragments } from '@/utils/recording/recordingDb';
+import { drainRecordingUploadQueue } from '@/utils/recording/recordingUploadQueue';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/vault/storageSettings';
 import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { usePwaNewFileShortcut } from '@/hooks/usePwaNewFileShortcut';
@@ -39,7 +39,7 @@ import {
   SESSION_STORAGE_TYPE,
   addEmptyUntitledSessionFile,
   createEmptyUntitledSessionWorkspace,
-} from '@/utils/sessionWorkspace';
+} from '@/utils/vault/sessionWorkspace';
 
 /**
  * useTempChatRecordingDomain: context-owned domain handlers.

@@ -20,7 +20,7 @@ import {
 import {
   loadHideRecordingCompanions,
   saveHideRecordingCompanions,
-} from '@/utils/recordingVisibilitySettings';
+} from '@/utils/recording/recordingVisibilitySettings';
 import {
   loadShowHiddenFolders,
   loadShowTrashFolder,

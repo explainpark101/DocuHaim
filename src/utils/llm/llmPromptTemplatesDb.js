@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import { createStorageBackend } from '@/utils/storage/createStorageBackend.js';
-import { tryGetStorageScopeId } from '@/utils/storageScope';
+import { tryGetStorageScopeId } from '@/utils/vault/storageScope';
 
 export const LLM_PROMPT_TEMPLATES_KEY = '.settings/llm-prompt-templates.json';
 

@@ -1,7 +1,7 @@
 import { IconDownload, IconSettings, IconUpload } from '@/components/icons';
-import { isDesktopApp } from '@/utils/isDesktopApp';
-import { hasDesktopStoredCredsMarker } from '@/utils/desktopStrongholdSecrets';
-import Modal from '@/components/modals/Modal';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
+import { hasDesktopStoredCredsMarker } from '@/utils/shared/desktopStrongholdSecrets';
+import Modal from '@/components/shared/modals/Modal';
 
 export function SettingsModal({
   isOpen,

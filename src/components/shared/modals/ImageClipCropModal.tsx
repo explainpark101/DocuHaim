@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import Modal from '@/components/modals/Modal';
-import NoteImageCropPanel from '@/components/modals/NoteImageCropPanel';
+import Modal from '@/components/shared/modals/Modal';
+import NoteImageCropPanel from '@/components/shared/modals/NoteImageCropPanel';
 import type { Area } from 'react-easy-crop';
 
 type Props = {

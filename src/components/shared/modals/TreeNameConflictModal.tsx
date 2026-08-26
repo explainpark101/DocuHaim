@@ -1,10 +1,10 @@
 import { useEffect, useState, type ComponentType } from 'react';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import type {
   TreeNameConflictAction,
   TreeNameConflictChoice,
   TreeNameConflictKind,
-} from '@/utils/treeNameConflict';
+} from '@/utils/vault/treeNameConflict';
 
 export type TreeNameConflictModalProps = {
   isOpen: boolean;

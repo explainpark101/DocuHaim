@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FileText, Search } from 'lucide-react';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 
 export type ChatFolderPickFile = {

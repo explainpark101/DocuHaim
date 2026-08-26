@@ -3,7 +3,7 @@ import { Tabs } from 'radix-ui';
 import {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
-} from '@/components/contextMenu/AdaptiveContextMenu';
+} from '@/components/shared/contextMenu/AdaptiveContextMenu';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
@@ -42,7 +42,7 @@ import {
   chatMenuItemClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
 import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCardMenu';
-import { copyText } from '@/utils/copyText';
+import { copyText } from '@/utils/shared/copyText';
 
 /** @typedef {'pinned' | 'noted' | 'edited' | 'links' | 'files' | 'photos'} CollectionTabId */
 /** @typedef {'full' | 'activeLabel' | 'iconOnly'} TabDensity */

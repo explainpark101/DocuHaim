@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ChangeEvent } from 'react';
 import { Plus } from 'lucide-react';
 import { Form } from 'radix-ui';
 import { WebfontCssEditorModal } from '@/components/settings/WebfontCssEditorModal';
-import { formInputClassName } from '@/components/ui/RadixSelectField';
+import { formInputClassName } from '@/components/shared/ui/RadixSelectField';
 import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 import { withFontFallback } from '@/utils/fontFallback';

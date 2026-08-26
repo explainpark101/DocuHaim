@@ -3,7 +3,7 @@ import {
   getLocalFileHandleForPath,
   getLocalWikiImageObjectUrl,
 } from '@/utils/localEditorImage';
-import { readLocalDirectoryLevel } from '@/utils/localTree';
+import { readLocalDirectoryLevel } from '@/utils/vault/localTree';
 import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 
 /**

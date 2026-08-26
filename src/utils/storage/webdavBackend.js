@@ -10,10 +10,10 @@ import {
   webdavPropfind,
   webdavPut,
   webdavPropfindDeep,
-} from '@/utils/webdavClient';
-import { buildS3Tree } from '@/utils/s3Tree';
+} from '@/utils/vault/webdavClient';
+import { buildS3Tree } from '@/utils/vault/s3Tree';
 import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
-import { buildWebdavTreeNodesFromPropfind } from '@/utils/webdavTree';
+import { buildWebdavTreeNodesFromPropfind } from '@/utils/vault/webdavTree';
 
 /**
  * @param {{ endpoint: string, username: string, password: string, basePath: string } | null | undefined} config

@@ -8,12 +8,12 @@ import { ActivityIndicatorProvider } from '@/contexts/ActivityIndicatorContext'
 import { AlertModalProvider } from '@/contexts/AlertModalContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/contexts/ToastContext'
-import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
+import { ensureLatestAppBuild } from '@/utils/shared/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
-import { isDesktopApp } from '@/utils/isDesktopApp'
-import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
+import { isDesktopApp } from '@/utils/shared/isDesktopApp'
+import { startDesktopOpenFilesBridge } from '@/utils/shared/desktopOpenFiles'
 
 initEditorAutocompleteDomFlag()
 initTouchLongPressHaptics()

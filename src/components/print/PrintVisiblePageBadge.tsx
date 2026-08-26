@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagePack';
+import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printPagePack';
 
 type Props = {
   pagesHostRef: RefObject<HTMLElement | null>;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
-import TocResizeHandle from '@/components/TocResizeHandle';
+import TocResizeHandle from '@/components/print/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
 const CHAT_RAIL_DEFAULT_WIDTH = 400;

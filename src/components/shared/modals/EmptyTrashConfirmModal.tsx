@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { RadioGroup } from 'radix-ui';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import {
   type EmptyTrashMode,
   type EmptyTrashOptions,

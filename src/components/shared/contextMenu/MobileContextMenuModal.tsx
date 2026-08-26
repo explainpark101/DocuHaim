@@ -8,7 +8,7 @@ import {
   MOBILE_CONTEXT_MENU_OVERLAY_CLASS,
   MOBILE_CONTEXT_MENU_PANEL_CLASS,
   MOBILE_CONTEXT_MENU_POINTER_BLOCK_MS,
-} from '@/components/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring' as const, stiffness: 420, damping: 32 };

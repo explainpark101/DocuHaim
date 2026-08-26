@@ -5,7 +5,7 @@ import {
   listComposerDraftImageIds,
   putComposerDraftImage,
 } from '@/utils/chatWithMyself/chatDb.js';
-import { isS3StorageScope } from '@/utils/storageScope';
+import { isS3StorageScope } from '@/utils/vault/storageScope';
 
 export const COMPOSER_DRAFT_LS_KEY = 's3haim_chat_composer_draft';
 

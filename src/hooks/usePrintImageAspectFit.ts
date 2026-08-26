@@ -1,5 +1,5 @@
 import { useLayoutEffect, type RefObject } from 'react';
-import { normalizePrintSizeValue } from '@/utils/printPageLayout';
+import { normalizePrintSizeValue } from '@/utils/print/printPageLayout';
 
 function cssLengthToPx(
   raw: string | null | undefined,

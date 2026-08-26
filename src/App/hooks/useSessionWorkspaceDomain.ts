@@ -20,7 +20,7 @@ import {
   workspaceFromDataTransfer,
   workspaceFromDirectoryHandle,
   workspaceFromFileList,
-} from '@/utils/sessionWorkspace';
+} from '@/utils/vault/sessionWorkspace';
 
 /**
  * useSessionWorkspaceDomain: context-owned domain handlers.

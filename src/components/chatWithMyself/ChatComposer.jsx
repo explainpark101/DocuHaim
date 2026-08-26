@@ -21,7 +21,7 @@ import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { chatComposerAreaMaxHeight } from '@/components/chatWithMyself/ChatComposerDock';
-import PromptModal from '@/components/modals/PromptModal';
+import PromptModal from '@/components/shared/modals/PromptModal';
 import {
   ADD_GROUP_VALUE,
   SELF_GROUP,

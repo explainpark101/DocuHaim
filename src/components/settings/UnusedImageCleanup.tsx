@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, Search, Copy, Trash2 } from 'lucide-react';
 import { RadioGroup, Switch } from 'radix-ui';
 import Button from '@/components/Button';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
-} from '@/utils/storageSettings';
+} from '@/utils/vault/storageSettings';
 import {
   setSettingsToggle,
   subscribeSettingsToggles,

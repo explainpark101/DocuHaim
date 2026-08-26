@@ -20,7 +20,7 @@ import {
   APP_EDITOR_EXTRAS_KEYS,
   type AppEditorExtrasValue,
 } from '@/App/context/AppEditorExtrasContext';
-import { useAppOrchestration } from '@/App/providers/useAppOrchestration';
+import { useAppLogicSharedState } from '@/App/hooks/useAppLogicSharedState';
 
 const CHROME_KEYS = [
   'sidebarOpen',
@@ -109,7 +109,7 @@ function AppChromeAndThinContexts({
  * Fans out modals + chrome + thin domain contexts. Vault/File/Tree contexts are owned above.
  */
 export function AppLogicProvider({ children }: { children: ReactNode }) {
-  const c = useAppOrchestration() as Record<string, any>;
+  const c = useAppLogicSharedState() as Record<string, any>;
 
   const bootstrapLogic = useMemo(
     () => ({

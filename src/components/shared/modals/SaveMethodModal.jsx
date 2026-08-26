@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { IconKey, IconFingerprint } from '@/components/icons';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
-import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
-import Modal from '@/components/modals/Modal';
+import { isWebAuthnAvailableForSave } from '@/utils/shared/webauthn';
+import Modal from '@/components/shared/modals/Modal';
 
 export function SaveMethodModal({
   isOpen,

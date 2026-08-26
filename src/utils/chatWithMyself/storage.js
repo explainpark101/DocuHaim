@@ -28,7 +28,7 @@ import {
   messageNeedsNoteUnlink,
   pathAffectedByDelete,
 } from '@/utils/chatWithMyself/noteRefs.js';
-import { getStorageScopeId } from '@/utils/storageScope';
+import { getStorageScopeId } from '@/utils/vault/storageScope';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch/notify';
 
 const MAX_WRITE_RETRIES = 5;

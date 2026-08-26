@@ -1,4 +1,4 @@
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 const BUILD_RELOAD_GUARD_KEY = 's3haim_build_reload_guard';
 
 export type RemoteBuildIdResult =

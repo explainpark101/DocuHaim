@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import { HaimTableStyleFields } from '@/components/haimTable/HaimTableStyleFields';
 import type {
   HaimTableSectionKey,

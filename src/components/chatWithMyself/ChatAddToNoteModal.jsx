@@ -7,22 +7,22 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { Switch } from 'radix-ui';
-import Modal from '@/components/modals/Modal';
-import TreeNode from '@/components/TreeNode';
+import Modal from '@/components/shared/modals/Modal';
+import TreeNode from '@/components/shell/TreeNode';
 import {
   RootDropZone,
   TreeDragOverlayPreview,
   treeCollisionDetection,
-} from '@/components/treeDnd';
+} from '@/components/shell/treeDnd';
 import { IconFolderPlus } from '@/components/icons';
 import { FolderInput, RotateCcw } from 'lucide-react';
-import { findNodeByPath } from '@/utils/s3Tree';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { findNodeByPath } from '@/utils/vault/s3Tree';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import {
   resolveDragItems,
   parseDroppableId,
   toTreeSelectKey,
-} from '@/utils/treeMove';
+} from '@/utils/vault/treeMove';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import {
   detectTimeZone,

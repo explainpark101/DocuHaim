@@ -8,8 +8,8 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate } from 'react-router';
-import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
-import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/crypto';
+import { resolveLlmProviderProfiles } from '@/utils/llm/llmProviderProfiles';
+import { encryptData, decryptData, encryptWithEntropy, decryptWithEntropy, deriveEntropyFromPassword } from '@/utils/shared/crypto';
 import {
   getStoredWebAuthn,
   isStoredWithWebAuthn,
@@ -17,7 +17,7 @@ import {
   loadCredsWithWebAuthn,
   saveCredsWithWebAuthn,
   updateWebAuthnWrappedPassword,
-} from '@/utils/webauthn';
+} from '@/utils/shared/webauthn';
 import { SETTINGS_TAB_ID, anyFileTabDirty, getActiveFileTab } from '@/utils/workspaceTabs';
 import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
 import {
@@ -25,8 +25,8 @@ import {
   decryptWebdavConfig,
   clearPlaintextWebdavConfig,
   hasEncryptedWebdavConfig,
-} from '@/utils/storageSettings';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+} from '@/utils/vault/storageSettings';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
 import {
   hasDesktopStoredCredsMarker,
@@ -37,8 +37,8 @@ import {
   saveDesktopCreds,
   saveDesktopWebdavConfig,
   savePasswordEncryptedCredsBlob,
-} from '@/utils/desktopStrongholdSecrets';
-import { decryptDesktopPasswordWebdav, refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
+} from '@/utils/shared/desktopStrongholdSecrets';
+import { decryptDesktopPasswordWebdav, refreshDesktopPasswordEntryLockSecrets } from '@/utils/shared/desktopAppEntryLock';
 import { unlockDesktopWithBiometricGate } from '@/utils/desktopBiometricUnlock';
 
 /**

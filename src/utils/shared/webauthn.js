@@ -17,8 +17,8 @@ import {
 } from '@simplewebauthn/browser';
 
 export { browserSupportsWebAuthn } from '@simplewebauthn/browser';
-import { encryptWithEntropy, decryptWithEntropy } from '@/utils/crypto';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { encryptWithEntropy, decryptWithEntropy } from '@/utils/shared/crypto';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
   disableDesktopBiometricUnlock,
   enableDesktopBiometricUnlock,
@@ -29,7 +29,7 @@ import {
   unlockWithDesktopBiometric,
   updateDesktopBiometricWrappedPassword,
 } from '@/utils/desktopBiometricUnlock';
-import { hasDesktopStoredCredsMarker } from '@/utils/desktopStrongholdSecrets';
+import { hasDesktopStoredCredsMarker } from '@/utils/shared/desktopStrongholdSecrets';
 
 const S3HAIM_PRF_INFO = new TextEncoder().encode('S3 Haim Master Password Wrap V1');
 const S3HAIM_CREDS_INFO = new TextEncoder().encode('S3 Haim Creds Encryption V1');

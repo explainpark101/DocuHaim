@@ -1,9 +1,9 @@
 import { Suspense, lazy } from 'react';
-import EditorPane from '@/components/EditorPane';
-import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
+import EditorPane from '@/components/shell/EditorPane';
+import WorkspaceTabBar from '@/components/shell/workspace/WorkspaceTabBar';
 import WorkspaceTabHost, {
   WorkspaceKeepAlivePanel,
-} from '@/components/workspace/WorkspaceTabHost';
+} from '@/components/shell/workspace/WorkspaceTabHost';
 import { CHAT_TAB_ID, SETTINGS_TAB_ID, isFileTab } from '@/utils/workspaceTabs';
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));

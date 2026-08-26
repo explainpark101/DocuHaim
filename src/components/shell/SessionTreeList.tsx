@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { IconChevronDown, IconChevronRight, IconFile, IconFolder } from '@/components/icons';
-import type { SessionTreeNode } from '@/utils/sessionWorkspace';
+import type { SessionTreeNode } from '@/utils/vault/sessionWorkspace';
 
 type Props = {
   nodes: SessionTreeNode[];

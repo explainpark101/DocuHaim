@@ -6,19 +6,19 @@
 
 import { Stronghold, type Client, type Store } from '@tauri-apps/plugin-stronghold';
 import { appDataDir, join } from '@tauri-apps/api/path';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
   decryptData,
   encryptWithEntropy,
   decryptWithEntropy,
   deriveEntropyFromPassword,
-} from '@/utils/crypto';
+} from '@/utils/shared/crypto';
 import {
   getStoredWebAuthn,
   isStoredWithWebAuthn,
   loadCredsWithWebAuthn,
-} from '@/utils/webauthn';
-import { DEFAULT_WEBDAV_CONFIG } from '@/utils/storageSettings';
+} from '@/utils/shared/webauthn';
+import { DEFAULT_WEBDAV_CONFIG } from '@/utils/vault/storageSettings';
 
 const VAULT_FILE = 'docuhaim-vault.hold';
 /** Internal vault password — Stronghold still encrypts the snapshot on disk. */

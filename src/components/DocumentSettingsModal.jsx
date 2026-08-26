@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import Modal from '@/components/modals/Modal';
-import FontFamilyInput from '@/components/FontFamilyInput';
+import Modal from '@/components/shared/modals/Modal';
+import FontFamilyInput from '@/components/editor/FontFamilyInput';
 import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import {
   DEFAULT_DOCUMENT_SETTINGS_META,

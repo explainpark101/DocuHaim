@@ -13,10 +13,10 @@ import {
   isFileTabDirty,
 } from '@/utils/workspaceTabs';
 import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/vault/storageSettings';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
-import { isTauriAndroid } from '@/utils/tauriPlatform';
-import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
+import { isTauriAndroid } from '@/utils/shared/tauriPlatform';
+import { SESSION_STORAGE_TYPE } from '@/utils/vault/sessionWorkspace';
 
 /**
  * useAppChromeDomain: context-owned domain handlers.

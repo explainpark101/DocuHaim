@@ -4,27 +4,27 @@ import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight } from 'lucide-react';
 import SidebarConnected from '@/App/components/SidebarConnected';
-import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
-import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
-import DesktopTitlebar from '@/components/desktop/DesktopTitlebar';
+import ResizableSidebarPanel from '@/components/shell/ResizableSidebarPanel';
+import WorkspaceMainPanels from '@/components/shell/workspace/WorkspaceMainPanels';
+import DesktopTitlebar from '@/components/shell/desktop/DesktopTitlebar';
 import ShareTargetGate from '@/components/chatWithMyself/ShareTargetGate';
 import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
-import { AuthModal } from '@/components/modals/AuthModal';
-import UserWebfontStyles from '@/components/UserWebfontStyles';
-import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
-import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
-import { isStoredWithWebAuthn, getStoredWebAuthn } from '@/utils/webauthn';
-import { refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
+import { AuthModal } from '@/components/shared/modals/AuthModal';
+import UserWebfontStyles from '@/components/editor/UserWebfontStyles';
+import ActivityIndicatorBar from '@/components/shell/ActivityIndicatorBar';
+import { isTauriDesktopPlatform } from '@/utils/shared/tauriPlatform';
+import { isStoredWithWebAuthn, getStoredWebAuthn } from '@/utils/shared/webauthn';
+import { refreshDesktopPasswordEntryLockSecrets } from '@/utils/shared/desktopAppEntryLock';
 import { setSettingsToggle } from '@/utils/advancedSearch/settingsToggles';
 import { treeHoverExpandSettingsToMs } from '@/utils/treeHoverExpandSettings';
 import { isEncMdPath } from '@/utils/encMd';
-import { STORAGE_MODE_WEBDAV, clearPlaintextWebdavConfig, hasEncryptedWebdavConfig, requiresEncryptedWebdavStorage, saveWebdavConfig } from '@/utils/storageSettings';
-import { basenameFromVaultPath } from '@/utils/localVaultReady';
-import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
-import { getDesktopAppEntryLockModeSync, saveDesktopWebdavConfig } from '@/utils/desktopStrongholdSecrets';
-import { loadLastLocalFolderName } from '@/utils/localFolderStore';
+import { STORAGE_MODE_WEBDAV, clearPlaintextWebdavConfig, hasEncryptedWebdavConfig, requiresEncryptedWebdavStorage, saveWebdavConfig } from '@/utils/vault/storageSettings';
+import { basenameFromVaultPath } from '@/utils/vault/localVaultReady';
+import { SESSION_STORAGE_TYPE } from '@/utils/vault/sessionWorkspace';
+import { getDesktopAppEntryLockModeSync, saveDesktopWebdavConfig } from '@/utils/shared/desktopStrongholdSecrets';
+import { loadLastLocalFolderName } from '@/utils/vault/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import { useAppChrome } from '@/App/hooks/useAppChrome';
 import { useAppModals } from '@/App/hooks/useAppModals';
 import { useSessionWorkspace } from '@/App/hooks/useSessionWorkspace';
@@ -44,8 +44,8 @@ import { useNavigate, useLocation } from 'react-router';
 import {
   enableWebAuthnUnlock,
   disableWebAuthnUnlock,
-} from '@/utils/webauthn';
-import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
+} from '@/utils/shared/webauthn';
+import { resolveLlmProviderProfiles } from '@/utils/llm/llmProviderProfiles';
 
 /** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
 export function AppLayout({ children }: { children?: ReactNode }) {

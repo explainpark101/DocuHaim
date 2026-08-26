@@ -1,7 +1,7 @@
 import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
-import { isTauriMacOS } from '@/utils/tauriPlatform';
-import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
-import DesktopWindowControls from '@/components/desktop/DesktopWindowControls';
+import { isTauriMacOS } from '@/utils/shared/tauriPlatform';
+import WorkspaceTabBar from '@/components/shell/workspace/WorkspaceTabBar';
+import DesktopWindowControls from '@/components/shell/desktop/DesktopWindowControls';
 
 type DesktopTitlebarProps = {
   tabs: WorkspaceTab[];

@@ -11,13 +11,13 @@ import {
   getFileLastModifiedMap,
   findFileNodeByPath,
   getRecordingKeysFromTree,
-} from '@/utils/s3Tree';
-import { listObjectsV2, getObjectBody } from '@/utils/s3Client';
-import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
+} from '@/utils/vault/s3Tree';
+import { listObjectsV2, getObjectBody } from '@/utils/vault/s3Client';
+import { getSyncKeyForRecording } from '@/utils/recording/recordingPipeline';
 import { decodeSyncData } from '@/utils/syncProto';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/vault/storageSettings';
 import { createWebdavBackend, createStorageBackend } from '@/utils/storage';
-import { tryRestoreLocalRootHandle } from '@/utils/localFolderStore';
+import { tryRestoreLocalRootHandle } from '@/utils/vault/localFolderStore';
 
 /**
  * useRecordingVaultEffectsDomain: context-owned domain handlers.

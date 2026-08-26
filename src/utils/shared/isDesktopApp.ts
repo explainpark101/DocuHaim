@@ -4,7 +4,7 @@
  * - Runtime: Tauri webview globals (covers tauri:dev even if env is missed)
  *
  * For platform-specific behavior use `isTauriAndroid()` / `isTauriDesktopPlatform()`
- * from `@/utils/tauriPlatform`.
+ * from `@/utils/shared/tauriPlatform`.
  */
 export function isDesktopApp(): boolean {
   if (import.meta.env.VITE_ELECTRON === 'true') return true;

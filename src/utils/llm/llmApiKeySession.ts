@@ -2,7 +2,7 @@
  * Session wrapping for LLM API keys: decrypt once per unlock, re-encrypt with
  * random session entropy. Entropy lives in the factory closure (not on window).
  */
-import { decryptWithEntropy, encryptWithEntropy } from '@/utils/crypto';
+import { decryptWithEntropy, encryptWithEntropy } from '@/utils/shared/crypto';
 
 export type ApiKeyGetter = () => string | Promise<string>;
 

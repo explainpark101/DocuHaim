@@ -4,7 +4,7 @@ import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
 import {
   ModalCornerResizeHandles,
   useModalCornerResize,
-} from '@/components/modals/modalCornerResize';
+} from '@/components/shared/modals/modalCornerResize';
 
 const ANIMATION_DURATION_MS = 200;
 

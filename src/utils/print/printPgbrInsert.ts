@@ -1,10 +1,10 @@
 import { getAppMarkdownIt } from '@/utils/createAppMarkdownIt';
 import { parseNoteCover, upsertNoteCoverComment } from '@/utils/noteCover/parse';
-import { insertPgbrBeforeVisualLine } from '@/utils/printVisualLinePgbr';
+import { insertPgbrBeforeVisualLine } from '@/utils/print/printVisualLinePgbr';
 import {
   normalizePrintVisibleText,
   visibleInlineTextFromMarkdown,
-} from '@/utils/printMarkdownVisibleText';
+} from '@/utils/print/printMarkdownVisibleText';
 
 const PG_BR_RE = /^<pgbr\s*\/?\s*>$/i;
 

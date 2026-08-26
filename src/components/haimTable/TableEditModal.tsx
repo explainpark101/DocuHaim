@@ -33,20 +33,20 @@ import {
   X,
 } from 'lucide-react';
 import { ContextMenu, Tooltip, Form, Switch } from 'radix-ui';
-import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
-} from '@/components/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
-import Modal from '@/components/modals/Modal';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import Modal from '@/components/shared/modals/Modal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import { HaimTableStyleFields } from '@/components/haimTable/HaimTableStyleFields';
 import { TableStyleTemplateEditor } from '@/components/settings/TableStyleTemplateEditor';
 import {
   formInputClassName,
   formInputCompactClassName,
   RadixSelectField,
-} from '@/components/ui/RadixSelectField';
+} from '@/components/shared/ui/RadixSelectField';
 import { useTableEditUndoHistory } from '@/hooks/useTableEditUndoHistory';
 import {
   applyTemplateToMeta,

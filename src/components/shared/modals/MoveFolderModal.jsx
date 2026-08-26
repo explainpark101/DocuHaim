@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import { IconFolder } from '@/components/icons';
 
 function FolderNode({ node, level, onSelect, selectedPath }) {

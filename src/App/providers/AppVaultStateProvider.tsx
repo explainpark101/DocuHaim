@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { DEFAULT_WEBDAV_CONFIG, loadStorageMode } from '@/utils/storageSettings';
-import { isDesktopApp } from '@/utils/isDesktopApp';
-import { loadLocalVaultFsPath } from '@/utils/localVaultPathStore';
+import { DEFAULT_WEBDAV_CONFIG, loadStorageMode } from '@/utils/vault/storageSettings';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
+import { loadLocalVaultFsPath } from '@/utils/vault/localVaultPathStore';
 
 export type VaultOwnedApi = {
   storageMode: string;

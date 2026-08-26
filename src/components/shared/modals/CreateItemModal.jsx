@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { motion as Motion, useAnimationControls } from 'motion/react';
 import { Folder } from 'lucide-react';
 import { IconFilePlus, IconFolderPlus } from '@/components/icons';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import {
   applyCreateFileFormat,
   CREATE_FILE_FORMATS,
@@ -15,7 +15,7 @@ import {
   resolveCreateItemAutocompleteContext,
   resolveCreateItemPath,
 } from '@/utils/createItemPath';
-import { vibrateErrorFeedback } from '@/utils/hapticFeedback';
+import { vibrateErrorFeedback } from '@/utils/shared/hapticFeedback';
 
 const SHAKE_X = [0, -8, 8, -6, 6, -3, 3, 0];
 

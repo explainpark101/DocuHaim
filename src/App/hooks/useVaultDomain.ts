@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
-import { createS3Client, listObjectsV2 } from '@/utils/s3Client';
-import { buildS3Tree } from '@/utils/s3Tree';
+import { createS3Client, listObjectsV2 } from '@/utils/vault/s3Client';
+import { buildS3Tree } from '@/utils/vault/s3Tree';
 import {
   createStorageBackendForType,
   createWebdavBackend,
@@ -10,25 +10,25 @@ import {
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_WEBDAV,
-} from '@/utils/storageSettings';
-import { patchWebdavTreeChildren } from '@/utils/webdavTree.js';
+} from '@/utils/vault/storageSettings';
+import { patchWebdavTreeChildren } from '@/utils/vault/webdavTree';
 import {
   patchLocalTreeChildren,
   hydrateExpandedLocalFolders,
   readLocalDirectoryLevel,
   readLocalDirectoryTree,
-} from '@/utils/localTree';
-import { loadExpandedFolderPaths } from '@/utils/expandedFoldersStore';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+} from '@/utils/vault/localTree';
+import { loadExpandedFolderPaths } from '@/utils/vault/expandedFoldersStore';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
   pickLocalRootDirectory,
   ensureDirectoryReadWritePermission,
   saveLocalRootHandle,
-} from '@/utils/localFolderStore';
+} from '@/utils/vault/localFolderStore';
 import {
   saveLocalVaultFsPath,
   clearLocalVaultFsPath,
-} from '@/utils/localVaultPathStore';
+} from '@/utils/vault/localVaultPathStore';
 import {
   pickTauriLocalVaultDirectory,
   readTauriLocalDirectoryTree,

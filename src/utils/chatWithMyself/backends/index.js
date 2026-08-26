@@ -9,7 +9,7 @@ import {
   putObject,
   deleteObject,
   S3PreconditionFailedError,
-} from '@/utils/s3Client';
+} from '@/utils/vault/s3Client';
 import {
   getLocalDirectoryHandleForPath,
   getLocalFileHandleForPath,
@@ -24,7 +24,7 @@ import {
   webdavPropfind,
   webdavPut,
   WebdavPreconditionFailedError,
-} from '@/utils/webdavClient';
+} from '@/utils/vault/webdavClient';
 import { CHAT_FOLDER, chatFolderPrefix } from '@/utils/chatWithMyself/paths.js';
 
 export class ChatPreconditionFailedError extends Error {

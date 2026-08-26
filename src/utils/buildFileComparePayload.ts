@@ -1,5 +1,5 @@
 import { decodeBytesForCompare, type DecodedCompareText } from '@/utils/decodeBytesForCompare';
-import type { TreeNameConflictCompare } from '@/utils/treeNameConflict';
+import type { TreeNameConflictCompare } from '@/utils/vault/treeNameConflict';
 
 export type ReadVaultBytesFn = (path: string) => Promise<Uint8Array | null>;
 

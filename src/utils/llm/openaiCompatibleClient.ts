@@ -1,14 +1,14 @@
-import { buildLlmTransformPrompt } from '@/utils/llmTransformPrompt';
+import { buildLlmTransformPrompt } from '@/utils/llm/llmTransformPrompt';
 import {
   formatOpenAiCompatibleError,
   formatOpenAiCompatibleNetworkError,
   parseRetrySecondsFromOpenAiError,
-} from '@/utils/openaiCompatibleError';
+} from '@/utils/llm/openaiCompatibleError';
 import {
   loadLastUsedOpenAiCompatibleModel,
   normalizeOpenAiCompatibleBaseUrl,
-} from '@/utils/openaiCompatibleSettings';
-import { sleep } from '@/utils/geminiError';
+} from '@/utils/llm/openaiCompatibleSettings';
+import { sleep } from '@/utils/llm/geminiError';
 
 const MAX_RATE_LIMIT_RETRIES = 1;
 

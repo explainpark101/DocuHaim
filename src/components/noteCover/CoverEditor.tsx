@@ -5,11 +5,11 @@ import CoverSlide from '@/components/noteCover/CoverSlide';
 import CoverCanvasContextMenuContent, {
   CoverCanvasContextMenuBody,
 } from '@/components/noteCover/CoverCanvasContextMenu';
-import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
-import { AdaptiveMenuSurfaceProvider } from '@/components/contextMenu/AdaptiveContextMenu';
-import Modal from '@/components/modals/Modal';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import NoteImageCropPanel from '@/components/modals/NoteImageCropPanel';
+import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
+import { AdaptiveMenuSurfaceProvider } from '@/components/shared/contextMenu/AdaptiveContextMenu';
+import Modal from '@/components/shared/modals/Modal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
+import NoteImageCropPanel from '@/components/shared/modals/NoteImageCropPanel';
 import { useToast } from '@/contexts/ToastContext';
 import { useCoverImageUrl } from '@/hooks/useCoverImageUrl';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
@@ -67,14 +67,14 @@ import type {
 } from '@/utils/noteCover/types';
 import { CoverShapeBody } from '@/components/noteCover/CoverSlide';
 import { coverPlainTextStyle } from '@/utils/noteCover/textStyle';
-import { extractImageFilesFromClipboard } from '@/utils/llmAssistImages';
+import { extractImageFilesFromClipboard } from '@/utils/llm/llmAssistImages';
 import {
   convertSvgToPngFile,
   extractSvgMarkupFromClipboard,
   isSvgImageFile,
   looksLikeSvgMarkup,
 } from '@/utils/svgToPng';
-import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
+import { uploadPrintEditorImage } from '@/utils/print/printEditorImageUpload';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { getChromeDevToolsNumberStep } from '@/utils/scrubNumberStep';
 

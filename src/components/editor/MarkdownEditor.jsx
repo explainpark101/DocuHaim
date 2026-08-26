@@ -10,26 +10,26 @@ import { bindCatalogClickScrollFix } from '@/utils/catalogClickScrollFix';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
-import LlmAssistModal from '@/components/LlmAssistModal';
-import LlmAssistToolbar from '@/components/LlmAssistToolbar';
+import LlmAssistModal from '@/components/llm/LlmAssistModal';
+import LlmAssistToolbar from '@/components/llm/LlmAssistToolbar';
 import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloatingPanel';
 import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
-import ExportPDF from '@/components/ExportPDF';
+import ExportPDF from '@/components/print/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
-import MarkdownHeadingRemapToolbar from '@/components/MarkdownHeadingRemapToolbar';
-import HeadingRemapModal from '@/components/modals/HeadingRemapModal';
-import TocResizeHandle from '@/components/TocResizeHandle';
+import MarkdownHeadingRemapToolbar from '@/components/editor/MarkdownHeadingRemapToolbar';
+import HeadingRemapModal from '@/components/shared/modals/HeadingRemapModal';
+import TocResizeHandle from '@/components/print/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
 import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
-import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
-import MirrorEditToolbar from '@/components/MirrorEditToolbar';
-import ImageToolbar from '@/components/ImageToolbar';
-import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
-import PreviewFootnoteTooltips from '@/components/PreviewFootnoteTooltips';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import ImageLinkModal from '@/components/modals/ImageLinkModal';
-import FootnoteComposeModal from '@/components/modals/FootnoteComposeModal';
-import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
+import EditorAutocompleteToolbar from '@/components/editor/EditorAutocompleteToolbar';
+import MirrorEditToolbar from '@/components/editor/MirrorEditToolbar';
+import ImageToolbar from '@/components/editor/ImageToolbar';
+import MdEditorToolbarTooltips from '@/components/editor/MdEditorToolbarTooltips';
+import PreviewFootnoteTooltips from '@/components/editor/PreviewFootnoteTooltips';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
+import ImageLinkModal from '@/components/shared/modals/ImageLinkModal';
+import FootnoteComposeModal from '@/components/shared/modals/FootnoteComposeModal';
+import ImageClipCropModal from '@/components/shared/modals/ImageClipCropModal';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import {
@@ -42,7 +42,7 @@ import {
   insertExistingFootnoteRef,
   insertNewFootnote,
 } from '@/utils/footnoteInsertApply';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { setPendingPrintReturnState } from '@/utils/print/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
@@ -130,7 +130,7 @@ import {
 import { parseDocumentSettingsMeta } from '@/utils/documentSettingsMeta';
 import { withFontFallback } from '@/utils/fontFallback';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
-import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
+import WikiImageSizeModal from '@/components/shared/modals/WikiImageSizeModal';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { useTocTitleWrap } from '@/hooks/useTocTitleWrap';
 import {

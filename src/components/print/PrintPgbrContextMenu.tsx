@@ -8,20 +8,20 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Scissors, Trash2 } from 'lucide-react';
-import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
-} from '@/components/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
-import { getVisualLineAtPoint } from '@/utils/printVisualLinePgbr';
+import { getVisualLineAtPoint } from '@/utils/print/printVisualLinePgbr';
 import {
   headingTargetFromElement,
   insertPgbrBeforeHeadingByText,
   insertPgbrBeforeHrInBody,
   insertPgbrBeforeVisualLineInBody,
   removePgbrByOccurrenceInBody,
-} from '@/utils/printPgbrInsert';
+} from '@/utils/print/printPgbrInsert';
 
 type PreviewBand = {
   left: number;

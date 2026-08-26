@@ -1,4 +1,4 @@
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import { useEffect } from 'react';
 import { isPwaStandalone } from '@/utils/pwaStandalone';
 

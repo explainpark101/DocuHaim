@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Columns2, Eye, FileCode } from 'lucide-react';
-import MonacoTextEditor from '@/components/MonacoTextEditor';
-import TocResizeHandle from '@/components/TocResizeHandle';
+import MonacoTextEditor from '@/components/editor/MonacoTextEditor';
+import TocResizeHandle from '@/components/print/TocResizeHandle';
 import Button from '@/components/Button';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 

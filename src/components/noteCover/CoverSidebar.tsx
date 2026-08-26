@@ -45,16 +45,16 @@ import {
   Squircle,
 } from 'lucide-react';
 import ChatImageBackgroundPicker from '@/components/chatWithMyself/ChatImageBackgroundPicker';
-import FontFamilyInput from '@/components/FontFamilyInput';
+import FontFamilyInput from '@/components/editor/FontFamilyInput';
 import Kbd, { KbdChord, getAltKeyLabel, getModKeyLabel } from '@/components/Kbd';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import NumberStepControls from '@/components/NumberStepControls';
 import SliderWithScrubInput from '@/components/SliderWithScrubInput';
 import {
   COVER_CENTER_SNAP_TOLERANCE_DEFAULT,
   COVER_OBJECT_SNAP_TOLERANCE_DEFAULT,
 } from '@/utils/noteCover/snapSettings';
-import TocResizeHandleJs from '@/components/TocResizeHandle';
+import TocResizeHandleJs from '@/components/print/TocResizeHandle';
 import CoverLayerPanel from '@/components/noteCover/CoverLayerPanel';
 import {
   buildFontFamilyOptions,
@@ -95,7 +95,7 @@ import type {
   CoverTextElement,
   NoteCover,
 } from '@/utils/noteCover/types';
-import { uploadPrintEditorImage } from '@/utils/printEditorImageUpload';
+import { uploadPrintEditorImage } from '@/utils/print/printEditorImageUpload';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 
 const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{

@@ -36,14 +36,14 @@ import {
   tryUnlockEncMdContent,
 } from '@/utils/encMd';
 import { noteCoverCommentChanged } from '@/utils/noteCover';
-import { getObjectBody, putObject, copyObject, deleteObject } from '@/utils/s3Client';
+import { getObjectBody, putObject, copyObject, deleteObject } from '@/utils/vault/s3Client';
 import {
   createWebdavBackend,
   createLocalBackend,
 } from '@/utils/storage';
 import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
   getDraftKey,
   saveMemoDraft,
@@ -53,7 +53,7 @@ import {
 import { savePendingUpload } from '@/utils/pendingUploadsDb';
 import { rebaseMergeTexts, buildTimestampedCopyName } from '@/utils/textRebaseMerge';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
+import { findFileNodeByPath, findNodeByPath } from '@/utils/vault/s3Tree';
 import {
   parseOpenNotePathFromAppPathname,
   isExportPdfAppPathname,
@@ -62,12 +62,12 @@ import {
 import {
   SESSION_STORAGE_TYPE,
   renameSessionFile,
-} from '@/utils/sessionWorkspace';
+} from '@/utils/vault/sessionWorkspace';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
-} from '@/utils/storageSettings';
+} from '@/utils/vault/storageSettings';
 
 type CommitOpenFileOptions = {
   activate?: boolean;

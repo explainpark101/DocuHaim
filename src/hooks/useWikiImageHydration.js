@@ -3,7 +3,7 @@ import {
   hydrateStorageImagesInRoot,
   markdownLikelyHasStorageImages,
 } from '@/utils/storageImageHydration';
-import { PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/printSettingsStore';
+import { PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/print/printSettingsStore';
 
 /**
  * Wiki `![[path]]` and standard markdown storage images hydration.

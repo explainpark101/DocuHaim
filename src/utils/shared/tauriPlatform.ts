@@ -1,4 +1,4 @@
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 
 /** True in any Tauri shell (desktop or mobile). */
 export function isTauriApp(): boolean {

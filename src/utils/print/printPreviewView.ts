@@ -2,7 +2,7 @@ import {
   getPrintPageSize,
   mmToCssPx,
   type PrintPageSizeId,
-} from '@/utils/printPageLayout';
+} from '@/utils/print/printPageLayout';
 
 const LOCAL_STORAGE_KEY = 's3haim_print_preview_view';
 

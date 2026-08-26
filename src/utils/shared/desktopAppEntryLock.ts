@@ -2,7 +2,7 @@
  * Tauri desktop app entry lock — password or biometrics on launch / manual lock.
  */
 
-import { deriveEntropyFromPassword, encryptData, encryptWithEntropy, decryptData } from '@/utils/crypto';
+import { deriveEntropyFromPassword, encryptData, encryptWithEntropy, decryptData } from '@/utils/shared/crypto';
 import {
   clearDesktopCreds,
   clearDesktopWebdavConfig,
@@ -22,7 +22,7 @@ import {
   savePasswordEncryptedCredsBlob,
   savePasswordEncryptedWebdavBlob,
   type DesktopAppEntryLockMode,
-} from '@/utils/desktopStrongholdSecrets';
+} from '@/utils/shared/desktopStrongholdSecrets';
 import {
   clearDesktopBiometricEnrollment,
   disableDesktopBiometricUnlock,
@@ -30,8 +30,8 @@ import {
   isDesktopBiometricAvailable,
   saveCredsWithDesktopBiometric,
 } from '@/utils/desktopBiometricUnlock';
-import { DEFAULT_WEBDAV_CONFIG } from '@/utils/storageSettings';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { DEFAULT_WEBDAV_CONFIG } from '@/utils/vault/storageSettings';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 
 export type { DesktopAppEntryLockMode };
 

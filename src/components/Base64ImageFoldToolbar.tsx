@@ -1,5 +1,5 @@
 import { FileImage } from 'lucide-react';
-import MdEditorToolbarToggle from '@/components/MdEditorToolbarToggle';
+import MdEditorToolbarToggle from '@/components/editor/MdEditorToolbarToggle';
 
 type Props = {
   checked?: boolean;

@@ -7,12 +7,12 @@ import {
 } from 'react';
 import { Table2, Trash2 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
+import MobileContextMenuModal from '@/components/shared/contextMenu/MobileContextMenuModal';
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
-} from '@/components/contextMenu/mobileContextMenuStyles';
+} from '@/components/shared/contextMenu/mobileContextMenuStyles';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import { PRESSABLE_CARD_MENU_MS } from '@/components/chatWithMyself/usePressableCardMenu';
 import {
@@ -20,7 +20,7 @@ import {
   resolveHaimTableBlockFromPreview,
   type HaimTableBlock,
 } from '@/utils/haimTable';
-import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
 
 type MenuTarget = {
   table: HTMLTableElement;

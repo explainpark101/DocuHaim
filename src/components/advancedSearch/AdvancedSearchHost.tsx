@@ -71,7 +71,7 @@ import {
   subscribeSettingsToggles,
   toggleSettingsToggle,
 } from '@/utils/advancedSearch/settingsToggles';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { setPendingPrintReturnState } from '@/utils/print/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
 
 const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {

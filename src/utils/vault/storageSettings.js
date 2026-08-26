@@ -1,9 +1,9 @@
-import { encryptData, decryptData } from '@/utils/crypto';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { encryptData, decryptData } from '@/utils/shared/crypto';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
   loadDesktopWebdavConfig,
   saveDesktopWebdavConfig,
-} from '@/utils/desktopStrongholdSecrets';
+} from '@/utils/shared/desktopStrongholdSecrets';
 
 export const STORAGE_MODE_S3 = 's3';
 export const STORAGE_MODE_LOCAL = 'local';

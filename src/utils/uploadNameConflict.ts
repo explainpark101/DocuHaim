@@ -1,7 +1,7 @@
 import {
   allocateUniqueNumberedName,
   treeChildNameTaken,
-} from '@/utils/treeCopy';
+} from '@/utils/vault/treeCopy';
 import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
 
 export type UploadNameConflictChoice = 'replace' | 'rename' | 'cancel';

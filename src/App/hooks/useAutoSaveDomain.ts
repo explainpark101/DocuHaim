@@ -5,7 +5,7 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useVault } from '@/App/hooks/useVault';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useRecordingSync } from '@/App/context/RecordingSyncContext';
-import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
+import { SESSION_STORAGE_TYPE } from '@/utils/vault/sessionWorkspace';
 import type { AutoSaveValue } from '@/App/context/AutoSaveContext';
 
 /**

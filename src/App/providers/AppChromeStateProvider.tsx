@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import { useVisualViewportLock } from '@/hooks/useVisualViewportLock';
-import { loadHideRecordingCompanions } from '@/utils/recordingVisibilitySettings';
+import { loadHideRecordingCompanions } from '@/utils/recording/recordingVisibilitySettings';
 import { loadTreeStickyFolderPathEnabled } from '@/utils/treeStickySettings';
 import { loadTreeShowModifiedDateEnabled } from '@/utils/treeModifiedDateSettings';
 import {

@@ -11,8 +11,8 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import { clearAuthSession } from '@/utils/authSession';
-import type { LlmProviderProfile } from '@/utils/llmProviderProfiles';
+import { clearAuthSession } from '@/utils/shared/authSession';
+import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
 
 export type AuthS3Creds = {
   accessKeyId: string;

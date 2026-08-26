@@ -1,5 +1,5 @@
-import { listObjectsV2, deleteObjects, putObject } from '@/utils/s3Client';
-import { webdavPropfindDeep } from '@/utils/webdavClient';
+import { listObjectsV2, deleteObjects, putObject } from '@/utils/vault/s3Client';
+import { webdavPropfindDeep } from '@/utils/vault/webdavClient';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 import {
   filterTrashEntries,

@@ -4,7 +4,7 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { vibrateLongPressAction } from '@/utils/hapticFeedback';
+import { vibrateLongPressAction } from '@/utils/shared/hapticFeedback';
 
 /** Hold this long on tree rows to open the mobile context menu modal. */
 export const TREE_TOUCH_CONTEXT_MENU_MS = 500;

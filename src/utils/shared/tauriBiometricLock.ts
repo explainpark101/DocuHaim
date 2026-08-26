@@ -4,7 +4,7 @@
  * Secrets live in Stronghold — this module only verifies the user.
  */
 
-import { isTauriApp, isTauriMobilePlatform } from '@/utils/tauriPlatform';
+import { isTauriApp, isTauriMobilePlatform } from '@/utils/shared/tauriPlatform';
 
 export const TAURI_BIOMETRIC_REASON_UNLOCK = 'Unlock DocuHaim vault';
 export const TAURI_BIOMETRIC_REASON_REGISTER = 'Enable biometric unlock for DocuHaim';

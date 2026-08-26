@@ -1,4 +1,4 @@
-import { DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
+import { DEFAULT_PRINT_FONTS } from '@/utils/print/printSettingsStore';
 
 export type DocumentFontSettings = {
   body: string;

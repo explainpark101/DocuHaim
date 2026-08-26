@@ -5,7 +5,7 @@ import {
   PRINT_ZOOM_MAX,
   PRINT_ZOOM_MIN,
   stepZoomPercent,
-} from '@/utils/printPreviewView';
+} from '@/utils/print/printPreviewView';
 
 type Props = {
   value: number;

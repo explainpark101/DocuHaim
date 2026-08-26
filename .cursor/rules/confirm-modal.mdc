@@ -6,7 +6,7 @@ alwaysApply: false
 
 # ConfirmModal
 
-Use `ConfirmModal` from `@/components/modals/ConfirmModal` for yes/no (and optional discard) confirms. Do not hand-roll confirm dialogs with plain `Modal` + buttons.
+Use `ConfirmModal` from `@/components/shared/modals/ConfirmModal` for yes/no (and optional discard) confirms. Do not hand-roll confirm dialogs with plain `Modal` + buttons.
 
 ## Animation
 

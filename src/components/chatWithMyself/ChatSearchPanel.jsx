@@ -18,7 +18,7 @@ import { Form, Switch } from 'radix-ui';
 import {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
-} from '@/components/contextMenu/AdaptiveContextMenu';
+} from '@/components/shared/contextMenu/AdaptiveContextMenu';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatDatePicker from '@/components/chatWithMyself/ui/ChatDatePicker';
 import ChatDateTimePicker from '@/components/chatWithMyself/ui/ChatDateTimePicker';
@@ -34,7 +34,7 @@ import {
   chatMenuItemClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
 import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCardMenu';
-import { copyText } from '@/utils/copyText';
+import { copyText } from '@/utils/shared/copyText';
 import {
   SELF_GROUP,
   formatMessageDateLabel,

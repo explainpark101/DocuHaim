@@ -56,9 +56,9 @@ import {
   wikiImageMarkupFromAttrs,
 } from '@/utils/wikiImageSyntax';
 import { useNavigate } from 'react-router';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { setPendingPrintReturnState } from '@/utils/print/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
-import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
+import WikiImageSizeModal from '@/components/shared/modals/WikiImageSizeModal';
 import {
   convertAllMarkdownImagesToWiki,
   hasStandardMarkdownImages,

@@ -1,4 +1,4 @@
-import { getObjectBody, headObject, putObject, getSignedGetUrl } from '@/utils/s3Client';
+import { getObjectBody, headObject, putObject, getSignedGetUrl } from '@/utils/vault/s3Client';
 import { getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 

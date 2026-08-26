@@ -1,4 +1,4 @@
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import type { RebuildCheckpointInfo } from '@/utils/advancedSearch/engine';
 
 type Props = {

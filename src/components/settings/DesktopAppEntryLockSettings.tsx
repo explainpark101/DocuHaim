@@ -5,7 +5,7 @@ import Button from '@/components/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isDesktopApp } from '@/utils/shared/isDesktopApp';
 import {
   disableDesktopAppEntryLock,
   enableDesktopBiometricEntryLock,
@@ -13,11 +13,11 @@ import {
   formatEntryLockError,
   resolveDesktopAppEntryLockMode,
   type DesktopAppEntryLockMode,
-} from '@/utils/desktopAppEntryLock';
+} from '@/utils/shared/desktopAppEntryLock';
 import { isDesktopBiometricAvailable } from '@/utils/desktopBiometricUnlock';
-import { isBiometricUserCancelError } from '@/utils/tauriBiometricLock';
-import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { isBiometricUserCancelError } from '@/utils/shared/tauriBiometricLock';
+import { SetPasswordModal } from '@/components/shared/modals/SetPasswordModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 
 const ENTRY_LOCK_LOADING_TOAST = '암호설정 불러오는 중';
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import { WebfontCssEditorModal } from '@/components/settings/WebfontCssEditorModal';
 import {
   BUILTIN_WEBFONT_ENTRIES,

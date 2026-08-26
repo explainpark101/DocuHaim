@@ -10,13 +10,13 @@ import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { markAutoSaveTimestamp } from '@/App/hooks/autoSaveBridge';
-import { allocateUniqueFileSystemName } from '@/utils/treeCopy';
-import { getObjectBody, streamS3ObjectToWritable } from '@/utils/s3Client';
+import { allocateUniqueFileSystemName } from '@/utils/vault/treeCopy';
+import { getObjectBody, streamS3ObjectToWritable } from '@/utils/vault/s3Client';
 import { findFileTab, patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getCachedTableStyleTemplate } from '@/utils/tableStyleSettingsStore';
 import { createWebdavBackend } from '@/utils/storage';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
-import { ensureDirectoryReadWritePermission } from '@/utils/localFolderStore';
+import { ensureDirectoryReadWritePermission } from '@/utils/vault/localFolderStore';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
@@ -24,7 +24,7 @@ import {
   decodeSessionText,
   mimeForSessionFileName,
   updateSessionFileText,
-} from '@/utils/sessionWorkspace';
+} from '@/utils/vault/sessionWorkspace';
 import {
   buildMarkdownImageZipEntries,
   collectMarkdownExportImageBytes,
@@ -41,7 +41,7 @@ import {
   prepareSessionMarkdownForVault,
 } from '@/utils/sessionNoteImport';
 import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
-import { copyText } from '@/utils/copyText';
+import { copyText } from '@/utils/shared/copyText';
 
 /**
  * useDownloadSessionDomain: context-owned domain handlers.

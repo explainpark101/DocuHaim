@@ -14,14 +14,14 @@ import {
   saveStrongholdWebAuthnMarker,
   setBiometricLockEnabled,
   type StrongholdWebAuthnMarker,
-} from '@/utils/desktopStrongholdSecrets';
+} from '@/utils/shared/desktopStrongholdSecrets';
 import {
   isTauriBiometricAvailable,
   promptTauriBiometric,
   TAURI_BIOMETRIC_REASON_REGISTER,
   TAURI_BIOMETRIC_REASON_UNLOCK,
-} from '@/utils/tauriBiometricLock';
-import { isTauriApp } from '@/utils/tauriPlatform';
+} from '@/utils/shared/tauriBiometricLock';
+import { isTauriApp } from '@/utils/shared/tauriPlatform';
 
 const BIOMETRY_DOMAIN = 'com.docuhaim.app';
 const NAME_UNLOCK_PASSWORD = 'unlock-password';
@@ -179,13 +179,13 @@ export async function loadCredsWithDesktopBiometric(): Promise<unknown> {
 /** Prompt biometrics and load Stronghold session (Tauri app lock). */
 export async function unlockDesktopWithBiometricGate(): Promise<{
   creds: Record<string, unknown> | null;
-  webdav: Awaited<ReturnType<typeof import('@/utils/desktopStrongholdSecrets').loadDesktopWebdavConfig>>;
+  webdav: Awaited<ReturnType<typeof import('@/utils/shared/desktopStrongholdSecrets').loadDesktopWebdavConfig>>;
 }> {
   if (!(await isBiometricLockEnabled())) {
     throw new Error('Biometric app lock is not enabled.');
   }
   await promptTauriBiometric(TAURI_BIOMETRIC_REASON_UNLOCK);
-  const { loadDesktopStrongholdAfterBiometric } = await import('@/utils/desktopStrongholdSecrets');
+  const { loadDesktopStrongholdAfterBiometric } = await import('@/utils/shared/desktopStrongholdSecrets');
   return loadDesktopStrongholdAfterBiometric();
 }
 

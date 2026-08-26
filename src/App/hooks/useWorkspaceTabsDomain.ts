@@ -26,7 +26,7 @@ import {
   stripChatTab,
   stripSettingsTab,
 } from '@/utils/workspaceTabs/legacyMode';
-import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
+import { SESSION_STORAGE_TYPE } from '@/utils/vault/sessionWorkspace';
 import { clearEncMdPassword, isEncMdPath } from '@/utils/encMd';
 import { isSettingsAppPathname } from '@/utils/appHref';
 import { useAuth } from '@/contexts/AuthContext';

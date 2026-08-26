@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Check, ClipboardCheck, Link2, Loader2 } from 'lucide-react';
-import { bindCopyTextToast } from '@/utils/copyText';
+import { bindCopyTextToast } from '@/utils/shared/copyText';
 
 export type ToastIcon = 'check' | 'copy' | 'link' | 'loading';
 

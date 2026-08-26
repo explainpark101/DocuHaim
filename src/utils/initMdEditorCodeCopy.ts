@@ -1,4 +1,4 @@
-import { copyText } from '@/utils/copyText';
+import { copyText } from '@/utils/shared/copyText';
 
 const SUCCESS_CLASS = 'is-copy-success';
 const SUCCESS_MS = 1500;

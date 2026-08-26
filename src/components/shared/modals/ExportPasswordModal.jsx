@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { IconDownload } from '@/components/icons';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 
 export function ExportPasswordModal({ isOpen, onConfirm, onCancel }) {
   const [password, setPassword] = useState('');

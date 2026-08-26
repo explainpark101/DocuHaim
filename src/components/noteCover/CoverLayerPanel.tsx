@@ -32,7 +32,7 @@ import {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
   AdaptiveMenuSeparator,
-} from '@/components/contextMenu/AdaptiveContextMenu';
+} from '@/components/shared/contextMenu/AdaptiveContextMenu';
 import { motion as Motion } from 'motion/react';
 import {
   ArrowDownToLine,

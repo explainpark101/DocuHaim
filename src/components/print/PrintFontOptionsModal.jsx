@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import Modal from '@/components/modals/Modal';
-import FontFamilyInput from '@/components/FontFamilyInput';
+import Modal from '@/components/shared/modals/Modal';
+import FontFamilyInput from '@/components/editor/FontFamilyInput';
 import { buildFontFamilyOptions } from '@/utils/fontOptions';
-import { savePrintFontsToStorage, DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
+import { savePrintFontsToStorage, DEFAULT_PRINT_FONTS } from '@/utils/print/printSettingsStore';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 
 export { DEFAULT_PRINT_FONTS };

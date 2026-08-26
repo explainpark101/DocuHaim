@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 import { IconFolder, IconFolderPlus } from '@/components/icons';
 
 type TreeNodeLike = {

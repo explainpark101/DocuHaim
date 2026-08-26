@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { isS3StorageScope } from '@/utils/storageScope';
+import { isS3StorageScope } from '@/utils/vault/storageScope';
 
 export const chatDb = new Dexie('s3haim-chat-with-myself');
 

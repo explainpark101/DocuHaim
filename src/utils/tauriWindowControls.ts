@@ -1,4 +1,4 @@
-import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isTauriDesktopPlatform } from '@/utils/shared/tauriPlatform';
 
 async function getAppWindow() {
   if (!isTauriDesktopPlatform()) return null;

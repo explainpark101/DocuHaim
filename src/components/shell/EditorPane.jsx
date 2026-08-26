@@ -15,15 +15,15 @@ import {
   IconEye,
 } from '@/components/icons';
 import AudioLevelIndicator from '@/components/AudioLevelIndicator';
-import RecordingDropdownButton from '@/components/RecordingDropdownButton';
+import RecordingDropdownButton from '@/components/recording/RecordingDropdownButton';
 import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
-import RecordingSyncView from '@/components/RecordingSyncView';
-import RecordingPlayer from '@/components/RecordingPlayer';
+import RecordingSyncView from '@/components/recording/RecordingSyncView';
+import RecordingPlayer from '@/components/recording/RecordingPlayer';
 import Button from '@/components/Button';
 import { ArrowLeftRight, ClipboardCopy, ImagePlus, ListTree, Loader2, PenLine, Settings, X } from 'lucide-react';
-import PrintButton from '@/components/PrintButton';
-import SessionOpenPanel from '@/components/SessionOpenPanel';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import PrintButton from '@/components/print/PrintButton';
+import SessionOpenPanel from '@/components/shell/SessionOpenPanel';
+import { ConfirmModal } from '@/components/shared/modals/ConfirmModal';
 import DocumentSettingsModal from '@/components/DocumentSettingsModal';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import {
@@ -54,10 +54,10 @@ import {
   emptyHomeMenuContainerVariants,
 } from '@/components/emptyHomeMotion';
 
-const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
-const NovelMarkdownEditor = lazy(() => import('@/components/NovelMarkdownEditor'));
-const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
-const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
+const MarkdownEditor = lazy(() => import('@/components/editor/MarkdownEditor'));
+const NovelMarkdownEditor = lazy(() => import('@/components/editor/NovelMarkdownEditor'));
+const MonacoTextEditor = lazy(() => import('@/components/editor/MonacoTextEditor'));
+const HtmlSvgPreviewEditor = lazy(() => import('@/components/editor/HtmlSvgPreviewEditor'));
 
 function EditorPaneSuspenseFallback() {
   return (

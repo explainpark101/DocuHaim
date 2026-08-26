@@ -6,7 +6,7 @@
  * - MediaRecorder: 오디오 청크 수집 → IndexedDB 저장
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { saveRecording } from '@/utils/recordingDb';
+import { saveRecording } from '@/utils/recording/recordingDb';
 
 const FFT_SIZE = 256;
 const SMOOTHING = 0.8;

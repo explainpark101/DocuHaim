@@ -4,7 +4,7 @@
  * in the same tab can restore without re-entering the password.
  * Closing the tab clears sessionStorage (and thus the auto-login session).
  */
-import { encryptWithEntropy, decryptWithEntropy } from '@/utils/crypto';
+import { encryptWithEntropy, decryptWithEntropy } from '@/utils/shared/crypto';
 
 const SESSION_STORAGE_KEY = 's3haim-auth-session';
 const ENTROPY_STORAGE_KEY = 's3haim-auth-session-entropy';

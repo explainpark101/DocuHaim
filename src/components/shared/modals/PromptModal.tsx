@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import Button from '@/components/Button';
 import { IconBack, IconCheck, IconKey } from '@/components/icons';
-import Modal from '@/components/modals/Modal';
+import Modal from '@/components/shared/modals/Modal';
 
 export type PromptModalProps = {
   isOpen: boolean;

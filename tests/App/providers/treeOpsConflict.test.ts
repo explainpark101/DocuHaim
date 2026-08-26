@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveTreeDestName } from '@/utils/treeNameConflict';
+import { resolveTreeDestName } from '@/utils/vault/treeNameConflict';
 
 describe('TreeOps conflict helpers', () => {
   it('keeps unique folder names without prompting', async () => {
