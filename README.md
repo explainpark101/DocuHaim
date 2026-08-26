@@ -62,7 +62,7 @@ Nextcloud 등은 기본 CORS가 꺼져 있는 경우가 많습니다. CORS 오�
 bun run tauri:macos
 ```
 
-이 명령은 `bun run tauri:build`로 DMG를 만든 뒤, `scripts/macos-adhoc-sign.mjs`로 **ad-hoc 서명**(`codesign --sign -`)을 적용하고 `/Applications/DocuHaim.app`에 복사합니다.
+이 명령은 `bun run tauri:build`로 DMG를 만든 뒤, `scripts/macos-adhoc-sign.ts`로 **ad-hoc 서명**(`codesign --sign -`)을 적용하고 `/Applications/DocuHaim.app`에 복사합니다.
 
 - Apple Developer ID / 공증이 **없어도** 동작합니다. Gatekeeper 경고는 남을 수 있습니다.
 - `tauri build`가 DMG 생성 후 번들 `.app`을 정리하는 경우가 있어, 스크립트가 DMG에서 `.app`을 꺼내 서명합니다.

@@ -34,7 +34,7 @@ Android and desktop releases are **separate**. Desktop workflow does not upload 
 ## Local development
 
 Requires Android SDK + NDK, **JDK 17**, and Rust Android targets.  
-`bun run tauri:android:*` uses [`scripts/tauri-android.mjs`](../../scripts/tauri-android.mjs) to set `JAVA_HOME` (Homebrew OpenJDK) so Gradle does not hit macOS’s “Unable to locate a Java Runtime” stub.
+`bun run tauri:android:*` uses [`scripts/tauri-android.ts`](../../scripts/tauri-android.ts) to set `JAVA_HOME` (Homebrew OpenJDK) so Gradle does not hit macOS’s “Unable to locate a Java Runtime” stub.
 
 ```bash
 # Sideload-ready (debug-signed) — recommended for device install without a release keystore

@@ -1,7 +1,7 @@
-// scripts/generate-llms.js
+// scripts/generate-llms.ts
 
-const fs = require("fs");
-const path = require("path");
+import fs from 'node:fs';
+import path from 'node:path';
 
 const SITE =
   process.env.SITE_URL ||
@@ -40,7 +40,7 @@ function removeFrontmatter(content: string): string {
 
 function title(content: string, fallback: string): string {
   const m = content.match(/^# (.+)$/m);
-  return m ? m[1].trim() : fallback;
+  return m?.[1]?.trim() ?? fallback;
 }
 
 function url(file: string): string {

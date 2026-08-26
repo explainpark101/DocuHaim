@@ -1,0 +1,46 @@
+---
+description: Repo scripts — TypeScript only, run with Bun
+alwaysApply: true
+---
+
+# Scripts (`scripts/`)
+
+Build, release, and maintenance scripts live under `scripts/`. Use **TypeScript** and run them with **Bun** — no new `.mjs` / `.js` script files.
+
+## Policy
+
+1. **New scripts** — add `scripts/<name>.ts` only (not `.mjs`, `.js`, `.cjs`).
+2. **Run** — `bun scripts/<name>.ts` or wire `package.json` with the same pattern (`"foo": "bun scripts/foo.ts"`).
+3. **Do not** use `node`, `tsx`, or `ts-node` for project scripts unless Bun cannot run the file (rare).
+4. **Typecheck** — `scripts/**/*.ts` is included in `tsconfig.node.json`; keep scripts passing `bun run typecheck`.
+5. **ESLint** — `scripts/**/*.ts` uses Node globals (`eslint.config.js`).
+6. Prefer **English** in new code comments if Korean Unicode might corrupt.
+
+## `package.json` pattern
+
+```json
+"sync:tauri-version": "bun scripts/sync-tauri-version-from-package.ts",
+"build:image": "bun scripts/generate-og-image.ts"
+```
+
+Pass CLI args after `--` when invoking via npm/bun scripts:
+
+```bash
+bun run macos:adhoc -- --install
+```
+
+## Exceptions
+
+- Non-TypeScript tooling colocated in `scripts/` (e.g. `og-image.html`, one-off Python) is fine when TS is not the right tool.
+- `server/serve.mjs` is outside `scripts/`; do not migrate it as part of script work unless explicitly requested.
+
+## Examples
+
+```text
+❌ BAD — scripts/deploy.mjs or node scripts/foo.mjs
+❌ BAD — package.json "foo": "node scripts/foo.ts"
+❌ BAD — new maintenance script as plain .js without a strong reason
+✅ GOOD — scripts/tauri-android.ts + bun scripts/tauri-android.ts
+✅ GOOD — package.json entry: "llms": "bun scripts/generate-llms.ts"
+✅ GOOD — executable shebang #!/usr/bin/env bun on standalone CLI scripts
+```
