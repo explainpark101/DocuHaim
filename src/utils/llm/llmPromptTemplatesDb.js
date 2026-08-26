@@ -21,6 +21,7 @@ llmPromptTemplatesDb.version(1).stores({
  * @property {string} name
  * @property {string} instruction
  * @property {string} [systemPrompt]
+ * @property {Record<string, unknown>} [requestOptions]
  * @property {number} updatedAt
  */
 
@@ -157,8 +158,27 @@ export function createEmptyLlmPromptTemplate() {
     name: '',
     instruction: '',
     systemPrompt: '',
+    requestOptions: { temperature: 0.4 },
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * @param {unknown} value
+ * @returns {Record<string, unknown>}
+ */
+function normalizeRequestOptionsField(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { temperature: 0.4 };
+  }
+  /** @type {Record<string, unknown>} */
+  const out = {};
+  for (const [key, v] of Object.entries(/** @type {Record<string, unknown>} */ (value))) {
+    const k = typeof key === 'string' ? key.trim() : '';
+    if (!k) continue;
+    out[k] = v;
+  }
+  return Object.keys(out).length ? out : { temperature: 0.4 };
 }
 
 /**
@@ -175,6 +195,7 @@ function normalizeTemplate(value) {
     name: typeof row.name === 'string' ? row.name : '',
     instruction: typeof row.instruction === 'string' ? row.instruction : '',
     systemPrompt: typeof row.systemPrompt === 'string' ? row.systemPrompt : '',
+    requestOptions: normalizeRequestOptionsField(row.requestOptions),
     updatedAt: typeof row.updatedAt === 'number' && Number.isFinite(row.updatedAt) ? row.updatedAt : Date.now(),
   };
 }
@@ -376,6 +397,7 @@ export async function saveLlmPromptTemplate(template) {
     name: (template.name || '').trim(),
     instruction: (template.instruction || '').trim(),
     systemPrompt: (template.systemPrompt || '').trim(),
+    requestOptions: normalizeRequestOptionsField(template.requestOptions),
     updatedAt: Date.now(),
   };
 

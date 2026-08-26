@@ -121,6 +121,7 @@ export default function EditorPane({
   hideRecordingCompanions = false,
   llmProviderProfiles = [],
   getImgbbApiKey,
+  isActiveFile = true,
 }) {
   const effectiveEditorType = editorType ?? loadEditorType();
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
@@ -610,7 +611,10 @@ export default function EditorPane({
   return (
     <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden">
       <div ref={editorTopChromeRef} className="shrink-0 flex flex-col">
-      <div className={`relative z-10100 flex min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 dark:border-odp-bgSofter dark:bg-odp-surface sm:px-6 pointer-events-auto transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}>
+      <div
+        data-app-editor-navbar=""
+        className={`relative z-10100 flex min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 dark:border-odp-bgSofter dark:bg-odp-surface sm:px-6 pointer-events-auto transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-2 font-medium text-gray-700 dark:text-odp-fgStrong sm:gap-3">
           {showMobileSidebarOpen && (
             <button
@@ -1026,6 +1030,7 @@ export default function EditorPane({
                       currentFile={currentFile}
                       previewOnly={previewOnly}
                       isMobileLayout={isMobileLayout}
+                      isActiveFile={isActiveFile}
                       onUploadImage={onUploadImage}
                       isUploadingEditorImage={isUploadingEditorImage}
                       uploadImagePercent={uploadImagePercent}

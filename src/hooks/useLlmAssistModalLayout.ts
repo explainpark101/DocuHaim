@@ -97,12 +97,18 @@ export function useLlmAssistModalLayout(
       null;
 
     let resizeObserver: ResizeObserver | null = null;
-    if (root && typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(onWindowChange);
-      resizeObserver.observe(root);
-      const toolbar =
-        root.querySelector('.md-editor-toolbar-wrapper') || root.querySelector('.md-editor-toolbar');
-      if (toolbar) resizeObserver.observe(toolbar);
+      if (root) {
+        resizeObserver.observe(root);
+        const toolbar =
+          root.querySelector('.md-editor-toolbar-wrapper') || root.querySelector('.md-editor-toolbar');
+        if (toolbar) resizeObserver.observe(toolbar);
+      }
+      const navbar = document.querySelector('[data-app-editor-navbar]');
+      if (navbar) resizeObserver.observe(navbar);
+      const statusBar = document.querySelector('[data-app-status-bar]');
+      if (statusBar) resizeObserver.observe(statusBar);
     }
 
     return () => {

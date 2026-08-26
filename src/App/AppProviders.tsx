@@ -12,6 +12,7 @@ import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AppPwaSnippetsStateProvider } from '@/App/providers/AppPwaSnippetsStateProvider';
 import { RecordingProvider } from '@/App/providers/RecordingProvider';
 import { AppLogicProvider } from '@/App/providers/AppLogicProvider';
+import { LlmAssistSessionProvider } from '@/contexts/LlmAssistSessionContext';
 import { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
 export { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER };
@@ -34,7 +35,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
                       <TreeOpsProvider>
                         <AppPwaSnippetsStateProvider>
                           <RecordingProvider>
-                            <AppLogicProvider>{children}</AppLogicProvider>
+                            <AppLogicProvider>
+                              <LlmAssistSessionProvider>{children}</LlmAssistSessionProvider>
+                            </AppLogicProvider>
                           </RecordingProvider>
                         </AppPwaSnippetsStateProvider>
                       </TreeOpsProvider>

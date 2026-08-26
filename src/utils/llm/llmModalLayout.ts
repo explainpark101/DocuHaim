@@ -63,7 +63,8 @@ export function clampLlmModalLayout(
   const heightPx = Math.min(maxHeight, Math.max(LLM_MODAL_MIN_HEIGHT, layout.heightPx));
 
   const maxLeft = bounds.right - widthPx;
-  const maxTop = bounds.bottom - heightPx;
+  // Keep the purple drag header visible; panel body may hang below the bounds.
+  const maxTop = bounds.bottom - LLM_MODAL_HEADER_ESTIMATE;
   const leftPx = Math.min(Math.max(bounds.left, layout.leftPx), Math.max(bounds.left, maxLeft));
   const topPx = Math.min(Math.max(bounds.top, layout.topPx), Math.max(bounds.top, maxTop));
 

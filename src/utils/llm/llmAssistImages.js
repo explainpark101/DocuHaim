@@ -1,4 +1,3 @@
-export const LLM_ASSIST_MAX_IMAGES = 4;
 export const LLM_ASSIST_MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 export const LLM_ASSIST_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -190,20 +189,12 @@ export async function readImageFileAsAttachment(file) {
 
 /**
  * @param {FileList | File[]} files
- * @param {number} currentCount
+ * @param {number} [_currentCount] unused; kept for call-site compatibility
  * @returns {Promise<{ id: string, name: string, mimeType: string, dataBase64: string, previewDataUrl: string }[]>}
  */
-export async function readImageFilesAsAttachments(files, currentCount = 0) {
+export async function readImageFilesAsAttachments(files, _currentCount = 0) {
   const list = [...files].filter((f) => f.type.startsWith('image/'));
   if (!list.length) throw new Error('이미지 파일을 선택하세요.');
-
-  const remaining = LLM_ASSIST_MAX_IMAGES - currentCount;
-  if (remaining <= 0) {
-    throw new Error(`이미지는 최대 ${LLM_ASSIST_MAX_IMAGES}장까지 첨부할 수 있습니다.`);
-  }
-  if (list.length > remaining) {
-    throw new Error(`이미지는 최대 ${LLM_ASSIST_MAX_IMAGES}장까지 첨부할 수 있습니다. (현재 ${currentCount}장)`);
-  }
 
   const attachments = [];
   for (const file of list) {

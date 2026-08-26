@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import LlmAssistPanel from '@/components/LlmAssistPanel';
+import { LLM_ASSIST_MSG } from '@/utils/llmAssistBridge';
 import {
-  isLlmAssistMessage,
-  LLM_ASSIST_MSG,
-  postLlmAssistMessage,
-} from '@/utils/llmAssistBridge';
+  closeCurrentLlmAssistTauriPopout,
+  isLlmAssistTauriMainWindowOpen,
+  isLlmAssistTauriPopoutWindow,
+  postLlmAssistPopoutAction,
+  postLlmAssistPopoutReady,
+  subscribeLlmAssistPopoutFromParent,
+} from '@/utils/llm/llmAssistPopoutHost';
 import { applyDocumentTheme, loadStoredTheme } from '@/utils/documentTheme';
+import {
+  LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
+  normalizeRequestOptions,
+} from '@/utils/llm/llmAssistRequestOptions';
 
 if (typeof document !== 'undefined') {
   applyDocumentTheme(loadStoredTheme());
@@ -18,6 +26,7 @@ const EMPTY_STATE = {
   attachedImages: [],
   instruction: '',
   systemPrompt: '',
+  requestOptions: { ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS },
   result: '',
   resultViewMode: 'text',
   loading: false,
@@ -32,74 +41,110 @@ const EMPTY_STATE = {
   theme: loadStoredTheme(),
 };
 
-function postActionToOpener(action, payload = {}) {
-  if (!window.opener || window.opener.closed) return;
-  postLlmAssistMessage(window.opener, LLM_ASSIST_MSG.ACTION, { action, payload });
-}
-
 export default function LlmAssistPopoutPage() {
   const [remoteState, setRemoteState] = useState(EMPTY_STATE);
   const [instruction, setInstruction] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [requestOptions, setRequestOptions] = useState(() => ({
+    ...LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
+  }));
   const [templateName, setTemplateName] = useState('');
   const [result, setResult] = useState('');
   const [resultViewMode, setResultViewMode] = useState('text');
   const [model, setModel] = useState('');
   const [selectedProfileId, setSelectedProfileId] = useState('');
   const [connected, setConnected] = useState(false);
+  const [tauriPopout, setTauriPopout] = useState(false);
   const readySentRef = useRef(false);
+
+  useEffect(() => {
+    void isLlmAssistTauriPopoutWindow().then(setTauriPopout);
+  }, []);
 
   useEffect(() => {
     applyDocumentTheme(remoteState.theme);
   }, [remoteState.theme]);
 
   const sendAction = useCallback((action, payload = {}) => {
-    postActionToOpener(action, payload);
+    postLlmAssistPopoutAction(action, payload);
+  }, []);
+
+  const applyRemoteState = useCallback((state) => {
+    const next = { ...EMPTY_STATE, ...state };
+    setRemoteState(next);
+    setInstruction(next.instruction);
+    setSystemPrompt(typeof next.systemPrompt === 'string' ? next.systemPrompt : '');
+    setRequestOptions(normalizeRequestOptions(next.requestOptions));
+    setTemplateName(next.templateName);
+    setResult(next.result);
+    setResultViewMode(next.resultViewMode);
+    setModel(next.model || '');
+    setSelectedProfileId(next.selectedProfileId || '');
+    setConnected(true);
   }, []);
 
   useEffect(() => {
-    const onMessage = (event) => {
-      if (event.origin !== window.location.origin) return;
-      if (!isLlmAssistMessage(event.data)) return;
+    let unsubBridge = () => {};
+    let cancelled = false;
 
-      if (event.data.type === LLM_ASSIST_MSG.SYNC && event.data.state) {
-        const next = { ...EMPTY_STATE, ...event.data.state };
-        setRemoteState(next);
-        setInstruction(next.instruction);
-        setSystemPrompt(typeof next.systemPrompt === 'string' ? next.systemPrompt : '');
-        setTemplateName(next.templateName);
-        setResult(next.result);
-        setResultViewMode(next.resultViewMode);
-        setModel(next.model || '');
-        setSelectedProfileId(next.selectedProfileId || '');
-        setConnected(true);
+    void subscribeLlmAssistPopoutFromParent((message) => {
+      if (message.type === LLM_ASSIST_MSG.SYNC && message.state) {
+        applyRemoteState(message.state);
         return;
       }
 
-      if (event.data.type === LLM_ASSIST_MSG.PARENT_CLOSING) {
-        window.close();
+      if (message.type === LLM_ASSIST_MSG.PARENT_CLOSING) {
+        if (tauriPopout) {
+          void closeCurrentLlmAssistTauriPopout();
+        } else {
+          window.close();
+        }
       }
-    };
+    }).then((unsub) => {
+      if (cancelled) {
+        unsub();
+        return;
+      }
+      unsubBridge = unsub;
+    });
 
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, []);
+    return () => {
+      cancelled = true;
+      unsubBridge();
+    };
+  }, [applyRemoteState, tauriPopout]);
 
   useEffect(() => {
     if (readySentRef.current) return;
+
+    if (tauriPopout) {
+      readySentRef.current = true;
+      postLlmAssistPopoutReady();
+      return;
+    }
+
     if (!window.opener || window.opener.closed) return;
     readySentRef.current = true;
-    postLlmAssistMessage(window.opener, LLM_ASSIST_MSG.READY);
-  }, []);
+    postLlmAssistPopoutReady();
+  }, [tauriPopout]);
 
   useEffect(() => {
+    if (tauriPopout) {
+      const interval = setInterval(() => {
+        void isLlmAssistTauriMainWindowOpen().then((mainOpen) => {
+          if (!mainOpen) void closeCurrentLlmAssistTauriPopout();
+        });
+      }, 500);
+      return () => clearInterval(interval);
+    }
+
     const interval = setInterval(() => {
       if (!window.opener || window.opener.closed) {
         window.close();
       }
     }, 500);
     return () => clearInterval(interval);
-  }, []);
+  }, [tauriPopout]);
 
   const handleInstructionChange = useCallback(
     (value) => {
@@ -113,6 +158,15 @@ export default function LlmAssistPopoutPage() {
     (value) => {
       setSystemPrompt(value);
       sendAction('set-system-prompt', { value });
+    },
+    [sendAction],
+  );
+
+  const handleRequestOptionsChange = useCallback(
+    (value) => {
+      const next = normalizeRequestOptions(value);
+      setRequestOptions(next);
+      sendAction('set-request-options', { value: next });
     },
     [sendAction],
   );
@@ -135,7 +189,11 @@ export default function LlmAssistPopoutPage() {
 
   const handleClose = () => {
     sendAction('close');
-    window.close();
+    if (tauriPopout) {
+      void closeCurrentLlmAssistTauriPopout();
+    } else {
+      window.close();
+    }
   };
 
   return (
@@ -183,6 +241,8 @@ export default function LlmAssistPopoutPage() {
           onInstructionChange={handleInstructionChange}
           systemPrompt={systemPrompt}
           onSystemPromptChange={handleSystemPromptChange}
+          requestOptions={requestOptions}
+          onRequestOptionsChange={handleRequestOptionsChange}
           result={result}
           onResultChange={handleResultChange}
           resultViewMode={resultViewMode}

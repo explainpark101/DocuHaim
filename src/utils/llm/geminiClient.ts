@@ -7,6 +7,8 @@ import {
   sleep,
 } from '@/utils/geminiError';
 import { buildLlmTransformPrompt } from '@/utils/llmTransformPrompt';
+import { mergeLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
+import { toGeminiGenerationConfig } from '@/utils/llm/llmAssistRequestOptions';
 import {
   ensureGeminiFetchShim,
   resolveGeminiHttpBaseUrl,
@@ -137,15 +139,17 @@ async function generateGeminiContentStream(
   modelId: string,
   parts: Part[],
   systemPrompt = '',
+  requestOptions: Record<string, unknown> = {},
   onChunk?: (accumulated: string) => void,
 ): Promise<string> {
   const ai = createGeminiClient(apiKey);
   const trimmedSystem = (systemPrompt || '').trim();
+  const generationConfig = toGeminiGenerationConfig(requestOptions);
   const stream = await ai.models.generateContentStream({
     model: modelId,
     contents: [{ role: 'user', parts }],
     config: {
-      temperature: 0.4,
+      ...generationConfig,
       ...(trimmedSystem ? { systemInstruction: trimmedSystem } : {}),
     },
   });
@@ -170,6 +174,7 @@ async function generateGeminiContentStreamWithRetry(
   modelId: string,
   parts: Part[],
   systemPrompt = '',
+  requestOptions: Record<string, unknown> = {},
   onChunk?: (accumulated: string) => void,
 ): Promise<string> {
   let attempt = 0;
@@ -181,6 +186,7 @@ async function generateGeminiContentStreamWithRetry(
         modelId,
         parts,
         systemPrompt,
+        requestOptions,
         (text) => {
           receivedChunk = true;
           onChunk?.(text);
@@ -210,6 +216,7 @@ export async function generateGeminiTransform({
   systemPrompt,
   selectedText,
   images,
+  requestOptions,
   onChunk,
 }: {
   apiKey: string;
@@ -218,6 +225,7 @@ export async function generateGeminiTransform({
   systemPrompt?: string;
   selectedText?: string;
   images?: GeminiTransformImage[];
+  requestOptions?: Record<string, unknown>;
   /** Called with accumulated text as stream chunks arrive. */
   onChunk?: (accumulated: string) => void;
 }): Promise<string> {
@@ -241,7 +249,8 @@ export async function generateGeminiTransform({
       apiKey,
       modelId,
       parts,
-      systemPrompt || '',
+      mergeLlmAssistSystemPrompt(systemPrompt || ''),
+      requestOptions || {},
       onChunk,
     );
   } catch (err) {

@@ -10,7 +10,6 @@ import { bindCatalogClickScrollFix } from '@/utils/catalogClickScrollFix';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
-import LlmAssistModal from '@/components/LlmAssistModal';
 import LlmAssistToolbar from '@/components/LlmAssistToolbar';
 import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloatingPanel';
 import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
@@ -159,6 +158,7 @@ import {
 } from '@/utils/previewSelectionSync';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
+import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import {
   attachPreviewMirrorEdit,
   abandonDetachedPreviewMirrorEdit,
@@ -577,12 +577,14 @@ export default function MarkdownEditor({
   onCancelUploadImage,
   onResolveWikiImageUrl,
   snippetConfig = { snippets: [] },
-  llmProviderProfiles = [],
+  llmProviderProfiles: _llmProviderProfiles = [],
   getImgbbApiKey,
   onOpenViewPath,
   onRequestConvertAllImagesToWiki,
   onRegisterConvertAllImagesToWiki,
+  isActiveFile = true,
 }) {
+  const llmAssist = useLlmAssistSessionOptional();
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
   // Unique per keep-alive mount so catalog getElementById / preview-wrapper
@@ -658,7 +660,6 @@ export default function MarkdownEditor({
     openHaimTablePreviewRef.current = haimTableEdit.openPreviewTable;
   }, [haimTableEdit.openAtOffset, haimTableEdit.openPreviewTable]);
   const handleToolbarImageUploadRef = useRef(null);
-  const [llmAssistOpen, setLlmAssistOpen] = useState(false);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
   /** Snapshot of CM selection when opening heading remap ({ from, to, text } or null). */
   const [headingRemapSelection, setHeadingRemapSelection] = useState(null);
@@ -785,7 +786,7 @@ export default function MarkdownEditor({
       view.focus();
       redo(view);
     };
-    handlers['editor-llm-assist'] = () => setLlmAssistOpen(true);
+    handlers['editor-llm-assist'] = () => llmAssist?.openAssist?.();
     handlers['editor-export-pdf'] = openExport;
     handlers['editor-pgbr'] = () => {
       restoreSelectionIfNeeded();
@@ -869,7 +870,21 @@ export default function MarkdownEditor({
     };
 
     return registerEditorActions(handlers);
-  }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki]);
+  }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist]);
+
+  // Register active markdown editor with the global LLM Assist host.
+  useEffect(() => {
+    if (previewOnly || !isActiveFile || !llmAssist?.registerEditorBridge) return undefined;
+    return llmAssist.registerEditorBridge({
+      editorRef,
+      onChange: onChangeWithUndoHistory,
+      getMarkdown: () => {
+        const api = editorRef.current?.value ?? editorRef.current;
+        const view = api?.getEditorView?.();
+        return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
+      },
+    });
+  }, [previewOnly, isActiveFile, llmAssist, onChangeWithUndoHistory]);
 
   useEffect(() => {
     if (previewOnly) return undefined;
@@ -2390,7 +2405,7 @@ export default function MarkdownEditor({
     <LlmAssistToolbar
       key="llm-assist"
       onOpen={() => {
-        setLlmAssistOpen(true);
+        llmAssist?.openAssist?.();
       }}
     />,
     <ChecklistProgressToolbar
@@ -2711,19 +2726,6 @@ export default function MarkdownEditor({
           setHeadingRemapOpen(false);
           setHeadingRemapSelection(null);
         }}
-      />
-      <LlmAssistModal
-        editorRef={editorRef}
-        onChange={onChangeWithUndoHistory}
-        getMarkdown={() => {
-          const api = editorRef.current?.value ?? editorRef.current;
-          const view = api?.getEditorView?.();
-          return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
-        }}
-        llmProviderProfiles={llmProviderProfiles}
-        open={llmAssistOpen}
-        onOpenChange={setLlmAssistOpen}
-        theme={theme}
       />
       <ChecklistProgressFloatingPanel
         editorRef={editorRef}

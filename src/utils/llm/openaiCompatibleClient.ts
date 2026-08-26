@@ -1,4 +1,6 @@
 import { buildLlmTransformPrompt } from '@/utils/llmTransformPrompt';
+import { mergeLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
+import { toOpenAiCompatibleRequestExtras } from '@/utils/llm/llmAssistRequestOptions';
 import {
   formatOpenAiCompatibleError,
   formatOpenAiCompatibleNetworkError,
@@ -265,14 +267,17 @@ async function postChatCompletionsStream({
   apiKey,
   modelId,
   messages,
+  requestOptions,
   onChunk,
 }: {
   baseUrl: string;
   apiKey: string;
   modelId: string;
   messages: ChatMessage[];
+  requestOptions?: Record<string, unknown>;
   onChunk?: (accumulated: string) => void;
 }): Promise<string> {
+  const extras = toOpenAiCompatibleRequestExtras(requestOptions);
   const res = await fetchOpenAiJson(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -280,9 +285,9 @@ async function postChatCompletionsStream({
       Accept: 'text/event-stream',
     },
     body: JSON.stringify({
+      ...extras,
       model: modelId,
       messages,
-      temperature: 0.4,
       stream: true,
     }),
   });
@@ -341,6 +346,7 @@ export async function generateOpenAiCompatibleTransform({
   systemPrompt,
   selectedText,
   images,
+  requestOptions,
   onChunk,
 }: {
   baseUrl: string;
@@ -350,6 +356,7 @@ export async function generateOpenAiCompatibleTransform({
   systemPrompt?: string;
   selectedText?: string;
   images?: { mimeType: string; dataBase64: string }[];
+  requestOptions?: Record<string, unknown>;
   /** Called with accumulated text as stream chunks arrive. */
   onChunk?: (accumulated: string) => void;
 }): Promise<string> {
@@ -367,7 +374,7 @@ export async function generateOpenAiCompatibleTransform({
 
   const messages = buildChatMessages({
     instruction: trimmedInstruction,
-    systemPrompt: systemPrompt ?? '',
+    systemPrompt: mergeLlmAssistSystemPrompt(systemPrompt ?? ''),
     selectedText: trimmedSelection,
     images: imageList,
   });
@@ -377,6 +384,7 @@ export async function generateOpenAiCompatibleTransform({
     apiKey: apiKey ?? '',
     modelId,
     messages,
+    requestOptions: requestOptions ?? {},
     ...(onChunk ? { onChunk } : {}),
   });
 }
