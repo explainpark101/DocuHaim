@@ -12,9 +12,9 @@ import { TreeOpsProvider } from '@/App/providers/TreeOpsProvider';
 import { AppPwaSnippetsStateProvider } from '@/App/providers/AppPwaSnippetsStateProvider';
 import { RecordingProvider } from '@/App/providers/RecordingProvider';
 import { AppLogicProvider } from '@/App/providers/AppLogicProvider';
-import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
+import { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
-export { APP_PROVIDER_ORDER };
+export { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER };
 
 /**
  * Nest: FileSessionState → Modals → Tabs → Chrome → FileSession → TreeOps…

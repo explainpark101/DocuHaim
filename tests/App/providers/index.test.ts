@@ -4,10 +4,10 @@ import {
   VAULT_PATH_STORAGE_TYPES,
 } from '@/App/context/VaultContext';
 import { createAutoSaveSyncHandlers } from '@/App/providers/createAutoSaveSyncHandlers';
-import { APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
+import { APP_LOGIC_PROVIDER_ORDER, APP_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
 describe('App provider public API', () => {
-  it('documents fixed provider nesting order', () => {
+  it('documents fixed provider nesting order (AppProviders.tsx)', () => {
     expect(APP_PROVIDER_ORDER).toEqual([
       'AppBootstrapStateProvider',
       'AppVaultStateProvider',
@@ -21,6 +21,12 @@ describe('App provider public API', () => {
       'TreeOpsProvider',
       'AppPwaSnippetsStateProvider',
       'RecordingProvider',
+      'AppLogicProvider',
+    ]);
+  });
+
+  it('documents AppLogicProvider inner nest order', () => {
+    expect(APP_LOGIC_PROVIDER_ORDER).toEqual([
       'AppBootstrapProvider',
       'AppModalsProvider',
       'AutoSaveProvider',

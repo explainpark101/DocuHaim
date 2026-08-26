@@ -4,7 +4,6 @@ import { AutoSaveProvider } from '@/App/providers/AutoSaveProvider';
 import { AppModalsProvider } from '@/App/providers/AppModalsProvider';
 import { AppChromeProvider } from '@/App/providers/AppChromeProvider';
 import { RecordingToggleBridge } from '@/App/providers/RecordingProvider';
-import { AppShellContext } from '@/App/context/AppShellContext';
 import type { AppChromeValue } from '@/App/context/AppChromeContext';
 import {
   SessionWorkspaceContext,
@@ -93,17 +92,15 @@ function AppChromeAndThinContexts({
 
   return (
     <AppChromeProvider value={chrome}>
-      <AppShellContext.Provider value={chrome}>
-        <RecordingToggleBridge handleToggleRecording={controller.handleToggleRecording}>
-          <SessionWorkspaceContext.Provider value={session}>
-            <ChatIntegrationContext.Provider value={chat}>
-              <AppEditorExtrasContext.Provider value={editorExtras}>
-                {children}
-              </AppEditorExtrasContext.Provider>
-            </ChatIntegrationContext.Provider>
-          </SessionWorkspaceContext.Provider>
-        </RecordingToggleBridge>
-      </AppShellContext.Provider>
+      <RecordingToggleBridge handleToggleRecording={controller.handleToggleRecording}>
+        <SessionWorkspaceContext.Provider value={session}>
+          <ChatIntegrationContext.Provider value={chat}>
+            <AppEditorExtrasContext.Provider value={editorExtras}>
+              {children}
+            </AppEditorExtrasContext.Provider>
+          </ChatIntegrationContext.Provider>
+        </SessionWorkspaceContext.Provider>
+      </RecordingToggleBridge>
     </AppChromeProvider>
   );
 }
