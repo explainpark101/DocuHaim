@@ -1,4 +1,3 @@
-// @ts-nocheck — tab domain actions; tighten with WorkspaceTabsCtxValue
 import { useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
@@ -36,6 +35,7 @@ import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
 import {
   loadWorkspaceTabsAutoSaveMode,
   WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
+  type WorkspaceTabsAutoSaveMode,
 } from '@/utils/workspaceTabsSettings';
 import { useEffect } from 'react';
 
@@ -82,8 +82,9 @@ export function useWorkspaceTabsDomain({
   const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
 
   useEffect(() => {
-    const onAutoSaveMode = (event) => {
-      const mode = event?.detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
+    const onAutoSaveMode = (event: Event) => {
+      const detail = (event as CustomEvent<{ mode?: WorkspaceTabsAutoSaveMode }>).detail;
+      const mode = detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
       workspaceTabsAutoSaveModeRef.current = mode;
     };
     window.addEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
@@ -96,7 +97,7 @@ export function useWorkspaceTabsDomain({
     location.pathname === '/chat' || location.pathname.endsWith('/chat');
   const isSettingsRoute = isSettingsAppPathname(location.pathname);
 
-  const queueBackgroundTabSave = useCallback((file, content) => {
+  const queueBackgroundTabSave = useCallback((file: any, content: any) => {
     if (!file?.type || !file?.id) return;
     if (file.type === SESSION_STORAGE_TYPE) return;
     if (isEncMdPath(file.id) || isEncMdPath(file.name)) return;
@@ -149,7 +150,7 @@ export function useWorkspaceTabsDomain({
   }, [workspaceTabsRef, savingTabIdsRef, setSavingTabIds, saveFileRef]);
 
   const onLeavingDirty = useCallback(
-    (file, content) => {
+    (file: any, content: any) => {
       if (!workspaceTabsEnabledRef.current) return;
       if (workspaceTabsAutoSaveModeRef.current !== 'onFocusChange') return;
       queueBackgroundTabSave(file, content);
@@ -158,7 +159,7 @@ export function useWorkspaceTabsDomain({
   );
 
   const activateWorkspaceTab = useCallback(
-    (id, options = {}) => {
+    (id: string, options: { navigateUrl?: boolean } = {}) => {
       const { navigateUrl = true } = options;
       const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
         editorContent: editorContentRef.current ?? '',
@@ -216,7 +217,7 @@ export function useWorkspaceTabsDomain({
   );
 
   const openChatWorkspaceTab = useCallback(
-    (options = {}) => {
+    (options: { navigateUrl?: boolean } = {}) => {
       const { navigateUrl = true } = options;
       if (!workspaceTabsEnabledRef.current) {
         const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
@@ -265,7 +266,7 @@ export function useWorkspaceTabsDomain({
   );
 
   const openSettingsWorkspaceTab = useCallback(
-    (options = {}) => {
+    (options: { navigateUrl?: boolean; hash?: string } = {}) => {
       const { navigateUrl = true, hash } = options;
       const target =
         typeof hash === 'string' && hash
@@ -365,9 +366,12 @@ export function useWorkspaceTabsDomain({
   ]);
 
   const closeWorkspaceTabById = useCallback(
-    (id, options = {}) => {
+    (
+      id: string,
+      options: { skipDirtyConfirm?: boolean; skipHistory?: boolean } = {},
+    ) => {
       const { skipDirtyConfirm = false, skipHistory = false } = options;
-      const closing = workspaceTabsRef.current.tabs.find((t) => t.id === id);
+      const closing = workspaceTabsRef.current.tabs.find((t: { id: string }) => t.id === id);
       if (!skipDirtyConfirm && isFileTab(closing) && isFileTabDirty(closing)) {
         setPendingCloseTabId(id);
         setShowCloseFileConfirmModal(true);
@@ -424,7 +428,7 @@ export function useWorkspaceTabsDomain({
   );
 
   const reorderWorkspaceTabs = useCallback(
-    (activeId, overId) => {
+    (activeId: string, overId: string) => {
       const next = moveTab(workspaceTabsRef.current, activeId, overId);
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
@@ -433,11 +437,11 @@ export function useWorkspaceTabsDomain({
   );
 
   const cycleWorkspaceTab = useCallback(
-    (delta) => {
+    (delta: number) => {
       if (!workspaceTabsEnabledRef.current) return;
       const { tabs, activeId } = workspaceTabsRef.current;
       if (!tabs.length) return;
-      let idx = tabs.findIndex((t) => t.id === activeId);
+      let idx = tabs.findIndex((t: { id: string }) => t.id === activeId);
       if (idx < 0) idx = delta > 0 ? -1 : 0;
       const nextIdx = (idx + delta + tabs.length) % tabs.length;
       const next = tabs[nextIdx];
