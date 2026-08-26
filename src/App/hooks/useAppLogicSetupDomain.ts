@@ -32,7 +32,7 @@ import {
   CHAT_TAB_ID,
   SETTINGS_TAB_ID,
   pickWorkspaceTabsRestoreSource,
-  clearPersistedWorkspaceTabs,
+  clearWorkspaceTabsForRestart,
   getActiveFileTab,
   isFileTabDirty,
 } from '@/utils/workspaceTabs';
@@ -247,7 +247,7 @@ export function useAppLogicSetupDomain() {
   }, []);
 
   const clearLastOpenedFile = useCallback(() => {
-    clearPersistedWorkspaceTabs();
+    clearWorkspaceTabsForRestart();
   }, []);
 
   const queueBackgroundTabSave = useCallback((file: BackgroundTabSaveFile, content: string) => {

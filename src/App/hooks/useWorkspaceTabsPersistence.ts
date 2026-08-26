@@ -1,13 +1,11 @@
 import { useEffect, type MutableRefObject } from 'react';
 import {
-  clearPersistedWorkspaceTabs,
-  loadLastOpenTabsSnapshot,
-  saveLastOpenTabsSnapshot,
-  savePersistedWorkspaceTabs,
+  persistWorkspaceTabsForRestart,
   toPersistedWorkspaceTabs,
 } from '@/utils/workspaceTabs';
 import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
 import type { WorkspaceTabsState } from '@/utils/workspaceTabs/types';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 
 type PersistDeps = {
   isUnlocked: boolean;
@@ -21,6 +19,27 @@ type PersistDeps = {
   editedFileNameRef: MutableRefObject<string>;
   hasRestoredPersistedWorkspaceTabsRef: MutableRefObject<boolean>;
 };
+
+function buildPersistedWorkspaceTabsPayload(
+  state: WorkspaceTabsState,
+  mirrors: {
+    editorContent: string;
+    currentFile: any;
+    editedFileName: string;
+  },
+) {
+  const flushed = flushEditorIntoActiveFileTab(state, mirrors);
+  return toPersistedWorkspaceTabs(
+    flushed.tabs.map((t) =>
+      t.kind === 'chat'
+        ? { kind: 'chat' }
+        : t.kind === 'settings'
+          ? { kind: 'settings' }
+          : { kind: 'file', storageType: t.storageType, path: t.path },
+    ),
+    flushed.activeId,
+  );
+}
 
 /**
  * Tabs-domain persistence: live workspaceTabs key + last-open snapshot on leave.
@@ -45,30 +64,12 @@ export function useWorkspaceTabsPersistence(deps: PersistDeps) {
     if (workspaceTabsEnabledRef.current && !hasRestoredPersistedWorkspaceTabsRef.current) {
       return;
     }
-    const flushed = flushEditorIntoActiveFileTab(workspaceTabs, {
+    const payload = buildPersistedWorkspaceTabsPayload(workspaceTabs, {
       editorContent: editorContentRef.current ?? '',
       currentFile: currentFileRef.current,
       editedFileName: editedFileNameRef.current ?? '',
     });
-    const payload = toPersistedWorkspaceTabs(
-      flushed.tabs.map((t) =>
-        t.kind === 'chat'
-          ? { kind: 'chat' }
-          : t.kind === 'settings'
-            ? { kind: 'settings' }
-            : { kind: 'file', storageType: t.storageType, path: t.path },
-      ),
-      flushed.activeId,
-    );
-    if (payload.tabs.length === 0) {
-      clearPersistedWorkspaceTabs();
-      return;
-    }
-    savePersistedWorkspaceTabs(payload);
-    const prevSnap = loadLastOpenTabsSnapshot();
-    if (!prevSnap || payload.tabs.length >= prevSnap.tabs.length) {
-      saveLastOpenTabsSnapshot(payload);
-    }
+    persistWorkspaceTabsForRestart(payload);
   }, [
     isUnlocked,
     workspaceTabs,
@@ -84,34 +85,43 @@ export function useWorkspaceTabsPersistence(deps: PersistDeps) {
 
   useEffect(() => {
     if (!isUnlocked) return undefined;
-    const persistLastOpenSnapshot = () => {
+
+    const persistForQuit = () => {
       if (!workspaceTabsEnabledRef.current) return;
-      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+      const payload = buildPersistedWorkspaceTabsPayload(workspaceTabsRef.current, {
         editorContent: editorContentRef.current ?? '',
         currentFile: currentFileRef.current,
         editedFileName: editedFileNameRef.current ?? '',
       });
-      const payload = toPersistedWorkspaceTabs(
-        flushed.tabs.map((t) =>
-          t.kind === 'chat'
-            ? { kind: 'chat' }
-            : t.kind === 'settings'
-              ? { kind: 'settings' }
-              : { kind: 'file', storageType: t.storageType, path: t.path },
-        ),
-        flushed.activeId,
-      );
-      saveLastOpenTabsSnapshot(payload);
+      persistWorkspaceTabsForRestart(payload);
     };
+
     const onVisibilityHidden = () => {
-      if (document.visibilityState === 'hidden') persistLastOpenSnapshot();
+      if (document.visibilityState === 'hidden') persistForQuit();
     };
-    window.addEventListener('pagehide', persistLastOpenSnapshot);
-    window.addEventListener('beforeunload', persistLastOpenSnapshot);
+
+    window.addEventListener('pagehide', persistForQuit);
+    window.addEventListener('beforeunload', persistForQuit);
     document.addEventListener('visibilitychange', onVisibilityHidden);
+
+    let unlistenClose: (() => void) | undefined;
+    if (isDesktopApp()) {
+      void (async () => {
+        try {
+          const { getCurrentWindow } = await import('@tauri-apps/api/window');
+          unlistenClose = await getCurrentWindow().onCloseRequested(() => {
+            persistForQuit();
+          });
+        } catch (err) {
+          console.warn('[workspaceTabs] Tauri close persist hook failed:', err);
+        }
+      })();
+    }
+
     return () => {
-      window.removeEventListener('pagehide', persistLastOpenSnapshot);
-      window.removeEventListener('beforeunload', persistLastOpenSnapshot);
+      unlistenClose?.();
+      window.removeEventListener('pagehide', persistForQuit);
+      window.removeEventListener('beforeunload', persistForQuit);
       document.removeEventListener('visibilitychange', onVisibilityHidden);
     };
   }, [

@@ -2,12 +2,15 @@ import type { FileStorageType, PersistedWorkspaceTab, PersistedWorkspaceTabs } f
 import { CHAT_TAB_ID, SETTINGS_TAB_ID } from '@/utils/workspaceTabs/types';
 import { fileTabId } from '@/utils/workspaceTabs/helpers';
 import type { ClosedTabEntry } from '@/utils/workspaceTabs/closedTabHistory';
-import { loadPersistedWorkspaceTabs } from '@/utils/workspaceTabs/persistence';
+import {
+  clearPersistedWorkspaceTabs,
+  loadPersistedWorkspaceTabs,
+  savePersistedWorkspaceTabs,
+} from '@/utils/workspaceTabs/persistence';
 
 /**
  * Last non-empty open-tab list from the previous session (localStorage).
- * Written on pagehide so a cold start can still Ctrl+Shift+T restore siblings
- * after live `s3haim_workspaceTabs` is reduced to the auto-opened active tab.
+ * Kept in sync with live `s3haim_workspaceTabs`; also flushed on pagehide / desktop quit.
  */
 export const LAST_OPEN_TABS_RESTORE_KEY = 's3haim_lastOpenTabsRestore';
 
@@ -90,29 +93,35 @@ export function saveLastOpenTabsSnapshot(payload: PersistedWorkspaceTabs): void 
   writeJson(LAST_OPEN_TABS_RESTORE_KEY, normalized);
 }
 
+/** Write live workspace tabs + last-open snapshot together (quit / tab changes). */
+export function persistWorkspaceTabsForRestart(payload: PersistedWorkspaceTabs): void {
+  const normalized = normalizeSnapshot(payload);
+  if (!normalized) {
+    clearWorkspaceTabsForRestart();
+    return;
+  }
+  savePersistedWorkspaceTabs(normalized);
+  saveLastOpenTabsSnapshot(normalized);
+}
+
+export function clearWorkspaceTabsForRestart(): void {
+  clearPersistedWorkspaceTabs();
+  clearLastOpenTabsSnapshot();
+}
+
 export function loadLastOpenTabsSnapshot(): PersistedWorkspaceTabs | null {
   return normalizeSnapshot(readJson(LAST_OPEN_TABS_RESTORE_KEY));
 }
 
 /**
- * Pick the fullest tab snapshot for cold-start restore.
- * Live `s3haim_workspaceTabs` can be truncated to the active tab before siblings reopen.
+ * Pick tab snapshot for cold-start restore.
+ * Live workspace tabs are updated on every tab change; last-open is a pagehide fallback.
  */
 export function pickWorkspaceTabsRestoreSource(): PersistedWorkspaceTabs | null {
   const live = loadPersistedWorkspaceTabs();
   const snap = loadLastOpenTabsSnapshot();
-  if (!live?.tabs?.length && !snap?.tabs?.length) return null;
-  if (!live?.tabs?.length) return snap;
-  if (!snap?.tabs?.length) return live;
-  if (snap.tabs.length !== live.tabs.length) {
-    return snap.tabs.length > live.tabs.length ? snap : live;
-  }
-  // Same count — prefer live activeId with the last-open tab order (pagehide truth).
-  return {
-    version: 1,
-    tabs: snap.tabs,
-    activeId: live.activeId ?? snap.activeId,
-  };
+  if (live?.tabs?.length) return live;
+  return snap;
 }
 
 export function clearLastOpenTabsSnapshot(): void {

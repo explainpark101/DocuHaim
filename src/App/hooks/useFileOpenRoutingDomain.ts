@@ -398,15 +398,27 @@ export function useFileOpenRoutingDomain() {
       const persisted = pickWorkspaceTabsRestoreSource();
       if (persisted?.tabs?.length) {
         hasRestoredLastFileRef.current = true;
-        // Restore chat/settings shell immediately; files open asynchronously below when possible.
+        // Workspace tabs: open chat/settings shells, then defer file restore to the
+        // follow-up effect (avoids hasRestoredLastFileRef blocking retry while vault loads).
         if (workspaceTabsEnabledRef.current) {
+          hasProcessedOpenFromUrlRef.current = true;
           if (persisted.tabs.some((t) => t.kind === 'chat')) {
             openChatWorkspaceTab({ navigateUrl: false });
           }
           if (persisted.tabs.some((t) => t.kind === 'settings')) {
             openSettingsWorkspaceTab({ navigateUrl: false });
           }
+          if (persisted.activeId === CHAT_TAB_ID) {
+            navigate('/chat');
+            return;
+          }
+          if (persisted.activeId === SETTINGS_TAB_ID) {
+            navigate('/settings');
+            return;
+          }
+          return;
         }
+        // Legacy single-slot mode: open the active file directly when possible.
         const fileTabs = persisted.tabs.filter((t) => t.kind === 'file');
         const activeFile =
           fileTabs.find((t) => persisted.activeId === `${t.type}:${t.path}`) ||
@@ -623,8 +635,15 @@ export function useFileOpenRoutingDomain() {
       return;
     }
 
+    const routeChanged = prevHistoryViewPathRef.current !== routeNotePath;
+    prevHistoryViewPathRef.current = routeNotePath;
+
     if (currentFileRef.current?.id === routeNotePath) {
-      prevHistoryViewPathRef.current = routeNotePath;
+      return;
+    }
+
+    // Only react to real history navigation — not vault tree refreshes after save.
+    if (!routeChanged) {
       return;
     }
 
@@ -642,9 +661,6 @@ export function useFileOpenRoutingDomain() {
     } else if (!s3Tree?.length) {
       return;
     }
-
-    const routeChanged = prevHistoryViewPathRef.current !== routeNotePath;
-    prevHistoryViewPathRef.current = routeNotePath;
 
     let cancelled = false;
     (async () => {
