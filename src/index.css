@@ -89,6 +89,22 @@
   }
 }
 
+/* LLM Assist popout: cap at viewport; scroll inside panel main only. */
+html.llm-assist-popout-window,
+html.llm-assist-popout-window body,
+html.llm-assist-popout-window #root {
+  height: 100%;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html.desktop-app.llm-assist-popout-window,
+html.desktop-app.llm-assist-popout-window body,
+html.desktop-app.llm-assist-popout-window #root {
+  max-height: 100%;
+}
+
 /* Export PDF: 배경 흰색 유지 (dark mode, print) */
 .export-pdf-layout,
 .export-pdf-page {

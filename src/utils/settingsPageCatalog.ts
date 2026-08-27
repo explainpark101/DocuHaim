@@ -1,4 +1,4 @@
-import { isTauriMacOS } from '@/utils/tauriPlatform';
+import { isTauriDesktopPlatform, isTauriMacOS } from '@/utils/tauriPlatform';
 
 export type SettingsPageCatalogContext = {
   isDesktopApp: boolean;
@@ -39,6 +39,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     sections: [
       { id: 'settings-llm-providers', label: 'AI 도우미 제공자' },
       { id: 'settings-mlx-vlm', label: 'MLX-VLM', visible: () => isTauriMacOS() },
+      { id: 'settings-llama-cpp', label: 'llama.cpp', visible: () => isTauriDesktopPlatform() },
     ],
   },
   {
@@ -93,6 +94,7 @@ const LLM_SECTION_HASHES = new Set([
   'settings-gemini',
   'settings-openai-compat',
   'settings-mlx-vlm',
+  'settings-llama-cpp',
 ]);
 
 export function buildVisibleSettingsPageGroups(ctx: SettingsPageCatalogContext) {
@@ -122,7 +124,7 @@ export function dispatchSettingsSectionOpen(sectionId: string): void {
 
 export function resolveSettingsScrollTarget(hash: string): string {
   const id = String(hash || '').replace(/^#/, '');
-  if (LLM_SECTION_HASHES.has(id) && id !== 'settings-mlx-vlm') {
+  if (LLM_SECTION_HASHES.has(id) && id !== 'settings-mlx-vlm' && id !== 'settings-llama-cpp') {
     return 'settings-llm-providers';
   }
   return id;

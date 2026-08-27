@@ -18,6 +18,7 @@ import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
 import {
   LLM_PROVIDER_GEMINI,
+  LLM_PROVIDER_LLAMA_CPP,
   LLM_PROVIDER_MLX_VLM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   loadLastUsedModelForProfile,
@@ -27,8 +28,10 @@ import {
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { loadMlxVlmSettings } from '@/utils/mlxVlmSettingsStore';
+import { loadLlamaCppSettings } from '@/utils/llamaCppSettingsStore';
 import { generateMlxVlmTransform } from '@/utils/llm/mlxVlmGenerateClient';
 import { getMlxVlmServerStatus } from '@/utils/mlxVlmShell';
+import { ensureLlamaCppServerReadyForAssist } from '@/utils/llamaCppShell';
 import { LLM_ASSIST_MSG } from '@/utils/llmAssistBridge';
 import {
   closeLlmAssistPopoutWindow,
@@ -349,10 +352,10 @@ export default function LlmAssistModal({
   }, []);
 
   const handleRun = useCallback(async () => {
-    if (runAbortRef.current) {
-      runAbortRef.current.abort(createLlmAssistAbortError());
-      runAbortRef.current = null;
-    }
+    // Ignore re-entry while a run is active (cancel is explicit). Prevents
+    // double-fire from aborting a good request and clearing loading early.
+    if (runAbortRef.current) return;
+
     const controller = new AbortController();
     runAbortRef.current = controller;
 
@@ -392,6 +395,42 @@ export default function LlmAssistModal({
             allowEmpty: true,
             missingKeyMessage: 'OpenAI 호환 API 키가 없습니다. 설정에서 입력하세요.',
           },
+        );
+        setResult(output);
+        return;
+      }
+
+      if (selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP) {
+        const llamaSettings = loadLlamaCppSettings();
+        const status = await ensureLlamaCppServerReadyForAssist(llamaSettings, {
+          signal: controller.signal,
+        });
+        const baseUrl = (selectedProfile.baseUrl || status.baseUrl || '').trim();
+        if (!baseUrl) {
+          throw new Error('llama.cpp 서버 URL을 확인할 수 없습니다. 설정에서 서버를 다시 시작하세요.');
+        }
+        const resolvedModel = model.trim() || llamaSettings.selectedModelId || status.models[0] || '';
+        if (!resolvedModel) {
+          throw new Error('사용할 모델을 선택하세요.');
+        }
+        saveLastUsedModelForProfile(selectedProfile.id, resolvedModel);
+        const output = await withLlmProfileApiKey(
+          selectedProfile.id,
+          () => selectedProfile.apiKey || llamaSettings.apiKey || 'no-key-required',
+          (apiKey) =>
+            generateOpenAiCompatibleTransform({
+              baseUrl,
+              apiKey,
+              model: resolvedModel,
+              instruction,
+              systemPrompt,
+              selectedText: text,
+              images: attachedImages,
+              requestOptions,
+              onChunk: setResult,
+              signal: controller.signal,
+            }),
+          { allowEmpty: true, missingKeyMessage: 'llama.cpp API 키가 없습니다.' },
         );
         setResult(output);
         return;
@@ -460,8 +499,8 @@ export default function LlmAssistModal({
     } finally {
       if (runAbortRef.current === controller) {
         runAbortRef.current = null;
+        setLoading(false);
       }
-      setLoading(false);
     }
   }, [refreshSelection, attachedImages, selectedProfile, model, instruction, systemPrompt, requestOptions]);
 

@@ -20,6 +20,10 @@ import {
   type MlxVlmActionId,
 } from '@/utils/advancedSearch/mlxVlmActions';
 import {
+  LLAMA_CPP_ACTION_COMMANDS,
+  type LlamaCppActionId,
+} from '@/utils/advancedSearch/llamaCppActions';
+import {
   SETTINGS_TOGGLE_DEFS,
   getWorkspaceTabsAutoSaveCommands,
   getFootnoteDisplayModeCommands,
@@ -63,6 +67,7 @@ export type AppCommandId =
   | 'settings-llm-provider'
   | 'settings-openai-compat'
   | 'settings-mlx-vlm'
+  | 'settings-llama-cpp'
   | 'settings-imgbb'
   | 'settings-webauthn'
   | 'settings-editor'
@@ -100,6 +105,7 @@ export type AppCommandId =
   | PrintActionId
   | ChatActionId
   | MlxVlmActionId
+  | LlamaCppActionId
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
   | FootnoteDisplayModeCommandId
@@ -136,6 +142,8 @@ export type AppCommandContext = {
   chatActionsAvailable?: boolean;
   /** True when MLX-VLM settings registered actions (Tauri macOS). */
   mlxVlmActionsAvailable?: boolean;
+  /** True when llama.cpp settings registered actions (Tauri desktop). */
+  llamaCppActionsAvailable?: boolean;
   /** Nested picker: only paper size commands. */
   printPaperPickerMode?: boolean;
   /** Current editor autocomplete suggestion preference (localStorage). */
@@ -294,6 +302,13 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: 'Apple Silicon 로컬 MLX 모델 설치·서버',
     path: '/settings#settings-mlx-vlm',
     keywords: ['mlx', 'mlx-vlm', 'apple silicon', 'local llm', 'huggingface', 'mac'],
+  },
+  {
+    id: 'settings-llama-cpp',
+    title: '설정 · llama.cpp (Tauri desktop)',
+    description: '로컬 llama-server GGUF 모델 설치·서버',
+    path: '/settings#settings-llama-cpp',
+    keywords: ['llama', 'llama.cpp', 'gguf', 'local llm', 'huggingface', 'llama-server'],
   },
   {
     id: 'settings-imgbb',
@@ -824,6 +839,17 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
         });
       }
     }
+    if (context?.llamaCppActionsAvailable) {
+      for (const cmd of LLAMA_CPP_ACTION_COMMANDS) {
+        list.push({
+          id: cmd.id,
+          title: cmd.title,
+          description: cmd.description,
+          path: '',
+          keywords: [...cmd.keywords],
+        });
+      }
+    }
   }
 
   return list;
@@ -866,6 +892,17 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
   }
   if (context?.mlxVlmActionsAvailable) {
     for (const cmd of MLX_VLM_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: [...cmd.keywords],
+      });
+    }
+  }
+  if (context?.llamaCppActionsAvailable) {
+    for (const cmd of LLAMA_CPP_ACTION_COMMANDS) {
       list.push({
         id: cmd.id,
         title: cmd.title,

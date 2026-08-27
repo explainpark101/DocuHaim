@@ -12,22 +12,46 @@ export type MlxVlmSettings = {
   adapterPath: string;
   hfToken: string;
   selectedModelId: string;
+  /** Parallel HF download workers (--max-workers). */
+  hfDownloadMaxWorkers: number;
   installedModels: MlxVlmInstalledModel[];
 };
 
 const STORAGE_KEY = 's3haim_mlx_vlm_settings';
 const LEGACY_STORAGE_KEY = 's3haim_mlx_lm_settings';
-const DEFAULT_MODEL = 'mlx-community/Qwen2-VL-2B-Instruct-4bit';
+export const DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS = 16;
+const MLX_VLM_HF_DOWNLOAD_MAX_WORKERS_MIN = 1;
+const MLX_VLM_HF_DOWNLOAD_MAX_WORKERS_MAX = 32;
 
 export const MLX_VLM_SETTINGS_CHANGED_EVENT = 's3haim-mlx-vlm-settings-changed';
+
+export function normalizeMlxVlmHfDownloadMaxWorkers(raw: unknown): number {
+  const n = typeof raw === 'number' ? raw : Number.parseInt(String(raw ?? ''), 10);
+  if (!Number.isFinite(n)) return DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS;
+  return Math.min(
+    Math.max(Math.trunc(n), MLX_VLM_HF_DOWNLOAD_MAX_WORKERS_MIN),
+    MLX_VLM_HF_DOWNLOAD_MAX_WORKERS_MAX,
+  );
+}
 
 function defaultSettings(): MlxVlmSettings {
   return {
     adapterPath: '',
     hfToken: '',
-    selectedModelId: DEFAULT_MODEL,
+    selectedModelId: '',
+    hfDownloadMaxWorkers: DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
     installedModels: [],
   };
+}
+
+function isSelectedModelInstalled(
+  selectedModelId: string,
+  installedModels: readonly MlxVlmInstalledModel[],
+): boolean {
+  if (!selectedModelId) return true;
+  return installedModels.some(
+    (model) => model.id === selectedModelId || model.repoId === selectedModelId,
+  );
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -63,10 +87,9 @@ export function normalizeMlxVlmSettings(raw: unknown): MlxVlmSettings {
 
   const adapterPath = typeof rec.adapterPath === 'string' ? rec.adapterPath.trim() : '';
   const hfToken = typeof rec.hfToken === 'string' ? rec.hfToken.trim() : '';
-  const selectedModelId =
-    typeof rec.selectedModelId === 'string' && rec.selectedModelId.trim()
-      ? rec.selectedModelId.trim()
-      : base.selectedModelId;
+  const hfDownloadMaxWorkers = normalizeMlxVlmHfDownloadMaxWorkers(rec.hfDownloadMaxWorkers);
+  let selectedModelId =
+    typeof rec.selectedModelId === 'string' ? rec.selectedModelId.trim() : base.selectedModelId;
 
   const installedModels: MlxVlmInstalledModel[] = [];
   const seen = new Set<string>();
@@ -79,10 +102,15 @@ export function normalizeMlxVlmSettings(raw: unknown): MlxVlmSettings {
     }
   }
 
+  if (!isSelectedModelInstalled(selectedModelId, installedModels)) {
+    selectedModelId = '';
+  }
+
   return {
     adapterPath,
     hfToken,
     selectedModelId,
+    hfDownloadMaxWorkers,
     installedModels,
   };
 }
@@ -137,14 +165,12 @@ export function addInstalledModel(
   const without = settings.installedModels.filter((m) => m.id !== nextModel.id);
   return {
     ...settings,
-    selectedModelId: settings.selectedModelId || nextModel.id,
     installedModels: [nextModel, ...without],
   };
 }
 
 export function setSelectedMlxVlmModelId(settings: MlxVlmSettings, modelId: string): MlxVlmSettings {
   const id = String(modelId || '').trim();
-  if (!id) return settings;
   return { ...settings, selectedModelId: id };
 }
 
@@ -157,9 +183,7 @@ export function removeInstalledModel(settings: MlxVlmSettings, modelId: string):
   const selectedStillInstalled = installedModels.some(
     (model) => model.id === settings.selectedModelId || model.repoId === settings.selectedModelId,
   );
-  const selectedModelId = selectedStillInstalled
-    ? settings.selectedModelId
-    : (installedModels[0]?.id ?? '');
+  const selectedModelId = selectedStillInstalled ? settings.selectedModelId : '';
   return { ...settings, installedModels, selectedModelId };
 }
 
@@ -170,4 +194,22 @@ export function isMlxVlmRepoInstalled(
   const id = String(repoId || '').trim();
   if (!id) return false;
   return models.some((model) => model.id === id || model.repoId === id);
+}
+
+/** Keep MLX-VLM installed rows; drop llama.cpp GGUF cache auto-discovery noise. */
+export function isMlxVlmInstalledModelEntry(
+  model: Pick<MlxVlmInstalledModel, 'id' | 'repoId' | 'source' | 'installedAt'>,
+): boolean {
+  const repoId = String(model.repoId || model.id || '').trim();
+  if (!repoId) return false;
+  if (model.source === 'local') return true;
+  if (/gguf/i.test(repoId)) return false;
+  if (repoId.toLowerCase().startsWith('mlx-community/')) return true;
+  return (model.installedAt ?? 0) > 0;
+}
+
+export function filterMlxVlmInstalledModels(
+  models: readonly MlxVlmInstalledModel[],
+): MlxVlmInstalledModel[] {
+  return models.filter(isMlxVlmInstalledModelEntry);
 }

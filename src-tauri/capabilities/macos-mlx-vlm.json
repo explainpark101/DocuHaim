@@ -80,9 +80,10 @@
           "cmd": "/bin/sh",
           "args": [
             "-lc",
-            "exec \"$0\" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download \"$1\"",
+            "exec \"$0\" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download \"$1\" --max-workers \"$2\"",
             { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
-            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            { "validator": "^[0-9]+$" }
           ]
         },
         {
@@ -120,9 +121,10 @@
           "cmd": "/bin/sh",
           "args": [
             "-lc",
-            "exec \"$0\" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download \"$1\"",
+            "exec \"$0\" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download \"$1\" --max-workers \"$2\"",
             { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
-            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            { "validator": "^[0-9]+$" }
           ]
         },
         {

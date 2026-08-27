@@ -47,8 +47,11 @@ import {
 } from '@/utils/webauthn';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
 import { useMlxVlmProviderAutoSync } from '@/hooks/useMlxVlmProviderAutoSync';
+import { useLlamaCppProviderAutoSync } from '@/hooks/useLlamaCppProviderAutoSync';
 import { useMlxVlmLoadToast } from '@/hooks/useMlxVlmLoadToast';
+import { useDesktopMenuBridge } from '@/hooks/useDesktopMenuBridge';
 import LlmAssistModal from '@/components/LlmAssistModal';
+import { useLlmAssistSession } from '@/contexts/LlmAssistSessionContext';
 
 /** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
 export function AppLayout({ children }: { children?: ReactNode }) {
@@ -273,8 +276,20 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   } = pwaSnippets;
 
   const { isUnlocked, s3Creds, masterPassword } = auth;
+  const llmAssist = useLlmAssistSession();
+  useDesktopMenuBridge({
+    enabled: isUnlocked,
+    setStorageMode,
+    openLocalFolder,
+    currentFile,
+    editorContent,
+    theme,
+    llmAssistOpen: llmAssist.open,
+    toggleLlmAssist: llmAssist.toggleAssist,
+  });
   const llmProviderProfiles = resolveLlmProviderProfiles(s3Creds);
   useMlxVlmProviderAutoSync(s3Creds, handleSaveS3Creds);
+  useLlamaCppProviderAutoSync(s3Creds, handleSaveS3Creds);
   useMlxVlmLoadToast();
   const getImgbbApiKey = () => (s3Creds?.imgbbApiKey || '').trim();
 

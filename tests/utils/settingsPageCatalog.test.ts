@@ -26,9 +26,10 @@ describe('settingsPageCatalog', () => {
     expect(findSettingsGroupIdForSection('settings-chat')).toBe('chat');
   });
 
-  it('resolves llm hash targets except mlx-vlm', () => {
+  it('resolves llm hash targets except mlx-vlm and llama-cpp', () => {
     expect(resolveSettingsScrollTarget('settings-gemini')).toBe('settings-llm-providers');
     expect(resolveSettingsScrollTarget('settings-mlx-vlm')).toBe('settings-mlx-vlm');
+    expect(resolveSettingsScrollTarget('settings-llama-cpp')).toBe('settings-llama-cpp');
   });
 
   it('filters toc groups by group title or section label', () => {

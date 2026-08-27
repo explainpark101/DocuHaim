@@ -65,7 +65,9 @@ export default function LlmProviderSelect({
             ? `${p.name} · OpenAI 호환`
             : p.kind === 'mlx-vlm'
               ? `${p.name} · MLX-VLM`
-              : `${p.name} · Gemini`,
+              : p.kind === 'llama-cpp'
+                ? `${p.name} · llama.cpp`
+                : `${p.name} · Gemini`,
       })),
     [profiles],
   );

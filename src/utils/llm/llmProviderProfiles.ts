@@ -4,15 +4,18 @@ import {
   normalizeOpenAiCompatibleBaseUrl,
 } from '@/utils/openaiCompatibleSettings';
 import { loadMlxVlmSettings } from '@/utils/mlxVlmSettingsStore';
+import { loadLlamaCppSettings } from '@/utils/llamaCppSettingsStore';
 
 export const LLM_PROVIDER_GEMINI = 'gemini';
 export const LLM_PROVIDER_OPENAI_COMPATIBLE = 'openai-compatible';
 export const LLM_PROVIDER_MLX_VLM = 'mlx-vlm';
+export const LLM_PROVIDER_LLAMA_CPP = 'llama-cpp';
 
 export type LlmProviderKind =
   | typeof LLM_PROVIDER_GEMINI
   | typeof LLM_PROVIDER_OPENAI_COMPATIBLE
-  | typeof LLM_PROVIDER_MLX_VLM;
+  | typeof LLM_PROVIDER_MLX_VLM
+  | typeof LLM_PROVIDER_LLAMA_CPP;
 
 export type LlmProviderProfile = {
   id: string;
@@ -32,6 +35,50 @@ export const LLM_LAST_PROFILE_CHANGED_EVENT = 's3haim-llm-last-profile-changed';
 export const LEGACY_GEMINI_PROFILE_ID = 'legacy-gemini';
 export const LEGACY_OPENAI_COMPAT_PROFILE_ID = 'legacy-openai-compat';
 export const AUTO_MLX_VLM_PROFILE_ID = 'auto-mlx-vlm';
+export const AUTO_LLAMA_CPP_PROFILE_ID = 'auto-llama-cpp';
+
+export function ensureLlamaCppProviderProfile(
+  profiles: LlmProviderProfile[],
+  baseUrl: string,
+): {
+  profiles: LlmProviderProfile[];
+  changed: boolean;
+} {
+  const url = normalizeOpenAiCompatibleBaseUrl(baseUrl);
+  if (!url) return { profiles, changed: false };
+
+  const settings = loadLlamaCppSettings();
+  const apiKey = settings.apiKey.trim() || 'no-key-required';
+  const existing = profiles.find(
+    (profile) =>
+      profile.kind === LLM_PROVIDER_LLAMA_CPP || profile.id === AUTO_LLAMA_CPP_PROFILE_ID,
+  );
+  if (existing) {
+    if (existing.baseUrl === url && existing.apiKey === apiKey) {
+      return { profiles, changed: false };
+    }
+    return {
+      profiles: profiles.map((profile) =>
+        profile.id === existing.id ? { ...profile, baseUrl: url, apiKey } : profile,
+      ),
+      changed: true,
+    };
+  }
+
+  return {
+    profiles: [
+      ...profiles,
+      {
+        id: AUTO_LLAMA_CPP_PROFILE_ID,
+        name: 'llama.cpp (local)',
+        kind: LLM_PROVIDER_LLAMA_CPP,
+        baseUrl: url,
+        apiKey,
+      },
+    ],
+    changed: true,
+  };
+}
 
 export function ensureMlxVlmProviderProfile(profiles: LlmProviderProfile[]): {
   profiles: LlmProviderProfile[];
@@ -66,7 +113,8 @@ export function isLlmProviderKind(value: string): value is LlmProviderKind {
   return (
     value === LLM_PROVIDER_GEMINI ||
     value === LLM_PROVIDER_OPENAI_COMPATIBLE ||
-    value === LLM_PROVIDER_MLX_VLM
+    value === LLM_PROVIDER_MLX_VLM ||
+    value === LLM_PROVIDER_LLAMA_CPP
   );
 }
 
@@ -102,9 +150,11 @@ export function normalizeLlmProviderProfile(raw: unknown): LlmProviderProfile | 
       ? 'Google Gemini'
       : kind === LLM_PROVIDER_MLX_VLM
         ? 'MLX-VLM (local)'
-        : 'OpenAI 호환');
+        : kind === LLM_PROVIDER_LLAMA_CPP
+          ? 'llama.cpp (local)'
+          : 'OpenAI 호환');
   const baseUrl =
-    kind === LLM_PROVIDER_OPENAI_COMPATIBLE
+    kind === LLM_PROVIDER_OPENAI_COMPATIBLE || kind === LLM_PROVIDER_LLAMA_CPP
       ? String(rec.baseUrl || rec.endpoint || '').trim()
       : '';
   const apiKey = typeof rec.apiKey === 'string' ? rec.apiKey : '';
@@ -248,6 +298,9 @@ function storedModelMatchesKind(modelId: string, kind: LlmProviderKind): boolean
   if (kind === LLM_PROVIDER_MLX_VLM) {
     return trimmed.includes('/') || trimmed.startsWith('/') || trimmed.startsWith('.');
   }
+  if (kind === LLM_PROVIDER_LLAMA_CPP) {
+    return trimmed.endsWith('.gguf') || trimmed.includes('/') || trimmed.startsWith('.');
+  }
   return !looksLikeGeminiModelId(trimmed);
 }
 
@@ -262,6 +315,7 @@ export function loadLastUsedModelForProfile(
   }
   if (kind === LLM_PROVIDER_GEMINI) return loadLastUsedGeminiModel();
   if (kind === LLM_PROVIDER_MLX_VLM) return loadMlxVlmSettings().selectedModelId || '';
+  if (kind === LLM_PROVIDER_LLAMA_CPP) return loadLlamaCppSettings().selectedModelId || '';
   return loadLastUsedOpenAiCompatibleModel();
 }
 
@@ -283,6 +337,7 @@ export function saveLastUsedModelForProfile(profileId: string, modelId: string):
 export function defaultModelForKind(kind: LlmProviderKind): string {
   if (kind === LLM_PROVIDER_GEMINI) return DEFAULT_GEMINI_MODEL;
   if (kind === LLM_PROVIDER_MLX_VLM) return loadMlxVlmSettings().selectedModelId || '';
+  if (kind === LLM_PROVIDER_LLAMA_CPP) return loadLlamaCppSettings().selectedModelId || '';
   return '';
 }
 
@@ -301,7 +356,7 @@ export function validateLlmProviderProfileDraft(draft: {
     }
     return null;
   }
-  if (draft.kind === LLM_PROVIDER_MLX_VLM) {
+  if (draft.kind === LLM_PROVIDER_MLX_VLM || draft.kind === LLM_PROVIDER_LLAMA_CPP) {
     return null;
   }
   const url = normalizeOpenAiCompatibleBaseUrl(draft.baseUrl);

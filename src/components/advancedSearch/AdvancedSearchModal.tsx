@@ -46,6 +46,8 @@ export type AdvancedSearchModalProps = {
   chatActionsAvailable?: boolean;
   /** Show MLX-VLM shortcuts in empty-state hints. */
   mlxVlmActionsAvailable?: boolean;
+  /** Show llama.cpp shortcuts in empty-state hints. */
+  llamaCppActionsAvailable?: boolean;
   /** Prefer print-oriented empty hint copy. */
   preferPrintActions?: boolean;
   /** Nested paper-size picker mode. */
@@ -253,6 +255,7 @@ export default function AdvancedSearchModal({
   printActionsAvailable = false,
   chatActionsAvailable = false,
   mlxVlmActionsAvailable = false,
+  llamaCppActionsAvailable = false,
   preferPrintActions = false,
   printPaperPickerMode = false,
   browseDirectoryMode = false,
@@ -380,6 +383,9 @@ export default function AdvancedSearchModal({
       if (mlxVlmActionsAvailable) {
         return 'MLX-VLM 서버 시작·중지·모델 다운로드를 검색하세요';
       }
+      if (llamaCppActionsAvailable) {
+        return 'llama.cpp 서버 시작·중지·GGUF 다운로드를 검색하세요';
+      }
       if (editorActionsAvailable) {
         return '설정·채팅·에디터 서식(굵게, AI…)을 검색하세요';
       }
@@ -394,6 +400,7 @@ export default function AdvancedSearchModal({
     printActionsAvailable,
     chatActionsAvailable,
     mlxVlmActionsAvailable,
+    llamaCppActionsAvailable,
     preferPrintActions,
     printPaperPickerMode,
     browseDirectoryMode,

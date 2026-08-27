@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 import MlxVlmLoadFailureHint from '@/components/llm/MlxVlmLoadFailureHint';
@@ -18,6 +18,12 @@ import {
   loadMlxVlmModelById,
   refreshInstalledMlxVlmModels,
 } from '@/utils/mlxVlmShell';
+import {
+  LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
+  localLlmModelDisplayName,
+  resolveLocalLlmModelId,
+  withLocalLlmModelAliases,
+} from '@/utils/llm/localLlmModelAliases';
 
 type MlxVlmModelSelectProps = {
   value: string;
@@ -42,9 +48,12 @@ function buildModelOptions(
     const trimmed = String(id || '').trim();
     if (trimmed) ids.add(trimmed);
   }
-  return [...ids]
-    .sort((a, b) => a.localeCompare(b))
-    .map((id) => ({ id, displayName: id }));
+  return withLocalLlmModelAliases(
+    'mlx-vlm',
+    [...ids]
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => ({ id, displayName: id })),
+  );
 }
 
 export default function MlxVlmModelSelect({
@@ -62,6 +71,23 @@ export default function MlxVlmModelSelect({
   const [loadedModelId, setLoadedModelId] = useState('');
   const loadRequestRef = useRef(0);
 
+  const canonicalValue = useMemo(
+    () => resolveLocalLlmModelId('mlx-vlm', value, options),
+    [options, value],
+  );
+
+  const handleModelChange = useCallback(
+    (next: string) => {
+      onChange?.(resolveLocalLlmModelId('mlx-vlm', next, options));
+    },
+    [onChange, options],
+  );
+
+  useEffect(() => {
+    if (!onChange || !canonicalValue || canonicalValue === value.trim()) return;
+    onChange(canonicalValue);
+  }, [canonicalValue, onChange, value]);
+
   const refreshModels = useCallback(async () => {
     if (!isTauriMacOS()) return;
     setListLoading(true);
@@ -73,14 +99,19 @@ export default function MlxVlmModelSelect({
         getMlxVlmServerStatus(settings),
       ]);
       setLoadedModelId(status.models[0] || '');
+      const baseOptions = buildModelOptions(models, [
+        settings.selectedModelId,
+        ...status.models,
+      ]);
+      const resolvedValue = resolveLocalLlmModelId('mlx-vlm', value, baseOptions);
       setOptions(
         buildModelOptions(models, [
           settings.selectedModelId,
-          value,
+          resolvedValue,
           ...status.models,
         ]),
       );
-      if (!models.length && !settings.selectedModelId.trim() && !value.trim()) {
+      if (!models.length && !settings.selectedModelId.trim() && !resolvedValue.trim()) {
         setError('설치된 MLX 모델이 없습니다. 설정 > MLX-VLM에서 모델을 추가하세요.');
       }
     } catch (err) {
@@ -141,7 +172,11 @@ export default function MlxVlmModelSelect({
   useEffect(() => {
     const onChanged = () => void refreshModels();
     window.addEventListener(MLX_VLM_SETTINGS_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(MLX_VLM_SETTINGS_CHANGED_EVENT, onChanged);
+    window.addEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+    return () => {
+      window.removeEventListener(MLX_VLM_SETTINGS_CHANGED_EVENT, onChanged);
+      window.removeEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+    };
   }, [refreshModels]);
 
   useEffect(() => {
@@ -168,27 +203,27 @@ export default function MlxVlmModelSelect({
 
   useEffect(() => {
     if (!autoLoadModelOnSelect || listLoading || modelLoading) return;
-    const id = value.trim();
+    const id = canonicalValue.trim();
     if (!id) return;
     if (!options.some((option) => option.id === id)) return;
     void loadModelIfAuto(id);
-  }, [autoLoadModelOnSelect, listLoading, modelLoading, loadModelIfAuto, options, value]);
+  }, [autoLoadModelOnSelect, listLoading, modelLoading, loadModelIfAuto, options, canonicalValue]);
 
   const handlePick = useCallback(
     (nextId: string) => {
-      onChange?.(nextId);
-      loadModelIfAuto(nextId);
+      const resolved = resolveLocalLlmModelId('mlx-vlm', nextId, options);
+      loadModelIfAuto(resolved);
     },
-    [loadModelIfAuto, onChange],
+    [loadModelIfAuto, options],
   );
 
   const handleInputBlur = useCallback(() => {
-    loadModelIfAuto(value);
-  }, [loadModelIfAuto, value]);
+    loadModelIfAuto(canonicalValue);
+  }, [canonicalValue, loadModelIfAuto]);
 
   const handleLoadClick = useCallback(() => {
-    void runLoadModel(value);
-  }, [runLoadModel, value]);
+    void runLoadModel(canonicalValue);
+  }, [canonicalValue, runLoadModel]);
 
   if (!isTauriMacOS()) {
     return (
@@ -199,7 +234,7 @@ export default function MlxVlmModelSelect({
   }
 
   const busy = listLoading || modelLoading;
-  const trimmedValue = value.trim();
+  const trimmedValue = canonicalValue.trim();
   const runtimeLoadedId = loadedModelId.trim();
   const selectionMatchesRuntime = Boolean(
     trimmedValue && runtimeLoadedId && trimmedValue === runtimeLoadedId,
@@ -213,11 +248,12 @@ export default function MlxVlmModelSelect({
     <div className={className}>
       <div className="flex items-center gap-2">
         <ModelIdInputDropdown
-          value={value}
+          value={canonicalValue}
           options={options}
           loading={listLoading}
           maxItems={200}
-          {...(onChange ? { onChange } : {})}
+          aliasScope="mlx-vlm"
+          onChange={handleModelChange}
           onPick={handlePick}
           onInputBlur={handleInputBlur}
           placeholder="MLX model id"
@@ -259,7 +295,7 @@ export default function MlxVlmModelSelect({
       ) : showsLoadedStatus ? (
         <div className="mt-1 space-y-0.5">
           <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-            로드됨 · {runtimeLoadedId}
+            로드됨 · {localLlmModelDisplayName('mlx-vlm', runtimeLoadedId)}
           </p>
           {hasRuntimeMismatch ? (
             <p className="text-[11px] text-amber-700 dark:text-amber-300">

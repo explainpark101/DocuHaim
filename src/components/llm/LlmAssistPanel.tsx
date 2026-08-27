@@ -28,6 +28,7 @@ import {
   ChevronUp,
   TextCursor,
   CornerLeftDown,
+  ZoomIn,
 } from 'lucide-react';
 import { MdPreview } from 'md-editor-rt';
 import { Tooltip } from 'radix-ui';
@@ -38,8 +39,10 @@ import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import LlmProviderSelect from '@/components/LlmProviderSelect';
-import { LLM_PROVIDER_MLX_VLM, LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
+import { LLM_PROVIDER_LLAMA_CPP, LLM_PROVIDER_MLX_VLM, LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
 import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
+import LlamaCppModelSelect from '@/components/llm/LlamaCppModelSelect';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
   extractImageFilesFromClipboard,
   readImageFilesAsAttachments,
@@ -48,6 +51,7 @@ import {
 import LlmAssistAdvancedOptions from '@/components/llm/LlmAssistAdvancedOptions';
 import LlmAssistCollapsible from '@/components/llm/LlmAssistCollapsible';
 import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
+import LlmAssistImageLightbox from '@/components/llm/LlmAssistImageLightbox';
 import { useReliableButtonAction } from '@/components/llm/useReliableButtonAction';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { getDefaultLlmAssistSystemPrompt } from '@/utils/llm/llmAssistBaseSystemPrompt';
@@ -198,6 +202,7 @@ export default function LlmAssistPanel({
   const [addingImages, setAddingImages] = useState(false);
   const [systemPromptOpen, setSystemPromptOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<LlmAssistImageAttachment | null>(null);
 
   useEffect(() => {
     if (!loading) setCancelConfirmOpen(false);
@@ -275,6 +280,10 @@ export default function LlmAssistPanel({
   const copyResultPress = useReliableButtonAction(onCopyResult, resultActionsDisabled);
   const appendResultPress = useReliableButtonAction(onAppendResult, resultActionsDisabled);
   const createNotePress = useReliableButtonAction(onCreateNoteFromResult, resultActionsDisabled);
+  const runPress = useReliableButtonAction(
+    () => onRun?.(),
+    Boolean(loading || !selectedProfile),
+  );
 
   const handleInstructionKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -328,6 +337,26 @@ export default function LlmAssistPanel({
               onChange={onModelChange}
               autoLoad={modelSelectAutoLoad}
             />
+          ) : selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP ? (
+            isTauriDesktopPlatform() ? (
+              <LlamaCppModelSelect
+                key={`${selectedProfile.id}-llama-cpp`}
+                value={model}
+                onChange={onModelChange}
+                autoLoad={modelSelectAutoLoad}
+              />
+            ) : (
+              <OpenAiCompatibleModelSelect
+                key={`${selectedProfile.id}-llama-cpp-remote`}
+                reloadKey={`${selectedProfile.id}:${selectedProfile.baseUrl || ''}`}
+                getBaseUrl={() => selectedProfile.baseUrl || ''}
+                getApiKey={() => selectedProfile.apiKey || ''}
+                value={model}
+                onChange={onModelChange}
+                autoLoad={modelSelectAutoLoad}
+                aliasScope="llama-cpp"
+              />
+            )
           ) : selectedProfile.kind === LLM_PROVIDER_MLX_VLM ? (
             <MlxVlmModelSelect
               key={`${selectedProfile.id}-mlx`}
@@ -435,18 +464,34 @@ export default function LlmAssistPanel({
                   key={img.id}
                   className="relative overflow-hidden rounded border border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft"
                 >
-                  <img
-                    src={img.previewDataUrl}
-                    alt={img.name}
-                    className="h-24 w-full object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setPreviewImage(img)}
+                    className="group relative block w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-violet-500"
+                    aria-label={`${img.name} 크게 보기`}
+                  >
+                    <img
+                      src={img.previewDataUrl}
+                      alt=""
+                      className="h-24 w-full object-cover"
+                    />
+                    <span
+                      className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/25"
+                      aria-hidden
+                    >
+                      <ZoomIn
+                        size={22}
+                        className="text-white opacity-0 drop-shadow-md transition-opacity group-hover:opacity-100"
+                      />
+                    </span>
+                  </button>
                   <div className="truncate px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-odp-muted" title={img.name}>
                     {img.name}
                   </div>
                   <button
                     type="button"
                     onClick={() => onRemoveImage?.(img.id)}
-                    className="absolute right-1 top-1 rounded bg-black/55 p-0.5 text-white hover:bg-black/75"
+                    className="absolute right-1 top-1 z-1 rounded bg-black/55 p-0.5 text-white hover:bg-black/75"
                     title="이미지 제거"
                     aria-label="이미지 제거"
                   >
@@ -625,7 +670,7 @@ export default function LlmAssistPanel({
       ) : (
         <button
           type="button"
-          onClick={() => onRun?.()}
+          {...runPress}
           disabled={!selectedProfile}
           className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -799,7 +844,23 @@ export default function LlmAssistPanel({
       </div>
   );
 
-  if (!enableImageDropZone) return panelBody;
+  const imageLightbox = (
+    <LlmAssistImageLightbox
+      src={previewImage?.previewDataUrl ?? null}
+      alt={previewImage?.name ?? ''}
+      open={Boolean(previewImage)}
+      onClose={() => setPreviewImage(null)}
+    />
+  );
+
+  if (!enableImageDropZone) {
+    return (
+      <>
+        {panelBody}
+        {imageLightbox}
+      </>
+    );
+  }
 
   return (
     <LlmAssistImageDropZone
@@ -808,6 +869,7 @@ export default function LlmAssistPanel({
       onFilesDrop={(files) => void handlePickImages(files)}
     >
       {panelBody}
+      {imageLightbox}
     </LlmAssistImageDropZone>
   );
 }

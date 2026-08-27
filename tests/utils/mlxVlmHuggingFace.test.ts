@@ -7,12 +7,26 @@ import {
   cacheDirEntryToRepoId,
   huggingFaceCacheEntryMatchesRepo,
   isMlxCommunityRepoId,
+  isMlxVlmCacheAutoDiscoverRepo,
   parseHuggingFaceModelUrl,
   repoIdToCacheDirEntryName,
   resolveMlxVlmDownloadMode,
 } from '@/utils/mlxVlmHuggingFace';
-import { isMlxVlmRepoInstalled, removeInstalledModel } from '@/utils/mlxVlmSettingsStore';
+import {
+  DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
+  isMlxVlmRepoInstalled,
+  removeInstalledModel,
+  type MlxVlmSettings,
+} from '@/utils/mlxVlmSettingsStore';
 import { isMlxVlmModelInUse } from '@/utils/mlxVlmShell';
+
+const emptySettings = (): MlxVlmSettings => ({
+  adapterPath: '',
+  hfToken: '',
+  selectedModelId: '',
+  hfDownloadMaxWorkers: DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
+  installedModels: [],
+});
 
 describe('mlxVlmHuggingFace', () => {
   it('parses huggingface model URLs and repo ids', () => {
@@ -54,6 +68,12 @@ describe('mlxVlmHuggingFace', () => {
     expect(resolveMlxVlmDownloadMode('meta-llama/Llama-3.1-8B')).toBe('convert');
   });
 
+  it('auto-discovers only mlx-community cache repos (not GGUF)', () => {
+    expect(isMlxVlmCacheAutoDiscoverRepo('mlx-community/Llama-3.2-3B-Instruct-4bit')).toBe(true);
+    expect(isMlxVlmCacheAutoDiscoverRepo('bartowski/Llama-3.2-3B-Instruct-GGUF')).toBe(false);
+    expect(isMlxVlmCacheAutoDiscoverRepo('meta-llama/Llama-3.1-8B')).toBe(false);
+  });
+
   it('builds confirm copy for download vs convert', () => {
     expect(buildMlxVlmDownloadConfirmMessage('mlx-community/a', 'download').title).toContain('MLX');
     expect(buildMlxVlmDownloadConfirmMessage('meta-llama/a', 'convert').title).toContain('변환');
@@ -77,8 +97,7 @@ describe('mlxVlm model registry', () => {
   it('clears selected model when removed', () => {
     const next = removeInstalledModel(
       {
-        adapterPath: '',
-        hfToken: '',
+        ...emptySettings(),
         selectedModelId: 'mlx-community/a',
         installedModels: [
           { id: 'mlx-community/a', repoId: 'mlx-community/a', source: 'huggingface', installedAt: 1 },
@@ -87,15 +106,14 @@ describe('mlxVlm model registry', () => {
       },
       'mlx-community/a',
     );
-    expect(next.selectedModelId).toBe('mlx-community/b');
+    expect(next.selectedModelId).toBe('');
     expect(next.installedModels).toHaveLength(1);
   });
 
   it('removes by repo id and clears selected id matched via repoId', () => {
     const next = removeInstalledModel(
       {
-        adapterPath: '',
-        hfToken: '',
+        ...emptySettings(),
         selectedModelId: 'org/model',
         installedModels: [
           { id: 'custom-id', repoId: 'org/model', source: 'huggingface', installedAt: 1 },
@@ -112,10 +130,8 @@ describe('mlxVlm model registry', () => {
       isMlxVlmModelInUse(
         'mlx-community/a',
         {
-          adapterPath: '',
-          hfToken: '',
+          ...emptySettings(),
           selectedModelId: 'mlx-community/a',
-          installedModels: [],
         },
         { running: true, loaded: true, models: ['mlx-community/a'] },
       ),
@@ -124,10 +140,8 @@ describe('mlxVlm model registry', () => {
       isMlxVlmModelInUse(
         'mlx-community/b',
         {
-          adapterPath: '',
-          hfToken: '',
+          ...emptySettings(),
           selectedModelId: 'mlx-community/a',
-          installedModels: [],
         },
         { running: false, loaded: false, models: [] },
       ),

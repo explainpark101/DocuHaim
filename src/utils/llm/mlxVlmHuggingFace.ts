@@ -32,6 +32,14 @@ export function isMlxCommunityRepoId(repoId: string): boolean {
   return String(repoId || '').trim().toLowerCase().startsWith('mlx-community/');
 }
 
+/** HF hub cache entries auto-discovered for MLX-VLM (excludes llama.cpp GGUF repos). */
+export function isMlxVlmCacheAutoDiscoverRepo(repoId: string): boolean {
+  const id = String(repoId || '').trim();
+  if (!isValidHuggingFaceRepoId(id)) return false;
+  if (/gguf/i.test(id)) return false;
+  return isMlxCommunityRepoId(id);
+}
+
 export function isLikelyPreconvertedMlxRepo(hit: Pick<HfModelSearchHit, 'id' | 'tags'>): boolean {
   if (isMlxCommunityRepoId(hit.id)) return true;
   const tags = (hit.tags || []).map((t) => t.toLowerCase());

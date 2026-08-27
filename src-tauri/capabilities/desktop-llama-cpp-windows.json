@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "desktop-llama-cpp-windows",
+  "description": "DocuHaim Windows llama.cpp shell scopes",
+  "platforms": ["windows"],
+  "windows": ["main", "s3haim-llm-assist"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "llama-cpp-resolve-windows",
+          "cmd": "cmd",
+          "args": ["/c", "where llama-server.exe 2>nul"]
+        },
+        {
+          "name": "llama-cpp-probe-windows",
+          "cmd": "cmd",
+          "args": [
+            "/c",
+            { "validator": "^\"[A-Za-z]:\\\\[^\"]+\\\\llama-server(\\.exe)?\" --help$" }
+          ]
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "llama-cpp-scoop-install",
+          "cmd": "cmd",
+          "args": ["/c", "scoop bucket add extras 2>nul & scoop install llama.cpp"]
+        },
+        {
+          "name": "llama-cpp-server-windows",
+          "cmd": "cmd",
+          "args": [
+            "/c",
+            { "validator": "^\"[A-Za-z]:\\\\[^\"]+\\\\llama-server(\\.exe)?\" -m \"[A-Za-z]:\\\\[^\"]+\\.gguf\" --host \"[0-9.]+\" --port [0-9]+ --ctx-size -?[0-9]+ --n-gpu-layers -?[0-9]+.*$" }
+          ]
+        },
+        {
+          "name": "llama-cpp-hf-download-windows",
+          "cmd": "cmd",
+          "args": [
+            "/c",
+            { "validator": "^huggingface-cli download [A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+ --include \"\\*\\.gguf\" --max-workers [0-9]+$" }
+          ]
+        }
+      ]
+    },
+    "shell:allow-kill"
+  ]
+}

@@ -157,36 +157,33 @@ export default function MlxVlmModelBrowser({
   const searchAbortRef = useRef<AbortController | null>(null);
   const pasteAbortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
+  const handleSearch = useCallback(() => {
     const q = searchQuery.trim();
     if (!q) {
       setSearchResults([]);
       setSearchError('');
-      return undefined;
+      return;
     }
 
-    const timer = window.setTimeout(() => {
-      searchAbortRef.current?.abort();
-      const controller = new AbortController();
-      searchAbortRef.current = controller;
-      setSearchBusy(true);
-      setSearchError('');
-      void searchAndEnrichHuggingFaceMlxModels(q, { signal: controller.signal })
-        .then((hits) => {
-          if (controller.signal.aborted) return;
-          setSearchResults(hits);
-        })
-        .catch((err) => {
-          if (controller.signal.aborted) return;
-          setSearchError(err instanceof Error ? err.message : 'Search failed.');
-          setSearchResults([]);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setSearchBusy(false);
-        });
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    setSearchBusy(true);
+    setSearchError('');
+    void searchAndEnrichHuggingFaceMlxModels(q, { signal: controller.signal })
+      .then((hits) => {
+        if (controller.signal.aborted) return;
+        setSearchResults(hits);
+        if (!hits.length) setSearchError('검색 결과가 없습니다.');
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setSearchError(err instanceof Error ? err.message : 'Search failed.');
+        setSearchResults([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSearchBusy(false);
+      });
   }, [searchQuery]);
 
   useEffect(() => {
@@ -229,16 +226,8 @@ export default function MlxVlmModelBrowser({
       seen.add(model.id);
       out.push(model);
     }
-    if (selectedId && !seen.has(selectedId)) {
-      out.unshift({
-        id: selectedId,
-        ...(selectedId.includes('/') ? { repoId: selectedId } : {}),
-        source: 'huggingface',
-        installedAt: Date.now(),
-      });
-    }
     return out;
-  }, [installed, selectedId]);
+  }, [installed]);
 
   const requestDownload = (repoId: string, hit?: HfModelSearchHit | null) => {
     rememberMlxVlmDownloadTarget(repoId);
@@ -411,7 +400,7 @@ export default function MlxVlmModelBrowser({
     <div className="space-y-2">
       <MlxVlmCollapsibleSection
         title="설치된 모델"
-        subtitle={`${installedOptions.length}개 · 서버에 로드할 모델 선택`}
+        subtitle={`${installedOptions.length}개 · ${selectedId ? '선택됨' : '모델 미선택'}`}
         open={installedOpen}
         onOpenChange={setInstalledOpen}
       >
@@ -442,6 +431,7 @@ export default function MlxVlmModelBrowser({
         <MlxVlmModelSearchSection
           query={searchQuery}
           onQueryChange={setSearchQuery}
+          onSearch={handleSearch}
           memoryBudgetLabel={memoryBudgetLabel}
           results={searchResults}
           searchBusy={searchBusy}

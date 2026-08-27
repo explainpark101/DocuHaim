@@ -4,6 +4,7 @@ import {
   fetchHuggingFaceModelInfo,
   huggingFaceCacheEntryMatchesRepo,
   isMlxCommunityRepoId,
+  isMlxVlmCacheAutoDiscoverRepo,
   isValidHuggingFaceRepoId,
   repoIdToCacheDirEntryName,
   resolveHuggingFaceModelDiskBytes,
@@ -28,8 +29,10 @@ import {
 } from '@/utils/llm/mlxVlmLoadNotifications';
 import {
   addInstalledModel,
+  filterMlxVlmInstalledModels,
   loadMlxVlmSettings,
   mergeInstalledModels,
+  normalizeMlxVlmHfDownloadMaxWorkers,
   removeInstalledModel,
   saveMlxVlmSettings,
   setSelectedMlxVlmModelId,
@@ -120,7 +123,7 @@ const UV_TOOL_RUN = {
   hfHelp: ['-lc', 'exec "$0" tool run --from huggingface-hub hf --help'] as const,
   hfDownload: [
     '-lc',
-    'exec "$0" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download "$1"',
+    'exec "$0" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download "$1" --max-workers "$2"',
   ] as const,
   mlxConvert: ['-lc', 'exec "$0" tool run --from mlx-vlm mlx_vlm.convert --model "$1" -q'] as const,
   installMlxVlm: ['-lc', 'exec "$0" tool install mlx-vlm --with jinja2'] as const,
@@ -581,7 +584,7 @@ export async function scanHuggingFaceCacheModels(): Promise<MlxVlmInstalledModel
     for (const entry of entries) {
       if (!entry.isDirectory && !entry.isSymlink) continue;
       const repoId = cacheDirEntryToRepoId(entry.name);
-      if (!repoId) continue;
+      if (!repoId || !isMlxVlmCacheAutoDiscoverRepo(repoId)) continue;
       models.push({
         id: repoId,
         repoId,
@@ -600,7 +603,10 @@ export async function listInstalledMlxVlmModels(
 ): Promise<MlxVlmInstalledModel[]> {
   const current = loadMlxVlmSettings();
   const cached = await scanHuggingFaceCacheModels();
-  return mergeInstalledModels(current.installedModels, cached);
+  return mergeInstalledModels(
+    filterMlxVlmInstalledModels(current.installedModels),
+    filterMlxVlmInstalledModels(cached),
+  );
 }
 
 export async function refreshInstalledMlxVlmModels(): Promise<{
@@ -609,8 +615,12 @@ export async function refreshInstalledMlxVlmModels(): Promise<{
 }> {
   const current = loadMlxVlmSettings();
   const cached = await scanHuggingFaceCacheModels();
-  const merged = mergeInstalledModels(current.installedModels, cached);
-  if (!hasInstalledModelsDelta(current.installedModels, merged)) {
+  const kept = filterMlxVlmInstalledModels(current.installedModels);
+  const merged = mergeInstalledModels(kept, filterMlxVlmInstalledModels(cached));
+  const changed =
+    hasInstalledModelsDelta(current.installedModels, merged) ||
+    hasInstalledModelsDelta(kept, merged);
+  if (!changed) {
     return { settings: current, models: merged };
   }
   const next: MlxVlmSettings = { ...current, installedModels: merged };
@@ -751,6 +761,12 @@ export async function abortMlxVlmDownload(repoId?: string): Promise<void> {
   await session.kill();
 }
 
+export function resolveMlxVlmHfDownloadMaxWorkers(
+  settings: MlxVlmSettings = loadMlxVlmSettings(),
+): number {
+  return normalizeMlxVlmHfDownloadMaxWorkers(settings.hfDownloadMaxWorkers);
+}
+
 export async function downloadMlxVlmModel(
   repoId: string,
   options?: {
@@ -775,6 +791,8 @@ export async function downloadMlxVlmModel(
   const uvPath = await requireUvBin();
   const toolkit = await probeMlxVlmToolkit();
 
+  clearMlxVlmDownloadLog();
+
   let scopeName: string;
   let args: string[];
   if (mode === 'convert') {
@@ -792,7 +810,11 @@ export async function downloadMlxVlmModel(
       );
     }
     scopeName = 'uv-tool-run-hf-download';
-    args = [...UV_TOOL_RUN.hfDownload, uvPath, id];
+    const maxWorkers = resolveMlxVlmHfDownloadMaxWorkers(settings);
+    appendMlxVlmDownloadLog(
+      `Downloading MLX model: ${id}\n  parallel workers: ${maxWorkers}\n`,
+    );
+    args = [...UV_TOOL_RUN.hfDownload, uvPath, id, String(maxWorkers)];
   }
 
   let expectedTotalBytes =
@@ -802,8 +824,6 @@ export async function downloadMlxVlmModel(
       ...(options?.hit ? { hit: options.hit } : {}),
     });
   }
-
-  clearMlxVlmDownloadLog();
 
   let latestProgress: MlxVlmDownloadProgressSnapshot | null = null;
   const reportProgress = (snapshot: MlxVlmDownloadProgressSnapshot | null) => {
