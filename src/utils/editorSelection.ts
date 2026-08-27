@@ -28,13 +28,10 @@ function isMdEditorApi(candidate: unknown): candidate is MdEditorApi {
 export function resolveMdEditorApiFromRef(
   editorRef: EditorRefLike | null | undefined,
 ): MdEditorApi | null {
-  const current = editorRef?.current as
-    | (MdEditorApi & { value?: MdEditorApi })
-    | null
-    | undefined;
-  if (!current) return null;
+  const current: unknown = editorRef?.current;
+  if (!current || typeof current !== 'object') return null;
   if (isMdEditorApi(current)) return current;
-  const nested = current.value;
+  const nested = (current as { value?: unknown }).value;
   if (isMdEditorApi(nested)) return nested;
   return null;
 }
