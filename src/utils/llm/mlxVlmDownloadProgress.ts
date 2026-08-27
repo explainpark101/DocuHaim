@@ -1,0 +1,211 @@
+export type MlxVlmDownloadProgressSnapshot = {
+  currentBytes: number;
+  totalBytes: number;
+  percent: number;
+  label: string;
+};
+
+const SIZE_PAIR_RE =
+  /(\d+(?:\.\d+)?)\s*([KMGTP](?:i?B)?|B)\s*\/\s*(\d+(?:\.\d+)?)\s*([KMGTP](?:i?B)?|B)/i;
+const PERCENT_RE = /(\d+(?:\.\d+)?)\s*%/;
+
+const HF_DOWNLOAD_NOISE_RES = [
+  /unauthenticated requests to the HF Hub/i,
+  /Please set a HF_TOKEN/i,
+  /^Warning:/i,
+  /^UserWarning:/i,
+  /^Fetching \d+ files:?/i,
+  /^Download complete\.?$/i,
+  /^Still waiting to acquire/i,
+];
+
+function sizeTokenToBytes(value: number, unit: string): number {
+  const u = unit.toLowerCase();
+  if (u === 'b' || u === '') return value;
+  if (u === 'kib') return value * 1024;
+  if (u === 'mib') return value * 1024 ** 2;
+  if (u === 'gib') return value * 1024 ** 3;
+  if (u === 'tib') return value * 1024 ** 4;
+  if (u === 'kb') return value * 1000;
+  if (u === 'mb') return value * 1000 ** 2;
+  if (u === 'gb') return value * 1000 ** 3;
+  if (u === 'tb') return value * 1000 ** 4;
+  if (u === 'k') return value * 1000;
+  if (u === 'm') return value * 1000 ** 2;
+  if (u === 'g') return value * 1000 ** 3;
+  if (u === 't') return value * 1000 ** 4;
+  return value;
+}
+
+export function formatMlxVlmByteSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+  if (bytes >= 1000 ** 3) return `${(bytes / 1000 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1000 ** 2) return `${(bytes / 1000 ** 2).toFixed(1)} MB`;
+  if (bytes >= 1000) return `${(bytes / 1000).toFixed(1)} KB`;
+  return `${Math.round(bytes)} B`;
+}
+
+export function formatMlxVlmDownloadProgressLabel(
+  snapshot: Pick<MlxVlmDownloadProgressSnapshot, 'currentBytes' | 'totalBytes' | 'percent'>,
+): string {
+  if (snapshot.totalBytes > 0) {
+    const current = formatMlxVlmByteSize(snapshot.currentBytes);
+    const total = formatMlxVlmByteSize(snapshot.totalBytes);
+    const pct = Math.min(100, Math.max(0, Math.round(snapshot.percent)));
+    return `${current} / ${total} (${pct}%)`;
+  }
+  return `${formatMlxVlmByteSize(snapshot.currentBytes)} downloaded`;
+}
+
+export function isMlxVlmDownloadNoiseLine(line: string): boolean {
+  const text = String(line || '').trim();
+  if (!text) return true;
+  if (HF_DOWNLOAD_NOISE_RES.some((pattern) => pattern.test(text))) return true;
+  if (SIZE_PAIR_RE.test(text)) return true;
+  if (/^\d+(?:\.\d+)?%\|/.test(text)) return true;
+  return false;
+}
+
+export function isMlxVlmDownloadProgressLine(line: string): boolean {
+  const text = String(line || '').trim();
+  if (!text) return false;
+  return SIZE_PAIR_RE.test(text) || /^\d+(?:\.\d+)?%\|/.test(text);
+}
+
+export function normalizeMlxVlmDownloadOutputChunk(chunk: string): string {
+  const text = String(chunk || '').replace(/\r/g, '\n');
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines[lines.length - 1] ?? '';
+}
+
+export function extractMlxVlmDownloadStatusMessage(chunk: string, previous = ''): string {
+  const text = String(chunk || '').replace(/\r/g, '\n');
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  let status = previous;
+  for (const line of lines) {
+    if (isMlxVlmDownloadNoiseLine(line)) continue;
+    status = line;
+  }
+  return status;
+}
+
+function parseSingleMlxVlmDownloadProgressLine(
+  line: string,
+  previous?: MlxVlmDownloadProgressSnapshot | null,
+): MlxVlmDownloadProgressSnapshot | null {
+  const trimmed = String(line || '').trim();
+  if (!trimmed) return previous ?? null;
+
+  const sizeMatch = trimmed.match(SIZE_PAIR_RE);
+  if (sizeMatch) {
+    const currentBytes = sizeTokenToBytes(Number.parseFloat(sizeMatch[1] ?? '0'), sizeMatch[2] ?? 'B');
+    const totalBytes = sizeTokenToBytes(Number.parseFloat(sizeMatch[3] ?? '0'), sizeMatch[4] ?? 'B');
+    if (totalBytes > 0) {
+      const percentMatch = trimmed.match(PERCENT_RE);
+      const percent =
+        percentMatch != null
+          ? Number.parseFloat(percentMatch[1] ?? '0')
+          : Math.min(100, (currentBytes / totalBytes) * 100);
+      const snapshot = {
+        currentBytes,
+        totalBytes,
+        percent,
+        label: '',
+      };
+      snapshot.label = formatMlxVlmDownloadProgressLabel(snapshot);
+      return snapshot;
+    }
+  }
+
+  const percentOnly = trimmed.match(PERCENT_RE);
+  if (percentOnly && previous && previous.totalBytes > 0) {
+    const percent = Number.parseFloat(percentOnly[1] ?? '0');
+    const currentBytes = Math.min(previous.totalBytes, (previous.totalBytes * percent) / 100);
+    const snapshot = {
+      currentBytes,
+      totalBytes: previous.totalBytes,
+      percent,
+      label: '',
+    };
+    snapshot.label = formatMlxVlmDownloadProgressLabel(snapshot);
+    return snapshot;
+  }
+
+  return previous ?? null;
+}
+
+export function parseMlxVlmDownloadProgressLine(
+  chunk: string,
+  previous?: MlxVlmDownloadProgressSnapshot | null,
+): MlxVlmDownloadProgressSnapshot | null {
+  const text = String(chunk || '').replace(/\r/g, '\n');
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  let latest = previous ?? null;
+  for (const line of lines) {
+    latest = parseSingleMlxVlmDownloadProgressLine(line, latest);
+  }
+  return latest;
+}
+
+export function buildMlxVlmDownloadProgressFromBytes(
+  currentBytes: number,
+  totalBytes: number,
+): MlxVlmDownloadProgressSnapshot | null {
+  if (!Number.isFinite(totalBytes) || totalBytes <= 0) return null;
+  const safeCurrent = Math.max(0, Math.min(totalBytes, currentBytes));
+  const percent = Math.min(100, (safeCurrent / totalBytes) * 100);
+  const snapshot = {
+    currentBytes: safeCurrent,
+    totalBytes,
+    percent,
+    label: '',
+  };
+  snapshot.label = formatMlxVlmDownloadProgressLabel(snapshot);
+  return snapshot;
+}
+
+export function buildMlxVlmDownloadProgressFromCurrentBytes(
+  currentBytes: number,
+): MlxVlmDownloadProgressSnapshot | null {
+  if (!Number.isFinite(currentBytes) || currentBytes <= 0) return null;
+  const snapshot = {
+    currentBytes,
+    totalBytes: 0,
+    percent: 0,
+    label: '',
+  };
+  snapshot.label = formatMlxVlmDownloadProgressLabel(snapshot);
+  return snapshot;
+}
+
+export function pickMlxVlmDownloadProgress(
+  current: MlxVlmDownloadProgressSnapshot | null | undefined,
+  incoming: MlxVlmDownloadProgressSnapshot | null | undefined,
+): MlxVlmDownloadProgressSnapshot | null {
+  if (!incoming) return current ?? null;
+  if (!current) return incoming;
+  if (
+    incoming.currentBytes > current.currentBytes ||
+    incoming.percent > current.percent ||
+    (incoming.currentBytes === current.currentBytes && incoming.percent >= current.percent)
+  ) {
+    return incoming;
+  }
+  return current;
+}
+
+export function mergeMlxVlmDownloadProgressChunk(
+  chunk: string,
+  previous?: MlxVlmDownloadProgressSnapshot | null,
+): MlxVlmDownloadProgressSnapshot | null {
+  return pickMlxVlmDownloadProgress(previous, parseMlxVlmDownloadProgressLine(chunk, previous));
+}

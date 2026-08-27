@@ -1,0 +1,125 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "macos-mlx-vlm",
+  "description": "DocuHaim macOS MLX-VLM shell scopes (uv install, uv tool run)",
+  "platforms": ["macOS"],
+  "windows": ["main", "s3haim-llm-assist"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "uv-install",
+          "cmd": "/bin/sh",
+          "args": ["-lc", "curl -LsSf https://astral.sh/uv/install.sh | sh"]
+        },
+        {
+          "name": "uv-resolve",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "for p in \"$HOME/.local/bin/uv\" \"$HOME/.cargo/bin/uv\" \"/opt/homebrew/bin/uv\"; do if [ -x \"$p\" ]; then echo \"$p\"; exit 0; fi; done; command -v uv 2>/dev/null || true"
+          ]
+        },
+        {
+          "name": "uv-tool-install-mlx-vlm",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool install mlx-vlm",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-install-hf-hub",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool install huggingface-hub",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-mlx-generate-help",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from mlx-vlm python -m mlx_vlm.generate --help",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-hf-help",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from huggingface-hub hf --help",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-hf-download",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download \"$1\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-mlx-convert",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from mlx-vlm mlx_vlm.convert --model \"$1\" -q",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+          ]
+        },
+        {
+          "name": "sysctl-memsize",
+          "cmd": "sysctl",
+          "args": ["-n", "hw.memsize"]
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "mlx-vlm-generate-worker",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from mlx-vlm python -u \"$1\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
+            { "validator": "^(/[A-Za-z0-9._/-]+/mlx_vlm_generate_worker\\.py)$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-hf-download",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download \"$1\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-mlx-convert",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from mlx-vlm mlx_vlm.convert --model \"$1\" -q",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+          ]
+        }
+      ]
+    },
+    "shell:allow-stdin-write",
+    "shell:allow-kill"
+  ]
+}
