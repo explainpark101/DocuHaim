@@ -10,6 +10,8 @@ export class MlxVlmRawLogBuffer {
   private lineSeq = 0;
   private lines: MlxVlmLogLine[] = [];
   private currentLine = '';
+  /** Trailing \\r must not wipe the displayed line until the next overwrite char. */
+  private pendingCarriageReturn = false;
   private readonly maxLines: number;
 
   constructor(maxLines = 4000) {
@@ -20,17 +22,23 @@ export class MlxVlmRawLogBuffer {
     this.lineSeq = 0;
     this.lines = [];
     this.currentLine = '';
+    this.pendingCarriageReturn = false;
   }
 
   append(chunk: string): void {
     for (const char of String(chunk || '')) {
       if (char === '\r') {
-        this.currentLine = '';
+        this.pendingCarriageReturn = true;
         continue;
       }
       if (char === '\n') {
+        this.pendingCarriageReturn = false;
         this.commitCurrentLine();
         continue;
+      }
+      if (this.pendingCarriageReturn) {
+        this.pendingCarriageReturn = false;
+        this.currentLine = '';
       }
       this.currentLine += char;
     }

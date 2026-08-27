@@ -20,17 +20,17 @@
             "/c",
             { "validator": "^\"[A-Za-z]:\\\\[^\"]+\\\\llama-server(\\.exe)?\" --help$" }
           ]
-        },
-        {
-          "name": "llama-cpp-scoop-install",
-          "cmd": "cmd",
-          "args": ["/c", "scoop bucket add extras 2>nul & scoop install llama.cpp"]
         }
       ]
     },
     {
       "identifier": "shell:allow-spawn",
       "allow": [
+        {
+          "name": "llama-cpp-scoop-install",
+          "cmd": "cmd",
+          "args": ["/c", "scoop bucket add extras 2>nul & scoop install llama.cpp"]
+        },
         {
           "name": "llama-cpp-server-windows",
           "cmd": "cmd",

@@ -4,6 +4,7 @@ import {
   parseHuggingFaceModelUrl,
   repoIdToCacheDirEntryName,
 } from '@/utils/llm/mlxVlmHuggingFace';
+import { formatByteSize, sumHfSiblingBytes } from '@/utils/llm/mlxVlmModelSizing';
 
 export {
   cacheDirEntryToRepoId,
@@ -17,6 +18,8 @@ export type HfGgufSearchHit = {
   author: string;
   downloads?: number;
   tags?: string[];
+  /** Sum of *.gguf sibling sizes when known. */
+  diskBytes?: number;
 };
 
 const HF_MODELS_API = 'https://huggingface.co/api/models';
@@ -24,6 +27,55 @@ const HF_MODELS_API = 'https://huggingface.co/api/models';
 export function isLikelyGgufRepo(hit: Pick<HfGgufSearchHit, 'id' | 'tags'>): boolean {
   const tags = (hit.tags || []).map((t) => t.toLowerCase());
   return tags.includes('gguf') || hit.id.toLowerCase().includes('gguf');
+}
+
+/** Sum LFS/file sizes for siblings whose name ends with .gguf. */
+export function sumHfGgufSiblingBytes(siblings: unknown): number | undefined {
+  if (!Array.isArray(siblings)) return undefined;
+  const ggufOnly = siblings.filter((item) => {
+    if (!item || typeof item !== 'object') return false;
+    const name = String((item as { rfilename?: unknown }).rfilename || '');
+    return name.toLowerCase().endsWith('.gguf');
+  });
+  if (!ggufOnly.length) return sumHfSiblingBytes(siblings);
+  return sumHfSiblingBytes(ggufOnly);
+}
+
+async function fetchHfModelRecord(
+  repoId: string,
+  signal?: AbortSignal,
+): Promise<Record<string, unknown> | null> {
+  const id = String(repoId || '').trim();
+  if (!isValidHuggingFaceRepoId(id)) return null;
+  const res = await fetch(`${HF_MODELS_API}/${encodeURIComponent(id)}`, {
+    ...(signal ? { signal } : {}),
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as Record<string, unknown>;
+}
+
+export async function enrichHfGgufSearchHit(
+  hit: HfGgufSearchHit,
+  options?: { signal?: AbortSignal },
+): Promise<HfGgufSearchHit> {
+  if (hit.diskBytes != null && hit.diskBytes > 0) return hit;
+  const rec = await fetchHfModelRecord(hit.id, options?.signal);
+  const diskBytes = rec ? sumHfGgufSiblingBytes(rec.siblings) : undefined;
+  return {
+    ...hit,
+    ...(diskBytes != null ? { diskBytes } : {}),
+  };
+}
+
+export async function enrichHfGgufSearchHits(
+  hits: HfGgufSearchHit[],
+  options?: { signal?: AbortSignal },
+): Promise<HfGgufSearchHit[]> {
+  if (!hits.length) return hits;
+  return Promise.all(
+    hits.map((hit) => enrichHfGgufSearchHit(hit, options)),
+  );
 }
 
 export async function searchHuggingFaceGgufModels(
@@ -70,20 +122,32 @@ export async function searchHuggingFaceGgufModels(
     });
   }
 
-  return hits
+  const filtered = hits
     .filter((hit) => isLikelyGgufRepo(hit) || hit.id.toLowerCase().includes('gguf'))
     .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
+
+  return enrichHfGgufSearchHits(filtered, options);
 }
 
-export function buildLlamaCppDownloadConfirmMessage(repoId: string): {
+export function formatHfGgufDiskSizeLabel(diskBytes: number | undefined): string | null {
+  if (diskBytes == null || !Number.isFinite(diskBytes) || diskBytes <= 0) return null;
+  return formatByteSize(diskBytes);
+}
+
+export function buildLlamaCppDownloadConfirmMessage(
+  repoId: string,
+  options?: { diskBytes?: number },
+): {
   title: string;
   message: string;
 } {
   const id = String(repoId || '').trim();
+  const sizeLabel = formatHfGgufDiskSizeLabel(options?.diskBytes);
   return {
     title: 'llama.cpp 모델 다운로드',
     message: [
       `Hugging Face에서 "${id}" GGUF 모델을 다운로드할까요?`,
+      ...(sizeLabel ? [`예상 용량: ${sizeLabel}`] : []),
       '',
       '*.gguf 파일만 받습니다. 다운로드 후 Settings에서 Start server로 실행하세요.',
     ].join('\n'),

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Download, FolderOpen, Search, Trash2 } from 'lucide-react';
+import { FolderOpen, Search, Trash2 } from 'lucide-react';
 import Button from '@/components/Button';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import LlamaCppCollapsibleSection from '@/components/settings/LlamaCppCollapsibleSection';
+import MlxVlmDownloadButtonContent from '@/components/settings/MlxVlmDownloadButtonContent';
 import {
   buildLlamaCppDeleteConfirmMessage,
   buildLlamaCppDownloadConfirmMessage,
+  formatHfGgufDiskSizeLabel,
   isValidHuggingFaceRepoId,
   parseHuggingFaceModelUrl,
   searchHuggingFaceGgufModels,
@@ -13,6 +15,7 @@ import {
 } from '@/utils/llamaCppHuggingFace';
 import {
   addInstalledLlamaCppModel,
+  isLlamaCppRepoInstalled,
   type LlamaCppInstalledModel,
   type LlamaCppSettings,
 } from '@/utils/llamaCppSettingsStore';
@@ -22,6 +25,7 @@ import {
   getLlamaCppDownloadLogLines,
 } from '@/utils/llm/llamaCppDownloadLog';
 import {
+  abortLlamaCppDownload,
   downloadLlamaCppModel,
   isLlamaCppDownloadAbortedError,
   rememberLlamaCppDownloadTarget,
@@ -29,6 +33,7 @@ import {
   setSelectedLlamaCppModelId,
 } from '@/utils/llamaCppShell';
 import { LLAMA_CPP_REDOWNLOAD_FOCUS_EVENT } from '@/utils/llm/llamaCppLoadErrorHelp';
+import type { MlxVlmDownloadProgressSnapshot } from '@/utils/llm/mlxVlmDownloadProgress';
 import MlxVlmVirtualLogPanel from '@/components/settings/MlxVlmVirtualLogPanel';
 
 type LlamaCppModelBrowserProps = {
@@ -50,7 +55,15 @@ export default function LlamaCppModelBrowser({
   const [searchError, setSearchError] = useState('');
   const [pasteInput, setPasteInput] = useState('');
   const [downloadBusy, setDownloadBusy] = useState(false);
-  const [pendingDownloadRepoId, setPendingDownloadRepoId] = useState('');
+  const [downloadingRepoId, setDownloadingRepoId] = useState('');
+  const [abortingRepoId, setAbortingRepoId] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState<MlxVlmDownloadProgressSnapshot | null>(
+    null,
+  );
+  const [pendingDownload, setPendingDownload] = useState<HfGgufSearchHit | { id: string } | null>(
+    null,
+  );
+  const [pendingAbortRepoId, setPendingAbortRepoId] = useState('');
   const [pendingDelete, setPendingDelete] = useState<LlamaCppInstalledModel | null>(null);
   const [localPathInput, setLocalPathInput] = useState('');
   const [installedOpen, setInstalledOpen] = useState(true);
@@ -60,7 +73,10 @@ export default function LlamaCppModelBrowser({
   const [downloadLogOpen, setDownloadLogOpen] = useState(false);
   const [downloadLogLines, setDownloadLogLines] = useState(() => getLlamaCppDownloadLogLines());
 
-  useEffect(() => subscribeLlamaCppDownloadLog(() => setDownloadLogLines(getLlamaCppDownloadLogLines())), []);
+  useEffect(
+    () => subscribeLlamaCppDownloadLog(() => setDownloadLogLines(getLlamaCppDownloadLogLines())),
+    [],
+  );
 
   useEffect(() => {
     const onFocus = (event: Event) => {
@@ -73,10 +89,16 @@ export default function LlamaCppModelBrowser({
   }, [settings.selectedModelId]);
 
   const handleSearch = useCallback(async () => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults([]);
+      setSearchError('');
+      return;
+    }
     setSearchBusy(true);
     setSearchError('');
     try {
-      const hits = await searchHuggingFaceGgufModels(searchQuery, { limit: 20 });
+      const hits = await searchHuggingFaceGgufModels(q, { limit: 20 });
       setSearchResults(hits);
       if (!hits.length) setSearchError('검색 결과가 없습니다.');
     } catch (err) {
@@ -87,23 +109,42 @@ export default function LlamaCppModelBrowser({
     }
   }, [searchQuery]);
 
-  const requestDownload = useCallback((repoId: string) => {
-    const id = String(repoId || '').trim();
-    if (!id) return;
-    rememberLlamaCppDownloadTarget(id);
-    setPendingDownloadRepoId(id);
-  }, []);
+  const requestDownload = useCallback(
+    (hit: HfGgufSearchHit | { id: string; diskBytes?: number }) => {
+      const id = String(hit.id || '').trim();
+      if (!id) return;
+      if (downloadBusy && downloadingRepoId === id) {
+        setPendingAbortRepoId(id);
+        return;
+      }
+      if (downloadBusy) return;
+      rememberLlamaCppDownloadTarget(id);
+      setPendingDownload(hit);
+    },
+    [downloadBusy, downloadingRepoId],
+  );
 
   const confirmDownload = useCallback(async () => {
-    const repoId = pendingDownloadRepoId;
-    if (!repoId) return;
-    setPendingDownloadRepoId('');
+    const pending = pendingDownload;
+    if (!pending) return;
+    const repoId = pending.id;
+    setPendingDownload(null);
     setDownloadBusy(true);
+    setDownloadingRepoId(repoId);
+    setDownloadProgress(null);
     setDownloadLogOpen(true);
     try {
-      const installed = await downloadLlamaCppModel(repoId);
+      const installed = await downloadLlamaCppModel(repoId, {
+        onProgress: (snapshot) => setDownloadProgress(snapshot),
+      });
       const next = setSelectedLlamaCppModelId(
-        { ...settings, installedModels: [installed, ...settings.installedModels.filter((m) => m.id !== installed.id)] },
+        {
+          ...settings,
+          installedModels: [
+            installed,
+            ...settings.installedModels.filter((m) => m.id !== installed.id),
+          ],
+        },
         installed.id,
       );
       onSettingsChange(next);
@@ -113,8 +154,24 @@ export default function LlamaCppModelBrowser({
       }
     } finally {
       setDownloadBusy(false);
+      setDownloadingRepoId('');
+      setAbortingRepoId('');
+      setDownloadProgress(null);
     }
-  }, [onSettingsChange, pendingDownloadRepoId, settings]);
+  }, [onSettingsChange, pendingDownload, settings]);
+
+  const confirmAbort = useCallback(async () => {
+    const repoId = pendingAbortRepoId;
+    setPendingAbortRepoId('');
+    if (!repoId) return;
+    setAbortingRepoId(repoId);
+    try {
+      await abortLlamaCppDownload(repoId);
+    } catch (err) {
+      setAbortingRepoId('');
+      alert(err instanceof Error ? err.message : 'Failed to abort download.');
+    }
+  }, [pendingAbortRepoId]);
 
   const handlePasteAdd = useCallback(() => {
     const repoId = parseHuggingFaceModelUrl(pasteInput);
@@ -122,7 +179,7 @@ export default function LlamaCppModelBrowser({
       alert('Hugging Face repo URL 또는 org/model 형식을 입력하세요.');
       return;
     }
-    requestDownload(repoId);
+    requestDownload({ id: repoId });
   }, [pasteInput, requestDownload]);
 
   const handleLocalPathAdd = useCallback(() => {
@@ -160,10 +217,20 @@ export default function LlamaCppModelBrowser({
     setPendingDelete(null);
   }, [onSettingsChange, pendingDelete, settings]);
 
-  const downloadCopy = pendingDownloadRepoId
-    ? buildLlamaCppDownloadConfirmMessage(pendingDownloadRepoId)
+  const downloadCopy = pendingDownload
+    ? buildLlamaCppDownloadConfirmMessage(pendingDownload.id, {
+        ...('diskBytes' in pendingDownload && pendingDownload.diskBytes != null
+          ? { diskBytes: pendingDownload.diskBytes }
+          : {}),
+      })
     : null;
   const deleteCopy = pendingDelete ? buildLlamaCppDeleteConfirmMessage(pendingDelete.id) : null;
+  const pasteRepoId = parseHuggingFaceModelUrl(pasteInput) || '';
+  const isPasteDownloading = Boolean(
+    downloadBusy && downloadingRepoId && pasteRepoId && downloadingRepoId === pasteRepoId,
+  );
+  const isPasteAborting = Boolean(abortingRepoId && pasteRepoId && abortingRepoId === pasteRepoId);
+  const progressLabel = downloadProgress?.label || '';
 
   return (
     <div className="space-y-3">
@@ -188,7 +255,9 @@ export default function LlamaCppModelBrowser({
             </div>
           ) : null}
           {settings.installedModels.length === 0 ? (
-            <p className="text-[11px] text-gray-500 dark:text-odp-muted">아직 설치된 GGUF 모델이 없습니다.</p>
+            <p className="text-[11px] text-gray-500 dark:text-odp-muted">
+              아직 설치된 GGUF 모델이 없습니다.
+            </p>
           ) : (
             settings.installedModels.map((model) => {
               const selected = settings.selectedModelId === model.id;
@@ -248,53 +317,134 @@ export default function LlamaCppModelBrowser({
             placeholder="/path/to/model.gguf"
             className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
           />
-          <Button type="button" variant="tertiary" size="sm" disabled={disabled} onClick={() => void handleBrowseGguf()}>
+          <Button
+            type="button"
+            variant="tertiary"
+            size="sm"
+            disabled={disabled}
+            onClick={() => void handleBrowseGguf()}
+          >
             <FolderOpen size={14} />
             Browse
           </Button>
-          <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={handleLocalPathAdd}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={disabled}
+            onClick={handleLocalPathAdd}
+          >
             <FolderOpen size={14} />
             추가
           </Button>
         </div>
       </LlamaCppCollapsibleSection>
 
-      <LlamaCppCollapsibleSection title="Hugging Face 검색" open={searchOpen} onOpenChange={setSearchOpen}>
+      <LlamaCppCollapsibleSection
+        title="Hugging Face 검색"
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+      >
         <div className="flex flex-wrap gap-2">
           <input
             type="search"
             value={searchQuery}
             disabled={disabled || searchBusy}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              e.preventDefault();
+              if (!disabled && !searchBusy) void handleSearch();
+            }}
             placeholder="llama 3 gguf"
             className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
           />
-          <Button type="button" variant="secondary" size="sm" disabled={disabled || searchBusy} onClick={() => void handleSearch()}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={disabled || searchBusy || !searchQuery.trim()}
+            onClick={() => void handleSearch()}
+          >
             <Search size={14} />
             검색
           </Button>
         </div>
-        {searchError ? <p className="text-[11px] text-amber-700 dark:text-amber-300">{searchError}</p> : null}
+        {searchBusy ? (
+          <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">Searching…</p>
+        ) : null}
+        {searchError ? (
+          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">{searchError}</p>
+        ) : null}
         <ul className="mt-2 space-y-1">
-          {searchResults.map((hit) => (
-            <li key={hit.id} className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1 text-[11px] dark:border-odp-borderStrong">
-              <span className="min-w-0 truncate">{hit.id}</span>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={disabled || !downloadReady || downloadBusy}
-                onClick={() => requestDownload(hit.id)}
+          {searchResults.map((hit) => {
+            const isAborting = abortingRepoId === hit.id;
+            const isDownloading = downloadBusy && downloadingRepoId === hit.id;
+            const isDownloaded =
+              !isDownloading &&
+              !isAborting &&
+              isLlamaCppRepoInstalled(hit.id, settings.installedModels);
+            const sizeLabel = formatHfGgufDiskSizeLabel(hit.diskBytes);
+            const buttonMode = isAborting
+              ? 'aborting'
+              : isDownloading
+                ? 'downloading'
+                : isDownloaded
+                  ? 'downloaded'
+                  : 'download';
+            return (
+              <li
+                key={hit.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1.5 text-[11px] dark:border-odp-borderStrong"
               >
-                <Download size={14} />
-                Download
-              </Button>
-            </li>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{hit.id}</span>
+                  <span className="block text-[10px] text-gray-500 dark:text-odp-muted">
+                    {sizeLabel
+                      ? `용량 ${sizeLabel}`
+                      : hit.downloads != null
+                        ? `${hit.downloads.toLocaleString()} downloads`
+                        : '용량 정보 없음'}
+                    {sizeLabel && hit.downloads != null
+                      ? ` · ${hit.downloads.toLocaleString()} downloads`
+                      : ''}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant={isDownloaded ? 'tertiary' : 'secondary'}
+                  size="sm"
+                  className={
+                    isDownloading
+                      ? 'min-w-[9.5rem] font-mono tabular-nums transition-none'
+                      : isDownloaded
+                        ? 'text-emerald-700 transition-none dark:text-emerald-300'
+                        : 'transition-none'
+                  }
+                  disabled={
+                    disabled ||
+                    !downloadReady ||
+                    isAborting ||
+                    (downloadBusy && !isDownloading)
+                  }
+                  onClick={() => requestDownload(hit)}
+                >
+                  <MlxVlmDownloadButtonContent
+                    mode={buttonMode}
+                    progressLabel={isDownloading && !isAborting ? progressLabel : ''}
+                  />
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       </LlamaCppCollapsibleSection>
 
-      <LlamaCppCollapsibleSection title="URL / repo id 붙여넣기" open={pasteOpen} onOpenChange={setPasteOpen}>
+      <LlamaCppCollapsibleSection
+        title="URL / repo id 붙여넣기"
+        open={pasteOpen}
+        onOpenChange={setPasteOpen}
+      >
         <div className="flex flex-wrap gap-2">
           <input
             type="text"
@@ -308,11 +458,33 @@ export default function LlamaCppModelBrowser({
             type="button"
             variant="secondary"
             size="sm"
-            disabled={disabled || !downloadReady || downloadBusy || !isValidHuggingFaceRepoId(parseHuggingFaceModelUrl(pasteInput) || '')}
+            className={
+              isPasteDownloading
+                ? 'min-w-[9.5rem] font-mono tabular-nums transition-none'
+                : 'transition-none'
+            }
+            disabled={
+              disabled ||
+              !downloadReady ||
+              isPasteAborting ||
+              (!isPasteDownloading &&
+                (downloadBusy || !isValidHuggingFaceRepoId(pasteRepoId)))
+            }
             onClick={handlePasteAdd}
           >
-            <Download size={14} />
-            Download
+            <MlxVlmDownloadButtonContent
+              mode={
+                isPasteAborting
+                  ? 'aborting'
+                  : isPasteDownloading
+                    ? 'downloading'
+                    : isLlamaCppRepoInstalled(pasteRepoId, settings.installedModels)
+                      ? 'downloaded'
+                      : 'download'
+              }
+              progressLabel={isPasteDownloading && !isPasteAborting ? progressLabel : ''}
+              paste
+            />
           </Button>
         </div>
       </LlamaCppCollapsibleSection>
@@ -327,13 +499,23 @@ export default function LlamaCppModelBrowser({
       />
 
       <ConfirmModal
-        isOpen={Boolean(pendingDownloadRepoId)}
+        isOpen={Boolean(pendingDownload)}
         title={downloadCopy?.title || 'Download model'}
         message={downloadCopy?.message || ''}
         confirmLabel="Download"
         cancelLabel="Cancel"
         onConfirm={() => void confirmDownload()}
-        onCancel={() => setPendingDownloadRepoId('')}
+        onCancel={() => setPendingDownload(null)}
+      />
+      <ConfirmModal
+        isOpen={Boolean(pendingAbortRepoId)}
+        title="Abort download?"
+        message={`Stop the in-progress download for "${pendingAbortRepoId}"?`}
+        confirmLabel="Abort"
+        cancelLabel="Continue"
+        variant="danger"
+        onConfirm={() => void confirmAbort()}
+        onCancel={() => setPendingAbortRepoId('')}
       />
       <ConfirmModal
         isOpen={Boolean(pendingDelete)}

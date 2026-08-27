@@ -7,6 +7,7 @@ import type { HfModelSearchHit } from '@/utils/mlxVlmHuggingFace';
 type MlxVlmModelSearchSectionProps = {
   query: string;
   onQueryChange: (value: string) => void;
+  onSearch: () => void;
   memoryBudgetLabel: string;
   results: HfModelSearchHit[];
   searchBusy: boolean;
@@ -24,6 +25,7 @@ type MlxVlmModelSearchSectionProps = {
 export default function MlxVlmModelSearchSection({
   query,
   onQueryChange,
+  onSearch,
   memoryBudgetLabel,
   results,
   searchBusy,
@@ -42,20 +44,37 @@ export default function MlxVlmModelSearchSection({
       <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
         <span className="text-[10px] text-gray-500 dark:text-odp-muted">{memoryBudgetLabel}</span>
       </div>
-      <div className="relative">
-        <Search
-          size={14}
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-          aria-hidden
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="e.g. Llama 3.2 4bit"
-          disabled={disabled}
-          className="w-full rounded border py-2 pl-8 pr-3 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-        />
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            size={14}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              e.preventDefault();
+              if (!disabled && !searchBusy) onSearch();
+            }}
+            placeholder="e.g. Llama 3.2 4bit"
+            disabled={disabled || searchBusy}
+            className="w-full rounded border py-2 pl-8 pr-3 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={disabled || searchBusy || !query.trim()}
+          onClick={onSearch}
+        >
+          <Search size={14} />
+          검색
+        </Button>
       </div>
       {searchBusy ? (
         <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">Searching…</p>

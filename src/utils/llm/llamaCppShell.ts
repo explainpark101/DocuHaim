@@ -80,6 +80,17 @@ export function getActiveLlamaCppDownloadRepoId(): string | null {
   return activeDownloadSession?.repoId ?? null;
 }
 
+export async function abortLlamaCppDownload(repoId?: string): Promise<void> {
+  const session = activeDownloadSession;
+  if (!session) return;
+  const id = String(repoId || '').trim();
+  if (id && session.repoId !== id) {
+    throw new Error('No matching download is in progress.');
+  }
+  session.abortController.abort();
+  await session.kill();
+}
+
 export function getLastLlamaCppDownloadRepoId(): string {
   return lastDownloadRepoId;
 }
@@ -92,6 +103,44 @@ export function clearLlamaCppToolkitCache(): void {
   cachedBinaryPath = undefined;
 }
 
+export type LlamaCppInstallAction = 'brew' | 'official' | 'scoop';
+
+type ActiveLlamaCppInstallSession = {
+  action: LlamaCppInstallAction;
+  abortController: AbortController;
+  kill: () => Promise<void>;
+};
+
+let activeInstallSession: ActiveLlamaCppInstallSession | null = null;
+
+export class LlamaCppInstallAbortedError extends Error {
+  readonly action: LlamaCppInstallAction;
+
+  constructor(action: LlamaCppInstallAction) {
+    super(`Install aborted: ${action}`);
+    this.name = 'LlamaCppInstallAbortedError';
+    this.action = action;
+  }
+}
+
+export function isLlamaCppInstallAbortedError(err: unknown): err is LlamaCppInstallAbortedError {
+  return err instanceof LlamaCppInstallAbortedError;
+}
+
+export function getActiveLlamaCppInstallAction(): LlamaCppInstallAction | null {
+  return activeInstallSession?.action ?? null;
+}
+
+export async function abortLlamaCppInstall(action?: LlamaCppInstallAction): Promise<void> {
+  const session = activeInstallSession;
+  if (!session) return;
+  if (action && session.action !== action) {
+    throw new Error('No matching install is in progress.');
+  }
+  session.abortController.abort();
+  await session.kill();
+}
+
 const LLAMA_CPP_BREW_INSTALL_SHELL_ARGS = [
   '-lc',
   'export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"; brew install llama.cpp',
@@ -102,58 +151,108 @@ const LLAMA_CPP_OFFICIAL_INSTALL_SHELL_ARGS = [
   'curl -LsSf https://llama.app/install.sh | sh',
 ] as const;
 
+async function runLlamaCppInstall(
+  action: LlamaCppInstallAction,
+  scopeName: string,
+  args: string[],
+  options?: { onOutput?: (line: string) => void; signal?: AbortSignal },
+): Promise<void> {
+  requireDesktopSupport();
+  if (activeInstallSession) {
+    throw new Error(`Install already in progress: ${activeInstallSession.action}`);
+  }
+
+  const abortController = new AbortController();
+  const signal = options?.signal ?? abortController.signal;
+  let killChild: (() => Promise<void>) | null = null;
+
+  activeInstallSession = {
+    action,
+    abortController,
+    kill: async () => {
+      if (killChild) await killChild();
+    },
+  };
+
+  try {
+    const result = await runShellSpawn(scopeName, args, {
+      ...(options?.onOutput ? { onOutput: options.onOutput } : {}),
+      signal,
+      onChild: (child) => {
+        killChild = async () => {
+          await child.kill();
+        };
+        if (activeInstallSession) {
+          activeInstallSession.kill = async () => {
+            await child.kill();
+          };
+        }
+      },
+    });
+
+    if (signal.aborted || result.aborted) {
+      throw new LlamaCppInstallAbortedError(action);
+    }
+    clearLlamaCppToolkitCache();
+    if (result.code !== 0) {
+      throw new Error(result.stderr.trim() || `llama.cpp ${action} install failed.`);
+    }
+  } catch (err) {
+    if (signal.aborted || isLlamaCppInstallAbortedError(err)) {
+      clearLlamaCppToolkitCache();
+      throw err instanceof LlamaCppInstallAbortedError
+        ? err
+        : new LlamaCppInstallAbortedError(action);
+    }
+    throw err;
+  } finally {
+    activeInstallSession = null;
+  }
+}
+
 export async function installLlamaCppViaBrewMac(options?: {
   onOutput?: (line: string) => void;
+  signal?: AbortSignal;
 }): Promise<void> {
-  requireDesktopSupport();
   if (!isTauriMacOS()) {
     throw new Error('Homebrew install is only available on macOS.');
   }
-  const result = await runShellExecute(
+  await runLlamaCppInstall(
+    'brew',
     'llama-cpp-brew-install',
     [...LLAMA_CPP_BREW_INSTALL_SHELL_ARGS],
-    options?.onOutput,
+    options,
   );
-  clearLlamaCppToolkitCache();
-  if (result.code !== 0) {
-    throw new Error(result.stderr.trim() || 'brew install llama.cpp failed.');
-  }
 }
 
 export async function installLlamaCppViaOfficialScriptMac(options?: {
   onOutput?: (line: string) => void;
+  signal?: AbortSignal;
 }): Promise<void> {
-  requireDesktopSupport();
   if (!isTauriMacOS()) {
     throw new Error('Official installer is only available on macOS.');
   }
-  const result = await runShellExecute(
+  await runLlamaCppInstall(
+    'official',
     'llama-cpp-official-install',
     [...LLAMA_CPP_OFFICIAL_INSTALL_SHELL_ARGS],
-    options?.onOutput,
+    options,
   );
-  clearLlamaCppToolkitCache();
-  if (result.code !== 0) {
-    throw new Error(result.stderr.trim() || 'llama.cpp official install failed.');
-  }
 }
 
 export async function installLlamaCppViaScoopWindows(options?: {
   onOutput?: (line: string) => void;
+  signal?: AbortSignal;
 }): Promise<void> {
-  requireDesktopSupport();
   if (!isTauriWindows()) {
     throw new Error('Scoop install is only available on Windows.');
   }
-  const result = await runShellExecute(
+  await runLlamaCppInstall(
+    'scoop',
     'llama-cpp-scoop-install',
     ['/c', 'scoop bucket add extras 2>nul & scoop install llama.cpp'],
-    options?.onOutput,
+    options,
   );
-  clearLlamaCppToolkitCache();
-  if (result.code !== 0) {
-    throw new Error(result.stderr.trim() || 'scoop install llama.cpp failed.');
-  }
 }
 
 export function buildLlamaServerBinCandidates(homeDir: string): string[] {
@@ -517,7 +616,10 @@ export function resolveLlamaCppHfDownloadMaxWorkers(
 
 export async function downloadLlamaCppModel(
   repoId: string,
-  options?: { signal?: AbortSignal },
+  options?: {
+    signal?: AbortSignal;
+    onProgress?: (snapshot: import('@/utils/llm/mlxVlmDownloadProgress').MlxVlmDownloadProgressSnapshot) => void;
+  },
 ): Promise<LlamaCppInstalledModel> {
   requireDesktopSupport();
   const id = String(repoId || '').trim();
@@ -540,6 +642,21 @@ export async function downloadLlamaCppModel(
   const signal = options?.signal ?? abortController.signal;
   let killChild: (() => Promise<void>) | null = null;
   const workersArg = String(maxWorkers);
+
+  const {
+    mergeMlxVlmDownloadProgressChunk,
+    pickMlxVlmDownloadProgress,
+  } = await import('@/utils/llm/mlxVlmDownloadProgress');
+  let latestProgress: import('@/utils/llm/mlxVlmDownloadProgress').MlxVlmDownloadProgressSnapshot | null =
+    null;
+  const onChunk = (line: string) => {
+    appendLlamaCppDownloadLog(line);
+    latestProgress = pickMlxVlmDownloadProgress(
+      latestProgress,
+      mergeMlxVlmDownloadProgressChunk(line, latestProgress),
+    );
+    if (latestProgress) options?.onProgress?.(latestProgress);
+  };
 
   activeDownloadSession = {
     repoId: id,
@@ -575,9 +692,14 @@ export async function downloadLlamaCppModel(
         {
           env,
           signal,
-          onOutput: (line) => appendLlamaCppDownloadLog(line),
+          onOutput: onChunk,
           onChild: (child) => {
             killChild = () => child.kill();
+            if (activeDownloadSession) {
+              activeDownloadSession.kill = async () => {
+                await child.kill();
+              };
+            }
           },
         },
       );
@@ -591,9 +713,14 @@ export async function downloadLlamaCppModel(
         {
           env,
           signal,
-          onOutput: (line) => appendLlamaCppDownloadLog(line),
+          onOutput: onChunk,
           onChild: (child) => {
             killChild = () => child.kill();
+            if (activeDownloadSession) {
+              activeDownloadSession.kill = async () => {
+                await child.kill();
+              };
+            }
           },
         },
       );
@@ -612,9 +739,14 @@ export async function downloadLlamaCppModel(
         {
           env,
           signal,
-          onOutput: (line) => appendLlamaCppDownloadLog(line),
+          onOutput: onChunk,
           onChild: (child) => {
             killChild = () => child.kill();
+            if (activeDownloadSession) {
+              activeDownloadSession.kill = async () => {
+                await child.kill();
+              };
+            }
           },
         },
       );

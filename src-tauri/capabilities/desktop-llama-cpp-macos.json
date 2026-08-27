@@ -24,7 +24,12 @@
             "\"$0\" --help",
             { "validator": "^(/[A-Za-z0-9._/-]+/llama-server)$" }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
         {
           "name": "llama-cpp-brew-install",
           "cmd": "/bin/sh",
@@ -37,12 +42,7 @@
           "name": "llama-cpp-official-install",
           "cmd": "/bin/sh",
           "args": ["-lc", "curl -LsSf https://llama.app/install.sh | sh"]
-        }
-      ]
-    },
-    {
-      "identifier": "shell:allow-spawn",
-      "allow": [
+        },
         {
           "name": "llama-cpp-server-unix",
           "cmd": "/bin/sh",

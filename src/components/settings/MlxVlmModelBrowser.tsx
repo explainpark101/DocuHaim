@@ -157,36 +157,33 @@ export default function MlxVlmModelBrowser({
   const searchAbortRef = useRef<AbortController | null>(null);
   const pasteAbortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
+  const handleSearch = useCallback(() => {
     const q = searchQuery.trim();
     if (!q) {
       setSearchResults([]);
       setSearchError('');
-      return undefined;
+      return;
     }
 
-    const timer = window.setTimeout(() => {
-      searchAbortRef.current?.abort();
-      const controller = new AbortController();
-      searchAbortRef.current = controller;
-      setSearchBusy(true);
-      setSearchError('');
-      void searchAndEnrichHuggingFaceMlxModels(q, { signal: controller.signal })
-        .then((hits) => {
-          if (controller.signal.aborted) return;
-          setSearchResults(hits);
-        })
-        .catch((err) => {
-          if (controller.signal.aborted) return;
-          setSearchError(err instanceof Error ? err.message : 'Search failed.');
-          setSearchResults([]);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setSearchBusy(false);
-        });
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    setSearchBusy(true);
+    setSearchError('');
+    void searchAndEnrichHuggingFaceMlxModels(q, { signal: controller.signal })
+      .then((hits) => {
+        if (controller.signal.aborted) return;
+        setSearchResults(hits);
+        if (!hits.length) setSearchError('검색 결과가 없습니다.');
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setSearchError(err instanceof Error ? err.message : 'Search failed.');
+        setSearchResults([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSearchBusy(false);
+      });
   }, [searchQuery]);
 
   useEffect(() => {
@@ -434,6 +431,7 @@ export default function MlxVlmModelBrowser({
         <MlxVlmModelSearchSection
           query={searchQuery}
           onQueryChange={setSearchQuery}
+          onSearch={handleSearch}
           memoryBudgetLabel={memoryBudgetLabel}
           results={searchResults}
           searchBusy={searchBusy}

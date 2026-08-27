@@ -18,6 +18,28 @@ describe('MlxVlmRawLogBuffer', () => {
     expect(buffer.getLines().map((line) => line.text)).toEqual(['line-1', 'done']);
   });
 
+  it('keeps the in-progress tqdm line when a chunk ends with trailing \\r', () => {
+    const buffer = new MlxVlmRawLogBuffer();
+    buffer.append('Downloading GGUF model: org/model\n  parallel workers: 16\n');
+    buffer.append('Fetching 5 files:  20%|██        | 1/5 [00:01<00:04,  1.00s/it]\r');
+    expect(buffer.getLines().map((line) => line.text)).toEqual([
+      'Downloading GGUF model: org/model',
+      '  parallel workers: 16',
+      'Fetching 5 files:  20%|██        | 1/5 [00:01<00:04,  1.00s/it]',
+    ]);
+
+    buffer.append('Fetching 5 files:  80%|████████  | 4/5 [00:03<00:00,  1.20s/it]\r');
+    expect(buffer.getLines().map((line) => line.text).at(-1)).toBe(
+      'Fetching 5 files:  80%|████████  | 4/5 [00:03<00:00,  1.20s/it]',
+    );
+  });
+
+  it('treats \\r\\n as a normal line ending without wiping the previous line', () => {
+    const buffer = new MlxVlmRawLogBuffer();
+    buffer.append('hello\r\nworld\r\n');
+    expect(buffer.getLines().map((line) => line.text)).toEqual(['hello', 'world']);
+  });
+
   it('trims oldest lines when exceeding max lines', () => {
     const buffer = new MlxVlmRawLogBuffer(3);
     buffer.append('a\nb\nc\nd\n');
