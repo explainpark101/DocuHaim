@@ -85,6 +85,7 @@ import {
   findSettingsGroupIdForSection,
   resolveSettingsScrollTarget,
 } from '@/utils/settingsPageCatalog';
+import { scrollSettingsPageSection } from '@/utils/settingsPageScroll';
 
 export default function SettingsPage({
   s3Creds,
@@ -248,7 +249,7 @@ export default function SettingsPage({
     const timer = window.setTimeout(() => {
       const el = document.getElementById(scrollId);
       if (!el) return;
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scrollSettingsPageSection(scrollContainerRef.current, el);
       try {
         el.focus?.({ preventScroll: true });
       } catch {
@@ -358,7 +359,7 @@ export default function SettingsPage({
       window.setTimeout(() => {
         const el = document.getElementById(scrollId);
         if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollSettingsPageSection(scrollContainerRef.current, el);
         try {
           el.focus?.({ preventScroll: true });
         } catch {
@@ -373,7 +374,7 @@ export default function SettingsPage({
     !isMobileLayout && sidebarCollapsed ? 'md:pl-14' : '';
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-odp-bgSofter min-w-0 max-h-full">
+    <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-white dark:bg-odp-bgSofter">
       <div className={`px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0 transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function' && (
