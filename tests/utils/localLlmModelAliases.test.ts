@@ -3,6 +3,7 @@ import {
   getLocalLlmModelAlias,
   localLlmModelDisplayName,
   normalizeLocalLlmModelAliasStore,
+  resolveLocalLlmModelId,
   setLocalLlmModelAlias,
   withLocalLlmModelAliases,
 } from '@/utils/llm/localLlmModelAliases';
@@ -77,5 +78,17 @@ describe('localLlmModelAliases', () => {
       { id: 'long/id', displayName: 'Short' },
       { id: 'other', displayName: 'other' },
     ]);
+  });
+
+  it('resolves alias labels back to canonical model ids', () => {
+    setLocalLlmModelAlias('llama-cpp', 'org/model-a', 'Fast');
+    const options = [
+      { id: 'org/model-a', displayName: 'Fast' },
+      { id: 'org/model-b', displayName: 'org/model-b' },
+    ];
+    expect(resolveLocalLlmModelId('llama-cpp', 'Fast', options)).toBe('org/model-a');
+    expect(resolveLocalLlmModelId('llama-cpp', 'org/model-a', options)).toBe('org/model-a');
+    expect(resolveLocalLlmModelId('llama-cpp', 'org/model-b', options)).toBe('org/model-b');
+    expect(resolveLocalLlmModelId(undefined, 'custom-server-id', options)).toBe('custom-server-id');
   });
 });

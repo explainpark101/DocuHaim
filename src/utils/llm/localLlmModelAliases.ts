@@ -91,6 +91,36 @@ export function localLlmModelDisplayName(
   return alias || id;
 }
 
+/** Resolve user-facing text (alias / label) back to the canonical model id. */
+export function resolveLocalLlmModelId(
+  scope: LocalLlmModelAliasScope | undefined,
+  raw: string,
+  options: readonly { id: string; displayName?: string }[] = [],
+): string {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return '';
+
+  const byId = options.find((option) => option.id === trimmed);
+  if (byId) return byId.id;
+
+  const byDisplay = options.find(
+    (option) => String(option.displayName || '').trim() === trimmed,
+  );
+  if (byDisplay) return byDisplay.id;
+
+  if (scope) {
+    const scopeMap = loadLocalLlmModelAliasStore()[scope];
+    if (Object.prototype.hasOwnProperty.call(scopeMap, trimmed)) {
+      return trimmed;
+    }
+    for (const [id, alias] of Object.entries(scopeMap)) {
+      if (alias === trimmed) return id;
+    }
+  }
+
+  return trimmed;
+}
+
 export function withLocalLlmModelAliases<T extends { id: string; displayName: string }>(
   scope: LocalLlmModelAliasScope,
   options: readonly T[],

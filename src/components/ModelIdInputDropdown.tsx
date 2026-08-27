@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Popover } from 'radix-ui';
+import {
+  resolveLocalLlmModelId,
+  type LocalLlmModelAliasScope,
+} from '@/utils/llm/localLlmModelAliases';
 
 export type ModelIdOption = { id: string; displayName: string };
 
@@ -14,6 +18,8 @@ type ModelIdInputDropdownProps = {
   placeholder?: string;
   className?: string;
   maxItems?: number;
+  /** When set, blur/pick normalize alias labels back to option.id. */
+  aliasScope?: LocalLlmModelAliasScope;
 };
 
 /**
@@ -32,20 +38,37 @@ export function ModelIdInputDropdown({
   placeholder = '',
   className = '',
   maxItems = 30,
+  aliasScope,
 }: ModelIdInputDropdownProps) {
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const matchedOption = useMemo(
-    () => options.find((option) => option.id === String(value || '').trim()),
-    [options, value],
+  const canonicalValue = useMemo(
+    () => resolveLocalLlmModelId(aliasScope, value, options),
+    [aliasScope, options, value],
   );
-  const idleLabel = matchedOption?.displayName || value;
+
+  const matchedOption = useMemo(
+    () => options.find((option) => option.id === canonicalValue),
+    [canonicalValue, options],
+  );
+  const idleLabel = matchedOption?.displayName || canonicalValue;
 
   const inputValue = focused ? draft : idleLabel;
   const query = String(inputValue || '').trim().toLowerCase();
+
+  const commitValue = useCallback(
+    (raw: string) => {
+      const nextId = resolveLocalLlmModelId(aliasScope, raw, options);
+      if (nextId !== canonicalValue) {
+        onChange?.(nextId);
+      }
+      return nextId;
+    },
+    [aliasScope, canonicalValue, onChange, options],
+  );
 
   const filtered = useMemo(() => {
     const list = !query
@@ -60,13 +83,16 @@ export function ModelIdInputDropdown({
 
   const handlePick = useCallback(
     (nextId: string) => {
-      setDraft(nextId);
+      const resolved = resolveLocalLlmModelId(aliasScope, nextId, options);
+      setDraft(resolved);
       setFocused(false);
-      onChange?.(nextId);
-      onPick?.(nextId);
+      if (resolved !== canonicalValue) {
+        onChange?.(resolved);
+      }
+      onPick?.(resolved);
       setOpen(false);
     },
-    [onChange, onPick],
+    [aliasScope, canonicalValue, onChange, onPick, options],
   );
 
   const isAnchorTarget = useCallback((target: EventTarget | null) => {
@@ -88,22 +114,21 @@ export function ModelIdInputDropdown({
           value={inputValue}
           onFocus={() => {
             setFocused(true);
-            setDraft(value);
+            setDraft(canonicalValue);
             setOpen(true);
           }}
           onChange={(e) => {
-            const next = e.target.value;
-            setDraft(next);
-            onChange?.(next);
+            setDraft(e.target.value);
             if (!open) setOpen(true);
           }}
           onBlur={() => {
             setFocused(false);
+            commitValue(draft);
             setDraft('');
             onInputBlur?.();
           }}
           placeholder={placeholder}
-          aria-label={matchedOption?.displayName && matchedOption.displayName !== value ? '모델' : '모델 ID'}
+          aria-label={matchedOption?.displayName && matchedOption.displayName !== canonicalValue ? '모델' : '모델 ID'}
           aria-expanded={open}
           aria-haspopup="listbox"
           className={`min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft ${className}`.trim()}
@@ -150,7 +175,7 @@ export function ModelIdInputDropdown({
                   <button
                     type="button"
                     role="option"
-                    aria-selected={opt.id === value}
+                    aria-selected={opt.id === canonicalValue}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handlePick(opt.id)}
                     className="flex w-full cursor-pointer select-none items-center rounded px-2 py-1.5 text-left text-xs text-gray-800 outline-none hover:bg-gray-100 focus-visible:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg dark:focus-visible:bg-odp-focusBg"

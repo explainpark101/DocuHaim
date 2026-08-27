@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Loader2, Play, RefreshCw, Square } from 'lucide-react';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 import LlamaCppLoadFailureHint from '@/components/llm/LlamaCppLoadFailureHint';
@@ -30,6 +30,7 @@ import {
 import {
   LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
   localLlmModelDisplayName,
+  resolveLocalLlmModelId,
   withLocalLlmModelAliases,
 } from '@/utils/llm/localLlmModelAliases';
 
@@ -98,6 +99,23 @@ export default function LlamaCppModelSelect({
   const [unloadConfirmOpen, setUnloadConfirmOpen] = useState(false);
   const loadRequestRef = useRef(0);
   const loadAbortRef = useRef<AbortController | null>(null);
+
+  const canonicalValue = useMemo(
+    () => resolveLocalLlmModelId('llama-cpp', value, options),
+    [options, value],
+  );
+
+  const handleModelChange = useCallback(
+    (next: string) => {
+      onChange?.(resolveLocalLlmModelId('llama-cpp', next, options));
+    },
+    [onChange, options],
+  );
+
+  useEffect(() => {
+    if (!onChange || !canonicalValue || canonicalValue === value.trim()) return;
+    onChange(canonicalValue);
+  }, [canonicalValue, onChange, value]);
 
   const refreshModels = useCallback(async () => {
     if (!isTauriDesktopPlatform()) return;
@@ -286,7 +304,7 @@ export default function LlamaCppModelSelect({
   }
 
   const busy = listLoading || modelLoading || unloadBusy;
-  const trimmedValue = value.trim();
+  const trimmedValue = canonicalValue.trim();
   const settings = loadLlamaCppSettings();
   const selectedPath = trimmedValue
     ? resolveLlamaCppModelPath(setSelectedLlamaCppModelId(settings, trimmedValue))
@@ -313,7 +331,7 @@ export default function LlamaCppModelSelect({
       setUnloadConfirmOpen(true);
       return;
     }
-    void runLoadModel(value);
+    void runLoadModel(trimmedValue);
   };
 
   const actionButtonDisabled =
@@ -328,11 +346,12 @@ export default function LlamaCppModelSelect({
     <div className={className}>
       <div className="flex items-center gap-2">
         <ModelIdInputDropdown
-          value={value}
+          value={canonicalValue}
           options={options}
           loading={listLoading}
           maxItems={200}
-          {...(onChange ? { onChange } : {})}
+          aliasScope="llama-cpp"
+          onChange={handleModelChange}
           placeholder="llama.cpp model id"
           className="min-w-0 flex-1"
         />

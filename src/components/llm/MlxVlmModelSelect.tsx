@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 import MlxVlmLoadFailureHint from '@/components/llm/MlxVlmLoadFailureHint';
@@ -21,6 +21,7 @@ import {
 import {
   LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
   localLlmModelDisplayName,
+  resolveLocalLlmModelId,
   withLocalLlmModelAliases,
 } from '@/utils/llm/localLlmModelAliases';
 
@@ -69,6 +70,23 @@ export default function MlxVlmModelSelect({
   const [loadError, setLoadError] = useState('');
   const [loadedModelId, setLoadedModelId] = useState('');
   const loadRequestRef = useRef(0);
+
+  const canonicalValue = useMemo(
+    () => resolveLocalLlmModelId('mlx-vlm', value, options),
+    [options, value],
+  );
+
+  const handleModelChange = useCallback(
+    (next: string) => {
+      onChange?.(resolveLocalLlmModelId('mlx-vlm', next, options));
+    },
+    [onChange, options],
+  );
+
+  useEffect(() => {
+    if (!onChange || !canonicalValue || canonicalValue === value.trim()) return;
+    onChange(canonicalValue);
+  }, [canonicalValue, onChange, value]);
 
   const refreshModels = useCallback(async () => {
     if (!isTauriMacOS()) return;
@@ -180,11 +198,11 @@ export default function MlxVlmModelSelect({
 
   useEffect(() => {
     if (!autoLoadModelOnSelect || listLoading || modelLoading) return;
-    const id = value.trim();
+    const id = canonicalValue.trim();
     if (!id) return;
     if (!options.some((option) => option.id === id)) return;
     void loadModelIfAuto(id);
-  }, [autoLoadModelOnSelect, listLoading, modelLoading, loadModelIfAuto, options, value]);
+  }, [autoLoadModelOnSelect, listLoading, modelLoading, loadModelIfAuto, options, canonicalValue]);
 
   const handlePick = useCallback(
     (nextId: string) => {
@@ -195,12 +213,12 @@ export default function MlxVlmModelSelect({
   );
 
   const handleInputBlur = useCallback(() => {
-    loadModelIfAuto(value);
-  }, [loadModelIfAuto, value]);
+    loadModelIfAuto(canonicalValue);
+  }, [canonicalValue, loadModelIfAuto]);
 
   const handleLoadClick = useCallback(() => {
-    void runLoadModel(value);
-  }, [runLoadModel, value]);
+    void runLoadModel(canonicalValue);
+  }, [canonicalValue, runLoadModel]);
 
   if (!isTauriMacOS()) {
     return (
@@ -211,7 +229,7 @@ export default function MlxVlmModelSelect({
   }
 
   const busy = listLoading || modelLoading;
-  const trimmedValue = value.trim();
+  const trimmedValue = canonicalValue.trim();
   const runtimeLoadedId = loadedModelId.trim();
   const selectionMatchesRuntime = Boolean(
     trimmedValue && runtimeLoadedId && trimmedValue === runtimeLoadedId,
@@ -225,11 +243,12 @@ export default function MlxVlmModelSelect({
     <div className={className}>
       <div className="flex items-center gap-2">
         <ModelIdInputDropdown
-          value={value}
+          value={canonicalValue}
           options={options}
           loading={listLoading}
           maxItems={200}
-          {...(onChange ? { onChange } : {})}
+          aliasScope="mlx-vlm"
+          onChange={handleModelChange}
           onPick={handlePick}
           onInputBlur={handleInputBlur}
           placeholder="MLX model id"

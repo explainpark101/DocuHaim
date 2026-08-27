@@ -9,6 +9,7 @@ import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdIn
 import {
   getLocalLlmModelAlias,
   LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
+  resolveLocalLlmModelId,
   withLocalLlmModelAliases,
   type LocalLlmModelAliasScope,
 } from '@/utils/llm/localLlmModelAliases';
@@ -91,27 +92,39 @@ export default function OpenAiCompatibleModelSelect({
     return withLocalLlmModelAliases(aliasScope, fetched);
   }, [aliasScope, aliasTick, fetched]);
 
+  const canonicalValue = useMemo(
+    () => resolveLocalLlmModelId(aliasScope, value, options),
+    [aliasScope, options, value],
+  );
+
   const valueAliasHint = useMemo(() => {
     void aliasTick;
     if (!aliasScope) return '';
-    const id = value.trim();
+    const id = canonicalValue;
     if (!id) return '';
     return getLocalLlmModelAlias(aliasScope, id);
-  }, [aliasScope, aliasTick, value]);
+  }, [aliasScope, aliasTick, canonicalValue]);
 
   const handleChange = (nextId: string) => {
-    saveLastUsedOpenAiCompatibleModel(nextId);
-    onChange?.(nextId);
+    const resolved = resolveLocalLlmModelId(aliasScope, nextId, options);
+    saveLastUsedOpenAiCompatibleModel(resolved);
+    onChange?.(resolved);
   };
+
+  useEffect(() => {
+    if (!onChange || !canonicalValue || canonicalValue === value.trim()) return;
+    onChange(canonicalValue);
+  }, [canonicalValue, onChange, value]);
 
   return (
     <div className={className}>
       <div className="flex items-center gap-2">
         <ModelIdInputDropdown
-          value={value}
+          value={canonicalValue}
           onChange={handleChange}
           options={options}
           loading={loading}
+          {...(aliasScope ? { aliasScope } : {})}
           placeholder="모델 ID 직접 입력 (예: gpt-4o-mini)"
         />
         <button
@@ -127,7 +140,7 @@ export default function OpenAiCompatibleModelSelect({
       </div>
       {valueAliasHint ? (
         <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
-          원본 ID · {value.trim()}
+          원본 ID · {canonicalValue}
         </p>
       ) : null}
       <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
