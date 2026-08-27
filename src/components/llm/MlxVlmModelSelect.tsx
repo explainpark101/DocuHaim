@@ -99,14 +99,19 @@ export default function MlxVlmModelSelect({
         getMlxVlmServerStatus(settings),
       ]);
       setLoadedModelId(status.models[0] || '');
+      const baseOptions = buildModelOptions(models, [
+        settings.selectedModelId,
+        ...status.models,
+      ]);
+      const resolvedValue = resolveLocalLlmModelId('mlx-vlm', value, baseOptions);
       setOptions(
         buildModelOptions(models, [
           settings.selectedModelId,
-          value,
+          resolvedValue,
           ...status.models,
         ]),
       );
-      if (!models.length && !settings.selectedModelId.trim() && !value.trim()) {
+      if (!models.length && !settings.selectedModelId.trim() && !resolvedValue.trim()) {
         setError('설치된 MLX 모델이 없습니다. 설정 > MLX-VLM에서 모델을 추가하세요.');
       }
     } catch (err) {
@@ -206,10 +211,10 @@ export default function MlxVlmModelSelect({
 
   const handlePick = useCallback(
     (nextId: string) => {
-      onChange?.(nextId);
-      loadModelIfAuto(nextId);
+      const resolved = resolveLocalLlmModelId('mlx-vlm', nextId, options);
+      loadModelIfAuto(resolved);
     },
-    [loadModelIfAuto, onChange],
+    [loadModelIfAuto, options],
   );
 
   const handleInputBlur = useCallback(() => {

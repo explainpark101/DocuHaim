@@ -128,14 +128,19 @@ export default function LlamaCppModelSelect({
       setLoadedModelPath(runtimePath);
       setServerRunning(status.serverRunning || status.loaded);
       setManagedByApp(isLlamaCppServerManagedByApp());
+      const baseOptions = buildModelOptions(settings.installedModels, [
+        settings.selectedModelId,
+        resolveLoadedModelId(runtimePath, settings),
+      ]);
+      const resolvedValue = resolveLocalLlmModelId('llama-cpp', value, baseOptions);
       setOptions(
         buildModelOptions(settings.installedModels, [
           settings.selectedModelId,
-          value,
+          resolvedValue,
           resolveLoadedModelId(runtimePath, settings),
         ]),
       );
-      if (!settings.installedModels.length && !settings.selectedModelId.trim() && !value.trim()) {
+      if (!settings.installedModels.length && !settings.selectedModelId.trim() && !resolvedValue.trim()) {
         setError('설치된 llama.cpp 모델이 없습니다. 설정 > llama.cpp에서 모델을 추가하세요.');
       }
     } catch (err) {
