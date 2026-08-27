@@ -116,24 +116,27 @@ export function ensureGeminiFetchShim(): void {
   if (geminiFetchShimInstalled || !isDesktopApp()) return;
   geminiFetchShimInstalled = true;
 
-  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = resolveRequestUrl(input);
-    if (!isGeminiTauriShimRequest(url)) {
-      return nativeFetch(input, init);
-    }
+  globalThis.fetch = Object.assign(
+    async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = resolveRequestUrl(input);
+      if (!isGeminiTauriShimRequest(url)) {
+        return nativeFetch(input, init);
+      }
 
-    const parsed = new URL(url, globalThis.location?.origin ?? 'http://localhost');
-    const path = `${parsed.pathname.replace(/^\/api\/gemini/, '')}${parsed.search}`;
-    const method = init?.method ?? 'GET';
-    const apiKey = readRequestHeader(init, 'x-goog-api-key') ?? '';
-    const body = await readRequestBody(init);
+      const parsed = new URL(url, globalThis.location?.origin ?? 'http://localhost');
+      const path = `${parsed.pathname.replace(/^\/api\/gemini/, '')}${parsed.search}`;
+      const method = init?.method ?? 'GET';
+      const apiKey = readRequestHeader(init, 'x-goog-api-key') ?? '';
+      const body = await readRequestBody(init);
 
-    return fetchGeminiApi(path, {
-      method,
-      apiKey,
-      ...(body ? { body } : {}),
-    });
-  };
+      return fetchGeminiApi(path, {
+        method,
+        apiKey,
+        ...(body ? { body } : {}),
+      });
+    },
+    nativeFetch,
+  );
 }
 
 /**

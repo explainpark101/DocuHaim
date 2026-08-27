@@ -55,6 +55,9 @@
     "macOS": {
       "minimumSystemVersion": "10.15"
     },
+    "resources": [
+      "resources/mlx_vlm_generate_worker.py"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser"

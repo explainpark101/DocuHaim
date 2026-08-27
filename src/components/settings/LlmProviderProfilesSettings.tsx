@@ -6,7 +6,7 @@ import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import {
   LLM_PROVIDER_GEMINI,
-  LLM_PROVIDER_MLX_LM,
+  LLM_PROVIDER_MLX_VLM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   createLlmProviderProfileId,
   defaultModelForKind,
@@ -18,7 +18,7 @@ import {
 } from '@/utils/llmProviderProfiles';
 import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/openaiCompatibleSettings';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
-import MlxLmModelSelect from '@/components/llm/MlxLmModelSelect';
+import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
 
 type Draft = {
   id: string;
@@ -36,7 +36,7 @@ const RADIO_INDICATOR_CLASS =
 
 function kindLabel(kind: LlmProviderKind): string {
   if (kind === LLM_PROVIDER_GEMINI) return 'Google Gemini';
-  if (kind === LLM_PROVIDER_MLX_LM) return 'MLX-LM (local)';
+  if (kind === LLM_PROVIDER_MLX_VLM) return 'MLX-VLM (local)';
   return 'OpenAI 호환';
 }
 
@@ -211,7 +211,7 @@ export default function LlmProviderProfilesSettings({
                       {kindLabel(profile.kind)}
                       {profile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE && profile.baseUrl
                         ? ` · ${profile.baseUrl}`
-                        : profile.kind === LLM_PROVIDER_MLX_LM
+                        : profile.kind === LLM_PROVIDER_MLX_VLM
                           ? ' · Apple Silicon local'
                           : ''}
                     </div>
@@ -268,7 +268,7 @@ export default function LlmProviderProfilesSettings({
                     if (
                       next !== LLM_PROVIDER_GEMINI &&
                       next !== LLM_PROVIDER_OPENAI_COMPATIBLE &&
-                      next !== LLM_PROVIDER_MLX_LM
+                      next !== LLM_PROVIDER_MLX_VLM
                     ) {
                       return;
                     }
@@ -308,19 +308,19 @@ export default function LlmProviderProfilesSettings({
                   </label>
                   {isTauriMacOS() ? (
                     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg">
-                      <RadioGroup.Item value={LLM_PROVIDER_MLX_LM} className={RADIO_ITEM_CLASS}>
+                      <RadioGroup.Item value={LLM_PROVIDER_MLX_VLM} className={RADIO_ITEM_CLASS}>
                         <RadioGroup.Indicator className={RADIO_INDICATOR_CLASS} />
                       </RadioGroup.Item>
-                      <span>MLX-LM (로컬, Apple Silicon)</span>
+                      <span>MLX-VLM (로컬, Apple Silicon)</span>
                     </label>
                   ) : null}
                 </RadioGroup.Root>
               </div>
-              {draft.kind === LLM_PROVIDER_MLX_LM ? (
+              {draft.kind === LLM_PROVIDER_MLX_VLM ? (
                 <div className="rounded border border-emerald-200 bg-emerald-50/60 p-2.5 text-[11px] leading-relaxed text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
-                  MLX-LM 서버 시작·모델 설치는 설정의{' '}
-                  <a href="#settings-mlx-lm" className="underline">
-                    MLX-LM (Tauri macOS)
+                  MLX-VLM 서버 시작·모델 설치는 설정의{' '}
+                  <a href="#settings-mlx-vlm" className="underline">
+                    MLX-VLM (Tauri macOS)
                   </a>{' '}
                   섹션에서 관리하세요.
                 </div>
@@ -379,8 +379,8 @@ export default function LlmProviderProfilesSettings({
                     onChange={handleDraftModelChange}
                     autoLoad={draft.hasStoredKey || Boolean(draft.keyInput.trim())}
                   />
-                ) : draft.kind === LLM_PROVIDER_MLX_LM ? (
-                  <MlxLmModelSelect
+                ) : draft.kind === LLM_PROVIDER_MLX_VLM ? (
+                  <MlxVlmModelSelect
                     key={`${draft.id}-${modelTick}`}
                     value={draftModel}
                     onChange={handleDraftModelChange}

@@ -2,7 +2,8 @@
  * Read / replace CodeMirror selection via md-editor-rt ref.
  */
 
-import type { EditorView } from '@codemirror/view';
+import { Compartment, StateEffect } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 import type { RefObject } from 'react';
 import { isMdEditorPreviewOnlyUi } from '@/utils/previewMirrorEdit';
 import { getMdEditorSourceFocus } from '@/utils/mdEditorSourceFocus';
@@ -10,8 +11,11 @@ import { getMdEditorSourceFocus } from '@/utils/mdEditorSourceFocus';
 type MdEditorApi = {
   root?: unknown;
   getEditorView?: () => EditorView | null | undefined;
+  getSelectedText?: () => string | undefined;
   value?: MdEditorApi;
 };
+
+const VIEW_ATTACH_RETRY_MS = [50, 200, 500, 1000] as const;
 
 export type EditorRefLike =
   | RefObject<MdEditorApi | null | undefined>
@@ -135,17 +139,131 @@ export function applyLlmResultToEditor({
   return replaceEditorRange(view, from, to, result, onChange);
 }
 
+function readSelectionFromView(
+  view: EditorView,
+  api: MdEditorApi | null,
+): EditorSelectionSnapshot {
+  const sel = view.state.selection.main;
+  const liveText = view.state.doc.sliceString(sel.from, sel.to);
+  if (liveText) {
+    return { text: liveText, from: sel.from, to: sel.to, view };
+  }
+
+  const focus = getMdEditorSourceFocus(view);
+  if (focus?.everFocused && focus.from !== focus.to) {
+    const docLength = view.state.doc.length;
+    const { from, to } = clampRange(docLength, focus.from, focus.to);
+    const focusText = view.state.doc.sliceString(from, to);
+    if (focusText) {
+      return { text: focusText, from, to, view };
+    }
+  }
+
+  const apiText = api?.getSelectedText?.() ?? '';
+  if (apiText) {
+    const from = focus?.everFocused ? focus.from : sel.from;
+    const to = focus?.everFocused ? focus.to : sel.to;
+    return { text: apiText, from, to, view };
+  }
+
+  return { text: liveText, from: sel.from, to: sel.to, view };
+}
+
 export function getEditorSelectionFromRef(
   editorRef: EditorRefLike | null | undefined,
 ): EditorSelectionSnapshot {
   const api = getEditorApiFromRef(editorRef);
   const view = api?.getEditorView?.() ?? null;
-  if (!view?.state) {
-    return { text: '', from: 0, to: 0, view: null };
+  if (view?.state) {
+    return readSelectionFromView(view, api);
   }
-  const sel = view.state.selection.main;
-  const text = view.state.doc.sliceString(sel.from, sel.to);
-  return { text, from: sel.from, to: sel.to, view };
+
+  const fallbackText = api?.getSelectedText?.() ?? '';
+  return { text: fallbackText, from: 0, to: 0, view: null };
+}
+
+function getEditorViewFromRef(
+  editorRef: EditorRefLike | null | undefined,
+): EditorView | null {
+  const api = getEditorApiFromRef(editorRef);
+  return api?.getEditorView?.() ?? null;
+}
+
+/**
+ * Subscribe to CodeMirror selection changes for an md-editor-rt ref.
+ * Retries until the source view mounts; returns cleanup.
+ */
+export function subscribeEditorSelectionFromRef(
+  editorRef: EditorRefLike | null | undefined,
+  onChange: (snapshot: EditorSelectionSnapshot) => void,
+): () => void {
+  let disposed = false;
+  let attachedView: EditorView | null = null;
+  let detachListener: (() => void) | null = null;
+  const retryTimers: ReturnType<typeof setTimeout>[] = [];
+
+  const emit = () => {
+    if (disposed) return;
+    onChange(getEditorSelectionFromRef(editorRef));
+  };
+
+  const detach = () => {
+    detachListener?.();
+    detachListener = null;
+    attachedView = null;
+  };
+
+  let selectionCompartment: Compartment | null = null;
+  let selectionCompartmentAttached = false;
+
+  const tryAttach = (): boolean => {
+    if (disposed) return true;
+    const view = getEditorViewFromRef(editorRef);
+    if (!view || view === attachedView) return Boolean(view);
+    detach();
+    attachedView = view;
+    selectionCompartmentAttached = false;
+    if (!selectionCompartment) {
+      selectionCompartment = new Compartment();
+    }
+    const compartment = selectionCompartment;
+    const extension = EditorView.updateListener.of((update) => {
+      if (update.selectionSet) {
+        emit();
+      }
+    });
+    if (selectionCompartmentAttached) {
+      view.dispatch({ effects: compartment.reconfigure(extension) });
+    } else {
+      view.dispatch({
+        effects: StateEffect.appendConfig.of(compartment.of(extension)),
+      });
+      selectionCompartmentAttached = true;
+    }
+    detachListener = () => {
+      if (!selectionCompartmentAttached) return;
+      view.dispatch({ effects: compartment.reconfigure([]) });
+      selectionCompartmentAttached = false;
+    };
+    emit();
+    return true;
+  };
+
+  if (!tryAttach()) {
+    for (const delay of VIEW_ATTACH_RETRY_MS) {
+      retryTimers.push(
+        setTimeout(() => {
+          if (!disposed) tryAttach();
+        }, delay),
+      );
+    }
+  }
+
+  return () => {
+    disposed = true;
+    for (const timer of retryTimers) clearTimeout(timer);
+    detach();
+  };
 }
 
 export function replaceEditorRange(

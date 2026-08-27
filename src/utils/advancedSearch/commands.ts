@@ -16,9 +16,9 @@ import {
   type ChatActionId,
 } from '@/utils/advancedSearch/chatActions';
 import {
-  MLX_LM_ACTION_COMMANDS,
-  type MlxLmActionId,
-} from '@/utils/advancedSearch/mlxLmActions';
+  MLX_VLM_ACTION_COMMANDS,
+  type MlxVlmActionId,
+} from '@/utils/advancedSearch/mlxVlmActions';
 import {
   SETTINGS_TOGGLE_DEFS,
   getWorkspaceTabsAutoSaveCommands,
@@ -62,7 +62,7 @@ export type AppCommandId =
   | 'settings-gemini'
   | 'settings-llm-provider'
   | 'settings-openai-compat'
-  | 'settings-mlx-lm'
+  | 'settings-mlx-vlm'
   | 'settings-imgbb'
   | 'settings-webauthn'
   | 'settings-editor'
@@ -99,7 +99,7 @@ export type AppCommandId =
   | EditorActionId
   | PrintActionId
   | ChatActionId
-  | MlxLmActionId
+  | MlxVlmActionId
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
   | FootnoteDisplayModeCommandId
@@ -134,8 +134,8 @@ export type AppCommandContext = {
   printActionsAvailable?: boolean;
   /** True when chat composer has registered actions (on /chat). */
   chatActionsAvailable?: boolean;
-  /** True when MLX-LM settings registered actions (Tauri macOS). */
-  mlxLmActionsAvailable?: boolean;
+  /** True when MLX-VLM settings registered actions (Tauri macOS). */
+  mlxVlmActionsAvailable?: boolean;
   /** Nested picker: only paper size commands. */
   printPaperPickerMode?: boolean;
   /** Current editor autocomplete suggestion preference (localStorage). */
@@ -289,11 +289,11 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     ],
   },
   {
-    id: 'settings-mlx-lm',
-    title: '설정 · MLX-LM (Tauri macOS)',
+    id: 'settings-mlx-vlm',
+    title: '설정 · MLX-VLM (Tauri macOS)',
     description: 'Apple Silicon 로컬 MLX 모델 설치·서버',
-    path: '/settings#settings-mlx-lm',
-    keywords: ['mlx', 'mlx-lm', 'apple silicon', 'local llm', 'huggingface', 'mac'],
+    path: '/settings#settings-mlx-vlm',
+    keywords: ['mlx', 'mlx-vlm', 'apple silicon', 'local llm', 'huggingface', 'mac'],
   },
   {
     id: 'settings-imgbb',
@@ -813,8 +813,8 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
         });
       }
     }
-    if (context?.mlxLmActionsAvailable) {
-      for (const cmd of MLX_LM_ACTION_COMMANDS) {
+    if (context?.mlxVlmActionsAvailable) {
+      for (const cmd of MLX_VLM_ACTION_COMMANDS) {
         list.push({
           id: cmd.id,
           title: cmd.title,
@@ -864,8 +864,8 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
       });
     }
   }
-  if (context?.mlxLmActionsAvailable) {
-    for (const cmd of MLX_LM_ACTION_COMMANDS) {
+  if (context?.mlxVlmActionsAvailable) {
+    for (const cmd of MLX_VLM_ACTION_COMMANDS) {
       list.push({
         id: cmd.id,
         title: cmd.title,

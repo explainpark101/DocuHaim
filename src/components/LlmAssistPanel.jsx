@@ -1,1 +1,1 @@
-export { default } from '@/components/llm/LlmAssistPanel.jsx';
+export { default } from '@/components/llm/LlmAssistPanel.tsx';

@@ -60,7 +60,7 @@ import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfil
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
-import MlxLmSettings from '@/components/settings/MlxLmSettings';
+import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -239,11 +239,11 @@ export default function SettingsPage({
     if (hash === 'settings-webdav') setWebdavConnOpen(true);
     if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-imgbb') setImgbbConnOpen(true);
-    if (hash === 'settings-mlx-lm') dispatchSettingsSectionOpen(hash);
+    if (hash === 'settings-mlx-vlm') dispatchSettingsSectionOpen(hash);
     const groupId = findSettingsGroupIdForSection(hash);
     if (groupId) setGroupOpen((prev) => ({ ...prev, [groupId]: true }));
     const scrollId = resolveSettingsScrollTarget(hash);
-    const scrollDelay = hash === 'settings-mlx-lm' ? 220 : 80;
+    const scrollDelay = hash === 'settings-mlx-vlm' ? 220 : 80;
     const timer = window.setTimeout(() => {
       const el = document.getElementById(scrollId);
       if (!el) return;
@@ -349,11 +349,11 @@ export default function SettingsPage({
       if (sectionId === 'settings-webdav') setWebdavConnOpen(true);
       if (sectionId === 'settings-local') setLocalConnOpen(true);
       if (sectionId === 'settings-imgbb') setImgbbConnOpen(true);
-      if (sectionId === 'settings-mlx-lm') dispatchSettingsSectionOpen(sectionId);
+      if (sectionId === 'settings-mlx-vlm') dispatchSettingsSectionOpen(sectionId);
 
       const scrollId = resolveSettingsScrollTarget(sectionId);
       navigate({ pathname: location.pathname, hash: `#${sectionId}` }, { replace: true });
-      const scrollDelay = sectionId === 'settings-mlx-lm' ? 220 : 120;
+      const scrollDelay = sectionId === 'settings-mlx-vlm' ? 220 : 120;
       window.setTimeout(() => {
         const el = document.getElementById(scrollId);
         if (!el) return;
@@ -867,7 +867,7 @@ export default function SettingsPage({
           }}
         />
 
-        <MlxLmSettings />
+        <MlxVlmSettings />
             </SettingsPageGroup>
 
             <SettingsPageGroup

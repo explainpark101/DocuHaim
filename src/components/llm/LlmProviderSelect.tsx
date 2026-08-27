@@ -63,8 +63,8 @@ export default function LlmProviderSelect({
         label:
           p.kind === 'openai-compatible'
             ? `${p.name} · OpenAI 호환`
-            : p.kind === 'mlx-lm'
-              ? `${p.name} · MLX-LM`
+            : p.kind === 'mlx-vlm'
+              ? `${p.name} · MLX-VLM`
               : `${p.name} · Gemini`,
       })),
     [profiles],

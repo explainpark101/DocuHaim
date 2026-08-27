@@ -38,7 +38,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     title: 'AI',
     sections: [
       { id: 'settings-llm-providers', label: 'AI 도우미 제공자' },
-      { id: 'settings-mlx-lm', label: 'MLX-LM', visible: () => isTauriMacOS() },
+      { id: 'settings-mlx-vlm', label: 'MLX-VLM', visible: () => isTauriMacOS() },
     ],
   },
   {
@@ -92,7 +92,7 @@ const LLM_SECTION_HASHES = new Set([
   'settings-llm-provider',
   'settings-gemini',
   'settings-openai-compat',
-  'settings-mlx-lm',
+  'settings-mlx-vlm',
 ]);
 
 export function buildVisibleSettingsPageGroups(ctx: SettingsPageCatalogContext) {
@@ -122,7 +122,7 @@ export function dispatchSettingsSectionOpen(sectionId: string): void {
 
 export function resolveSettingsScrollTarget(hash: string): string {
   const id = String(hash || '').replace(/^#/, '');
-  if (LLM_SECTION_HASHES.has(id) && id !== 'settings-mlx-lm') {
+  if (LLM_SECTION_HASHES.has(id) && id !== 'settings-mlx-vlm') {
     return 'settings-llm-providers';
   }
   return id;

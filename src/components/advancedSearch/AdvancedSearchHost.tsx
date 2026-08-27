@@ -35,11 +35,11 @@ import {
   subscribeChatActions,
 } from '@/utils/advancedSearch/chatActions';
 import {
-  isMlxLmActionId,
-  isMlxLmActionsAvailable,
-  runMlxLmAction,
-  subscribeMlxLmActions,
-} from '@/utils/advancedSearch/mlxLmActions';
+  isMlxVlmActionId,
+  isMlxVlmActionsAvailable,
+  runMlxVlmAction,
+  subscribeMlxVlmActions,
+} from '@/utils/advancedSearch/mlxVlmActions';
 import {
   runAppLockAction,
 } from '@/utils/advancedSearch/appLockActions';
@@ -199,8 +199,8 @@ export default function AdvancedSearchHost({
   const [chatActionsAvailable, setChatActionsAvailable] = useState(() =>
     hasChatActions(),
   );
-  const [mlxLmActionsAvailable, setMlxLmActionsAvailable] = useState(() =>
-    isMlxLmActionsAvailable(),
+  const [mlxVlmActionsAvailable, setMlxVlmActionsAvailable] = useState(() =>
+    isMlxVlmActionsAvailable(),
   );
   const [editorAutocompleteEnabled, setEditorAutocompleteEnabled] = useState(() =>
     loadEditorAutocompleteEnabled(),
@@ -238,8 +238,8 @@ export default function AdvancedSearchHost({
   }, []);
 
   useEffect(() => {
-    return subscribeMlxLmActions(() => {
-      setMlxLmActionsAvailable(isMlxLmActionsAvailable());
+    return subscribeMlxVlmActions(() => {
+      setMlxVlmActionsAvailable(isMlxVlmActionsAvailable());
     });
   }, []);
 
@@ -361,7 +361,7 @@ export default function AdvancedSearchHost({
         editorActionsAvailable,
         printActionsAvailable,
         chatActionsAvailable,
-        mlxLmActionsAvailable,
+        mlxVlmActionsAvailable,
         editorAutocompleteEnabled,
         editorMirrorEditEnabled,
         ...(snippetConfig ? { snippetConfig } : {}),
@@ -407,7 +407,7 @@ export default function AdvancedSearchHost({
       editorActionsAvailable,
       printActionsAvailable,
       chatActionsAvailable,
-      mlxLmActionsAvailable,
+      mlxVlmActionsAvailable,
       editorAutocompleteEnabled,
       editorMirrorEditEnabled,
       snippetConfig,
@@ -627,9 +627,9 @@ export default function AdvancedSearchHost({
           return;
         }
 
-        if (commandId && isMlxLmActionId(commandId)) {
+        if (commandId && isMlxVlmActionId(commandId)) {
           window.setTimeout(() => {
-            runMlxLmAction(commandId);
+            runMlxVlmAction(commandId);
           }, 0);
           return;
         }
@@ -687,7 +687,7 @@ export default function AdvancedSearchHost({
       editorActionsAvailable={editorActionsAvailable}
       printActionsAvailable={printActionsAvailable}
       chatActionsAvailable={chatActionsAvailable}
-      mlxLmActionsAvailable={mlxLmActionsAvailable}
+      mlxVlmActionsAvailable={mlxVlmActionsAvailable}
       preferPrintActions={preferPrintActions}
       printPaperPickerMode={pickerMode === 'print-paper'}
       browseDirectoryMode={pickerMode === 'browse-directory'}

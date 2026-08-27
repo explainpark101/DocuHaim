@@ -6,6 +6,9 @@ export type ModelIdOption = { id: string; displayName: string };
 type ModelIdInputDropdownProps = {
   value: string;
   onChange?: (nextId: string) => void;
+  /** Fires only when the user picks an item from the suggestion list. */
+  onPick?: (nextId: string) => void;
+  onInputBlur?: () => void;
   options: readonly ModelIdOption[];
   loading?: boolean;
   placeholder?: string;
@@ -21,6 +24,8 @@ type ModelIdInputDropdownProps = {
 export function ModelIdInputDropdown({
   value,
   onChange,
+  onPick,
+  onInputBlur,
   options,
   loading = false,
   placeholder = '',
@@ -46,9 +51,10 @@ export function ModelIdInputDropdown({
   const handlePick = useCallback(
     (nextId: string) => {
       onChange?.(nextId);
+      onPick?.(nextId);
       setOpen(false);
     },
-    [onChange],
+    [onChange, onPick],
   );
 
   const isAnchorTarget = useCallback((target: EventTarget | null) => {
@@ -73,6 +79,7 @@ export function ModelIdInputDropdown({
             onChange?.(e.target.value);
             if (!open) setOpen(true);
           }}
+          onBlur={() => onInputBlur?.()}
           placeholder={placeholder}
           aria-label="모델 ID"
           aria-expanded={open}

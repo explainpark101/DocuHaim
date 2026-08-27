@@ -46,7 +46,8 @@ import {
   disableWebAuthnUnlock,
 } from '@/utils/webauthn';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
-import { useMlxLmProviderAutoSync } from '@/hooks/useMlxLmProviderAutoSync';
+import { useMlxVlmProviderAutoSync } from '@/hooks/useMlxVlmProviderAutoSync';
+import { useMlxVlmLoadToast } from '@/hooks/useMlxVlmLoadToast';
 import LlmAssistModal from '@/components/LlmAssistModal';
 
 /** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
@@ -273,7 +274,8 @@ export function AppLayout({ children }: { children?: ReactNode }) {
 
   const { isUnlocked, s3Creds, masterPassword } = auth;
   const llmProviderProfiles = resolveLlmProviderProfiles(s3Creds);
-  useMlxLmProviderAutoSync(s3Creds, handleSaveS3Creds);
+  useMlxVlmProviderAutoSync(s3Creds, handleSaveS3Creds);
+  useMlxVlmLoadToast();
   const getImgbbApiKey = () => (s3Creds?.imgbbApiKey || '').trim();
 
   const formatTime = (ts: number | null | undefined) => {

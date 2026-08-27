@@ -884,9 +884,10 @@ export default function MarkdownEditor({
   }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist]);
 
   // Register active markdown editor with the global LLM Assist host.
+  const registerBridge = llmAssist?.registerEditorBridge;
   useEffect(() => {
-    if (previewOnly || !isActiveFile || !llmAssist?.registerEditorBridge) return undefined;
-    return llmAssist.registerEditorBridge({
+    if (previewOnly || !isActiveFile || !registerBridge) return undefined;
+    return registerBridge({
       editorRef,
       onChange: onChangeWithUndoHistory,
       getMarkdown: () => {
@@ -895,7 +896,7 @@ export default function MarkdownEditor({
         return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
       },
     });
-  }, [previewOnly, isActiveFile, llmAssist, onChangeWithUndoHistory]);
+  }, [previewOnly, isActiveFile, registerBridge, onChangeWithUndoHistory]);
 
   useEffect(() => {
     if (previewOnly) return undefined;

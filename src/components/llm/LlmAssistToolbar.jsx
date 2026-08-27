@@ -12,7 +12,7 @@ export default function LlmAssistToolbar({ onToggle, active = false }) {
       className={[
         'md-editor-toolbar-item',
         active
-          ? 'md-editor-toolbar-active !bg-violet-200 hover:!bg-violet-300 dark:!bg-violet-800/85 dark:hover:!bg-violet-700/90'
+          ? 'md-editor-toolbar-active bg-violet-200! hover:bg-violet-300! dark:bg-violet-800/85! dark:hover:bg-violet-700/90!'
           : '',
       ]
         .filter(Boolean)

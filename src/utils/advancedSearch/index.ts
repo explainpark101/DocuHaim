@@ -66,13 +66,13 @@ export {
 } from '@/utils/advancedSearch/chatActions';
 export type { ChatActionId } from '@/utils/advancedSearch/chatActions';
 export {
-  registerMlxLmActions,
-  runMlxLmAction,
-  isMlxLmActionsAvailable,
-  subscribeMlxLmActions,
-  MLX_LM_ACTION_COMMANDS,
-} from '@/utils/advancedSearch/mlxLmActions';
-export type { MlxLmActionId } from '@/utils/advancedSearch/mlxLmActions';
+  registerMlxVlmActions,
+  runMlxVlmAction,
+  isMlxVlmActionsAvailable,
+  subscribeMlxVlmActions,
+  MLX_VLM_ACTION_COMMANDS,
+} from '@/utils/advancedSearch/mlxVlmActions';
+export type { MlxVlmActionId } from '@/utils/advancedSearch/mlxVlmActions';
 export {
   listBrowseDirectoryHits,
   findBrowseFolderNode,
