@@ -1,4 +1,4 @@
-import { Download, Search } from 'lucide-react';
+import { Check, Download, Loader2, Search } from 'lucide-react';
 import Button from '@/components/Button';
 import MlxLmModelResourceMeta from '@/components/settings/MlxLmModelResourceMeta';
 import type { HfModelSearchHit } from '@/utils/mlxLmHuggingFace';
@@ -13,6 +13,9 @@ type MlxLmModelSearchSectionProps = {
   disabled?: boolean;
   cliAvailable: boolean;
   downloadBusy: boolean;
+  downloadingRepoId?: string;
+  downloadProgressLabel?: string;
+  isModelDownloaded: (repoId: string) => boolean;
   onDownload: (hit: HfModelSearchHit) => void;
 };
 
@@ -26,6 +29,9 @@ export default function MlxLmModelSearchSection({
   disabled = false,
   cliAvailable,
   downloadBusy,
+  downloadingRepoId = '',
+  downloadProgressLabel = '',
+  isModelDownloaded,
   onDownload,
 }: MlxLmModelSearchSectionProps) {
   return (
@@ -56,29 +62,52 @@ export default function MlxLmModelSearchSection({
       ) : null}
       {results.length > 0 ? (
         <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto">
-          {results.map((hit) => (
-            <li
-              key={hit.id}
-              className="flex items-center justify-between gap-2 rounded border border-gray-200 bg-white px-2.5 py-2 dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[11px] font-medium text-gray-800 dark:text-odp-fgStrong">
-                  {hit.id}
-                </div>
-                <MlxLmModelResourceMeta hit={hit} />
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={disabled || !cliAvailable || downloadBusy}
-                onClick={() => onDownload(hit)}
+          {results.map((hit) => {
+            const isDownloading = downloadBusy && downloadingRepoId === hit.id;
+            const isDownloaded = !isDownloading && isModelDownloaded(hit.id);
+            const buttonLabel =
+              isDownloading && downloadProgressLabel
+                ? downloadProgressLabel
+                : isDownloaded
+                  ? 'Downloaded'
+                  : 'Download';
+            return (
+              <li
+                key={hit.id}
+                className="flex items-center justify-between gap-2 rounded border border-gray-200 bg-white px-2.5 py-2 dark:border-odp-borderStrong dark:bg-odp-bgSoft"
               >
-                <Download size={14} />
-                Download
-              </Button>
-            </li>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[11px] font-medium text-gray-800 dark:text-odp-fgStrong">
+                    {hit.id}
+                  </div>
+                  <MlxLmModelResourceMeta hit={hit} />
+                </div>
+                <Button
+                  type="button"
+                  variant={isDownloaded ? 'tertiary' : 'secondary'}
+                  size="sm"
+                  className={
+                    isDownloading
+                      ? 'min-w-[9.5rem] font-mono tabular-nums'
+                      : isDownloaded
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : undefined
+                  }
+                  disabled={disabled || !cliAvailable || downloadBusy}
+                  onClick={() => onDownload(hit)}
+                >
+                  {isDownloading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : isDownloaded ? (
+                    <Check size={14} />
+                  ) : (
+                    <Download size={14} />
+                  )}
+                  {buttonLabel}
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </>

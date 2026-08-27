@@ -255,7 +255,8 @@ export function useBootstrapDomain() {
     return isS3ConnectionDirty(formCreds, savedCreds);
   };
 
-  const handleSaveS3Creds = (creds: any) => {
+  const handleSaveS3Creds = (creds: any, options: { silent?: boolean } = {}) => {
+    const { silent = false } = options;
     if (isDesktopApp()) {
       void (async () => {
         try {
@@ -263,13 +264,21 @@ export function useBootstrapDomain() {
             await refreshDesktopPasswordEntryLockSecrets(masterPassword, creds, webdavConfig);
             setS3Creds(creds);
             loadS3Files(creds);
-            showAlert({
-              title: '연결 정보',
-              message: '연결 정보 업데이트가 완료되었습니다.',
-            });
+            if (!silent) {
+              showAlert({
+                title: '연결 정보',
+                message: '연결 정보 업데이트가 완료되었습니다.',
+              });
+            }
             return;
           }
           if (hasStoredCreds() && shouldConfirmDesktopCredsOverwrite(creds, s3Creds)) {
+            if (silent) {
+              await saveDesktopCreds(creds);
+              setS3Creds(creds);
+              loadS3Files(creds);
+              return;
+            }
             setPendingPasswordSave({ creds, password: '', options: { stayOnSettings: true } });
             setShowOverwriteCredsConfirmModal(true);
             return;
@@ -277,14 +286,20 @@ export function useBootstrapDomain() {
           await saveDesktopCreds(creds);
           setS3Creds(creds);
           loadS3Files(creds);
-          showAlert({
-            title: '연결 정보',
-            message: '연결 정보 업데이트가 완료되었습니다.',
-          });
+          if (!silent) {
+            showAlert({
+              title: '연결 정보',
+              message: '연결 정보 업데이트가 완료되었습니다.',
+            });
+          }
         } catch (e: any) {
           alert(e?.message || '설정 저장 중 오류가 발생했습니다.');
         }
       })();
+      return;
+    }
+    if (silent) {
+      setS3Creds(creds);
       return;
     }
     setS3Creds(creds);

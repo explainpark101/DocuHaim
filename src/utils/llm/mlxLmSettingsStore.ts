@@ -10,6 +10,8 @@ export type MlxLmInstalledModel = {
 
 export type MlxLmSettings = {
   host: string;
+  /** When true, mlx_lm.server binds to 0.0.0.0 so other apps/devices can connect. */
+  allowExternalAccess: boolean;
   port: number;
   adapterPath: string;
   selectedModelId: string;
@@ -19,11 +21,15 @@ export type MlxLmSettings = {
 const STORAGE_KEY = 's3haim_mlx_lm_settings';
 const DEFAULT_MODEL = 'mlx-community/Llama-3.2-3B-Instruct-4bit';
 
+export const MLX_LM_LOCAL_CLIENT_HOST = '127.0.0.1';
+export const MLX_LM_EXTERNAL_BIND_HOST = '0.0.0.0';
+
 export const MLX_LM_SETTINGS_CHANGED_EVENT = 's3haim-mlx-lm-settings-changed';
 
 function defaultSettings(): MlxLmSettings {
   return {
-    host: '127.0.0.1',
+    host: MLX_LM_LOCAL_CLIENT_HOST,
+    allowExternalAccess: true,
     port: 8080,
     adapterPath: '',
     selectedModelId: DEFAULT_MODEL,
@@ -63,6 +69,8 @@ export function normalizeMlxLmSettings(raw: unknown): MlxLmSettings {
   if (!rec) return base;
 
   const host = typeof rec.host === 'string' && rec.host.trim() ? rec.host.trim() : base.host;
+  const allowExternalAccess =
+    typeof rec.allowExternalAccess === 'boolean' ? rec.allowExternalAccess : true;
   const portRaw = rec.port;
   const port =
     typeof portRaw === 'number' && Number.isFinite(portRaw) && portRaw > 0 && portRaw < 65536
@@ -86,7 +94,8 @@ export function normalizeMlxLmSettings(raw: unknown): MlxLmSettings {
   }
 
   return {
-    host,
+    host: allowExternalAccess ? MLX_LM_LOCAL_CLIENT_HOST : host,
+    allowExternalAccess,
     port,
     adapterPath,
     selectedModelId,
@@ -116,10 +125,51 @@ export function saveMlxLmSettings(next: MlxLmSettings): void {
   }
 }
 
-export function resolveMlxLmOpenAiBaseUrl(settings?: Pick<MlxLmSettings, 'host' | 'port'>): string {
-  const host = String(settings?.host || loadMlxLmSettings().host || '127.0.0.1').trim() || '127.0.0.1';
-  const port = settings?.port ?? loadMlxLmSettings().port ?? 8080;
+export function resolveMlxLmServerBindHost(
+  settings: Pick<MlxLmSettings, 'host' | 'allowExternalAccess'>,
+): string {
+  if (settings.allowExternalAccess) return MLX_LM_EXTERNAL_BIND_HOST;
+  const host = settings.host.trim() || MLX_LM_LOCAL_CLIENT_HOST;
+  return host;
+}
+
+export function resolveMlxLmClientHost(
+  settings: Pick<MlxLmSettings, 'host' | 'allowExternalAccess'>,
+): string {
+  if (settings.allowExternalAccess) return MLX_LM_LOCAL_CLIENT_HOST;
+  const host = settings.host.trim() || MLX_LM_LOCAL_CLIENT_HOST;
+  if (host === MLX_LM_EXTERNAL_BIND_HOST || host === '::' || host === '[::]') {
+    return MLX_LM_LOCAL_CLIENT_HOST;
+  }
+  return host;
+}
+
+export function resolveMlxLmOpenAiBaseUrl(
+  settings?: Pick<MlxLmSettings, 'host' | 'port' | 'allowExternalAccess'>,
+): string {
+  const merged = { ...loadMlxLmSettings(), ...settings };
+  const host = resolveMlxLmClientHost(merged);
+  const port = merged.port ?? 8080;
   return `http://${host}:${port}/v1`;
+}
+
+export function resolveMlxLmExternalBaseUrlHint(
+  settings?: Pick<MlxLmSettings, 'port' | 'allowExternalAccess'>,
+): string | null {
+  const merged = { ...loadMlxLmSettings(), ...settings };
+  if (!merged.allowExternalAccess) return null;
+  return `http://<this-machine-ip>:${merged.port}/v1`;
+}
+
+export function resolveMlxLmConnectionSummary(
+  settings: Pick<MlxLmSettings, 'host' | 'port' | 'allowExternalAccess'>,
+): string {
+  const bindHost = resolveMlxLmServerBindHost(settings);
+  const port = settings.port || 8080;
+  if (settings.allowExternalAccess) {
+    return `${bindHost}:${port} (외부 접속 허용)`;
+  }
+  return `${bindHost}:${port}`;
 }
 
 export function mergeInstalledModels(
@@ -154,4 +204,22 @@ export function setSelectedMlxLmModelId(settings: MlxLmSettings, modelId: string
   const id = String(modelId || '').trim();
   if (!id) return settings;
   return { ...settings, selectedModelId: id };
+}
+
+export function removeInstalledModel(settings: MlxLmSettings, modelId: string): MlxLmSettings {
+  const id = String(modelId || '').trim();
+  if (!id) return settings;
+  const installedModels = settings.installedModels.filter((model) => model.id !== id);
+  const selectedModelId =
+    settings.selectedModelId === id ? (installedModels[0]?.id ?? '') : settings.selectedModelId;
+  return { ...settings, installedModels, selectedModelId };
+}
+
+export function isMlxLmRepoInstalled(
+  repoId: string,
+  models: readonly Pick<MlxLmInstalledModel, 'id' | 'repoId'>[],
+): boolean {
+  const id = String(repoId || '').trim();
+  if (!id) return false;
+  return models.some((model) => model.id === id || model.repoId === id);
 }

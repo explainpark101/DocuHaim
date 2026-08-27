@@ -111,6 +111,15 @@ export function findSettingsGroupIdForSection(sectionId: string): string | null 
   return null;
 }
 
+export const SETTINGS_SECTION_OPEN_EVENT = 's3haim-settings-section-open';
+
+export function dispatchSettingsSectionOpen(sectionId: string): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(SETTINGS_SECTION_OPEN_EVENT, { detail: { sectionId } }),
+  );
+}
+
 export function resolveSettingsScrollTarget(hash: string): string {
   const id = String(hash || '').replace(/^#/, '');
   if (LLM_SECTION_HASHES.has(id) && id !== 'settings-mlx-lm') {

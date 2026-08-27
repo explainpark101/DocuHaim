@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { IconDownload, IconFolder, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import SnippetSettings from '@/components/settings/SnippetSettings';
@@ -80,6 +80,7 @@ import { useSettingsPageScrollSpy } from '@/hooks/useSettingsPageScrollSpy';
 import {
   buildVisibleSettingsPageGroups,
   createDefaultSettingsGroupOpenState,
+  dispatchSettingsSectionOpen,
   findSettingsGroupIdForSection,
   resolveSettingsScrollTarget,
 } from '@/utils/settingsPageCatalog';
@@ -184,6 +185,7 @@ export default function SettingsPage({
   const [groupOpen, setGroupOpen] = useState(() => createDefaultSettingsGroupOpenState(true));
   const scrollContainerRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const desktopApp = isDesktopApp();
   const resolvedVaultFsPath = String(localVaultFsPath || '').trim();
   const resolvedLocalFolderName =
@@ -237,9 +239,11 @@ export default function SettingsPage({
     if (hash === 'settings-webdav') setWebdavConnOpen(true);
     if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-imgbb') setImgbbConnOpen(true);
+    if (hash === 'settings-mlx-lm') dispatchSettingsSectionOpen(hash);
     const groupId = findSettingsGroupIdForSection(hash);
     if (groupId) setGroupOpen((prev) => ({ ...prev, [groupId]: true }));
     const scrollId = resolveSettingsScrollTarget(hash);
+    const scrollDelay = hash === 'settings-mlx-lm' ? 220 : 80;
     const timer = window.setTimeout(() => {
       const el = document.getElementById(scrollId);
       if (!el) return;
@@ -249,7 +253,7 @@ export default function SettingsPage({
       } catch {
         // ignore
       }
-    }, 80);
+    }, scrollDelay);
     return () => window.clearTimeout(timer);
   }, [location.hash, location.pathname]);
 
@@ -345,9 +349,11 @@ export default function SettingsPage({
       if (sectionId === 'settings-webdav') setWebdavConnOpen(true);
       if (sectionId === 'settings-local') setLocalConnOpen(true);
       if (sectionId === 'settings-imgbb') setImgbbConnOpen(true);
+      if (sectionId === 'settings-mlx-lm') dispatchSettingsSectionOpen(sectionId);
 
       const scrollId = resolveSettingsScrollTarget(sectionId);
-      window.history.replaceState(null, '', `#${sectionId}`);
+      navigate({ pathname: location.pathname, hash: `#${sectionId}` }, { replace: true });
+      const scrollDelay = sectionId === 'settings-mlx-lm' ? 220 : 120;
       window.setTimeout(() => {
         const el = document.getElementById(scrollId);
         if (!el) return;
@@ -357,9 +363,9 @@ export default function SettingsPage({
         } catch {
           // ignore
         }
-      }, 120);
+      }, scrollDelay);
     },
-    [setGroupOpenById],
+    [location.pathname, navigate, setGroupOpenById],
   );
 
   const desktopCollapsedTopBarPaddingClass =

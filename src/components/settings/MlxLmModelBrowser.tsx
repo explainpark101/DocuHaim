@@ -7,6 +7,8 @@ import MlxLmModelPasteSection from '@/components/settings/MlxLmModelPasteSection
 import MlxLmModelSearchSection from '@/components/settings/MlxLmModelSearchSection';
 import {
   buildMlxLmDownloadConfirmMessage,
+  buildMlxLmRedownloadConfirmMessage,
+  buildMlxLmDeleteConfirmMessage,
   fetchHuggingFaceModelInfo,
   parseHuggingFaceModelUrl,
   resolveMlxLmDownloadMode,
@@ -14,27 +16,37 @@ import {
   type HfModelSearchHit,
   type MlxLmDownloadMode,
 } from '@/utils/mlxLmHuggingFace';
+import {
+  formatMlxLmDownloadProgressLabel,
+  mergeMlxLmDownloadProgressChunk,
+  normalizeMlxLmDownloadOutputChunk,
+  type MlxLmDownloadProgressSnapshot,
+} from '@/utils/mlxLmDownloadProgress';
 import { formatMemoryBudgetLabel, getMlxAvailableMemoryBudgetBytes } from '@/utils/llm/mlxLmSystemMemory';
 import {
   MLX_LM_SETTINGS_CHANGED_EVENT,
   loadMlxLmSettings,
   saveMlxLmSettings,
   setSelectedMlxLmModelId,
+  isMlxLmRepoInstalled,
   type MlxLmInstalledModel,
   type MlxLmSettings,
 } from '@/utils/mlxLmSettingsStore';
-import { downloadMlxLmModel, listInstalledMlxLmModels, rememberMlxLmDownloadTarget } from '@/utils/mlxLmShell';
+import { downloadMlxLmModel, deleteMlxLmModel, isMlxLmModelInUse, listInstalledMlxLmModels, rememberMlxLmDownloadTarget } from '@/utils/mlxLmShell';
 
 type PendingDownload = {
   repoId: string;
   mode: MlxLmDownloadMode;
   hit?: HfModelSearchHit | null;
+  redownload?: boolean;
 };
 
 type MlxLmModelBrowserProps = {
   settings: MlxLmSettings;
   onSettingsChange: (next: MlxLmSettings) => void;
   cliAvailable: boolean;
+  serverRunning?: boolean;
+  serverLoadedModels?: string[];
   disabled?: boolean;
 };
 
@@ -42,6 +54,8 @@ export default function MlxLmModelBrowser({
   settings,
   onSettingsChange,
   cliAvailable,
+  serverRunning = false,
+  serverLoadedModels = [],
   disabled = false,
 }: MlxLmModelBrowserProps) {
   const [installed, setInstalled] = useState<MlxLmInstalledModel[]>(settings.installedModels);
@@ -53,8 +67,14 @@ export default function MlxLmModelBrowser({
   const [pasteInput, setPasteInput] = useState('');
   const [pasteError, setPasteError] = useState('');
   const [downloadBusy, setDownloadBusy] = useState(false);
-  const [downloadLog, setDownloadLog] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [activeDownload, setActiveDownload] = useState<{
+    repoId: string;
+    progress: MlxLmDownloadProgressSnapshot | null;
+    message: string;
+  } | null>(null);
   const [pendingDownload, setPendingDownload] = useState<PendingDownload | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<MlxLmInstalledModel | null>(null);
   const [memoryBudgetLabel, setMemoryBudgetLabel] = useState('RAM 정보 불러오는 중…');
   const [pastePreview, setPastePreview] = useState<HfModelSearchHit | null>(null);
   const [pastePreviewBusy, setPastePreviewBusy] = useState(false);
@@ -181,7 +201,8 @@ export default function MlxLmModelBrowser({
   const requestDownload = (repoId: string, hit?: HfModelSearchHit | null) => {
     rememberMlxLmDownloadTarget(repoId);
     const mode = resolveMlxLmDownloadMode(repoId, hit ?? null);
-    setPendingDownload({ repoId, mode, hit: hit ?? null });
+    const redownload = isMlxLmRepoInstalled(repoId, installedOptions);
+    setPendingDownload({ repoId, mode, hit: hit ?? null, redownload });
   };
 
   const handlePasteDownload = () => {
@@ -199,13 +220,40 @@ export default function MlxLmModelBrowser({
     const { repoId, mode, hit } = pendingDownload;
     setPendingDownload(null);
     setDownloadBusy(true);
-    setDownloadLog('');
+    const seedTotal = hit?.diskBytes;
+    const seedProgress =
+      seedTotal && seedTotal > 0
+        ? {
+            currentBytes: 0,
+            totalBytes: seedTotal,
+            percent: 0,
+            label: formatMlxLmDownloadProgressLabel({
+              currentBytes: 0,
+              totalBytes: seedTotal,
+              percent: 0,
+            }),
+          }
+        : null;
+    setActiveDownload({
+      repoId,
+      progress: seedProgress,
+      message: mode === 'convert' ? 'Converting model…' : 'Starting download…',
+    });
     try {
       const next = await downloadMlxLmModel(repoId, {
         mode,
         ...(hit ? { hit } : {}),
         onOutput: (line) => {
-          setDownloadLog((prev) => `${prev}${line}`.slice(-4000));
+          const normalized = normalizeMlxLmDownloadOutputChunk(line);
+          setActiveDownload((prev) => {
+            if (!prev || prev.repoId !== repoId) return prev;
+            const progress = mergeMlxLmDownloadProgressChunk(line, prev.progress);
+            return {
+              repoId,
+              progress,
+              message: normalized || prev.message,
+            };
+          });
         },
       });
       onSettingsChange(next);
@@ -215,16 +263,59 @@ export default function MlxLmModelBrowser({
       alert(err instanceof Error ? err.message : 'Download failed.');
     } finally {
       setDownloadBusy(false);
+      setActiveDownload(null);
     }
   };
 
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const model = pendingDelete;
+    setPendingDelete(null);
+    setDeleteBusy(true);
+    try {
+      const next = await deleteMlxLmModel(model.id, {
+        settings,
+        serverStatus: { running: serverRunning, models: serverLoadedModels },
+      });
+      onSettingsChange(next);
+      await refreshInstalled();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed.');
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const serverStatus = useMemo(
+    () => ({ running: serverRunning, models: serverLoadedModels }),
+    [serverRunning, serverLoadedModels],
+  );
+
+  const isModelInUse = useCallback(
+    (modelId: string) => isMlxLmModelInUse(modelId, settings, serverStatus),
+    [settings, serverStatus],
+  );
+
+  const isModelDownloaded = useCallback(
+    (repoId: string) => isMlxLmRepoInstalled(repoId, installedOptions),
+    [installedOptions],
+  );
+
   const confirmCopy = pendingDownload
-    ? buildMlxLmDownloadConfirmMessage(
-        pendingDownload.repoId,
-        pendingDownload.mode,
-        pendingDownload.hit,
-      )
+    ? pendingDownload.redownload
+      ? buildMlxLmRedownloadConfirmMessage(
+          pendingDownload.repoId,
+          pendingDownload.mode,
+          pendingDownload.hit,
+        )
+      : buildMlxLmDownloadConfirmMessage(
+          pendingDownload.repoId,
+          pendingDownload.mode,
+          pendingDownload.hit,
+        )
     : null;
+
+  const deleteCopy = pendingDelete ? buildMlxLmDeleteConfirmMessage(pendingDelete.id) : null;
 
   return (
     <div className="space-y-2">
@@ -238,13 +329,16 @@ export default function MlxLmModelBrowser({
           models={installedOptions}
           selectedId={selectedId}
           disabled={disabled}
+          deleteBusy={deleteBusy}
           scanBusy={scanBusy}
+          isModelInUse={isModelInUse}
           onRefresh={() => void refreshInstalled()}
           onSelect={(value) => {
             const next = setSelectedMlxLmModelId(settings, value);
             saveMlxLmSettings(next);
             onSettingsChange(next);
           }}
+          onRequestDelete={setPendingDelete}
         />
       </MlxLmCollapsibleSection>
 
@@ -264,6 +358,9 @@ export default function MlxLmModelBrowser({
           disabled={disabled}
           cliAvailable={cliAvailable}
           downloadBusy={downloadBusy}
+          downloadingRepoId={activeDownload?.repoId ?? ''}
+          downloadProgressLabel={activeDownload?.progress?.label ?? ''}
+          isModelDownloaded={isModelDownloaded}
           onDownload={(hit) => requestDownload(hit.id, hit)}
         />
       </MlxLmCollapsibleSection>
@@ -286,20 +383,47 @@ export default function MlxLmModelBrowser({
           disabled={disabled}
           cliAvailable={cliAvailable}
           downloadBusy={downloadBusy}
+          downloadProgressLabel={activeDownload?.progress?.label ?? ''}
+          isDownloaded={isModelDownloaded(parseHuggingFaceModelUrl(pasteInput) ?? '')}
           onDownload={handlePasteDownload}
         />
       </MlxLmCollapsibleSection>
 
-      {downloadBusy ? <MlxLmDownloadProgress log={downloadLog} /> : null}
+      {downloadBusy && activeDownload ? (
+        <MlxLmDownloadProgress
+          repoId={activeDownload.repoId}
+          progress={activeDownload.progress}
+          message={activeDownload.message}
+        />
+      ) : null}
 
       <ConfirmModal
         isOpen={Boolean(pendingDownload)}
         title={confirmCopy?.title || 'Download model'}
         message={confirmCopy?.message || ''}
-        confirmLabel={pendingDownload?.mode === 'convert' ? 'Convert' : 'Download'}
+        confirmLabel={
+          pendingDownload?.redownload
+            ? pendingDownload.mode === 'convert'
+              ? 'Re-convert'
+              : 'Redownload'
+            : pendingDownload?.mode === 'convert'
+              ? 'Convert'
+              : 'Download'
+        }
         cancelLabel="Cancel"
         onConfirm={() => void confirmDownload()}
         onCancel={() => setPendingDownload(null)}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(pendingDelete)}
+        title={deleteCopy?.title || 'Delete model'}
+        message={deleteCopy?.message || ''}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setPendingDelete(null)}
       />
     </div>
   );

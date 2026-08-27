@@ -3,6 +3,8 @@ import {
   cacheDirEntryToRepoId,
   fetchHuggingFaceModelInfo,
   isMlxCommunityRepoId,
+  isValidHuggingFaceRepoId,
+  repoIdToCacheDirEntryName,
   resolveMlxLmDownloadMode,
   type HfModelSearchHit,
   type MlxLmDownloadMode,
@@ -11,11 +13,15 @@ import {
   addInstalledModel,
   loadMlxLmSettings,
   mergeInstalledModels,
+  removeInstalledModel,
+  resolveMlxLmClientHost,
   resolveMlxLmOpenAiBaseUrl,
+  resolveMlxLmServerBindHost,
   saveMlxLmSettings,
   type MlxLmInstalledModel,
   type MlxLmSettings,
 } from '@/utils/llm/mlxLmSettingsStore';
+import { appendMlxLmServerLog, resetMlxLmServerLog } from '@/utils/llm/mlxLmServerLog';
 
 export { resolveMlxLmOpenAiBaseUrl };
 
@@ -23,12 +29,73 @@ type ChildHandle = {
   kill: () => Promise<void>;
 };
 
+export type MlxLmToolkitStatus = {
+  uvAvailable: boolean;
+  uvPath?: string;
+  mlxLmInstalled: boolean;
+  hfHubInstalled: boolean;
+  mlxLmRunnable: boolean;
+  hfHubRunnable: boolean;
+  /** uv is present and mlx_lm.server responds via uv tool run */
+  available: boolean;
+  detail?: string;
+};
+
 let serverChild: ChildHandle | null = null;
 let lastDownloadRepoId = '';
-let cachedServerBin: string | null | undefined;
+let cachedUvBin: string | null | undefined;
 
-const MLX_LM_SERVER_BIN = 'mlx_lm.server';
-const MLX_LM_SERVER_BIN_PATH_RE = /^(\/[A-Za-z0-9._/-]+)\/mlx_lm\.server$/;
+const UV_BIN_PATH_RE = /^(\/[A-Za-z0-9._/-]+)\/uv$/;
+
+export const UV_BIN_CANDIDATES = [
+  '/opt/homebrew/bin/uv',
+  '/usr/local/bin/uv',
+] as const;
+
+const UV_RESOLVE_SHELL_ARGS = [
+  '-lc',
+  'for p in "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv" "/opt/homebrew/bin/uv"; do if [ -x "$p" ]; then echo "$p"; exit 0; fi; done; command -v uv 2>/dev/null || true',
+] as const;
+
+const UV_INSTALL_SHELL_ARGS = ['-lc', 'curl -LsSf https://astral.sh/uv/install.sh | sh'] as const;
+
+const UV_TOOL_RUN = {
+  mlxServerHelp: ['-lc', 'exec "$0" tool run --from mlx-lm mlx_lm.server --help'] as const,
+  hfHelp: ['-lc', 'exec "$0" tool run --from huggingface-hub hf --help'] as const,
+  hfDownload: ['-lc', 'exec "$0" tool run --from huggingface-hub hf download "$1"'] as const,
+  mlxConvert: ['-lc', 'exec "$0" tool run --from mlx-lm mlx_lm.convert --model "$1" -q'] as const,
+  mlxServer: [
+    '-lc',
+    'exec "$0" tool run --from mlx-lm mlx_lm.server --model "$1" --port "$2" --host "$3"',
+  ] as const,
+  installMlxLm: ['-lc', 'exec "$0" tool install mlx-lm'] as const,
+  installHfHub: ['-lc', 'exec "$0" tool install huggingface-hub'] as const,
+};
+
+const UV_TOOL_DIR_NAMES = {
+  mlxLm: 'mlx-lm',
+  hfHub: 'huggingface-hub',
+} as const;
+
+export function buildUvBinCandidates(homeDir: string): string[] {
+  const home = String(homeDir || '').trim() || '/';
+  return [
+    ...UV_BIN_CANDIDATES,
+    `${home}/.local/bin/uv`,
+    `${home}/.cargo/bin/uv`,
+  ];
+}
+
+export function parseUvBinPath(output: string): string | null {
+  const lines = output
+    .split('\n')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    if (UV_BIN_PATH_RE.test(line)) return line;
+  }
+  return null;
+}
 
 export function isMlxLmCliSupported(): boolean {
   return isTauriMacOS();
@@ -38,8 +105,16 @@ export function getLastMlxLmDownloadRepoId(): string {
   return lastDownloadRepoId;
 }
 
+export function isMlxLmServerManagedByApp(): boolean {
+  return serverChild !== null;
+}
+
 export function rememberMlxLmDownloadTarget(repoId: string): void {
   lastDownloadRepoId = String(repoId || '').trim();
+}
+
+export function clearMlxLmToolkitCache(): void {
+  cachedUvBin = undefined;
 }
 
 function requireMacSupport(): void {
@@ -76,87 +151,196 @@ async function runShellExecute(
   return { code: result.code ?? 1, stdout, stderr };
 }
 
-export function parseMlxLmServerBinPath(whichOutput: string): string | null {
-  const line = whichOutput
-    .split('\n')
-    .map((part) => part.trim())
-    .find(Boolean);
-  if (!line || !MLX_LM_SERVER_BIN_PATH_RE.test(line)) return null;
-  return line;
-}
-
-export async function resolveMlxLmServerBin(options?: {
-  force?: boolean;
-}): Promise<string | null> {
-  if (!isMlxLmCliSupported()) return null;
-  if (!options?.force && cachedServerBin !== undefined) return cachedServerBin;
-
+async function findUvBinViaShellResolve(): Promise<string | null> {
   try {
-    const result = await runShellExecute('mlx-lm-which', [MLX_LM_SERVER_BIN]);
-    const binPath = parseMlxLmServerBinPath(result.stdout);
-    cachedServerBin = result.code === 0 && binPath ? binPath : null;
-    return cachedServerBin;
+    const result = await runShellExecute('uv-resolve', [...UV_RESOLVE_SHELL_ARGS]);
+    return parseUvBinPath(result.stdout);
   } catch {
-    cachedServerBin = null;
     return null;
   }
 }
 
-function buildMlxLmServerSpawnArgs(
-  binPath: string,
-  settings: Pick<MlxLmSettings, 'host' | 'port' | 'selectedModelId'>,
-): string[] {
-  const model = String(settings.selectedModelId || '').trim();
-  return [
-    '-c',
-    'exec "$0" "$@"',
-    binPath,
-    '--model',
-    model,
-    '--port',
-    String(settings.port),
-    '--host',
-    settings.host || '127.0.0.1',
+async function findExistingUvBin(): Promise<string | null> {
+  const { homeDir, join } = await import('@tauri-apps/api/path');
+  const { exists } = await import('@tauri-apps/plugin-fs');
+  const home = await homeDir();
+  const candidates = [
+    ...buildUvBinCandidates(home),
+    await join(home, '.local', 'bin', 'uv'),
+    await join(home, '.cargo', 'bin', 'uv'),
   ];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
+    if (!UV_BIN_PATH_RE.test(candidate)) continue;
+    try {
+      if (await exists(candidate)) return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
+}
+
+export async function resolveUvBin(options?: { force?: boolean }): Promise<string | null> {
+  if (!isMlxLmCliSupported()) return null;
+  if (!options?.force && cachedUvBin !== undefined) return cachedUvBin;
+
+  const resolvers = [findUvBinViaShellResolve, findExistingUvBin];
+  for (const resolve of resolvers) {
+    try {
+      const binPath = await resolve();
+      if (binPath) {
+        cachedUvBin = binPath;
+        return binPath;
+      }
+    } catch {
+      // try next resolver
+    }
+  }
+
+  cachedUvBin = null;
+  return null;
+}
+
+async function requireUvBin(): Promise<string> {
+  let uvPath = await resolveUvBin();
+  if (!uvPath) uvPath = await resolveUvBin({ force: true });
+  if (!uvPath) {
+    throw new Error('uv was not found. Install uv from the ? help panel first.');
+  }
+  return uvPath;
+}
+
+async function isUvToolInstalled(toolDirName: string): Promise<boolean> {
+  try {
+    const { homeDir, join } = await import('@tauri-apps/api/path');
+    const { exists } = await import('@tauri-apps/plugin-fs');
+    const toolRoot = await join(await homeDir(), '.local', 'share', 'uv', 'tools', toolDirName);
+    return await exists(toolRoot);
+  } catch {
+    return false;
+  }
+}
+
+async function probeUvToolRun(
+  scope: string,
+  scriptArgs: readonly string[],
+  uvPath: string,
+): Promise<boolean> {
+  try {
+    const result = await runShellExecute(scope, [...scriptArgs, uvPath]);
+    return result.code === 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function probeMlxLmToolkit(): Promise<MlxLmToolkitStatus> {
+  if (!isMlxLmCliSupported()) {
+    return {
+      uvAvailable: false,
+      mlxLmInstalled: false,
+      hfHubInstalled: false,
+      mlxLmRunnable: false,
+      hfHubRunnable: false,
+      available: false,
+      detail: 'Tauri macOS build only.',
+    };
+  }
+
+  const uvPath = await resolveUvBin({ force: true });
+  const uvAvailable = Boolean(uvPath);
+  const [mlxLmInstalled, hfHubInstalled] = await Promise.all([
+    isUvToolInstalled(UV_TOOL_DIR_NAMES.mlxLm),
+    isUvToolInstalled(UV_TOOL_DIR_NAMES.hfHub),
+  ]);
+
+  let mlxLmRunnable = false;
+  let hfHubRunnable = false;
+  if (uvPath) {
+    [mlxLmRunnable, hfHubRunnable] = await Promise.all([
+      probeUvToolRun('uv-tool-run-mlx-server-help', UV_TOOL_RUN.mlxServerHelp, uvPath),
+      probeUvToolRun('uv-tool-run-hf-help', UV_TOOL_RUN.hfHelp, uvPath),
+    ]);
+  }
+
+  const available = uvAvailable && mlxLmRunnable;
+  let detail: string | undefined;
+  if (!uvAvailable) {
+    detail = 'uv not found. Use ? help to install uv on this Mac.';
+  } else if (!mlxLmRunnable) {
+    detail = 'uv tool run --from mlx-lm mlx_lm.server failed. Install mlx-lm with uv tool install.';
+  } else if (!hfHubRunnable) {
+    detail = `uv: ${uvPath} · mlx-lm ready · huggingface-hub missing (uv tool install huggingface-hub)`;
+  } else {
+    detail = `uv tool run (${uvPath})`;
+  }
+
+  return {
+    uvAvailable,
+    ...(uvPath ? { uvPath } : {}),
+    mlxLmInstalled,
+    hfHubInstalled,
+    mlxLmRunnable,
+    hfHubRunnable,
+    available,
+    detail,
+  };
 }
 
 export async function probeMlxLmCli(): Promise<{ available: boolean; detail?: string }> {
-  if (!isMlxLmCliSupported()) {
-    return { available: false, detail: 'Tauri macOS build only.' };
-  }
-  try {
-    const binPath = await resolveMlxLmServerBin();
-    if (binPath) {
-      const result = await runShellExecute('mlx-lm-probe-bin', ['-c', 'exec "$0" --help', binPath]);
-      if (result.code === 0) {
-        return { available: true, detail: binPath };
-      }
-    }
+  const toolkit = await probeMlxLmToolkit();
+  return {
+    available: toolkit.available,
+    ...(toolkit.detail ? { detail: toolkit.detail } : {}),
+  };
+}
 
-    const fallback = await runShellExecute('mlx-lm-probe', ['-m', 'mlx_lm.server', '--help']);
-    if (fallback.code === 0) {
-      return {
-        available: true,
-        detail: binPath ? `${binPath} (python3 -m fallback ready)` : 'python3 -m mlx_lm.server',
-      };
-    }
-
-    return {
-      available: false,
-      detail:
-        fallback.stderr.trim() ||
-        'mlx_lm.server not found in PATH. Try: uv tool install mlx-lm or pip install mlx-lm',
-    };
-  } catch (err) {
-    return {
-      available: false,
-      detail: err instanceof Error ? err.message : 'Failed to probe mlx_lm CLI.',
-    };
+export async function installUvMac(options?: { onOutput?: (line: string) => void }): Promise<void> {
+  requireMacSupport();
+  const result = await runShellExecute('uv-install', [...UV_INSTALL_SHELL_ARGS], options?.onOutput);
+  clearMlxLmToolkitCache();
+  if (result.code !== 0) {
+    throw new Error(result.stderr.trim() || 'Failed to install uv.');
   }
 }
 
-function modelsUrl(settings: Pick<MlxLmSettings, 'host' | 'port'>): string {
-  const host = settings.host.trim() || '127.0.0.1';
+export async function installMlxLmTool(options?: {
+  onOutput?: (line: string) => void;
+}): Promise<void> {
+  requireMacSupport();
+  const uvPath = await requireUvBin();
+  const result = await runShellExecute(
+    'uv-tool-install-mlx-lm',
+    [...UV_TOOL_RUN.installMlxLm, uvPath],
+    options?.onOutput,
+  );
+  clearMlxLmToolkitCache();
+  if (result.code !== 0) {
+    throw new Error(result.stderr.trim() || 'Failed to install mlx-lm with uv tool install.');
+  }
+}
+
+export async function installHuggingFaceHubTool(options?: {
+  onOutput?: (line: string) => void;
+}): Promise<void> {
+  requireMacSupport();
+  const uvPath = await requireUvBin();
+  const result = await runShellExecute(
+    'uv-tool-install-hf-hub',
+    [...UV_TOOL_RUN.installHfHub, uvPath],
+    options?.onOutput,
+  );
+  clearMlxLmToolkitCache();
+  if (result.code !== 0) {
+    throw new Error(result.stderr.trim() || 'Failed to install huggingface-hub with uv tool install.');
+  }
+}
+
+function modelsUrl(settings: Pick<MlxLmSettings, 'host' | 'port' | 'allowExternalAccess'>): string {
+  const host = resolveMlxLmClientHost(settings);
   const port = settings.port || 8080;
   return `http://${host}:${port}/v1/models`;
 }
@@ -201,6 +385,11 @@ export async function startMlxLmServer(
 
   const existing = await getMlxLmServerStatus(settings);
   if (existing.running) {
+    if (!serverChild) {
+      appendMlxLmServerLog(
+        '[info] MLX-LM server is already running outside this app. Logs are unavailable.\n',
+      );
+    }
     return {
       port: settings.port,
       baseUrl: resolveMlxLmOpenAiBaseUrl(settings),
@@ -217,18 +406,45 @@ export async function startMlxLmServer(
     serverChild = null;
   }
 
-  const binPath = await resolveMlxLmServerBin();
-  if (!binPath) {
+  const uvPath = await requireUvBin();
+  const toolkit = await probeMlxLmToolkit();
+  if (!toolkit.mlxLmRunnable) {
     throw new Error(
-      'mlx_lm.server was not found in PATH. Install mlx-lm (e.g. uv tool install mlx-lm) and ensure it is on PATH.',
+      'mlx_lm.server is not runnable via uv tool run. Install mlx-lm (uv tool install mlx-lm).',
     );
   }
 
+  const bindHost = resolveMlxLmServerBindHost(settings);
+  resetMlxLmServerLog();
+  appendMlxLmServerLog(
+    `Starting mlx_lm.server\n  model: ${model}\n  bind: ${bindHost}:${settings.port}\n\n`,
+  );
+
   const { Command } = await import('@tauri-apps/plugin-shell');
-  const child = await Command.create(
-    'mlx-lm-server',
-    buildMlxLmServerSpawnArgs(binPath, settings),
-  ).spawn();
+  const command = Command.create('mlx-lm-server-uv', [
+    ...UV_TOOL_RUN.mlxServer,
+    uvPath,
+    model,
+    String(settings.port),
+    bindHost,
+  ]);
+  command.stdout.on('data', (line) => {
+    appendMlxLmServerLog(String(line ?? ''));
+  });
+  command.stderr.on('data', (line) => {
+    appendMlxLmServerLog(String(line ?? ''));
+  });
+  command.on('close', (payload) => {
+    appendMlxLmServerLog(
+      `\n[process exited code=${payload.code} signal=${payload.signal ?? 'none'}]\n`,
+    );
+    serverChild = null;
+  });
+  command.on('error', (error) => {
+    appendMlxLmServerLog(`\n[process error: ${String(error)}]\n`);
+  });
+
+  const child = await command.spawn();
   serverChild = child;
 
   const ready = await waitForServerReady(settings);
@@ -246,6 +462,7 @@ export async function startMlxLmServer(
 export async function stopMlxLmServer(): Promise<void> {
   if (serverChild) {
     try {
+      appendMlxLmServerLog('\n[stop requested by app]\n');
       await serverChild.kill();
     } finally {
       serverChild = null;
@@ -316,12 +533,29 @@ export async function downloadMlxLmModel(
   const mode = options?.mode ?? resolveMlxLmDownloadMode(id, options?.hit ?? null);
   lastDownloadRepoId = id;
 
-  const args =
-    mode === 'download'
-      ? ['-m', 'huggingface_hub.cli', 'download', id]
-      : ['-m', 'mlx_lm.convert', '--model', id, '-q'];
+  const uvPath = await requireUvBin();
+  const toolkit = await probeMlxLmToolkit();
 
-  const scopeName = mode === 'download' ? 'mlx-lm-download' : 'mlx-lm-convert';
+  let scopeName: string;
+  let args: string[];
+  if (mode === 'convert') {
+    if (!toolkit.mlxLmRunnable) {
+      throw new Error(
+        'mlx_lm.convert is not runnable via uv tool run. Install mlx-lm (uv tool install mlx-lm).',
+      );
+    }
+    scopeName = 'uv-tool-run-mlx-convert';
+    args = [...UV_TOOL_RUN.mlxConvert, uvPath, id];
+  } else {
+    if (!toolkit.hfHubRunnable) {
+      throw new Error(
+        'hf download is not runnable via uv tool run. Install huggingface-hub (uv tool install huggingface-hub).',
+      );
+    }
+    scopeName = 'uv-tool-run-hf-download';
+    args = [...UV_TOOL_RUN.hfDownload, uvPath, id];
+  }
+
   const result = await runShellExecute(scopeName, args, options?.onOutput);
   if (result.code !== 0) {
     throw new Error(result.stderr.trim() || `MLX-LM ${mode} failed for ${id}.`);
@@ -343,4 +577,64 @@ export async function listMlxLmModelsFromServer(
 ): Promise<string[]> {
   const status = await getMlxLmServerStatus(settings);
   return status.models;
+}
+
+function resolveModelRepoId(model: Pick<MlxLmInstalledModel, 'id' | 'repoId'>): string {
+  const repoId = String(model.repoId || model.id || '').trim();
+  return repoId;
+}
+
+export function isMlxLmModelInUse(
+  modelId: string,
+  settings: MlxLmSettings,
+  serverStatus: { running: boolean; models: string[] },
+): boolean {
+  const id = String(modelId || '').trim();
+  if (!id || !serverStatus.running) return false;
+  if (settings.selectedModelId === id) return true;
+  return serverStatus.models.includes(id);
+}
+
+async function removeHuggingFaceCacheRepo(repoId: string): Promise<boolean> {
+  const dirName = repoIdToCacheDirEntryName(repoId);
+  if (!dirName) return false;
+  const { homeDir, join } = await import('@tauri-apps/api/path');
+  const { exists, remove } = await import('@tauri-apps/plugin-fs');
+  const cachePath = await join(await homeDir(), '.cache', 'huggingface', 'hub', dirName);
+  if (!(await exists(cachePath))) return false;
+  await remove(cachePath, { recursive: true });
+  return true;
+}
+
+export async function deleteMlxLmModel(
+  modelId: string,
+  options?: {
+    settings?: MlxLmSettings;
+    serverStatus?: { running: boolean; models: string[] };
+  },
+): Promise<MlxLmSettings> {
+  requireMacSupport();
+  const id = String(modelId || '').trim();
+  if (!id) throw new Error('Model id is required.');
+
+  const settings = options?.settings ?? loadMlxLmSettings();
+  const serverStatus = options?.serverStatus ?? (await getMlxLmServerStatus(settings));
+  if (isMlxLmModelInUse(id, settings, serverStatus)) {
+    throw new Error('Stop the MLX-LM server before deleting the loaded model.');
+  }
+
+  const installed = await listInstalledMlxLmModels(settings);
+  const target = installed.find((model) => model.id === id);
+  if (!target && !isValidHuggingFaceRepoId(id)) {
+    throw new Error(`Model not found: ${id}`);
+  }
+
+  const repoId = target ? resolveModelRepoId(target) : id;
+  if (isValidHuggingFaceRepoId(repoId)) {
+    await removeHuggingFaceCacheRepo(repoId);
+  }
+
+  const next = removeInstalledModel(settings, id);
+  saveMlxLmSettings(next);
+  return next;
 }

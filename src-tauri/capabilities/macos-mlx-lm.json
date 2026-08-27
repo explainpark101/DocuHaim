@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2/capability",
   "identifier": "macos-mlx-lm",
-  "description": "DocuHaim macOS MLX-LM shell scopes (probe, server, download, convert)",
+  "description": "DocuHaim macOS MLX-LM shell scopes (uv install, uv tool run)",
   "platforms": ["macOS"],
   "windows": ["main", "s3haim-llm-assist"],
   "permissions": [
@@ -9,43 +9,72 @@
       "identifier": "shell:allow-execute",
       "allow": [
         {
-          "name": "mlx-lm-which",
-          "cmd": "which",
-          "args": ["mlx_lm.server"]
+          "name": "uv-install",
+          "cmd": "/bin/sh",
+          "args": ["-lc", "curl -LsSf https://astral.sh/uv/install.sh | sh"]
         },
         {
-          "name": "mlx-lm-probe-bin",
+          "name": "uv-resolve",
           "cmd": "/bin/sh",
           "args": [
-            "-c",
-            "exec \"$0\" --help",
-            { "validator": "^(/[A-Za-z0-9._/-]+)/mlx_lm\\.server$" }
+            "-lc",
+            "for p in \"$HOME/.local/bin/uv\" \"$HOME/.cargo/bin/uv\" \"/opt/homebrew/bin/uv\"; do if [ -x \"$p\" ]; then echo \"$p\"; exit 0; fi; done; command -v uv 2>/dev/null || true"
           ]
         },
         {
-          "name": "mlx-lm-probe",
-          "cmd": "python3",
-          "args": ["-m", "mlx_lm.server", "--help"]
+          "name": "uv-tool-install-mlx-lm",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool install mlx-lm",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
         },
         {
-          "name": "mlx-lm-download",
-          "cmd": "python3",
+          "name": "uv-tool-install-hf-hub",
+          "cmd": "/bin/sh",
           "args": [
-            "-m",
-            "huggingface_hub.cli",
-            "download",
+            "-lc",
+            "exec \"$0\" tool install huggingface-hub",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-mlx-server-help",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from mlx-lm mlx_lm.server --help",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-hf-help",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from huggingface-hub hf --help",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-run-hf-download",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from huggingface-hub hf download \"$1\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
             { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
           ]
         },
         {
-          "name": "mlx-lm-convert",
-          "cmd": "python3",
+          "name": "uv-tool-run-mlx-convert",
+          "cmd": "/bin/sh",
           "args": [
-            "-m",
-            "mlx_lm.convert",
-            "--model",
-            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
-            "-q"
+            "-lc",
+            "exec \"$0\" tool run --from mlx-lm mlx_lm.convert --model \"$1\" -q",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
           ]
         },
         {
@@ -59,17 +88,14 @@
       "identifier": "shell:allow-spawn",
       "allow": [
         {
-          "name": "mlx-lm-server",
+          "name": "mlx-lm-server-uv",
           "cmd": "/bin/sh",
           "args": [
-            "-c",
-            "exec \"$0\" \"$@\"",
-            { "validator": "^(/[A-Za-z0-9._/-]+)/mlx_lm\\.server$" },
-            "--model",
+            "-lc",
+            "exec \"$0\" tool run --from mlx-lm mlx_lm.server --model \"$1\" --port \"$2\" --host \"$3\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
             { "validator": ".+" },
-            "--port",
             { "validator": "^[0-9]+$" },
-            "--host",
             { "validator": "^(127\\.0\\.0\\.1|0\\.0\\.0\\.0|localhost)$" }
           ]
         }

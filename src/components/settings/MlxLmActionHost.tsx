@@ -13,6 +13,7 @@ import {
   startMlxLmServer,
   stopMlxLmServer,
 } from '@/utils/mlxLmShell';
+import { requestMlxLmProviderSync } from '@/utils/llm/mlxLmProviderAutoSync';
 import { registerMlxLmActions } from '@/utils/advancedSearch/mlxLmActions';
 
 type PendingDownload = {
@@ -30,6 +31,7 @@ export default function MlxLmActionHost() {
     setBusy(true);
     try {
       await startMlxLmServer(loadMlxLmSettings());
+      requestMlxLmProviderSync();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to start MLX-LM server.');
     } finally {

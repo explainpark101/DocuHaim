@@ -74,6 +74,28 @@ export function cacheDirEntryToRepoId(dirName: string): string | null {
   return isValidHuggingFaceRepoId(repoId) ? repoId : null;
 }
 
+export function repoIdToCacheDirEntryName(repoId: string): string | null {
+  const id = String(repoId || '').trim();
+  if (!isValidHuggingFaceRepoId(id)) return null;
+  const slash = id.indexOf('/');
+  const org = id.slice(0, slash);
+  const model = id.slice(slash + 1);
+  return `models--${org}--${model}`;
+}
+
+export function buildMlxLmDeleteConfirmMessage(modelId: string): { title: string; message: string } {
+  const id = String(modelId || '').trim();
+  return {
+    title: 'MLX-LM 모델 삭제',
+    message: [
+      `Hugging Face 캐시에서 "${id}" 모델을 삭제할까요?`,
+      '',
+      '디스크의 ~/.cache/huggingface/hub/models--… 폴더가 제거됩니다.',
+      '다시 사용하려면 재다운로드가 필요합니다.',
+    ].join('\n'),
+  };
+}
+
 export async function searchHuggingFaceMlxModels(
   query: string,
   options?: { limit?: number; signal?: AbortSignal },
@@ -276,6 +298,34 @@ export function buildMlxLmDownloadConfirmMessage(
       '변환은 CPU/GPU를 많이 사용하며 수십 분 이상 걸릴 수 있습니다.',
       '디스크 공간과 네트워크 사용량이 발생합니다.',
       ...resourceBlock,
+    ].join('\n'),
+  };
+}
+
+export function buildMlxLmRedownloadConfirmMessage(
+  repoId: string,
+  mode: MlxLmDownloadMode,
+  hit?: Pick<HfModelSearchHit, 'diskBytes' | 'estimatedRamBytes' | 'feasibility'> | null,
+): { title: string; message: string } {
+  const base = buildMlxLmDownloadConfirmMessage(repoId, mode, hit);
+  if (mode === 'download') {
+    return {
+      title: 'MLX 모델 다시 다운로드',
+      message: [
+        `"${repoId}" 모델은 이미 다운로드되어 있습니다.`,
+        '다시 다운로드하면 Hugging Face에서 파일을 다시 받아 로컬 캐시를 덮어쓸 수 있습니다.',
+        '',
+        base.message,
+      ].join('\n'),
+    };
+  }
+  return {
+    title: 'MLX 모델 다시 변환',
+    message: [
+      `"${repoId}" 모델은 이미 변환·설치되어 있습니다.`,
+      '다시 변환하면 기존 캐시를 덮어쓸 수 있으며 시간이 오래 걸릴 수 있습니다.',
+      '',
+      base.message,
     ].join('\n'),
   };
 }

@@ -1,4 +1,4 @@
-import { Link2 } from 'lucide-react';
+import { Check, Link2, Loader2 } from 'lucide-react';
 import Button from '@/components/Button';
 import MlxLmModelResourceMeta from '@/components/settings/MlxLmModelResourceMeta';
 import type { HfModelSearchHit } from '@/utils/mlxLmHuggingFace';
@@ -12,6 +12,8 @@ type MlxLmModelPasteSectionProps = {
   disabled?: boolean;
   cliAvailable: boolean;
   downloadBusy: boolean;
+  downloadProgressLabel?: string;
+  isDownloaded?: boolean;
   onDownload: () => void;
 };
 
@@ -24,8 +26,17 @@ export default function MlxLmModelPasteSection({
   disabled = false,
   cliAvailable,
   downloadBusy,
+  downloadProgressLabel = '',
+  isDownloaded = false,
   onDownload,
 }: MlxLmModelPasteSectionProps) {
+  const buttonLabel =
+    downloadBusy && downloadProgressLabel
+      ? downloadProgressLabel
+      : isDownloaded
+        ? 'Downloaded'
+        : 'Download';
+
   return (
     <>
       <div className="flex flex-wrap gap-2">
@@ -39,13 +50,26 @@ export default function MlxLmModelPasteSection({
         />
         <Button
           type="button"
-          variant="secondary"
+          variant={isDownloaded && !downloadBusy ? 'tertiary' : 'secondary'}
           size="sm"
+          className={
+            downloadBusy
+              ? 'min-w-[9.5rem] font-mono tabular-nums'
+              : isDownloaded
+                ? 'text-emerald-700 dark:text-emerald-300'
+                : undefined
+          }
           disabled={disabled || !cliAvailable || downloadBusy || !value.trim()}
           onClick={onDownload}
         >
-          <Link2 size={14} />
-          Download
+          {downloadBusy ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : isDownloaded ? (
+            <Check size={14} />
+          ) : (
+            <Link2 size={14} />
+          )}
+          {buttonLabel}
         </Button>
       </div>
       {error ? (

@@ -31,6 +31,29 @@ export const LLM_LAST_PROFILE_CHANGED_EVENT = 's3haim-llm-last-profile-changed';
 
 export const LEGACY_GEMINI_PROFILE_ID = 'legacy-gemini';
 export const LEGACY_OPENAI_COMPAT_PROFILE_ID = 'legacy-openai-compat';
+export const AUTO_MLX_LM_PROFILE_ID = 'auto-mlx-lm';
+
+export function ensureMlxLmProviderProfile(profiles: LlmProviderProfile[]): {
+  profiles: LlmProviderProfile[];
+  changed: boolean;
+} {
+  if (profiles.some((profile) => profile.kind === LLM_PROVIDER_MLX_LM)) {
+    return { profiles, changed: false };
+  }
+  return {
+    profiles: [
+      ...profiles,
+      {
+        id: AUTO_MLX_LM_PROFILE_ID,
+        name: 'MLX-LM (local)',
+        kind: LLM_PROVIDER_MLX_LM,
+        baseUrl: '',
+        apiKey: '',
+      },
+    ],
+    changed: true,
+  };
+}
 
 export function isLlmProviderKind(value: string): value is LlmProviderKind {
   return (

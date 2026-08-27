@@ -4,19 +4,25 @@ import { useLocation } from 'react-router';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import {
   loadMlxLmSettings,
+  resolveMlxLmConnectionSummary,
   saveMlxLmSettings,
   type MlxLmSettings,
 } from '@/utils/mlxLmSettingsStore';
 import {
   getMlxLmServerStatus,
-  probeMlxLmCli,
+  isMlxLmServerManagedByApp,
+  probeMlxLmToolkit,
   startMlxLmServer,
   stopMlxLmServer,
+  type MlxLmToolkitStatus,
 } from '@/utils/mlxLmShell';
+import { requestMlxLmProviderSync } from '@/utils/llm/mlxLmProviderAutoSync';
+import { SETTINGS_SECTION_OPEN_EVENT } from '@/utils/settingsPageCatalog';
 import MlxLmCollapsibleSection from '@/components/settings/MlxLmCollapsibleSection';
 import MlxLmConnectionFields from '@/components/settings/MlxLmConnectionFields';
 import MlxLmModelBrowser from '@/components/settings/MlxLmModelBrowser';
 import MlxLmServerControls from '@/components/settings/MlxLmServerControls';
+import MlxLmServerLogPanel from '@/components/settings/MlxLmServerLogPanel';
 import MlxLmSettingsOverview, {
   MlxLmSettingsPanelTitle,
 } from '@/components/settings/MlxLmSettingsOverview';
@@ -28,6 +34,7 @@ export default function MlxLmSettings() {
   const [modelsOpen, setModelsOpen] = useState(true);
   const [serverOpen, setServerOpen] = useState(true);
   const [settings, setSettings] = useState(() => loadMlxLmSettings());
+  const [toolkit, setToolkit] = useState<MlxLmToolkitStatus | null>(null);
   const [cliProbe, setCliProbe] = useState<{ available: boolean; detail?: string } | null>(null);
   const [serverStatus, setServerStatus] = useState<{ running: boolean; models: string[] }>({
     running: false,
@@ -36,11 +43,15 @@ export default function MlxLmSettings() {
   const [busy, setBusy] = useState(false);
 
   const refreshStatus = useCallback(async () => {
-    const [probe, status] = await Promise.all([
-      probeMlxLmCli(),
+    const [nextToolkit, status] = await Promise.all([
+      probeMlxLmToolkit(),
       getMlxLmServerStatus(settings),
     ]);
-    setCliProbe(probe);
+    setToolkit(nextToolkit);
+    setCliProbe({
+      available: nextToolkit.available,
+      ...(nextToolkit.detail ? { detail: nextToolkit.detail } : {}),
+    });
     setServerStatus(status);
   }, [settings]);
 
@@ -49,6 +60,7 @@ export default function MlxLmSettings() {
     try {
       await startMlxLmServer(settings);
       await refreshStatus();
+      requestMlxLmProviderSync();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to start MLX-LM server.');
     } finally {
@@ -85,9 +97,22 @@ export default function MlxLmSettings() {
     }
   }, [location.hash]);
 
+  useEffect(() => {
+    const onSectionOpen = (event: Event) => {
+      const sectionId = (event as CustomEvent<{ sectionId?: string }>).detail?.sectionId;
+      if (sectionId !== 'settings-mlx-lm') return;
+      setPanelOpen(true);
+      setModelsOpen(true);
+    };
+    window.addEventListener(SETTINGS_SECTION_OPEN_EVENT, onSectionOpen);
+    return () => window.removeEventListener(SETTINGS_SECTION_OPEN_EVENT, onSectionOpen);
+  }, []);
+
   if (!isTauriMacOS()) return null;
 
-  const cliAvailable = cliProbe?.available === true;
+  const cliAvailable = toolkit?.available === true;
+  const hfCliAvailable = toolkit?.hfHubRunnable === true;
+  const downloadReady = cliAvailable && hfCliAvailable;
 
   const persistSettings = (next: MlxLmSettings) => {
     saveMlxLmSettings(next);
@@ -117,15 +142,18 @@ export default function MlxLmSettings() {
       {panelOpen ? (
         <div className="space-y-3 border-t border-emerald-200/80 px-4 pb-4 pt-3 dark:border-emerald-900/40">
           <MlxLmSettingsOverview
+            toolkit={toolkit}
             cliAvailable={cliAvailable}
             {...(cliProbe?.detail ? { cliDetail: cliProbe.detail } : {})}
             serverRunning={serverStatus.running}
             serverPort={settings.port}
+            allowExternalAccess={settings.allowExternalAccess}
+            onRefresh={refreshStatus}
           />
 
           <MlxLmCollapsibleSection
             title="연결 설정"
-            subtitle={`${settings.host}:${settings.port}`}
+            subtitle={resolveMlxLmConnectionSummary(settings)}
             open={connectionOpen}
             onOpenChange={setConnectionOpen}
           >
@@ -145,7 +173,9 @@ export default function MlxLmSettings() {
             <MlxLmModelBrowser
               settings={settings}
               onSettingsChange={setSettings}
-              cliAvailable={cliAvailable}
+              cliAvailable={downloadReady}
+              serverRunning={serverStatus.running}
+              serverLoadedModels={serverStatus.models}
               disabled={busy}
             />
           </MlxLmCollapsibleSection>
@@ -164,6 +194,10 @@ export default function MlxLmSettings() {
               loadedModels={serverStatus.models}
               onStart={handleStart}
               onStop={handleStop}
+            />
+            <MlxLmServerLogPanel
+              serverRunning={serverStatus.running}
+              managedByApp={isMlxLmServerManagedByApp()}
             />
           </MlxLmCollapsibleSection>
         </div>
