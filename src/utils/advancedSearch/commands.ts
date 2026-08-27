@@ -328,7 +328,7 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     title: '설정 · 표시 옵션',
     description: '숨김 폴더·트리 호버 펼침 등',
     path: '/settings#settings-display',
-    keywords: ['표시', 'display', '숨김', '트리', 'hover', '다크'],
+    keywords: ['표시', 'display', '숨김', '트리', 'hover', '다크', '글꼴', '폰트', 'font', 'ui font'],
   },
   {
     id: 'settings-chat',

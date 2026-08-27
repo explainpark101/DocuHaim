@@ -4,6 +4,7 @@ import { IconDownload, IconFolder, IconMenu, IconRefresh, IconSettings, IconSqua
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
+import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
@@ -1493,6 +1494,7 @@ export default function SettingsPage({
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
+          <AppUiFontSettings />
           <label
             className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
           >

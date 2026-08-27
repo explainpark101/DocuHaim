@@ -55,7 +55,7 @@ import {
   savePrintPreviewView,
   stepZoomPercent,
 } from '@/utils/printPreviewView';
-import { withFontFallback } from '@/utils/fontFallback';
+import { printFontCssVarValue } from '@/utils/fontFallback';
 import {
   DEFAULT_DOCUMENT_SETTINGS_META,
   parseDocumentSettingsMeta,
@@ -144,7 +144,7 @@ const printFontStyles = `
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview {
     background: #ffffff;
     color: #111827;
-    font-family: var(--print-font-body, inherit);
+    font-family: var(--print-font-body, var(--font-sans-builtin));
     color-scheme: light;
     /* Force light table chrome even when html/app is .dark (preview.css). */
     --md-theme-table-stripe-color: #f9fafb;
@@ -208,17 +208,17 @@ const printFontStyles = `
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h4,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h5,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h6 {
-    font-family: var(--print-font-heading, inherit);
+    font-family: var(--print-font-heading, var(--font-display-builtin));
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview b,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview strong {
-    font-family: var(--print-font-bold, inherit);
+    font-family: var(--print-font-bold, var(--font-sans-builtin));
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview code,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview pre,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
-    font-family: var(--print-font-code, inherit);
+    font-family: var(--print-font-code, var(--font-mono-builtin));
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code {
     --md-theme-code-block-color: #abb2bf;
@@ -1703,10 +1703,20 @@ export default function ExportPDFPage({
 
   const fontStyleVars = {
     ...buildPrintLayoutCssVars(printLayout),
-    '--print-font-body': withFontFallback(documentSettings.fonts?.body || fonts.body),
-    '--print-font-heading': withFontFallback(documentSettings.fonts?.heading || fonts.heading),
-    '--print-font-bold': withFontFallback(documentSettings.fonts?.bold || fonts.bold),
-    '--print-font-code': withFontFallback(documentSettings.fonts?.code || fonts.code, 'mono'),
+    ...Object.fromEntries(
+      [
+        ['--print-font-body', printFontCssVarValue(documentSettings.fonts?.body || fonts.body)],
+        [
+          '--print-font-heading',
+          printFontCssVarValue(documentSettings.fonts?.heading || fonts.heading),
+        ],
+        ['--print-font-bold', printFontCssVarValue(documentSettings.fonts?.bold || fonts.bold)],
+        [
+          '--print-font-code',
+          printFontCssVarValue(documentSettings.fonts?.code || fonts.code, 'mono'),
+        ],
+      ].filter((entry) => entry[1] != null),
+    ),
   };
 
   if (isDocumentLoading) {

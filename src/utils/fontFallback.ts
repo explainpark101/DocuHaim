@@ -46,3 +46,13 @@ export function withFontFallback(
   const fallback = kind === 'mono' ? SYSTEM_MONO_FALLBACK : SYSTEM_SANS_FALLBACK;
   return `${quoteFontFamily(trimmed)}, ${fallback}`;
 }
+
+/** CSS custom property value for print fonts; omit when unset so CSS fallbacks apply. */
+export function printFontCssVarValue(
+  font: string | null | undefined,
+  kind: 'sans' | 'mono' = 'sans',
+): string | undefined {
+  const trimmed = String(font ?? '').trim();
+  if (!trimmed || trimmed === 'inherit') return undefined;
+  return withFontFallback(trimmed, kind);
+}

@@ -1,7 +1,5 @@
 mod stronghold_kdf;
-
-#[cfg(target_os = "macos")]
-mod macos_traffic_lights;
+mod system_fonts;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -30,12 +28,8 @@ fn validate_gemini_path(path: &str) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn reposition_macos_traffic_lights(window: tauri::WebviewWindow) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        macos_traffic_lights::reposition(&window);
-    }
-    Ok(())
+fn exit_app(app: AppHandle) {
+    app.exit(0);
 }
 
 #[tauri::command]
@@ -272,7 +266,8 @@ pub fn run() {
             take_pending_open_paths,
             read_open_uri,
             gemini_api_fetch,
-            reposition_macos_traffic_lights
+            exit_app,
+            system_fonts::list_system_font_families
         ])
         .setup(|app| {
             // Windows: remove OS titlebar; custom controls live in the webview.
@@ -280,11 +275,6 @@ pub fn run() {
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_decorations(false);
-            }
-
-            #[cfg(target_os = "macos")]
-            if let Some(window) = app.get_webview_window("main") {
-                macos_traffic_lights::install(&window);
             }
 
             let data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;

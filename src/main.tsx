@@ -14,20 +14,20 @@ import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
 import { initDesktopViewport } from '@/utils/initDesktopViewport'
 import { initDesktopWindowCloseGuard } from '@/utils/desktopWindowCloseGuard'
-import { initMacosTrafficLights } from '@/utils/initMacosTrafficLights'
 import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
 import { initMdEditorToolbarScroll } from '@/utils/initMdEditorToolbarScroll'
 import { isDesktopApp } from '@/utils/isDesktopApp'
 import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
+import { initUiFontSettings } from '@/utils/uiFontSettings'
 
 initEditorAutocompleteDomFlag()
 initTouchLongPressHaptics()
 initDesktopViewport()
 initDesktopWindowCloseGuard()
-initMacosTrafficLights()
 initDesktopExternalLinks()
 initMdEditorCodeCopy()
 initMdEditorToolbarScroll()
+initUiFontSettings()
 void startDesktopOpenFilesBridge()
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'

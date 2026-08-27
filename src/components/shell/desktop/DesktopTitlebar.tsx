@@ -1,9 +1,8 @@
 import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
-import { useEffect } from 'react';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
+import { useMacosTitlebarChrome } from '@/hooks/useMacosTitlebarChrome';
 import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
 import DesktopWindowControls from '@/components/desktop/DesktopWindowControls';
-import { initMacosTrafficLights } from '@/utils/initMacosTrafficLights';
 
 type DesktopTitlebarProps = {
   tabs: WorkspaceTab[];
@@ -39,30 +38,21 @@ export default function DesktopTitlebar({
   appName = 'DocuHaim',
 }: DesktopTitlebarProps) {
   const isMac = isTauriMacOS();
+  useMacosTitlebarChrome();
   const showTabs = tabsEnabled && tabs.length > 0;
   const headerHeightClass = showTabs
     ? 'h-(--workspace-titlebar-tab-h)'
     : 'h-(--desktop-titlebar-h,2rem)';
 
-  useEffect(() => {
-    if (!isMac) return undefined;
-    initMacosTrafficLights();
-    return undefined;
-  }, [isMac]);
-
-  // macOS Overlay: leave the traffic-light inset click-through; interactive chrome
-  // to the right keeps pointer-events.
-  const macChromeClass = isMac ? 'desktop-titlebar--mac pointer-events-none' : '';
-  const macHitClass = isMac ? 'desktop-titlebar__hit pointer-events-auto' : '';
+  // macOS Overlay: offset chrome right of native traffic lights (wry inset_traffic_lights).
+  const macChromeClass = isMac ? 'desktop-titlebar--mac' : 'w-full';
 
   return (
     <header
       className={`desktop-titlebar z-60 flex ${headerHeightClass} shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
     >
       {showTabs ? (
-        <div
-          className={`desktop-titlebar__tab-container flex h-full min-w-0 flex-1 items-stretch overflow-hidden ${macHitClass}`}
-        >
+        <div className="desktop-titlebar__tab-container flex h-full min-w-0 flex-1 items-stretch overflow-hidden">
           <WorkspaceTabBar
             className="min-w-0 flex-1"
             tabs={tabs}
@@ -80,7 +70,7 @@ export default function DesktopTitlebar({
       ) : (
         <div
           data-tauri-drag-region
-          className={`flex min-w-0 flex-1 items-center px-3 text-xs font-medium text-gray-500 dark:text-odp-muted ${macHitClass}`}
+          className="flex min-w-0 flex-1 items-center px-3 text-xs font-medium text-gray-500 dark:text-odp-muted"
         >
           <span data-tauri-drag-region className="truncate">
             {appName}
