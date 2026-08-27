@@ -6,6 +6,7 @@ import {
 } from '@/utils/llm/mlxVlmImagePayload';
 import { appendMlxVlmServerLog, resetMlxVlmServerLog } from '@/utils/llm/mlxVlmServerLog';
 import { loadMlxVlmSettings, type MlxVlmSettings } from '@/utils/llm/mlxVlmSettingsStore';
+import { mergeLlmStreamChunk } from '@/utils/llm/llmStreamChunk';
 import { resolveMlxVlmWorkerScriptPath } from '@/utils/llm/mlxVlmWorkerScriptPath';
 
 type WorkerChild = {
@@ -20,17 +21,9 @@ type PendingRequest = {
   streamText?: string;
 };
 
-/**
- * Merge an MLX-VLM worker chunk into accumulated stream text.
- * Worker payloads are accumulated; older workers may send per-token deltas.
- */
+/** @deprecated Use mergeLlmStreamChunk — kept for existing imports/tests. */
 export function mergeMlxVlmStreamChunk(previous: string, segment: string): string {
-  if (!segment) return previous;
-  if (!previous) return segment;
-  if (segment.length >= previous.length && segment.startsWith(previous)) {
-    return segment;
-  }
-  return previous + segment;
+  return mergeLlmStreamChunk(previous, segment);
 }
 
 export type MlxVlmRuntimeStatus = {
@@ -122,7 +115,7 @@ function handleWorkerMessage(raw: WorkerMessage): void {
   if (type === 'chunk') {
     const segment = String(raw.text || '');
     if (!segment) return;
-    const accumulated = mergeMlxVlmStreamChunk(pending.streamText ?? '', segment);
+    const accumulated = mergeLlmStreamChunk(pending.streamText ?? '', segment);
     pending.streamText = accumulated;
     pending.onChunk?.(accumulated);
     return;
@@ -327,10 +320,8 @@ export type MlxVlmGenerateParams = {
   prompt: string;
   systemPrompt?: string;
   images?: MlxVlmImageInput[];
-  maxTokens?: number;
-  temperature?: number;
-  topP?: number;
-  minP?: number;
+  /** OpenAI-compatible generation kwargs mapped for mlx_vlm.stream_generate. */
+  generateOptions?: Record<string, unknown>;
   resetCache?: boolean;
   onChunk?: (accumulated: string) => void;
   signal?: AbortSignal;
@@ -358,10 +349,9 @@ export async function generateMlxVlmCompletion(
         prompt: params.prompt,
         ...(params.systemPrompt?.trim() ? { system_prompt: params.systemPrompt.trim() } : {}),
         ...(workerImages.length ? { images: workerImages } : {}),
-        max_tokens: params.maxTokens ?? 512,
-        temperature: params.temperature ?? 0.4,
-        top_p: params.topP ?? 1.0,
-        min_p: params.minP ?? 0.0,
+        ...(params.generateOptions && Object.keys(params.generateOptions).length
+          ? { generate_options: params.generateOptions }
+          : {}),
         reset_cache: params.resetCache !== false,
       },
       {

@@ -12,6 +12,7 @@ import {
   throwIfLlmAssistAborted,
 } from '@/utils/llm/llmAssistAbort';
 import { toGeminiGenerationConfig } from '@/utils/llm/llmAssistRequestOptions';
+import { mergeLlmStreamChunk } from '@/utils/llm/llmStreamChunk';
 import {
   ensureGeminiFetchShim,
   resolveGeminiHttpBaseUrl,
@@ -165,7 +166,7 @@ async function generateGeminiContentStream(
     throwIfLlmAssistAborted(signal);
     const delta = chunk.text;
     if (typeof delta !== 'string' || !delta) continue;
-    accumulated += delta;
+    accumulated = mergeLlmStreamChunk(accumulated, delta);
     onChunk?.(accumulated);
   }
 

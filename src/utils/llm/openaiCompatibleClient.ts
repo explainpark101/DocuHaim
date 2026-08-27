@@ -10,6 +10,7 @@ import {
   formatOpenAiCompatibleNetworkError,
   parseRetrySecondsFromOpenAiError,
 } from '@/utils/openaiCompatibleError';
+import { mergeLlmStreamChunk } from '@/utils/llm/llmStreamChunk';
 import {
   loadLastUsedOpenAiCompatibleModel,
   normalizeOpenAiCompatibleBaseUrl,
@@ -238,7 +239,7 @@ async function readOpenAiSseStream(
     }
     const delta = extractStreamDeltaText(parsed);
     if (!delta) return;
-    accumulated += delta;
+    accumulated = mergeLlmStreamChunk(accumulated, delta);
     onChunk?.(accumulated);
   };
 

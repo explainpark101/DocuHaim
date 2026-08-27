@@ -6,6 +6,7 @@ import {
   parseRequestOptionsJsonText,
   requestOptionsFromEntries,
   toGeminiGenerationConfig,
+  toMlxVlmGenerateKwargs,
   toOpenAiCompatibleRequestExtras,
 } from '@/utils/llm/llmAssistRequestOptions';
 
@@ -53,6 +54,27 @@ describe('llmAssistRequestOptions', () => {
         stream: false,
       }),
     ).toEqual({ temperature: 0.3, foo_bar: 1 });
+  });
+
+  it('maps MLX generate kwargs from OpenAI-style options', () => {
+    expect(
+      toMlxVlmGenerateKwargs({
+        max_completion_tokens: 256,
+        top_k: 40,
+        repetition_penalty: 1.1,
+        thinking_token_budget: 512,
+        stream: true,
+        messages: [],
+      }),
+    ).toEqual({
+      max_tokens: 256,
+      temperature: 0.4,
+      top_p: 1.0,
+      min_p: 0.0,
+      top_k: 40,
+      repetition_penalty: 1.1,
+      thinking_budget: 512,
+    });
   });
 
   it('parses JSON text objects', () => {

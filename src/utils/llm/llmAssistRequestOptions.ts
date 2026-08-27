@@ -202,6 +202,62 @@ export function toOpenAiCompatibleRequestExtras(
   return out;
 }
 
+/** Map OpenAI-compatible assist options into mlx_vlm stream_generate kwargs. */
+const MLX_VLM_GENERATE_OPTION_ALIASES: Record<string, string> = {
+  max_completion_tokens: 'max_tokens',
+  thinking_token_budget: 'thinking_budget',
+  include_reasoning: 'enable_thinking',
+};
+
+const MLX_VLM_GENERATE_KWARG_KEYS = new Set([
+  'max_tokens',
+  'temperature',
+  'top_p',
+  'min_p',
+  'top_k',
+  'typical_p',
+  'repetition_penalty',
+  'repetition_context_size',
+  'logit_bias',
+  'max_kv_size',
+  'kv_bits',
+  'kv_group_size',
+  'kv_quant_scheme',
+  'quantized_kv_start',
+  'prefill_step_size',
+  'skip_special_tokens',
+  'thinking_budget',
+  'thinking_end_token',
+  'thinking_start_token',
+  'enable_thinking',
+  'verbose',
+  'seed',
+]);
+
+const MLX_VLM_GENERATE_DEFAULTS: Record<string, unknown> = {
+  max_tokens: 512,
+  temperature: 0.4,
+  top_p: 1.0,
+  min_p: 0.0,
+};
+
+export function toMlxVlmGenerateKwargs(
+  options: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const extras = toOpenAiCompatibleRequestExtras(options);
+  const out: Record<string, unknown> = { ...MLX_VLM_GENERATE_DEFAULTS };
+
+  for (const [key, value] of Object.entries(extras)) {
+    if (value === undefined) continue;
+    const mapped = MLX_VLM_GENERATE_OPTION_ALIASES[key] ?? key;
+    if (MLX_VLM_GENERATE_KWARG_KEYS.has(mapped)) {
+      out[mapped] = value;
+    }
+  }
+
+  return out;
+}
+
 const GEMINI_OPTION_KEY_MAP: Record<string, string> = {
   temperature: 'temperature',
   top_p: 'topP',
