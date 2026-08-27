@@ -14,6 +14,11 @@ import {
   stopMlxVlmServer,
 } from '@/utils/mlxVlmShell';
 import { requestMlxVlmProviderSync } from '@/utils/llm/mlxVlmProviderAutoSync';
+import {
+  buildMlxVlmLoadFailureAlertMessage,
+  requestMlxVlmRedownloadFocus,
+  resolveMlxVlmLoadFailure,
+} from '@/utils/llm/mlxVlmLoadErrorHelp';
 import { registerMlxVlmActions } from '@/utils/advancedSearch/mlxVlmActions';
 
 type PendingDownload = {
@@ -30,10 +35,16 @@ export default function MlxVlmActionHost() {
   const handleStart = useCallback(async () => {
     setBusy(true);
     try {
-      await startMlxVlmServer(loadMlxVlmSettings());
+      const settings = loadMlxVlmSettings();
+      await startMlxVlmServer(settings);
       requestMlxVlmProviderSync();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to start MLX-VLM server.');
+      const settings = loadMlxVlmSettings();
+      const failure = resolveMlxVlmLoadFailure(err, settings.selectedModelId);
+      if (failure.suggestRedownload) {
+        requestMlxVlmRedownloadFocus(settings.selectedModelId);
+      }
+      alert(buildMlxVlmLoadFailureAlertMessage(err, settings.selectedModelId));
     } finally {
       setBusy(false);
     }

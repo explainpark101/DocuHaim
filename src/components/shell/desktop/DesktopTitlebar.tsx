@@ -1,7 +1,9 @@
 import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
+import { useEffect } from 'react';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
 import DesktopWindowControls from '@/components/desktop/DesktopWindowControls';
+import { initMacosTrafficLights } from '@/utils/initMacosTrafficLights';
 
 type DesktopTitlebarProps = {
   tabs: WorkspaceTab[];
@@ -38,20 +40,31 @@ export default function DesktopTitlebar({
 }: DesktopTitlebarProps) {
   const isMac = isTauriMacOS();
   const showTabs = tabsEnabled && tabs.length > 0;
+  const headerHeightClass = showTabs
+    ? 'h-(--workspace-titlebar-tab-h)'
+    : 'h-(--desktop-titlebar-h,2rem)';
 
-  // macOS Overlay: keep the left traffic-light inset free of webview chrome so
-  // native close/minimize/zoom buttons stay clickable.
-  const macChromeClass = isMac
-    ? 'desktop-titlebar--mac ml-20 w-[calc(100%-5rem)]'
-    : 'w-full';
+  useEffect(() => {
+    if (!isMac) return undefined;
+    initMacosTrafficLights();
+    return undefined;
+  }, [isMac]);
+
+  // macOS Overlay: leave the traffic-light inset click-through; interactive chrome
+  // to the right keeps pointer-events.
+  const macChromeClass = isMac ? 'desktop-titlebar--mac pointer-events-none' : '';
+  const macHitClass = isMac ? 'desktop-titlebar__hit pointer-events-auto' : '';
 
   return (
     <header
-      className={`desktop-titlebar z-60 flex h-(--desktop-titlebar-h,2rem) shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
+      className={`desktop-titlebar z-60 flex ${headerHeightClass} shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
     >
       {showTabs ? (
-        <div className="flex min-w-0 flex-1 items-stretch overflow-hidden">
+        <div
+          className={`desktop-titlebar__tab-container flex h-full min-w-0 flex-1 items-stretch overflow-hidden ${macHitClass}`}
+        >
           <WorkspaceTabBar
+            className="min-w-0 flex-1"
             tabs={tabs}
             activeId={activeId}
             savingTabIds={savingTabIds ?? []}
@@ -62,13 +75,12 @@ export default function DesktopTitlebar({
             isMobileLayout={isMobileLayout}
             variant="titlebar"
           />
-          {/* Empty gutter: window drag (tabs themselves are interactive). */}
           <div data-tauri-drag-region className="min-w-8 flex-1" />
         </div>
       ) : (
         <div
           data-tauri-drag-region
-          className="flex min-w-0 flex-1 items-center px-3 text-xs font-medium text-gray-500 dark:text-odp-muted"
+          className={`flex min-w-0 flex-1 items-center px-3 text-xs font-medium text-gray-500 dark:text-odp-muted ${macHitClass}`}
         >
           <span data-tauri-drag-region className="truncate">
             {appName}

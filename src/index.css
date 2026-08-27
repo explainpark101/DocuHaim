@@ -17,6 +17,8 @@
   html {
     color-scheme: dark;
     --desktop-titlebar-h: 2rem;
+    --workspace-titlebar-tab-h: 2.25rem;
+    --traffic-light-box: 0px;
   }
 
   /* Tauri / desktop shell: cap the page at the dynamic viewport; scroll inside panes only. */
@@ -39,6 +41,16 @@
     max-height: 100%;
     min-height: 0;
     overflow: hidden;
+  }
+
+  /* macOS traffic-light inset — shared by titlebar padding and tab strip min-width. */
+  html.desktop-app .desktop-titlebar--mac {
+    --traffic-light-box: 5rem;
+    padding-left: var(--traffic-light-box);
+  }
+
+  html.desktop-app .desktop-titlebar--mac .workspace-tab-bar__tablist {
+    min-width: calc(100vw - var(--traffic-light-box));
   }
 
   body {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -275,6 +275,17 @@ export default function LlmAssistPanel({
   const copyResultPress = useReliableButtonAction(onCopyResult, resultActionsDisabled);
   const appendResultPress = useReliableButtonAction(onAppendResult, resultActionsDisabled);
   const createNotePress = useReliableButtonAction(onCreateNoteFromResult, resultActionsDisabled);
+
+  const handleInstructionKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      event.preventDefault();
+      if (loading || !selectedProfile) return;
+      onRun?.();
+    },
+    [loading, onRun, selectedProfile],
+  );
 
   const restoreDefaultSystemPromptButton = (
     <button
@@ -559,6 +570,7 @@ export default function LlmAssistPanel({
           <textarea
             value={instruction}
             onChange={(e) => onInstructionChange?.(e.target.value)}
+            onKeyDown={handleInstructionKeyDown}
             rows={4}
             placeholder="지시사항 (예: 이미지를 설명하거나, 선택한 텍스트를 다시 써 주세요)"
             className="w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 text-[11px] leading-relaxed dark:border-odp-borderStrong dark:bg-odp-bgSoft"

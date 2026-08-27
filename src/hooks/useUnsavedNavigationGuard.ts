@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { useBlocker, type BlockerFunction, type Location } from 'react-router';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import {
+  closeDesktopWindowNow,
+  initDesktopWindowCloseGuard,
+  registerDesktopCloseGuard,
+  setDesktopQuitAllowed,
+} from '@/utils/desktopWindowCloseGuard';
 
 type UseUnsavedNavigationGuardOptions = {
   isDirty: () => boolean;
@@ -23,8 +29,7 @@ type UseUnsavedNavigationGuardOptions = {
  * Block in-app navigations (including mouse back/forward) when `isDirty()`,
  * and guard window close:
  * - Web: browser `beforeunload` prompt on tab close / reload.
- * - Tauri desktop: `onCloseRequested` + in-app ConfirmModal (beforeunload blocks
- *   silently in the webview and never shows a native dialog).
+ * - Tauri desktop: global `onCloseRequested` + in-app ConfirmModal.
  *
  * Call `proceed` / `reset` from your confirm UI when `isBlocked` is true.
  */
@@ -52,12 +57,26 @@ export function useUnsavedNavigationGuard({
 
   const blocker = useBlocker(shouldBlock);
   const [isQuitConfirmOpen, setQuitConfirmOpen] = useState(false);
-  const allowQuitRef = useRef(false);
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
 
   useEffect(() => {
-    // Tauri webviews block close silently when beforeunload calls preventDefault.
+    initDesktopWindowCloseGuard();
+  }, []);
+
+  useEffect(() => {
+    if (!isTauriDesktopPlatform()) return undefined;
+
+    registerDesktopCloseGuard({
+      isDirty: () => isDirtyRef.current(),
+      ...(suppressQuitCheckRef ? { suppressQuitCheckRef } : {}),
+      onRequestQuitConfirm: () => setQuitConfirmOpen(true),
+    });
+
+    return () => registerDesktopCloseGuard(null);
+  }, [suppressQuitCheckRef]);
+
+  useEffect(() => {
     if (isTauriDesktopPlatform()) return undefined;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -69,45 +88,12 @@ export function useUnsavedNavigationGuard({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isDirty]);
 
-  useEffect(() => {
-    if (!isTauriDesktopPlatform()) return undefined;
-
-    let unlistenClose: (() => void) | undefined;
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        if (cancelled) return;
-        unlistenClose = await getCurrentWindow().onCloseRequested((event) => {
-          if (allowQuitRef.current) return;
-          if (suppressQuitCheckRef?.current) return;
-          if (!isDirtyRef.current()) return;
-          event.preventDefault();
-          setQuitConfirmOpen(true);
-        });
-      } catch (err) {
-        console.warn('[navGuard] Tauri close guard failed:', err);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      unlistenClose?.();
-    };
-  }, [suppressQuitCheckRef]);
-
-  const closeDesktopWindow = useCallback(async () => {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    await getCurrentWindow().close();
-  }, []);
-
   const confirmQuitDiscard = useCallback(() => {
     setQuitConfirmOpen(false);
-    allowQuitRef.current = true;
+    setDesktopQuitAllowed(true);
     if (suppressQuitCheckRef) suppressQuitCheckRef.current = true;
-    void closeDesktopWindow();
-  }, [closeDesktopWindow, suppressQuitCheckRef]);
+    void closeDesktopWindowNow();
+  }, [suppressQuitCheckRef]);
 
   const confirmQuitSave = useCallback(async () => {
     try {
@@ -116,10 +102,10 @@ export function useUnsavedNavigationGuard({
       return;
     }
     setQuitConfirmOpen(false);
-    allowQuitRef.current = true;
+    setDesktopQuitAllowed(true);
     if (suppressQuitCheckRef) suppressQuitCheckRef.current = true;
-    await closeDesktopWindow();
-  }, [closeDesktopWindow, onSaveBeforeQuit, suppressQuitCheckRef]);
+    await closeDesktopWindowNow();
+  }, [onSaveBeforeQuit, suppressQuitCheckRef]);
 
   const cancelQuitConfirm = useCallback(() => {
     setQuitConfirmOpen(false);
@@ -128,7 +114,6 @@ export function useUnsavedNavigationGuard({
   const proceed = useCallback(() => {
     if (blocker.state !== 'blocked') return;
     const proceedFn = blocker.proceed;
-    // POP proceed can race history.go; defer one tick (RR / browsers).
     window.setTimeout(() => {
       proceedFn();
     }, 0);
