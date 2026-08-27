@@ -26,7 +26,25 @@
           "cmd": "/bin/sh",
           "args": [
             "-lc",
-            "exec \"$0\" tool install mlx-vlm",
+            "exec \"$0\" tool install mlx-vlm --with jinja2",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "mlx-vlm-check-jinja2",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from mlx-vlm python -c \"import jinja2\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
+          ]
+        },
+        {
+          "name": "uv-tool-reinstall-mlx-vlm-jinja2",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool install --force mlx-vlm --with jinja2",
             { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" }
           ]
         },

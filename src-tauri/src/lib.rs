@@ -1,4 +1,5 @@
 mod stronghold_kdf;
+mod system_fonts;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -24,6 +25,11 @@ fn validate_gemini_path(path: &str) -> Result<(), String> {
         return Err("Invalid Gemini API path".into());
     }
     Ok(())
+}
+
+#[tauri::command]
+fn exit_app(app: AppHandle) {
+    app.exit(0);
 }
 
 #[tauri::command]
@@ -259,7 +265,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             take_pending_open_paths,
             read_open_uri,
-            gemini_api_fetch
+            gemini_api_fetch,
+            exit_app,
+            system_fonts::list_system_font_families
         ])
         .setup(|app| {
             // Windows: remove OS titlebar; custom controls live in the webview.

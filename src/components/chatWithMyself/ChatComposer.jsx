@@ -997,15 +997,8 @@ const ChatComposer = forwardRef(function ChatComposer(
         return;
       }
 
-      // Edit: Enter = newline, Shift+Enter = save (always, even single-line).
-      if (editTarget) {
-        if (e.shiftKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          doSend();
-        }
-        return;
-      }
+      // Edit: Enter / Shift+Enter = newline; only Cmd/Ctrl+Enter saves (handled above).
+      if (editTarget) return;
 
       // Compose: Enter sends; Shift+Enter inserts a newline.
       if (isMobile || e.shiftKey) return;
@@ -1538,7 +1531,7 @@ const ChatComposer = forwardRef(function ChatComposer(
           <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
             <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
               {editTarget
-                ? `Shift+Enter / ${sendModLabel} 수정 완료 · Enter 줄바꿈 · Ctrl+M 마크다운`
+                ? `${sendModLabel} 수정 완료 · Enter / Shift+Enter 줄바꿈 · Ctrl+M 마크다운`
                 : `${sendModLabel} / Enter 전송 · Ctrl+Shift+Enter 암호화 · Shift+Enter 줄바꿈 · Ctrl+M 마크다운 · 첨부는 전송 시 업로드`}
             </p>
             <button

@@ -1,29 +1,43 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { useBlocker, type BlockerFunction, type Location } from 'react-router';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import {
+  closeDesktopWindowNow,
+  initDesktopWindowCloseGuard,
+  registerDesktopCloseGuard,
+  setDesktopQuitAllowed,
+} from '@/utils/desktopWindowCloseGuard';
 
 type UseUnsavedNavigationGuardOptions = {
   isDirty: () => boolean;
   /**
    * When true, allow this in-app navigation even if dirty (e.g. workspace tab
-   * switches that auto-save in the background). beforeunload is unaffected.
+   * switches that auto-save in the background). Quit / beforeunload guards are
+   * unaffected.
    */
   shouldAllowNavigation?: (args: {
     currentLocation: Location;
     nextLocation: Location;
   }) => boolean;
+  /** Bypass dirty checks while forcing a confirmed desktop window close. */
+  suppressQuitCheckRef?: MutableRefObject<boolean>;
+  /** Persist the active editor before a confirmed desktop quit. */
+  onSaveBeforeQuit?: () => void | Promise<void>;
 };
 
 /**
  * Block in-app navigations (including mouse back/forward) when `isDirty()`,
- * and show the browser `beforeunload` prompt on tab close / reload.
+ * and guard window close:
+ * - Web: browser `beforeunload` prompt on tab close / reload.
+ * - Tauri desktop: global `onCloseRequested` + in-app ConfirmModal.
  *
  * Call `proceed` / `reset` from your confirm UI when `isBlocked` is true.
- * Prefer those callbacks over caching `blocker.proceed` in a ref — React Router
- * replaces `proceed`/`reset` each time the blocker object updates.
  */
 export function useUnsavedNavigationGuard({
   isDirty,
   shouldAllowNavigation,
+  suppressQuitCheckRef,
+  onSaveBeforeQuit,
 }: UseUnsavedNavigationGuardOptions) {
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) => {
@@ -42,8 +56,29 @@ export function useUnsavedNavigationGuard({
   );
 
   const blocker = useBlocker(shouldBlock);
+  const [isQuitConfirmOpen, setQuitConfirmOpen] = useState(false);
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
 
   useEffect(() => {
+    initDesktopWindowCloseGuard();
+  }, []);
+
+  useEffect(() => {
+    if (!isTauriDesktopPlatform()) return undefined;
+
+    registerDesktopCloseGuard({
+      isDirty: () => isDirtyRef.current(),
+      ...(suppressQuitCheckRef ? { suppressQuitCheckRef } : {}),
+      onRequestQuitConfirm: () => setQuitConfirmOpen(true),
+    });
+
+    return () => registerDesktopCloseGuard(null);
+  }, [suppressQuitCheckRef]);
+
+  useEffect(() => {
+    if (isTauriDesktopPlatform()) return undefined;
+
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!isDirty()) return;
       event.preventDefault();
@@ -53,10 +88,32 @@ export function useUnsavedNavigationGuard({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isDirty]);
 
+  const confirmQuitDiscard = useCallback(() => {
+    setQuitConfirmOpen(false);
+    setDesktopQuitAllowed(true);
+    if (suppressQuitCheckRef) suppressQuitCheckRef.current = true;
+    void closeDesktopWindowNow();
+  }, [suppressQuitCheckRef]);
+
+  const confirmQuitSave = useCallback(async () => {
+    try {
+      await onSaveBeforeQuit?.();
+    } catch {
+      return;
+    }
+    setQuitConfirmOpen(false);
+    setDesktopQuitAllowed(true);
+    if (suppressQuitCheckRef) suppressQuitCheckRef.current = true;
+    await closeDesktopWindowNow();
+  }, [onSaveBeforeQuit, suppressQuitCheckRef]);
+
+  const cancelQuitConfirm = useCallback(() => {
+    setQuitConfirmOpen(false);
+  }, []);
+
   const proceed = useCallback(() => {
     if (blocker.state !== 'blocked') return;
     const proceedFn = blocker.proceed;
-    // POP proceed can race history.go; defer one tick (RR / browsers).
     window.setTimeout(() => {
       proceedFn();
     }, 0);
@@ -71,5 +128,9 @@ export function useUnsavedNavigationGuard({
     isBlocked: blocker.state === 'blocked',
     proceed,
     reset,
+    isQuitConfirmOpen,
+    confirmQuitDiscard,
+    confirmQuitSave,
+    cancelQuitConfirm,
   };
 }

@@ -96,8 +96,11 @@ function InstallHelpBody({
         <li>
           도구 설치 (로컬에 없을 때)
           <pre className="mt-1 overflow-x-auto rounded bg-gray-100 px-2 py-1 font-mono text-[10px] dark:bg-odp-bgSoft">
-            uv tool install mlx-vlm{'\n'}uv tool install huggingface-hub
+            {`uv tool install mlx-vlm --with jinja2\nuv tool install huggingface-hub`}
           </pre>
+          <p className="mt-1 text-[10px] text-gray-500 dark:text-odp-muted">
+            채팅 템플릿용 <code className="rounded px-0.5">jinja2</code>도 함께 설치합니다.
+          </p>
           {uvAvailable && !mlxInstalled ? (
             <button
               type="button"

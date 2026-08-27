@@ -33,6 +33,11 @@ import {
   type MlxVlmSettings,
 } from '@/utils/mlxVlmSettingsStore';
 import {
+  buildMlxVlmRedownloadPasteInput,
+  MLX_VLM_REDOWNLOAD_FOCUS_EVENT,
+  type MlxVlmRedownloadFocusDetail,
+} from '@/utils/llm/mlxVlmLoadErrorHelp';
+import {
   abortMlxVlmDownload,
   deleteMlxVlmModel,
   downloadMlxVlmModel,
@@ -41,7 +46,7 @@ import {
   refreshInstalledMlxVlmModels,
   rememberMlxVlmDownloadTarget,
   measureInstalledMlxVlmModelsCacheBytes,
-} from '@/utils/mlxVlmShell';
+} from '@/utils/llm/mlxVlmShell';
 
 type PendingAbort = {
   repoId: string;
@@ -113,6 +118,21 @@ export default function MlxVlmModelBrowser({
       setScanBusy(false);
     }
   }, [onSettingsChange]);
+
+  useEffect(() => {
+    const onRedownloadFocus = (event: Event) => {
+      const modelId = (event as CustomEvent<MlxVlmRedownloadFocusDetail>).detail?.modelId?.trim();
+      setInstalledOpen(true);
+      setSearchOpen(false);
+      setPasteOpen(true);
+      setDownloadLogOpen(true);
+      if (!modelId) return;
+      setPasteInput(buildMlxVlmRedownloadPasteInput(modelId));
+      setPasteError('');
+    };
+    window.addEventListener(MLX_VLM_REDOWNLOAD_FOCUS_EVENT, onRedownloadFocus);
+    return () => window.removeEventListener(MLX_VLM_REDOWNLOAD_FOCUS_EVENT, onRedownloadFocus);
+  }, []);
 
   useEffect(() => {
     void getMlxAvailableMemoryBudgetBytes().then((bytes) => {

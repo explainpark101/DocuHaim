@@ -370,6 +370,20 @@ export function AppModals() {
       onDiscard={handleNavGuardConfirmDiscard}
     />
 
+    <ConfirmModal
+      isOpen={navGuard.isQuitConfirmOpen}
+      title="앱을 종료하시겠습니까?"
+      message="저장하지 않은 변경사항이 있습니다. 종료하면 변경사항이 사라질 수 있습니다."
+      confirmLabel="저장 후 종료"
+      cancelLabel="취소"
+      discardLabel="저장 안 하고 종료"
+      onConfirm={() => {
+        void navGuard.confirmQuitSave();
+      }}
+      onCancel={navGuard.cancelQuitConfirm}
+      onDiscard={navGuard.confirmQuitDiscard}
+    />
+
     <ExportPasswordModal
       isOpen={showExportPasswordModal}
       onConfirm={handleExportConfirm}

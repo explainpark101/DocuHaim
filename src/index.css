@@ -10,6 +10,10 @@
   --font-sans: Paperozi, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans", Arial, sans-serif, D2Coding, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: A2z, Paperozi, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: "JetBrains Mono", "Noto Sans KR", D2Coding, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* Immutable snapshots — export PDF paper must not inherit app UI font overrides on :root */
+  --font-sans-builtin: Paperozi, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans", Arial, sans-serif, D2Coding, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display-builtin: A2z, Paperozi, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono-builtin: "JetBrains Mono", "Noto Sans KR", D2Coding, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --color-ink: #111827;
 }
 
@@ -17,6 +21,16 @@
   html {
     color-scheme: dark;
     --desktop-titlebar-h: 2rem;
+    --workspace-titlebar-tab-h: 2.25rem;
+    --traffic-light-box: 0px;
+  }
+
+  html.desktop-app {
+    --traffic-light-box: 5rem;
+  }
+
+  html.desktop-app.macos-titlebar-fullscreen {
+    --traffic-light-box: 0px;
   }
 
   /* Tauri / desktop shell: cap the page at the dynamic viewport; scroll inside panes only. */
@@ -39,6 +53,16 @@
     max-height: 100%;
     min-height: 0;
     overflow: hidden;
+  }
+
+  /* macOS traffic-light inset — titlebar margin + tab strip min-width. */
+  html.desktop-app .desktop-titlebar--mac {
+    margin-left: var(--traffic-light-box);
+    width: calc(100% - var(--traffic-light-box));
+  }
+
+  html.desktop-app .desktop-titlebar--mac .workspace-tab-bar__tablist {
+    min-width: calc(100vw - var(--traffic-light-box));
   }
 
   body {
@@ -70,6 +94,17 @@
 .export-pdf-page {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+/* Export PDF print surfaces: ignore app UI font (--font-sans/--font-display on :root). */
+.export-pdf-paper,
+.export-pdf-paper-content,
+[data-export-pdf-pages],
+.export-pdf-preview-stage .export-pdf-page-slot-clone,
+.export-pdf-cover {
+  --font-sans: var(--font-sans-builtin);
+  --font-display: var(--font-display-builtin);
+  --font-mono: var(--font-mono-builtin);
 }
 
 /* PDF paper must stay light even when html has .dark (md-editor preview.css). */

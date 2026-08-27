@@ -71,6 +71,28 @@ export function buildFontFamilyOptions(extra: readonly string[] = []): string[] 
   return out;
 }
 
+/**
+ * App UI font picker: built-in + vault webfonts + optional extras (e.g. Tauri system fonts).
+ * Omits the static SYSTEM_FONT_FAMILY_OPTIONS list used by cover/print pickers.
+ */
+export function buildAppUiFontFamilyOptions(extra: readonly string[] = []): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const push = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(trimmed);
+  };
+
+  for (const name of APP_BUILTIN_FONT_FAMILY_OPTIONS) push(name);
+  for (const name of getCachedWebfontFamilyNames()) push(name);
+  for (const name of extra) push(name);
+  return out;
+}
+
 export const COVER_FONT_WEIGHT_OPTIONS: readonly {
   value: string;
   label: string;

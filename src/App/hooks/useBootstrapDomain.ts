@@ -558,9 +558,15 @@ export function useBootstrapDomain() {
     return isShell(currentLocation.pathname) && isShell(nextLocation.pathname);
   }, []);
 
+  const onSaveBeforeQuit = useCallback(async () => {
+    await saveFile(null, { skipSuffixCheck: true });
+  }, [saveFile]);
+
   const navGuard = useUnsavedNavigationGuard({
     isDirty: hasUnsavedEditorChanges,
     shouldAllowNavigation: allowWorkspaceTabNavigation,
+    suppressQuitCheckRef: suppressUnsavedNavGuardRef,
+    onSaveBeforeQuit,
   });
 
   const revokeOpenFileObjectUrl = (file: any) => {

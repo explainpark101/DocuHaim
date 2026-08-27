@@ -1,5 +1,6 @@
 import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
+import { useMacosTitlebarChrome } from '@/hooks/useMacosTitlebarChrome';
 import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
 import DesktopWindowControls from '@/components/desktop/DesktopWindowControls';
 
@@ -37,17 +38,23 @@ export default function DesktopTitlebar({
   appName = 'DocuHaim',
 }: DesktopTitlebarProps) {
   const isMac = isTauriMacOS();
+  useMacosTitlebarChrome();
   const showTabs = tabsEnabled && tabs.length > 0;
+  const headerHeightClass = showTabs
+    ? 'h-(--workspace-titlebar-tab-h)'
+    : 'h-(--desktop-titlebar-h,2rem)';
+
+  // macOS Overlay: offset chrome right of native traffic lights (wry inset_traffic_lights).
+  const macChromeClass = isMac ? 'desktop-titlebar--mac' : 'w-full';
 
   return (
     <header
-      className={`desktop-titlebar z-60 flex h-(--desktop-titlebar-h,2rem) shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${
-        isMac ? 'pl-20' : ''
-      }`}
+      className={`desktop-titlebar z-60 flex ${headerHeightClass} shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
     >
       {showTabs ? (
-        <div className="flex min-w-0 flex-1 items-stretch overflow-hidden">
+        <div className="desktop-titlebar__tab-container flex h-full min-w-0 flex-1 items-stretch overflow-hidden">
           <WorkspaceTabBar
+            className="min-w-0 flex-1"
             tabs={tabs}
             activeId={activeId}
             savingTabIds={savingTabIds ?? []}
@@ -58,7 +65,6 @@ export default function DesktopTitlebar({
             isMobileLayout={isMobileLayout}
             variant="titlebar"
           />
-          {/* Empty gutter: window drag (tabs themselves are interactive). */}
           <div data-tauri-drag-region className="min-w-8 flex-1" />
         </div>
       ) : (

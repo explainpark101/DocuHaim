@@ -18,6 +18,11 @@ import {
   type MlxVlmToolkitStatus,
 } from '@/utils/mlxVlmShell';
 import { requestMlxVlmProviderSync } from '@/utils/llm/mlxVlmProviderAutoSync';
+import {
+  buildMlxVlmLoadFailureAlertMessage,
+  requestMlxVlmRedownloadFocus,
+  resolveMlxVlmLoadFailure,
+} from '@/utils/llm/mlxVlmLoadErrorHelp';
 import { SETTINGS_SECTION_OPEN_EVENT } from '@/utils/settingsPageCatalog';
 import MlxVlmCollapsibleSection from '@/components/settings/MlxVlmCollapsibleSection';
 import MlxVlmConnectionFields from '@/components/settings/MlxVlmConnectionFields';
@@ -66,7 +71,13 @@ export default function MlxVlmSettings() {
       await startMlxVlmServer(settings);
       requestMlxVlmProviderSync();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to load MLX-VLM model.');
+      const failure = resolveMlxVlmLoadFailure(err);
+      if (failure.suggestRedownload) {
+        requestMlxVlmRedownloadFocus(settings.selectedModelId);
+        setPanelOpen(true);
+        setModelsOpen(true);
+      }
+      alert(buildMlxVlmLoadFailureAlertMessage(err, settings.selectedModelId));
     } finally {
       await refreshStatus();
       setBusy(false);

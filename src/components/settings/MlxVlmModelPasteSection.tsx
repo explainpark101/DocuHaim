@@ -60,7 +60,7 @@ export default function MlxVlmModelPasteSection({
           size="sm"
           className={
             downloadBusy
-              ? 'min-w-[9.5rem] font-mono tabular-nums transition-none'
+              ? 'min-w-38 font-mono tabular-nums transition-none'
               : isDownloaded
                 ? 'text-emerald-700 transition-none dark:text-emerald-300'
                 : 'transition-none'

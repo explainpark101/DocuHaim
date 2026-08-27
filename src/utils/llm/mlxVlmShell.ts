@@ -22,7 +22,10 @@ import {
   appendMlxVlmDownloadLog,
   clearMlxVlmDownloadLog,
 } from '@/utils/llm/mlxVlmDownloadLog';
-import { notifyMlxVlmModelLoaded } from '@/utils/llm/mlxVlmLoadNotifications';
+import {
+  notifyMlxVlmModelLoaded,
+  notifyMlxVlmRuntimeChanged,
+} from '@/utils/llm/mlxVlmLoadNotifications';
 import {
   addInstalledModel,
   loadMlxVlmSettings,
@@ -120,7 +123,9 @@ const UV_TOOL_RUN = {
     'exec "$0" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download "$1"',
   ] as const,
   mlxConvert: ['-lc', 'exec "$0" tool run --from mlx-vlm mlx_vlm.convert --model "$1" -q'] as const,
-  installMlxVlm: ['-lc', 'exec "$0" tool install mlx-vlm'] as const,
+  installMlxVlm: ['-lc', 'exec "$0" tool install mlx-vlm --with jinja2'] as const,
+  reinstallMlxVlm: ['-lc', 'exec "$0" tool install --force mlx-vlm --with jinja2'] as const,
+  checkJinja2: ['-lc', 'exec "$0" tool run --from mlx-vlm python -c "import jinja2"'] as const,
   installHfHub: ['-lc', 'exec "$0" tool install huggingface-hub'] as const,
 };
 
@@ -195,6 +200,7 @@ export async function startMlxVlmServer(
       'mlx_vlm.generate is not runnable via uv tool run. Install mlx-vlm (uv tool install mlx-vlm).',
     );
   }
+  await ensureMlxVlmRuntimeDeps(uvPath);
   const before = await getMlxVlmRuntimeStatus();
   const result = await startMlxVlmRuntime(settings, uvPath);
   if (!before.loaded || before.model !== result.model) {
@@ -216,6 +222,7 @@ export async function loadMlxVlmModelById(
 
 export async function stopMlxVlmServer(): Promise<void> {
   await stopMlxVlmRuntime();
+  notifyMlxVlmRuntimeChanged(null);
 }
 
 export function rememberMlxVlmDownloadTarget(repoId: string): void {
@@ -487,9 +494,44 @@ export async function installMlxVlmTool(options?: {
     options?.onOutput,
   );
   clearMlxVlmToolkitCache();
+  mlxVlmRuntimeDepsEnsured = true;
   if (result.code !== 0) {
     throw new Error(result.stderr.trim() || 'Failed to install mlx-vlm with uv tool install.');
   }
+}
+
+let mlxVlmRuntimeDepsEnsured = false;
+
+/** mlx-vlm chat templates require jinja2; ensure it exists in the uv tool env. */
+export async function ensureMlxVlmRuntimeDeps(
+  uvPath: string,
+  options?: { onOutput?: (line: string) => void },
+): Promise<void> {
+  requireMacSupport();
+  if (mlxVlmRuntimeDepsEnsured) return;
+
+  const check = await runShellExecute(
+    'mlx-vlm-check-jinja2',
+    [...UV_TOOL_RUN.checkJinja2, uvPath],
+    options?.onOutput,
+  );
+  if (check.code === 0) {
+    mlxVlmRuntimeDepsEnsured = true;
+    return;
+  }
+
+  const install = await runShellExecute(
+    'uv-tool-reinstall-mlx-vlm-jinja2',
+    [...UV_TOOL_RUN.reinstallMlxVlm, uvPath],
+    options?.onOutput,
+  );
+  clearMlxVlmToolkitCache();
+  if (install.code !== 0) {
+    throw new Error(
+      'MLX-VLM needs jinja2 for chat templates. Run: uv tool install --force mlx-vlm --with jinja2',
+    );
+  }
+  mlxVlmRuntimeDepsEnsured = true;
 }
 
 export async function installHuggingFaceHubTool(options?: {

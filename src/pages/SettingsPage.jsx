@@ -4,6 +4,7 @@ import { IconDownload, IconFolder, IconMenu, IconRefresh, IconSettings, IconSqua
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
+import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
@@ -84,6 +85,7 @@ import {
   findSettingsGroupIdForSection,
   resolveSettingsScrollTarget,
 } from '@/utils/settingsPageCatalog';
+import { scrollSettingsPageSection } from '@/utils/settingsPageScroll';
 
 export default function SettingsPage({
   s3Creds,
@@ -247,7 +249,7 @@ export default function SettingsPage({
     const timer = window.setTimeout(() => {
       const el = document.getElementById(scrollId);
       if (!el) return;
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scrollSettingsPageSection(scrollContainerRef.current, el);
       try {
         el.focus?.({ preventScroll: true });
       } catch {
@@ -357,7 +359,7 @@ export default function SettingsPage({
       window.setTimeout(() => {
         const el = document.getElementById(scrollId);
         if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollSettingsPageSection(scrollContainerRef.current, el);
         try {
           el.focus?.({ preventScroll: true });
         } catch {
@@ -372,7 +374,7 @@ export default function SettingsPage({
     !isMobileLayout && sidebarCollapsed ? 'md:pl-14' : '';
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-odp-bgSofter min-w-0 max-h-full">
+    <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-white dark:bg-odp-bgSofter">
       <div className={`px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-odp-surface flex justify-between items-center gap-3 bg-gray-50 dark:bg-odp-surface shrink-0 transition-[padding] duration-300 ease-in-out ${desktopCollapsedTopBarPaddingClass}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {isMobileLayout && !sidebarOpen && typeof onOpenSidebar === 'function' && (
@@ -1493,6 +1495,7 @@ export default function SettingsPage({
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">표시 옵션</h3>
+          <AppUiFontSettings />
           <label
             className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
           >

@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
+import MlxVlmLoadFailureHint from '@/components/llm/MlxVlmLoadFailureHint';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import {
   MLX_VLM_SETTINGS_CHANGED_EVENT,
   loadMlxVlmSettings,
 } from '@/utils/mlxVlmSettingsStore';
 import { requestMlxVlmProviderSync } from '@/utils/llm/mlxVlmProviderAutoSync';
+import {
+  MLX_VLM_RUNTIME_CHANGED_EVENT,
+  type MlxVlmRuntimeChangedDetail,
+} from '@/utils/llm/mlxVlmLoadNotifications';
+import { resolveMlxVlmLoadFailure } from '@/utils/llm/mlxVlmLoadErrorHelp';
 import {
   getMlxVlmServerStatus,
   loadMlxVlmModelById,
@@ -16,7 +22,9 @@ import {
 type MlxVlmModelSelectProps = {
   value: string;
   onChange?: (nextId: string) => void;
+  /** Refresh installed model list on mount. */
   autoLoad?: boolean;
+  /** When true, selecting a model starts loading immediately (default: manual load button). */
   autoLoadModelOnSelect?: boolean;
   className?: string;
 };
@@ -43,7 +51,7 @@ export default function MlxVlmModelSelect({
   value,
   onChange,
   autoLoad = true,
-  autoLoadModelOnSelect = true,
+  autoLoadModelOnSelect = false,
   className = '',
 }: MlxVlmModelSelectProps) {
   const [options, setOptions] = useState<ModelIdOption[]>([]);
@@ -82,9 +90,9 @@ export default function MlxVlmModelSelect({
     }
   }, [value]);
 
-  const loadModel = useCallback(
+  const runLoadModel = useCallback(
     async (modelId: string) => {
-      if (!autoLoadModelOnSelect || !isTauriMacOS()) return;
+      if (!isTauriMacOS()) return;
       const id = String(modelId || '').trim();
       if (!id) return;
 
@@ -107,14 +115,22 @@ export default function MlxVlmModelSelect({
         await refreshModels();
       } catch (err) {
         if (loadRequestRef.current !== requestId) return;
-        setLoadError(err instanceof Error ? err.message : 'MLX-VLM 모델 로드에 실패했습니다.');
+        setLoadError(resolveMlxVlmLoadFailure(err).message);
       } finally {
         if (loadRequestRef.current === requestId) {
           setModelLoading(false);
         }
       }
     },
-    [autoLoadModelOnSelect, refreshModels],
+    [refreshModels],
+  );
+
+  const loadModelIfAuto = useCallback(
+    (modelId: string) => {
+      if (!autoLoadModelOnSelect) return;
+      void runLoadModel(modelId);
+    },
+    [autoLoadModelOnSelect, runLoadModel],
   );
 
   useEffect(() => {
@@ -129,24 +145,50 @@ export default function MlxVlmModelSelect({
   }, [refreshModels]);
 
   useEffect(() => {
+    const onRuntimeChanged = (event: Event) => {
+      const modelId = (event as CustomEvent<MlxVlmRuntimeChangedDetail>).detail?.modelId;
+      if (modelId == null) {
+        setLoadedModelId('');
+        return;
+      }
+      const id = String(modelId).trim();
+      setLoadedModelId(id);
+      if (!value.trim() && id) {
+        onChange?.(id);
+      }
+    };
+    window.addEventListener(MLX_VLM_RUNTIME_CHANGED_EVENT, onRuntimeChanged);
+    return () => window.removeEventListener(MLX_VLM_RUNTIME_CHANGED_EVENT, onRuntimeChanged);
+  }, [onChange, value]);
+
+  useEffect(() => {
+    if (!loadedModelId || value.trim()) return;
+    onChange?.(loadedModelId);
+  }, [loadedModelId, onChange, value]);
+
+  useEffect(() => {
     if (!autoLoadModelOnSelect || listLoading || modelLoading) return;
     const id = value.trim();
     if (!id) return;
     if (!options.some((option) => option.id === id)) return;
-    void loadModel(id);
-  }, [autoLoadModelOnSelect, listLoading, modelLoading, loadModel, options, value]);
+    void loadModelIfAuto(id);
+  }, [autoLoadModelOnSelect, listLoading, modelLoading, loadModelIfAuto, options, value]);
 
   const handlePick = useCallback(
     (nextId: string) => {
       onChange?.(nextId);
-      void loadModel(nextId);
+      loadModelIfAuto(nextId);
     },
-    [loadModel, onChange],
+    [loadModelIfAuto, onChange],
   );
 
   const handleInputBlur = useCallback(() => {
-    void loadModel(value);
-  }, [loadModel, value]);
+    loadModelIfAuto(value);
+  }, [loadModelIfAuto, value]);
+
+  const handleLoadClick = useCallback(() => {
+    void runLoadModel(value);
+  }, [runLoadModel, value]);
 
   if (!isTauriMacOS()) {
     return (
@@ -157,6 +199,15 @@ export default function MlxVlmModelSelect({
   }
 
   const busy = listLoading || modelLoading;
+  const trimmedValue = value.trim();
+  const runtimeLoadedId = loadedModelId.trim();
+  const selectionMatchesRuntime = Boolean(
+    trimmedValue && runtimeLoadedId && trimmedValue === runtimeLoadedId,
+  );
+  const hasRuntimeMismatch = Boolean(
+    runtimeLoadedId && trimmedValue && runtimeLoadedId !== trimmedValue,
+  );
+  const showsLoadedStatus = Boolean(runtimeLoadedId && (selectionMatchesRuntime || hasRuntimeMismatch));
 
   return (
     <div className={className}>
@@ -174,30 +225,51 @@ export default function MlxVlmModelSelect({
         />
         <button
           type="button"
+          onClick={handleLoadClick}
+          disabled={busy || !trimmedValue || selectionMatchesRuntime}
+          aria-label="Load MLX model"
+          className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+        >
+          {modelLoading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          로드
+        </button>
+        <button
+          type="button"
           onClick={() => void refreshModels()}
           disabled={busy}
           aria-label="Refresh MLX models"
           className="inline-flex shrink-0 items-center justify-center rounded border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft"
         >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {listLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         </button>
       </div>
       {error ? <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">{error}</p> : null}
       {loadError ? (
-        <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{loadError}</p>
+        <MlxVlmLoadFailureHint
+          className="mt-1"
+          error={loadError}
+          modelId={trimmedValue}
+        />
       ) : null}
       {modelLoading ? (
         <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-gray-600 dark:text-odp-muted">
           <Loader2 size={12} className="animate-spin" aria-hidden />
           모델 로드 중…
         </p>
-      ) : loadedModelId ? (
-        <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-300">
-          로드됨 · {loadedModelId}
-        </p>
+      ) : showsLoadedStatus ? (
+        <div className="mt-1 space-y-0.5">
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+            로드됨 · {runtimeLoadedId}
+          </p>
+          {hasRuntimeMismatch ? (
+            <p className="text-[11px] text-amber-700 dark:text-amber-300">
+              선택한 모델과 다릅니다. 로드 버튼으로 전환하세요.
+            </p>
+          ) : null}
+        </div>
       ) : (
         <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
-          목록에서 모델을 선택하면 자동으로 메모리에 로드됩니다.
+          모델을 선택한 뒤 로드 버튼을 눌러 메모리에 올리세요.
         </p>
       )}
     </div>
