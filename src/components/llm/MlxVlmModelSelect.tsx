@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import {
@@ -16,7 +16,9 @@ import {
 type MlxVlmModelSelectProps = {
   value: string;
   onChange?: (nextId: string) => void;
+  /** Refresh installed model list on mount. */
   autoLoad?: boolean;
+  /** When true, selecting a model starts loading immediately (default: manual load button). */
   autoLoadModelOnSelect?: boolean;
   className?: string;
 };
@@ -43,7 +45,7 @@ export default function MlxVlmModelSelect({
   value,
   onChange,
   autoLoad = true,
-  autoLoadModelOnSelect = true,
+  autoLoadModelOnSelect = false,
   className = '',
 }: MlxVlmModelSelectProps) {
   const [options, setOptions] = useState<ModelIdOption[]>([]);
@@ -139,12 +141,20 @@ export default function MlxVlmModelSelect({
   const handlePick = useCallback(
     (nextId: string) => {
       onChange?.(nextId);
-      void loadModel(nextId);
+      if (autoLoadModelOnSelect) {
+        void loadModel(nextId);
+      }
     },
-    [loadModel, onChange],
+    [autoLoadModelOnSelect, loadModel, onChange],
   );
 
   const handleInputBlur = useCallback(() => {
+    if (autoLoadModelOnSelect) {
+      void loadModel(value);
+    }
+  }, [autoLoadModelOnSelect, loadModel, value]);
+
+  const handleLoadClick = useCallback(() => {
     void loadModel(value);
   }, [loadModel, value]);
 
@@ -157,6 +167,8 @@ export default function MlxVlmModelSelect({
   }
 
   const busy = listLoading || modelLoading;
+  const trimmedValue = value.trim();
+  const isLoaded = Boolean(trimmedValue && loadedModelId === trimmedValue);
 
   return (
     <div className={className}>
@@ -174,12 +186,22 @@ export default function MlxVlmModelSelect({
         />
         <button
           type="button"
+          onClick={handleLoadClick}
+          disabled={busy || !trimmedValue || isLoaded}
+          aria-label="Load MLX model"
+          className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+        >
+          {modelLoading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          로드
+        </button>
+        <button
+          type="button"
           onClick={() => void refreshModels()}
           disabled={busy}
           aria-label="Refresh MLX models"
           className="inline-flex shrink-0 items-center justify-center rounded border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft"
         >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          {listLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         </button>
       </div>
       {error ? <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">{error}</p> : null}
@@ -191,13 +213,13 @@ export default function MlxVlmModelSelect({
           <Loader2 size={12} className="animate-spin" aria-hidden />
           모델 로드 중…
         </p>
-      ) : loadedModelId ? (
+      ) : isLoaded ? (
         <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-300">
           로드됨 · {loadedModelId}
         </p>
       ) : (
         <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
-          목록에서 모델을 선택하면 자동으로 메모리에 로드됩니다.
+          모델을 선택한 뒤 로드 버튼을 눌러 메모리에 올리세요.
         </p>
       )}
     </div>

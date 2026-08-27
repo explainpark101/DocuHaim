@@ -323,6 +323,7 @@ export default function LlmAssistPanel({
               value={model}
               onChange={onModelChange}
               autoLoad={modelSelectAutoLoad}
+              autoLoadModelOnSelect={false}
             />
           ) : (
             <GeminiModelSelect

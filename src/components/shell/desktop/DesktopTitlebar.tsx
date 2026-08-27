@@ -39,11 +39,15 @@ export default function DesktopTitlebar({
   const isMac = isTauriMacOS();
   const showTabs = tabsEnabled && tabs.length > 0;
 
+  // macOS Overlay: keep the left traffic-light inset free of webview chrome so
+  // native close/minimize/zoom buttons stay clickable.
+  const macChromeClass = isMac
+    ? 'desktop-titlebar--mac ml-20 w-[calc(100%-5rem)]'
+    : 'w-full';
+
   return (
     <header
-      className={`desktop-titlebar z-60 flex h-(--desktop-titlebar-h,2rem) shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${
-        isMac ? 'pl-20' : ''
-      }`}
+      className={`desktop-titlebar z-60 flex h-(--desktop-titlebar-h,2rem) shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
     >
       {showTabs ? (
         <div className="flex min-w-0 flex-1 items-stretch overflow-hidden">

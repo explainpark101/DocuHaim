@@ -199,36 +199,36 @@ def build_generate_kwargs(req: dict[str, Any]) -> dict[str, Any]:
     }
     kwargs: dict[str, Any] = dict(defaults)
 
-  sources: list[dict[str, Any]] = []
-  legacy_keys = (
-      "max_tokens",
-      "temperature",
-      "top_p",
-      "min_p",
-      "top_k",
-      "repetition_penalty",
-      "repetition_context_size",
-  )
-  legacy: dict[str, Any] = {}
-  for key in legacy_keys:
-      if key in req and req.get(key) is not None:
-          legacy[key] = req.get(key)
-  if legacy:
-      sources.append(legacy)
+    sources: list[dict[str, Any]] = []
+    legacy_keys = (
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "min_p",
+        "top_k",
+        "repetition_penalty",
+        "repetition_context_size",
+    )
+    legacy: dict[str, Any] = {}
+    for key in legacy_keys:
+        if key in req and req.get(key) is not None:
+            legacy[key] = req.get(key)
+    if legacy:
+        sources.append(legacy)
 
-  raw_options = req.get("generate_options")
-  if isinstance(raw_options, dict):
-      sources.append(raw_options)
+    raw_options = req.get("generate_options")
+    if isinstance(raw_options, dict):
+        sources.append(raw_options)
 
-  for source in sources:
-      for key, value in source.items():
-          if value is None:
-              continue
-          mapped = GENERATE_OPTION_ALIASES.get(str(key), str(key))
-          if mapped in GENERATE_KWARG_KEYS:
-              kwargs[mapped] = value
+    for source in sources:
+        for key, value in source.items():
+            if value is None:
+                continue
+            mapped = GENERATE_OPTION_ALIASES.get(str(key), str(key))
+            if mapped in GENERATE_KWARG_KEYS:
+                kwargs[mapped] = value
 
-  return kwargs
+    return kwargs
 
 
 def resolve_prompt_cache_state(reset_cache: bool) -> Any:

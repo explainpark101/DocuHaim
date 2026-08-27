@@ -385,6 +385,7 @@ export default function LlmProviderProfilesSettings({
                     value={draftModel}
                     onChange={handleDraftModelChange}
                     autoLoad
+                    autoLoadModelOnSelect={false}
                   />
                 ) : (
                   <OpenAiCompatibleModelSelect
