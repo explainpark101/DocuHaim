@@ -127,7 +127,7 @@ export default function OpenAiCompatibleModelSelect({
       </div>
       {valueAliasHint ? (
         <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
-          별칭 · {valueAliasHint}
+          원본 ID · {value.trim()}
         </p>
       ) : null}
       <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">

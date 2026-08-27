@@ -18,8 +18,9 @@ type ModelIdInputDropdownProps = {
 
 /**
  * Input + searchable dropdown suggestions.
- * - The input value is always usable even when it doesn't match any option.
- * - Choosing a dropdown option auto-fills the input with option.id.
+ * - The canonical value is always the model id (option.id).
+ * - When blurred, shows option.displayName (e.g. local alias) when available.
+ * - Choosing a dropdown option auto-fills the stored value with option.id.
  */
 export function ModelIdInputDropdown({
   value,
@@ -33,9 +34,18 @@ export function ModelIdInputDropdown({
   maxItems = 30,
 }: ModelIdInputDropdownProps) {
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const query = (value || '').trim().toLowerCase();
+  const matchedOption = useMemo(
+    () => options.find((option) => option.id === String(value || '').trim()),
+    [options, value],
+  );
+  const idleLabel = matchedOption?.displayName || value;
+
+  const inputValue = focused ? draft : idleLabel;
+  const query = String(inputValue || '').trim().toLowerCase();
 
   const filtered = useMemo(() => {
     const list = !query
@@ -50,6 +60,8 @@ export function ModelIdInputDropdown({
 
   const handlePick = useCallback(
     (nextId: string) => {
+      setDraft(nextId);
+      setFocused(false);
       onChange?.(nextId);
       onPick?.(nextId);
       setOpen(false);
@@ -73,15 +85,25 @@ export function ModelIdInputDropdown({
           type="text"
           autoComplete="off"
           spellCheck={false}
-          value={value}
-          onFocus={() => setOpen(true)}
+          value={inputValue}
+          onFocus={() => {
+            setFocused(true);
+            setDraft(value);
+            setOpen(true);
+          }}
           onChange={(e) => {
-            onChange?.(e.target.value);
+            const next = e.target.value;
+            setDraft(next);
+            onChange?.(next);
             if (!open) setOpen(true);
           }}
-          onBlur={() => onInputBlur?.()}
+          onBlur={() => {
+            setFocused(false);
+            setDraft('');
+            onInputBlur?.();
+          }}
           placeholder={placeholder}
-          aria-label="모델 ID"
+          aria-label={matchedOption?.displayName && matchedOption.displayName !== value ? '모델' : '모델 ID'}
           aria-expanded={open}
           aria-haspopup="listbox"
           className={`min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft ${className}`.trim()}

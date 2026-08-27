@@ -7,6 +7,7 @@ import {
   cacheDirEntryToRepoId,
   huggingFaceCacheEntryMatchesRepo,
   isMlxCommunityRepoId,
+  isMlxVlmCacheAutoDiscoverRepo,
   parseHuggingFaceModelUrl,
   repoIdToCacheDirEntryName,
   resolveMlxVlmDownloadMode,
@@ -65,6 +66,12 @@ describe('mlxVlmHuggingFace', () => {
     expect(isMlxCommunityRepoId('mlx-community/foo')).toBe(true);
     expect(resolveMlxVlmDownloadMode('mlx-community/foo')).toBe('download');
     expect(resolveMlxVlmDownloadMode('meta-llama/Llama-3.1-8B')).toBe('convert');
+  });
+
+  it('auto-discovers only mlx-community cache repos (not GGUF)', () => {
+    expect(isMlxVlmCacheAutoDiscoverRepo('mlx-community/Llama-3.2-3B-Instruct-4bit')).toBe(true);
+    expect(isMlxVlmCacheAutoDiscoverRepo('bartowski/Llama-3.2-3B-Instruct-GGUF')).toBe(false);
+    expect(isMlxVlmCacheAutoDiscoverRepo('meta-llama/Llama-3.1-8B')).toBe(false);
   });
 
   it('builds confirm copy for download vs convert', () => {

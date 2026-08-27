@@ -195,3 +195,21 @@ export function isMlxVlmRepoInstalled(
   if (!id) return false;
   return models.some((model) => model.id === id || model.repoId === id);
 }
+
+/** Keep MLX-VLM installed rows; drop llama.cpp GGUF cache auto-discovery noise. */
+export function isMlxVlmInstalledModelEntry(
+  model: Pick<MlxVlmInstalledModel, 'id' | 'repoId' | 'source' | 'installedAt'>,
+): boolean {
+  const repoId = String(model.repoId || model.id || '').trim();
+  if (!repoId) return false;
+  if (model.source === 'local') return true;
+  if (/gguf/i.test(repoId)) return false;
+  if (repoId.toLowerCase().startsWith('mlx-community/')) return true;
+  return (model.installedAt ?? 0) > 0;
+}
+
+export function filterMlxVlmInstalledModels(
+  models: readonly MlxVlmInstalledModel[],
+): MlxVlmInstalledModel[] {
+  return models.filter(isMlxVlmInstalledModelEntry);
+}

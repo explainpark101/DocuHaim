@@ -4,6 +4,7 @@ import {
   fetchHuggingFaceModelInfo,
   huggingFaceCacheEntryMatchesRepo,
   isMlxCommunityRepoId,
+  isMlxVlmCacheAutoDiscoverRepo,
   isValidHuggingFaceRepoId,
   repoIdToCacheDirEntryName,
   resolveHuggingFaceModelDiskBytes,
@@ -28,6 +29,7 @@ import {
 } from '@/utils/llm/mlxVlmLoadNotifications';
 import {
   addInstalledModel,
+  filterMlxVlmInstalledModels,
   loadMlxVlmSettings,
   mergeInstalledModels,
   normalizeMlxVlmHfDownloadMaxWorkers,
@@ -582,7 +584,7 @@ export async function scanHuggingFaceCacheModels(): Promise<MlxVlmInstalledModel
     for (const entry of entries) {
       if (!entry.isDirectory && !entry.isSymlink) continue;
       const repoId = cacheDirEntryToRepoId(entry.name);
-      if (!repoId) continue;
+      if (!repoId || !isMlxVlmCacheAutoDiscoverRepo(repoId)) continue;
       models.push({
         id: repoId,
         repoId,
@@ -601,7 +603,10 @@ export async function listInstalledMlxVlmModels(
 ): Promise<MlxVlmInstalledModel[]> {
   const current = loadMlxVlmSettings();
   const cached = await scanHuggingFaceCacheModels();
-  return mergeInstalledModels(current.installedModels, cached);
+  return mergeInstalledModels(
+    filterMlxVlmInstalledModels(current.installedModels),
+    filterMlxVlmInstalledModels(cached),
+  );
 }
 
 export async function refreshInstalledMlxVlmModels(): Promise<{
@@ -610,8 +615,12 @@ export async function refreshInstalledMlxVlmModels(): Promise<{
 }> {
   const current = loadMlxVlmSettings();
   const cached = await scanHuggingFaceCacheModels();
-  const merged = mergeInstalledModels(current.installedModels, cached);
-  if (!hasInstalledModelsDelta(current.installedModels, merged)) {
+  const kept = filterMlxVlmInstalledModels(current.installedModels);
+  const merged = mergeInstalledModels(kept, filterMlxVlmInstalledModels(cached));
+  const changed =
+    hasInstalledModelsDelta(current.installedModels, merged) ||
+    hasInstalledModelsDelta(kept, merged);
+  if (!changed) {
     return { settings: current, models: merged };
   }
   const next: MlxVlmSettings = { ...current, installedModels: merged };

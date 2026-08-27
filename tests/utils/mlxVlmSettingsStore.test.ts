@@ -6,6 +6,8 @@ import {
   setSelectedMlxVlmModelId,
   removeInstalledModel,
   addInstalledModel,
+  filterMlxVlmInstalledModels,
+  isMlxVlmInstalledModelEntry,
 } from '@/utils/llm/mlxVlmSettingsStore';
 
 describe('normalizeMlxVlmSettings', () => {
@@ -136,5 +138,52 @@ describe('mlxVlm model selection helpers', () => {
     );
     expect(next.selectedModelId).toBe('');
     expect(next.installedModels).toHaveLength(1);
+  });
+});
+
+describe('filterMlxVlmInstalledModels', () => {
+  it('keeps mlx-community, explicit mlx downloads, and local models', () => {
+    const models = [
+      {
+        id: 'mlx-community/a',
+        repoId: 'mlx-community/a',
+        source: 'huggingface' as const,
+        installedAt: 0,
+      },
+      {
+        id: 'meta-llama/Llama-3.1-8B',
+        repoId: 'meta-llama/Llama-3.1-8B',
+        source: 'huggingface' as const,
+        installedAt: 42,
+      },
+      {
+        id: '/tmp/local-mlx',
+        source: 'local' as const,
+        installedAt: 1,
+      },
+    ];
+    expect(filterMlxVlmInstalledModels(models)).toHaveLength(3);
+    expect(isMlxVlmInstalledModelEntry(models[0]!)).toBe(true);
+    expect(isMlxVlmInstalledModelEntry(models[1]!)).toBe(true);
+  });
+
+  it('drops GGUF repos and unrelated HF cache auto-discovery stubs', () => {
+    const models = [
+      {
+        id: 'bartowski/Llama-GGUF',
+        repoId: 'bartowski/Llama-GGUF',
+        source: 'huggingface' as const,
+        installedAt: 0,
+      },
+      {
+        id: 'random-org/some-model',
+        repoId: 'random-org/some-model',
+        source: 'huggingface' as const,
+        installedAt: 0,
+      },
+    ];
+    expect(filterMlxVlmInstalledModels(models)).toEqual([]);
+    expect(isMlxVlmInstalledModelEntry(models[0]!)).toBe(false);
+    expect(isMlxVlmInstalledModelEntry(models[1]!)).toBe(false);
   });
 });
