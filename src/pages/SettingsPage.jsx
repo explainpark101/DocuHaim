@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import { IconDownload, IconFolder, IconMenu, IconRefresh, IconSettings, IconSquare, IconUpload } from '@/components/icons';
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
@@ -7,6 +7,8 @@ import WebfontSettings from '@/components/settings/WebfontSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
+import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
+import SettingsPageTocDock from '@/components/settings/SettingsPageTocDock';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
@@ -58,6 +60,7 @@ import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfil
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
+import MlxLmSettings from '@/components/settings/MlxLmSettings';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -73,6 +76,13 @@ import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildChe
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { useSettingsPageScrollSpy } from '@/hooks/useSettingsPageScrollSpy';
+import {
+  buildVisibleSettingsPageGroups,
+  createDefaultSettingsGroupOpenState,
+  findSettingsGroupIdForSection,
+  resolveSettingsScrollTarget,
+} from '@/utils/settingsPageCatalog';
 
 export default function SettingsPage({
   s3Creds,
@@ -171,6 +181,8 @@ export default function SettingsPage({
   );
   const [webdavConnOpen, setWebdavConnOpen] = useState(false);
   const [imgbbConnOpen, setImgbbConnOpen] = useState(true);
+  const [groupOpen, setGroupOpen] = useState(() => createDefaultSettingsGroupOpenState(true));
+  const scrollContainerRef = useRef(null);
   const location = useLocation();
   const desktopApp = isDesktopApp();
   const resolvedVaultFsPath = String(localVaultFsPath || '').trim();
@@ -222,16 +234,12 @@ export default function SettingsPage({
     const hash = String(location.hash || '').replace(/^#/, '');
     if (!hash.startsWith('settings-')) return undefined;
     if (hash === 'settings-s3') setS3ConnOpen(true);
-    if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-webdav') setWebdavConnOpen(true);
+    if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-imgbb') setImgbbConnOpen(true);
-    const llmHashes = new Set([
-      'settings-llm-providers',
-      'settings-llm-provider',
-      'settings-gemini',
-      'settings-openai-compat',
-    ]);
-    const scrollId = llmHashes.has(hash) ? 'settings-llm-providers' : hash;
+    const groupId = findSettingsGroupIdForSection(hash);
+    if (groupId) setGroupOpen((prev) => ({ ...prev, [groupId]: true }));
+    const scrollId = resolveSettingsScrollTarget(hash);
     const timer = window.setTimeout(() => {
       const el = document.getElementById(scrollId);
       if (!el) return;
@@ -299,6 +307,61 @@ export default function SettingsPage({
 
   const showWebAuthnSection = webauthnAvailable && (masterPassword || webauthnStorageOnly);
 
+  const settingsCatalogContext = useMemo(
+    () => ({
+      isDesktopApp: desktopApp,
+      showWebAuthnSection,
+      canScanStorageUsage,
+    }),
+    [desktopApp, showWebAuthnSection, canScanStorageUsage],
+  );
+
+  const visibleSettingsGroups = useMemo(
+    () => buildVisibleSettingsPageGroups(settingsCatalogContext),
+    [settingsCatalogContext],
+  );
+
+  const visibleSectionIds = useMemo(
+    () => visibleSettingsGroups.flatMap((group) => group.sections.map((section) => section.id)),
+    [visibleSettingsGroups],
+  );
+
+  const activeSettingsSectionId = useSettingsPageScrollSpy(
+    scrollContainerRef,
+    visibleSectionIds,
+    visibleSectionIds[0] || '',
+  );
+
+  const setGroupOpenById = useCallback((groupId, open) => {
+    if (!groupId) return;
+    setGroupOpen((prev) => ({ ...prev, [groupId]: open }));
+  }, []);
+
+  const navigateSettingsSection = useCallback(
+    (sectionId) => {
+      const groupId = findSettingsGroupIdForSection(sectionId);
+      setGroupOpenById(groupId, true);
+      if (sectionId === 'settings-s3') setS3ConnOpen(true);
+      if (sectionId === 'settings-webdav') setWebdavConnOpen(true);
+      if (sectionId === 'settings-local') setLocalConnOpen(true);
+      if (sectionId === 'settings-imgbb') setImgbbConnOpen(true);
+
+      const scrollId = resolveSettingsScrollTarget(sectionId);
+      window.history.replaceState(null, '', `#${sectionId}`);
+      window.setTimeout(() => {
+        const el = document.getElementById(scrollId);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        try {
+          el.focus?.({ preventScroll: true });
+        } catch {
+          // ignore
+        }
+      }, 120);
+    },
+    [setGroupOpenById],
+  );
+
   const desktopCollapsedTopBarPaddingClass =
     !isMobileLayout && sidebarCollapsed ? 'md:pl-14' : '';
 
@@ -329,9 +392,16 @@ export default function SettingsPage({
         </button>
       </div>
 
-      <div className="p-6 overflow-y-auto space-y-6 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1">
+        <div ref={scrollContainerRef} className="min-w-0 flex-1 overflow-y-auto p-6">
+          <div className="space-y-4">
+            <SettingsPageGroup
+              id="storage-connection"
+              title="저장소 및 연결"
+              open={groupOpen['storage-connection'] !== false}
+              onOpenChange={(open) => setGroupOpenById('storage-connection', open)}
+            >
         <DesktopAppEntryLockSettings s3Creds={s3Creds} webdavConfig={webdavConfig} />
-
         <div
           id="settings-storage"
           tabIndex={-1}
@@ -775,8 +845,14 @@ export default function SettingsPage({
             />
           </div>
         )}
+            </SettingsPageGroup>
 
-
+            <SettingsPageGroup
+              id="ai"
+              title="AI"
+              open={groupOpen.ai !== false}
+              onOpenChange={(open) => setGroupOpenById('ai', open)}
+            >
         <LlmProviderProfilesSettings
           profiles={resolveLlmProviderProfiles(formCreds)}
           onSaveProfiles={(next) => {
@@ -785,7 +861,15 @@ export default function SettingsPage({
           }}
         />
 
+        <MlxLmSettings />
+            </SettingsPageGroup>
 
+            <SettingsPageGroup
+              id="integrations"
+              title="외부 연동"
+              open={groupOpen.integrations !== false}
+              onOpenChange={(open) => setGroupOpenById('integrations', open)}
+            >
         <UnusedImageCleanup
           storageMode={storageMode}
           canScan={canScanStorageUsage}
@@ -794,8 +878,6 @@ export default function SettingsPage({
           onReadBytes={onReadUnusedImageBytes}
           onDeletePaths={onDeleteUnusedImagePaths}
         />
-
-
         <form
           id="settings-imgbb"
           tabIndex={-1}
@@ -867,7 +949,15 @@ export default function SettingsPage({
           ) : null}
         </form>
 
+        <OgWorkerSettings />
+            </SettingsPageGroup>
 
+            <SettingsPageGroup
+              id="editor-content"
+              title="에디터 및 콘텐츠"
+              open={groupOpen['editor-content'] !== false}
+              onOpenChange={(open) => setGroupOpenById('editor-content', open)}
+            >
         {/* Markdown 에디터 종류 */}
         <div
           id="settings-editor"
@@ -950,6 +1040,32 @@ export default function SettingsPage({
         </div>
 
 
+        <div id="settings-snippets" tabIndex={-1} className="scroll-mt-4">
+          <SnippetSettings
+            value={snippetConfig}
+            onChange={onChangeSnippetConfig}
+            onSave={onSaveSnippetConfig}
+            isSaving={isSavingSnippets}
+            isLoaded={snippetConfigLoaded}
+          />
+        </div>
+
+
+        <TableStyleSettings />
+
+
+        <CoverSettings />
+
+
+        <WebfontSettings />
+            </SettingsPageGroup>
+
+            <SettingsPageGroup
+              id="search"
+              title="검색"
+              open={groupOpen.search !== false}
+              onOpenChange={(open) => setGroupOpenById('search', open)}
+            >
         {/* Advanced Search */}
         <div
           id="settings-advanced-search"
@@ -1234,9 +1350,14 @@ export default function SettingsPage({
           </>
           )}
         </div>
+            </SettingsPageGroup>
 
-        {/* Wiki 이미지 캐싱 방식 */}
-
+            <SettingsPageGroup
+              id="ui-navigation"
+              title="UI 및 네비게이션"
+              open={groupOpen['ui-navigation'] !== false}
+              onOpenChange={(open) => setGroupOpenById('ui-navigation', open)}
+            >
         {/* Navigation */}
         <div
           id="settings-navigation"
@@ -1612,28 +1733,14 @@ export default function SettingsPage({
             </label>
           </div>
         </div>
+            </SettingsPageGroup>
 
-
-        <div id="settings-snippets" tabIndex={-1} className="scroll-mt-4">
-          <SnippetSettings
-            value={snippetConfig}
-            onChange={onChangeSnippetConfig}
-            onSave={onSaveSnippetConfig}
-            isSaving={isSavingSnippets}
-            isLoaded={snippetConfigLoaded}
-          />
-        </div>
-
-
-        <TableStyleSettings />
-
-
-        <CoverSettings />
-
-
-        <WebfontSettings />
-
-
+            <SettingsPageGroup
+              id="chat"
+              title="채팅"
+              open={groupOpen.chat !== false}
+              onOpenChange={(open) => setGroupOpenById('chat', open)}
+            >
         {/* Chat with myself */}
         <div
           id="settings-chat"
@@ -1672,11 +1779,14 @@ export default function SettingsPage({
             </span>
           </label>
         </div>
+            </SettingsPageGroup>
 
-
-        <OgWorkerSettings />
-
-
+            <SettingsPageGroup
+              id="app"
+              title="앱"
+              open={groupOpen.app !== false}
+              onOpenChange={(open) => setGroupOpenById('app', open)}
+            >
         {/* App update */}
         <div
           id="settings-app-update"
@@ -1709,9 +1819,18 @@ export default function SettingsPage({
             {isCheckingAppUpdate ? '최신 버전 확인 중...' : '최신 버전 확인 및 즉시 업데이트'}
           </button>
         </div>
+            </SettingsPageGroup>
+          </div>
+        </div>
 
+        {!isMobileLayout ? (
+          <SettingsPageTocDock
+            groups={visibleSettingsGroups}
+            activeSectionId={activeSettingsSectionId}
+            onNavigate={navigateSettingsSection}
+          />
+        ) : null}
       </div>
     </div>
   );
 }
-

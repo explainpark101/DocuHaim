@@ -35,6 +35,12 @@ import {
   subscribeChatActions,
 } from '@/utils/advancedSearch/chatActions';
 import {
+  isMlxLmActionId,
+  isMlxLmActionsAvailable,
+  runMlxLmAction,
+  subscribeMlxLmActions,
+} from '@/utils/advancedSearch/mlxLmActions';
+import {
   runAppLockAction,
 } from '@/utils/advancedSearch/appLockActions';
 import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
@@ -193,6 +199,9 @@ export default function AdvancedSearchHost({
   const [chatActionsAvailable, setChatActionsAvailable] = useState(() =>
     hasChatActions(),
   );
+  const [mlxLmActionsAvailable, setMlxLmActionsAvailable] = useState(() =>
+    isMlxLmActionsAvailable(),
+  );
   const [editorAutocompleteEnabled, setEditorAutocompleteEnabled] = useState(() =>
     loadEditorAutocompleteEnabled(),
   );
@@ -225,6 +234,12 @@ export default function AdvancedSearchHost({
   useEffect(() => {
     return subscribeChatActions(() => {
       setChatActionsAvailable(hasChatActions());
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeMlxLmActions(() => {
+      setMlxLmActionsAvailable(isMlxLmActionsAvailable());
     });
   }, []);
 
@@ -346,6 +361,7 @@ export default function AdvancedSearchHost({
         editorActionsAvailable,
         printActionsAvailable,
         chatActionsAvailable,
+        mlxLmActionsAvailable,
         editorAutocompleteEnabled,
         editorMirrorEditEnabled,
         ...(snippetConfig ? { snippetConfig } : {}),
@@ -391,6 +407,7 @@ export default function AdvancedSearchHost({
       editorActionsAvailable,
       printActionsAvailable,
       chatActionsAvailable,
+      mlxLmActionsAvailable,
       editorAutocompleteEnabled,
       editorMirrorEditEnabled,
       snippetConfig,
@@ -610,6 +627,13 @@ export default function AdvancedSearchHost({
           return;
         }
 
+        if (commandId && isMlxLmActionId(commandId)) {
+          window.setTimeout(() => {
+            runMlxLmAction(commandId);
+          }, 0);
+          return;
+        }
+
         if (commandId === 'app-lock') {
           runAppLockAction();
           return;
@@ -663,6 +687,7 @@ export default function AdvancedSearchHost({
       editorActionsAvailable={editorActionsAvailable}
       printActionsAvailable={printActionsAvailable}
       chatActionsAvailable={chatActionsAvailable}
+      mlxLmActionsAvailable={mlxLmActionsAvailable}
       preferPrintActions={preferPrintActions}
       printPaperPickerMode={pickerMode === 'print-paper'}
       browseDirectoryMode={pickerMode === 'browse-directory'}

@@ -1,0 +1,51 @@
+import { describe, expect, it } from 'bun:test';
+import {
+  assessMlxModelFeasibility,
+  estimateMlxRamBytes,
+  formatByteSize,
+  sumHfSiblingBytes,
+} from '@/utils/llm/mlxLmModelSizing';
+import { buildMlxLmDownloadConfirmMessage } from '@/utils/mlxLmHuggingFace';
+
+describe('mlxLmModelSizing', () => {
+  it('formats byte sizes', () => {
+    expect(formatByteSize(4.2 * 1024 ** 3)).toBe('4.2 GB');
+    expect(formatByteSize(512 * 1024 ** 2)).toBe('512 MB');
+  });
+
+  it('sums HF sibling sizes', () => {
+    expect(
+      sumHfSiblingBytes([
+        { rfilename: 'a.safetensors', size: 1000 },
+        { rfilename: 'b.safetensors', size: 2000 },
+      ]),
+    ).toBe(3000);
+  });
+
+  it('estimates RAM from disk bytes and model id heuristics', () => {
+    const fromDisk = estimateMlxRamBytes('mlx-community/foo', 4 * 1024 ** 3);
+    expect(fromDisk).toBeGreaterThan(4 * 1024 ** 3);
+    const fromName = estimateMlxRamBytes('mlx-community/Llama-3.2-3B-Instruct-4bit');
+    expect(fromName).toBeGreaterThan(1 * 1024 ** 3);
+  });
+
+  it('assesses feasibility against available memory budget', () => {
+    const need = 8 * 1024 ** 3;
+    expect(assessMlxModelFeasibility(need, 16 * 1024 ** 3)).toBe('ok');
+    expect(assessMlxModelFeasibility(need, 9 * 1024 ** 3)).toBe('tight');
+    expect(assessMlxModelFeasibility(need, 6 * 1024 ** 3)).toBe('unlikely');
+  });
+});
+
+describe('buildMlxLmDownloadConfirmMessage resources', () => {
+  it('includes disk and RAM lines when hit metadata is present', () => {
+    const msg = buildMlxLmDownloadConfirmMessage('mlx-community/a', 'download', {
+      diskBytes: 2 * 1024 ** 3,
+      estimatedRamBytes: 2.5 * 1024 ** 3,
+      feasibility: 'ok',
+    });
+    expect(msg.message).toContain('다운로드 용량');
+    expect(msg.message).toContain('예상 RAM');
+    expect(msg.message).toContain('실행 가능');
+  });
+});

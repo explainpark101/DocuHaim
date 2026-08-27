@@ -16,6 +16,10 @@ import {
   type ChatActionId,
 } from '@/utils/advancedSearch/chatActions';
 import {
+  MLX_LM_ACTION_COMMANDS,
+  type MlxLmActionId,
+} from '@/utils/advancedSearch/mlxLmActions';
+import {
   SETTINGS_TOGGLE_DEFS,
   getWorkspaceTabsAutoSaveCommands,
   getFootnoteDisplayModeCommands,
@@ -58,6 +62,7 @@ export type AppCommandId =
   | 'settings-gemini'
   | 'settings-llm-provider'
   | 'settings-openai-compat'
+  | 'settings-mlx-lm'
   | 'settings-imgbb'
   | 'settings-webauthn'
   | 'settings-editor'
@@ -94,6 +99,7 @@ export type AppCommandId =
   | EditorActionId
   | PrintActionId
   | ChatActionId
+  | MlxLmActionId
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
   | FootnoteDisplayModeCommandId
@@ -128,6 +134,8 @@ export type AppCommandContext = {
   printActionsAvailable?: boolean;
   /** True when chat composer has registered actions (on /chat). */
   chatActionsAvailable?: boolean;
+  /** True when MLX-LM settings registered actions (Tauri macOS). */
+  mlxLmActionsAvailable?: boolean;
   /** Nested picker: only paper size commands. */
   printPaperPickerMode?: boolean;
   /** Current editor autocomplete suggestion preference (localStorage). */
@@ -279,6 +287,13 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       'lm studio',
       'chat completions',
     ],
+  },
+  {
+    id: 'settings-mlx-lm',
+    title: '설정 · MLX-LM (Tauri macOS)',
+    description: 'Apple Silicon 로컬 MLX 모델 설치·서버',
+    path: '/settings#settings-mlx-lm',
+    keywords: ['mlx', 'mlx-lm', 'apple silicon', 'local llm', 'huggingface', 'mac'],
   },
   {
     id: 'settings-imgbb',
@@ -798,6 +813,17 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
         });
       }
     }
+    if (context?.mlxLmActionsAvailable) {
+      for (const cmd of MLX_LM_ACTION_COMMANDS) {
+        list.push({
+          id: cmd.id,
+          title: cmd.title,
+          description: cmd.description,
+          path: '',
+          keywords: [...cmd.keywords],
+        });
+      }
+    }
   }
 
   return list;
@@ -829,6 +855,17 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
   }
   if (context?.chatActionsAvailable) {
     for (const cmd of CHAT_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: [...cmd.keywords],
+      });
+    }
+  }
+  if (context?.mlxLmActionsAvailable) {
+    for (const cmd of MLX_LM_ACTION_COMMANDS) {
       list.push({
         id: cmd.id,
         title: cmd.title,

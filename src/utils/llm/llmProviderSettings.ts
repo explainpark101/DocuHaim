@@ -1,5 +1,6 @@
 export {
   LLM_PROVIDER_GEMINI,
+  LLM_PROVIDER_MLX_LM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   isLlmProviderKind,
   type LlmProviderKind,

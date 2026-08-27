@@ -1,6 +1,7 @@
 import { AppModals } from '@/App/components/AppModals';
 import { AppLayout } from '@/App/components/AppLayout';
 import { ExportPdfGate, shouldShowExportPdfGate } from '@/App/components/ExportPdfGate';
+import MlxLmActionHost from '@/components/settings/MlxLmActionHost';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useLocation } from 'react-router';
 import { isDesktopApp } from '@/utils/isDesktopApp';
@@ -31,6 +32,7 @@ export function AppShellView() {
   return (
     <AppLayout>
       <AppModals />
+      <MlxLmActionHost />
     </AppLayout>
   );
 }

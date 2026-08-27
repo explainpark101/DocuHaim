@@ -6,6 +6,7 @@ import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import {
   LLM_PROVIDER_GEMINI,
+  LLM_PROVIDER_MLX_LM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   createLlmProviderProfileId,
   defaultModelForKind,
@@ -16,6 +17,8 @@ import {
   type LlmProviderProfile,
 } from '@/utils/llmProviderProfiles';
 import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/openaiCompatibleSettings';
+import { isTauriMacOS } from '@/utils/tauriPlatform';
+import MlxLmModelSelect from '@/components/llm/MlxLmModelSelect';
 
 type Draft = {
   id: string;
@@ -32,7 +35,9 @@ const RADIO_INDICATOR_CLASS =
   'relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white';
 
 function kindLabel(kind: LlmProviderKind): string {
-  return kind === LLM_PROVIDER_GEMINI ? 'Google Gemini' : 'OpenAI 호환';
+  if (kind === LLM_PROVIDER_GEMINI) return 'Google Gemini';
+  if (kind === LLM_PROVIDER_MLX_LM) return 'MLX-LM (local)';
+  return 'OpenAI 호환';
 }
 
 function emptyDraft(): Draft {
@@ -206,7 +211,9 @@ export default function LlmProviderProfilesSettings({
                       {kindLabel(profile.kind)}
                       {profile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE && profile.baseUrl
                         ? ` · ${profile.baseUrl}`
-                        : ''}
+                        : profile.kind === LLM_PROVIDER_MLX_LM
+                          ? ' · Apple Silicon local'
+                          : ''}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -258,7 +265,11 @@ export default function LlmProviderProfilesSettings({
                   className="flex flex-wrap items-center gap-4"
                   value={draft.kind}
                   onValueChange={(next) => {
-                    if (next !== LLM_PROVIDER_GEMINI && next !== LLM_PROVIDER_OPENAI_COMPATIBLE) {
+                    if (
+                      next !== LLM_PROVIDER_GEMINI &&
+                      next !== LLM_PROVIDER_OPENAI_COMPATIBLE &&
+                      next !== LLM_PROVIDER_MLX_LM
+                    ) {
                       return;
                     }
                     const nextKind = next as LlmProviderKind;
@@ -295,8 +306,25 @@ export default function LlmProviderProfilesSettings({
                     </RadioGroup.Item>
                     <span>OpenAI 호환</span>
                   </label>
+                  {isTauriMacOS() ? (
+                    <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg">
+                      <RadioGroup.Item value={LLM_PROVIDER_MLX_LM} className={RADIO_ITEM_CLASS}>
+                        <RadioGroup.Indicator className={RADIO_INDICATOR_CLASS} />
+                      </RadioGroup.Item>
+                      <span>MLX-LM (로컬, Apple Silicon)</span>
+                    </label>
+                  ) : null}
                 </RadioGroup.Root>
               </div>
+              {draft.kind === LLM_PROVIDER_MLX_LM ? (
+                <div className="rounded border border-emerald-200 bg-emerald-50/60 p-2.5 text-[11px] leading-relaxed text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
+                  MLX-LM 서버 시작·모델 설치는 설정의{' '}
+                  <a href="#settings-mlx-lm" className="underline">
+                    MLX-LM (Tauri macOS)
+                  </a>{' '}
+                  섹션에서 관리하세요.
+                </div>
+              ) : null}
               {draft.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
@@ -350,6 +378,13 @@ export default function LlmProviderProfilesSettings({
                     value={draftModel}
                     onChange={handleDraftModelChange}
                     autoLoad={draft.hasStoredKey || Boolean(draft.keyInput.trim())}
+                  />
+                ) : draft.kind === LLM_PROVIDER_MLX_LM ? (
+                  <MlxLmModelSelect
+                    key={`${draft.id}-${modelTick}`}
+                    value={draftModel}
+                    onChange={handleDraftModelChange}
+                    autoLoad
                   />
                 ) : (
                   <OpenAiCompatibleModelSelect

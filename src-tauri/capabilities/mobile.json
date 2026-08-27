@@ -2,8 +2,13 @@
   "$schema": "https://schema.tauri.app/config/2/capability",
   "identifier": "mobile-capability",
   "description": "DocuHaim Android / iOS capability (biometric + Stronghold + local vault fs)",
-  "platforms": ["android", "iOS"],
-  "windows": ["main"],
+  "platforms": [
+    "android",
+    "iOS"
+  ],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "shell:default",
@@ -28,15 +33,32 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$APPDATA/**" },
-        { "path": "$APPDATA/*" },
-        { "path": "$APPLOCALDATA/**" },
-        { "path": "$APPLOCALDATA/*" },
-        { "path": "$DOCUMENT/**" },
-        { "path": "$DOCUMENT/*" },
-        { "path": "**" },
-        { "path": "**/*" }
+        {
+          "path": "$APPDATA/**"
+        },
+        {
+          "path": "$APPDATA/*"
+        },
+        {
+          "path": "$APPLOCALDATA/**"
+        },
+        {
+          "path": "$APPLOCALDATA/*"
+        },
+        {
+          "path": "$DOCUMENT/**"
+        },
+        {
+          "path": "$DOCUMENT/*"
+        },
+        {
+          "path": "**"
+        },
+        {
+          "path": "**/*"
+        }
       ]
-    }
+    },
+    "os:default"
   ]
 }

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "macos-mlx-lm",
+  "description": "DocuHaim macOS MLX-LM shell scopes (probe, server, download, convert)",
+  "platforms": ["macOS"],
+  "windows": ["main", "s3haim-llm-assist"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "mlx-lm-which",
+          "cmd": "which",
+          "args": ["mlx_lm.server"]
+        },
+        {
+          "name": "mlx-lm-probe-bin",
+          "cmd": "/bin/sh",
+          "args": [
+            "-c",
+            "exec \"$0\" --help",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/mlx_lm\\.server$" }
+          ]
+        },
+        {
+          "name": "mlx-lm-probe",
+          "cmd": "python3",
+          "args": ["-m", "mlx_lm.server", "--help"]
+        },
+        {
+          "name": "mlx-lm-download",
+          "cmd": "python3",
+          "args": [
+            "-m",
+            "huggingface_hub.cli",
+            "download",
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+          ]
+        },
+        {
+          "name": "mlx-lm-convert",
+          "cmd": "python3",
+          "args": [
+            "-m",
+            "mlx_lm.convert",
+            "--model",
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            "-q"
+          ]
+        },
+        {
+          "name": "sysctl-memsize",
+          "cmd": "sysctl",
+          "args": ["-n", "hw.memsize"]
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "mlx-lm-server",
+          "cmd": "/bin/sh",
+          "args": [
+            "-c",
+            "exec \"$0\" \"$@\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/mlx_lm\\.server$" },
+            "--model",
+            { "validator": ".+" },
+            "--port",
+            { "validator": "^[0-9]+$" },
+            "--host",
+            { "validator": "^(127\\.0\\.0\\.1|0\\.0\\.0\\.0|localhost)$" }
+          ]
+        }
+      ]
+    }
+  ]
+}

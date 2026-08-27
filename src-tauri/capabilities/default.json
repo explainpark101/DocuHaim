@@ -2,8 +2,15 @@
   "$schema": "https://schema.tauri.app/config/2/capability",
   "identifier": "default",
   "description": "Default DocuHaim desktop capability",
-  "platforms": ["linux", "macOS", "windows"],
-  "windows": ["main", "s3haim-llm-assist"],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "windows": [
+    "main",
+    "s3haim-llm-assist"
+  ],
   "permissions": [
     "core:default",
     "core:webview:allow-create-webview-window",
@@ -39,9 +46,14 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "**" },
-        { "path": "**/*" }
+        {
+          "path": "**"
+        },
+        {
+          "path": "**/*"
+        }
       ]
-    }
+    },
+    "os:default"
   ]
 }

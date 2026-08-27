@@ -3,13 +3,16 @@ import {
   loadLastUsedOpenAiCompatibleModel,
   normalizeOpenAiCompatibleBaseUrl,
 } from '@/utils/openaiCompatibleSettings';
+import { loadMlxLmSettings } from '@/utils/mlxLmSettingsStore';
 
 export const LLM_PROVIDER_GEMINI = 'gemini';
 export const LLM_PROVIDER_OPENAI_COMPATIBLE = 'openai-compatible';
+export const LLM_PROVIDER_MLX_LM = 'mlx-lm';
 
 export type LlmProviderKind =
   | typeof LLM_PROVIDER_GEMINI
-  | typeof LLM_PROVIDER_OPENAI_COMPATIBLE;
+  | typeof LLM_PROVIDER_OPENAI_COMPATIBLE
+  | typeof LLM_PROVIDER_MLX_LM;
 
 export type LlmProviderProfile = {
   id: string;
@@ -30,7 +33,11 @@ export const LEGACY_GEMINI_PROFILE_ID = 'legacy-gemini';
 export const LEGACY_OPENAI_COMPAT_PROFILE_ID = 'legacy-openai-compat';
 
 export function isLlmProviderKind(value: string): value is LlmProviderKind {
-  return value === LLM_PROVIDER_GEMINI || value === LLM_PROVIDER_OPENAI_COMPATIBLE;
+  return (
+    value === LLM_PROVIDER_GEMINI ||
+    value === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+    value === LLM_PROVIDER_MLX_LM
+  );
 }
 
 export function createLlmProviderProfileId(): string {
@@ -54,7 +61,11 @@ export function normalizeLlmProviderProfile(raw: unknown): LlmProviderProfile | 
   const kind = isLlmProviderKind(kindRaw) ? kindRaw : LLM_PROVIDER_OPENAI_COMPATIBLE;
   const name =
     (typeof rec.name === 'string' && rec.name.trim()) ||
-    (kind === LLM_PROVIDER_GEMINI ? 'Google Gemini' : 'OpenAI 호환');
+    (kind === LLM_PROVIDER_GEMINI
+      ? 'Google Gemini'
+      : kind === LLM_PROVIDER_MLX_LM
+        ? 'MLX-LM (local)'
+        : 'OpenAI 호환');
   const baseUrl =
     kind === LLM_PROVIDER_OPENAI_COMPATIBLE
       ? String(rec.baseUrl || rec.endpoint || '').trim()
@@ -196,9 +207,11 @@ function looksLikeGeminiModelId(modelId: string): boolean {
 function storedModelMatchesKind(modelId: string, kind: LlmProviderKind): boolean {
   const trimmed = String(modelId || '').trim();
   if (!trimmed) return false;
-  return kind === LLM_PROVIDER_GEMINI
-    ? looksLikeGeminiModelId(trimmed)
-    : !looksLikeGeminiModelId(trimmed);
+  if (kind === LLM_PROVIDER_GEMINI) return looksLikeGeminiModelId(trimmed);
+  if (kind === LLM_PROVIDER_MLX_LM) {
+    return trimmed.includes('/') || trimmed.startsWith('/') || trimmed.startsWith('.');
+  }
+  return !looksLikeGeminiModelId(trimmed);
 }
 
 export function loadLastUsedModelForProfile(
@@ -211,6 +224,7 @@ export function loadLastUsedModelForProfile(
     if (stored && storedModelMatchesKind(stored, kind)) return stored;
   }
   if (kind === LLM_PROVIDER_GEMINI) return loadLastUsedGeminiModel();
+  if (kind === LLM_PROVIDER_MLX_LM) return loadMlxLmSettings().selectedModelId || '';
   return loadLastUsedOpenAiCompatibleModel();
 }
 
@@ -230,7 +244,9 @@ export function saveLastUsedModelForProfile(profileId: string, modelId: string):
 }
 
 export function defaultModelForKind(kind: LlmProviderKind): string {
-  return kind === LLM_PROVIDER_GEMINI ? DEFAULT_GEMINI_MODEL : '';
+  if (kind === LLM_PROVIDER_GEMINI) return DEFAULT_GEMINI_MODEL;
+  if (kind === LLM_PROVIDER_MLX_LM) return loadMlxLmSettings().selectedModelId || '';
+  return '';
 }
 
 export function validateLlmProviderProfileDraft(draft: {
@@ -246,6 +262,9 @@ export function validateLlmProviderProfileDraft(draft: {
     if (!String(draft.apiKey || '').trim() && !draft.hasStoredKey) {
       return 'Gemini API 키를 입력하세요.';
     }
+    return null;
+  }
+  if (draft.kind === LLM_PROVIDER_MLX_LM) {
     return null;
   }
   const url = normalizeOpenAiCompatibleBaseUrl(draft.baseUrl);

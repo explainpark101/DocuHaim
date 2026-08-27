@@ -189,9 +189,7 @@ fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
     }
 
     let mut out = Vec::new();
-    let buf = env
-        .new_byte_array(8192)
-        .map_err(|e| e.to_string())?;
+    let buf = env.new_byte_array(8192).map_err(|e| e.to_string())?;
     loop {
         let n = env
             .call_method(&input_stream, "read", "([B)I", &[(&buf).into()])
@@ -240,6 +238,7 @@ pub fn run() {
     let pending = PendingOpenPaths(Mutex::new(collect_cli_file_args()));
 
     let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -270,10 +269,7 @@ pub fn run() {
                 let _ = window.set_decorations(false);
             }
 
-            let data_dir = app
-                .path()
-                .app_local_data_dir()
-                .map_err(|e| e.to_string())?;
+            let data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
             std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
             let salt_path = data_dir.join("stronghold-salt.txt");
             let salt_path_for_hash = salt_path.clone();

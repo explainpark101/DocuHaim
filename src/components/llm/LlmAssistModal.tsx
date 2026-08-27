@@ -18,6 +18,7 @@ import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
 import {
   LLM_PROVIDER_GEMINI,
+  LLM_PROVIDER_MLX_LM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   loadLastUsedModelForProfile,
   resolveSelectedLlmProfile,
@@ -25,6 +26,11 @@ import {
 } from '@/utils/llmProviderProfiles';
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { loadMlxLmSettings } from '@/utils/mlxLmSettingsStore';
+import {
+  getMlxLmServerStatus,
+  resolveMlxLmOpenAiBaseUrl,
+} from '@/utils/mlxLmShell';
 import { LLM_ASSIST_MSG } from '@/utils/llmAssistBridge';
 import {
   closeLlmAssistPopoutWindow,
@@ -392,6 +398,42 @@ export default function LlmAssistModal({
             allowEmpty: true,
             missingKeyMessage: 'OpenAI 호환 API 키가 없습니다. 설정에서 입력하세요.',
           },
+        );
+        setResult(output);
+        return;
+      }
+
+      if (selectedProfile.kind === LLM_PROVIDER_MLX_LM) {
+        const mlxSettings = loadMlxLmSettings();
+        const status = await getMlxLmServerStatus(mlxSettings);
+        if (!status.running) {
+          throw new Error(
+            'MLX-LM 서버가 실행 중이 아닙니다.\n설정 > MLX-LM (Tauri macOS)에서 모델을 선택한 뒤 서버를 시작하세요.',
+          );
+        }
+        const baseUrl = resolveMlxLmOpenAiBaseUrl(mlxSettings);
+        const resolvedModel = model.trim() || mlxSettings.selectedModelId || status.models[0] || '';
+        if (!resolvedModel) {
+          throw new Error('사용할 MLX 모델을 선택하세요.');
+        }
+        saveLastUsedModelForProfile(selectedProfile.id, resolvedModel);
+        const output = await withLlmProfileApiKey(
+          selectedProfile.id,
+          () => selectedProfile.apiKey || '',
+          (apiKey) =>
+            generateOpenAiCompatibleTransform({
+              baseUrl,
+              apiKey,
+              model: resolvedModel,
+              instruction,
+              systemPrompt,
+              selectedText: text,
+              images: attachedImages as { mimeType: string; dataBase64: string }[],
+              requestOptions,
+              onChunk: setResult,
+              signal: controller.signal,
+            }),
+          { allowEmpty: true },
         );
         setResult(output);
         return;

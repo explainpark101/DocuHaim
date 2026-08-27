@@ -37,7 +37,8 @@ import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import LlmProviderSelect from '@/components/LlmProviderSelect';
-import { LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
+import { LLM_PROVIDER_MLX_LM, LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
+import MlxLmModelSelect from '@/components/llm/MlxLmModelSelect';
 import {
   extractImageFilesFromClipboard,
   readImageFilesAsAttachments,
@@ -236,6 +237,13 @@ export default function LlmAssistPanel({
               reloadKey={`${selectedProfile.id}:${selectedProfile.baseUrl || ''}`}
               getBaseUrl={() => selectedProfile.baseUrl || ''}
               getApiKey={() => selectedProfile.apiKey || ''}
+              value={model}
+              onChange={onModelChange}
+              autoLoad={modelSelectAutoLoad}
+            />
+          ) : selectedProfile.kind === LLM_PROVIDER_MLX_LM ? (
+            <MlxLmModelSelect
+              key={`${selectedProfile.id}-mlx`}
               value={model}
               onChange={onModelChange}
               autoLoad={modelSelectAutoLoad}
