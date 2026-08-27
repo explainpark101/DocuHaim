@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "desktop-llama-cpp-linux",
+  "description": "DocuHaim Linux llama.cpp shell scopes",
+  "platforms": ["linux"],
+  "windows": ["main", "s3haim-llm-assist"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "llama-cpp-resolve-unix",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "for p in \"$HOME/.local/bin/llama-server\" \"/usr/local/bin/llama-server\" \"/usr/bin/llama-server\"; do if [ -x \"$p\" ]; then echo \"$p\"; exit 0; fi; done; command -v llama-server 2>/dev/null || true"
+          ]
+        },
+        {
+          "name": "llama-cpp-probe-unix",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "\"$0\" --help",
+            { "validator": "^(/[A-Za-z0-9._/-]+/llama-server)$" }
+          ]
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "llama-cpp-server-unix",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" -m \"$1\" --host \"$2\" --port \"$3\" --ctx-size \"$4\" --n-gpu-layers \"$5\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+/llama-server)$" },
+            { "validator": "^(/[A-Za-z0-9._/-]+\\.gguf)$" },
+            { "validator": "^[0-9.]+$" },
+            { "validator": "^[0-9]+$" },
+            { "validator": "^-?[0-9]+$" },
+            { "validator": "^-?[0-9]+$" }
+          ]
+        },
+        {
+          "name": "llama-cpp-hf-download-linux",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "huggingface-cli download \"$1\" --include \"*.gguf\" --max-workers \"$2\"",
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            { "validator": "^[0-9]+$" }
+          ]
+        }
+      ]
+    },
+    "shell:allow-kill"
+  ]
+}

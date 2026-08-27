@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 
 type SettingsPageGroupProps = {
   id: string;
@@ -37,14 +38,14 @@ export default function SettingsPageGroup({
         )}
         <span className="text-sm font-bold text-gray-800 dark:text-odp-fgStrong">{title}</span>
       </button>
-      {open ? (
+      <SettingsCollapsibleContent open={open} contentKey={`settings-group-${id}`}>
         <div
           id={`settings-group-${id}-panel`}
           className="space-y-4 border-t border-gray-200 px-4 pb-4 pt-3 dark:border-odp-borderStrong"
         >
           {children}
         </div>
-      ) : null}
+      </SettingsCollapsibleContent>
     </section>
   );
 }

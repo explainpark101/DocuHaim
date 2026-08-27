@@ -1,0 +1,90 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "desktop-llama-cpp-macos",
+  "description": "DocuHaim macOS llama.cpp shell scopes (llama-server spawn, HF download via uv)",
+  "platforms": ["macOS"],
+  "windows": ["main", "s3haim-llm-assist"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "llama-cpp-resolve-unix",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "for p in \"$HOME/.local/bin/llama-server\" \"/opt/homebrew/bin/llama-server\" \"/usr/local/bin/llama-server\" \"/usr/bin/llama-server\"; do if [ -x \"$p\" ]; then echo \"$p\"; exit 0; fi; done; command -v llama-server 2>/dev/null || true"
+          ]
+        },
+        {
+          "name": "llama-cpp-probe-unix",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "\"$0\" --help",
+            { "validator": "^(/[A-Za-z0-9._/-]+/llama-server)$" }
+          ]
+        },
+        {
+          "name": "llama-cpp-brew-install",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; brew install llama.cpp"
+          ]
+        },
+        {
+          "name": "llama-cpp-official-install",
+          "cmd": "/bin/sh",
+          "args": ["-lc", "curl -LsSf https://llama.app/install.sh | sh"]
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "llama-cpp-server-unix",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" -m \"$1\" --host \"$2\" --port \"$3\" --ctx-size \"$4\" --n-gpu-layers \"$5\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+/llama-server)$" },
+            { "validator": "^(/[A-Za-z0-9._/-]+\\.gguf)$" },
+            { "validator": "^[0-9.]+$" },
+            { "validator": "^[0-9]+$" },
+            { "validator": "^-?[0-9]+$" },
+            { "validator": "^-?[0-9]+$" }
+          ]
+        },
+        {
+          "name": "llama-cpp-server-unix-apikey",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" -m \"$1\" --host \"$2\" --port \"$3\" --ctx-size \"$4\" --n-gpu-layers \"$5\" --api-key \"$6\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+/llama-server)$" },
+            { "validator": "^(/[A-Za-z0-9._/-]+\\.gguf)$" },
+            { "validator": "^[0-9.]+$" },
+            { "validator": "^[0-9]+$" },
+            { "validator": "^-?[0-9]+$" },
+            { "validator": "^-?[0-9]+$" },
+            { "validator": "^.+$" }
+          ]
+        },
+        {
+          "name": "llama-cpp-hf-download-macos",
+          "cmd": "/bin/sh",
+          "args": [
+            "-lc",
+            "exec \"$0\" tool run --from huggingface-hub python -u -m huggingface_hub.cli.hf download \"$1\" --include \"*.gguf\" --max-workers \"$2\"",
+            { "validator": "^(/[A-Za-z0-9._/-]+)/uv$" },
+            { "validator": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            { "validator": "^[0-9]+$" }
+          ]
+        }
+      ]
+    },
+    "shell:allow-kill"
+  ]
+}

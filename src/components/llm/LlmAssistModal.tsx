@@ -18,6 +18,7 @@ import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
 import {
   LLM_PROVIDER_GEMINI,
+  LLM_PROVIDER_LLAMA_CPP,
   LLM_PROVIDER_MLX_VLM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   loadLastUsedModelForProfile,
@@ -27,8 +28,10 @@ import {
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { loadMlxVlmSettings } from '@/utils/mlxVlmSettingsStore';
+import { loadLlamaCppSettings } from '@/utils/llamaCppSettingsStore';
 import { generateMlxVlmTransform } from '@/utils/llm/mlxVlmGenerateClient';
 import { getMlxVlmServerStatus } from '@/utils/mlxVlmShell';
+import { getLlamaCppServerStatus } from '@/utils/llamaCppShell';
 import { LLM_ASSIST_MSG } from '@/utils/llmAssistBridge';
 import {
   closeLlmAssistPopoutWindow,
@@ -392,6 +395,45 @@ export default function LlmAssistModal({
             allowEmpty: true,
             missingKeyMessage: 'OpenAI 호환 API 키가 없습니다. 설정에서 입력하세요.',
           },
+        );
+        setResult(output);
+        return;
+      }
+
+      if (selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP) {
+        const llamaSettings = loadLlamaCppSettings();
+        const status = await getLlamaCppServerStatus(llamaSettings);
+        if (!status.running) {
+          throw new Error(
+            'llama.cpp 서버가 실행 중이 아닙니다.\n설정 > llama.cpp (Tauri desktop)에서 모델을 선택한 뒤 Start server를 실행하세요.',
+          );
+        }
+        const baseUrl = (selectedProfile.baseUrl || status.baseUrl || '').trim();
+        if (!baseUrl) {
+          throw new Error('llama.cpp 서버 URL을 확인할 수 없습니다. 설정에서 서버를 다시 시작하세요.');
+        }
+        const resolvedModel = model.trim() || llamaSettings.selectedModelId || status.models[0] || '';
+        if (!resolvedModel) {
+          throw new Error('사용할 모델을 선택하세요.');
+        }
+        saveLastUsedModelForProfile(selectedProfile.id, resolvedModel);
+        const output = await withLlmProfileApiKey(
+          selectedProfile.id,
+          () => selectedProfile.apiKey || llamaSettings.apiKey || 'no-key-required',
+          (apiKey) =>
+            generateOpenAiCompatibleTransform({
+              baseUrl,
+              apiKey,
+              model: resolvedModel,
+              instruction,
+              systemPrompt,
+              selectedText: text,
+              images: attachedImages,
+              requestOptions,
+              onChunk: setResult,
+              signal: controller.signal,
+            }),
+          { allowEmpty: true, missingKeyMessage: 'llama.cpp API 키가 없습니다.' },
         );
         setResult(output);
         return;

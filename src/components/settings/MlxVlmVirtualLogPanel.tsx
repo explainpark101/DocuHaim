@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { VList, type VListHandle } from 'virtua';
+import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 import type { MlxVlmLogLine } from '@/utils/llm/mlxVlmRawLogBuffer';
 
 const LOG_LIST_HEIGHT_PX = 256;
@@ -98,7 +99,7 @@ export default function MlxVlmVirtualLogPanel({
         </div>
       </div>
 
-      {open ? (
+      <SettingsCollapsibleContent open={open} contentKey={title}>
         <div className="space-y-2 p-2.5">
           {beforeLog}
           {lines.length === 0 ? (
@@ -129,7 +130,7 @@ export default function MlxVlmVirtualLogPanel({
             </VList>
           )}
         </div>
-      ) : null}
+      </SettingsCollapsibleContent>
     </div>
   );
 }

@@ -61,6 +61,13 @@ export default function LlmAssistPopoutPage() {
   const readySentRef = useRef(false);
 
   useEffect(() => {
+    document.documentElement.classList.add('llm-assist-popout-window');
+    return () => {
+      document.documentElement.classList.remove('llm-assist-popout-window');
+    };
+  }, []);
+
+  useEffect(() => {
     void isLlmAssistTauriPopoutWindow().then(setTauriPopout);
   }, []);
 
@@ -205,7 +212,7 @@ export default function LlmAssistPopoutPage() {
 
   return (
     <LlmAssistImageDropZone
-      className="llm-assist-popout-page flex min-h-screen flex-col bg-white dark:bg-odp-bgSofter"
+      className="llm-assist-popout-page flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-odp-bgSofter"
       onFilesDrop={async (files) => {
         try {
           const images = await readImageFilesAsAttachments(files);

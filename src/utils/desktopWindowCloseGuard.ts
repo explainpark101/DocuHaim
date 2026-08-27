@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react';
 import { isTauriDesktopPlatform, isTauriMacOS } from '@/utils/tauriPlatform';
+import { shutdownManagedLlmServersOnQuit } from '@/utils/llm/desktopManagedLlmShutdown';
 
 export type DesktopCloseGuardHandlers = {
   isDirty: () => boolean;
@@ -21,6 +22,7 @@ export function setDesktopQuitAllowed(value: boolean): void {
 
 /** Let other close listeners (tab persist) run, then exit the macOS shell. */
 async function finishMacosDesktopQuit(): Promise<void> {
+  await shutdownManagedLlmServersOnQuit();
   await new Promise<void>((resolve) => {
     queueMicrotask(resolve);
   });
@@ -37,6 +39,7 @@ export async function performDesktopQuit(): Promise<void> {
     await finishMacosDesktopQuit();
     return;
   }
+  await shutdownManagedLlmServersOnQuit();
   const { getCurrentWindow } = await import('@tauri-apps/api/window');
   await getCurrentWindow().destroy();
 }

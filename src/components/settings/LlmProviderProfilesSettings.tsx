@@ -19,6 +19,7 @@ import {
 import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/openaiCompatibleSettings';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
+import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 
 type Draft = {
   id: string;
@@ -179,7 +180,7 @@ export default function LlmProviderProfilesSettings({
           AI 도우미 제공자
         </h3>
       </button>
-      {open ? (
+      <SettingsCollapsibleContent open={open} contentKey="settings-llm-providers">
         <>
           <p className="text-xs text-gray-600 dark:text-odp-muted">
             Gemini와 OpenAI 호환 endpoint를 여러 개 저장할 수 있습니다. 실제 사용할 제공자는
@@ -431,11 +432,12 @@ export default function LlmProviderProfilesSettings({
             </button>
           )}
         </>
-      ) : (
+      </SettingsCollapsibleContent>
+      {!open ? (
         <p className="text-xs text-gray-500 dark:text-odp-muted">
           {profiles.length}개 저장됨
         </p>
-      )}
+      ) : null}
 
       <ConfirmModal
         isOpen={Boolean(pendingDelete)}

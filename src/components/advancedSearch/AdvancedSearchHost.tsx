@@ -41,6 +41,12 @@ import {
   subscribeMlxVlmActions,
 } from '@/utils/advancedSearch/mlxVlmActions';
 import {
+  isLlamaCppActionId,
+  isLlamaCppActionsAvailable,
+  runLlamaCppAction,
+  subscribeLlamaCppActions,
+} from '@/utils/advancedSearch/llamaCppActions';
+import {
   runAppLockAction,
 } from '@/utils/advancedSearch/appLockActions';
 import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
@@ -202,6 +208,9 @@ export default function AdvancedSearchHost({
   const [mlxVlmActionsAvailable, setMlxVlmActionsAvailable] = useState(() =>
     isMlxVlmActionsAvailable(),
   );
+  const [llamaCppActionsAvailable, setLlamaCppActionsAvailable] = useState(() =>
+    isLlamaCppActionsAvailable(),
+  );
   const [editorAutocompleteEnabled, setEditorAutocompleteEnabled] = useState(() =>
     loadEditorAutocompleteEnabled(),
   );
@@ -240,6 +249,12 @@ export default function AdvancedSearchHost({
   useEffect(() => {
     return subscribeMlxVlmActions(() => {
       setMlxVlmActionsAvailable(isMlxVlmActionsAvailable());
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeLlamaCppActions(() => {
+      setLlamaCppActionsAvailable(isLlamaCppActionsAvailable());
     });
   }, []);
 
@@ -362,6 +377,7 @@ export default function AdvancedSearchHost({
         printActionsAvailable,
         chatActionsAvailable,
         mlxVlmActionsAvailable,
+        llamaCppActionsAvailable,
         editorAutocompleteEnabled,
         editorMirrorEditEnabled,
         ...(snippetConfig ? { snippetConfig } : {}),
@@ -634,6 +650,13 @@ export default function AdvancedSearchHost({
           return;
         }
 
+        if (commandId && isLlamaCppActionId(commandId)) {
+          window.setTimeout(() => {
+            runLlamaCppAction(commandId);
+          }, 0);
+          return;
+        }
+
         if (commandId === 'app-lock') {
           runAppLockAction();
           return;
@@ -688,6 +711,7 @@ export default function AdvancedSearchHost({
       printActionsAvailable={printActionsAvailable}
       chatActionsAvailable={chatActionsAvailable}
       mlxVlmActionsAvailable={mlxVlmActionsAvailable}
+      llamaCppActionsAvailable={llamaCppActionsAvailable}
       preferPrintActions={preferPrintActions}
       printPaperPickerMode={pickerMode === 'print-paper'}
       browseDirectoryMode={pickerMode === 'browse-directory'}

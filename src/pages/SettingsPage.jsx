@@ -10,6 +10,7 @@ import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
 import SettingsPageTocDock from '@/components/settings/SettingsPageTocDock';
+import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
@@ -62,6 +63,7 @@ import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
 import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
+import LlamaCppSettings from '@/components/settings/LlamaCppSettings';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -241,11 +243,11 @@ export default function SettingsPage({
     if (hash === 'settings-webdav') setWebdavConnOpen(true);
     if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-imgbb') setImgbbConnOpen(true);
-    if (hash === 'settings-mlx-vlm') dispatchSettingsSectionOpen(hash);
+    if (hash === 'settings-mlx-vlm' || hash === 'settings-llama-cpp') dispatchSettingsSectionOpen(hash);
     const groupId = findSettingsGroupIdForSection(hash);
     if (groupId) setGroupOpen((prev) => ({ ...prev, [groupId]: true }));
     const scrollId = resolveSettingsScrollTarget(hash);
-    const scrollDelay = hash === 'settings-mlx-vlm' ? 220 : 80;
+    const scrollDelay = hash === 'settings-mlx-vlm' || hash === 'settings-llama-cpp' ? 220 : 80;
     const timer = window.setTimeout(() => {
       const el = document.getElementById(scrollId);
       if (!el) return;
@@ -351,11 +353,11 @@ export default function SettingsPage({
       if (sectionId === 'settings-webdav') setWebdavConnOpen(true);
       if (sectionId === 'settings-local') setLocalConnOpen(true);
       if (sectionId === 'settings-imgbb') setImgbbConnOpen(true);
-      if (sectionId === 'settings-mlx-vlm') dispatchSettingsSectionOpen(sectionId);
+      if (sectionId === 'settings-mlx-vlm' || sectionId === 'settings-llama-cpp') dispatchSettingsSectionOpen(sectionId);
 
       const scrollId = resolveSettingsScrollTarget(sectionId);
       navigate({ pathname: location.pathname, hash: `#${sectionId}` }, { replace: true });
-      const scrollDelay = sectionId === 'settings-mlx-vlm' ? 220 : 120;
+      const scrollDelay = sectionId === 'settings-mlx-vlm' || sectionId === 'settings-llama-cpp' ? 220 : 120;
       window.setTimeout(() => {
         const el = document.getElementById(scrollId);
         if (!el) return;
@@ -479,7 +481,7 @@ export default function SettingsPage({
               S3 연결 정보
             </h3>
           </button>
-          {s3ConnOpen ? (
+          <SettingsCollapsibleContent open={s3ConnOpen} contentKey="settings-s3-conn">
             <>
               <div className="space-y-3">
                 <div>
@@ -562,7 +564,7 @@ export default function SettingsPage({
                 </button>
               </div>
             </>
-          ) : null}
+          </SettingsCollapsibleContent>
         </form>
 
 
@@ -595,7 +597,7 @@ export default function SettingsPage({
               </span>
             ) : null}
           </button>
-          {webdavConnOpen ? (
+          <SettingsCollapsibleContent open={webdavConnOpen} contentKey="settings-webdav-conn">
             <>
               <div className="space-y-3">
                 <div>
@@ -680,7 +682,7 @@ export default function SettingsPage({
                 </button>
               </div>
             </>
-          ) : null}
+          </SettingsCollapsibleContent>
         </form>
 
 
@@ -710,7 +712,7 @@ export default function SettingsPage({
               </span>
             ) : null}
           </button>
-          {localConnOpen ? (
+          <SettingsCollapsibleContent open={localConnOpen} contentKey="settings-local-conn">
             <>
               <p className="text-xs text-gray-600 dark:text-odp-muted">
                 {desktopApp
@@ -755,7 +757,7 @@ export default function SettingsPage({
                 </button>
               </div>
             </>
-          ) : null}
+          </SettingsCollapsibleContent>
         </div>
 
 
@@ -870,6 +872,8 @@ export default function SettingsPage({
         />
 
         <MlxVlmSettings />
+
+        <LlamaCppSettings />
             </SettingsPageGroup>
 
             <SettingsPageGroup
@@ -915,7 +919,7 @@ export default function SettingsPage({
               ImgBB
             </h3>
           </button>
-          {imgbbConnOpen ? (
+          <SettingsCollapsibleContent open={imgbbConnOpen} contentKey="settings-imgbb-conn">
             <>
               <p className="text-xs text-gray-600 dark:text-odp-muted">
                 ImgBB API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시
@@ -954,7 +958,7 @@ export default function SettingsPage({
                 </button>
               </div>
             </>
-          ) : null}
+          </SettingsCollapsibleContent>
         </form>
 
         <OgWorkerSettings />
@@ -1435,7 +1439,10 @@ export default function SettingsPage({
                 </span>
               </span>
             </label>
-            {workspaceTabsEnabled ? (
+            <SettingsCollapsibleContent
+              open={workspaceTabsEnabled}
+              contentKey="settings-workspace-tabs-autosave"
+            >
               <div className="pl-12 space-y-2">
                 <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
                   탭 자동 저장 설정
@@ -1483,7 +1490,7 @@ export default function SettingsPage({
                   })}
                 </RadioGroup.Root>
               </div>
-            ) : null}
+            </SettingsCollapsibleContent>
           </div>
         </div>
 

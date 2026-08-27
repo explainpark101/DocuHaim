@@ -32,6 +32,7 @@ import MlxVlmServerLogPanel from '@/components/settings/MlxVlmServerLogPanel';
 import MlxVlmSettingsOverview, {
   MlxVlmSettingsPanelTitle,
 } from '@/components/settings/MlxVlmSettingsOverview';
+import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 
 export default function MlxVlmSettings() {
   const location = useLocation();
@@ -139,7 +140,8 @@ export default function MlxVlmSettings() {
   const cliAvailable = toolkit?.available === true;
   const hfCliAvailable = toolkit?.hfHubRunnable === true;
   const downloadReady = cliAvailable && hfCliAvailable;
-  const loadedModel = runtimeStatus.models[0] || settings.selectedModelId;
+  const loadedModel =
+    runtimeStatus.models[0] || settings.selectedModelId.trim() || '모델 미선택';
 
   const persistSettings = (next: MlxVlmSettings) => {
     saveMlxVlmSettings(next);
@@ -166,7 +168,7 @@ export default function MlxVlmSettings() {
         <MlxVlmSettingsPanelTitle />
       </button>
 
-      {panelOpen ? (
+      <SettingsCollapsibleContent open={panelOpen} contentKey="settings-mlx-vlm-panel">
         <div className="space-y-3 border-t border-emerald-200/80 px-4 pb-4 pt-3 dark:border-emerald-900/40">
           <MlxVlmSettingsOverview
             toolkit={toolkit}
@@ -243,7 +245,7 @@ export default function MlxVlmSettings() {
             />
           </MlxVlmCollapsibleSection>
         </div>
-      ) : null}
+      </SettingsCollapsibleContent>
     </div>
   );
 }

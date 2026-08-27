@@ -47,6 +47,7 @@ import {
 } from '@/utils/webauthn';
 import { resolveLlmProviderProfiles } from '@/utils/llmProviderProfiles';
 import { useMlxVlmProviderAutoSync } from '@/hooks/useMlxVlmProviderAutoSync';
+import { useLlamaCppProviderAutoSync } from '@/hooks/useLlamaCppProviderAutoSync';
 import { useMlxVlmLoadToast } from '@/hooks/useMlxVlmLoadToast';
 import LlmAssistModal from '@/components/LlmAssistModal';
 
@@ -275,6 +276,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const { isUnlocked, s3Creds, masterPassword } = auth;
   const llmProviderProfiles = resolveLlmProviderProfiles(s3Creds);
   useMlxVlmProviderAutoSync(s3Creds, handleSaveS3Creds);
+  useLlamaCppProviderAutoSync(s3Creds, handleSaveS3Creds);
   useMlxVlmLoadToast();
   const getImgbbApiKey = () => (s3Creds?.imgbbApiKey || '').trim();
 

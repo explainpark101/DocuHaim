@@ -1,5 +1,6 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Square } from 'lucide-react';
+import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 import {
   analyzeStorageTree,
   formatStorageBytes,
@@ -334,14 +335,14 @@ function AnalysisSection({
         )}
         <span>{title}</span>
       </button>
-      {open ? (
+      <SettingsCollapsibleContent open={open} contentKey={title}>
         <div className="grid grid-cols-1 gap-3 border-t border-gray-200 p-3 dark:border-odp-borderStrong md:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)] md:items-stretch">
           <div className="min-w-0">
             <GraphPlaceholder />
           </div>
           <div className="min-w-0">{children}</div>
         </div>
-      ) : null}
+      </SettingsCollapsibleContent>
     </div>
   );
 }

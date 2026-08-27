@@ -33,18 +33,31 @@ export default function MlxVlmInstalledModelsSection({
     <>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
         <p className="text-[11px] text-gray-500 dark:text-odp-muted">
-          서버 시작 시 사용할 모델을 선택하세요. 삭제는 Hugging Face 캐시 폴더를 제거합니다.
+          서버 시작 시 사용할 모델을 선택하세요. 선택 해제하면 모델 없이 둘 수 있습니다.
         </p>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={disabled || scanBusy || deleteBusy}
-          onClick={onRefresh}
-        >
-          <RefreshCw size={14} className={scanBusy ? 'animate-spin' : ''} />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {selectedId ? (
+            <Button
+              type="button"
+              variant="tertiary"
+              size="sm"
+              disabled={disabled || deleteBusy}
+              onClick={() => onSelect('')}
+            >
+              선택 해제
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={disabled || scanBusy || deleteBusy}
+            onClick={onRefresh}
+          >
+            <RefreshCw size={14} className={scanBusy ? 'animate-spin' : ''} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {models.length === 0 ? (

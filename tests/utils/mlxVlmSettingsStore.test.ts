@@ -1,7 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeMlxVlmSettings } from '@/utils/llm/mlxVlmSettingsStore';
+import {
+  normalizeMlxVlmSettings,
+  normalizeMlxVlmHfDownloadMaxWorkers,
+  DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
+  setSelectedMlxVlmModelId,
+  removeInstalledModel,
+  addInstalledModel,
+} from '@/utils/llm/mlxVlmSettingsStore';
 
 describe('normalizeMlxVlmSettings', () => {
+  it('defaults to empty selected model id', () => {
+    expect(normalizeMlxVlmSettings({})).toEqual({
+      adapterPath: '',
+      hfToken: '',
+      selectedModelId: '',
+      hfDownloadMaxWorkers: DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
+      installedModels: [],
+    });
+  });
+
   it('drops legacy host/port/external fields and keeps core settings', () => {
     const normalized = normalizeMlxVlmSettings({
       host: '0.0.0.0',
@@ -9,14 +26,29 @@ describe('normalizeMlxVlmSettings', () => {
       allowExternalAccess: true,
       adapterPath: '/tmp/adapter',
       selectedModelId: 'mlx-community/test',
-      installedModels: [],
+      installedModels: [
+        {
+          id: 'mlx-community/test',
+          repoId: 'mlx-community/test',
+          source: 'huggingface',
+          installedAt: 1,
+        },
+      ],
     });
 
     expect(normalized).toEqual({
       adapterPath: '/tmp/adapter',
       hfToken: '',
       selectedModelId: 'mlx-community/test',
-      installedModels: [],
+      hfDownloadMaxWorkers: DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
+      installedModels: [
+        {
+          id: 'mlx-community/test',
+          repoId: 'mlx-community/test',
+          source: 'huggingface',
+          installedAt: 1,
+        },
+      ],
     });
   });
 
@@ -26,5 +58,83 @@ describe('normalizeMlxVlmSettings', () => {
       selectedModelId: 'mlx-community/test',
     });
     expect(normalized.hfToken).toBe('hf_test_token');
+  });
+
+  it('clears selected model id when not installed', () => {
+    const normalized = normalizeMlxVlmSettings({
+      selectedModelId: 'mlx-community/missing',
+      installedModels: [],
+    });
+    expect(normalized.selectedModelId).toBe('');
+  });
+
+  it('defaults and clamps hf download workers', () => {
+    expect(normalizeMlxVlmSettings({}).hfDownloadMaxWorkers).toBe(
+      DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
+    );
+    expect(normalizeMlxVlmHfDownloadMaxWorkers(64)).toBe(32);
+    expect(normalizeMlxVlmHfDownloadMaxWorkers(0)).toBe(1);
+    expect(normalizeMlxVlmHfDownloadMaxWorkers(12)).toBe(12);
+  });
+});
+
+describe('mlxVlm model selection helpers', () => {
+  const base = {
+    adapterPath: '',
+    hfToken: '',
+    selectedModelId: '',
+    hfDownloadMaxWorkers: DEFAULT_MLX_VLM_HF_DOWNLOAD_MAX_WORKERS,
+    installedModels: [
+      {
+        id: 'mlx-community/a',
+        repoId: 'mlx-community/a',
+        source: 'huggingface' as const,
+        installedAt: 1,
+      },
+    ],
+  };
+
+  it('allows clearing selected model id', () => {
+    const next = setSelectedMlxVlmModelId(
+      { ...base, selectedModelId: 'mlx-community/a' },
+      '',
+    );
+    expect(next.selectedModelId).toBe('');
+  });
+
+  it('does not auto-select when adding installed model', () => {
+    const next = addInstalledModel(base, {
+      id: 'mlx-community/b',
+      repoId: 'mlx-community/b',
+      source: 'huggingface',
+    });
+    expect(next.selectedModelId).toBe('');
+    expect(next.installedModels).toHaveLength(2);
+  });
+
+  it('clears selection when selected model is removed', () => {
+    const next = removeInstalledModel(
+      {
+        ...base,
+        selectedModelId: 'mlx-community/a',
+        installedModels: [
+          {
+            id: 'mlx-community/a',
+            repoId: 'mlx-community/a',
+            source: 'huggingface',
+            installedAt: 1,
+          },
+          {
+            id: 'mlx-community/b',
+            repoId: 'mlx-community/b',
+            source: 'huggingface',
+            installedAt: 2,
+          },
+        ],
+      },
+      'mlx-community/a',
+    );
+    expect(next.selectedModelId).toBe('');
+    expect(next.installedModels).toHaveLength(1);
   });
 });

@@ -229,16 +229,8 @@ export default function MlxVlmModelBrowser({
       seen.add(model.id);
       out.push(model);
     }
-    if (selectedId && !seen.has(selectedId)) {
-      out.unshift({
-        id: selectedId,
-        ...(selectedId.includes('/') ? { repoId: selectedId } : {}),
-        source: 'huggingface',
-        installedAt: Date.now(),
-      });
-    }
     return out;
-  }, [installed, selectedId]);
+  }, [installed]);
 
   const requestDownload = (repoId: string, hit?: HfModelSearchHit | null) => {
     rememberMlxVlmDownloadTarget(repoId);
@@ -411,7 +403,7 @@ export default function MlxVlmModelBrowser({
     <div className="space-y-2">
       <MlxVlmCollapsibleSection
         title="설치된 모델"
-        subtitle={`${installedOptions.length}개 · 서버에 로드할 모델 선택`}
+        subtitle={`${installedOptions.length}개 · ${selectedId ? '선택됨' : '모델 미선택'}`}
         open={installedOpen}
         onOpenChange={setInstalledOpen}
       >

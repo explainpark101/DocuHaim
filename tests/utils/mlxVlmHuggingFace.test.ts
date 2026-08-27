@@ -87,7 +87,7 @@ describe('mlxVlm model registry', () => {
       },
       'mlx-community/a',
     );
-    expect(next.selectedModelId).toBe('mlx-community/b');
+    expect(next.selectedModelId).toBe('');
     expect(next.installedModels).toHaveLength(1);
   });
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 
 type MlxVlmCollapsibleSectionProps = {
   title: string;
@@ -51,7 +52,9 @@ export default function MlxVlmCollapsibleSection({
           ) : null}
         </span>
       </button>
-      {open ? <div className={contentClassName}>{children}</div> : null}
+      <SettingsCollapsibleContent open={open} contentKey={title}>
+        <div className={contentClassName}>{children}</div>
+      </SettingsCollapsibleContent>
     </div>
   );
 }

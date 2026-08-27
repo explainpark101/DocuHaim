@@ -15,6 +15,30 @@ export default function MlxVlmConnectionFields({
     <div className="space-y-4">
       <div>
         <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
+          HF download workers (parallel threads)
+        </label>
+        <input
+          type="number"
+          min={1}
+          max={32}
+          value={settings.hfDownloadMaxWorkers}
+          disabled={disabled}
+          onChange={(e) =>
+            onChange({
+              ...settings,
+              hfDownloadMaxWorkers: Number.parseInt(e.target.value, 10) || 16,
+            })
+          }
+          className="w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+        />
+        <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
+          Passed to <code className="text-[10px]">hf download --max-workers</code>. Default 16 (HF
+          CLI default is 8). Range 1–32.
+        </p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-odp-muted">
           Hugging Face token (optional)
         </label>
         <input
