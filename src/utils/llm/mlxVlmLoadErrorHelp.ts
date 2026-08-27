@@ -38,10 +38,7 @@ export function shouldSuggestMlxVlmRedownload(errorMessage: string): boolean {
   return !SKIP_REDOWNLOAD_HINT_PATTERNS.some((pattern) => pattern.test(msg));
 }
 
-export function resolveMlxVlmLoadFailure(
-  error: unknown,
-  modelId?: string,
-): MlxVlmLoadFailureInfo {
+export function resolveMlxVlmLoadFailure(error: unknown): MlxVlmLoadFailureInfo {
   const message = extractMlxVlmLoadErrorMessage(error);
   return {
     message,
@@ -53,7 +50,7 @@ export function buildMlxVlmLoadFailureAlertMessage(
   error: unknown,
   modelId?: string,
 ): string {
-  const { message, suggestRedownload } = resolveMlxVlmLoadFailure(error, modelId);
+  const { message, suggestRedownload } = resolveMlxVlmLoadFailure(error);
   if (!suggestRedownload) return message;
 
   const id = String(modelId || '').trim();

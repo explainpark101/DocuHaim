@@ -71,7 +71,7 @@ export default function MlxVlmSettings() {
       await startMlxVlmServer(settings);
       requestMlxVlmProviderSync();
     } catch (err) {
-      const failure = resolveMlxVlmLoadFailure(err, settings.selectedModelId);
+      const failure = resolveMlxVlmLoadFailure(err);
       if (failure.suggestRedownload) {
         requestMlxVlmRedownloadFocus(settings.selectedModelId);
         setPanelOpen(true);

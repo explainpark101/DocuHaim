@@ -115,7 +115,7 @@ export default function MlxVlmModelSelect({
         await refreshModels();
       } catch (err) {
         if (loadRequestRef.current !== requestId) return;
-        setLoadError(resolveMlxVlmLoadFailure(err, id).message);
+        setLoadError(resolveMlxVlmLoadFailure(err).message);
       } finally {
         if (loadRequestRef.current === requestId) {
           setModelLoading(false);

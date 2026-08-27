@@ -40,7 +40,7 @@ export default function MlxVlmActionHost() {
       requestMlxVlmProviderSync();
     } catch (err) {
       const settings = loadMlxVlmSettings();
-      const failure = resolveMlxVlmLoadFailure(err, settings.selectedModelId);
+      const failure = resolveMlxVlmLoadFailure(err);
       if (failure.suggestRedownload) {
         requestMlxVlmRedownloadFocus(settings.selectedModelId);
       }

@@ -14,7 +14,12 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Transform } from '@dnd-kit/utilities';
-import { LayoutGroup, motion as Motion, useReducedMotion } from 'motion/react';
+import {
+  LayoutGroup,
+  motion as Motion,
+  useReducedMotion,
+  type MotionStyle,
+} from 'motion/react';
 import {
   IconFile,
   IconFileCode,
@@ -31,7 +36,6 @@ import {
   useMemo,
   useRef,
   type ComponentType,
-  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type SVGProps,
@@ -151,11 +155,11 @@ function SortableWorkspaceTab({
   const lockedTransform = horizontalSortableTransform(transform);
   const layoutEnabled = !reduceMotion && !isDragging && !sortableDragActive;
 
-  const style: CSSProperties = {
-    transform: lockedTransform ? CSS.Transform.toString(lockedTransform) : undefined,
-    transition: isDragging ? transition : undefined,
+  const style: MotionStyle = {
     opacity: isDragging ? 0.85 : 1,
-    zIndex: isDragging ? 2 : undefined,
+    ...(lockedTransform ? { transform: CSS.Transform.toString(lockedTransform) } : {}),
+    ...(isDragging && transition ? { transition } : {}),
+    ...(isDragging ? { zIndex: 2 } : {}),
   };
 
   const tabWidthClass =
