@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Play, RefreshCw, Square } from 'lucide-react';
+import { Check, Loader2, Play, RefreshCw, Square } from 'lucide-react';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 import LlamaCppLoadFailureHint from '@/components/llm/LlamaCppLoadFailureHint';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -239,10 +239,6 @@ export default function LlamaCppModelSelect({
     onChange?.(loadedId);
   }, [loadedModelPath, onChange, value]);
 
-  const handleLoadClick = useCallback(() => {
-    void runLoadModel(value);
-  }, [runLoadModel, value]);
-
   const handleUnloadConfirm = useCallback(() => {
     setUnloadConfirmOpen(false);
     void runUnloadModel();
@@ -273,6 +269,16 @@ export default function LlamaCppModelSelect({
     runtimeLoadedPath && serverRunning && (selectionMatchesRuntime || hasRuntimeMismatch),
   );
   const canUnload = serverRunning && managedByApp;
+  const actionBusy = modelLoading || unloadBusy;
+  const loadedReady = selectionMatchesRuntime && canUnload;
+
+  const handleActionClick = () => {
+    if (loadedReady) {
+      setUnloadConfirmOpen(true);
+      return;
+    }
+    void runLoadModel(value);
+  };
 
   return (
     <div className={className}>
@@ -288,23 +294,39 @@ export default function LlamaCppModelSelect({
         />
         <button
           type="button"
-          onClick={handleLoadClick}
-          disabled={busy || !trimmedValue || selectionMatchesRuntime}
-          aria-label="Load llama.cpp model"
-          className="inline-flex shrink-0 items-center gap-1 rounded border border-sky-300 bg-sky-50 px-2 py-1.5 text-[11px] font-medium text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200 dark:hover:bg-sky-950/60"
+          onClick={handleActionClick}
+          disabled={actionBusy || (!loadedReady && !trimmedValue)}
+          aria-label={loadedReady ? 'Unload llama.cpp model' : 'Load llama.cpp model'}
+          className={[
+            'group inline-flex shrink-0 items-center gap-1 rounded border px-2 py-1.5 text-[11px] font-medium',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            loadedReady
+              ? 'border-sky-300 bg-sky-50 text-sky-800 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200 dark:hover:border-odp-borderStrong dark:hover:bg-odp-bgSoft dark:hover:text-odp-muted'
+              : 'border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200 dark:hover:bg-sky-950/60',
+          ].join(' ')}
         >
-          {modelLoading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-          로드
-        </button>
-        <button
-          type="button"
-          onClick={() => setUnloadConfirmOpen(true)}
-          disabled={busy || !canUnload}
-          aria-label="Unload llama.cpp model"
-          className="inline-flex shrink-0 items-center gap-1 rounded border border-gray-300 px-2 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft"
-        >
-          {unloadBusy ? <Loader2 size={14} className="animate-spin" /> : <Square size={14} />}
-          언로드
+          {actionBusy ? (
+            <>
+              <Loader2 size={14} className="animate-spin" aria-hidden />
+              {unloadBusy ? '언로드 중…' : '로드 중…'}
+            </>
+          ) : loadedReady ? (
+            <>
+              <span className="inline-flex items-center gap-1 group-hover:hidden">
+                <Check size={14} aria-hidden />
+                로드됨
+              </span>
+              <span className="hidden items-center gap-1 group-hover:inline-flex">
+                <Square size={14} aria-hidden />
+                언로드
+              </span>
+            </>
+          ) : (
+            <>
+              <Play size={14} aria-hidden />
+              로드
+            </>
+          )}
         </button>
         <button
           type="button"
