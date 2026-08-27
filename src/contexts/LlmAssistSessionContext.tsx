@@ -16,6 +16,11 @@ import {
 
 export type LlmAssistEditorBridge = {
   editorRef: RefObject<unknown>;
+  /** Prefer over reading editorRef.current (md-editor-rt ref shape varies). */
+  getEditorApi?: () => {
+    getEditorView?: () => import('@codemirror/view').EditorView | null | undefined;
+    getSelectedText?: () => string | undefined;
+  } | null;
   onChange?: (markdown: string) => void;
   getMarkdown?: () => string;
 };
@@ -98,7 +103,7 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
       undockToFloating,
       editorBridge,
       registerEditorBridge,
-      canInsertIntoDocument: Boolean(editorBridge?.editorRef),
+      canInsertIntoDocument: Boolean(editorBridge),
     }),
     [
       open,

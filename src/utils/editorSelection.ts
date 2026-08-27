@@ -15,7 +15,33 @@ type MdEditorApi = {
   value?: MdEditorApi;
 };
 
-const VIEW_ATTACH_RETRY_MS = [50, 200, 500, 1000] as const;
+function isMdEditorApi(candidate: unknown): candidate is MdEditorApi {
+  if (!candidate || typeof candidate !== 'object') return false;
+  const api = candidate as MdEditorApi;
+  return (
+    typeof api.getEditorView === 'function'
+    || typeof api.getSelectedText === 'function'
+  );
+}
+
+/** Resolve md-editor-rt imperative API from a React ref (handles optional `.value` wrapper). */
+export function resolveMdEditorApiFromRef(
+  editorRef: EditorRefLike | null | undefined,
+): MdEditorApi | null {
+  const current = editorRef?.current as
+    | (MdEditorApi & { value?: MdEditorApi })
+    | null
+    | undefined;
+  if (!current) return null;
+  if (isMdEditorApi(current)) return current;
+  const nested = current.value;
+  if (isMdEditorApi(nested)) return nested;
+  return null;
+}
+
+function getEditorApiFromRef(editorRef: EditorRefLike | null | undefined): MdEditorApi | null {
+  return resolveMdEditorApiFromRef(editorRef);
+}
 
 export type EditorRefLike =
   | RefObject<MdEditorApi | null | undefined>
@@ -37,13 +63,7 @@ export type ApplyLlmResultToEditorOptions = {
   forceAppendAtEnd?: boolean;
 };
 
-function getEditorApiFromRef(editorRef: EditorRefLike | null | undefined): MdEditorApi | null {
-  const current = editorRef?.current as
-    | (MdEditorApi & { value?: MdEditorApi })
-    | null
-    | undefined;
-  return current?.value ?? current ?? null;
-}
+const VIEW_ATTACH_RETRY_MS = [50, 200, 500, 1000] as const;
 
 function getMdEditorRootFromRef(
   editorRef: EditorRefLike | null | undefined,
@@ -111,7 +131,8 @@ export function applyLlmResultToEditor({
   getMarkdown,
   forceAppendAtEnd = false,
 }: ApplyLlmResultToEditorOptions): boolean {
-  const { view } = getEditorSelectionFromRef(editorRef);
+  const snapshot = getEditorSelectionFromRef(editorRef);
+  const { view } = snapshot;
   const appendAtEnd =
     forceAppendAtEnd || shouldAppendLlmResultAtDocEnd(editorRef, { view });
 
@@ -131,12 +152,21 @@ export function applyLlmResultToEditor({
     return false;
   }
 
+  if (!view?.state) return false;
+
   const focus = getMdEditorSourceFocus(view);
-  if (!focus?.everFocused || !view?.state) return false;
+  let { from, to } = snapshot;
+  if (from === to && focus?.everFocused) {
+    from = focus.from;
+    to = focus.to;
+  }
+  if (!focus?.everFocused && from === to && !snapshot.text.trim()) {
+    return false;
+  }
 
   const docLength = view.state.doc.length;
-  const { from, to } = clampRange(docLength, focus.from, focus.to);
-  return replaceEditorRange(view, from, to, result, onChange);
+  const clamped = clampRange(docLength, from, to);
+  return replaceEditorRange(view, clamped.from, clamped.to, result, onChange);
 }
 
 function readSelectionFromView(
@@ -171,8 +201,9 @@ function readSelectionFromView(
 
 export function getEditorSelectionFromRef(
   editorRef: EditorRefLike | null | undefined,
+  options?: { getEditorApi?: () => MdEditorApi | null },
 ): EditorSelectionSnapshot {
-  const api = getEditorApiFromRef(editorRef);
+  const api = options?.getEditorApi?.() ?? resolveMdEditorApiFromRef(editorRef);
   const view = api?.getEditorView?.() ?? null;
   if (view?.state) {
     return readSelectionFromView(view, api);
@@ -233,16 +264,30 @@ export function subscribeEditorSelectionFromRef(
       }
     });
     if (selectionCompartmentAttached) {
-      view.dispatch({ effects: compartment.reconfigure(extension) });
-    } else {
-      view.dispatch({
-        effects: StateEffect.appendConfig.of(compartment.of(extension)),
-      });
-      selectionCompartmentAttached = true;
+      try {
+        view.dispatch({ effects: compartment.reconfigure(extension) });
+      } catch {
+        selectionCompartmentAttached = false;
+      }
+    }
+    if (!selectionCompartmentAttached) {
+      try {
+        view.dispatch({
+          effects: StateEffect.appendConfig.of(compartment.of(extension)),
+        });
+        selectionCompartmentAttached = true;
+      } catch {
+        emit();
+        return true;
+      }
     }
     detachListener = () => {
       if (!selectionCompartmentAttached) return;
-      view.dispatch({ effects: compartment.reconfigure([]) });
+      try {
+        view.dispatch({ effects: compartment.reconfigure([]) });
+      } catch {
+        // view may already be destroyed
+      }
       selectionCompartmentAttached = false;
     };
     emit();

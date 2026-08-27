@@ -887,11 +887,27 @@ export default function MarkdownEditor({
   const registerBridge = llmAssist?.registerEditorBridge;
   useEffect(() => {
     if (previewOnly || !isActiveFile || !registerBridge) return undefined;
+    const getEditorApi = () => {
+      const current = editorRef.current;
+      if (!current) return null;
+      if (typeof current.getEditorView === 'function' || typeof current.getSelectedText === 'function') {
+        return current;
+      }
+      const nested = current.value;
+      if (
+        nested
+        && (typeof nested.getEditorView === 'function' || typeof nested.getSelectedText === 'function')
+      ) {
+        return nested;
+      }
+      return null;
+    };
     return registerBridge({
       editorRef,
+      getEditorApi,
       onChange: onChangeWithUndoHistory,
       getMarkdown: () => {
-        const api = editorRef.current?.value ?? editorRef.current;
+        const api = getEditorApi();
         const view = api?.getEditorView?.();
         return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
       },

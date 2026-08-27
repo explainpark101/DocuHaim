@@ -221,12 +221,14 @@ export default function LlmAssistModal({
   }, []);
 
   const refreshSelection = useCallback(() => {
-    if (!editorRef) return '';
-    const { text, from, to } = getEditorSelectionFromRef(editorRef);
+    if (!editorRef && !editorBridge?.getEditorApi) return '';
+    const { text, from, to } = getEditorSelectionFromRef(editorRef, {
+      ...(editorBridge?.getEditorApi ? { getEditorApi: editorBridge.getEditorApi } : {}),
+    });
     setSelectedText((prev) => (prev === text ? prev : text));
     setSelectionRange((prev) => (prev.from === from && prev.to === to ? prev : { from, to }));
     return text;
-  }, [editorRef]);
+  }, [editorRef, editorBridge]);
 
   const loadTemplates = useCallback(async () => {
     const list = await listLlmPromptTemplates();
@@ -235,23 +237,17 @@ export default function LlmAssistModal({
   }, []);
 
   useEffect(() => {
-    if (!open || presentation === 'docked') return;
-    setHidden(false);
-    saveLlmModalHidden(false);
+    if (!open) return;
+    if (presentation === 'docked' || presentation === 'floating') {
+      setHidden(false);
+      saveLlmModalHidden(false);
+    }
     refreshBounds();
     syncProfileId();
     refreshSelection();
     loadTemplates();
     setError('');
   }, [open, presentation, refreshBounds, refreshSelection, loadTemplates, syncProfileId]);
-
-  useEffect(() => {
-    if (!open || presentation !== 'docked') return;
-    syncProfileId();
-    refreshSelection();
-    loadTemplates();
-    setError('');
-  }, [open, presentation, refreshSelection, loadTemplates, syncProfileId]);
 
   useEffect(() => {
     if (!selectedProfile?.id || !selectedProfile?.kind) {
@@ -279,14 +275,24 @@ export default function LlmAssistModal({
   }, [open, editorBridge, refreshSelection]);
 
   useEffect(() => {
-    if (!open || hidden || popoutActive || !editorRef) return undefined;
+    if (!open || popoutActive || !editorRef) return undefined;
+    if (presentation === 'floating' && hidden) return undefined;
     return subscribeEditorSelectionFromRef(editorRef, ({ text, from, to }) => {
       setSelectedText((prev) => (prev === text ? prev : text));
       setSelectionRange((prev) =>
         prev.from === from && prev.to === to ? prev : { from, to },
       );
     });
-  }, [open, hidden, popoutActive, editorRef]);
+  }, [open, hidden, popoutActive, editorRef, presentation]);
+
+  useEffect(() => {
+    if (!open || popoutActive || (!editorRef && !editorBridge?.getEditorApi)) return undefined;
+    if (presentation === 'floating' && hidden) return undefined;
+    const interval = window.setInterval(() => {
+      refreshSelection();
+    }, 800);
+    return () => window.clearInterval(interval);
+  }, [open, hidden, popoutActive, editorRef, editorBridge, presentation, refreshSelection]);
 
   useEffect(() => {
     syncToPopout();

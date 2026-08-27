@@ -29,10 +29,13 @@ Do **not** read CodeMirror selection inline in panel/modal code. Always go throu
 ## Host wiring checklist
 
 1. Active `MarkdownEditor` registers `registerEditorBridge` when `isActiveFile && !previewOnly`.
-2. `LlmAssistModal` resolves `editorRef` from `session.editorBridge` (not a stale local ref).
-3. On open / bridge change → `refreshSelection()`; while open → `subscribeEditorSelectionFromRef`.
-4. `refreshSelection` must **not** clear `selectedText` when `editorRef` is temporarily missing (bridge re-register flicker).
-5. Popout sync includes `selectedText` + `selectionRange` from the same helpers.
+2. `AppLayout` must pass `isActiveFile` into `editorPaneProps` (keep-alive tabs).
+3. Bridge includes `getEditorApi()` — do not read `editorRef.current?.value` blindly.
+4. `LlmAssistModal` resolves `editorRef` from `session.editorBridge` (not a stale local ref).
+5. On open / bridge change → `refreshSelection()`; while open → `subscribeEditorSelectionFromRef` + polling fallback.
+6. Docked mode must not leave `hidden=true` from floating minimize (blocks selection sync).
+7. `refreshSelection` must **not** clear `selectedText` when `editorRef` is temporarily missing.
+8. Popout sync includes `selectedText` + `selectionRange` from the same helpers.
 
 ## Subscription implementation
 

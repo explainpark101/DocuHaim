@@ -774,6 +774,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     onSelectRecording: setSelectedRecordingKey,
                     recordingAudioUrl: isActiveFile ? recordingAudioUrl : '',
                     recordingSyncData: isActiveFile ? recordingSyncData : null,
+                    isActiveFile,
                     onUploadImage: handleUploadEditorImage,
                     isUploadingEditorImage,
                     uploadImagePercent: editorImageUploadPercent,

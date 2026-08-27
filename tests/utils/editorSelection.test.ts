@@ -3,6 +3,7 @@ import type { EditorView } from '@codemirror/view';
 import { recordMdEditorSourceFocus } from '@/utils/mdEditorSourceFocus';
 import {
   getEditorSelectionFromRef,
+  resolveMdEditorApiFromRef,
   subscribeEditorSelectionFromRef,
 } from '@/utils/editorSelection';
 
@@ -103,6 +104,25 @@ describe('getEditorSelectionFromRef', () => {
       editorRefFor(view, { getSelectedText: () => 'hello' }),
     );
     expect(snap.text).toBe('hello');
+  });
+
+  it('resolveMdEditorApiFromRef prefers direct API over empty .value wrapper', () => {
+    const { view } = createMockView('abc', { from: 0, to: 3 });
+    const api = { getEditorView: () => view, getSelectedText: () => 'abc', value: {} };
+    const resolved = resolveMdEditorApiFromRef({ current: api });
+    expect(resolved).toBe(api);
+    expect(getEditorSelectionFromRef({ current: api }).text).toBe('abc');
+  });
+
+  it('uses getEditorApi override when provided', () => {
+    const { view } = createMockView('override', { from: 0, to: 8 });
+    const snap = getEditorSelectionFromRef(null, {
+      getEditorApi: () => ({
+        getEditorView: () => view,
+        getSelectedText: () => 'override',
+      }),
+    });
+    expect(snap.text).toBe('override');
   });
 });
 
