@@ -20,6 +20,7 @@ import {
 } from '@/utils/mlxVlmShell';
 import {
   LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
+  localLlmModelDisplayName,
   withLocalLlmModelAliases,
 } from '@/utils/llm/localLlmModelAliases';
 
@@ -270,7 +271,7 @@ export default function MlxVlmModelSelect({
       ) : showsLoadedStatus ? (
         <div className="mt-1 space-y-0.5">
           <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-            로드됨 · {runtimeLoadedId}
+            로드됨 · {localLlmModelDisplayName('mlx-vlm', runtimeLoadedId)}
           </p>
           {hasRuntimeMismatch ? (
             <p className="text-[11px] text-amber-700 dark:text-amber-300">

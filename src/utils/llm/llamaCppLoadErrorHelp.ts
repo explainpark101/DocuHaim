@@ -1,7 +1,24 @@
+export const LLAMA_CPP_SETTINGS_SECTION_ID = 'settings-llama-cpp';
+export const LLAMA_CPP_SETTINGS_PATH = `/settings#${LLAMA_CPP_SETTINGS_SECTION_ID}`;
+
+const SKIP_REDOWNLOAD_HINT_PATTERNS: readonly RegExp[] = [
+  /llama-server binary/i,
+  /binary path/i,
+  /only available in the tauri/i,
+  /select or install a gguf/i,
+  /not runnable/i,
+];
+
 export type LlamaCppLoadFailure = {
   message: string;
   suggestRedownload: boolean;
 };
+
+export function shouldSuggestLlamaCppRedownload(errorMessage: string): boolean {
+  const msg = String(errorMessage || '').trim();
+  if (!msg) return false;
+  return !SKIP_REDOWNLOAD_HINT_PATTERNS.some((pattern) => pattern.test(msg));
+}
 
 export function resolveLlamaCppLoadFailure(err: unknown): LlamaCppLoadFailure {
   const message = err instanceof Error ? err.message : String(err || 'Unknown error');

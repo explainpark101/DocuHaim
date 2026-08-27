@@ -1,3 +1,4 @@
+mod desktop_menu;
 mod stronghold_kdf;
 mod system_fonts;
 
@@ -267,14 +268,23 @@ pub fn run() {
             read_open_uri,
             gemini_api_fetch,
             exit_app,
-            system_fonts::list_system_font_families
+            system_fonts::list_system_font_families,
+            desktop_menu::sync_desktop_menu_ui
         ])
+        .on_menu_event(desktop_menu::on_desktop_menu_event)
         .setup(|app| {
             // Windows: remove OS titlebar; custom controls live in the webview.
             // macOS keeps decorations so Overlay traffic lights remain available.
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_decorations(false);
+            }
+
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            {
+                if let Err(err) = desktop_menu::install_desktop_menu(app) {
+                    eprintln!("desktop menu install failed: {err}");
+                }
             }
 
             let data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;

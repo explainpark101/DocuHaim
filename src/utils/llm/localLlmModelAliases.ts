@@ -80,7 +80,7 @@ export function setLocalLlmModelAlias(
   saveStore({ ...store, [scope]: scopeMap });
 }
 
-/** Label for dropdowns: "alias · id" when alias is set, otherwise id. */
+/** Label for dropdowns: alias when set, otherwise the model id. */
 export function localLlmModelDisplayName(
   scope: LocalLlmModelAliasScope,
   modelId: string,
@@ -88,7 +88,7 @@ export function localLlmModelDisplayName(
   const id = String(modelId || '').trim();
   if (!id) return '';
   const alias = getLocalLlmModelAlias(scope, id);
-  return alias ? `${alias} · ${id}` : id;
+  return alias || id;
 }
 
 export function withLocalLlmModelAliases<T extends { id: string; displayName: string }>(

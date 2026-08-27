@@ -342,7 +342,7 @@ export async function ensureLlamaCppServerReadyForAssist(
     } catch (err) {
       if (signal?.aborted) throw err;
       throw new Error(
-        'llama.cpp 서버가 준비되지 않았습니다.\n설정 > llama.cpp에서 Start server 상태를 확인하세요.',
+        'llama.cpp 서버가 준비되지 않았습니다.\nAI 도우미에서 로드 상태를 확인하거나, 설정 > llama.cpp에서 Start server를 실행하세요.',
       );
     }
     const after = getLlamaCppRuntimeStatusSync();
@@ -369,7 +369,7 @@ export async function ensureLlamaCppServerReadyForAssist(
   } catch (err) {
     if (signal?.aborted) throw err;
     throw new Error(
-      'llama.cpp 서버가 실행 중이 아닙니다.\n설정 > llama.cpp (Tauri desktop)에서 모델을 선택한 뒤 Start server를 실행하세요.',
+      'llama.cpp 서버가 실행 중이 아닙니다.\nAI 도우미에서 모델을 선택한 뒤 로드를 실행하거나, 설정 > llama.cpp에서 Start server를 실행하세요.',
     );
   }
 }

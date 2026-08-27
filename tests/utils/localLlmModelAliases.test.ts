@@ -66,7 +66,7 @@ describe('localLlmModelAliases', () => {
 
   it('formats display names and option labels', () => {
     setLocalLlmModelAlias('llama-cpp', 'long/id', 'Short');
-    expect(localLlmModelDisplayName('llama-cpp', 'long/id')).toBe('Short · long/id');
+    expect(localLlmModelDisplayName('llama-cpp', 'long/id')).toBe('Short');
     expect(localLlmModelDisplayName('llama-cpp', 'other')).toBe('other');
     expect(
       withLocalLlmModelAliases('llama-cpp', [
@@ -74,7 +74,7 @@ describe('localLlmModelAliases', () => {
         { id: 'other', displayName: 'other' },
       ]),
     ).toEqual([
-      { id: 'long/id', displayName: 'Short · long/id' },
+      { id: 'long/id', displayName: 'Short' },
       { id: 'other', displayName: 'other' },
     ]);
   });

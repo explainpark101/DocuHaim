@@ -41,6 +41,8 @@ import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelec
 import LlmProviderSelect from '@/components/LlmProviderSelect';
 import { LLM_PROVIDER_LLAMA_CPP, LLM_PROVIDER_MLX_VLM, LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
 import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
+import LlamaCppModelSelect from '@/components/llm/LlamaCppModelSelect';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
   extractImageFilesFromClipboard,
   readImageFilesAsAttachments,
@@ -325,8 +327,7 @@ export default function LlmAssistPanel({
           <label className="mb-1 block">
             <PanelLabel icon={BrainCircuit}>모델</PanelLabel>
           </label>
-          {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ||
-          selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP ? (
+          {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
             <OpenAiCompatibleModelSelect
               key={`${selectedProfile.id}-openai`}
               reloadKey={`${selectedProfile.id}:${selectedProfile.baseUrl || ''}`}
@@ -335,10 +336,27 @@ export default function LlmAssistPanel({
               value={model}
               onChange={onModelChange}
               autoLoad={modelSelectAutoLoad}
-              {...(selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP
-                ? { aliasScope: 'llama-cpp' as const }
-                : {})}
             />
+          ) : selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP ? (
+            isTauriDesktopPlatform() ? (
+              <LlamaCppModelSelect
+                key={`${selectedProfile.id}-llama-cpp`}
+                value={model}
+                onChange={onModelChange}
+                autoLoad={modelSelectAutoLoad}
+              />
+            ) : (
+              <OpenAiCompatibleModelSelect
+                key={`${selectedProfile.id}-llama-cpp-remote`}
+                reloadKey={`${selectedProfile.id}:${selectedProfile.baseUrl || ''}`}
+                getBaseUrl={() => selectedProfile.baseUrl || ''}
+                getApiKey={() => selectedProfile.apiKey || ''}
+                value={model}
+                onChange={onModelChange}
+                autoLoad={modelSelectAutoLoad}
+                aliasScope="llama-cpp"
+              />
+            )
           ) : selectedProfile.kind === LLM_PROVIDER_MLX_VLM ? (
             <MlxVlmModelSelect
               key={`${selectedProfile.id}-mlx`}
