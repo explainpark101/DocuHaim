@@ -19,8 +19,10 @@ import {
 } from '@/utils/llm/llamaCppLoadNotifications';
 import { resolveLlamaCppLoadFailure } from '@/utils/llm/llamaCppLoadErrorHelp';
 import {
+  cancelLlamaCppServerStart,
   getLlamaCppServerStatus,
   isLlamaCppServerManagedByApp,
+  isLlamaCppServerStartAbortedError,
   probeLlamaCppCli,
   startLlamaCppServer,
   stopLlamaCppServer,
@@ -95,6 +97,7 @@ export default function LlamaCppModelSelect({
   const [managedByApp, setManagedByApp] = useState(false);
   const [unloadConfirmOpen, setUnloadConfirmOpen] = useState(false);
   const loadRequestRef = useRef(0);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const refreshModels = useCallback(async () => {
     if (!isTauriDesktopPlatform()) return;
@@ -150,6 +153,9 @@ export default function LlamaCppModelSelect({
 
       const requestId = loadRequestRef.current + 1;
       loadRequestRef.current = requestId;
+      loadAbortRef.current?.abort();
+      const abortController = new AbortController();
+      loadAbortRef.current = abortController;
       setModelLoading(true);
       setLoadError('');
       try {
@@ -157,7 +163,8 @@ export default function LlamaCppModelSelect({
         if (!cli.available) {
           throw new Error(cli.detail || 'llama-server를 실행할 수 없습니다. 설정에서 바이너리 경로를 확인하세요.');
         }
-        await startLlamaCppServer(nextSettings);
+        if (loadRequestRef.current !== requestId) return;
+        await startLlamaCppServer(nextSettings, { signal: abortController.signal });
         if (loadRequestRef.current !== requestId) return;
         const after = await getLlamaCppServerStatus(nextSettings);
         setLoadedModelPath(after.models[0] || modelPath);
@@ -168,8 +175,15 @@ export default function LlamaCppModelSelect({
         await refreshModels();
       } catch (err) {
         if (loadRequestRef.current !== requestId) return;
+        if (isLlamaCppServerStartAbortedError(err) || abortController.signal.aborted) {
+          setLoadError('');
+          return;
+        }
         setLoadError(resolveLlamaCppLoadFailure(err).message);
       } finally {
+        if (loadAbortRef.current === abortController) {
+          loadAbortRef.current = null;
+        }
         if (loadRequestRef.current === requestId) {
           setModelLoading(false);
         }
@@ -177,6 +191,25 @@ export default function LlamaCppModelSelect({
     },
     [onChange, refreshModels],
   );
+
+  const abortLoad = useCallback(async () => {
+    loadRequestRef.current += 1;
+    loadAbortRef.current?.abort();
+    loadAbortRef.current = null;
+    setLoadError('');
+    setModelLoading(true);
+    try {
+      await cancelLlamaCppServerStart();
+      setLoadedModelPath('');
+      setServerRunning(false);
+      setManagedByApp(false);
+      await refreshModels();
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'llama.cpp 로드를 중단하지 못했습니다.');
+    } finally {
+      setModelLoading(false);
+    }
+  }, [refreshModels]);
 
   const runUnloadModel = useCallback(async () => {
     if (!isTauriDesktopPlatform()) return;
@@ -269,16 +302,27 @@ export default function LlamaCppModelSelect({
     runtimeLoadedPath && serverRunning && (selectionMatchesRuntime || hasRuntimeMismatch),
   );
   const canUnload = serverRunning && managedByApp;
-  const actionBusy = modelLoading || unloadBusy;
   const loadedReady = selectionMatchesRuntime && canUnload;
 
   const handleActionClick = () => {
+    if (modelLoading) {
+      void abortLoad();
+      return;
+    }
     if (loadedReady) {
       setUnloadConfirmOpen(true);
       return;
     }
     void runLoadModel(value);
   };
+
+  const actionButtonDisabled =
+    unloadBusy || (!modelLoading && !loadedReady && !trimmedValue);
+  const actionAriaLabel = modelLoading
+    ? 'Abort llama.cpp model load'
+    : loadedReady
+      ? 'Unload llama.cpp model'
+      : 'Load llama.cpp model';
 
   return (
     <div className={className}>
@@ -295,20 +339,27 @@ export default function LlamaCppModelSelect({
         <button
           type="button"
           onClick={handleActionClick}
-          disabled={actionBusy || (!loadedReady && !trimmedValue)}
-          aria-label={loadedReady ? 'Unload llama.cpp model' : 'Load llama.cpp model'}
+          disabled={actionButtonDisabled}
+          aria-label={actionAriaLabel}
           className={[
             'group inline-flex shrink-0 items-center gap-1 rounded border px-2 py-1.5 text-[11px] font-medium',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            loadedReady
+            modelLoading
+              ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-950/60'
+              : loadedReady
               ? 'border-sky-300 bg-sky-50 text-sky-800 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200 dark:hover:border-odp-borderStrong dark:hover:bg-odp-bgSoft dark:hover:text-odp-muted'
               : 'border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200 dark:hover:bg-sky-950/60',
           ].join(' ')}
         >
-          {actionBusy ? (
+          {unloadBusy ? (
             <>
               <Loader2 size={14} className="animate-spin" aria-hidden />
-              {unloadBusy ? '언로드 중…' : '로드 중…'}
+              언로드 중…
+            </>
+          ) : modelLoading ? (
+            <>
+              <Square size={14} aria-hidden />
+              중단
             </>
           ) : loadedReady ? (
             <>
@@ -345,7 +396,7 @@ export default function LlamaCppModelSelect({
       {modelLoading ? (
         <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-gray-600 dark:text-odp-muted">
           <Loader2 size={12} className="animate-spin" aria-hidden />
-          서버 시작 및 모델 로드 중…
+          서버 시작 및 모델 로드 중… 중단하려면 버튼을 누르세요.
         </p>
       ) : showsLoadedStatus ? (
         <div className="mt-1 space-y-0.5">

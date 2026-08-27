@@ -22,10 +22,12 @@ import {
   type LlamaCppSettings,
 } from '@/utils/llm/llamaCppSettingsStore';
 import {
+  abortLlamaCppServerStart,
   getLlamaCppRuntimeStatus,
   getLlamaCppRuntimeStatusSync,
   isLlamaCppCliSupported,
   isLlamaCppRuntimeManagedByApp,
+  isLlamaCppServerStartAbortedError,
   startLlamaCppRuntime,
   stopLlamaCppRuntime,
   waitLlamaCppServerReady,
@@ -33,10 +35,12 @@ import {
 } from '@/utils/llm/llamaCppRuntime';
 
 export {
+  abortLlamaCppServerStart,
   getLlamaCppRuntimeStatus,
   getLlamaCppRuntimeStatusSync,
   isLlamaCppCliSupported,
   isLlamaCppRuntimeManagedByApp,
+  isLlamaCppServerStartAbortedError,
   startLlamaCppRuntime,
   stopLlamaCppRuntime,
   waitLlamaCppServerReady,
@@ -626,6 +630,7 @@ export async function probeLlamaCppCli(
 
 export async function startLlamaCppServer(
   settings: LlamaCppSettings = loadLlamaCppSettings(),
+  options?: { signal?: AbortSignal },
 ): Promise<{ modelPath: string; baseUrl: string }> {
   requireDesktopSupport();
   const binaryPath = await requireLlamaServerBin(settings);
@@ -634,11 +639,18 @@ export async function startLlamaCppServer(
     throw new Error('llama-server is not runnable. Check the binary path in Settings.');
   }
   const before = await getLlamaCppRuntimeStatus();
-  const result = await startLlamaCppRuntime(settings, binaryPath);
+  const result = await startLlamaCppRuntime(settings, binaryPath, options);
   if (!before.loaded || before.modelPath !== result.modelPath) {
     notifyLlamaCppServerStarted(result.modelPath, result.baseUrl);
   }
   return result;
+}
+
+/** Abort an in-flight server start and stop any partially spawned llama-server process. */
+export async function cancelLlamaCppServerStart(): Promise<void> {
+  abortLlamaCppServerStart();
+  await stopLlamaCppServer();
+  notifyLlamaCppRuntimeChanged(null);
 }
 
 export async function stopLlamaCppServer(): Promise<void> {

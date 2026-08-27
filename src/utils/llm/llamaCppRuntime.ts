@@ -24,6 +24,41 @@ export type LlamaCppRuntimeStatus = {
 let serverChild: ServerChild | null = null;
 let loadedModelPath: string | null = null;
 let activeBaseUrl: string | null = null;
+let activeStartAbort: AbortController | null = null;
+
+export class LlamaCppServerStartAbortedError extends Error {
+  constructor() {
+    super('llama.cpp server start cancelled.');
+    this.name = 'LlamaCppServerStartAbortedError';
+  }
+}
+
+export function isLlamaCppServerStartAbortedError(
+  err: unknown,
+): err is LlamaCppServerStartAbortedError {
+  return err instanceof LlamaCppServerStartAbortedError;
+}
+
+export function abortLlamaCppServerStart(): void {
+  activeStartAbort?.abort();
+}
+
+function linkAbortSignal(target: AbortController, source?: AbortSignal | null): () => void {
+  if (!source) return () => {};
+  if (source.aborted) {
+    target.abort(source.reason);
+    return () => {};
+  }
+  const onAbort = () => target.abort(source.reason);
+  source.addEventListener('abort', onAbort, { once: true });
+  return () => source.removeEventListener('abort', onAbort);
+}
+
+function throwIfLlamaCppServerStartAborted(signal: AbortSignal): void {
+  if (!signal.aborted) return;
+  if (signal.reason instanceof Error) throw signal.reason;
+  throw new LlamaCppServerStartAbortedError();
+}
 
 const SERVER_READY_TIMEOUT_MS = 600_000;
 const SERVER_POLL_INTERVAL_MS = 500;
@@ -198,6 +233,7 @@ export async function getLlamaCppRuntimeStatus(): Promise<LlamaCppRuntimeStatus>
 export async function startLlamaCppRuntime(
   settings: LlamaCppSettings = loadLlamaCppSettings(),
   binaryPath: string,
+  options?: { signal?: AbortSignal },
 ): Promise<{ modelPath: string; baseUrl: string }> {
   requireDesktopSupport();
   const modelPath = resolveLlamaCppModelPath(settings);
@@ -209,23 +245,45 @@ export async function startLlamaCppRuntime(
   }
 
   const baseUrl = buildLlamaCppBaseUrl(settings);
+  const startAbort = new AbortController();
+  activeStartAbort = startAbort;
+  const unlinkExternalAbort = linkAbortSignal(startAbort, options?.signal);
 
-  if (serverChild && loadedModelPath === modelPath && activeBaseUrl === baseUrl) {
+  try {
+    throwIfLlamaCppServerStartAborted(startAbort.signal);
+
+    if (serverChild && loadedModelPath === modelPath && activeBaseUrl === baseUrl) {
+      return { modelPath, baseUrl };
+    }
+
+    if (serverChild) {
+      await stopLlamaCppRuntime();
+    }
+
+    serverChild = await spawnLlamaServerProcess(binaryPath, modelPath, settings);
+    throwIfLlamaCppServerStartAborted(startAbort.signal);
+
+    try {
+      await waitLlamaCppServerReady(settings, SERVER_READY_TIMEOUT_MS, startAbort.signal);
+    } catch (err) {
+      await stopLlamaCppRuntime();
+      if (startAbort.signal.aborted) {
+        throw new LlamaCppServerStartAbortedError();
+      }
+      throw err;
+    }
+
+    loadedModelPath = modelPath;
+    activeBaseUrl = baseUrl;
+    appendLlamaCppServerLog(`\n[server ready] ${baseUrl}\n`);
+
     return { modelPath, baseUrl };
+  } finally {
+    unlinkExternalAbort();
+    if (activeStartAbort === startAbort) {
+      activeStartAbort = null;
+    }
   }
-
-  if (serverChild) {
-    await stopLlamaCppRuntime();
-  }
-
-  serverChild = await spawnLlamaServerProcess(binaryPath, modelPath, settings);
-  await waitLlamaCppServerReady(settings, SERVER_READY_TIMEOUT_MS);
-
-  loadedModelPath = modelPath;
-  activeBaseUrl = baseUrl;
-  appendLlamaCppServerLog(`\n[server ready] ${baseUrl}\n`);
-
-  return { modelPath, baseUrl };
 }
 
 export async function stopLlamaCppRuntime(): Promise<void> {

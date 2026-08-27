@@ -15,3 +15,13 @@ describe('llamaCppRuntime status', () => {
     });
   });
 });
+
+describe('LlamaCppServerStartAbortedError', () => {
+  it('is detected by helper', async () => {
+    const { isLlamaCppServerStartAbortedError, LlamaCppServerStartAbortedError } = await import(
+      '@/utils/llm/llamaCppRuntime'
+    );
+    expect(isLlamaCppServerStartAbortedError(new LlamaCppServerStartAbortedError())).toBe(true);
+    expect(isLlamaCppServerStartAbortedError(new Error('other'))).toBe(false);
+  });
+});
