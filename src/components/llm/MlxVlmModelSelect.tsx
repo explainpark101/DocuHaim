@@ -18,6 +18,10 @@ import {
   loadMlxVlmModelById,
   refreshInstalledMlxVlmModels,
 } from '@/utils/mlxVlmShell';
+import {
+  LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
+  withLocalLlmModelAliases,
+} from '@/utils/llm/localLlmModelAliases';
 
 type MlxVlmModelSelectProps = {
   value: string;
@@ -42,9 +46,12 @@ function buildModelOptions(
     const trimmed = String(id || '').trim();
     if (trimmed) ids.add(trimmed);
   }
-  return [...ids]
-    .sort((a, b) => a.localeCompare(b))
-    .map((id) => ({ id, displayName: id }));
+  return withLocalLlmModelAliases(
+    'mlx-vlm',
+    [...ids]
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => ({ id, displayName: id })),
+  );
 }
 
 export default function MlxVlmModelSelect({
@@ -141,7 +148,11 @@ export default function MlxVlmModelSelect({
   useEffect(() => {
     const onChanged = () => void refreshModels();
     window.addEventListener(MLX_VLM_SETTINGS_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(MLX_VLM_SETTINGS_CHANGED_EVENT, onChanged);
+    window.addEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+    return () => {
+      window.removeEventListener(MLX_VLM_SETTINGS_CHANGED_EVENT, onChanged);
+      window.removeEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+    };
   }, [refreshModels]);
 
   useEffect(() => {

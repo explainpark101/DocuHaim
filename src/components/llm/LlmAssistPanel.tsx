@@ -278,6 +278,10 @@ export default function LlmAssistPanel({
   const copyResultPress = useReliableButtonAction(onCopyResult, resultActionsDisabled);
   const appendResultPress = useReliableButtonAction(onAppendResult, resultActionsDisabled);
   const createNotePress = useReliableButtonAction(onCreateNoteFromResult, resultActionsDisabled);
+  const runPress = useReliableButtonAction(
+    () => onRun?.(),
+    Boolean(loading || !selectedProfile),
+  );
 
   const handleInstructionKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -331,6 +335,9 @@ export default function LlmAssistPanel({
               value={model}
               onChange={onModelChange}
               autoLoad={modelSelectAutoLoad}
+              {...(selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP
+                ? { aliasScope: 'llama-cpp' as const }
+                : {})}
             />
           ) : selectedProfile.kind === LLM_PROVIDER_MLX_VLM ? (
             <MlxVlmModelSelect
@@ -645,7 +652,7 @@ export default function LlmAssistPanel({
       ) : (
         <button
           type="button"
-          onClick={() => onRun?.()}
+          {...runPress}
           disabled={!selectedProfile}
           className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
         >

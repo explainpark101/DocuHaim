@@ -10,6 +10,7 @@ import {
 } from '@/utils/llm/llamaCppLoadNotifications';
 import {
   addInstalledLlamaCppModel,
+  buildLlamaCppBaseUrl,
   loadLlamaCppSettings,
   mergeInstalledLlamaCppModels,
   normalizeLlamaCppHfDownloadMaxWorkers,
@@ -27,6 +28,7 @@ import {
   isLlamaCppRuntimeManagedByApp,
   startLlamaCppRuntime,
   stopLlamaCppRuntime,
+  waitLlamaCppServerReady,
   type LlamaCppRuntimeStatus,
 } from '@/utils/llm/llamaCppRuntime';
 
@@ -37,6 +39,7 @@ export {
   isLlamaCppRuntimeManagedByApp,
   startLlamaCppRuntime,
   stopLlamaCppRuntime,
+  waitLlamaCppServerReady,
 };
 export type { LlamaCppRuntimeStatus };
 
@@ -306,6 +309,69 @@ export async function getLlamaCppServerStatus(
     running: loaded,
     baseUrl: status.baseUrl,
   };
+}
+
+const ASSIST_READY_WAIT_MS = 120_000;
+const EXTERNAL_HEALTH_WAIT_MS = 2_500;
+
+/**
+ * Ensure llama-server can accept OpenAI-compatible requests for LLM Assist.
+ * Waits briefly while the app-managed process is still finishing startup.
+ */
+export async function ensureLlamaCppServerReadyForAssist(
+  settings: LlamaCppSettings = loadLlamaCppSettings(),
+  options?: { signal?: AbortSignal },
+): Promise<LlamaCppServerStatus> {
+  const signal = options?.signal;
+  const sync = getLlamaCppRuntimeStatusSync();
+  const modelPathHint = sync.modelPath || resolveLlamaCppModelPath(settings);
+
+  if (sync.loaded) {
+    return {
+      loaded: true,
+      serverRunning: true,
+      models: modelPathHint ? [modelPathHint] : [],
+      running: true,
+      baseUrl: sync.baseUrl,
+    };
+  }
+
+  if (sync.serverRunning) {
+    try {
+      await waitLlamaCppServerReady(settings, ASSIST_READY_WAIT_MS, signal);
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      throw new Error(
+        'llama.cpp 서버가 준비되지 않았습니다.\n설정 > llama.cpp에서 Start server 상태를 확인하세요.',
+      );
+    }
+    const after = getLlamaCppRuntimeStatusSync();
+    const modelPath = after.modelPath || resolveLlamaCppModelPath(settings);
+    return {
+      loaded: after.loaded || true,
+      serverRunning: true,
+      models: modelPath ? [modelPath] : [],
+      running: true,
+      baseUrl: after.baseUrl || buildLlamaCppBaseUrl(settings),
+    };
+  }
+
+  // Unmanaged / already-listening server at the configured host:port.
+  try {
+    await waitLlamaCppServerReady(settings, EXTERNAL_HEALTH_WAIT_MS, signal);
+    return {
+      loaded: true,
+      serverRunning: true,
+      models: modelPathHint ? [modelPathHint] : [],
+      running: true,
+      baseUrl: buildLlamaCppBaseUrl(settings),
+    };
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    throw new Error(
+      'llama.cpp 서버가 실행 중이 아닙니다.\n설정 > llama.cpp (Tauri desktop)에서 모델을 선택한 뒤 Start server를 실행하세요.',
+    );
+  }
 }
 
 export function isLlamaCppServerManagedByApp(): boolean {

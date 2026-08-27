@@ -2,8 +2,9 @@ import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
 import { X } from 'lucide-react';
 
-const OVERLAY_TRANSITION = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
-const PANEL_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
+const LIGHTBOX_EASE = [0.22, 1, 0.36, 1] as const;
+const OVERLAY_TRANSITION = { duration: 0.2, ease: LIGHTBOX_EASE };
+const PANEL_TRANSITION = { duration: 0.28, ease: LIGHTBOX_EASE };
 
 const CHECKERBOARD_STYLE = {
   backgroundColor: '#ffffff',

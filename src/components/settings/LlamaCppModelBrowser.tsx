@@ -3,7 +3,9 @@ import { FolderOpen, Search, Trash2 } from 'lucide-react';
 import Button from '@/components/Button';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import LlamaCppCollapsibleSection from '@/components/settings/LlamaCppCollapsibleSection';
+import LocalLlmModelAliasField from '@/components/settings/LocalLlmModelAliasField';
 import MlxVlmDownloadButtonContent from '@/components/settings/MlxVlmDownloadButtonContent';
+import { getLocalLlmModelAlias, LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT } from '@/utils/llm/localLlmModelAliases';
 import {
   buildLlamaCppDeleteConfirmMessage,
   buildLlamaCppDownloadConfirmMessage,
@@ -72,11 +74,18 @@ export default function LlamaCppModelBrowser({
   const [pasteOpen, setPasteOpen] = useState(false);
   const [downloadLogOpen, setDownloadLogOpen] = useState(false);
   const [downloadLogLines, setDownloadLogLines] = useState(() => getLlamaCppDownloadLogLines());
+  const [aliasTick, setAliasTick] = useState(0);
 
   useEffect(
     () => subscribeLlamaCppDownloadLog(() => setDownloadLogLines(getLlamaCppDownloadLogLines())),
     [],
   );
+
+  useEffect(() => {
+    const onChanged = () => setAliasTick((n) => n + 1);
+    window.addEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+  }, []);
 
   useEffect(() => {
     const onFocus = (event: Event) => {
@@ -260,34 +269,48 @@ export default function LlamaCppModelBrowser({
             </p>
           ) : (
             settings.installedModels.map((model) => {
+              void aliasTick;
               const selected = settings.selectedModelId === model.id;
+              const alias = getLocalLlmModelAlias('llama-cpp', model.id);
               return (
                 <div
                   key={model.id}
                   className={[
-                    'flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1.5 text-[11px]',
+                    'flex flex-wrap items-start justify-between gap-2 rounded border px-2 py-1.5 text-[11px]',
                     selected
                       ? 'border-sky-400 bg-sky-50/80 dark:border-sky-700 dark:bg-sky-950/30'
                       : 'border-gray-200 dark:border-odp-borderStrong',
                   ].join(' ')}
                 >
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    className="min-w-0 flex-1 text-left"
-                    onClick={() =>
-                      onSettingsChange(
-                        setSelectedLlamaCppModelId(settings, selected ? '' : model.id),
-                      )
-                    }
-                  >
-                    <span className="block truncate font-medium">{model.id}</span>
-                    {model.localPath ? (
-                      <span className="block truncate text-[10px] text-gray-500 dark:text-odp-muted">
-                        {model.localPath}
-                      </span>
-                    ) : null}
-                  </button>
+                  <div className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      className="w-full min-w-0 text-left"
+                      onClick={() =>
+                        onSettingsChange(
+                          setSelectedLlamaCppModelId(settings, selected ? '' : model.id),
+                        )
+                      }
+                    >
+                      <span className="block truncate font-medium">{alias || model.id}</span>
+                      {alias ? (
+                        <span className="block truncate text-[10px] text-gray-500 dark:text-odp-muted">
+                          {model.id}
+                        </span>
+                      ) : null}
+                      {model.localPath ? (
+                        <span className="block truncate text-[10px] text-gray-500 dark:text-odp-muted">
+                          {model.localPath}
+                        </span>
+                      ) : null}
+                    </button>
+                    <LocalLlmModelAliasField
+                      scope="llama-cpp"
+                      modelId={model.id}
+                      disabled={disabled}
+                    />
+                  </div>
                   <div className="flex gap-1">
                     <Button
                       type="button"

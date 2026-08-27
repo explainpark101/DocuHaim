@@ -53,7 +53,8 @@ function buildHealthUrl(settings: LlamaCppSettings): string {
   return `http://${host}:${port}/health`;
 }
 
-async function pollServerReady(
+/** Poll /health (and /v1/models) until the server accepts requests or timeout. */
+export async function waitLlamaCppServerReady(
   settings: LlamaCppSettings,
   timeoutMs: number,
   signal?: AbortSignal,
@@ -63,20 +64,29 @@ async function pollServerReady(
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
-    if (signal?.aborted) throw new Error('llama.cpp server start cancelled.');
+    if (signal?.aborted) {
+      if (signal.reason instanceof Error) throw signal.reason;
+      throw new Error('llama.cpp server start cancelled.');
+    }
     try {
       const init: RequestInit = signal ? { signal } : {};
       const res = await fetch(healthUrl, init);
       if (res.ok) return;
     } catch (err) {
-      if (signal?.aborted) throw err;
+      if (signal?.aborted) {
+        if (signal.reason instanceof Error) throw signal.reason;
+        throw err;
+      }
     }
     try {
       const init: RequestInit = signal ? { signal } : {};
       const res = await fetch(modelsUrl, init);
       if (res.ok) return;
     } catch (err) {
-      if (signal?.aborted) throw err;
+      if (signal?.aborted) {
+        if (signal.reason instanceof Error) throw signal.reason;
+        throw err;
+      }
     }
     await new Promise<void>((resolve) => {
       window.setTimeout(resolve, SERVER_POLL_INTERVAL_MS);
@@ -165,13 +175,14 @@ async function spawnLlamaServerProcess(
 }
 
 export async function getLlamaCppRuntimeStatus(): Promise<LlamaCppRuntimeStatus> {
-  if (!serverChild) {
-    return { serverRunning: false, loaded: false, modelPath: null, baseUrl: null };
-  }
+  const sync = getLlamaCppRuntimeStatusSync();
+  // Already ready — skip health fetch so Assist Run is not delayed by a hung probe.
+  if (!sync.serverRunning || sync.loaded) return sync;
+
   const settings = loadLlamaCppSettings();
   try {
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 5_000);
+    const timer = window.setTimeout(() => controller.abort(), 1_500);
     try {
       const res = await fetch(buildHealthUrl(settings), { signal: controller.signal });
       if (!res.ok) return getLlamaCppRuntimeStatusSync();
@@ -208,7 +219,7 @@ export async function startLlamaCppRuntime(
   }
 
   serverChild = await spawnLlamaServerProcess(binaryPath, modelPath, settings);
-  await pollServerReady(settings, SERVER_READY_TIMEOUT_MS);
+  await waitLlamaCppServerReady(settings, SERVER_READY_TIMEOUT_MS);
 
   loadedModelPath = modelPath;
   activeBaseUrl = baseUrl;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { listOpenAiCompatibleModels } from '@/utils/openaiCompatibleClient';
 import {
@@ -6,6 +6,12 @@ import {
   saveLastUsedOpenAiCompatibleModel,
 } from '@/utils/openaiCompatibleSettings';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
+import {
+  getLocalLlmModelAlias,
+  LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
+  withLocalLlmModelAliases,
+  type LocalLlmModelAliasScope,
+} from '@/utils/llm/localLlmModelAliases';
 
 type OpenAiCompatibleModelSelectProps = {
   getBaseUrl: () => string | Promise<string>;
@@ -15,6 +21,8 @@ type OpenAiCompatibleModelSelectProps = {
   autoLoad?: boolean;
   /** Remount/reload when provider or endpoint context changes. */
   reloadKey?: string;
+  /** When set (e.g. llama-cpp), show local aliases in the model list. */
+  aliasScope?: LocalLlmModelAliasScope;
   className?: string;
 };
 
@@ -25,6 +33,7 @@ export default function OpenAiCompatibleModelSelect({
   onChange,
   autoLoad = false,
   reloadKey = '',
+  aliasScope,
   className = '',
 }: OpenAiCompatibleModelSelectProps) {
   const getBaseUrlRef = useRef(getBaseUrl);
@@ -34,6 +43,7 @@ export default function OpenAiCompatibleModelSelect({
   const [fetched, setFetched] = useState<ModelIdOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [aliasTick, setAliasTick] = useState(0);
 
   const refreshModels = useCallback(async () => {
     const baseUrl = (await Promise.resolve(getBaseUrlRef.current()))?.trim();
@@ -68,6 +78,27 @@ export default function OpenAiCompatibleModelSelect({
     void refreshModels();
   }, [autoLoad, refreshModels, reloadKey]);
 
+  useEffect(() => {
+    if (!aliasScope) return;
+    const onChanged = () => setAliasTick((n) => n + 1);
+    window.addEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+  }, [aliasScope]);
+
+  const options = useMemo(() => {
+    void aliasTick;
+    if (!aliasScope) return fetched;
+    return withLocalLlmModelAliases(aliasScope, fetched);
+  }, [aliasScope, aliasTick, fetched]);
+
+  const valueAliasHint = useMemo(() => {
+    void aliasTick;
+    if (!aliasScope) return '';
+    const id = value.trim();
+    if (!id) return '';
+    return getLocalLlmModelAlias(aliasScope, id);
+  }, [aliasScope, aliasTick, value]);
+
   const handleChange = (nextId: string) => {
     saveLastUsedOpenAiCompatibleModel(nextId);
     onChange?.(nextId);
@@ -79,7 +110,7 @@ export default function OpenAiCompatibleModelSelect({
         <ModelIdInputDropdown
           value={value}
           onChange={handleChange}
-          options={fetched}
+          options={options}
           loading={loading}
           placeholder="모델 ID 직접 입력 (예: gpt-4o-mini)"
         />
@@ -94,6 +125,11 @@ export default function OpenAiCompatibleModelSelect({
           새로고침
         </button>
       </div>
+      {valueAliasHint ? (
+        <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
+          별칭 · {valueAliasHint}
+        </p>
+      ) : null}
       <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
         새로고침으로 서버 모델을 가져오거나, 모델 ID를 직접 입력하세요.
       </p>

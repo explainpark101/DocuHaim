@@ -1,7 +1,13 @@
 import { RefreshCw, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { RadioGroup } from 'radix-ui';
 import Button from '@/components/Button';
+import LocalLlmModelAliasField from '@/components/settings/LocalLlmModelAliasField';
 import { formatByteSize } from '@/utils/llm/mlxVlmModelSizing';
+import {
+  getLocalLlmModelAlias,
+  LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
+} from '@/utils/llm/localLlmModelAliases';
 import type { MlxVlmInstalledModel } from '@/utils/mlxVlmSettingsStore';
 
 type MlxVlmInstalledModelsSectionProps = {
@@ -29,11 +35,19 @@ export default function MlxVlmInstalledModelsSection({
   onSelect,
   onRequestDelete,
 }: MlxVlmInstalledModelsSectionProps) {
+  const [aliasTick, setAliasTick] = useState(0);
+  useEffect(() => {
+    const onChanged = () => setAliasTick((n) => n + 1);
+    window.addEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT, onChanged);
+  }, []);
+
   return (
     <>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
         <p className="text-[11px] text-gray-500 dark:text-odp-muted">
-          서버 시작 시 사용할 모델을 선택하세요. 선택 해제하면 모델 없이 둘 수 있습니다.
+          서버 시작 시 사용할 모델을 선택하세요. 선택 해제하면 모델 없이 둘 수 있습니다. 별칭은
+          이 기기 localStorage에만 저장됩니다.
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           {selectedId ? (
@@ -68,10 +82,11 @@ export default function MlxVlmInstalledModelsSection({
         <RadioGroup.Root
           value={selectedId}
           onValueChange={onSelect}
-          className="max-h-48 space-y-1.5 overflow-y-auto"
+          className="max-h-64 space-y-1.5 overflow-y-auto"
           disabled={disabled || deleteBusy}
         >
           {models.map((model) => {
+            void aliasTick;
             const inUse = isModelInUse(model.id);
             const cacheBytes =
               cacheBytesByModelId[model.id] ?? cacheBytesByModelId[model.repoId || ''] ?? 0;
@@ -81,6 +96,7 @@ export default function MlxVlmInstalledModelsSection({
                 : model.source === 'local'
                   ? null
                   : '—';
+            const alias = getLocalLlmModelAlias('mlx-vlm', model.id);
             return (
               <div
                 key={model.id}
@@ -94,13 +110,23 @@ export default function MlxVlmInstalledModelsSection({
                   >
                     <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
                   </RadioGroup.Item>
-                  <span className="min-w-0 text-[11px] leading-snug text-gray-700 dark:text-odp-fg">
-                    <span className="block truncate font-medium">{model.id}</span>
+                  <span className="min-w-0 flex-1 text-[11px] leading-snug text-gray-700 dark:text-odp-fg">
+                    <span className="block truncate font-medium">{alias || model.id}</span>
+                    {alias ? (
+                      <span className="block truncate text-gray-500 dark:text-odp-muted">
+                        {model.id}
+                      </span>
+                    ) : null}
                     <span className="text-gray-500 dark:text-odp-muted">
                       {model.source === 'local' ? 'local path' : 'Hugging Face cache'}
                       {sizeLabel ? ` · ${sizeLabel}` : ''}
                       {inUse ? ' · 서버 사용 중' : ''}
                     </span>
+                    <LocalLlmModelAliasField
+                      scope="mlx-vlm"
+                      modelId={model.id}
+                      disabled={disabled || deleteBusy}
+                    />
                   </span>
                 </label>
                 <Button
