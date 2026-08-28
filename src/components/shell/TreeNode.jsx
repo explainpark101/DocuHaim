@@ -27,6 +27,8 @@ import {
   transferBusyTooltipText,
 } from '@/utils/treeTransferBusy';
 import TreeNodeModifiedLabel from '@/components/TreeNodeModifiedLabel';
+import { collectOsDropPayload } from '@/utils/osDropPayload';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -206,6 +208,7 @@ export default function TreeNode({
     node.path.startsWith(dropTarget.folderPath);
   const showDropHighlight = !isTrashRoot && !isTransferBusy && (isDropTarget || isUnderDropTarget);
   const canAcceptOsDrop = !isTrashRoot && !isTransferBusy;
+  const useHtmlOsDrop = !isTauriDesktopPlatform();
   const canAcceptInternalDrop = !isTrashRoot && !isTransferBusy;
 
   const dragId = toDraggableId(storageType, node.path);
@@ -454,27 +457,10 @@ export default function TreeNode({
     if (!canAcceptOsDrop) return;
     e.preventDefault();
     e.stopPropagation();
-    const dt = e.dataTransfer;
-    if (dt.items?.length > 0 || dt.files?.length > 0) {
-      const files = [];
-      const dirHandles = [];
-      if (dt.items?.length > 0) {
-        for (const item of dt.items) {
-          if (item.kind === 'file') {
-            const handle = item.getAsFileSystemHandle?.();
-            if (handle?.kind === 'directory') {
-              dirHandles.push(handle);
-            } else {
-              const f = item.getAsFile();
-              if (f) files.push(f);
-            }
-          }
-        }
-      } else {
-        files.push(...Array.from(dt.files || []));
-      }
-      if (files.length > 0 || dirHandles.length > 0) {
-        if (onDropOnFolder) onDropOnFolder(effectiveDropTarget, storageType, 'drop', { files, dirHandles });
+    const { files, dirHandles } = await collectOsDropPayload(e.dataTransfer);
+    if (files.length > 0 || dirHandles.length > 0) {
+      if (onDropOnFolder) {
+        onDropOnFolder(effectiveDropTarget, storageType, 'drop', { files, dirHandles });
       }
     }
   };
@@ -646,6 +632,8 @@ export default function TreeNode({
       <Motion.div
         ref={setRowRef}
         data-tree-node-row
+        data-tree-drop-storage={canAcceptOsDrop ? storageType : undefined}
+        data-tree-drop-path={canAcceptOsDrop ? effectiveDropTarget.path : undefined}
         layout={false}
         animate={{
           opacity: isDragGhost ? 0.35 : 1,
@@ -653,8 +641,8 @@ export default function TreeNode({
         }}
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
         {...dndProps}
-        onDragOver={canAcceptOsDrop ? handleOsDragOver : undefined}
-        onDrop={canAcceptOsDrop ? handleOsDrop : undefined}
+        onDragOver={canAcceptOsDrop && useHtmlOsDrop ? handleOsDragOver : undefined}
+        onDrop={canAcceptOsDrop && useHtmlOsDrop ? handleOsDrop : undefined}
         className={`group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${
           isSelected
             ? 'bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong'

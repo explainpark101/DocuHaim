@@ -96,7 +96,7 @@ function basename(path: string): string {
   }
 }
 
-async function readOpenPathBytes(abs: string): Promise<Uint8Array> {
+export async function readOpenPathBytes(abs: string): Promise<Uint8Array> {
   try {
     const { readFile } = await import('@tauri-apps/plugin-fs');
     const bytes = await readFile(abs);

@@ -3,6 +3,9 @@ import { motion as Motion } from 'motion/react';
 import { IconFolder } from '@/components/icons';
 import { toDroppableId } from '@/utils/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
+import { collectOsDropPayload } from '@/utils/osDropPayload';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isLocalVaultReady } from '@/utils/localVaultReady';
 
 export function treeCollisionDetection(args) {
   const pointerCollisions = pointerWithin(args);
@@ -13,6 +16,7 @@ export function treeCollisionDetection(args) {
 export function RootDropZone({
   storageType,
   localRootHandle,
+  localVaultFsPath = '',
   onDropOnFolder,
   dropTarget,
   onContextMenu,
@@ -28,7 +32,11 @@ export function RootDropZone({
     handle: storageType === 'local' ? localRootHandle : null,
   };
   const isDropTarget = dropTarget?.storageType === storageType && dropTarget?.folderPath === '';
-  const canDrop = storageType === 's3' || (storageType === 'local' && localRootHandle);
+  const canDrop =
+    storageType === 's3' ||
+    storageType === 'webdav' ||
+    (storageType === 'local' && isLocalVaultReady(localRootHandle, localVaultFsPath));
+  const useHtmlOsDrop = !isTauriDesktopPlatform();
 
   const { setNodeRef } = useDroppable({
     id: toDroppableId(storageType, ''),
@@ -85,28 +93,9 @@ export function RootDropZone({
   const handleOsDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const dt = e.dataTransfer;
-    if (dt.items?.length > 0 || dt.files?.length > 0) {
-      const files = [];
-      const dirHandles = [];
-      if (dt.items?.length > 0) {
-        for (const item of dt.items) {
-          if (item.kind === 'file') {
-            const handle = item.getAsFileSystemHandle?.();
-            if (handle?.kind === 'directory') {
-              dirHandles.push(handle);
-            } else {
-              const f = item.getAsFile();
-              if (f) files.push(f);
-            }
-          }
-        }
-      } else {
-        files.push(...Array.from(dt.files || []));
-      }
-      if (files.length > 0 || dirHandles.length > 0) {
-        if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'drop', { files, dirHandles });
-      }
+    const { files, dirHandles } = await collectOsDropPayload(e.dataTransfer);
+    if (files.length > 0 || dirHandles.length > 0) {
+      if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'drop', { files, dirHandles });
     }
   };
 
@@ -116,9 +105,11 @@ export function RootDropZone({
     <div
       ref={canDrop ? setNodeRef : undefined}
       data-tree-root-drop-zone
+      data-tree-drop-storage={canDrop ? storageType : undefined}
+      data-tree-drop-path=""
       onClick={handleClick}
-      onDragOver={canDrop ? handleOsDragOver : undefined}
-      onDrop={canDrop ? handleOsDrop : undefined}
+      onDragOver={canDrop && useHtmlOsDrop ? handleOsDragOver : undefined}
+      onDrop={canDrop && useHtmlOsDrop ? handleOsDrop : undefined}
       onContextMenu={onContextMenu ? handleContextMenu : undefined}
       {...(mobileTree && onContextMenu ? bindTouchGesture : {})}
       className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer ${

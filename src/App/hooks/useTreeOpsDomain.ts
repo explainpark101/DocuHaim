@@ -74,6 +74,9 @@ import { webdavPropfindDeep } from '@/utils/webdavClient';
 import { ensureDirectoryReadWritePermission } from '@/utils/localFolderStore';
 import { isLocalVaultReady } from '@/utils/localVaultReady';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
+import { flattenOsDropPaths, guessMimeTypeFromFileName } from '@/utils/treeOsDropPaths';
+import { uploadLocalPathToS3 } from '@/utils/s3TauriPathUpload';
+import { readOpenPathBytes } from '@/utils/shared/desktopOpenFiles';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
   SESSION_STORAGE_TYPE,
@@ -1987,6 +1990,97 @@ export function useTreeOpsDomain() {
       return;
     }
 
+    if (payload?.paths?.length > 0) {
+      const flatFiles = await flattenOsDropPaths(payload.paths);
+      if (!flatFiles.length) return;
+
+      const indicatorId = addIndicator({
+        id: 'drop-upload',
+        type: ActivityTypes.FILE_UPLOAD,
+        label: flatFiles.length > 1 ? `${flatFiles.length}개 파일 업로드 중` : '업로드 중',
+      });
+      try {
+        if (targetStorageType === 's3') {
+          const client = getS3Client();
+          if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+          const pseudoFiles = flatFiles.map((entry) => ({
+            name: entry.baseName,
+            webkitRelativePath: entry.relativePath,
+          }));
+          const dirMarkers = collectS3DirectoryMarkersFromUpload(destPath, pseudoFiles);
+          if (dirMarkers.length) {
+            await putS3FolderMarkers(client, s3Creds.bucket, dirMarkers);
+          }
+          for (const entry of flatFiles) {
+            const relPath = normalizePathToNfc(entry.relativePath);
+            const key = destPath + relPath;
+            const contentType = guessMimeTypeFromFileName(entry.baseName);
+            await uploadLocalPathToS3(client, {
+              bucket: s3Creds.bucket,
+              key,
+              filePath: entry.absolutePath,
+              contentType,
+            });
+            await reloadOpenFileIfPath(targetStorageType, key);
+          }
+          loadS3Files();
+        } else if (targetStorageType === 'webdav') {
+          const backend = createWebdavBackend(webdavConfig);
+          for (const entry of flatFiles) {
+            const relPath = normalizePathToNfc(entry.relativePath);
+            const key = destPath + relPath;
+            const contentType = guessMimeTypeFromFileName(entry.baseName);
+            const body = await readOpenPathBytes(entry.absolutePath);
+            await backend.writeBytes(key, body, contentType);
+            await reloadOpenFileIfPath(targetStorageType, key);
+          }
+          await refreshWebdavTree();
+        } else if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (const entry of flatFiles) {
+            const relPath = normalizePathToNfc(entry.relativePath);
+            const key = (destPath || '') + relPath;
+            const contentType = guessMimeTypeFromFileName(entry.baseName);
+            const body = await readOpenPathBytes(entry.absolutePath);
+            await backend.writeBytes(key, body, contentType);
+            await reloadOpenFileIfPath(targetStorageType, key);
+          }
+          await refreshLocalTree();
+        } else {
+          const targetDirHandle = destHandle || localRootHandle;
+          if (!targetDirHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          for (const entry of flatFiles) {
+            const relPath = normalizePathToNfc(entry.relativePath);
+            const parts = relPath.replace(/\/$/, '').split('/');
+            let dir = targetDirHandle;
+            for (let j = 0; j < parts.length - 1; j++) {
+              dir = await dir.getDirectoryHandle(parts[j], { create: true });
+            }
+            const fileName = parts[parts.length - 1];
+            const bytes = await readOpenPathBytes(entry.absolutePath);
+            const newFileHandle = await dir.getFileHandle(fileName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(bytes);
+            await writable.close();
+            await reloadOpenFileIfPath(targetStorageType, `${destPath || ''}${relPath}`);
+          }
+          refreshLocalTree();
+        }
+        const parentPaths = getParentPathsToExpand(destPath);
+        expandPaths(targetStorageType, parentPaths);
+        setOperationStatus(
+          flatFiles.length > 1 ? `${flatFiles.length}개 파일 업로드 완료` : '업로드 완료',
+        );
+      } catch (e) {
+        alert('업로드 실패: ' + e.message);
+        setOperationStatus(`업로드 실패: ${e.message}`);
+      } finally {
+        removeIndicator(indicatorId);
+      }
+      return;
+    }
+
     if (payload?.files?.length > 0 || payload?.dirHandles?.length > 0) {
       const { files = [], dirHandles = [] } = payload;
       const totalItems = files.length + dirHandles.length;
@@ -2092,6 +2186,48 @@ export function useTreeOpsDomain() {
             uploadedCount += 1;
           }
           await refreshWebdavTree();
+          const parentPaths = getParentPathsToExpand(destPath);
+          expandPaths(targetStorageType, parentPaths);
+        } else if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const uploadFile = async (file, prefix, destName = normalizeUnicodeNfc(file.name)) => {
+            const key = prefix + normalizeUnicodeNfc(destName);
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+          };
+          const uploadDir = async (dirHandle, prefix) => {
+            for await (const entry of dirHandle.values()) {
+              const nfcName = normalizeUnicodeNfc(entry.name);
+              if (entry.kind === 'file') {
+                const file = await entry.getFile();
+                await uploadFile(file, prefix, nfcName);
+              } else if (entry.kind === 'directory') {
+                await uploadDir(entry, `${prefix}${nfcName}/`);
+              }
+            }
+          };
+          for (const file of files) {
+            const destName = await resolveUploadDestFileName(
+              file.name,
+              usedNames,
+              askUploadNameConflict,
+            );
+            if (!destName) {
+              skippedCount += 1;
+              continue;
+            }
+            await uploadFile(file, destPath, destName);
+            usedNames.add(destName);
+            uploadedCount += 1;
+            await reloadOpenFileIfPath(targetStorageType, `${destPath || ''}${destName}`);
+          }
+          for (const handle of dirHandles) {
+            const nfcDirName = normalizeUnicodeNfc(handle.name || '');
+            await uploadDir(handle, `${destPath}${nfcDirName}/`);
+            uploadedCount += 1;
+          }
+          await refreshLocalTree();
           const parentPaths = getParentPathsToExpand(destPath);
           expandPaths(targetStorageType, parentPaths);
         } else {

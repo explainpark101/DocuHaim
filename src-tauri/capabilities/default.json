@@ -58,6 +58,7 @@
         }
       ]
     },
-    "os:default"
+    "os:default",
+    "upload:default"
   ]
 }

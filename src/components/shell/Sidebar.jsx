@@ -9,6 +9,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import TreeNode from '@/components/TreeNode';
+import { useTauriTreeDragDrop } from '@/hooks/useTauriTreeDragDrop';
 import {
   RootDropZone,
   TreeDragOverlayPreview,
@@ -288,6 +289,7 @@ export default function Sidebar({
   const coarsePointer = useIsCoarsePointer();
   const mobileTree = isMobileLayout || coarsePointer;
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
+  useTauriTreeDragDrop(onDropOnFolder);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const brandLongPressTimerRef = useRef(null);
   const brandLongPressOpenedRef = useRef(false);
@@ -1644,6 +1646,7 @@ export default function Sidebar({
             <RootDropZone
               storageType="local"
               localRootHandle={localRootHandle}
+              localVaultFsPath={localVaultFsPath}
               onDropOnFolder={onDropOnFolder}
               dropTarget={dropTarget}
               isFocused={

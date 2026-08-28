@@ -34,13 +34,7 @@ fn find_file_submenu<R: Runtime>(menu: &Menu<R>) -> Option<Submenu<R>> {
 pub fn install_desktop_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
 
-    let open_s3 = MenuItem::with_id(
-        handle,
-        OPEN_S3_HAIM_ID,
-        "S3 Haim 열기",
-        true,
-        None::<&str>,
-    )?;
+    let open_s3 = MenuItem::with_id(handle, OPEN_S3_HAIM_ID, "S3 Haim 열기", true, None::<&str>)?;
     let open_webdav = MenuItem::with_id(
         handle,
         OPEN_WEBDAV_HAIM_ID,
