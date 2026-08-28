@@ -1,4 +1,13 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import {
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type ComponentProps,
+  type DragEvent,
+  type MutableRefObject,
+} from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -7,8 +16,11 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
-import TreeNode from '@/components/TreeNode';
+import TreeNode, { type SidebarTreeNode } from '@/components/shell/TreeNode';
 import { useTauriTreeDragDrop } from '@/hooks/useTauriTreeDragDrop';
 import {
   RootDropZone,
@@ -69,8 +81,180 @@ import {
   getAppNameByStorageMode,
 } from '@/utils/storageSettings';
 import { isLocalVaultReady } from '@/utils/localVaultReady';
+import type { ExpandedFolderPaths } from '@/utils/expandedFoldersStore';
+import type { TreeTransferBusyEntry } from '@/utils/treeTransferBusy';
+import type { SessionTreeNode, SessionWorkspace } from '@/utils/sessionWorkspace';
 
-const EMPTY_SELECTED_IDS = new Set();
+type TreeNodeDropHandler = NonNullable<ComponentProps<typeof TreeNode>['onDropOnFolder']>;
+type RootDropHandler = NonNullable<ComponentProps<typeof RootDropZone>['onDropOnFolder']>;
+
+export type SidebarStorageMode = 's3' | 'local' | 'webdav';
+
+type SidebarCurrentFile = {
+  type?: string;
+  id?: string;
+  name?: string;
+  handle?: FileSystemDirectoryHandle | null;
+  parentHandle?: FileSystemDirectoryHandle | null;
+  lastModified?: unknown;
+} | null;
+
+type TreeDropTarget = {
+  storageType: string;
+  folderPath: string;
+} | null;
+
+type TreeMoveItem = {
+  storageType: string;
+  path: string;
+  nodeType: string;
+  name?: string;
+};
+
+type SelectModifiers = {
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+};
+
+type FocusedLocalFolder = {
+  path: string;
+  handle: FileSystemDirectoryHandle | null | undefined;
+};
+
+type ActivatedTreeNode = {
+  storageType: string;
+  node: SidebarTreeNode;
+};
+
+type RenameTargetState = {
+  storageType: string;
+  node: SidebarTreeNode;
+};
+
+type TreeContextMenuState = {
+  x: number | null;
+  y: number | null;
+  node: SidebarTreeNode;
+  storageType: string;
+  modal?: boolean;
+  onCloseTab?: (() => void) | null;
+};
+
+type FileTabContextMenuOpenArgs = {
+  storageType?: string;
+  path?: string;
+  name?: string;
+  currentFile?: SidebarCurrentFile;
+  clientX?: number;
+  clientY?: number;
+  onCloseTab?: () => void;
+};
+
+type ExpandPathsRef = MutableRefObject<((storageType: string, paths: string[]) => void) | null>;
+
+type FileTabContextMenuRef = MutableRefObject<{
+  open: (args: FileTabContextMenuOpenArgs) => void;
+} | null>;
+
+type FilterTreeOptions = {
+  hideDotFolders?: boolean;
+  hideTrashFolder?: boolean;
+  hideRecordingCompanionFiles?: boolean;
+  searchTerm?: string;
+};
+
+type SelectedFolderForMove = {
+  node: SidebarTreeNode;
+  storageType: string;
+} | null;
+
+export type SidebarProps = {
+  appName?: string;
+  storageMode?: string;
+  s3Tree: SidebarTreeNode[];
+  s3Bucket?: string | null;
+  localTree: SidebarTreeNode[];
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  localVaultFsPath?: string | null;
+  isLocalTreeLoading?: boolean;
+  localFolderLoadingPath?: string | null;
+  onLoadLocalFolderChildren?: (node: SidebarTreeNode) => void | Promise<void>;
+  onRefreshLocal?: () => void | Promise<void>;
+  webdavTree?: SidebarTreeNode[];
+  webdavReady?: boolean;
+  isWebdavTreeLoading?: boolean;
+  webdavFolderLoadingPath?: string | null;
+  onRefreshWebdav?: () => void | Promise<void>;
+  onLoadWebdavFolderChildren?: (node: SidebarTreeNode) => void | Promise<void>;
+  currentFile?: SidebarCurrentFile;
+  selectedIds: Set<string>;
+  onSelectFile?: (
+    storageType: string,
+    node: SidebarTreeNode | SessionTreeNode,
+    modifiers: SelectModifiers,
+  ) => void;
+  onClearSelection?: () => void;
+  onCreateItem: (
+    storageType: string,
+    parentPath: string,
+    parentDirHandle: FileSystemDirectoryHandle | null | undefined,
+    kind: 'file' | 'folder',
+  ) => void;
+  onRequestUploadFile?: (
+    storageType: string,
+    parentPath: string,
+    parentDirHandle: FileSystemDirectoryHandle | null | undefined,
+  ) => void;
+  onRequestUploadFolder?: (
+    storageType: string,
+    parentPath: string,
+    parentDirHandle: FileSystemDirectoryHandle | null | undefined,
+  ) => void;
+  onRequestMoveFolder?: (node: SidebarTreeNode, storageType: string) => void;
+  onOpenLocalFolder?: () => void;
+  onSetDeleteTarget?: (target: unknown) => void;
+  onRequestEmptyTrash?: (node: SidebarTreeNode, storageType: string) => void;
+  onOpenSettings?: () => void;
+  theme?: string;
+  onToggleTheme?: () => void;
+  onRenameItem?: (storageType: string, node: SidebarTreeNode, newName: string) => void;
+  showHiddenFolders?: boolean;
+  showTrashFolder?: boolean;
+  hideRecordingCompanions?: boolean;
+  treeStickyFolderPathEnabled?: boolean;
+  showTreeModifiedDate?: boolean;
+  hoverExpandDelayMs?: number;
+  onRequestCollapseSidebar?: () => void;
+  /** Mobile portrait: close overlay sidebar (button left of brand title). */
+  onRequestCloseSidebar?: () => void;
+  deletingFolderPath?: string | null;
+  isDeletingFolder?: boolean;
+  onDropOnFolder?: TreeNodeDropHandler;
+  onDragEndNode?: () => void;
+  dropTarget?: TreeDropTarget;
+  transferBusyItems?: TreeTransferBusyEntry[] | null;
+  expandPathsRef?: ExpandPathsRef;
+  onRefreshS3?: () => void | Promise<void>;
+  onDownloadNode?: (storageType: string, node: SidebarTreeNode) => void;
+  onDuplicateNode?: (storageType: string, node: SidebarTreeNode) => void;
+  onRequestMoveFile?: (node: SidebarTreeNode, storageType: string) => void;
+  onOpenInNewWindow?: (...args: unknown[]) => void;
+  onShareToChatWithMyself?: (...args: unknown[]) => void;
+  onOpenChatWithMyself?: () => void;
+  chatWithMyselfActive?: boolean;
+  chatAttachDropHost?: HTMLElement | null;
+  onDropToChatAttach?: (items: TreeMoveItem[]) => void;
+  onBrandClick?: () => void;
+  onStorageModeChange?: (mode: string) => void;
+  sessionWorkspace?: SessionWorkspace | null;
+  sessionTree?: SessionTreeNode[];
+  onCloseSessionWorkspace?: () => void;
+  isMobileLayout?: boolean;
+  fileTabContextMenuRef?: FileTabContextMenuRef | null;
+};
+
+const EMPTY_SELECTED_IDS = new Set<string>();
 
 const BRAND_STORAGE_MODES = [
   STORAGE_MODE_S3,
@@ -88,18 +272,18 @@ const BRAND_LONG_PRESS_MS = 500;
 /** Above main pane / chat drop overlay; DragOverlay is portaled to document.body. */
 const TREE_DRAG_OVERLAY_Z_INDEX = 100060;
 
-function getParentPathFromFilePath(filePath) {
+function getParentPathFromFilePath(filePath: string): string {
   return getParentFolderPath(filePath);
 }
 
-function isRenameableTreeNode(node) {
+function isRenameableTreeNode(node: SidebarTreeNode | null | undefined): boolean {
   if (!node || node.path === '.trash/' || node.path === '') return false;
   return node.type === 'file' || node.type === 'folder';
 }
 
-function isTypingElement(target) {
+function isTypingElement(target: EventTarget | null): boolean {
   if (!target || typeof target !== 'object') return false;
-  const el = /** @type {HTMLElement} */ (target);
+  const el = target as HTMLElement;
   const tag = el.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
   if (el.isContentEditable) return true;
@@ -116,16 +300,22 @@ function isTypingElement(target) {
   return false;
 }
 
-function isEventInsideSidebarTree(target) {
-  if (!target || typeof target !== 'object' || typeof target.closest !== 'function') {
+function isEventInsideSidebarTree(target: EventTarget | null): boolean {
+  if (!target || typeof target !== 'object' || !('closest' in target)) {
     return false;
   }
+  const el = target as Element;
   return Boolean(
-    target.closest('[data-sidebar-tree-scroll], [data-tree-node-row], [data-tree-root-drop-zone]'),
+    el.closest('[data-sidebar-tree-scroll], [data-tree-node-row], [data-tree-root-drop-zone]'),
   );
 }
 
-function ChatWithMyselfEntry({ isActive, onOpen }) {
+type ChatWithMyselfEntryProps = {
+  isActive: boolean;
+  onOpen?: (() => void) | undefined;
+};
+
+function ChatWithMyselfEntry({ isActive, onOpen }: ChatWithMyselfEntryProps) {
   return (
     <button
       type="button"
@@ -152,13 +342,18 @@ function ChatWithMyselfEntry({ isActive, onOpen }) {
 }
 
 function filterTree(
-  nodes,
-  { hideDotFolders, hideTrashFolder, hideRecordingCompanionFiles, searchTerm } = {},
-) {
+  nodes: SidebarTreeNode[],
+  {
+    hideDotFolders,
+    hideTrashFolder,
+    hideRecordingCompanionFiles,
+    searchTerm,
+  }: FilterTreeOptions = {},
+): SidebarTreeNode[] {
   const q = searchTerm ? searchTerm.toLowerCase() : '';
-  const isTrashFolder = (node) =>
+  const isTrashFolder = (node: SidebarTreeNode) =>
     node.type === 'folder' && (node.name === '.trash' || node.path === '.trash/');
-  const walk = (node) => {
+  const walk = (node: SidebarTreeNode): SidebarTreeNode | null => {
     if (node.type === 'folder') {
       if (isTrashFolder(node)) {
         if (hideTrashFolder) return null;
@@ -176,7 +371,7 @@ function filterTree(
     if (node.type === 'folder' && node.children) {
       const children = node.children
         .map(walk)
-        .filter(Boolean);
+        .filter((child): child is SidebarTreeNode => child !== null);
       if (children.length || nameMatch) {
         return { ...node, children };
       }
@@ -187,10 +382,15 @@ function filterTree(
 
   return nodes
     .map(walk)
-    .filter(Boolean);
+    .filter((node): node is SidebarTreeNode => node !== null);
 }
 
-function getSelectedFolderForMove(selectedIds, s3Tree, localTree, webdavTree) {
+function getSelectedFolderForMove(
+  selectedIds: Set<string> | null | undefined,
+  s3Tree: SidebarTreeNode[],
+  localTree: SidebarTreeNode[],
+  webdavTree: SidebarTreeNode[],
+): SelectedFolderForMove {
   if (!selectedIds?.size) return null;
   for (const key of selectedIds) {
     const colonIdx = key.indexOf(':');
@@ -202,7 +402,7 @@ function getSelectedFolderForMove(selectedIds, s3Tree, localTree, webdavTree) {
         : storageType === 'webdav'
           ? webdavTree
           : localTree;
-    const node = findNodeByPath(tree, path);
+    const node = findNodeByPath(tree, path) as SidebarTreeNode | null;
     if (node?.type === 'folder' && path !== '.trash/') {
       return { node, storageType };
     }
@@ -210,7 +410,10 @@ function getSelectedFolderForMove(selectedIds, s3Tree, localTree, webdavTree) {
   return null;
 }
 
-function expandedSetForStorageType(expanded, storageType) {
+function expandedSetForStorageType(
+  expanded: ExpandedFolderPaths,
+  storageType: string,
+): Set<string> {
   if (storageType === 's3') return expanded.s3;
   if (storageType === 'webdav') return expanded.webdav;
   return expanded.local;
@@ -234,7 +437,7 @@ export default function Sidebar({
   webdavFolderLoadingPath = null,
   onRefreshWebdav,
   onLoadWebdavFolderChildren,
-  currentFile,
+  currentFile = null,
   selectedIds,
   onSelectFile,
   onClearSelection,
@@ -256,11 +459,12 @@ export default function Sidebar({
   showTreeModifiedDate = false,
   hoverExpandDelayMs = 2000,
   onRequestCollapseSidebar,
+  onRequestCloseSidebar,
   deletingFolderPath,
   isDeletingFolder,
   onDropOnFolder,
   onDragEndNode,
-  dropTarget,
+  dropTarget = null,
   transferBusyItems = null,
   expandPathsRef,
   onRefreshS3,
@@ -271,32 +475,25 @@ export default function Sidebar({
   onShareToChatWithMyself,
   onOpenChatWithMyself,
   chatWithMyselfActive = false,
-  /** Host element on ChatWithMyselfPane for portaled tree→attach droppable. */
   chatAttachDropHost = null,
-  /** Called when tree items are dropped onto the chat attach zone. */
   onDropToChatAttach,
   onBrandClick,
   onStorageModeChange,
   sessionWorkspace = null,
   sessionTree = [],
   onCloseSessionWorkspace,
-  /** App mobile layout (max-width 768px) — enables touch tree drag + modal menu. */
   isMobileLayout = false,
-  /**
-   * Ref filled with `{ open(args) }` so workspace file tabs can open this same menu.
-   * `open({ storageType, path, name?, currentFile?, clientX?, clientY?, onCloseTab? })`
-   */
   fileTabContextMenuRef = null,
-}) {
+}: SidebarProps) {
   const TREE_STICKY_SECTION_TOP = 33;
   const coarsePointer = useIsCoarsePointer();
   const mobileTree = isMobileLayout || coarsePointer;
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
   useTauriTreeDragDrop(onDropOnFolder);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
-  const brandLongPressTimerRef = useRef(null);
+  const brandLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const brandLongPressOpenedRef = useRef(false);
-  const brandPressStartRef = useRef(null);
+  const brandPressStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const clearBrandLongPress = useCallback(() => {
     if (brandLongPressTimerRef.current) {
@@ -312,35 +509,35 @@ export default function Sidebar({
   const [searchTerm, setSearchTerm] = useState('');
   const isSearchPending = searchInput !== searchTerm;
   /** null = no explicit folder; '' = bucket/project root selected */
-  const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState(null);
-  /** null = no explicit folder; { path: '', handle } = project root */
-  const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState(null);
-  /** null = no explicit folder; '' = WebDAV root selected */
-  const [lastFocusedWebdavFolderPath, setLastFocusedWebdavFolderPath] = useState(null);
+  const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState<string | null>(null);
+  const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState<FocusedLocalFolder | null>(null);
+  const [lastFocusedWebdavFolderPath, setLastFocusedWebdavFolderPath] = useState<string | null>(null);
 
   // While Chat with Myself is open, tree must not show another file/folder as selected.
   const treeSelectedIds = chatWithMyselfActive ? EMPTY_SELECTED_IDS : selectedIds;
   const treeCurrentFile = chatWithMyselfActive ? null : currentFile;
 
   const [expandedPaths, setExpandedPaths] = useState(loadExpandedFolderPaths);
-  const [contextMenu, setContextMenu] = useState(null);
-  const [renameTarget, setRenameTarget] = useState(null);
-  const [lastActivatedNode, setLastActivatedNode] = useState(null);
+  const [contextMenu, setContextMenu] = useState<TreeContextMenuState | null>(null);
+  const [renameTarget, setRenameTarget] = useState<RenameTargetState | null>(null);
+  const [lastActivatedNode, setLastActivatedNode] = useState<ActivatedTreeNode | null>(null);
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
-  const [activeDragItems, setActiveDragItems] = useState(null);
+  const [activeDragItems, setActiveDragItems] = useState<TreeMoveItem[] | null>(null);
   const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
     useTreeCopyDragModifier(Boolean(activeDragItems?.length));
-  const scrollContainerRef = useRef(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const isDraggingRef = useRef(false);
-  const activeDragItemsRef = useRef(null);
-  const autoScrollIntervalRef = useRef(null);
-  const hoverExpandTimerRef = useRef(null);
-  const hoverExpandKeyRef = useRef(null);
+  const activeDragItemsRef = useRef<TreeMoveItem[] | null>(null);
+  const autoScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hoverExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverExpandKeyRef = useRef<string | null>(null);
   const hoverExpandDelayMsRef = useRef(hoverExpandDelayMs);
   const expandedPathsRef = useRef(expandedPaths);
   const searchTermRef = useRef(searchTerm);
-  const handleExpandedChangeRef = useRef(null);
+  const handleExpandedChangeRef = useRef<
+    ((storageType: string, path: string, isOpen: boolean) => void) | null
+  >(null);
 
   expandedPathsRef.current = expandedPaths;
   searchTermRef.current = searchTerm;
@@ -357,7 +554,7 @@ export default function Sidebar({
   useEffect(() => () => clearHoverExpandTimer(), [clearHoverExpandTimer]);
 
   const scheduleHoverExpandFolder = useCallback(
-    (storageType, folderPath) => {
+    (storageType: string, folderPath: string) => {
       if (!folderPath || folderPath === '.trash/') {
         clearHoverExpandTimer();
         return;
@@ -398,10 +595,17 @@ export default function Sidebar({
     ),
   );
 
+  const handleRootDropOnFolder = useCallback<RootDropHandler>(
+    (targetNode, targetStorageType, action, payload) => {
+      onDropOnFolder?.(targetNode, targetStorageType, action, payload);
+    },
+    [onDropOnFolder],
+  );
+
   const findTreeNode = useCallback(
-    (storageType, path) => {
+    (storageType: string, path: string): SidebarTreeNode | SessionTreeNode | null => {
       if (storageType === 'session') {
-        return findNodeByPath(sessionTree, path);
+        return findNodeByPath(sessionTree, path) as SessionTreeNode | null;
       }
       const tree =
         storageType === 's3'
@@ -409,19 +613,19 @@ export default function Sidebar({
           : storageType === 'webdav'
             ? webdavTree
             : localTree;
-      return findNodeByPath(tree, path);
+      return findNodeByPath(tree, path) as SidebarTreeNode | null;
     },
     [s3Tree, localTree, webdavTree, sessionTree],
   );
 
   const resolveDropTargetNode = useCallback(
-    (storageType, path) => {
+    (storageType: string, path: string | null | undefined): SidebarTreeNode | null => {
       if (path === '' || path == null) {
         return {
           path: '',
           type: 'folder',
           name: 'root',
-          handle: storageType === 'local' ? localRootHandle : null,
+          handle: storageType === 'local' ? (localRootHandle ?? null) : null,
         };
       }
       const node = findTreeNode(storageType, path);
@@ -436,7 +640,7 @@ export default function Sidebar({
           path: '',
           type: 'folder',
           name: 'root',
-          handle: storageType === 'local' ? localRootHandle : null,
+          handle: storageType === 'local' ? (localRootHandle ?? null) : null,
         };
       }
       const parent = findTreeNode(storageType, parentPath);
@@ -452,7 +656,7 @@ export default function Sidebar({
   );
 
   const requestDeleteNode = useCallback(
-    (node, storageType) => {
+    (node: SidebarTreeNode, storageType: string) => {
       if (!node) return;
       if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
       if (node.path === '.trash/') {
@@ -482,19 +686,21 @@ export default function Sidebar({
   }, [clearHoverExpandTimer, onDragEndNode]);
 
   const handleDndDragStart = useCallback(
-    (event) => {
+    (event: DragStartEvent) => {
       const activeId = String(event.active.id);
       const items = resolveDragItems(activeId, selectedIds, findTreeNode);
       activeDragItemsRef.current = items;
       setActiveDragItems(items);
-      syncCopyModifierFromEvent(event.activatorEvent);
+      syncCopyModifierFromEvent(
+        event.activatorEvent as { ctrlKey?: boolean; altKey?: boolean } | null | undefined,
+      );
       handleDragStartNode();
     },
     [selectedIds, findTreeNode, handleDragStartNode, syncCopyModifierFromEvent],
   );
 
   const handleDndDragOver = useCallback(
-    (event) => {
+    (event: DragOverEvent) => {
       const { over } = event;
       if (!over) {
         clearHoverExpandTimer();
@@ -537,7 +743,7 @@ export default function Sidebar({
   );
 
   const handleDndDragEnd = useCallback(
-    (event) => {
+    (event: DragEndEvent) => {
       const { over } = event;
       const items = activeDragItemsRef.current;
       const copy = isCopyDragRef.current;
@@ -604,7 +810,7 @@ export default function Sidebar({
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    const onWheel = (e) => {
+    const onWheel = (e: WheelEvent) => {
       if (!isDraggingRef.current) return;
       const rect = el.getBoundingClientRect();
       const isOver =
@@ -638,12 +844,12 @@ export default function Sidebar({
     };
   }, []);
 
-  const handleScrollAreaDragEnter = useCallback((e) => {
+  const handleScrollAreaDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
     const hasDragData = e.dataTransfer?.types?.includes?.('Files');
     if (hasDragData) isDraggingRef.current = true;
   }, []);
 
-  const handleScrollAreaDragOver = useCallback((e) => {
+  const handleScrollAreaDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
     const el = scrollContainerRef.current;
     const hasDragData =
       e.dataTransfer?.types?.includes?.('Files') && e.dataTransfer?.items?.length > 0;
@@ -686,7 +892,7 @@ export default function Sidebar({
     }
   }, []);
 
-  const handleExpandedChange = useCallback((storageType, path, isOpen) => {
+  const handleExpandedChange = useCallback((storageType: string, path: string, isOpen: boolean) => {
     setExpandedPaths((prev) => {
       const next = {
         s3: new Set(prev.s3),
@@ -701,14 +907,14 @@ export default function Sidebar({
     });
 
     if (storageType === 'local' && isOpen && onLoadLocalFolderChildren) {
-      const node = findNodeByPath(localTree, path);
+      const node = findNodeByPath(localTree, path) as SidebarTreeNode | null;
       if (node?.type === 'folder' && node.childrenLoaded !== true) {
         void onLoadLocalFolderChildren(node);
       }
     }
 
     if (storageType === 'webdav' && isOpen && onLoadWebdavFolderChildren) {
-      const node = findNodeByPath(webdavTree, path);
+      const node = findNodeByPath(webdavTree, path) as SidebarTreeNode | null;
       if (node?.type === 'folder' && node.childrenLoaded !== true) {
         void onLoadWebdavFolderChildren(node);
       }
@@ -722,7 +928,7 @@ export default function Sidebar({
     const expanded = expandedPaths.local;
     if (!expanded?.size) return;
 
-    const visit = (nodes) => {
+    const visit = (nodes: SidebarTreeNode[]) => {
       for (const node of nodes) {
         if (node?.type !== 'folder') continue;
         if (expanded.has(node.path) && node.childrenLoaded !== true) {
@@ -739,7 +945,7 @@ export default function Sidebar({
     const expanded = expandedPaths.webdav;
     if (!expanded?.size) return;
 
-    const visit = (nodes) => {
+    const visit = (nodes: SidebarTreeNode[]) => {
       for (const node of nodes) {
         if (node?.type !== 'folder') continue;
         if (expanded.has(node.path) && node.childrenLoaded !== true) {
@@ -751,7 +957,7 @@ export default function Sidebar({
     visit(webdavTree);
   }, [webdavTree, expandedPaths.webdav, onLoadWebdavFolderChildren]);
 
-  const expandPathsForNewItem = useCallback((storageType, paths) => {
+  const expandPathsForNewItem = useCallback((storageType: string, paths: string[]) => {
     if (!paths?.length) return;
     setExpandedPaths((prev) => {
       const next = {
@@ -816,9 +1022,9 @@ export default function Sidebar({
     [s3Tree, localTree, webdavTree],
   );
 
-  const collectFolderPaths = (nodes) => {
-    const paths = new Set();
-    const walk = (n) => {
+  const collectFolderPaths = (nodes: SidebarTreeNode[]): Set<string> => {
+    const paths = new Set<string>();
+    const walk = (n: SidebarTreeNode) => {
       if (n.type === 'folder' && n.path) {
         paths.add(n.path);
         if (n.children) n.children.forEach(walk);
@@ -848,9 +1054,9 @@ export default function Sidebar({
   );
 
   const contextMenuNode = contextMenu?.node;
-  const contextMenuStorageType = contextMenu?.storageType;
+  const contextMenuStorageType = contextMenu?.storageType ?? 's3';
   const getCreateTargetForStorage = useCallback(
-    (storageType) => {
+    (storageType: string) => {
       if (storageType === 's3') {
         if (lastFocusedS3FolderPath !== null) {
           return { parentPath: lastFocusedS3FolderPath, parentDirHandle: null };
@@ -907,12 +1113,17 @@ export default function Sidebar({
   const isWebdavMode = storageMode === 'webdav';
   const localVaultReady = isLocalVaultReady(localRootHandle, localVaultFsPath);
 
-  const activateTreeNode = useCallback((storageType, node) => {
+  const activateTreeNode = useCallback((storageType: string, node: SidebarTreeNode) => {
     setLastActivatedNode({ storageType, node });
   }, []);
 
   const openTreeContextMenu = useCallback(
-    (storageType, node, event, extras = {}) => {
+    (
+      storageType: string,
+      node: SidebarTreeNode,
+      event: { clientX?: number; clientY?: number; preventDefault?: () => void; stopPropagation?: () => void } | null,
+      extras: { onCloseTab?: (() => void) | undefined } = {},
+    ) => {
       activateTreeNode(storageType, node);
       setContextMenu({
         x: mobileTree ? null : event?.clientX ?? null,
@@ -931,27 +1142,27 @@ export default function Sidebar({
       storageType,
       path,
       name,
-      currentFile,
+      currentFile: tabCurrentFile,
       clientX,
       clientY,
       onCloseTab,
-    } = {}) => {
+    }: FileTabContextMenuOpenArgs = {}) => {
       if (!storageType || !path) return;
       let node = findTreeNode(storageType, path);
       if (!node || node.type !== 'file') {
         const fallbackName =
           name ||
-          (typeof currentFile?.name === 'string' ? currentFile.name : '') ||
+          (typeof tabCurrentFile?.name === 'string' ? tabCurrentFile.name : '') ||
           String(path).split('/').filter(Boolean).pop() ||
           path;
         node = {
           type: 'file',
           path,
           name: fallbackName,
-          ...(currentFile?.handle ? { handle: currentFile.handle } : {}),
-          ...(currentFile?.parentHandle ? { parentHandle: currentFile.parentHandle } : {}),
-          ...(currentFile?.lastModified != null
-            ? { lastModified: currentFile.lastModified }
+          ...(tabCurrentFile?.handle ? { handle: tabCurrentFile.handle } : {}),
+          ...(tabCurrentFile?.parentHandle ? { parentHandle: tabCurrentFile.parentHandle } : {}),
+          ...(tabCurrentFile?.lastModified != null
+            ? { lastModified: tabCurrentFile.lastModified }
             : {}),
         };
       }
@@ -977,7 +1188,7 @@ export default function Sidebar({
   }, [fileTabContextMenuRef, openFileTabContextMenu]);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
       if (isTypingElement(e.target)) return;
 
@@ -1160,6 +1371,17 @@ export default function Sidebar({
         <div className="p-4 flex flex-col gap-3">
           <div className="flex justify-between items-center gap-2" data-sidebar-header-row>
             <div className="flex items-center gap-1 min-w-0" data-sidebar-header-left>
+              {typeof onRequestCloseSidebar === 'function' && (
+                <button
+                  type="button"
+                  onClick={onRequestCloseSidebar}
+                  className="inline-flex md:hidden p-1.5 shrink-0 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded transition touch-manipulation"
+                  title="사이드바 닫기"
+                  aria-label="사이드바 닫기"
+                >
+                  <X size={18} />
+                </button>
+              )}
               {typeof onRequestCollapseSidebar === 'function' && (
                 <button
                   type="button"
@@ -1362,11 +1584,13 @@ export default function Sidebar({
           scrollContainerRef.current?.focus({ preventScroll: true });
         }}
         onClick={(e) => {
+          const target = e.target;
           if (
-            !e.target.closest('[data-tree-node-row]') &&
-            !e.target.closest('[data-tree-root-drop-zone]') &&
-            !e.target.closest('button') &&
-            !e.target.closest('input')
+            !(target instanceof Element) ||
+            (!target.closest('[data-tree-node-row]') &&
+            !target.closest('[data-tree-root-drop-zone]') &&
+            !target.closest('button') &&
+            !target.closest('input'))
           ) {
             setLastFocusedS3FolderPath(null);
             setLastFocusedLocalFolder(null);
@@ -1497,7 +1721,7 @@ export default function Sidebar({
               <RootDropZone
                 storageType="s3"
                 localRootHandle={null}
-                onDropOnFolder={onDropOnFolder}
+                onDropOnFolder={handleRootDropOnFolder}
                 dropTarget={dropTarget}
                 isFocused={
                   !chatWithMyselfActive && lastFocusedS3FolderPath === ''
@@ -1520,8 +1744,12 @@ export default function Sidebar({
                     storageType="s3"
                     selectedIds={treeSelectedIds}
                     currentFile={treeCurrentFile}
-                    onCreateFile={(p) => onCreateItem('s3', p, null, 'file')}
-                    onCreateFolder={(p) => onCreateItem('s3', p, null, 'folder')}
+                    onCreateFile={(...args: unknown[]) =>
+                      onCreateItem('s3', args[0] as string, null, 'file')
+                    }
+                    onCreateFolder={(...args: unknown[]) =>
+                      onCreateItem('s3', args[0] as string, null, 'folder')
+                    }
                     onRequestMoveFolder={onRequestMoveFolder}
                     onDelete={(n, t) => requestDeleteNode(n, t)}
                     onRename={onRenameItem}
@@ -1651,8 +1879,8 @@ export default function Sidebar({
             <RootDropZone
               storageType="local"
               localRootHandle={localRootHandle}
-              localVaultFsPath={localVaultFsPath}
-              onDropOnFolder={onDropOnFolder}
+              localVaultFsPath={localVaultFsPath ?? undefined}
+              onDropOnFolder={handleRootDropOnFolder}
               dropTarget={dropTarget}
               isFocused={
                 !chatWithMyselfActive &&
@@ -1690,8 +1918,22 @@ export default function Sidebar({
                     storageType="local"
                     selectedIds={treeSelectedIds}
                     currentFile={treeCurrentFile}
-                    onCreateFile={(p, h) => onCreateItem('local', p, h, 'file')}
-                    onCreateFolder={(p, h) => onCreateItem('local', p, h, 'folder')}
+                    onCreateFile={(...args: unknown[]) =>
+                      onCreateItem(
+                        'local',
+                        args[0] as string,
+                        args[1] as FileSystemDirectoryHandle | null | undefined,
+                        'file',
+                      )
+                    }
+                    onCreateFolder={(...args: unknown[]) =>
+                      onCreateItem(
+                        'local',
+                        args[0] as string,
+                        args[1] as FileSystemDirectoryHandle | null | undefined,
+                        'folder',
+                      )
+                    }
                     onRequestMoveFolder={onRequestMoveFolder}
                     onDelete={(n, t) => requestDeleteNode(n, t)}
                     onRename={onRenameItem}
@@ -1814,7 +2056,7 @@ export default function Sidebar({
               <RootDropZone
                 storageType="webdav"
                 localRootHandle={null}
-                onDropOnFolder={onDropOnFolder}
+                onDropOnFolder={handleRootDropOnFolder}
                 dropTarget={dropTarget}
                 isFocused={
                   !chatWithMyselfActive && lastFocusedWebdavFolderPath === ''
@@ -1840,8 +2082,12 @@ export default function Sidebar({
                     storageType="webdav"
                     selectedIds={treeSelectedIds}
                     currentFile={treeCurrentFile}
-                    onCreateFile={(p) => onCreateItem('webdav', p, null, 'file')}
-                    onCreateFolder={(p) => onCreateItem('webdav', p, null, 'folder')}
+                    onCreateFile={(...args: unknown[]) =>
+                      onCreateItem('webdav', args[0] as string, null, 'file')
+                    }
+                    onCreateFolder={(...args: unknown[]) =>
+                      onCreateItem('webdav', args[0] as string, null, 'folder')
+                    }
                     onRequestMoveFolder={onRequestMoveFolder}
                     onDelete={(n, t) => requestDeleteNode(n, t)}
                     onRename={onRenameItem}

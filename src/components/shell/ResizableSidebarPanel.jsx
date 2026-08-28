@@ -238,9 +238,16 @@ export default function ResizableSidebarPanel({
       : 'top-0 h-dvh'
     : '';
 
+  const mobileOpenClass = isMobile
+    ? open
+      ? 'max-md:translate-x-0 max-md:visible'
+      : 'max-md:-translate-x-full max-md:invisible max-md:pointer-events-none'
+    : '';
+
   return (
     <div
       ref={panelRef}
+      aria-hidden={isMobile && !open ? true : undefined}
       className={`
         flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter
         ${isMobile && open ? 'z-60' : 'z-40'}
@@ -250,7 +257,7 @@ export default function ResizableSidebarPanel({
         max-md:transition-transform max-md:duration-300 max-md:ease-out
         ${isResizing ? '' : 'md:transition-[width] md:duration-300 md:ease-in-out'}
         ${!isMobile && (collapsed || snapCollapse) ? 'md:overflow-hidden md:border-r-0' : ''}
-        ${isMobile && !open ? '-translate-y-full pointer-events-none' : 'translate-y-0'}
+        ${mobileOpenClass}
       `}
       style={
         isMobile

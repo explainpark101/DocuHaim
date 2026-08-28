@@ -351,11 +351,6 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           tabsEnabled={workspaceTabsEnabled}
           appName={appName}
           isMobileLayout={isMobile}
-          mobileSidebarClose={
-            tauriMobileSidebar && sidebarOpen
-              ? { onClose: () => setSidebarOpen(false) }
-              : undefined
-          }
           onActivateTab={(id) => activateWorkspaceTab(id)}
           onCloseTab={(id) => {
             closeWorkspaceTabById(id);
@@ -505,20 +500,6 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             open={sidebarOpen}
             onRequestCollapse={() => setSidebarCollapsed(true)}
             mobileBelowTitlebar={tauriMobileSidebar}
-            mobileHeader={
-              isMobile && !tauriMobileSidebar ? (
-                <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
-                  <button
-                    type="button"
-                    aria-label="사이드바 닫기"
-                    onClick={() => setSidebarOpen(false)}
-                    className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
-                  >
-                    <IconX size={22} />
-                  </button>
-                </div>
-              ) : undefined
-            }
           >
             <SidebarConnected
               isMobileLayout={isMobile}
@@ -537,6 +518,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               showTreeModifiedDate={showTreeModifiedDate}
               hoverExpandDelayMs={treeHoverExpandSettingsToMs(treeHoverExpandSettings)}
               onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
+              onRequestCloseSidebar={isMobile ? () => setSidebarOpen(false) : undefined}
               expandPathsRef={expandPathsRef}
               onRequestMoveFile={handleRequestMoveFileFromSidebar}
               onOpenInNewWindow={handleOpenInNewWindow}
