@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { GripHorizontal, Trash2, X } from 'lucide-react';
 import Button from '@/components/Button';
 import { IconAlert, IconCheck, IconLoader, IconUpload } from '@/components/icons';
@@ -192,11 +192,6 @@ export default function FileUploadQueueFloatingPanel() {
     setPosition(resolveAnchoredFileUploadQueuePanelPosition(rect, panelHeight));
   }, [panelOpen, batches.length]);
 
-  useEffect(() => {
-    if (!panelOpen) return;
-    if (batches.length === 0) setPanelOpen(false);
-  }, [batches.length, panelOpen, setPanelOpen]);
-
   const startPositionDrag = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return;
@@ -248,7 +243,9 @@ export default function FileUploadQueueFloatingPanel() {
     if (!summary.isActive) clearBatch();
   };
 
-  if (!panelOpen || batches.length === 0) return null;
+  if (!panelOpen) return null;
+
+  const isEmpty = batches.length === 0;
 
   return (
     <div
@@ -281,23 +278,30 @@ export default function FileUploadQueueFloatingPanel() {
 
       <div className="border-b border-gray-200/80 px-3 py-2 text-[11px] text-gray-600 dark:border-odp-borderSoft dark:text-odp-muted">
         <p className="truncate">
-          전체 {summary.done}/{summary.total} 완료
-          {summary.errorCount > 0 ? ` · 실패 ${summary.errorCount}` : ''}
-          {summary.skippedCount > 0 ? ` · 취소 ${summary.skippedCount}` : ''}
-          {batches.length > 1 ? ` · ${batches.length}회 업로드` : ''}
+          {isEmpty
+            ? '진행 중인 업로드가 없습니다'
+            : `전체 ${summary.done}/${summary.total} 완료${summary.errorCount > 0 ? ` · 실패 ${summary.errorCount}` : ''}${summary.skippedCount > 0 ? ` · 취소 ${summary.skippedCount}` : ''}${batches.length > 1 ? ` · ${batches.length}회 업로드` : ''}`}
         </p>
       </div>
 
       <div className="max-h-[min(60vh,480px)] space-y-4 overflow-y-auto p-3">
-        {batches.map((batch) => (
-          <BatchSection
-            key={batch.id}
-            batch={batch}
-            onCancel={cancelItem}
-            onRemove={removeItem}
-            onDeleteVault={(itemId) => void deleteUploadedFile(itemId)}
-          />
-        ))}
+        {isEmpty ? (
+          <p className="py-8 text-center text-xs text-gray-500 dark:text-odp-muted">
+            사이드바 폴더에 파일을 드롭하거나
+            <br />
+            「파일 업로드」로 추가하세요.
+          </p>
+        ) : (
+          batches.map((batch) => (
+            <BatchSection
+              key={batch.id}
+              batch={batch}
+              onCancel={cancelItem}
+              onRemove={removeItem}
+              onDeleteVault={(itemId) => void deleteUploadedFile(itemId)}
+            />
+          ))
+        )}
       </div>
 
       <div className="flex justify-end border-t border-gray-200/80 px-3 py-2 dark:border-odp-borderSoft">

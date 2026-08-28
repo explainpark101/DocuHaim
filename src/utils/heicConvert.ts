@@ -22,8 +22,9 @@ export async function convertHeicBlobToJpeg(blob: Blob): Promise<Blob> {
   const { default: heic2any } = await import('heic2any');
   const result = await heic2any({
     blob,
-    toType: 'image/jpeg',
+    toType: 'image/gif',
     quality: 0.92,
+    gifInterval: 1,
   });
   const out = Array.isArray(result) ? result[0] : result;
   if (!(out instanceof Blob)) {
