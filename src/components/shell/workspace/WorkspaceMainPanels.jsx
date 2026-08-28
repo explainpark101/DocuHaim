@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import EditorPane from '@/components/EditorPane';
+import SettingsVaultDropHost from '@/components/shell/SettingsVaultDropHost';
 import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
 import WorkspaceTabHost, {
   WorkspaceKeepAlivePanel,
@@ -38,6 +39,7 @@ export default function WorkspaceMainPanels({
   tabsEnabled = true,
   isChatRoute = false,
   isSettingsRoute = false,
+  vaultDropProps = {},
   /** `titlebar` — tab strip lives in DesktopTitlebar; omit inline WorkspaceTabBar. */
   tabBarPlacement = 'inline',
 }) {
@@ -59,9 +61,11 @@ export default function WorkspaceMainPanels({
         <WorkspaceTabHost>
           {isSettingsRoute ? (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
-              <Suspense fallback={<RouteSuspenseFallback />}>
-                <SettingsPage {...settingsPaneProps} />
-              </Suspense>
+              <SettingsVaultDropHost enabled {...vaultDropProps}>
+                <Suspense fallback={<RouteSuspenseFallback />}>
+                  <SettingsPage {...settingsPaneProps} />
+                </Suspense>
+              </SettingsVaultDropHost>
             </div>
           ) : isChatRoute ? (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -143,9 +147,11 @@ export default function WorkspaceMainPanels({
 
         {showSettings ? (
           <WorkspaceKeepAlivePanel active={settingsActive}>
-            <Suspense fallback={<RouteSuspenseFallback />}>
-              <SettingsPage {...settingsPaneProps} />
-            </Suspense>
+            <SettingsVaultDropHost enabled={settingsActive} {...vaultDropProps}>
+              <Suspense fallback={<RouteSuspenseFallback />}>
+                <SettingsPage {...settingsPaneProps} />
+              </Suspense>
+            </SettingsVaultDropHost>
           </WorkspaceKeepAlivePanel>
         ) : null}
 

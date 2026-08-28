@@ -74,6 +74,8 @@ export function guessMimeTypeFromFileName(fileName: string): string {
     jpeg: 'image/jpeg',
     gif: 'image/gif',
     webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif',
     svg: 'image/svg+xml',
     pdf: 'application/pdf',
     zip: 'application/zip',

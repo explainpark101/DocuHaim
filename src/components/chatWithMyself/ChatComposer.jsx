@@ -47,6 +47,7 @@ import {
   isSafariBrowser,
 } from '@/utils/chatWithMyself';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
+import { toDisplayableImageObjectUrl } from '@/utils/heicConvert';
 import { registerChatActions } from '@/utils/advancedSearch/chatActions';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 
@@ -748,11 +749,12 @@ const ChatComposer = forwardRef(function ChatComposer(
     for (const file of files) {
       if (!file) continue;
       const isImage = await isChatImageFile(file);
+      const previewUrl = isImage ? await toDisplayableImageObjectUrl(file, file.name) : null;
       accepted.push({
         id: makeQueueId(),
         file,
         kind: isImage ? 'image' : 'file',
-        previewUrl: isImage ? URL.createObjectURL(file) : null,
+        previewUrl,
       });
     }
     if (!accepted.length) return;

@@ -4,6 +4,7 @@ import {
   getLocalFileHandleForPath,
 } from '@/utils/localEditorImage';
 import { isFileProbablyImage } from '@/utils/editorImageUpload';
+import { toDisplayableImageFile } from '@/utils/heicConvert';
 import {
   chatFilePathPrefix,
   detectTimeZone,

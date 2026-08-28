@@ -1,4 +1,6 @@
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
+import { isProbablyHeicFile } from '@/utils/heicConvert';
+import { isViewerImageFileName } from '@/utils/imageExtensions';
 import { putObjectWithProgress } from '@/utils/s3Client';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
 
@@ -39,6 +41,7 @@ export async function sniffImageMimeFromFile(file) {
 
 /** @param {File} file */
 export async function isFileProbablyImage(file) {
+  if (isProbablyHeicFile(file) || isViewerImageFileName(file.name)) return true;
   const mime = await sniffImageMimeFromFile(file);
   const ok = Boolean(mime);
   dbgClipboard('sniff:isFileProbablyImage', {

@@ -11,6 +11,8 @@ import {
   getCachedWikiImageUrl,
   setCachedWikiImageUrl,
 } from '@/utils/wikiImageCacheDb';
+import { toDisplayableImageBlob } from '@/utils/heicConvert';
+import { isViewerImageFileName } from '@/utils/imageExtensions';
 import { WIKI_IMAGE_CACHE_MODE_URL } from '@/utils/wikiImageSettings';
 import { getWikiImageCacheMode } from '@/utils/wikiImageRuntime';
 
@@ -103,7 +105,10 @@ export function resolveWikiImageUrl(path, getPresignedUrl, opts = {}) {
       try {
         const res = await fetch(url);
         if (!res.ok) return null;
-        const blob = await res.blob();
+        let blob = await res.blob();
+        if (isViewerImageFileName(trimmed)) {
+          blob = await toDisplayableImageBlob(blob, trimmed);
+        }
         await setCachedWikiImageBlob({ path: trimmed, blob });
         const objectUrl = URL.createObjectURL(blob);
         rememberResolvedWikiImageUrl(trimmed, objectUrl);

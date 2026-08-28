@@ -20,3 +20,5 @@ export function isPointInsideDropZone(
 }
 
 export const SESSION_DROP_ZONE_SELECTOR = '[data-session-drop-zone]';
+export const CHAT_FILE_DROP_ZONE_SELECTOR = '[data-chat-file-drop]';
+export const SETTINGS_VAULT_DROP_ZONE_SELECTOR = '[data-settings-vault-drop]';

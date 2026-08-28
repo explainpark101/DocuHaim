@@ -5,77 +5,71 @@ import {
   useState,
   type DragEvent,
   type ReactNode,
-  type Ref,
 } from 'react';
-import { Paperclip, Upload } from 'lucide-react';
-import { useTauriChatFileDragDrop } from '@/hooks/useTauriChatFileDragDrop';
+import { Upload } from 'lucide-react';
+import { useTauriSettingsVaultDragDrop } from '@/hooks/useTauriSettingsVaultDragDrop';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+
+type VaultDropOnFolderHandler = (
+  targetNode: { path: string; type: 'folder'; name: string; handle?: FileSystemDirectoryHandle | null },
+  targetStorageType: string,
+  action: 'drop',
+  payload: { files?: File[]; paths?: string[] },
+) => void | Promise<void>;
+
+type SettingsVaultDropHostProps = {
+  children: ReactNode;
+  enabled?: boolean;
+  storageType: string;
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  onDropOnFolder?: VaultDropOnFolderHandler;
+};
 
 function dataTransferHasFiles(dt: DataTransfer | null | undefined): boolean {
   if (!dt) return false;
   return [...dt.types].includes('Files');
 }
 
-function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
-  if (!ref) return;
-  if (typeof ref === 'function') {
-    ref(value);
-    return;
-  }
-  try {
-    (ref as { current: T | null }).current = value;
-  } catch {
-    /* ignore */
-  }
-}
-
-export type ChatFileDropOverlayProps = {
-  children: ReactNode;
-  className?: string;
-  /** When true, ignore OS file drags (e.g. storage not ready). */
-  disabled?: boolean;
-  onFilesDrop: (files: FileList | File[]) => void;
-  /** Optional ref to the outer relative host (tree→attach droppable portal). */
-  rootRef?: Ref<HTMLDivElement>;
-};
-
-/**
- * Wraps the chat view: OS file drag anywhere inside shows an overlay;
- * drop enqueues files as composer attachments. App TreeNode Sidebar sits
- * outside this pane, so vault OS-drop is unaffected.
- *
- * Drop/dragover use the capture phase so nested editors (MdEditor) do not
- * also consume the same OS file drop.
- */
-export default function ChatFileDropOverlay({
+export default function SettingsVaultDropHost({
   children,
-  className = '',
-  disabled = false,
-  onFilesDrop,
-  rootRef,
-}: ChatFileDropOverlayProps) {
+  enabled = true,
+  storageType,
+  localRootHandle = null,
+  onDropOnFolder,
+}: SettingsVaultDropHostProps) {
   const [dragging, setDragging] = useState(false);
   const dragDepthRef = useRef(0);
   const useHtmlOsDrop = !isTauriDesktopPlatform();
 
-  const handleTauriFilesDrop = useCallback(
-    (files: File[]) => {
-      if (files.length) onFilesDrop(files);
+  const dropVaultPayload = useCallback(
+    (payload: { files?: File[]; paths?: string[] }) => {
+      if (!enabled || !onDropOnFolder) return;
+      void onDropOnFolder(
+        {
+          path: '',
+          type: 'folder',
+          name: 'root',
+          handle: storageType === 'local' ? localRootHandle : null,
+        },
+        storageType,
+        'drop',
+        payload,
+      );
     },
-    [onFilesDrop],
+    [enabled, localRootHandle, onDropOnFolder, storageType],
   );
 
-  useTauriChatFileDragDrop({
-    enabled: !disabled,
-    onDropFiles: handleTauriFilesDrop,
+  useTauriSettingsVaultDragDrop({
+    enabled: enabled && Boolean(onDropOnFolder),
+    onDropPaths: (paths) => dropVaultPayload({ paths }),
     onDragActiveChange: setDragging,
   });
 
   useEffect(() => {
-    if (!disabled) return;
+    if (enabled) return;
     dragDepthRef.current = 0;
     setDragging(false);
-  }, [disabled]);
+  }, [enabled]);
 
   const resetDrag = useCallback(() => {
     dragDepthRef.current = 0;
@@ -84,61 +78,53 @@ export default function ChatFileDropOverlay({
 
   const onDragEnter = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
+      if (!enabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
       dragDepthRef.current += 1;
       setDragging(true);
     },
-    [disabled, useHtmlOsDrop],
+    [enabled, useHtmlOsDrop],
   );
 
   const onDragLeave = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled || !useHtmlOsDrop) return;
+      if (!enabled || !useHtmlOsDrop) return;
       e.preventDefault();
       e.stopPropagation();
       dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
       if (dragDepthRef.current === 0) setDragging(false);
     },
-    [disabled, useHtmlOsDrop],
+    [enabled, useHtmlOsDrop],
   );
 
   const onDragOverCapture = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
+      if (!enabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
       if (!dragging) setDragging(true);
     },
-    [disabled, dragging, useHtmlOsDrop],
+    [dragging, enabled, useHtmlOsDrop],
   );
 
   const onDropCapture = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
+      if (!enabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
       resetDrag();
       const files = e.dataTransfer?.files;
-      if (files?.length) onFilesDrop(files);
+      if (files?.length) dropVaultPayload({ files: [...files] });
     },
-    [disabled, onFilesDrop, resetDrag, useHtmlOsDrop],
-  );
-
-  const setRootNode = useCallback(
-    (node: HTMLDivElement | null) => {
-      assignRef(rootRef, node);
-    },
-    [rootRef],
+    [dropVaultPayload, enabled, resetDrag, useHtmlOsDrop],
   );
 
   return (
     <div
-      ref={setRootNode}
-      data-chat-file-drop=""
-      className={`relative ${className}`.trim()}
+      data-settings-vault-drop=""
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
       onDragOverCapture={onDragOverCapture}
@@ -158,10 +144,7 @@ export default function ChatFileDropOverlay({
               <p className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
                 여기에 놓기
               </p>
-              <p className="flex items-center justify-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                <Paperclip size={12} aria-hidden />
-                첨부파일로 추가됩니다
-              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">볼트 루트에 업로드됩니다</p>
             </div>
           </div>
         </div>
