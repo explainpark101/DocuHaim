@@ -1,6 +1,9 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
+
+const ResizeHandle = TocResizeHandle as any;
 
 const SIDEBAR_WIDTH_KEY = 's3haim_sidebar_width';
 const SIDEBAR_DEFAULT_WIDTH = 400;
@@ -9,15 +12,32 @@ const SIDEBAR_COLLAPSE_BELOW_VW = 10;
 const SIDEBAR_MIN_VW = 10;
 const SIDEBAR_MAX_FLOOR_VW = 50;
 
-function vwPx(vw) {
+type SidebarBounds = {
+  min: number;
+  max: number;
+  collapseBelow: number;
+};
+
+type ResizableSidebarPanelProps = {
+  isMobile?: boolean;
+  collapsed?: boolean;
+  open?: boolean;
+  onRequestCollapse?: () => void;
+  children: ReactNode;
+  mobileHeader?: ReactNode;
+  /** Tauri portrait: panel sits under custom titlebar. */
+  mobileBelowTitlebar?: boolean;
+};
+
+function vwPx(vw: number): number {
   if (typeof window === 'undefined') return vw * 5;
   return (window.innerWidth * vw) / 100;
 }
 
 /** Full untruncated width of an element (ignores truncate/overflow). */
-function measureUntruncatedWidth(el) {
+function measureUntruncatedWidth(el: Element | null): number {
   if (!el) return 0;
-  const clone = el.cloneNode(true);
+  const clone = el.cloneNode(true) as HTMLElement;
   clone.style.cssText = [
     'position:absolute',
     'visibility:hidden',
@@ -37,7 +57,7 @@ function measureUntruncatedWidth(el) {
 }
 
 /** Min width so mode brand titles (e.g. "WebDAV Haim") and header controls fit without truncating. */
-function measureBrandExpandWidth(panelEl) {
+function measureBrandExpandWidth(panelEl: HTMLElement | null): number {
   if (!panelEl) return SIDEBAR_DEFAULT_WIDTH;
   const row = panelEl.querySelector('[data-sidebar-header-row]');
   const brand = panelEl.querySelector('[data-sidebar-brand]');
@@ -64,7 +84,7 @@ function measureBrandExpandWidth(panelEl) {
 }
 
 /** Content-driven max: longest tree row scroll width (filenames can exceed 50vw). */
-function measureTreeContentWidth(panelEl) {
+function measureTreeContentWidth(panelEl: HTMLElement | null): number {
   if (!panelEl) return 0;
   let max = 0;
   panelEl.querySelectorAll('[data-tree-node-row], [data-tree-root-drop-zone]').forEach((row) => {
@@ -73,7 +93,7 @@ function measureTreeContentWidth(panelEl) {
   return Math.ceil(max);
 }
 
-function computeSidebarBounds(panelEl) {
+function computeSidebarBounds(panelEl: HTMLElement | null): SidebarBounds {
   const min = Math.max(1, vwPx(SIDEBAR_MIN_VW));
   const collapseBelow = Math.max(min, vwPx(SIDEBAR_COLLAPSE_BELOW_VW));
   const floorMax = vwPx(SIDEBAR_MAX_FLOOR_VW);
@@ -82,7 +102,7 @@ function computeSidebarBounds(panelEl) {
   return { min, max, collapseBelow };
 }
 
-const SidebarContentSlot = memo(function SidebarContentSlot({ children }) {
+const SidebarContentSlot = memo(function SidebarContentSlot({ children }: { children: ReactNode }) {
   return <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{children}</div>;
 });
 
@@ -94,15 +114,6 @@ const SidebarContentSlot = memo(function SidebarContentSlot({ children }) {
  * collapses via onRequestCollapse. Committed width stays at least that threshold when not
  * collapsed. Max is max(SIDEBAR_MAX_FLOOR_VW, tree content).
  * Re-expand restores a width where the brand title is fully visible.
- *
- * @param {object} props
- * @param {boolean} [props.isMobile]
- * @param {boolean} [props.collapsed]
- * @param {boolean} [props.open]
- * @param {() => void} props.onRequestCollapse
- * @param {import('react').ReactNode} props.children
- * @param {import('react').ReactNode} [props.mobileHeader]
- * @param {boolean} [props.mobileBelowTitlebar] Tauri portrait: panel sits under custom titlebar.
  */
 export default function ResizableSidebarPanel({
   isMobile = false,
@@ -112,12 +123,12 @@ export default function ResizableSidebarPanel({
   children,
   mobileHeader = null,
   mobileBelowTitlebar = false,
-}) {
-  const panelRef = useRef(null);
-  const liveWidthRef = useRef(null);
+}: ResizableSidebarPanelProps) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const liveWidthRef = useRef<number | null>(null);
   const collapsedRef = useRef(collapsed);
   const [snapCollapse, setSnapCollapse] = useState(false);
-  const [bounds, setBounds] = useState(() => ({
+  const [bounds, setBounds] = useState<SidebarBounds>(() => ({
     min: vwPx(SIDEBAR_MIN_VW),
     max: Math.max(vwPx(SIDEBAR_MAX_FLOOR_VW), SIDEBAR_DEFAULT_WIDTH),
     collapseBelow: vwPx(SIDEBAR_COLLAPSE_BELOW_VW),
@@ -136,7 +147,7 @@ export default function ResizableSidebarPanel({
     refreshBounds();
     window.addEventListener('resize', refreshBounds);
     const panel = panelRef.current;
-    const observers = [];
+    const observers: Array<() => void> = [];
 
     if (panel && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
@@ -161,7 +172,7 @@ export default function ResizableSidebarPanel({
   }, [refreshBounds]);
 
   const applyLiveWidth = useCallback(
-    (nextWidth) => {
+    (nextWidth: number) => {
       liveWidthRef.current = nextWidth;
       const el = panelRef.current;
       if (!el || isMobile || collapsed || snapCollapse) return;
@@ -209,7 +220,7 @@ export default function ResizableSidebarPanel({
 
     const applyBrandWidth = () => {
       const brandMin = measureBrandExpandWidth(panelRef.current);
-      setWidth((prev) => Math.max(prev, brandMin));
+      setWidth((prev: number) => Math.max(prev, brandMin));
       refreshBounds();
     };
 
@@ -221,7 +232,7 @@ export default function ResizableSidebarPanel({
   // Keep committed width inside the current max when viewport shrinks.
   useEffect(() => {
     if (collapsed || isMobile || isResizing) return;
-    setWidth((prev) => Math.min(prev, bounds.max));
+    setWidth((prev: number) => Math.min(prev, bounds.max));
   }, [bounds.max, collapsed, isMobile, isResizing, setWidth]);
 
   const showResizeHandle = !isMobile && !collapsed && !snapCollapse;
@@ -271,7 +282,7 @@ export default function ResizableSidebarPanel({
       {mobileHeader}
       <SidebarContentSlot>{children}</SidebarContentSlot>
       {showResizeHandle && (
-        <TocResizeHandle
+        <ResizeHandle
           handleProps={handleProps}
           isResizing={isResizing}
           edge="right"

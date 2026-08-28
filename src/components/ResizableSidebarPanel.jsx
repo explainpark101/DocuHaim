@@ -1,1 +1,1 @@
-export { default } from '@/components/shell/ResizableSidebarPanel.jsx';
+export { default } from '@/components/shell/ResizableSidebarPanel.tsx';
