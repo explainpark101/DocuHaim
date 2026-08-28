@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -90,6 +90,7 @@ export type LlmAssistPanelProps = {
   model?: string;
   onModelChange?: (modelId: string) => void;
   selectedText: string;
+  onSelectedTextChange?: (value: string) => void;
   onRefreshSelection?: () => void;
   attachedImages?: LlmAssistImageAttachment[];
   onAddImages?: (images: LlmAssistImageAttachment[]) => void | Promise<void>;
@@ -156,6 +157,7 @@ export default function LlmAssistPanel({
   model = '',
   onModelChange = () => {},
   selectedText,
+  onSelectedTextChange,
   onRefreshSelection,
   attachedImages = [],
   onAddImages,
@@ -203,6 +205,15 @@ export default function LlmAssistPanel({
   const [systemPromptOpen, setSystemPromptOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<LlmAssistImageAttachment | null>(null);
+  const runClickGuardUntilRef = useRef(0);
+
+  const armRunClickGuard = useCallback(() => {
+    runClickGuardUntilRef.current = Date.now() + 100;
+  }, []);
+
+  const isRunClickGuarded = useCallback(() => {
+    return Date.now() < runClickGuardUntilRef.current;
+  }, []);
 
   useEffect(() => {
     if (!loading) setCancelConfirmOpen(false);
@@ -284,6 +295,37 @@ export default function LlmAssistPanel({
     () => onRun?.(),
     Boolean(loading || !selectedProfile),
   );
+
+  const handleRunPointerDown = useCallback(
+    (event: PointerEvent<HTMLButtonElement>) => {
+      if (isRunClickGuarded()) return;
+      runPress.onPointerDown(event);
+    },
+    [isRunClickGuarded, runPress],
+  );
+
+  const handleRunMouseDown = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (isRunClickGuarded()) return;
+      if (loading || !selectedProfile || event.button !== 0) return;
+      armRunClickGuard();
+      runPress.onMouseDown(event);
+    },
+    [isRunClickGuarded, armRunClickGuard, runPress, loading, selectedProfile],
+  );
+
+  const handleRunClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (isRunClickGuarded()) return;
+      runPress.onClick(event);
+    },
+    [isRunClickGuarded, runPress],
+  );
+
+  const handleCancelRunClick = useCallback(() => {
+    if (isRunClickGuarded()) return;
+    setCancelConfirmOpen(true);
+  }, [isRunClickGuarded]);
 
   const handleInstructionKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -393,8 +435,9 @@ export default function LlmAssistPanel({
           </button>
         </div>
         <textarea
-          readOnly
+          readOnly={!onSelectedTextChange}
           value={selectedText}
+          onChange={(e) => onSelectedTextChange?.(e.target.value)}
           rows={4}
           className="w-full resize-y rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] leading-relaxed text-gray-800 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fg"
           placeholder="선택된 텍스트가 없어도, 입력한 지시사항으로 실행할 수 있습니다."
@@ -659,7 +702,7 @@ export default function LlmAssistPanel({
       {loading ? (
         <button
           type="button"
-          onClick={() => setCancelConfirmOpen(true)}
+          onClick={handleCancelRunClick}
           disabled={!selectedProfile}
           className="flex w-full items-center justify-center gap-2 rounded bg-violet-700 px-3 py-2 text-sm font-medium text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="생성 중 — 클릭하여 취소"
@@ -670,7 +713,9 @@ export default function LlmAssistPanel({
       ) : (
         <button
           type="button"
-          {...runPress}
+          onPointerDown={handleRunPointerDown}
+          onMouseDown={handleRunMouseDown}
+          onClick={handleRunClick}
           disabled={!selectedProfile}
           className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
         >

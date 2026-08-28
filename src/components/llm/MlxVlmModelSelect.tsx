@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Play, RefreshCw } from 'lucide-react';
+import { Check, Loader2, Play, RefreshCw, Square } from 'lucide-react';
 import { ModelIdInputDropdown, type ModelIdOption } from '@/components/ModelIdInputDropdown';
 import MlxVlmLoadFailureHint from '@/components/llm/MlxVlmLoadFailureHint';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import {
   MLX_VLM_SETTINGS_CHANGED_EVENT,
@@ -15,8 +16,10 @@ import {
 import { resolveMlxVlmLoadFailure } from '@/utils/llm/mlxVlmLoadErrorHelp';
 import {
   getMlxVlmServerStatus,
+  isMlxVlmServerManagedByApp,
   loadMlxVlmModelById,
   refreshInstalledMlxVlmModels,
+  stopMlxVlmServer,
 } from '@/utils/mlxVlmShell';
 import {
   LOCAL_LLM_MODEL_ALIASES_CHANGED_EVENT,
@@ -66,9 +69,12 @@ export default function MlxVlmModelSelect({
   const [options, setOptions] = useState<ModelIdOption[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [modelLoading, setModelLoading] = useState(false);
+  const [unloadBusy, setUnloadBusy] = useState(false);
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [loadedModelId, setLoadedModelId] = useState('');
+  const [managedByApp, setManagedByApp] = useState(false);
+  const [unloadConfirmOpen, setUnloadConfirmOpen] = useState(false);
   const loadRequestRef = useRef(0);
 
   const canonicalValue = useMemo(
@@ -99,6 +105,7 @@ export default function MlxVlmModelSelect({
         getMlxVlmServerStatus(settings),
       ]);
       setLoadedModelId(status.models[0] || '');
+      setManagedByApp(isMlxVlmServerManagedByApp());
       const baseOptions = buildModelOptions(models, [
         settings.selectedModelId,
         ...status.models,
@@ -156,6 +163,22 @@ export default function MlxVlmModelSelect({
     [refreshModels],
   );
 
+  const runUnloadModel = useCallback(async () => {
+    if (!isTauriMacOS()) return;
+    setUnloadBusy(true);
+    setLoadError('');
+    try {
+      await stopMlxVlmServer();
+      setLoadedModelId('');
+      setManagedByApp(false);
+      await refreshModels();
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'MLX-VLM 모델을 언로드하지 못했습니다.');
+    } finally {
+      setUnloadBusy(false);
+    }
+  }, [refreshModels]);
+
   const loadModelIfAuto = useCallback(
     (modelId: string) => {
       if (!autoLoadModelOnSelect) return;
@@ -184,10 +207,12 @@ export default function MlxVlmModelSelect({
       const modelId = (event as CustomEvent<MlxVlmRuntimeChangedDetail>).detail?.modelId;
       if (modelId == null) {
         setLoadedModelId('');
+        setManagedByApp(false);
         return;
       }
       const id = String(modelId).trim();
       setLoadedModelId(id);
+      setManagedByApp(isMlxVlmServerManagedByApp());
       if (!value.trim() && id) {
         onChange?.(id);
       }
@@ -221,9 +246,10 @@ export default function MlxVlmModelSelect({
     loadModelIfAuto(canonicalValue);
   }, [canonicalValue, loadModelIfAuto]);
 
-  const handleLoadClick = useCallback(() => {
-    void runLoadModel(canonicalValue);
-  }, [canonicalValue, runLoadModel]);
+  const handleUnloadConfirm = useCallback(() => {
+    setUnloadConfirmOpen(false);
+    void runUnloadModel();
+  }, [runUnloadModel]);
 
   if (!isTauriMacOS()) {
     return (
@@ -233,7 +259,7 @@ export default function MlxVlmModelSelect({
     );
   }
 
-  const busy = listLoading || modelLoading;
+  const busy = listLoading || modelLoading || unloadBusy;
   const trimmedValue = canonicalValue.trim();
   const runtimeLoadedId = loadedModelId.trim();
   const selectionMatchesRuntime = Boolean(
@@ -243,6 +269,19 @@ export default function MlxVlmModelSelect({
     runtimeLoadedId && trimmedValue && runtimeLoadedId !== trimmedValue,
   );
   const showsLoadedStatus = Boolean(runtimeLoadedId && (selectionMatchesRuntime || hasRuntimeMismatch));
+  const canUnload = Boolean(runtimeLoadedId && managedByApp);
+  const loadedReady = selectionMatchesRuntime && canUnload;
+
+  const handleActionClick = () => {
+    if (loadedReady) {
+      setUnloadConfirmOpen(true);
+      return;
+    }
+    void runLoadModel(trimmedValue);
+  };
+
+  const actionButtonDisabled = unloadBusy || (!loadedReady && !trimmedValue);
+  const actionAriaLabel = loadedReady ? 'Unload MLX model' : 'Load MLX model';
 
   return (
     <div className={className}>
@@ -261,13 +300,44 @@ export default function MlxVlmModelSelect({
         />
         <button
           type="button"
-          onClick={handleLoadClick}
-          disabled={busy || !trimmedValue || selectionMatchesRuntime}
-          aria-label="Load MLX model"
-          className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+          onClick={handleActionClick}
+          disabled={actionButtonDisabled}
+          aria-label={actionAriaLabel}
+          className={[
+            'group inline-flex shrink-0 items-center gap-1 rounded border px-2 py-1.5 text-[11px] font-medium',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            loadedReady
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:border-odp-borderStrong dark:hover:bg-odp-bgSoft dark:hover:text-odp-muted'
+              : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60',
+          ].join(' ')}
         >
-          {modelLoading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-          로드
+          {unloadBusy ? (
+            <>
+              <Loader2 size={14} className="animate-spin" aria-hidden />
+              언로드 중…
+            </>
+          ) : modelLoading ? (
+            <>
+              <Loader2 size={14} className="animate-spin" aria-hidden />
+              로드 중…
+            </>
+          ) : loadedReady ? (
+            <>
+              <span className="inline-flex items-center gap-1 group-hover:hidden">
+                <Check size={14} aria-hidden />
+                로드됨
+              </span>
+              <span className="hidden items-center gap-1 group-hover:inline-flex">
+                <Square size={14} aria-hidden />
+                언로드
+              </span>
+            </>
+          ) : (
+            <>
+              <Play size={14} aria-hidden />
+              로드
+            </>
+          )}
         </button>
         <button
           type="button"
@@ -303,11 +373,26 @@ export default function MlxVlmModelSelect({
             </p>
           ) : null}
         </div>
+      ) : runtimeLoadedId && !managedByApp ? (
+        <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
+          외부 MLX-VLM 워커가 실행 중입니다. 앱에서 시작한 모델만 언로드할 수 있습니다.
+        </p>
       ) : (
         <p className="mt-1 text-[11px] text-gray-500 dark:text-odp-muted">
           모델을 선택한 뒤 로드 버튼을 눌러 메모리에 올리세요.
         </p>
       )}
+
+      <ConfirmModal
+        isOpen={unloadConfirmOpen}
+        title="MLX-VLM 모델 언로드"
+        message="로컬 MLX-VLM 워커에서 모델을 메모리에서 내릴까요?"
+        confirmLabel="언로드"
+        cancelLabel="취소"
+        variant="danger"
+        onConfirm={handleUnloadConfirm}
+        onCancel={() => setUnloadConfirmOpen(false)}
+      />
     </div>
   );
 }
