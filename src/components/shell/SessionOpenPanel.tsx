@@ -7,11 +7,14 @@ import {
   emptyHomeMenuContainerVariants,
 } from '@/components/emptyHomeMotion';
 import { IconFilePlus, IconMenu, IconMessage } from '@/components/icons';
+import { useTauriSessionDragDrop } from '@/hooks/useTauriSessionDragDrop';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 type Props = {
   onOpenFiles: (files: FileList | File[], origin: 'md' | 'zip' | 'folder') => void | Promise<void>;
   onOpenDirectoryHandle?: () => void | Promise<void>;
   onDropTransfer: (dataTransfer: DataTransfer) => void | Promise<void>;
+  onDropPaths?: (paths: string[]) => void | Promise<void>;
   onRequestCreateFile?: () => void;
   onOpenSidebar?: () => void;
   onOpenChatWithMyself?: () => void;
@@ -22,12 +25,21 @@ export default function SessionOpenPanel({
   onOpenFiles,
   onOpenDirectoryHandle,
   onDropTransfer,
+  onDropPaths,
   onRequestCreateFile,
   onOpenSidebar,
   onOpenChatWithMyself,
   isBusy = false,
 }: Props) {
   const [isDragging, setIsDragging] = useState(false);
+  const useHtmlOsDrop = !isTauriDesktopPlatform();
+
+  useTauriSessionDragDrop({
+    enabled: Boolean(onDropPaths),
+    isBusy,
+    onDropPaths,
+    onDragActiveChange: setIsDragging,
+  });
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -63,11 +75,12 @@ export default function SessionOpenPanel({
       <Motion.div
         role="button"
         tabIndex={0}
+        data-session-drop-zone
         variants={emptyHomeItemVariants}
-        onDragEnter={handleDragOver}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDragEnter={useHtmlOsDrop ? handleDragOver : undefined}
+        onDragOver={useHtmlOsDrop ? handleDragOver : undefined}
+        onDragLeave={useHtmlOsDrop ? handleDragLeave : undefined}
+        onDrop={useHtmlOsDrop ? handleDrop : undefined}
         className={`w-full rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
           isDragging
             ? 'border-blue-500 bg-blue-50/80 dark:border-blue-400 dark:bg-blue-950/30'

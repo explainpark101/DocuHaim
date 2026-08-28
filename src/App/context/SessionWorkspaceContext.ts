@@ -6,6 +6,7 @@ export type SessionWorkspaceValue = {
   handleOpenSessionFiles: (...args: any[]) => any;
   handleOpenSessionDirectory: (...args: any[]) => any;
   handleDropSessionTransfer: (...args: any[]) => any;
+  handleDropSessionPaths: (...args: any[]) => any;
   handleRequestSaveSessionToNote: (...args: any[]) => any;
   handleRequestSessionTransformDownload: (...args: any[]) => any;
   isOpeningSession: boolean;
@@ -17,6 +18,7 @@ export const SESSION_WORKSPACE_KEYS = [
   'handleOpenSessionFiles',
   'handleOpenSessionDirectory',
   'handleDropSessionTransfer',
+  'handleDropSessionPaths',
   'handleRequestSaveSessionToNote',
   'handleRequestSessionTransformDownload',
   'isOpeningSession',

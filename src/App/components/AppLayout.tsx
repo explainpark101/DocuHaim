@@ -110,6 +110,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     handleOpenSessionFiles,
     handleOpenSessionDirectory,
     handleDropSessionTransfer,
+    handleDropSessionPaths,
     handleRequestSaveSessionToNote,
     handleRequestSessionTransformDownload,
     isOpeningSession,
@@ -772,6 +773,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                         ? handleOpenSessionDirectory
                         : undefined,
                     onDropSessionTransfer: handleDropSessionTransfer,
+                    onDropSessionPaths: handleDropSessionPaths,
                     isOpeningSession,
                     hideRecordingCompanions,
                     isRecording: isActiveFile ? isRecording : false,

@@ -22,13 +22,17 @@ export function useTauriTreeDragDrop(onDropOnFolder: DropOnFolderHandler | undef
 
     void (async () => {
       try {
-        const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+        const [{ getCurrentWebview }, { getCurrentWindow }] = await Promise.all([
+          import('@tauri-apps/api/webview'),
+          import('@tauri-apps/api/window'),
+        ]);
         const webview = getCurrentWebview();
+        const scaleFactor = await getCurrentWindow().scaleFactor();
         unlisten = await webview.onDragDropEvent((event) => {
           const payload = event.payload;
           if (payload.type === 'enter' || payload.type === 'over') {
             const position = payload.position;
-            const hit = resolveTreeDropTargetFromPoint(position.x, position.y);
+            const hit = resolveTreeDropTargetFromPoint(position, scaleFactor);
             if (!hit) {
               onDropOnFolder(null, null, 'dragLeave');
               return;
@@ -55,7 +59,7 @@ export function useTauriTreeDragDrop(onDropOnFolder: DropOnFolderHandler | undef
           if (payload.type === 'drop') {
             const paths = payload.paths || [];
             const position = payload.position;
-            const hit = resolveTreeDropTargetFromPoint(position.x, position.y);
+            const hit = resolveTreeDropTargetFromPoint(position, scaleFactor);
             if (!hit || paths.length === 0) return;
             onDropOnFolder(
               {

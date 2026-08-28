@@ -1,4 +1,8 @@
 import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
+import {
+  tauriDropClientPointCandidates,
+  type TauriDropPosition,
+} from '@/utils/tauriDropClientPoint';
 
 export type TreeDropHitTarget = {
   storageType: string;
@@ -18,12 +22,17 @@ function readDropTargetFromElement(el: Element | null): TreeDropHitTarget | null
   return null;
 }
 
-/** Resolve tree folder drop target under a screen point (Tauri native drag-drop). */
-export function resolveTreeDropTargetFromPoint(x: number, y: number): TreeDropHitTarget | null {
+/** Resolve tree folder drop target under a Tauri native drag-drop position. */
+export function resolveTreeDropTargetFromPoint(
+  position: TauriDropPosition,
+  scaleFactor = 1,
+): TreeDropHitTarget | null {
   if (typeof document === 'undefined') return null;
-  const scale = window.devicePixelRatio || 1;
-  const logicalX = x / scale;
-  const logicalY = y / scale;
-  const el = document.elementFromPoint(logicalX, logicalY);
-  return readDropTargetFromElement(el);
+
+  for (const { x, y } of tauriDropClientPointCandidates(position, scaleFactor)) {
+    const hit = readDropTargetFromElement(document.elementFromPoint(x, y));
+    if (hit) return hit;
+  }
+
+  return null;
 }

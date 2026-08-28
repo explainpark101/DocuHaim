@@ -1,7 +1,10 @@
 import { BlobReader, Uint8ArrayWriter, ZipReader } from '@zip.js/zip.js';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
+import { readOpenPathBytes } from '@/utils/shared/desktopOpenFiles';
+import { flattenOsDropPaths, guessMimeTypeFromFileName } from '@/utils/treeOsDropPaths';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 
 export const SESSION_STORAGE_TYPE = 'session' as const;
 
@@ -348,8 +351,9 @@ export async function collectDataTransferFiles(dataTransfer: DataTransfer): Prom
   }));
 }
 
-export async function workspaceFromDataTransfer(dataTransfer: DataTransfer): Promise<SessionWorkspace> {
-  const items = await collectDataTransferFiles(dataTransfer);
+export async function workspaceFromSessionInputItems(
+  items: SessionInputFile[],
+): Promise<SessionWorkspace> {
   if (!items.length) throw new Error('드롭된 파일이 없습니다.');
 
   if (items.length === 1) {
@@ -371,6 +375,38 @@ export async function workspaceFromDataTransfer(dataTransfer: DataTransfer): Pro
   const originName =
     items[0]?.relativePath.includes('/') ? items[0].relativePath.split('/')[0] || 'folder' : 'folder';
   return workspaceFromInputFiles(items, 'folder', originName || 'folder');
+}
+
+export async function workspaceFromDataTransfer(dataTransfer: DataTransfer): Promise<SessionWorkspace> {
+  const items = await collectDataTransferFiles(dataTransfer);
+  return workspaceFromSessionInputItems(items);
+}
+
+/** Build a session workspace from Tauri native OS drop paths (files or folders). */
+export async function workspaceFromOsPaths(paths: string[]): Promise<SessionWorkspace> {
+  if (!isDesktopApp()) {
+    throw new Error('OS 경로 드롭은 데스크톱 앱에서만 지원합니다.');
+  }
+
+  const flatFiles = await flattenOsDropPaths(paths);
+  if (!flatFiles.length) throw new Error('드롭된 파일이 없습니다.');
+
+  const items: SessionInputFile[] = await Promise.all(
+    flatFiles.map(async (entry) => {
+      const bytes = await readOpenPathBytes(entry.absolutePath);
+      const copy = new Uint8Array(bytes.byteLength);
+      copy.set(bytes);
+      const file = new File([copy], entry.baseName, {
+        type: guessMimeTypeFromFileName(entry.baseName),
+      });
+      return {
+        relativePath: entry.relativePath,
+        file,
+      };
+    }),
+  );
+
+  return workspaceFromSessionInputItems(items);
 }
 
 export function listSessionMarkdownPaths(workspace: SessionWorkspace): string[] {

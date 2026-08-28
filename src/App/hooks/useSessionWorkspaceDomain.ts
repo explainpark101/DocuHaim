@@ -20,6 +20,7 @@ import {
   workspaceFromDataTransfer,
   workspaceFromDirectoryHandle,
   workspaceFromFileList,
+  workspaceFromOsPaths,
 } from '@/utils/sessionWorkspace';
 
 /**
@@ -208,6 +209,22 @@ export function useSessionWorkspaceDomain() {
     [openSessionWorkspace],
   );
 
+  const handleDropSessionPaths = useCallback(
+    async (paths: string[]) => {
+      setIsOpeningSession(true);
+      try {
+        const workspace = await workspaceFromOsPaths(paths);
+        await openSessionWorkspace(workspace);
+      } catch (error: any) {
+        console.error('Session OS drop failed:', error);
+        alert(error?.message || '드롭한 항목을 열지 못했습니다.');
+      } finally {
+        setIsOpeningSession(false);
+      }
+    },
+    [openSessionWorkspace],
+  );
+
   const downloadSessionWorkspace = useCallback(async () => {
     const flushed = flushSessionEditorToWorkspace() ?? sessionWorkspaceRef.current;
     if (!flushed) return;
@@ -258,6 +275,7 @@ export function useSessionWorkspaceDomain() {
     handleOpenSessionFiles,
     handleOpenSessionDirectory,
     handleDropSessionTransfer,
+    handleDropSessionPaths,
     downloadSessionWorkspace,
     closeCurrentFile,
     getSessionObjectUrl,
