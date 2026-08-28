@@ -3,8 +3,7 @@ import {
   getLocalDirectoryHandleForPath,
   getLocalFileHandleForPath,
 } from '@/utils/localEditorImage';
-import { isFileProbablyImage } from '@/utils/editorImageUpload';
-import { toDisplayableImageFile } from '@/utils/heicConvert';
+import { isChatComposerImageFile } from '@/utils/chatWithMyself/prepareChatComposerAttachment';
 import {
   chatFilePathPrefix,
   detectTimeZone,
@@ -13,15 +12,59 @@ import {
 import { uploadChatImage } from '@/utils/chatWithMyself/images.js';
 import { parseWikiImageInner, wikiImageMarkupFromAttrs } from '@/utils/wikiImageSyntax';
 
+type ChatStorageCtx = Parameters<typeof createChatBackend>[0];
+
 const MAX_CHAT_FILE_BYTES = 50 * 1024 * 1024;
 
-function makeUuid() {
+export type ChatAttachmentKind = 'image' | 'file' | 'note' | 'folder';
+
+export type ChatAttachmentMarkdownItem = {
+  kind: ChatAttachmentKind;
+  path: string;
+  name?: string;
+  size?: number | null;
+  background?: string | null;
+};
+
+export type ChatUploadAttachmentResult = {
+  kind: 'image' | 'file';
+  path: string;
+  name: string;
+  size: number;
+};
+
+export type ChatUploadOptions = {
+  dateStr?: string;
+  onProgress?: (progress: number) => void;
+  signal?: AbortSignal;
+};
+
+export type ParsedChatFileToken = {
+  path: string;
+  name: string;
+  size: number | null;
+};
+
+export type ChatBodyAttachment = {
+  kind: ChatAttachmentKind;
+  path: string;
+  name: string;
+  size: number | null;
+  background?: string | null;
+};
+
+export type ExtractChatBodyAttachmentsResult = {
+  text: string;
+  attachments: ChatBodyAttachment[];
+};
+
+function makeUuid(): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function extensionFromFileName(name) {
+function extensionFromFileName(name: string): string {
   const base = String(name || '');
   const i = base.lastIndexOf('.');
   if (i <= 0 || i === base.length - 1) return '';
@@ -30,14 +73,23 @@ function extensionFromFileName(name) {
   return ext;
 }
 
-/** Strip characters that break [[file:path|name|size]] parsing. */
-export function sanitizeChatFileMeta(name) {
-  return String(name || 'file')
-    .replace(/[[\]|]/g, '_')
-    .trim() || 'file';
+function localRootHandleOf(ctx: ChatStorageCtx): FileSystemDirectoryHandle {
+  if (ctx.mode !== 'local' || !ctx.localRootHandle) {
+    throw new Error('로컬 폴더를 먼저 열어주세요.');
+  }
+  return ctx.localRootHandle;
 }
 
-export function formatChatAttachmentSize(bytes) {
+/** Strip characters that break [[file:path|name|size]] parsing. */
+export function sanitizeChatFileMeta(name: string | null | undefined): string {
+  return (
+    String(name || 'file')
+      .replace(/[[\]|]/g, '_')
+      .trim() || 'file'
+  );
+}
+
+export function formatChatAttachmentSize(bytes: number | string | null | undefined): string {
   const n = Number(bytes);
   if (!Number.isFinite(n) || n < 0) return '';
   if (n < 1024) return `${n} B`;
@@ -45,21 +97,16 @@ export function formatChatAttachmentSize(bytes) {
   return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
 
-export async function isChatImageFile(file) {
-  if (!file) return false;
-  if (file.type?.startsWith('image/')) return true;
-  try {
-    return await isFileProbablyImage(file);
-  } catch {
-    return false;
-  }
+export async function isChatImageFile(file: File | null | undefined): Promise<boolean> {
+  return isChatComposerImageFile(file);
 }
 
-/**
- * Upload a non-image file for chat-with-myself.
- * @returns {Promise<string>} object key / relative path
- */
-export async function uploadChatFile(ctx, file, options = {}) {
+/** Upload a non-image file for chat-with-myself. */
+export async function uploadChatFile(
+  ctx: ChatStorageCtx,
+  file: File,
+  options: ChatUploadOptions = {},
+): Promise<string> {
   if (!file) throw new Error('파일이 없습니다.');
   if (file.size > MAX_CHAT_FILE_BYTES) {
     throw new Error(
@@ -67,8 +114,7 @@ export async function uploadChatFile(ctx, file, options = {}) {
     );
   }
 
-  const dateStr =
-    options.dateStr || localDateString(new Date(), detectTimeZone());
+  const dateStr = options.dateStr || localDateString(new Date(), detectTimeZone());
   const prefix = chatFilePathPrefix(dateStr);
   const ext = extensionFromFileName(file.name) || '';
   const key = `${prefix}${makeUuid()}${ext}`;
@@ -76,8 +122,8 @@ export async function uploadChatFile(ctx, file, options = {}) {
 
   options.onProgress?.(0);
   if (ctx.mode === 'local') {
-    if (!ctx.localRootHandle) throw new Error('로컬 폴더를 먼저 열어주세요.');
-    const handle = await getLocalFileHandleForPath(ctx.localRootHandle, key, {
+    const root = localRootHandleOf(ctx);
+    const handle = await getLocalFileHandleForPath(root, key, {
       create: true,
     });
     const writable = await handle.createWritable();
@@ -104,11 +150,12 @@ export async function uploadChatFile(ctx, file, options = {}) {
   return key;
 }
 
-/**
- * Upload image or general file; returns markdown attachment descriptor.
- * @returns {Promise<{ kind: 'image'|'file', path: string, name: string, size: number }>}
- */
-export async function uploadChatAttachment(ctx, file, options = {}) {
+/** Upload image or general file; returns markdown attachment descriptor. */
+export async function uploadChatAttachment(
+  ctx: ChatStorageCtx,
+  file: File,
+  options: ChatUploadOptions = {},
+): Promise<ChatUploadAttachmentResult> {
   const asImage = await isChatImageFile(file);
   if (asImage) {
     const path = await uploadChatImage(ctx, file, options);
@@ -128,10 +175,7 @@ export async function uploadChatAttachment(ctx, file, options = {}) {
   };
 }
 
-/**
- * @param {{ kind: 'image'|'file'|'note'|'folder', path: string, name?: string, size?: number, background?: string | null }[]} items
- */
-export function chatAttachmentsToMarkdown(items) {
+export function chatAttachmentsToMarkdown(items: ChatAttachmentMarkdownItem[] | null | undefined): string {
   return (items || [])
     .filter((item) => item?.path)
     .map((item) => {
@@ -157,7 +201,9 @@ export function chatAttachmentsToMarkdown(items) {
       }
       const name = sanitizeChatFileMeta(item.name || item.path.split('/').pop());
       const size =
-        Number.isFinite(item.size) && item.size >= 0 ? String(item.size) : '';
+        item.size != null && Number.isFinite(item.size) && item.size >= 0
+          ? String(item.size)
+          : '';
       return size
         ? `[[file:${item.path}|${name}|${size}]]`
         : `[[file:${item.path}|${name}]]`;
@@ -165,11 +211,8 @@ export function chatAttachmentsToMarkdown(items) {
     .join('\n');
 }
 
-/**
- * Parse [[file:path|name|size]] wiki token.
- * @returns {{ path: string, name: string, size: number | null } | null}
- */
-export function parseChatFileToken(inner) {
+/** Parse [[file:path|name|size]] wiki token. */
+export function parseChatFileToken(inner: string | null | undefined): ParsedChatFileToken | null {
   const raw = String(inner || '').trim();
   if (!raw) return null;
   const parts = raw.split('|');
@@ -184,18 +227,17 @@ export function parseChatFileToken(inner) {
 /**
  * Split message body into plain text + attachment descriptors
  * (![[image]] / [[file:...]] / [[folder:...]] / [[note:...]]).
- * @returns {{ text: string, attachments: Array<{ kind: 'image'|'file'|'note'|'folder', path: string, name: string, size: number | null, background?: string | null }> }}
  */
-export function extractChatBodyAttachments(body) {
+export function extractChatBodyAttachments(body: string | null | undefined): ExtractChatBodyAttachmentsResult {
   const s = String(body ?? '');
   if (!s) return { text: '', attachments: [] };
 
   const tokenRe =
     /!\[\[([^\]]+)\]\]|\[\[file:([^|\]]+)(?:\|([^|\]]*?)(?:\|(\d+))?)?\]\]|\[\[folder:([^|\]]+)(?:\|([^\]]*?))?\]\]|\[\[note:([^|\]]+)(?:\|([^\]]*?))?\]\]/g;
-  const attachments = [];
-  const textParts = [];
+  const attachments: ChatBodyAttachment[] = [];
+  const textParts: string[] = [];
   let last = 0;
-  let m;
+  let m: RegExpExecArray | null;
   while ((m = tokenRe.exec(s))) {
     if (m.index > last) textParts.push(s.slice(last, m.index));
     if (m[1] != null) {
@@ -263,25 +305,25 @@ export function extractChatBodyAttachments(body) {
   return { text, attachments };
 }
 
-/**
- * Delete an uploaded chat attachment from S3 or the local folder.
- */
-export async function deleteChatAttachment(ctx, path) {
+/** Delete an uploaded chat attachment from S3 or the local folder. */
+export async function deleteChatAttachment(
+  ctx: ChatStorageCtx,
+  path: string | null | undefined,
+): Promise<void> {
   const key = String(path || '').replace(/^\/+/, '').trim();
   if (!key) return;
 
   if (ctx.mode === 'local') {
     if (!ctx.localRootHandle) return;
+    const root = ctx.localRootHandle;
     const lastSlash = key.lastIndexOf('/');
     if (lastSlash < 0) {
-      await ctx.localRootHandle.removeEntry(key);
+      await root.removeEntry(key);
       return;
     }
-    const dir = await getLocalDirectoryHandleForPath(
-      ctx.localRootHandle,
-      key.slice(0, lastSlash),
-      { create: false },
-    );
+    const dir = await getLocalDirectoryHandleForPath(root, key.slice(0, lastSlash), {
+      create: false,
+    });
     await dir.removeEntry(key.slice(lastSlash + 1));
     return;
   }

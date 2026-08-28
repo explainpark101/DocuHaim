@@ -63,8 +63,12 @@ export function useTauriChatFileDragDrop({
               return;
             }
             void (async () => {
-              const files = await filesFromOsPaths(paths);
-              if (files.length) await onDropFiles(files);
+              try {
+                const files = await filesFromOsPaths(paths);
+                if (files.length) await onDropFiles(files);
+              } catch (error) {
+                console.warn('Tauri chat file drop failed:', error);
+              }
             })();
           }
         });

@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent as Re
 import { GripHorizontal, Trash2, X } from 'lucide-react';
 import Button from '@/components/Button';
 import { IconAlert, IconCheck, IconLoader, IconUpload } from '@/components/icons';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   useFileUploadQueue,
   type FileUploadQueueBatch,
@@ -16,6 +17,31 @@ import {
 } from '@/utils/fileUploadQueuePanelPosition';
 
 const DRAG_THRESHOLD_PX = 5;
+
+type PendingVaultDelete = {
+  itemId: string;
+  name: string;
+  fullPath: string;
+};
+
+function normalizeQueuePath(path: string): string {
+  return String(path || '').replace(/\\/g, '/');
+}
+
+function fileUploadQueueItemFullPath(
+  batch: FileUploadQueueBatch,
+  item: FileUploadQueueItem,
+): string {
+  const vaultKey = normalizeQueuePath(item.vaultKey || '');
+  if (vaultKey) return vaultKey;
+
+  const dest = normalizeQueuePath(batch.destPath || '');
+  const rel = normalizeQueuePath(item.relativePath || item.name || '');
+  if (!dest) return rel;
+  if (rel.startsWith(dest)) return rel;
+  const destWithSlash = dest.endsWith('/') ? dest : `${dest}/`;
+  return rel.startsWith('/') ? `${dest.replace(/\/$/, '')}${rel}` : `${destWithSlash}${rel}`;
+}
 
 function statusLabel(status: FileUploadQueueItemStatus): string {
   switch (status) {
@@ -37,17 +63,20 @@ function statusLabel(status: FileUploadQueueItemStatus): string {
 }
 
 type QueueRowProps = {
+  batch: FileUploadQueueBatch;
   item: FileUploadQueueItem;
   onCancel: (itemId: string) => void;
   onRemove: (itemId: string) => void;
-  onDeleteVault: (itemId: string) => void;
+  onRequestDeleteVault: (itemId: string) => void;
 };
 
-function QueueRow({ item, onCancel, onRemove, onDeleteVault }: QueueRowProps) {
+function QueueRow({ batch, item, onCancel, onRemove, onRequestDeleteVault }: QueueRowProps) {
   const isActive = item.status === 'queued' || item.status === 'uploading';
   const isError = item.status === 'error';
   const isDone = item.status === 'done';
   const isFinished = ['done', 'error', 'skipped', 'cancelled'].includes(item.status);
+  const fullPath = fileUploadQueueItemFullPath(batch, item);
+  const showFullPath = Boolean(fullPath) && fullPath !== item.name;
 
   return (
     <li className="flex items-start gap-2 rounded-md border border-gray-200/80 bg-white/80 px-2.5 py-2 dark:border-odp-borderSoft dark:bg-odp-bgSoft/80">
@@ -64,10 +93,18 @@ function QueueRow({ item, onCancel, onRemove, onDeleteVault }: QueueRowProps) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-medium text-gray-800 dark:text-odp-fgStrong">
-          {item.relativePath || item.name}
+          {item.name}
         </p>
+        {showFullPath ? (
+          <p
+            className="truncate text-[11px] leading-snug text-gray-500 dark:text-odp-muted"
+            title={fullPath}
+          >
+            {fullPath}
+          </p>
+        ) : null}
         <p
-          className={`text-[11px] ${
+          className={`text-[11px] leading-snug ${
             isError
               ? 'text-red-600 dark:text-red-300'
               : 'text-gray-500 dark:text-odp-muted'
@@ -90,7 +127,7 @@ function QueueRow({ item, onCancel, onRemove, onDeleteVault }: QueueRowProps) {
         {isDone && item.vaultKey ? (
           <button
             type="button"
-            onClick={() => void onDeleteVault(item.id)}
+            onClick={() => onRequestDeleteVault(item.id)}
             className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-red-600 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-red-300"
             aria-label="볼트에서 파일 삭제"
           >
@@ -116,10 +153,10 @@ type BatchSectionProps = {
   batch: FileUploadQueueBatch;
   onCancel: (itemId: string) => void;
   onRemove: (itemId: string) => void;
-  onDeleteVault: (itemId: string) => void;
+  onRequestDeleteVault: (itemId: string) => void;
 };
 
-function BatchSection({ batch, onCancel, onRemove, onDeleteVault }: BatchSectionProps) {
+function BatchSection({ batch, onCancel, onRemove, onRequestDeleteVault }: BatchSectionProps) {
   const done = batch.items.filter((item) => item.status === 'done').length;
   const errorCount = batch.items.filter((item) => item.status === 'error').length;
   const skippedCount = batch.items.filter(
@@ -150,10 +187,11 @@ function BatchSection({ batch, onCancel, onRemove, onDeleteVault }: BatchSection
         {batch.items.map((item) => (
           <QueueRow
             key={item.id}
+            batch={batch}
             item={item}
             onCancel={onCancel}
             onRemove={onRemove}
-            onDeleteVault={onDeleteVault}
+            onRequestDeleteVault={onRequestDeleteVault}
           />
         ))}
       </ul>
@@ -174,6 +212,8 @@ export default function FileUploadQueueFloatingPanel() {
   } = useFileUploadQueue();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState(() => loadFileUploadQueuePanelPosition());
+  const [pendingVaultDelete, setPendingVaultDelete] = useState<PendingVaultDelete | null>(null);
+  const [deletingVaultFile, setDeletingVaultFile] = useState(false);
   const anchoredRef = useRef(hasStoredFileUploadQueuePanelPosition());
   const dragRef = useRef({
     active: false,
@@ -243,19 +283,47 @@ export default function FileUploadQueueFloatingPanel() {
     if (!summary.isActive) clearBatch();
   };
 
+  const requestDeleteVault = useCallback(
+    (itemId: string) => {
+      for (const batch of batches) {
+        const item = batch.items.find((entry) => entry.id === itemId);
+        if (!item) continue;
+        setPendingVaultDelete({
+          itemId,
+          name: item.name,
+          fullPath: fileUploadQueueItemFullPath(batch, item),
+        });
+        return;
+      }
+    },
+    [batches],
+  );
+
+  const confirmDeleteVault = useCallback(async () => {
+    if (!pendingVaultDelete) return;
+    setDeletingVaultFile(true);
+    try {
+      await deleteUploadedFile(pendingVaultDelete.itemId);
+      setPendingVaultDelete(null);
+    } finally {
+      setDeletingVaultFile(false);
+    }
+  }, [deleteUploadedFile, pendingVaultDelete]);
+
   if (!panelOpen) return null;
 
   const isEmpty = batches.length === 0;
 
   return (
-    <div
-      ref={panelRef}
-      className="fixed z-10050 w-[min(92vw,420px)] rounded-lg border border-blue-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-blue-900/50 dark:bg-odp-bgSoft/95"
-      style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
-      role="dialog"
-      aria-modal="false"
-      aria-label="업로드 대기열"
-    >
+    <>
+      <div
+        ref={panelRef}
+        className="fixed z-10050 w-[min(92vw,420px)] rounded-lg border border-blue-300/50 bg-white/95 shadow-2xl backdrop-blur-md dark:border-blue-900/50 dark:bg-odp-bgSoft/95"
+        style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
+        role="dialog"
+        aria-modal="false"
+        aria-label="업로드 대기열"
+      >
       <div
         className="flex cursor-grab items-center justify-between gap-2 border-b border-blue-200/70 bg-blue-50/90 px-3 py-2 active:cursor-grabbing dark:border-blue-900/40 dark:bg-blue-950/40"
         onPointerDown={startPositionDrag}
@@ -298,7 +366,7 @@ export default function FileUploadQueueFloatingPanel() {
               batch={batch}
               onCancel={cancelItem}
               onRemove={removeItem}
-              onDeleteVault={(itemId) => void deleteUploadedFile(itemId)}
+              onRequestDeleteVault={requestDeleteVault}
             />
           ))
         )}
@@ -311,5 +379,34 @@ export default function FileUploadQueueFloatingPanel() {
         </Button>
       </div>
     </div>
+
+      <ConfirmModal
+        isOpen={pendingVaultDelete != null}
+        title="업로드 파일 삭제"
+        message={
+          pendingVaultDelete
+            ? `「${pendingVaultDelete.name}」을(를) 볼트에서 삭제할까요?`
+            : undefined
+        }
+        variant="danger"
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        confirmDisabled={deletingVaultFile}
+        onConfirm={() => void confirmDeleteVault()}
+        onCancel={() => {
+          if (deletingVaultFile) return;
+          setPendingVaultDelete(null);
+        }}
+      >
+        {pendingVaultDelete?.fullPath ? (
+          <p
+            className="break-all font-mono text-[11px] leading-snug text-gray-500 dark:text-odp-muted"
+            title={pendingVaultDelete.fullPath}
+          >
+            {pendingVaultDelete.fullPath}
+          </p>
+        ) : null}
+      </ConfirmModal>
+    </>
   );
 }

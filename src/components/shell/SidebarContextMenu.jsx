@@ -4,6 +4,7 @@ import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuMo
 import {
   MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
+  DESKTOP_CONTEXT_MENU_Z_CLASS,
 } from '@/components/contextMenu/mobileContextMenuStyles';
 import {
   IconFilePlus,
@@ -323,7 +324,7 @@ export default function SidebarContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-100 min-w-[180px] rounded-lg border border-gray-200 dark:border-gray-500 bg-white dark:bg-odp-bgSoft shadow-lg overflow-clip"
+      className={`fixed ${DESKTOP_CONTEXT_MENU_Z_CLASS} min-w-[180px] rounded-lg border border-gray-200 dark:border-gray-500 bg-white dark:bg-odp-bgSoft shadow-lg overflow-clip`}
       style={{ left: position.left ?? x, top: position.top ?? y }}
     >
       <SidebarContextMenuItems {...itemsProps} />
