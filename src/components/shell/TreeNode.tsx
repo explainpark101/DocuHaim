@@ -1,4 +1,14 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  type ComponentType,
+  type DragEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { motion as Motion } from 'motion/react';
 import {
@@ -25,13 +35,135 @@ import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
 import {
   findApplicableTransferBusy,
   transferBusyTooltipText,
+  type TreeTransferBusyEntry,
 } from '@/utils/treeTransferBusy';
 import TreeNodeModifiedLabel from '@/components/TreeNodeModifiedLabel';
+import { collectOsDropPayload } from '@/utils/osDropPayload';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
 
-function EmptyItemHint({ label }) {
+export type SidebarTreeNode = {
+  name: string;
+  type: 'file' | 'folder' | string;
+  path: string;
+  handle?: FileSystemDirectoryHandle | null;
+  children?: SidebarTreeNode[];
+  childrenLoaded?: boolean;
+  size?: number;
+  lastModified?: unknown;
+};
+
+type RootDropNode = {
+  path: string;
+  type: 'folder';
+  name?: string;
+  handle?: FileSystemDirectoryHandle | null;
+};
+
+type DropFolderTarget = {
+  path: string;
+  type: 'folder';
+  name: string;
+  handle?: FileSystemDirectoryHandle | null;
+};
+
+type EffectiveDropTarget = SidebarTreeNode | DropFolderTarget | RootDropNode;
+
+type TreeDropTarget = {
+  storageType: string;
+  folderPath: string;
+};
+
+type SelectModifiers = {
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+};
+
+type CurrentFileRef = {
+  id?: string;
+  type?: string;
+} | null;
+
+type RenameTarget = {
+  storageType: string;
+  node: SidebarTreeNode;
+};
+
+type DropOnFolderAction = 'dragOver' | 'dragLeave' | 'drop';
+
+type DropOnFolderPayload = {
+  files?: File[];
+  dirHandles?: FileSystemDirectoryHandle[];
+  items?: unknown;
+  copy?: boolean;
+  paths?: string[];
+};
+
+type TreeRowIcon = ComponentType<{ size?: number; className?: string }>;
+
+type EmptyItemHintProps = {
+  label: string;
+};
+
+type TreeNodeProps = {
+  node: SidebarTreeNode;
+  level: number;
+  onSelect?: ((storageType: string, node: SidebarTreeNode, modifiers: SelectModifiers) => void) | undefined;
+  onCreateFile?: ((...args: unknown[]) => void) | undefined;
+  onCreateFolder?: ((...args: unknown[]) => void) | undefined;
+  onRequestMoveFolder?: ((node: SidebarTreeNode, storageType: string) => void) | undefined;
+  onDelete?: ((node: SidebarTreeNode, storageType: string) => void) | undefined;
+  selectedIds?: Set<string> | null | undefined;
+  storageType: string;
+  currentFile?: CurrentFileRef | undefined;
+  onRename?: ((storageType: string, node: SidebarTreeNode, newName: string) => void) | undefined;
+  deletingFolderPath?: string | null | undefined;
+  isDeletingFolder?: boolean | undefined;
+  isSearching?: boolean | undefined;
+  onFolderFocus?: ((node: SidebarTreeNode | null) => void) | undefined;
+  focusedFolderPath?: string | null | undefined;
+  expandedPaths?: Set<string> | null | undefined;
+  onExpandedChange?: ((storageType: string, path: string, expanded: boolean) => void) | undefined;
+  onDropOnFolder?:
+    | ((
+        targetNode: EffectiveDropTarget | null,
+        targetStorageType: string | null,
+        action: DropOnFolderAction,
+        payload?: DropOnFolderPayload,
+      ) => void)
+    | undefined;
+  dropTarget?: TreeDropTarget | null | undefined;
+  rootDropNode?: RootDropNode | null | undefined;
+  onOpenContextMenu?:
+    | ((
+        event: MouseEvent | { preventDefault: () => void; stopPropagation: () => void },
+        node: SidebarTreeNode,
+      ) => void)
+    | undefined;
+  onActivate?: ((node: SidebarTreeNode) => void) | undefined;
+  renameTarget?: RenameTarget | null | undefined;
+  onClearRenameTarget?: (() => void) | undefined;
+  recordingBasePathSet?: Set<string> | null | undefined;
+  stickyFoldersEnabled?: boolean | undefined;
+  showModifiedDate?: boolean | undefined;
+  stickyTopOffset?: number | undefined;
+  isFolderLoading?: string | null | undefined;
+  activeDragItemIds?: Set<string> | null | undefined;
+  isCopyDrag?: boolean | undefined;
+  foldersOnly?: boolean | undefined;
+  folderSelectMode?: boolean | undefined;
+  /** When true, node cannot be dragged (e.g. mobile add-to-note picker). */
+  disableDrag?: boolean | undefined;
+  /** Mobile tree UI — touch drag + modal context menu. */
+  mobileTree?: boolean | undefined;
+  /** In-flight move/copy markers from App. */
+  transferBusyItems?: TreeTransferBusyEntry[] | null | undefined;
+};
+
+function EmptyItemHint({ label }: EmptyItemHintProps) {
   return (
     <Tooltip.Provider delayDuration={280} skipDelayDuration={120}>
       <Tooltip.Root>
@@ -96,17 +228,29 @@ export default function TreeNode({
   isCopyDrag = false,
   foldersOnly = false,
   folderSelectMode = false,
-  /** When true, node cannot be dragged (e.g. mobile add-to-note picker). */
   disableDrag = false,
-  /** Mobile tree UI — touch drag + modal context menu. */
   mobileTree = false,
-  /** In-flight move/copy markers from App. */
   transferBusyItems = null,
-}) {
+}: TreeNodeProps) {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [tempName, setTempName] = useState(node.name);
+  const [isStickyPinned, setIsStickyPinned] = useState(false);
+
   useEffect(() => {
-    if (renameTarget && onClearRenameTarget && renameTarget.storageType === storageType && renameTarget.node?.path === node.path) {
+    if (
+      renameTarget &&
+      onClearRenameTarget &&
+      renameTarget.storageType === storageType &&
+      renameTarget.node?.path === node.path
+    ) {
       setIsRenaming(true);
-      setTempName(node.type === 'file' ? (node.name?.includes('.') ? node.name.slice(0, node.name.lastIndexOf('.')) : node.name) : node.name);
+      setTempName(
+        node.type === 'file'
+          ? node.name?.includes('.')
+            ? node.name.slice(0, node.name.lastIndexOf('.'))
+            : node.name
+          : node.name,
+      );
       onClearRenameTarget();
     }
   }, [renameTarget, storageType, node.path, node.type, node.name, onClearRenameTarget]);
@@ -117,11 +261,9 @@ export default function TreeNode({
         ? true
         : (expandedPaths ? expandedPaths.has(node.path) : false)
       : false;
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [tempName, setTempName] = useState(node.name);
-  const [isStickyPinned, setIsStickyPinned] = useState(false);
+
   const selectKey = storageType && node.path != null ? `${storageType}:${node.path}` : node.path;
-  const isSelected = selectedIds && selectedIds.has && selectedIds.has(selectKey);
+  const isSelected = Boolean(selectedIds?.has?.(selectKey));
   const activeFilePath =
     currentFile?.id && currentFile?.type === storageType ? currentFile.id : null;
   const isOnActivePath = Boolean(
@@ -130,7 +272,10 @@ export default function TreeNode({
         (node.type === 'folder' && node.path && activeFilePath.startsWith(node.path))),
   );
   const paddingLeft = `${level * INDENT_SIZE + BASE_LEFT_PADDING}px`;
-  const guideLineOffsets = Array.from({ length: level }, (_, depth) => INDENT_SIZE/2 + BASE_LEFT_PADDING + depth * INDENT_SIZE);
+  const guideLineOffsets = Array.from(
+    { length: level },
+    (_, depth) => INDENT_SIZE / 2 + BASE_LEFT_PADDING + depth * INDENT_SIZE,
+  );
 
   const isTrashRoot = node.path === '.trash/';
   const displayName = isTrashRoot ? '쓰레기통' : node.name;
@@ -138,24 +283,19 @@ export default function TreeNode({
   const baseName = node.name.includes('.')
     ? node.name.slice(0, node.name.lastIndexOf('.'))
     : node.name;
-  const extension = node.name.includes('.')
-    ? node.name.slice(node.name.lastIndexOf('.'))
-    : '';
+  const extension = node.name.includes('.') ? node.name.slice(node.name.lastIndexOf('.')) : '';
 
-  const titleContainerRef = useRef(null);
-  const rowRef = useRef(null);
-  const scrollTimerRef = useRef(null);
+  const titleContainerRef = useRef<HTMLSpanElement | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const scrollTimerRef = useRef<number | null>(null);
   const scrollDirectionRef = useRef(1);
 
-  const isUnderDeletingFolder =
-    deletingFolderPath && node.path.startsWith(deletingFolderPath);
+  const isUnderDeletingFolder = Boolean(
+    deletingFolderPath && node.path.startsWith(deletingFolderPath),
+  );
   const isDeletingThisFolder =
     isDeletingFolder && node.type === 'folder' && deletingFolderPath === node.path;
-  const transferBusy = findApplicableTransferBusy(
-    transferBusyItems,
-    storageType,
-    node.path,
-  );
+  const transferBusy = findApplicableTransferBusy(transferBusyItems, storageType, node.path);
   const isTransferBusy = Boolean(transferBusy);
   const transferBusyHint = transferBusyTooltipText(transferBusy);
   const isNodeLocked = Boolean(isUnderDeletingFolder || isTransferBusy);
@@ -181,9 +321,8 @@ export default function TreeNode({
 
   const canDrag = !disableDrag && !isTrashRoot && !isNodeLocked;
   // Dropping on a file targets its parent folder (sibling placement).
-  const parentFolderPath =
-    node.type === 'file' ? getParentFolderPath(node.path) : null;
-  const effectiveDropTarget =
+  const parentFolderPath = node.type === 'file' ? getParentFolderPath(node.path) : null;
+  const effectiveDropTarget: EffectiveDropTarget =
     node.type === 'file'
       ? parentFolderPath === '' && rootDropNode
         ? rootDropNode
@@ -202,10 +341,10 @@ export default function TreeNode({
     dropTarget?.folderPath === effectiveDropTarget.path;
   const isUnderDropTarget =
     dropTarget?.storageType === storageType &&
-    dropTarget?.folderPath &&
-    node.path.startsWith(dropTarget.folderPath);
+    Boolean(dropTarget?.folderPath && node.path.startsWith(dropTarget.folderPath));
   const showDropHighlight = !isTrashRoot && !isTransferBusy && (isDropTarget || isUnderDropTarget);
   const canAcceptOsDrop = !isTrashRoot && !isTransferBusy;
+  const useHtmlOsDrop = !isTauriDesktopPlatform();
   const canAcceptInternalDrop = !isTrashRoot && !isTransferBusy;
 
   const dragId = toDraggableId(storageType, node.path);
@@ -219,10 +358,7 @@ export default function TreeNode({
     );
   }, [onOpenContextMenu, isNodeLocked, node]);
 
-  const {
-    contextMenuOpenedRef,
-    bindTouchGesture,
-  } = useTreeNodeTouchGesture({
+  const { contextMenuOpenedRef, bindTouchGesture } = useTreeNodeTouchGesture({
     enabled: mobileTree && Boolean(onOpenContextMenu) && !isNodeLocked,
     onContextMenu: openContextMenuFromLongPress,
   });
@@ -255,7 +391,7 @@ export default function TreeNode({
   });
 
   const setRowRef = useCallback(
-    (el) => {
+    (el: HTMLDivElement | null) => {
       rowRef.current = el;
       setDragRef(el);
       setDropRef(el);
@@ -266,24 +402,28 @@ export default function TreeNode({
   const isDragGhost =
     !isCopyDrag && (isDragging || (activeDragItemIds?.has?.(selectKey) ?? false));
 
-  const composePointerHandler = (gestureHandler, dndHandler) => (event) => {
-    gestureHandler?.(event);
-    dndHandler?.(event);
-  };
+  type PointerHandler = (event: ReactPointerEvent) => void;
+
+  const composePointerHandler =
+    (gestureHandler?: PointerHandler, dndHandler?: PointerHandler): PointerHandler =>
+    (event) => {
+      gestureHandler?.(event);
+      dndHandler?.(event);
+    };
 
   const dragAllowed = canDrag && !isRenaming;
 
   const dragPointerHandlers = listeners
     ? {
-        onPointerDown: listeners.onPointerDown,
-        onPointerMove: listeners.onPointerMove,
-        onPointerUp: listeners.onPointerUp,
-        onPointerCancel: listeners.onPointerCancel,
+        onPointerDown: listeners.onPointerDown as PointerHandler | undefined,
+        onPointerMove: listeners.onPointerMove as PointerHandler | undefined,
+        onPointerUp: listeners.onPointerUp as PointerHandler | undefined,
+        onPointerCancel: listeners.onPointerCancel as PointerHandler | undefined,
       }
     : {};
 
   const dragKeyboardHandlers = listeners?.onKeyDown
-    ? { onKeyDown: listeners.onKeyDown }
+    ? { onKeyDown: listeners.onKeyDown as (event: KeyboardEvent) => void }
     : {};
 
   const rowPointerHandlers =
@@ -317,7 +457,7 @@ export default function TreeNode({
         ? rowPointerHandlers
         : {};
 
-  const getFileIcon = () => {
+  const getFileIcon = (): TreeRowIcon => {
     if (node.type === 'folder') {
       const isSettingsFolder =
         node.name === '.settings' ||
@@ -344,13 +484,20 @@ export default function TreeNode({
     if (videoExts.includes(ext)) return IconVideo;
     if (audioExts.includes(ext)) return IconMusic;
     if (ext === 'pdf') return IconFileJson;
-    if (ext === 'md' || ext === 'markdown' || ext === 'mdx' || ext === 'html' || ext === 'htm' || ext === 'svg') {
+    if (
+      ext === 'md' ||
+      ext === 'markdown' ||
+      ext === 'mdx' ||
+      ext === 'html' ||
+      ext === 'htm' ||
+      ext === 'svg'
+    ) {
       return IconFileCode;
     }
     return IconFile;
   };
 
-  const getIconColorClass = () => {
+  const getIconColorClass = (): string => {
     if (node.type === 'folder') {
       if (isTrashRoot) return 'text-red-600 dark:text-red-400';
       const isSettingsFolder =
@@ -396,7 +543,6 @@ export default function TreeNode({
   const FileIconComponent = getFileIcon();
   const iconColorClass = getIconColorClass();
 
-
   const startTitleScroll = () => {
     const el = titleContainerRef.current;
     if (!el) return;
@@ -418,12 +564,10 @@ export default function TreeNode({
         } else {
           target.scrollLeft += 1;
         }
+      } else if (target.scrollLeft <= 0) {
+        scrollDirectionRef.current = 1;
       } else {
-        if (target.scrollLeft <= 0) {
-          scrollDirectionRef.current = 1;
-        } else {
-          target.scrollLeft -= 1;
-        }
+        target.scrollLeft -= 1;
       }
     }, 30);
   };
@@ -438,7 +582,7 @@ export default function TreeNode({
     }
   };
 
-  const handleOsDragOver = (e) => {
+  const handleOsDragOver = (e: DragEvent) => {
     if (!canAcceptOsDrop) return;
     const dt = e.dataTransfer;
     const hasFiles =
@@ -447,39 +591,20 @@ export default function TreeNode({
     e.preventDefault();
     e.stopPropagation();
     dt.dropEffect = 'copy';
-    if (onDropOnFolder) onDropOnFolder(effectiveDropTarget, storageType, 'dragOver');
+    onDropOnFolder?.(effectiveDropTarget, storageType, 'dragOver');
   };
 
-  const handleOsDrop = async (e) => {
+  const handleOsDrop = async (e: DragEvent) => {
     if (!canAcceptOsDrop) return;
     e.preventDefault();
     e.stopPropagation();
-    const dt = e.dataTransfer;
-    if (dt.items?.length > 0 || dt.files?.length > 0) {
-      const files = [];
-      const dirHandles = [];
-      if (dt.items?.length > 0) {
-        for (const item of dt.items) {
-          if (item.kind === 'file') {
-            const handle = item.getAsFileSystemHandle?.();
-            if (handle?.kind === 'directory') {
-              dirHandles.push(handle);
-            } else {
-              const f = item.getAsFile();
-              if (f) files.push(f);
-            }
-          }
-        }
-      } else {
-        files.push(...Array.from(dt.files || []));
-      }
-      if (files.length > 0 || dirHandles.length > 0) {
-        if (onDropOnFolder) onDropOnFolder(effectiveDropTarget, storageType, 'drop', { files, dirHandles });
-      }
+    const { files, dirHandles } = await collectOsDropPayload(e.dataTransfer);
+    if (files.length > 0 || dirHandles.length > 0) {
+      onDropOnFolder?.(effectiveDropTarget, storageType, 'drop', { files, dirHandles });
     }
   };
 
-  const handleToggle = (e) => {
+  const handleToggle = (e: MouseEvent) => {
     e.stopPropagation();
     if (isNodeLocked) return;
     if (contextMenuOpenedRef.current) {
@@ -487,11 +612,13 @@ export default function TreeNode({
       return;
     }
 
-    if (typeof onActivate === 'function') {
-      onActivate(node);
-    }
+    onActivate?.(node);
 
-    const modifiers = { ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey };
+    const modifiers: SelectModifiers = {
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      shiftKey: e.shiftKey,
+    };
     const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey;
 
     if (node.type === 'folder') {
@@ -499,23 +626,23 @@ export default function TreeNode({
         if (onExpandedChange && !isSearching) {
           onExpandedChange(storageType, node.path, !isOpen);
         }
-        if (onFolderFocus) onFolderFocus(node);
-        if (onSelect) onSelect(storageType, node, modifiers);
-      } else if (hasModifier && onSelect) {
-        onSelect(storageType, node, modifiers);
+        onFolderFocus?.(node);
+        onSelect?.(storageType, node, modifiers);
+      } else if (hasModifier) {
+        onSelect?.(storageType, node, modifiers);
       } else {
         if (onExpandedChange && !isSearching) {
           onExpandedChange(storageType, node.path, !isOpen);
         }
-        if (onFolderFocus) onFolderFocus(node);
+        onFolderFocus?.(node);
       }
     } else {
       if (onFolderFocus && !node.path.includes('/')) onFolderFocus(null);
-      if (onSelect) onSelect(storageType, node, modifiers);
+      onSelect?.(storageType, node, modifiers);
     }
   };
 
-  const handleRenameStart = (e) => {
+  const handleRenameStart = (e: MouseEvent) => {
     e.stopPropagation();
     if (isNodeLocked) return;
     if (node.type === 'file') {
@@ -538,7 +665,11 @@ export default function TreeNode({
       return;
     }
     if (trimmed.includes('/')) {
-      alert(node.type === 'folder' ? "폴더 이름에는 '/' 문자를 사용할 수 없습니다." : "파일 이름에는 '/' 문자를 사용할 수 없습니다.");
+      alert(
+        node.type === 'folder'
+          ? "폴더 이름에는 '/' 문자를 사용할 수 없습니다."
+          : "파일 이름에는 '/' 문자를 사용할 수 없습니다.",
+      );
       setTempName(node.type === 'file' ? baseName : node.name);
       setIsRenaming(false);
       return;
@@ -549,22 +680,18 @@ export default function TreeNode({
         setIsRenaming(false);
         return;
       }
-      if (typeof onRename === 'function') {
-        onRename(storageType, node, trimmed);
-      }
+      onRename?.(storageType, node, trimmed);
     } else if (node.type === 'folder') {
       if (trimmed === node.name) {
         setIsRenaming(false);
         return;
       }
-      if (typeof onRename === 'function') {
-        onRename(storageType, node, trimmed);
-      }
+      onRename?.(storageType, node, trimmed);
     }
     setIsRenaming(false);
   };
 
-  const handleRenameKeyDown = (e) => {
+  const handleRenameKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
@@ -601,8 +728,8 @@ export default function TreeNode({
     const rowEl = rowRef.current;
     if (!rowEl) return;
 
-    const findScrollParent = (el) => {
-      let current = el.parentElement;
+    const findScrollParent = (el: HTMLElement): Element | Window => {
+      let current: HTMLElement | null = el.parentElement;
       while (current) {
         const style = window.getComputedStyle(current);
         const overflowY = style.overflowY || '';
@@ -613,7 +740,7 @@ export default function TreeNode({
     };
 
     const scrollParent = findScrollParent(rowEl);
-    let rafId = null;
+    let rafId: number | null = null;
     const updatePinnedState = () => {
       const nodeEl = rowRef.current;
       if (!nodeEl) return;
@@ -646,15 +773,16 @@ export default function TreeNode({
       <Motion.div
         ref={setRowRef}
         data-tree-node-row
+        data-tree-drop-storage={canAcceptOsDrop ? storageType : undefined}
+        data-tree-drop-path={canAcceptOsDrop ? effectiveDropTarget.path : undefined}
         layout={false}
         animate={{
-          opacity: isDragGhost ? 0.35 : 1,
-          scale: isDragGhost ? 0.98 : 1,
+          opacity: isDragGhost ? 0 : 1,
         }}
-        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        transition={{ duration: 0 }}
         {...dndProps}
-        onDragOver={canAcceptOsDrop ? handleOsDragOver : undefined}
-        onDrop={canAcceptOsDrop ? handleOsDrop : undefined}
+        onDragOver={canAcceptOsDrop && useHtmlOsDrop ? handleOsDragOver : undefined}
+        onDrop={canAcceptOsDrop && useHtmlOsDrop ? handleOsDrop : undefined}
         className={`group relative flex items-center justify-between py-1.5 pr-2 transition-colors ${
           isSelected
             ? 'bg-blue-50 text-blue-700 dark:bg-odp-line dark:text-odp-fgStrong'
@@ -765,7 +893,9 @@ export default function TreeNode({
                 onKeyDown={handleRenameKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 autoFocus
-                placeholder={node.type === 'file' ? (baseName || '이름 없음') : (node.name || '폴더명')}
+                placeholder={
+                  node.type === 'file' ? baseName || '이름 없음' : node.name || '폴더명'
+                }
               />
               {node.type === 'file' && extension && (
                 <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
@@ -839,7 +969,7 @@ export default function TreeNode({
             onClick={(e) => {
               e.stopPropagation();
               if (isNodeLocked) return;
-              onDelete(node, storageType);
+              onDelete?.(node, storageType);
             }}
             disabled={isDeletingThisFolder || isTransferBusy}
             className={`p-1 rounded text-gray-500 dark:text-gray-300 ${

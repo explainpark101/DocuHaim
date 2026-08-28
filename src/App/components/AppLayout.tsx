@@ -12,6 +12,8 @@ import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
 import { AuthModal } from '@/components/modals/AuthModal';
 import UserWebfontStyles from '@/components/UserWebfontStyles';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
+import FileUploadQueueStatusBar from '@/components/FileUploadQueueStatusBar';
+import FileUploadQueueFloatingPanel from '@/components/FileUploadQueueFloatingPanel';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { isStoredWithWebAuthn, getStoredWebAuthn } from '@/utils/webauthn';
 import { refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
@@ -110,6 +112,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     handleOpenSessionFiles,
     handleOpenSessionDirectory,
     handleDropSessionTransfer,
+    handleDropSessionPaths,
     handleRequestSaveSessionToNote,
     handleRequestSessionTransformDownload,
     isOpeningSession,
@@ -319,6 +322,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     currentFile?.type === 'webdav' ||
     currentFile?.type === SESSION_STORAGE_TYPE;
 
+  const tauriMobileSidebar = isTauriDesktopPlatform() && isMobile;
 
   return (
     <div
@@ -478,12 +482,20 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         }`}
       >
         <div className="relative flex min-h-0 flex-1">
-          {/* Mobile: backdrop when sidebar open */}
-          {isMobile && sidebarOpen && (
+          {/* Mobile: backdrop when sidebar open (kept mounted for fade-out) */}
+          {isMobile && (
             <button
               type="button"
               aria-label="사이드바 닫기"
-              className="fixed inset-0 z-55 bg-black/30 md:hidden"
+              aria-hidden={!sidebarOpen}
+              tabIndex={sidebarOpen ? 0 : -1}
+              className={`fixed left-0 right-0 bottom-0 z-55 bg-black/30 md:hidden transition-opacity duration-300 ease-out ${
+                sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+              } ${
+                tauriMobileSidebar
+                  ? 'top-[var(--app-sidebar-mobile-top,2rem)]'
+                  : 'top-0'
+              }`}
               onClick={() => setSidebarOpen(false)}
             />
           )}
@@ -494,20 +506,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             collapsed={sidebarCollapsed}
             open={sidebarOpen}
             onRequestCollapse={() => setSidebarCollapsed(true)}
-            mobileHeader={
-              isMobile ? (
-                <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
-                  <button
-                    type="button"
-                    aria-label="사이드바 닫기"
-                    onClick={() => setSidebarOpen(false)}
-                    className="p-2.5 text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-odp-focusBg rounded-lg transition touch-manipulation"
-                  >
-                    <IconX size={22} />
-                  </button>
-                </div>
-              ) : undefined
-            }
+            mobileBelowTitlebar={tauriMobileSidebar}
           >
             <SidebarConnected
               isMobileLayout={isMobile}
@@ -526,6 +525,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               showTreeModifiedDate={showTreeModifiedDate}
               hoverExpandDelayMs={treeHoverExpandSettingsToMs(treeHoverExpandSettings)}
               onRequestCollapseSidebar={!isMobile ? () => setSidebarCollapsed(true) : undefined}
+              onRequestCloseSidebar={isMobile ? () => setSidebarOpen(false) : undefined}
               expandPathsRef={expandPathsRef}
               onRequestMoveFile={handleRequestMoveFileFromSidebar}
               onOpenInNewWindow={handleOpenInNewWindow}
@@ -578,6 +578,11 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   tabBarPlacement={isTauriDesktopPlatform() ? 'titlebar' : 'inline'}
                   isChatRoute={isChatRoute}
                   isSettingsRoute={isSettingsRoute}
+                  vaultDropProps={{
+                    storageType: storageMode,
+                    localRootHandle,
+                    onDropOnFolder: handleDropOnFolder,
+                  }}
                   isMobileLayout={isMobile}
                   onActivateTab={(id: string) => activateWorkspaceTab(id)}
                   onCloseTab={(id: string) => {
@@ -775,6 +780,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                         ? handleOpenSessionDirectory
                         : undefined,
                     onDropSessionTransfer: handleDropSessionTransfer,
+                    onDropSessionPaths: handleDropSessionPaths,
                     isOpeningSession,
                     hideRecordingCompanions,
                     isRecording: isActiveFile ? isRecording : false,
@@ -874,6 +880,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           className="relative z-10200 flex h-6 shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white/90 px-2 pb-[max(0px,env(safe-area-inset-bottom))] text-[10px] dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 md:h-7 md:gap-3 md:px-3 md:text-[11px]"
         >
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 overflow-hidden">
+            <FileUploadQueueStatusBar />
             <ActivityIndicatorBar />
             {!hideRecordingCompanions &&
               (recordingQueueStats.pending > 0 ||
@@ -1054,6 +1061,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
 
 
       {children}
+      <FileUploadQueueFloatingPanel />
     </div>
   );
 }

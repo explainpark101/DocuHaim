@@ -3,6 +3,11 @@ import { isTauriMacOS } from '@/utils/tauriPlatform';
 import { useMacosTitlebarChrome } from '@/hooks/useMacosTitlebarChrome';
 import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
 import DesktopWindowControls from '@/components/desktop/DesktopWindowControls';
+import { IconX } from '@/components/icons';
+
+type MobileSidebarClose = {
+  onClose: () => void;
+};
 
 type DesktopTitlebarProps = {
   tabs: WorkspaceTab[];
@@ -17,6 +22,8 @@ type DesktopTitlebarProps = {
     point: { clientX: number; clientY: number },
   ) => void;
   isMobileLayout?: boolean;
+  /** Portrait Tauri: sidebar close control in the titlebar strip. */
+  mobileSidebarClose?: MobileSidebarClose | undefined;
   /** Shown in the drag strip when tabs are disabled or empty. */
   appName?: string;
 };
@@ -35,6 +42,7 @@ export default function DesktopTitlebar({
   onReorderTabs,
   onFileTabContextMenu,
   isMobileLayout = false,
+  mobileSidebarClose,
   appName = 'DocuHaim',
 }: DesktopTitlebarProps) {
   const isMac = isTauriMacOS();
@@ -49,8 +57,18 @@ export default function DesktopTitlebar({
 
   return (
     <header
-      className={`desktop-titlebar z-60 flex ${headerHeightClass} shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
+      className={`desktop-titlebar relative z-70 flex ${headerHeightClass} shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
     >
+      {mobileSidebarClose ? (
+        <button
+          type="button"
+          aria-label="사이드바 닫기"
+          onClick={mobileSidebarClose.onClose}
+          className="inline-flex h-full shrink-0 items-center justify-center px-2.5 text-gray-600 transition-colors hover:bg-gray-200/80 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fgStrong"
+        >
+          <IconX size={18} />
+        </button>
+      ) : null}
       {showTabs ? (
         <div className="desktop-titlebar__tab-container flex h-full min-w-0 flex-1 items-stretch overflow-hidden">
           <WorkspaceTabBar
@@ -65,7 +83,6 @@ export default function DesktopTitlebar({
             isMobileLayout={isMobileLayout}
             variant="titlebar"
           />
-          <div data-tauri-drag-region className="min-w-8 flex-1" />
         </div>
       ) : (
         <div

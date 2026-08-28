@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { readDocumentTheme } from '@/utils/documentTheme';
+import { readDocumentTheme, type DocumentTheme } from '@/utils/documentTheme';
 
 /**
  * Live app color theme (`light` | `dark`) from `document.documentElement`'s
  * Tailwind `dark` class — not OS `prefers-color-scheme`.
  */
-export function useDocumentTheme(): 'light' | 'dark' {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => readDocumentTheme());
+export function useDocumentTheme(): DocumentTheme {
+  const [theme, setTheme] = useState<DocumentTheme>(() => readDocumentTheme());
 
   useEffect(() => {
     const root = document.documentElement;

@@ -13,7 +13,10 @@ import {
   RootDropZone,
   TreeDragOverlayPreview,
   treeCollisionDetection,
+  TREE_DND_AUTO_SCROLL,
+  TREE_DND_MEASURING,
 } from '@/components/treeDnd';
+import TreeDndLayoutSync from '@/components/shell/TreeDndLayoutSync';
 import { IconFolderPlus } from '@/components/icons';
 import { FolderInput, RotateCcw } from 'lucide-react';
 import { findNodeByPath } from '@/utils/s3Tree';
@@ -481,8 +484,10 @@ export default function ChatAddToNoteModal({
             onDragOver={handleDndDragOver}
             onDragEnd={handleDndDragEnd}
             onDragCancel={handleDndDragCancel}
-            autoScroll
+            autoScroll={TREE_DND_AUTO_SCROLL}
+            measuring={TREE_DND_MEASURING}
           >
+            <TreeDndLayoutSync scrollContainerRef={scrollContainerRef} />
             <div ref={scrollContainerRef} className="flex-1 overflow-auto py-1">
               <RootDropZone
                 storageType={storageType}

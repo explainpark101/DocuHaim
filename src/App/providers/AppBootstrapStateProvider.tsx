@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { applyDocumentTheme } from '@/utils/documentTheme';
+import { applyDocumentTheme, type DocumentTheme } from '@/utils/documentTheme';
 
-function readInitialTheme(): string {
+function readInitialTheme(): DocumentTheme {
   if (typeof window === 'undefined') return 'light';
   const stored = window.localStorage.getItem('theme');
   if (stored === 'light' || stored === 'dark') return stored;
@@ -10,8 +10,8 @@ function readInitialTheme(): string {
 
 export type BootstrapOwnedApi = {
   scriptsLoaded: boolean;
-  theme: string;
-  setTheme: (theme: string) => void;
+  theme: DocumentTheme;
+  setTheme: (theme: DocumentTheme) => void;
   shareBlockingAuth: boolean;
   setShareBlockingAuth: (blocking: boolean) => void;
 };

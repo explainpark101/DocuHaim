@@ -257,6 +257,7 @@ export default function LlmAssistPopoutPage() {
             sendAction('set-model', { value });
           }}
           selectedText={remoteState.selectedText}
+          onSelectedTextChange={(value) => sendAction('set-selected-text', { value })}
           onRefreshSelection={() => sendAction('refresh-selection')}
           attachedImages={remoteState.attachedImages || []}
           onAddImages={async (images) => sendAction('add-images', { images })}

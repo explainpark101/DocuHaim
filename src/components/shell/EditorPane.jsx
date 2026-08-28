@@ -98,6 +98,7 @@ export default function EditorPane({
   onOpenSessionFiles,
   onOpenSessionDirectory,
   onDropSessionTransfer,
+  onDropSessionPaths,
   isOpeningSession = false,
   onSaveSessionToNote,
   onRequestSessionTransformDownload,
@@ -504,6 +505,7 @@ export default function EditorPane({
                 onOpenFiles={onOpenSessionFiles}
                 onOpenDirectoryHandle={onOpenSessionDirectory}
                 onDropTransfer={onDropSessionTransfer}
+                onDropPaths={onDropSessionPaths}
                 onRequestCreateFile={onRequestCreateFile}
                 onOpenSidebar={onOpenSidebar}
                 onOpenChatWithMyself={onOpenChatWithMyself}

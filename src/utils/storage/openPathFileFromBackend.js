@@ -1,5 +1,7 @@
 import { getDraftKey, getMemoDraft, deleteMemoDraft } from '@/utils/memoDraftsDb';
 import { isEncMdPath, tryUnlockEncMdContent } from '@/utils/encMd';
+import { toDisplayableImageObjectUrl } from '@/utils/heicConvert';
+import { VIEWER_IMAGE_EXTENSIONS } from '@/utils/imageExtensions';
 
 /**
  * Open a path-based file (S3/WebDAV) via StorageBackend into editor state payloads.
@@ -19,7 +21,7 @@ import { isEncMdPath, tryUnlockEncMdContent } from '@/utils/encMd';
 export async function openPathFileFromBackend({ backend, type, node }) {
   if (!backend || !node?.path) return null;
   const ext = (node.name.split('.').pop() || '').toLowerCase();
-  const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
+  const imageExts = [...VIEWER_IMAGE_EXTENSIONS];
   const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
   const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
 
@@ -37,7 +39,11 @@ export async function openPathFileFromBackend({ backend, type, node }) {
   };
 
   if (imageExts.includes(ext)) {
-    const url = await backend.getObjectUrl(node.path);
+    let url = await backend.getObjectUrl(node.path);
+    if (ext === 'heic' || ext === 'heif') {
+      const { body } = await backend.readBytes(node.path);
+      url = await toDisplayableImageObjectUrl(new Blob([body]), node.name);
+    }
     const head = await backend.head?.(node.path);
     return {
       currentFile: {

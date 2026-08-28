@@ -8,6 +8,8 @@ import {
   type Ref,
 } from 'react';
 import { Paperclip, Upload } from 'lucide-react';
+import { useTauriChatFileDragDrop } from '@/hooks/useTauriChatFileDragDrop';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 function dataTransferHasFiles(dt: DataTransfer | null | undefined): boolean {
   if (!dt) return false;
@@ -32,7 +34,7 @@ export type ChatFileDropOverlayProps = {
   className?: string;
   /** When true, ignore OS file drags (e.g. storage not ready). */
   disabled?: boolean;
-  onFilesDrop: (files: FileList) => void;
+  onFilesDrop: (files: FileList | File[]) => void;
   /** Optional ref to the outer relative host (tree→attach droppable portal). */
   rootRef?: Ref<HTMLDivElement>;
 };
@@ -54,6 +56,20 @@ export default function ChatFileDropOverlay({
 }: ChatFileDropOverlayProps) {
   const [dragging, setDragging] = useState(false);
   const dragDepthRef = useRef(0);
+  const useHtmlOsDrop = !isTauriDesktopPlatform();
+
+  const handleTauriFilesDrop = useCallback(
+    (files: File[]) => {
+      if (files.length) onFilesDrop(files);
+    },
+    [onFilesDrop],
+  );
+
+  useTauriChatFileDragDrop({
+    enabled: !disabled,
+    onDropFiles: handleTauriFilesDrop,
+    onDragActiveChange: setDragging,
+  });
 
   useEffect(() => {
     if (!disabled) return;
@@ -68,47 +84,47 @@ export default function ChatFileDropOverlay({
 
   const onDragEnter = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled || !dataTransferHasFiles(e.dataTransfer)) return;
+      if (disabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
       dragDepthRef.current += 1;
       setDragging(true);
     },
-    [disabled],
+    [disabled, useHtmlOsDrop],
   );
 
   const onDragLeave = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled) return;
+      if (disabled || !useHtmlOsDrop) return;
       e.preventDefault();
       e.stopPropagation();
       dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
       if (dragDepthRef.current === 0) setDragging(false);
     },
-    [disabled],
+    [disabled, useHtmlOsDrop],
   );
 
   const onDragOverCapture = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled || !dataTransferHasFiles(e.dataTransfer)) return;
+      if (disabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
       if (!dragging) setDragging(true);
     },
-    [disabled, dragging],
+    [disabled, dragging, useHtmlOsDrop],
   );
 
   const onDropCapture = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (disabled || !dataTransferHasFiles(e.dataTransfer)) return;
+      if (disabled || !useHtmlOsDrop || !dataTransferHasFiles(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
       resetDrag();
       const files = e.dataTransfer?.files;
       if (files?.length) onFilesDrop(files);
     },
-    [disabled, onFilesDrop, resetDrag],
+    [disabled, onFilesDrop, resetDrag, useHtmlOsDrop],
   );
 
   const setRootNode = useCallback(
@@ -121,6 +137,7 @@ export default function ChatFileDropOverlay({
   return (
     <div
       ref={setRootNode}
+      data-chat-file-drop=""
       className={`relative ${className}`.trim()}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}

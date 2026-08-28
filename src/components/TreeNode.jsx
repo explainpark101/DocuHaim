@@ -1,1 +1,1 @@
-export { default } from '@/components/shell/TreeNode.jsx';
+export { default } from '@/components/shell/TreeNode';

@@ -41,6 +41,8 @@ import {
   createLocalBackend,
 } from '@/utils/storage';
 import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
+import { toDisplayableImageObjectUrl } from '@/utils/heicConvert';
+import { VIEWER_IMAGE_EXTENSIONS } from '@/utils/imageExtensions';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
@@ -397,14 +399,17 @@ export function useFileSessionDomain() {
       const ok = markAsLoading();
       if (!ok) return;
 
-      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+      const imageExts = [...VIEWER_IMAGE_EXTENSIONS];
 
       if (imageExts.includes(ext)) {
         try {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
           const mime = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
           const blob = new Blob([body], { type: mime });
-          const url = URL.createObjectURL(blob);
+          const url =
+            ext === 'heic' || ext === 'heif'
+              ? await toDisplayableImageObjectUrl(blob, node.name)
+              : URL.createObjectURL(blob);
           commit({
             type: 's3',
             id: node.path,
@@ -625,13 +630,15 @@ export function useFileSessionDomain() {
       const file = await node.handle.getFile();
       const serverLastModTs = file.lastModified ?? 0;
 
-      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+      const imageExts = [...VIEWER_IMAGE_EXTENSIONS];
       const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
       const videoExts = ['mp4', 'webm', 'ogv', 'mov'];
 
-      const openLocalBlobViewer = (viewer, mime) => {
-        const blob = new Blob([file], { type: mime || file.type || undefined });
-        const url = URL.createObjectURL(blob);
+      const openLocalBlobViewer = async (viewer, mime) => {
+        const url =
+          viewer === 'image'
+            ? await toDisplayableImageObjectUrl(file, node.name)
+            : URL.createObjectURL(new Blob([file], { type: mime || file.type || undefined }));
         commit({
           type: 'local',
           id: node.path,
@@ -647,24 +654,24 @@ export function useFileSessionDomain() {
 
       if (imageExts.includes(ext)) {
         const mime = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-        openLocalBlobViewer('image', mime);
+        await openLocalBlobViewer('image', mime);
         return;
       }
 
       if (ext === 'pdf') {
-        openLocalBlobViewer('pdf', 'application/pdf');
+        await openLocalBlobViewer('pdf', 'application/pdf');
         return;
       }
 
       if (audioExts.includes(ext)) {
         const mime = ext === 'm4a' || ext === 'mp4' ? 'audio/mp4' : ext === 'mp3' ? 'audio/mpeg' : ext === 'ogg' ? 'audio/ogg' : ext === 'weba' ? 'audio/webm' : `audio/${ext}`;
-        openLocalBlobViewer('audio', mime);
+        await openLocalBlobViewer('audio', mime);
         return;
       }
 
       if (videoExts.includes(ext)) {
         const mime = ext === 'mp4' || ext === 'mov' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : 'video/ogg';
-        openLocalBlobViewer('video', mime);
+        await openLocalBlobViewer('video', mime);
         return;
       }
 

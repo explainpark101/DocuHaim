@@ -1,18 +1,94 @@
-import { useDroppable, pointerWithin, closestCenter } from '@dnd-kit/core';
+import {
+  useDroppable,
+  pointerWithin,
+  closestCenter,
+  MeasuringStrategy,
+  type CollisionDetection,
+} from '@dnd-kit/core';
 import { motion as Motion } from 'motion/react';
+import type { DragEvent, MouseEvent } from 'react';
 import { IconFolder } from '@/components/icons';
 import { toDroppableId } from '@/utils/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
+import { collectOsDropPayload } from '@/utils/osDropPayload';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isLocalVaultReady } from '@/utils/localVaultReady';
+import type { SidebarTreeNode } from '@/components/shell/TreeNode';
 
-export function treeCollisionDetection(args) {
+/** dnd-kit config: keep droppable rects in sync while tree layout shifts during drag. */
+export const TREE_DND_MEASURING = {
+  droppable: {
+    strategy: MeasuringStrategy.Always,
+  },
+} as const;
+
+/** Compensate vertical layout shifts (folder expand) so overlay stays under the pointer. */
+export const TREE_DND_AUTO_SCROLL = {
+  layoutShiftCompensation: { x: false, y: true },
+} as const;
+
+type TreeDropTarget = {
+  storageType: string;
+  folderPath: string;
+};
+
+type DropOnFolderAction = 'dragOver' | 'dragLeave' | 'drop';
+
+type DropOnFolderPayload = {
+  files?: File[];
+  dirHandles?: FileSystemDirectoryHandle[];
+  items?: unknown;
+  copy?: boolean;
+  paths?: string[];
+};
+
+type RootDropZoneProps = {
+  storageType: string;
+  localRootHandle?: FileSystemDirectoryHandle | null | undefined;
+  localVaultFsPath?: string | undefined;
+  onDropOnFolder?:
+    | ((
+        targetNode: SidebarTreeNode,
+        targetStorageType: string,
+        action: DropOnFolderAction,
+        payload?: DropOnFolderPayload,
+      ) => void)
+    | undefined;
+  dropTarget?: TreeDropTarget | null | undefined;
+  onContextMenu?:
+    | ((
+        event: MouseEvent | { preventDefault: () => void; stopPropagation: () => void },
+        rootNode: SidebarTreeNode,
+      ) => void)
+    | undefined;
+  onFocusRoot?: (() => void) | undefined;
+  isFocused?: boolean | undefined;
+  isSelected?: boolean | undefined;
+  mobileTree?: boolean | undefined;
+};
+
+export type TreeDragOverlayItem = {
+  path: string;
+  name?: string;
+  storageType?: string;
+  nodeType?: string;
+};
+
+type TreeDragOverlayPreviewProps = {
+  items: TreeDragOverlayItem[] | null | undefined;
+  isCopy?: boolean | undefined;
+};
+
+export const treeCollisionDetection: CollisionDetection = (args) => {
   const pointerCollisions = pointerWithin(args);
   if (pointerCollisions.length > 0) return pointerCollisions;
   return closestCenter(args);
-}
+};
 
 export function RootDropZone({
   storageType,
   localRootHandle,
+  localVaultFsPath = '',
   onDropOnFolder,
   dropTarget,
   onContextMenu,
@@ -20,15 +96,19 @@ export function RootDropZone({
   isFocused,
   isSelected = false,
   mobileTree = false,
-}) {
-  const rootNode = {
+}: RootDropZoneProps) {
+  const rootNode: SidebarTreeNode = {
     path: '',
     type: 'folder',
     name: 'root',
-    handle: storageType === 'local' ? localRootHandle : null,
+    handle: storageType === 'local' ? (localRootHandle ?? null) : null,
   };
   const isDropTarget = dropTarget?.storageType === storageType && dropTarget?.folderPath === '';
-  const canDrop = storageType === 's3' || (storageType === 'local' && localRootHandle);
+  const canDrop =
+    storageType === 's3' ||
+    storageType === 'webdav' ||
+    (storageType === 'local' && isLocalVaultReady(localRootHandle, localVaultFsPath));
+  const useHtmlOsDrop = !isTauriDesktopPlatform();
 
   const { setNodeRef } = useDroppable({
     id: toDroppableId(storageType, ''),
@@ -36,12 +116,12 @@ export function RootDropZone({
       storageType,
       path: '',
       nodeType: 'folder',
-      handle: storageType === 'local' ? localRootHandle : null,
+      handle: storageType === 'local' ? (localRootHandle ?? null) : null,
     },
     disabled: !canDrop,
   });
 
-  const handleClick = (e) => {
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     if (contextMenuOpenedRef.current) {
       contextMenuOpenedRef.current = false;
@@ -51,19 +131,17 @@ export function RootDropZone({
     onFocusRoot?.();
   };
 
-  const handleContextMenu = (e) => {
+  const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
     if (mobileTree) {
       e.preventDefault();
       return;
     }
     e.preventDefault();
-    if (onContextMenu) onContextMenu(e, rootNode);
+    onContextMenu?.(e, rootNode);
   };
 
   const openFromLongPress = () => {
-    if (onContextMenu) {
-      onContextMenu({ preventDefault: () => {}, stopPropagation: () => {} }, rootNode);
-    }
+    onContextMenu?.({ preventDefault: () => {}, stopPropagation: () => {} }, rootNode);
   };
 
   const { contextMenuOpenedRef, bindTouchGesture } = useTreeNodeTouchGesture({
@@ -71,7 +149,7 @@ export function RootDropZone({
     onContextMenu: openFromLongPress,
   });
 
-  const handleOsDragOver = (e) => {
+  const handleOsDragOver = (e: DragEvent<HTMLDivElement>) => {
     const dt = e.dataTransfer;
     const hasFiles =
       dt.types?.includes?.('Files') || dt.files?.length > 0 || dt.items?.length > 0;
@@ -79,34 +157,15 @@ export function RootDropZone({
     e.preventDefault();
     e.stopPropagation();
     dt.dropEffect = 'copy';
-    if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'dragOver');
+    onDropOnFolder?.(rootNode, storageType, 'dragOver');
   };
 
-  const handleOsDrop = async (e) => {
+  const handleOsDrop = async (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    const dt = e.dataTransfer;
-    if (dt.items?.length > 0 || dt.files?.length > 0) {
-      const files = [];
-      const dirHandles = [];
-      if (dt.items?.length > 0) {
-        for (const item of dt.items) {
-          if (item.kind === 'file') {
-            const handle = item.getAsFileSystemHandle?.();
-            if (handle?.kind === 'directory') {
-              dirHandles.push(handle);
-            } else {
-              const f = item.getAsFile();
-              if (f) files.push(f);
-            }
-          }
-        }
-      } else {
-        files.push(...Array.from(dt.files || []));
-      }
-      if (files.length > 0 || dirHandles.length > 0) {
-        if (onDropOnFolder) onDropOnFolder(rootNode, storageType, 'drop', { files, dirHandles });
-      }
+    const { files, dirHandles } = await collectOsDropPayload(e.dataTransfer);
+    if (files.length > 0 || dirHandles.length > 0) {
+      onDropOnFolder?.(rootNode, storageType, 'drop', { files, dirHandles });
     }
   };
 
@@ -116,9 +175,11 @@ export function RootDropZone({
     <div
       ref={canDrop ? setNodeRef : undefined}
       data-tree-root-drop-zone
+      data-tree-drop-storage={canDrop ? storageType : undefined}
+      data-tree-drop-path=""
       onClick={handleClick}
-      onDragOver={canDrop ? handleOsDragOver : undefined}
-      onDrop={canDrop ? handleOsDrop : undefined}
+      onDragOver={canDrop && useHtmlOsDrop ? handleOsDragOver : undefined}
+      onDrop={canDrop && useHtmlOsDrop ? handleOsDrop : undefined}
       onContextMenu={onContextMenu ? handleContextMenu : undefined}
       {...(mobileTree && onContextMenu ? bindTouchGesture : {})}
       className={`flex items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer ${
@@ -150,9 +211,10 @@ export function RootDropZone({
   );
 }
 
-export function TreeDragOverlayPreview({ items, isCopy = false }) {
+export function TreeDragOverlayPreview({ items, isCopy = false }: TreeDragOverlayPreviewProps) {
   if (!items?.length) return null;
   const primary = items[0];
+  if (!primary) return null;
   const count = items.length;
   return (
     <Motion.div

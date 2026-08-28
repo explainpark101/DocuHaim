@@ -1,4 +1,6 @@
 import { dbgClipboard } from '@/utils/clipboardImageDebug';
+import { isProbablyHeicFile } from '@/utils/heicConvert';
+import { isViewerImageFileName } from '@/utils/imageExtensions';
 import { putObjectWithProgress } from '@/utils/s3Client';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
 
@@ -28,6 +30,18 @@ export async function sniffImageMimeFromFile(file) {
   ) {
     return 'image/webp';
   }
+  if (
+    buf.length >= 12 &&
+    buf[4] === 0x66 &&
+    buf[5] === 0x74 &&
+    buf[6] === 0x79 &&
+    buf[7] === 0x70
+  ) {
+    const brand = String.fromCharCode(buf[8], buf[9], buf[10], buf[11]).toLowerCase();
+    if (brand === 'heic' || brand === 'heix' || brand === 'hevc' || brand === 'mif1') {
+      return 'image/heic';
+    }
+  }
   dbgClipboard('sniff:noMatch', {
     size: file.size,
     head: buf.length
@@ -37,8 +51,12 @@ export async function sniffImageMimeFromFile(file) {
   return '';
 }
 
-/** @param {File} file */
+/** 
+ * @param {File} file
+ * @returns {Promise<boolean>}
+ */
 export async function isFileProbablyImage(file) {
+  if (isProbablyHeicFile(file) || isViewerImageFileName(file.name)) return true;
   const mime = await sniffImageMimeFromFile(file);
   const ok = Boolean(mime);
   dbgClipboard('sniff:isFileProbablyImage', {
@@ -124,6 +142,10 @@ export async function uploadEditorImage(client, bucket, file, options = {}) {
   return key;
 }
 
+/**
+ * @param {string} imagePathPrefix
+ * @returns {string}
+ */
 export function normalizeEditorImagePathPrefix(imagePathPrefix) {
   const raw =
     typeof imagePathPrefix === 'string' && imagePathPrefix
@@ -132,6 +154,10 @@ export function normalizeEditorImagePathPrefix(imagePathPrefix) {
   return normalizePathToNfc(raw);
 }
 
+/**
+ * @param {string} mime
+ * @returns {string}
+ */
 export function getExtensionFromMime(mime) {
   if (!mime) return '.png';
   const map = {
@@ -140,6 +166,8 @@ export function getExtensionFromMime(mime) {
     'image/gif': '.gif',
     'image/webp': '.webp',
     'image/svg+xml': '.svg',
+    'image/heic': '.jpg',
+    'image/heif': '.jpg',
   };
   return map[mime] || '.png';
 }

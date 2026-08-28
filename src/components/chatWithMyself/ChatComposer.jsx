@@ -36,7 +36,6 @@ import {
   clearComposerDraft,
   syncComposerDraftImages,
   loadComposerDraftImageQueue,
-  isChatImageFile,
   formatChatAttachmentSize,
   extractChatBodyAttachments,
   chatAttachmentsToMarkdown,
@@ -46,6 +45,7 @@ import {
   looksLikeMarkdown,
   isSafariBrowser,
 } from '@/utils/chatWithMyself';
+import { prepareChatComposerAttachment } from '@/utils/chatWithMyself/prepareChatComposerAttachment';
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { registerChatActions } from '@/utils/advancedSearch/chatActions';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
@@ -747,13 +747,23 @@ const ChatComposer = forwardRef(function ChatComposer(
     const accepted = [];
     for (const file of files) {
       if (!file) continue;
-      const isImage = await isChatImageFile(file);
-      accepted.push({
-        id: makeQueueId(),
-        file,
-        kind: isImage ? 'image' : 'file',
-        previewUrl: isImage ? URL.createObjectURL(file) : null,
-      });
+      try {
+        const prepared = await prepareChatComposerAttachment(file);
+        accepted.push({
+          id: makeQueueId(),
+          file: prepared.file,
+          kind: prepared.kind,
+          previewUrl: prepared.previewUrl,
+        });
+      } catch (error) {
+        console.warn('Chat composer enqueue failed:', error);
+        accepted.push({
+          id: makeQueueId(),
+          file,
+          kind: 'file',
+          previewUrl: null,
+        });
+      }
     }
     if (!accepted.length) return;
     setImageQueue((prev) => [...prev, ...accepted]);

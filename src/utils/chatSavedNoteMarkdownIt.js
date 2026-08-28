@@ -7,6 +7,7 @@ const CHAT_LINK_LABEL_RE = /채팅으로\s*이동|채팅에서\s*저장된\s*노
 /**
  * Escape text for use inside HTML attribute values and text nodes.
  * @param {unknown} value
+ * @returns {string}
  */
 function escapeHtml(value) {
   return String(value ?? '')
@@ -28,6 +29,7 @@ function metaFromHtmlContent(content) {
 
 /**
  * @param {import('markdown-it/index.js').Token} token
+ * @returns {boolean}
  */
 function isChatCommentHtmlToken(token) {
   if (!token) return false;
@@ -39,6 +41,7 @@ function isChatCommentHtmlToken(token) {
  * Find end index (exclusive) of a blockquote starting at `start`.
  * @param {import('markdown-it/index.js').Token[]} tokens
  * @param {number} start
+ * @returns {number}
  */
 function blockquoteEndExclusive(tokens, start) {
   if (tokens[start]?.type !== 'blockquote_open') return -1;
@@ -57,6 +60,7 @@ function blockquoteEndExclusive(tokens, start) {
 /**
  * Whether inline children are only a single chat deep-link (optional whitespace).
  * @param {import('markdown-it/index.js').Token | undefined} inline
+ * @returns {boolean}
  */
 function isChatLinkInline(inline) {
   if (!inline || inline.type !== 'inline' || !inline.children?.length) return false;
@@ -94,6 +98,7 @@ function isChatLinkInline(inline) {
  * Find end index (exclusive) of a paragraph that is only a chat link.
  * @param {import('markdown-it/index.js').Token[]} tokens
  * @param {number} start
+ * @returns {number}
  */
 function chatLinkParagraphEndExclusive(tokens, start) {
   if (tokens[start]?.type !== 'paragraph_open') return -1;
@@ -106,6 +111,7 @@ function chatLinkParagraphEndExclusive(tokens, start) {
 /**
  * Build preview card HTML from note meta.
  * @param {{ id: string, at: string, group: string, href: string, notePath: string }} meta
+ * @returns {string}
  */
 export function buildChatSavedNoteCardHtml(meta) {
   const href = escapeHtml(meta.href || '/chat');
@@ -127,6 +133,7 @@ export function buildChatSavedNoteCardHtml(meta) {
  * Source markdown keeps comment / quote / link; preview shows a single modern card.
  *
  * @param {import('markdown-it')} md
+ * @returns {void}
  */
 export function chatSavedNotePlugin(md) {
   // Must run after `inline` so link tokens exist inside paragraph inlines.

@@ -363,7 +363,7 @@ export default function LlmAssistModal({
     setResult('');
     setLoading(true);
     try {
-      const text = refreshSelection();
+      const text = selectedText;
       if (!selectedProfile) {
         throw new Error('설정에서 AI 제공자를 추가한 뒤 선택하세요.');
       }
@@ -502,7 +502,7 @@ export default function LlmAssistModal({
         setLoading(false);
       }
     }
-  }, [refreshSelection, attachedImages, selectedProfile, model, instruction, systemPrompt, requestOptions]);
+  }, [selectedText, attachedImages, selectedProfile, model, instruction, systemPrompt, requestOptions]);
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
@@ -649,6 +649,9 @@ export default function LlmAssistModal({
       switch (action) {
         case 'refresh-selection':
           refreshSelection();
+          break;
+        case 'set-selected-text':
+          setSelectedText(typeof payload.value === 'string' ? payload.value : '');
           break;
         case 'run':
           await handleRun();
@@ -852,6 +855,7 @@ export default function LlmAssistModal({
     model,
     onModelChange: handleModelChange,
     selectedText,
+    onSelectedTextChange: setSelectedText,
     onRefreshSelection: refreshSelection,
     attachedImages,
     onAddImages: handleAddImages,

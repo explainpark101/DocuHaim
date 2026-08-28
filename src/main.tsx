@@ -5,6 +5,7 @@ import '@/index.css'
 import '@/config/mdEditorConfig'
 import App from '@/App'
 import { ActivityIndicatorProvider } from '@/contexts/ActivityIndicatorContext'
+import { FileUploadQueueProvider } from '@/contexts/FileUploadQueueContext'
 import { AlertModalProvider } from '@/contexts/AlertModalContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/contexts/ToastContext'
@@ -69,6 +70,7 @@ function bailIfSpaShellOnDocsPath(): boolean {
 function AppShell() {
   return (
     <ActivityIndicatorProvider>
+      <FileUploadQueueProvider>
       <AlertModalProvider>
         <ToastProvider>
           <AuthProvider>
@@ -76,6 +78,7 @@ function AppShell() {
           </AuthProvider>
         </ToastProvider>
       </AlertModalProvider>
+      </FileUploadQueueProvider>
     </ActivityIndicatorProvider>
   )
 }

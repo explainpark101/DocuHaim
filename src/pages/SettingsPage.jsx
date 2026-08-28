@@ -64,6 +64,7 @@ import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
 import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
 import LlamaCppSettings from '@/components/settings/LlamaCppSettings';
+import TauriDownloadSettings from '@/components/settings/TauriDownloadSettings';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -1803,6 +1804,7 @@ export default function SettingsPage({
               open={groupOpen.app !== false}
               onOpenChange={(open) => setGroupOpenById('app', open)}
             >
+        <TauriDownloadSettings />
         {/* App update */}
         <div
           id="settings-app-update"
