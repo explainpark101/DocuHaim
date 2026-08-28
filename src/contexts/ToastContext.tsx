@@ -11,6 +11,7 @@ import {
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Check, ClipboardCheck, Link2, Loader2 } from 'lucide-react';
 import { bindCopyTextToast } from '@/utils/copyText';
+import { bindTauriDownloadToast } from '@/utils/tauriBlobDownload';
 
 export type ToastIcon = 'check' | 'copy' | 'link' | 'loading';
 
@@ -110,7 +111,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     bindCopyTextToast(showToast);
-    return () => bindCopyTextToast(null);
+    bindTauriDownloadToast(showToast);
+    return () => {
+      bindCopyTextToast(null);
+      bindTauriDownloadToast(null);
+    };
   }, [showToast]);
 
   useEffect(() => {

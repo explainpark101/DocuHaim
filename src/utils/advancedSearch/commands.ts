@@ -31,6 +31,7 @@ import {
   type WorkspaceTabsAutoSaveCommandId,
   type FootnoteDisplayModeCommandId,
 } from '@/utils/advancedSearch/settingsToggles';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
   FOOTNOTE_INSERT_COMMAND_ID,
   isFootnoteRelatedCommandId,
@@ -992,7 +993,12 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
 
 /** Settings toggle switches: one enable OR disable command per option. */
 function getSettingsToggleCommands(): AppCommand[] {
-  return SETTINGS_TOGGLE_DEFS.map((def) => {
+  return SETTINGS_TOGGLE_DEFS.filter((def) => {
+    if (def.id === 'settings-tauri-download-save-dialog') {
+      return isTauriDesktopPlatform();
+    }
+    return true;
+  }).map((def) => {
     const on = def.load();
     return {
       id: def.id,

@@ -59,6 +59,10 @@ import {
   loadOrphanImageAutoDeleteEnabled,
   saveOrphanImageAutoDeleteEnabled,
 } from '@/utils/orphanImageCleanupSettings';
+import {
+  loadTauriDownloadSaveDialogEnabled,
+  saveTauriDownloadSaveDialogEnabled,
+} from '@/utils/tauriDownloadSettings';
 import { advancedSearchEngine } from '@/utils/advancedSearch/engine';
 
 export type SettingsToggleId =
@@ -77,7 +81,8 @@ export type SettingsToggleId =
   | 'settings-cover-object-snap'
   | 'settings-cover-text-outline'
   | 'settings-cover-place-preview'
-  | 'settings-orphan-image-auto';
+  | 'settings-orphan-image-auto'
+  | 'settings-tauri-download-save-dialog';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -284,6 +289,15 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['cover', '표지', 'place', 'preview', '미리보기', '삽입', '고스트'],
     load: loadCoverPlacePreviewEnabled,
     save: saveCoverPlacePreviewEnabled,
+  },
+  {
+    id: 'settings-tauri-download-save-dialog',
+    enableTitle: '다운로드 위치 사전 확인 켜기',
+    disableTitle: '다운로드 위치 사전 확인 끄기',
+    description: 'Tauri 데스크톱에서 파일 저장 대화상자 표시',
+    keywords: ['download', '다운로드', 'save', '저장', 'tauri', 'desktop', '데스크톱', 'dialog'],
+    load: loadTauriDownloadSaveDialogEnabled,
+    save: saveTauriDownloadSaveDialogEnabled,
   },
 ] as const;
 

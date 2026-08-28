@@ -8,7 +8,7 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from 'react';
-import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
+import { triggerAppBlobDownload } from '@/utils/tauriBlobDownload';
 
 export type ModalsOwnedApi = {
   showRestoreLocalFolderModal: boolean;
@@ -64,7 +64,7 @@ export type ModalsOwnedApi = {
   setDownloadResultModal: (v: any) => void;
   closeDownloadResultModal: () => void;
   openUnsupportedFolderDownloadModal: () => void;
-  triggerBlobDownload: (blob: Blob, fileName: string) => void;
+  triggerBlobDownload: (blob: Blob, fileName: string) => void | Promise<boolean>;
   addToNoteSelectPath: any;
   setAddToNoteSelectPath: (v: any) => void;
   webauthnPRFSupported: boolean;
@@ -130,12 +130,7 @@ export function AppModalsStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const triggerBlobDownload = useCallback((blob: Blob, fileName: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = normalizeUnicodeNfc(String(fileName || 'download'));
-    a.click();
-    URL.revokeObjectURL(url);
+    return triggerAppBlobDownload(blob, fileName);
   }, []);
 
   const value = useMemo(

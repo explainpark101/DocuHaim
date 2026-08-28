@@ -22,6 +22,14 @@ import { resolveNewFileDefaultParentPath } from '@/utils/newFileDefaultParentPat
 import { allocateUniqueCopyName, getTreeChildNames, treeChildNameTaken } from '@/utils/treeCopy';
 import { resolveUploadDestFileName } from '@/utils/uploadNameConflict';
 import { normalizePathToNfc, normalizeUnicodeNfc } from '@/utils/unicodeNfc';
+import { triggerAppBlobDownload, notifyTauriDownloadComplete } from '@/utils/tauriBlobDownload';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import {
+  ensureTauriDir,
+  pickTauriExportDirectory,
+  writeBytesToTauriRelativePath,
+} from '@/utils/tauriFastDownload';
 import { resolveTreeDestName } from '@/utils/treeNameConflict';
 import { buildFileComparePayload } from '@/utils/buildFileComparePayload';
 import {
@@ -199,12 +207,7 @@ export function useTreeOpsDomain() {
   const expandPaths = (type, paths) => expandPathsRef.current?.(type, paths);
 
   const triggerBlobDownload = useCallback((blob, fileName) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = normalizeUnicodeNfc(String(fileName || 'download'));
-    a.click();
-    URL.revokeObjectURL(url);
+    return triggerAppBlobDownload(blob, fileName);
   }, []);
 
   const isAndroidBrowser = useCallback(() => {
@@ -676,7 +679,11 @@ export function useTreeOpsDomain() {
     const downloadedName = normalizeUnicodeNfc(
       node?.name || node?.path?.split('/').filter(Boolean).pop() || (node?.type === 'folder' ? '폴더' : '파일'),
     );
-    const showDownloadCompleteModal = (title, message) => {
+    const showDownloadCompleteModal = (title, message, fileLabel = downloadedName) => {
+      if (isDesktopApp()) {
+        notifyTauriDownloadComplete(fileLabel);
+        return;
+      }
       setDownloadResultModal({
         isOpen: true,
         title,
@@ -685,7 +692,11 @@ export function useTreeOpsDomain() {
     };
 
     if (node.type === 'folder') {
-      const shouldUseZipFallback = isAndroidBrowser() || !('showDirectoryPicker' in window);
+      const shouldUseZipFallback =
+        isAndroidBrowser() ||
+        (!('showDirectoryPicker' in window) && !isTauriDesktopPlatform());
+      const shouldUseTauriFolderDownload =
+        isTauriDesktopPlatform() && !('showDirectoryPicker' in window);
       const ensureDirReadWritePermission = async (dirHandle) => {
         const ok = await ensureDirectoryReadWritePermission(dirHandle);
         if (!ok) {
@@ -703,6 +714,61 @@ export function useTreeOpsDomain() {
         try {
           if (shouldUseZipFallback) {
             await downloadFolderAsZip(storageType, node, folderName, indicatorId);
+          } else if (shouldUseTauriFolderDownload) {
+            const exportRoot = await pickTauriExportDirectory('폴더 다운로드 위치 선택');
+            if (!exportRoot) return;
+            const { join } = await import('@tauri-apps/api/path');
+            const targetRoot = normalizeUnicodeNfc(await join(exportRoot, folderName));
+            await ensureTauriDir(targetRoot);
+
+            if (storageType === 's3') {
+              const client = getS3Client();
+              if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+              const bucket = s3Creds.bucket;
+              const prefix = node.path || '';
+              const contents = await listObjectsV2(client, bucket, prefix);
+              const fileObjects = (contents || []).filter((item) => item.Key && !item.Key.endsWith('/'));
+              const totalFiles = fileObjects.length;
+              if (totalFiles === 0) {
+                setOperationStatus(`다운로드 완료: ${folderName} (빈 폴더)`);
+                showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}`);
+                return;
+              }
+
+              let completed = 0;
+              for (const { Key } of fileObjects) {
+                const relativeKey = prefix ? Key.slice(prefix.length) : Key;
+                if (!relativeKey) continue;
+                const { body } = await getObjectBody(client, bucket, Key);
+                const bytes = body instanceof Uint8Array ? body : new Uint8Array(body);
+                await writeBytesToTauriRelativePath(targetRoot, relativeKey, bytes);
+                completed += 1;
+                updateIndicator(indicatorId, {
+                  progress: Math.min(100, Math.round((completed / totalFiles) * 100)),
+                  detail: `${completed}/${totalFiles}`,
+                });
+              }
+            } else if (storageType === 'local') {
+              const sourceDirHandle = node.handle || (node.path === '' ? localRootHandle : null);
+              if (!sourceDirHandle) throw new Error('원본 폴더 핸들을 찾을 수 없습니다.');
+
+              const copyLocalDirRecursive = async (srcDirHandle, basePath = '') => {
+                for await (const entry of srcDirHandle.values()) {
+                  const nfcName = normalizeUnicodeNfc(entry.name);
+                  if (entry.kind === 'file') {
+                    const file = await entry.getFile();
+                    const relativePath = `${basePath}${nfcName}`;
+                    const bytes = new Uint8Array(await file.arrayBuffer());
+                    await writeBytesToTauriRelativePath(targetRoot, relativePath, bytes);
+                  } else if (entry.kind === 'directory') {
+                    await copyLocalDirRecursive(entry, `${basePath}${nfcName}/`);
+                  }
+                }
+              };
+
+              await copyLocalDirRecursive(sourceDirHandle);
+              updateIndicator(indicatorId, { progress: 100 });
+            }
           } else {
             const selectedDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
             await ensureDirReadWritePermission(selectedDirHandle);
@@ -778,7 +844,13 @@ export function useTreeOpsDomain() {
           const fallbackNotice = shouldUseZipFallback
             ? '\n\n브라우저 제한으로 폴더를 ZIP 파일로 대체 다운로드했습니다.'
             : '';
-          showDownloadCompleteModal('다운로드 완료', `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}${fallbackNotice}`);
+          if (!(shouldUseZipFallback && isDesktopApp())) {
+            showDownloadCompleteModal(
+              '다운로드 완료',
+              `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}${fallbackNotice}`,
+              folderName,
+            );
+          }
         } finally {
           removeIndicator(indicatorId);
         }
@@ -796,10 +868,13 @@ export function useTreeOpsDomain() {
             try {
               await downloadFolderAsZip(storageType, node, folderName, indicatorId);
               setOperationStatus(`폴더 다운로드 완료: ${folderName}`);
-              showDownloadCompleteModal(
-                '다운로드 완료',
-                `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}\n\n브라우저 제한으로 폴더를 ZIP 파일로 대체 다운로드했습니다.`
-              );
+              if (!isDesktopApp()) {
+                showDownloadCompleteModal(
+                  '다운로드 완료',
+                  `폴더 다운로드가 완료되었습니다.\n대상: ${folderName}\n\n브라우저 제한으로 폴더를 ZIP 파일로 대체 다운로드했습니다.`,
+                  folderName,
+                );
+              }
             } finally {
               removeIndicator(indicatorId);
             }
@@ -825,34 +900,60 @@ export function useTreeOpsDomain() {
         if (bundled) {
           const zipName = zipFileNameForMarkdown(fileName);
           setOperationStatus(`다운로드: ${zipName}`);
-          showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${zipName}`);
+          if (!isDesktopApp()) {
+            showDownloadCompleteModal(
+              '다운로드 완료',
+              `파일 다운로드가 완료되었습니다.\n대상: ${zipName}`,
+              zipName,
+            );
+          }
           return;
         }
-        triggerBlobDownload(new Blob([text], { type: 'text/markdown;charset=utf-8' }), fileName);
+        await triggerBlobDownload(new Blob([text], { type: 'text/markdown;charset=utf-8' }), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
-        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
+        if (!isDesktopApp()) {
+          showDownloadCompleteModal(
+            '다운로드 완료',
+            `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`,
+          );
+        }
         return;
       }
 
       if (storageType === 's3') {
         const body = await readBackendBytesRef.current?.(storageType, node.path);
-        triggerBlobDownload(new Blob([body]), fileName);
+        await triggerBlobDownload(new Blob([body]), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
-        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
+        if (!isDesktopApp()) {
+          showDownloadCompleteModal(
+            '다운로드 완료',
+            `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`,
+          );
+        }
         return;
       }
       if (storageType === 'local' && node.handle) {
         const file = await node.handle.getFile();
-        triggerBlobDownload(file, normalizeUnicodeNfc(node.name || file.name));
+        await triggerBlobDownload(file, normalizeUnicodeNfc(node.name || file.name));
         setOperationStatus(`다운로드: ${downloadedName}`);
-        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
+        if (!isDesktopApp()) {
+          showDownloadCompleteModal(
+            '다운로드 완료',
+            `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`,
+          );
+        }
         return;
       }
       if (storageType === 'webdav') {
         const body = await readBackendBytesRef.current?.(storageType, node.path);
-        triggerBlobDownload(new Blob([body]), fileName);
+        await triggerBlobDownload(new Blob([body]), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
-        showDownloadCompleteModal('다운로드 완료', `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`);
+        if (!isDesktopApp()) {
+          showDownloadCompleteModal(
+            '다운로드 완료',
+            `파일 다운로드가 완료되었습니다.\n대상: ${downloadedName}`,
+          );
+        }
       }
     } catch (e) {
       console.error('파일 다운로드 실패:', e);

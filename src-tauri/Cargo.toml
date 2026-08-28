@@ -1,6 +1,6 @@
 [package]
 name = "docuhaim"
-version = "1.8.0"
+version = "1.8.1"
 description = "DocuHaim desktop shell"
 authors = ["Jaehyung Park"]
 edition = "2021"
@@ -26,6 +26,7 @@ tauri-plugin-stronghold = "2"
 rust-argon2 = "2"
 getrandom = "0.3"
 tauri-plugin-os = "2"
+tauri-plugin-upload = "2"
 
 [profile.dev.package.scrypt]
 opt-level = 3

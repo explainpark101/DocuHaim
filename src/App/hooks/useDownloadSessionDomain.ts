@@ -42,6 +42,16 @@ import {
 } from '@/utils/sessionNoteImport';
 import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
 import { copyText } from '@/utils/copyText';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { notifyTauriDownloadComplete } from '@/utils/tauriBlobDownload';
+import {
+  allocateUniqueTauriEntryName,
+  ensureTauriDir,
+  pickTauriExportDirectory,
+  writeBytesToTauriPath,
+  writeMarkdownImageBundleToTauriDirectory,
+  writeTextToTauriPath,
+} from '@/utils/tauriFastDownload';
 
 /**
  * useDownloadSessionDomain: context-owned domain handlers.
@@ -663,16 +673,39 @@ export function useDownloadSessionDomain() {
       return;
     }
     try {
-      if (!('showDirectoryPicker' in window)) {
+      const useTauriDirectory =
+        !('showDirectoryPicker' in window) && isTauriDesktopPlatform();
+      let dirHandle: FileSystemDirectoryHandle | null = null;
+      let tauriDirPath: string | null = null;
+
+      if (useTauriDirectory) {
+        tauriDirPath = await pickTauriExportDirectory('보낼 폴더 선택');
+        if (!tauriDirPath) {
+          setShowDownloadMethodModal(false);
+          return;
+        }
+      } else if (!('showDirectoryPicker' in window)) {
         openUnsupportedFolderDownloadModal();
         setShowDownloadMethodModal(false);
         return;
+      } else {
+        dirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+        const canWrite = await ensureDirectoryReadWritePermission(dirHandle);
+        if (!canWrite) {
+          throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
+        }
       }
-      const dirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-      const canWrite = await ensureDirectoryReadWritePermission(dirHandle);
-      if (!canWrite) {
-        throw new Error('선택한 폴더에 쓰기 권한이 필요합니다.');
-      }
+
+      const joinTauriPath = async (base: string, name: string) => {
+        const { join } = await import('@tauri-apps/api/path');
+        return join(base, name);
+      };
+
+      const notifyTauriExportComplete = (label: string) => {
+        if (isTauriDesktopPlatform()) {
+          notifyTauriDownloadComplete(label);
+        }
+      };
 
       if (storageType === SESSION_STORAGE_TYPE) {
         const fileName =
@@ -688,8 +721,17 @@ export function useDownloadSessionDomain() {
           if (!bundled) throw new Error('세션 문서를 준비하지 못했습니다.');
 
           const writeSingleMarkdownFile = async (content: any) => {
-            const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
-            const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
+            if (tauriDirPath) {
+              const uniqueFileName = await allocateUniqueTauriEntryName(tauriDirPath, fileName);
+              await writeTextToTauriPath(
+                await joinTauriPath(tauriDirPath, uniqueFileName),
+                String(content ?? ''),
+              );
+              notifyTauriExportComplete(uniqueFileName);
+              return;
+            }
+            const uniqueFileName = await allocateUniqueFileSystemName(dirHandle!, fileName);
+            const fileHandle = await dirHandle!.getFileHandle(uniqueFileName, { create: true });
             const writable = await fileHandle.createWritable();
             try {
               await writable.write(content);
@@ -705,13 +747,29 @@ export function useDownloadSessionDomain() {
             await writeSingleMarkdownFile(markdown);
             setDownloadProgress(100);
             setDownloadComplete(true);
-          } else {
-            const bundleDirName = await allocateUniqueFileSystemName(
-              dirHandle,
+          } else if (tauriDirPath) {
+            const bundleDirName = await allocateUniqueTauriEntryName(
+              tauriDirPath,
               markdownExportBundleDirectoryName(fileName),
               { isFolder: true },
             );
-            const bundleDirHandle = await dirHandle.getDirectoryHandle(bundleDirName, {
+            const bundleDirPath = await joinTauriPath(tauriDirPath, bundleDirName);
+            await writeMarkdownImageBundleToTauriDirectory(
+              bundleDirPath,
+              fileName,
+              bundled.markdown,
+              bundled.images,
+              (percent) => setDownloadProgress(percent),
+            );
+            notifyTauriExportComplete(bundleDirName);
+            setDownloadComplete(true);
+          } else {
+            const bundleDirName = await allocateUniqueFileSystemName(
+              dirHandle!,
+              markdownExportBundleDirectoryName(fileName),
+              { isFolder: true },
+            );
+            const bundleDirHandle = await dirHandle!.getDirectoryHandle(bundleDirName, {
               create: true,
             });
             await writeMarkdownImageBundleToDirectory(
@@ -730,9 +788,36 @@ export function useDownloadSessionDomain() {
 
         const flushed = flushSessionEditorToWorkspaceRef.current?.() ?? sessionWorkspaceRef.current;
         if (!flushed) throw new Error('다운로드 세션이 없습니다.');
-        await writeSessionWorkspaceToDirectory(dirHandle, flushed, (percent: any) =>
-          setDownloadProgress(percent),
-        );
+        if (tauriDirPath) {
+          const records = Object.values(flushed?.files || {}) as any[];
+          const total = Math.max(records.length, 1);
+          let done = 0;
+          for (const record of records) {
+            if (!record) continue;
+            const parts = String(record.path || record.name || 'file')
+              .replace(/\\/g, '/')
+              .split('/')
+              .filter(Boolean);
+            const leafName = parts.pop() || 'file';
+            let dirPath = tauriDirPath;
+            for (const part of parts) {
+              dirPath = await joinTauriPath(dirPath, part);
+              await ensureTauriDir(dirPath);
+            }
+            const uniqueName = await allocateUniqueTauriEntryName(dirPath, leafName);
+            await writeBytesToTauriPath(
+              await joinTauriPath(dirPath, uniqueName),
+              record.bytes,
+            );
+            done += 1;
+            setDownloadProgress(Math.min(100, Math.round((done / total) * 100)));
+          }
+          notifyTauriExportComplete(fileName);
+        } else {
+          await writeSessionWorkspaceToDirectory(dirHandle, flushed, (percent: any) =>
+            setDownloadProgress(percent),
+          );
+        }
         setDownloadComplete(true);
         return;
       }
@@ -754,8 +839,17 @@ export function useDownloadSessionDomain() {
         const plan = planMarkdownImageExport(markdown, notePath, { syntax: effectiveSyntax as any });
 
         const writeSingleMarkdownFile = async (content: any) => {
-          const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
-          const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
+          if (tauriDirPath) {
+            const uniqueFileName = await allocateUniqueTauriEntryName(tauriDirPath, fileName);
+            await writeTextToTauriPath(
+              await joinTauriPath(tauriDirPath, uniqueFileName),
+              String(content ?? ''),
+            );
+            notifyTauriExportComplete(uniqueFileName);
+            return;
+          }
+          const uniqueFileName = await allocateUniqueFileSystemName(dirHandle!, fileName);
+          const fileHandle = await dirHandle!.getFileHandle(uniqueFileName, { create: true });
           const writable = await fileHandle.createWritable();
           try {
             await writable.write(content);
@@ -787,12 +881,42 @@ export function useDownloadSessionDomain() {
         }
 
         // Split files: nest under a uniquely named folder next to .pictures/.
+        if (tauriDirPath) {
+          const bundleDirName = await allocateUniqueTauriEntryName(
+            tauriDirPath,
+            markdownExportBundleDirectoryName(fileName),
+            { isFolder: true },
+          );
+          const bundleDirPath = await joinTauriPath(tauriDirPath, bundleDirName);
+          const { entries, missing } = await collectMarkdownExportImageBytes(
+            plan.images,
+            (path) => readBackendBytes(storageType, path),
+            (completed, total) => {
+              setDownloadProgress(Math.min(90, Math.round((completed / Math.max(total, 1)) * 90)));
+            },
+          );
+          await writeMarkdownImageBundleToTauriDirectory(
+            bundleDirPath,
+            fileName,
+            plan.markdown,
+            entries,
+            (percent) => setDownloadProgress(90 + Math.round(percent * 0.1)),
+          );
+          const missingMessage = formatMissingExportImagesMessage(missing);
+          if (missingMessage) alert(missingMessage);
+          notifyTauriExportComplete(bundleDirName);
+          setDownloadComplete(true);
+          return;
+        }
+
         const bundleDirName = await allocateUniqueFileSystemName(
-          dirHandle,
+          dirHandle!,
           markdownExportBundleDirectoryName(fileName),
           { isFolder: true },
         );
-        const bundleDirHandle = await dirHandle.getDirectoryHandle(bundleDirName, { create: true });
+        const bundleDirHandle = await dirHandle!.getDirectoryHandle(bundleDirName, {
+          create: true,
+        });
         const { entries, missing } = await collectMarkdownExportImageBytes(
           plan.images,
           (path) => readBackendBytes(storageType, path),
@@ -813,8 +937,18 @@ export function useDownloadSessionDomain() {
         return;
       }
 
-      const uniqueFileName = await allocateUniqueFileSystemName(dirHandle, fileName);
-      const fileHandle = await dirHandle.getFileHandle(uniqueFileName, { create: true });
+      if (tauriDirPath) {
+        const uniqueFileName = await allocateUniqueTauriEntryName(tauriDirPath, fileName);
+        const body = await readBackendBytes(storageType, notePath);
+        await writeBytesToTauriPath(await joinTauriPath(tauriDirPath, uniqueFileName), body);
+        setDownloadProgress(100);
+        notifyTauriExportComplete(uniqueFileName);
+        setDownloadComplete(true);
+        return;
+      }
+
+      const uniqueFileName = await allocateUniqueFileSystemName(dirHandle!, fileName);
+      const fileHandle = await dirHandle!.getFileHandle(uniqueFileName, { create: true });
       const writable = await fileHandle.createWritable();
 
       if (storageType === 's3') {

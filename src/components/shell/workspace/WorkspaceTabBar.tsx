@@ -1,11 +1,13 @@
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   closestCenter,
-  useDndContext,
   useSensor,
   useSensors,
+  type DragCancelEvent,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -14,12 +16,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Transform } from '@dnd-kit/utilities';
-import {
-  LayoutGroup,
-  motion as Motion,
-  useReducedMotion,
-  type MotionStyle,
-} from 'motion/react';
 import {
   IconFile,
   IconFileCode,
@@ -35,7 +31,9 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useState,
   type ComponentType,
+  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type SVGProps,
@@ -52,13 +50,10 @@ import { vibrateLongPressAction } from '@/utils/hapticFeedback';
 import { PRESSABLE_CARD_MENU_MS } from '@/components/chatWithMyself/usePressableCardMenu';
 import { restrictToHorizontalAxis } from '@/utils/workspace/restrictToHorizontalAxis';
 
-const TAB_LAYOUT_TRANSITION = {
-  layout: { type: 'spring' as const, stiffness: 520, damping: 42, mass: 0.7 },
-};
-
+/** Horizontal-only translate; never scale tabs during sortable shifts. */
 function horizontalSortableTransform(transform: Transform | null): Transform | null {
   if (!transform) return null;
-  return { ...transform, y: 0, scaleY: 1 };
+  return { ...transform, y: 0, scaleX: 1, scaleY: 1 };
 }
 
 type WorkspaceTabBarProps = {
@@ -115,7 +110,24 @@ function fileTabIcon(tab: FileWorkspaceTab): IconComp {
 const tooltipContentClass =
   'z-100001 max-w-[min(92vw,360px)] break-all rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong';
 
-type SortableTabProps = {
+function workspaceTabRowClassName(
+  active: boolean,
+  variant: 'inline' | 'titlebar',
+  overlay = false,
+): string {
+  const tabWidthClass =
+    variant === 'titlebar' ? 'h-full max-w-[18rem] min-w-[7rem]' : 'max-w-56 min-w-0';
+  const tabPaddingClass = variant === 'titlebar' ? 'px-2.5' : 'px-2';
+  return `group relative flex ${tabWidthClass} shrink-0 items-center gap-1 rounded-t-md border border-b-0 ${tabPaddingClass} text-xs transition-colors ${
+    overlay ? 'cursor-grabbing shadow-md ' : ''
+  }${
+    active
+      ? 'border-gray-200 bg-white text-gray-900 dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong'
+      : 'border-transparent text-gray-600 hover:bg-white/70 dark:text-odp-muted dark:hover:bg-odp-focusBg/60'
+  }`;
+}
+
+type WorkspaceTabRowProps = {
   tab: WorkspaceTab;
   active: boolean;
   saving: boolean;
@@ -124,9 +136,14 @@ type SortableTabProps = {
   onFileTabContextMenu?: WorkspaceTabBarProps['onFileTabContextMenu'];
   mobileContextMenu: boolean;
   variant: 'inline' | 'titlebar';
+  /** DragOverlay clone — no sortable listeners or context-menu gestures. */
+  overlay?: boolean;
+  dragHandleProps?: Record<string, unknown>;
+  innerRef?: (node: HTMLElement | null) => void;
+  style?: CSSProperties;
 };
 
-function SortableWorkspaceTab({
+function WorkspaceTabRow({
   tab,
   active,
   saving,
@@ -135,7 +152,11 @@ function SortableWorkspaceTab({
   onFileTabContextMenu,
   mobileContextMenu,
   variant,
-}: SortableTabProps) {
+  overlay = false,
+  dragHandleProps,
+  innerRef,
+  style,
+}: WorkspaceTabRowProps) {
   const dirty = isFileTab(tab) && isFileTabDirty(tab);
   const loading = isFileTab(tab) && tab.currentFile?.viewer === 'loading';
   const title = tabDisplayTitle(tab);
@@ -144,31 +165,15 @@ function SortableWorkspaceTab({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressOpenedRef = useRef(false);
   const pressStartRef = useRef<{ x: number; y: number } | null>(null);
-  const reduceMotion = useReducedMotion();
-  const { active: draggingTabId } = useDndContext();
-  const sortableDragActive = draggingTabId != null;
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: tab.id,
-  });
-
-  const lockedTransform = horizontalSortableTransform(transform);
-  const layoutEnabled = !reduceMotion && !isDragging && !sortableDragActive;
-
-  const style: MotionStyle = {
-    opacity: isDragging ? 0.85 : 1,
-    ...(lockedTransform ? { transform: CSS.Transform.toString(lockedTransform) } : {}),
-    ...(isDragging && transition ? { transition } : {}),
-    ...(isDragging ? { zIndex: 2 } : {}),
-  };
-
-  const tabWidthClass =
-    variant === 'titlebar' ? 'h-full max-w-[18rem] min-w-[7rem]' : 'max-w-56 min-w-0';
-  const tabPaddingClass = variant === 'titlebar' ? 'px-2.5' : 'px-2';
   const activateButtonClass =
     variant === 'titlebar'
-      ? 'flex h-full min-w-0 flex-1 cursor-grab items-center gap-1.5 text-left active:cursor-grabbing'
-      : 'flex min-w-0 flex-1 cursor-grab items-center gap-1.5 py-1.5 text-left active:cursor-grabbing';
+      ? `flex h-full min-w-0 flex-1 items-center gap-1.5 text-left ${
+          overlay ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing'
+        }`
+      : `flex min-w-0 flex-1 items-center gap-1.5 py-1.5 text-left ${
+          overlay ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing'
+        }`;
 
   const clearLongPress = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -187,13 +192,14 @@ function SortableWorkspaceTab({
   );
 
   const handleMiddleClose = (e: ReactMouseEvent) => {
-    if (e.button !== 1) return;
+    if (overlay || e.button !== 1) return;
     e.preventDefault();
     e.stopPropagation();
     onClose(tab.id);
   };
 
   const handleContextMenu = (e: ReactMouseEvent) => {
+    if (overlay) return;
     // Suppress the browser menu on workspace tabs.
     e.preventDefault();
     e.stopPropagation();
@@ -202,7 +208,7 @@ function SortableWorkspaceTab({
   };
 
   const handlePointerDown = (e: ReactPointerEvent) => {
-    if (!mobileContextMenu || !isFileTab(tab) || !onFileTabContextMenu) return;
+    if (overlay || !mobileContextMenu || !isFileTab(tab) || !onFileTabContextMenu) return;
     if (e.pointerType === 'mouse') return;
     if (e.button !== 0) return;
     longPressOpenedRef.current = false;
@@ -233,14 +239,14 @@ function SortableWorkspaceTab({
       type="button"
       className={activateButtonClass}
       onClick={() => {
+        if (overlay) return;
         if (longPressOpenedRef.current) {
           longPressOpenedRef.current = false;
           return;
         }
         onActivate(tab.id);
       }}
-      {...attributes}
-      {...listeners}
+      {...(overlay ? {} : dragHandleProps)}
     >
       {tab.kind === 'chat' ? (
         <MessageSquare size={13} className="shrink-0 opacity-80" aria-hidden />
@@ -266,14 +272,13 @@ function SortableWorkspaceTab({
   );
 
   return (
-    <Motion.div
-      ref={setNodeRef}
-      layout={layoutEnabled ? 'position' : false}
-      transition={TAB_LAYOUT_TRANSITION}
+    <div
+      ref={innerRef}
       style={style}
       role="tab"
       aria-selected={active}
       onMouseDown={(e) => {
+        if (overlay) return;
         // Prevent middle-click auto-scroll / paste quirks.
         if (e.button === 1) e.preventDefault();
       }}
@@ -283,11 +288,7 @@ function SortableWorkspaceTab({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUpOrCancel}
       onPointerCancel={handlePointerUpOrCancel}
-      className={`group relative flex ${tabWidthClass} shrink-0 items-center gap-1 rounded-t-md border border-b-0 ${tabPaddingClass} text-xs transition-colors ${
-        active
-          ? 'border-gray-200 bg-white text-gray-900 dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong'
-          : 'border-transparent text-gray-600 hover:bg-white/70 dark:text-odp-muted dark:hover:bg-odp-focusBg/60'
-      }`}
+      className={workspaceTabRowClassName(active, variant, overlay)}
     >
       {dirPath != null ? (
         <Tooltip.Root>
@@ -312,6 +313,7 @@ function SortableWorkspaceTab({
             }`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
+              if (overlay) return;
               e.stopPropagation();
               onClose(tab.id);
             }}
@@ -326,9 +328,67 @@ function SortableWorkspaceTab({
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>
-    </Motion.div>
+    </div>
   );
 }
+
+type SortableTabProps = {
+  tab: WorkspaceTab;
+  active: boolean;
+  saving: boolean;
+  onActivate: (id: string) => void;
+  onClose: (id: string) => void;
+  onFileTabContextMenu?: WorkspaceTabBarProps['onFileTabContextMenu'];
+  mobileContextMenu: boolean;
+  variant: 'inline' | 'titlebar';
+};
+
+function SortableWorkspaceTab({
+  tab,
+  active,
+  saving,
+  onActivate,
+  onClose,
+  onFileTabContextMenu,
+  mobileContextMenu,
+  variant,
+}: SortableTabProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: tab.id,
+    animateLayoutChanges: () => false,
+  });
+
+  const lockedTransform = horizontalSortableTransform(transform);
+  const style: CSSProperties = isDragging
+    ? { opacity: 0 }
+    : lockedTransform
+      ? {
+          transform: CSS.Transform.toString(lockedTransform),
+          ...(transition ? { transition } : {}),
+        }
+      : {};
+
+  return (
+    <WorkspaceTabRow
+      tab={tab}
+      active={active}
+      saving={saving}
+      onActivate={onActivate}
+      onClose={onClose}
+      onFileTabContextMenu={onFileTabContextMenu}
+      mobileContextMenu={mobileContextMenu}
+      variant={variant}
+      innerRef={setNodeRef}
+      style={style}
+      dragHandleProps={{ ...attributes, ...listeners }}
+    />
+  );
+}
+
+type ActiveDragState = {
+  tab: WorkspaceTab;
+  size: { width: number; height: number } | null;
+};
 
 export default function WorkspaceTabBar({
   tabs,
@@ -350,10 +410,24 @@ export default function WorkspaceTabBar({
   const sortableIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
   const savingSet = useMemo(() => new Set(savingTabIds), [savingTabIds]);
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
+  const [activeDrag, setActiveDrag] = useState<ActiveDragState | null>(null);
 
   if (tabs.length === 0) return null;
 
+  const clearActiveDrag = () => setActiveDrag(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const tab = tabs.find((t) => t.id === event.active.id);
+    if (!tab) return;
+    const initial = event.active.rect.current.initial;
+    setActiveDrag({
+      tab,
+      size: initial ? { width: initial.width, height: initial.height } : null,
+    });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    clearActiveDrag();
     const { active, over } = event;
     if (!over) return;
     const from = String(active.id);
@@ -362,37 +436,65 @@ export default function WorkspaceTabBar({
     onReorder(from, to);
   };
 
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    clearActiveDrag();
+  };
+
   const listClass =
     variant === 'titlebar'
       ? 'workspace-tab-bar__tablist flex h-full min-w-0 shrink items-stretch gap-0.5 overflow-x-auto px-1.5'
       : `flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${className}`.trim();
+
+  const overlayStyle: CSSProperties | undefined = activeDrag?.size
+    ? {
+        width: activeDrag.size.width,
+        height: activeDrag.size.height,
+        boxSizing: 'border-box',
+      }
+    : undefined;
 
   const tabStrip = (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToHorizontalAxis]}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
-        <LayoutGroup id="workspace-tab-bar">
-          <div role="tablist" aria-label="워크스페이스 탭" className={listClass}>
-            {tabs.map((tab) => (
-              <SortableWorkspaceTab
-                key={tab.id}
-                tab={tab}
-                active={tab.id === activeId}
-                saving={savingSet.has(tab.id)}
-                onActivate={onActivate}
-                onClose={onClose}
-                onFileTabContextMenu={onFileTabContextMenu}
-                mobileContextMenu={mobileContextMenu}
-                variant={variant}
-              />
-            ))}
-          </div>
-        </LayoutGroup>
+        <div role="tablist" aria-label="워크스페이스 탭" className={listClass}>
+          {tabs.map((tab) => (
+            <SortableWorkspaceTab
+              key={tab.id}
+              tab={tab}
+              active={tab.id === activeId}
+              saving={savingSet.has(tab.id)}
+              onActivate={onActivate}
+              onClose={onClose}
+              onFileTabContextMenu={onFileTabContextMenu}
+              mobileContextMenu={mobileContextMenu}
+              variant={variant}
+            />
+          ))}
+        </div>
       </SortableContext>
+      <DragOverlay dropAnimation={null}>
+        {activeDrag ? (
+          <WorkspaceTabRow
+            tab={activeDrag.tab}
+            active={activeDrag.tab.id === activeId}
+            saving={savingSet.has(activeDrag.tab.id)}
+            onActivate={onActivate}
+            onClose={onClose}
+            {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
+            mobileContextMenu={mobileContextMenu}
+            variant={variant}
+            overlay
+            {...(overlayStyle ? { style: overlayStyle } : {})}
+          />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 
