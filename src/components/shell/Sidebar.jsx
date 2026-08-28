@@ -14,7 +14,10 @@ import {
   RootDropZone,
   TreeDragOverlayPreview,
   treeCollisionDetection,
+  TREE_DND_AUTO_SCROLL,
+  TREE_DND_MEASURING,
 } from '@/components/treeDnd';
+import TreeDndLayoutSync from '@/components/shell/TreeDndLayoutSync';
 import ChatTreeAttachDroppable from '@/components/chatWithMyself/ChatTreeAttachDroppable';
 import { isChatTreeAttachDroppableId } from '@/utils/chatWithMyself';
 import {
@@ -1343,8 +1346,10 @@ export default function Sidebar({
         onDragOver={handleDndDragOver}
         onDragEnd={handleDndDragEnd}
         onDragCancel={handleDndDragCancel}
-        autoScroll
+        autoScroll={TREE_DND_AUTO_SCROLL}
+        measuring={TREE_DND_MEASURING}
       >
+      <TreeDndLayoutSync scrollContainerRef={scrollContainerRef} />
       <div
         ref={scrollContainerRef}
         data-sidebar-tree-scroll

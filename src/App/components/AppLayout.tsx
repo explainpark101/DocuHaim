@@ -319,6 +319,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     currentFile?.type === 'webdav' ||
     currentFile?.type === SESSION_STORAGE_TYPE;
 
+  const tauriMobileSidebar = isTauriDesktopPlatform() && isMobile;
 
   return (
     <div
@@ -350,6 +351,11 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           tabsEnabled={workspaceTabsEnabled}
           appName={appName}
           isMobileLayout={isMobile}
+          mobileSidebarClose={
+            tauriMobileSidebar && sidebarOpen
+              ? { onClose: () => setSidebarOpen(false) }
+              : undefined
+          }
           onActivateTab={(id) => activateWorkspaceTab(id)}
           onCloseTab={(id) => {
             closeWorkspaceTabById(id);
@@ -483,7 +489,11 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             <button
               type="button"
               aria-label="사이드바 닫기"
-              className="fixed inset-0 z-55 bg-black/30 md:hidden"
+              className={`fixed left-0 right-0 bottom-0 z-55 bg-black/30 md:hidden ${
+                tauriMobileSidebar
+                  ? 'top-[var(--app-sidebar-mobile-top,2rem)]'
+                  : 'top-0'
+              }`}
               onClick={() => setSidebarOpen(false)}
             />
           )}
@@ -494,8 +504,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             collapsed={sidebarCollapsed}
             open={sidebarOpen}
             onRequestCollapse={() => setSidebarCollapsed(true)}
+            mobileBelowTitlebar={tauriMobileSidebar}
             mobileHeader={
-              isMobile ? (
+              isMobile && !tauriMobileSidebar ? (
                 <div className="sticky top-0 z-20 flex shrink-0 justify-end border-b border-gray-200 dark:border-odp-bgSofter bg-white dark:bg-odp-bgSoft pt-[max(0.5rem,env(safe-area-inset-top))] px-2 pb-2 md:hidden">
                   <button
                     type="button"

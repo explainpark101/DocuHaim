@@ -102,6 +102,7 @@ const SidebarContentSlot = memo(function SidebarContentSlot({ children }) {
  * @param {() => void} props.onRequestCollapse
  * @param {import('react').ReactNode} props.children
  * @param {import('react').ReactNode} [props.mobileHeader]
+ * @param {boolean} [props.mobileBelowTitlebar] Tauri portrait: panel sits under custom titlebar.
  */
 export default function ResizableSidebarPanel({
   isMobile = false,
@@ -110,6 +111,7 @@ export default function ResizableSidebarPanel({
   onRequestCollapse,
   children,
   mobileHeader = null,
+  mobileBelowTitlebar = false,
 }) {
   const panelRef = useRef(null);
   const liveWidthRef = useRef(null);
@@ -230,6 +232,12 @@ export default function ResizableSidebarPanel({
         ? liveWidthRef.current
         : width;
 
+  const mobilePanelClass = isMobile
+    ? mobileBelowTitlebar
+      ? 'max-md:top-[var(--app-sidebar-mobile-top,2rem)] max-md:h-[calc(100dvh-var(--app-sidebar-mobile-top,2rem))]'
+      : 'top-0 h-dvh'
+    : '';
+
   return (
     <div
       ref={panelRef}
@@ -237,7 +245,8 @@ export default function ResizableSidebarPanel({
         flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter
         ${isMobile && open ? 'z-60' : 'z-40'}
         md:relative md:h-full md:shrink-0
-        fixed top-0 left-0 right-0 w-full h-dvh md:max-h-none
+        fixed left-0 right-0 w-full md:max-h-none
+        ${mobilePanelClass}
         max-md:transition-transform max-md:duration-300 max-md:ease-out
         ${isResizing ? '' : 'md:transition-[width] md:duration-300 md:ease-in-out'}
         ${!isMobile && (collapsed || snapCollapse) ? 'md:overflow-hidden md:border-r-0' : ''}

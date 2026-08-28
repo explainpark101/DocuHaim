@@ -27,6 +27,7 @@ import {
 } from '@/components/icons';
 import { MessageSquare, X, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
+import { useHorizontalOverflowScroll } from '@/hooks/useHorizontalOverflowScroll';
 import {
   useCallback,
   useMemo,
@@ -411,6 +412,9 @@ export default function WorkspaceTabBar({
   const savingSet = useMemo(() => new Set(savingTabIds), [savingTabIds]);
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
   const [activeDrag, setActiveDrag] = useState<ActiveDragState | null>(null);
+  const [tabListEl, setTabListEl] = useState<HTMLDivElement | null>(null);
+
+  useHorizontalOverflowScroll(tabListEl, tabs.length > 0);
 
   if (tabs.length === 0) return null;
 
@@ -440,9 +444,12 @@ export default function WorkspaceTabBar({
     clearActiveDrag();
   };
 
+  const titlebarTabListClass =
+    'workspace-tab-bar__tablist flex h-full min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+
   const listClass =
     variant === 'titlebar'
-      ? 'workspace-tab-bar__tablist flex h-full min-w-0 shrink items-stretch gap-0.5 overflow-x-auto px-1.5'
+      ? titlebarTabListClass
       : `flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${className}`.trim();
 
   const overlayStyle: CSSProperties | undefined = activeDrag?.size
@@ -463,7 +470,12 @@ export default function WorkspaceTabBar({
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
-        <div role="tablist" aria-label="워크스페이스 탭" className={listClass}>
+        <div
+          ref={setTabListEl}
+          role="tablist"
+          aria-label="워크스페이스 탭"
+          className={listClass}
+        >
           {tabs.map((tab) => (
             <SortableWorkspaceTab
               key={tab.id}
@@ -477,6 +489,9 @@ export default function WorkspaceTabBar({
               variant={variant}
             />
           ))}
+          {variant === 'titlebar' ? (
+            <div data-tauri-drag-region className="min-w-8 flex-1 shrink-0 self-stretch" />
+          ) : null}
         </div>
       </SortableContext>
       <DragOverlay dropAnimation={null}>
@@ -502,7 +517,7 @@ export default function WorkspaceTabBar({
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
       {variant === 'titlebar' ? (
         <div
-          className={`workspace-tab-bar__container h-full min-h-0 min-w-0 ${className}`.trim()}
+          className={`workspace-tab-bar__container flex h-full min-h-0 min-w-0 flex-1 items-stretch overflow-hidden ${className}`.trim()}
         >
           {tabStrip}
         </div>

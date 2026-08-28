@@ -22,7 +22,12 @@
     color-scheme: dark;
     --desktop-titlebar-h: 2rem;
     --workspace-titlebar-tab-h: 2.25rem;
+    --app-sidebar-mobile-top: var(--desktop-titlebar-h);
     --traffic-light-box: 0px;
+  }
+
+  html.desktop-app:has(.desktop-titlebar__tab-container) {
+    --app-sidebar-mobile-top: var(--workspace-titlebar-tab-h);
   }
 
   html.desktop-app {
@@ -59,10 +64,6 @@
   html.desktop-app .desktop-titlebar--mac {
     margin-left: var(--traffic-light-box);
     width: calc(100% - var(--traffic-light-box));
-  }
-
-  html.desktop-app .desktop-titlebar--mac .workspace-tab-bar__tablist {
-    min-width: calc(100vw - var(--traffic-light-box));
   }
 
   body {
