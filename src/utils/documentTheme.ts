@@ -1,7 +1,6 @@
-/**
- * @returns {string}
- */
-export function loadStoredTheme() {
+export type DocumentTheme = 'light' | 'dark';
+
+export function loadStoredTheme(): DocumentTheme {
   try {
     const stored = window.localStorage.getItem('theme');
     if (stored === 'light' || stored === 'dark') return stored;
@@ -12,19 +11,13 @@ export function loadStoredTheme() {
 }
 
 /** Current app theme from the Tailwind `dark` class on `<html>` (after applyDocumentTheme). */
-/**
- * @returns {string}
- */
-export function readDocumentTheme() {
+export function readDocumentTheme(): DocumentTheme {
   if (typeof document === 'undefined') return 'light';
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
 /** Apply Tailwind dark mode class on document root (shared by main app and popout windows). */
-/**
- * @param {string} theme
- */
-export function applyDocumentTheme(theme) {
+export function applyDocumentTheme(theme: DocumentTheme): void {
   const root = document.documentElement;
   if (theme === 'dark') {
     root.classList.add('dark');

@@ -1,10 +1,11 @@
 import { createContext } from 'react';
+import type { DocumentTheme } from '@/utils/documentTheme';
 
 /** §1–2 bootstrap / chrome gate slice. */
 export type AppBootstrapValue = {
   scriptsLoaded: boolean;
-  theme: string;
-  setTheme: (theme: string) => void;
+  theme: DocumentTheme;
+  setTheme: (theme: DocumentTheme) => void;
   shareBlockingAuth: boolean;
   setShareBlockingAuth: (blocking: boolean) => void;
   showAuthModal: boolean;
