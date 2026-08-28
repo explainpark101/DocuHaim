@@ -479,12 +479,16 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         }`}
       >
         <div className="relative flex min-h-0 flex-1">
-          {/* Mobile: backdrop when sidebar open */}
-          {isMobile && sidebarOpen && (
+          {/* Mobile: backdrop when sidebar open (kept mounted for fade-out) */}
+          {isMobile && (
             <button
               type="button"
               aria-label="사이드바 닫기"
-              className={`fixed left-0 right-0 bottom-0 z-55 bg-black/30 md:hidden ${
+              aria-hidden={!sidebarOpen}
+              tabIndex={sidebarOpen ? 0 : -1}
+              className={`fixed left-0 right-0 bottom-0 z-55 bg-black/30 md:hidden transition-opacity duration-300 ease-out ${
+                sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+              } ${
                 tauriMobileSidebar
                   ? 'top-[var(--app-sidebar-mobile-top,2rem)]'
                   : 'top-0'

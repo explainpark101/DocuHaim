@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 
@@ -11,6 +11,7 @@ const SIDEBAR_DEFAULT_WIDTH = 400;
 const SIDEBAR_COLLAPSE_BELOW_VW = 10;
 const SIDEBAR_MIN_VW = 10;
 const SIDEBAR_MAX_FLOOR_VW = 50;
+const MOBILE_SLIDE_MS = 300;
 
 type SidebarBounds = {
   min: number;
@@ -127,7 +128,12 @@ export default function ResizableSidebarPanel({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const liveWidthRef = useRef<number | null>(null);
   const collapsedRef = useRef(collapsed);
+  const mobileCloseTimerRef = useRef<number | null>(null);
   const [snapCollapse, setSnapCollapse] = useState(false);
+  /** Mobile: panel stays mounted/visible while sliding out. */
+  const [mobileSlideActive, setMobileSlideActive] = useState(false);
+  /** Mobile: transform target — false = off-screen, true = on-screen. */
+  const [mobileSlideIn, setMobileSlideIn] = useState(false);
   const [bounds, setBounds] = useState<SidebarBounds>(() => ({
     min: vwPx(SIDEBAR_MIN_VW),
     max: Math.max(vwPx(SIDEBAR_MAX_FLOOR_VW), SIDEBAR_DEFAULT_WIDTH),
@@ -211,6 +217,70 @@ export default function ResizableSidebarPanel({
     if (!isResizing) liveWidthRef.current = null;
   }, [isResizing]);
 
+  // Mobile slide: paint closed transform first, then animate in on the next frame.
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileSlideActive(false);
+      setMobileSlideIn(false);
+      return;
+    }
+
+    if (mobileCloseTimerRef.current != null) {
+      window.clearTimeout(mobileCloseTimerRef.current);
+      mobileCloseTimerRef.current = null;
+    }
+
+    if (open) {
+      setMobileSlideActive(true);
+      setMobileSlideIn(false);
+
+      let rafOpen = 0;
+      const rafPrime = window.requestAnimationFrame(() => {
+        rafOpen = window.requestAnimationFrame(() => {
+          setMobileSlideIn(true);
+        });
+      });
+
+      return () => {
+        window.cancelAnimationFrame(rafPrime);
+        window.cancelAnimationFrame(rafOpen);
+      };
+    }
+
+    setMobileSlideIn(false);
+    return undefined;
+  }, [isMobile, open]);
+
+  // Mobile slide-out: keep visible until transform transition finishes.
+  useEffect(() => {
+    if (!isMobile || open || !mobileSlideActive) return undefined;
+
+    const panel = panelRef.current;
+    const finishClose = () => {
+      if (mobileCloseTimerRef.current != null) {
+        window.clearTimeout(mobileCloseTimerRef.current);
+        mobileCloseTimerRef.current = null;
+      }
+      setMobileSlideActive(false);
+    };
+
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target !== panel || event.propertyName !== 'transform') return;
+      finishClose();
+    };
+
+    panel?.addEventListener('transitionend', onTransitionEnd);
+    mobileCloseTimerRef.current = window.setTimeout(finishClose, MOBILE_SLIDE_MS + 50);
+
+    return () => {
+      panel?.removeEventListener('transitionend', onTransitionEnd);
+      if (mobileCloseTimerRef.current != null) {
+        window.clearTimeout(mobileCloseTimerRef.current);
+        mobileCloseTimerRef.current = null;
+      }
+    };
+  }, [isMobile, mobileSlideActive, open]);
+
   // When reopening from collapsed, ensure mode brand title is fully visible.
   const wasCollapsedRef = useRef(collapsed);
   useEffect(() => {
@@ -243,33 +313,34 @@ export default function ResizableSidebarPanel({
         ? liveWidthRef.current
         : width;
 
-  const mobilePanelClass = isMobile
-    ? mobileBelowTitlebar
-      ? 'max-md:top-[var(--app-sidebar-mobile-top,2rem)] max-md:h-[calc(100dvh-var(--app-sidebar-mobile-top,2rem))]'
-      : 'top-0 h-dvh'
-    : '';
+  const sharedChromeClass =
+    'flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter';
 
-  const mobileOpenClass = isMobile
-    ? open
-      ? 'max-md:translate-x-0 max-md:visible'
-      : 'max-md:-translate-x-full max-md:invisible max-md:pointer-events-none'
-    : '';
+  const mobilePositionClass = mobileBelowTitlebar
+    ? 'top-[var(--app-sidebar-mobile-top,2rem)] h-[calc(100dvh-var(--app-sidebar-mobile-top,2rem))]'
+    : 'top-0 h-dvh';
 
-  return (
-    <div
-      ref={panelRef}
-      aria-hidden={isMobile && !open ? true : undefined}
-      className={`
-        flex flex-col bg-white dark:bg-odp-bgSoft border-r border-gray-200 dark:border-odp-bgSofter
-        ${isMobile && open ? 'z-60' : 'z-40'}
+  const mobileInteractive = mobileSlideActive;
+  const mobileSlideClass = mobileSlideIn ? 'translate-x-0' : '-translate-x-full';
+  const mobileLayerClass = mobileInteractive
+    ? 'visible pointer-events-auto z-60'
+    : 'invisible pointer-events-none z-40';
+
+  const panelClassName = isMobile
+    ? `${sharedChromeClass} fixed left-0 w-screen max-w-full transition-transform duration-300 ease-out will-change-transform ${mobilePositionClass} ${mobileLayerClass} ${mobileSlideClass}`
+    : `
+        ${sharedChromeClass}
         md:relative md:h-full md:shrink-0
         fixed left-0 right-0 w-full md:max-h-none
-        ${mobilePanelClass}
-        max-md:transition-transform max-md:duration-300 max-md:ease-out
         ${isResizing ? '' : 'md:transition-[width] md:duration-300 md:ease-in-out'}
         ${!isMobile && (collapsed || snapCollapse) ? 'md:overflow-hidden md:border-r-0' : ''}
-        ${mobileOpenClass}
-      `}
+      `;
+
+  const panel = (
+    <div
+      ref={panelRef}
+      aria-hidden={isMobile && !mobileInteractive ? true : undefined}
+      className={panelClassName}
       style={
         isMobile
           ? undefined
@@ -292,4 +363,10 @@ export default function ResizableSidebarPanel({
       )}
     </div>
   );
+
+  if (isMobile && typeof document !== 'undefined') {
+    return createPortal(panel, document.body);
+  }
+
+  return panel;
 }
