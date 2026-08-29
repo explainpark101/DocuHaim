@@ -904,7 +904,7 @@ ${body.text}
       detail: progressLabel,
       llmInstruction: summaryInstruction,
       systemPrompt: SOURCE_SUMMARY_SYSTEM_PROMPT,
-      llmResponse: summarizeLog || undefined,
+      ...(summarizeLog ? { llmResponse: summarizeLog } : {}),
     });
     params.onProgress?.(progressLabel);
 
