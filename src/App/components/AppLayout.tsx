@@ -460,6 +460,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           editorContent={editorContent}
           snippetConfig={snippetConfig}
           theme={theme}
+          chatTabActive={chatSurfaceActive}
           onOpenContentSearch={(query) => {
             if (workspaceTabsEnabled) {
               openContentSearchWorkspaceTab({ query });

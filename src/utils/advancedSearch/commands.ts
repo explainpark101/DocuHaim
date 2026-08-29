@@ -143,6 +143,8 @@ export type AppCommandContext = {
   printActionsAvailable?: boolean;
   /** True when chat composer has registered actions (on /chat). */
   chatActionsAvailable?: boolean;
+  /** True when the Chat with Myself tab/surface is active. */
+  chatTabActive?: boolean;
   /** True when MLX-VLM settings registered actions (Tauri macOS). */
   mlxVlmActionsAvailable?: boolean;
   /** True when llama.cpp settings registered actions (Tauri desktop). */
@@ -180,6 +182,25 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '파일 트리·에디터 홈으로 이동',
     path: '/',
     keywords: ['home', '홈', '메인', 'main', 'start', '시작'],
+  },
+  {
+    id: 'content-search',
+    title: '본문 검색',
+    description: '역색인·본문 단위 검색 페이지 열기',
+    path: '/search',
+    keywords: [
+      'search',
+      '검색',
+      '본문',
+      'content',
+      'find',
+      '찾기',
+      'grep',
+      '역색인',
+      'inverted index',
+      'full text',
+      '풀텍스트',
+    ],
   },
   {
     id: 'settings',
@@ -474,25 +495,6 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '빌드 해시·PWA 캐시 확인',
     path: '/settings#settings-app-update',
     keywords: ['업데이트', 'update', 'pwa', '버전', 'version'],
-  },
-  {
-    id: 'content-search',
-    title: '본문 검색',
-    description: '역색인·본문 단위 검색 페이지 열기',
-    path: '/search',
-    keywords: [
-      'search',
-      '검색',
-      '본문',
-      'content',
-      'find',
-      '찾기',
-      'grep',
-      '역색인',
-      'inverted index',
-      'full text',
-      '풀텍스트',
-    ],
   },
   {
     id: 'chat',
@@ -1126,6 +1128,29 @@ export type RankedAppCommand = {
   score: number;
 };
 
+function isSettingsSectionCommand(id: AppCommandId): boolean {
+  return id.startsWith('settings-');
+}
+
+function isChatSectionCommand(id: AppCommandId): boolean {
+  return id.startsWith('chat-');
+}
+
+/** Core palette visibility: settings sections need a query; chat sections need an active chat tab. */
+function isCoreCommandVisible(
+  command: AppCommand,
+  query: string,
+  context?: AppCommandContext,
+): boolean {
+  if (isSettingsSectionCommand(command.id)) {
+    return normalize(query).length > 0;
+  }
+  if (isChatSectionCommand(command.id)) {
+    return context?.chatTabActive === true;
+  }
+  return true;
+}
+
 /**
  * Match built-in commands by relevance.
  * - Empty query: core app shortcuts only (no editor/print toolbar dump).
@@ -1166,10 +1191,12 @@ export function matchAppCommandsRanked(
 
   if (!q) {
     // Palette: core destinations only — page toolbar actions require a query.
-    return core.map((command, index) => ({
-      command,
-      score: 1000 - index,
-    }));
+    return core
+      .filter((command) => isCoreCommandVisible(command, query, context))
+      .map((command, index) => ({
+        command,
+        score: 1000 - index,
+      }));
   }
 
   const page = getPageActionCommands(context);
@@ -1181,6 +1208,7 @@ export function matchAppCommandsRanked(
 
   for (const command of [...core, ...page, ...settingsToggles, ...tabsAutoSave, ...footnoteDisplay]) {
     if (seen.has(command.id)) continue;
+    if (!isCoreCommandVisible(command, query, context)) continue;
     seen.add(command.id);
     const score = scoreCommandRelevance(command, q);
     if (score <= 0) continue;

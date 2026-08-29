@@ -173,6 +173,8 @@ export type AdvancedSearchHostProps = {
   preferPrintActions?: boolean;
   /** Open the vault content search tab (workspace tabs aware). */
   onOpenContentSearch?: (query?: string) => void;
+  /** Chat with Myself tab/surface is active (gates chat section commands). */
+  chatTabActive?: boolean;
 };
 
 /**
@@ -193,6 +195,7 @@ export default function AdvancedSearchHost({
   theme = 'light',
   preferPrintActions = false,
   onOpenContentSearch,
+  chatTabActive = false,
 }: AdvancedSearchHostProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -402,6 +405,7 @@ export default function AdvancedSearchHost({
         editorActionsAvailable,
         printActionsAvailable,
         chatActionsAvailable,
+        chatTabActive,
         mlxVlmActionsAvailable,
         llamaCppActionsAvailable,
         editorAutocompleteEnabled,
@@ -449,6 +453,7 @@ export default function AdvancedSearchHost({
       editorActionsAvailable,
       printActionsAvailable,
       chatActionsAvailable,
+      chatTabActive,
       mlxVlmActionsAvailable,
       editorAutocompleteEnabled,
       editorMirrorEditEnabled,

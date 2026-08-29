@@ -26,7 +26,7 @@ export type ContentSearchPageProps = {
   isActive?: boolean;
 };
 
-const SEARCH_DEBOUNCE_MS = 250;
+const SEARCH_DEBOUNCE_MS = 500;
 
 function statusHint(status: ReturnType<typeof advancedSearchEngine.getStatus>): string {
   if (!status.enabled) return '역색인 꺼짐 · 직접 스캔만 가능';

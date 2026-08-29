@@ -77,11 +77,12 @@ export type AdvancedSearchModalProps = {
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring' as const, stiffness: 420, damping: 32 };
 
+/** Above sidebar sticky headers (z-9999) and sticky tree folders (~1000); below Modal (z-100000). */
 const OVERLAY_CLASS =
-  'fixed inset-0 z-220 bg-black/45 backdrop-blur-[2px]';
+  'fixed inset-0 z-[99990] bg-black/45 backdrop-blur-[2px]';
 /** Centering translate is driven by motion when animation is on (avoids CSS transform conflicts). */
 const PANEL_CLASS =
-  'fixed left-1/2 top-[min(18vh,8rem)] z-221 flex w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+  'fixed left-1/2 top-[min(18vh,8rem)] z-[99991] flex w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft';
 
 function reasonLabel(hit: AdvancedSearchHit): string {
   if (hit.kind === 'folder') return '폴더';
