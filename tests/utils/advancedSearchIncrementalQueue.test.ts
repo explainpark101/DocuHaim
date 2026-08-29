@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createIncrementalIndexQueue } from '@/utils/advancedSearch/incrementalIndexQueue';
+import {
+  createIncrementalIndexQueue,
+  type IncrementalFlushPayload,
+} from '@/utils/advancedSearch/incrementalIndexQueue';
 
 describe('createIncrementalIndexQueue', () => {
   it('coalesces duplicate paths and debounces flush', async () => {
     vi.useFakeTimers();
-    const onFlush = vi.fn(async () => undefined);
+    const onFlush = vi.fn(async (_payload: IncrementalFlushPayload) => undefined);
     let runnable = true;
     const queue = createIncrementalIndexQueue({
       debounceMs: 1000,
@@ -34,7 +37,7 @@ describe('createIncrementalIndexQueue', () => {
 
   it('pauses scheduling until resumed', async () => {
     vi.useFakeTimers();
-    const onFlush = vi.fn(async () => undefined);
+    const onFlush = vi.fn(async (_payload: IncrementalFlushPayload) => undefined);
     const queue = createIncrementalIndexQueue({
       debounceMs: 100,
       idleTimeoutMs: 1000,
