@@ -1755,7 +1755,7 @@ export default function ExportPDFPage({
       ) : null}
       <style>{printFontStyles}</style>
       <style>{buildPrintPageAtRule(printLayout.pageSizeId)}</style>
-      <div ref={headerRef} className="sticky top-0 z-20 flex flex-col gap-2 px-4 py-3 border-b border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shrink-0 print:hidden">
+      <div ref={headerRef} className="export-pdf-toolbar sticky top-0 z-20 flex flex-col gap-2 border-b border-gray-200 dark:border-odp-borderSoft bg-white dark:bg-odp-bgSoft shrink-0 print:hidden">
         <div className="flex items-center justify-between gap-4">
           <button
             type="button"
@@ -1767,7 +1767,10 @@ export default function ExportPDFPage({
             <ArrowLeft size={18} />
             뒤로 가기
           </button>
-          <h2 className="font-semibold text-gray-800 dark:text-odp-fg truncate flex-1 text-center">
+          <h2
+            data-tauri-drag-region
+            className="font-semibold text-gray-800 dark:text-odp-fg truncate flex-1 text-center select-none"
+          >
             PDF로 내보내기
           </h2>
           <div className="flex items-center gap-2">

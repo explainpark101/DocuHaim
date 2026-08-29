@@ -11,6 +11,8 @@ import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
+import { useMacosTitlebarChrome } from '@/hooks/useMacosTitlebarChrome';
+import { isTauriMacOS } from '@/utils/tauriPlatform';
 
 const ExportPDFPage = lazy(() => import('@/pages/ExportPDFPage'));
 
@@ -39,9 +41,15 @@ export function ExportPdfGate() {
   const hasNavigationSession = Boolean(navState) || Boolean(routeExportPath);
 
   const { storageMode, localTree, webdavTree, s3Tree } = vault;
+  const macDesktopChrome = isTauriMacOS();
+  useMacosTitlebarChrome();
 
   return (
-    <div className="export-pdf-layout h-dvh min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white">
+    <div
+      className={`export-pdf-layout h-dvh min-h-0 overflow-hidden print:h-auto print:min-h-0 print:overflow-visible max-w-screen bg-neutral-200 dark:bg-neutral-800 print:bg-white print:dark:bg-white${
+        macDesktopChrome ? ' export-pdf-layout--mac' : ''
+      }`}
+    >
       <UserWebfontStyles />
       <Suspense fallback={<RouteSuspenseFallback />}>
         <ExportPDFPage
