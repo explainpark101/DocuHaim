@@ -136,7 +136,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
       await writeFile(joinVault(root, path), body);
     },
 
-    async writeText(path: string, text: string) {
+    async writeText(path: string, text: string, _contentType?: string) {
       await this.writeBytes(path, new TextEncoder().encode(text));
     },
 
