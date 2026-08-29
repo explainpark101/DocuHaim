@@ -3,10 +3,13 @@ import {
   exportPdfPathnameForStoragePath,
   isChatAppPathname,
   isExportPdfAppPathname,
+  isQuizAppPathname,
   isSettingsAppPathname,
   parseExportPdfPathFromAppPathname,
   parseOpenNotePathFromAppPathname,
+  parseQuizPathFromAppPathname,
   parseViewPathFromAppPathname,
+  quizPathnameForStoragePath,
 } from '@/utils/appHref';
 
 describe('appHref route parsers', () => {
@@ -15,6 +18,17 @@ describe('appHref route parsers', () => {
     expect(parseExportPdfPathFromAppPathname('/export-pdf/notes/a.md')).toBe('notes/a.md');
     expect(parseOpenNotePathFromAppPathname('/view/x.md')).toBe('x.md');
     expect(parseOpenNotePathFromAppPathname('/export-pdf/x.md')).toBe('x.md');
+  });
+
+  it('parses /quiz note paths', () => {
+    expect(parseQuizPathFromAppPathname('/quiz/notes/a.quiz.md')).toBe('notes/a.quiz.md');
+    expect(parseOpenNotePathFromAppPathname('/quiz/notes/a.quiz.md')).toBe(
+      'notes/a.quiz.md',
+    );
+    expect(isQuizAppPathname('/quiz')).toBe(true);
+    expect(isQuizAppPathname('/quiz/a.quiz.md')).toBe(true);
+    expect(isQuizAppPathname('/view/a.quiz.md')).toBe(false);
+    expect(quizPathnameForStoragePath('notes/a.quiz.md')).toBe('/quiz/notes/a.quiz.md');
   });
 
   it('detects export-pdf / chat / settings pathnames', () => {

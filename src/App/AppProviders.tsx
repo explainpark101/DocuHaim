@@ -13,6 +13,7 @@ import { AppPwaSnippetsStateProvider } from '@/App/providers/AppPwaSnippetsState
 import { RecordingProvider } from '@/App/providers/RecordingProvider';
 import { AppLogicProvider } from '@/App/providers/AppLogicProvider';
 import { LlmAssistSessionProvider } from '@/contexts/LlmAssistSessionContext';
+import { AiSettingsDockProvider } from '@/contexts/AiSettingsDockContext';
 import { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER } from '@/App/providers/providerOrder';
 
 export { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER };
@@ -36,7 +37,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
                         <AppPwaSnippetsStateProvider>
                           <RecordingProvider>
                             <AppLogicProvider>
-                              <LlmAssistSessionProvider>{children}</LlmAssistSessionProvider>
+                              <LlmAssistSessionProvider>
+                                <AiSettingsDockProvider>{children}</AiSettingsDockProvider>
+                              </LlmAssistSessionProvider>
                             </AppLogicProvider>
                           </RecordingProvider>
                         </AppPwaSnippetsStateProvider>

@@ -31,7 +31,9 @@ import {
 } from '@/components/treeDnd';
 import TreeDndLayoutSync from '@/components/shell/TreeDndLayoutSync';
 import ChatTreeAttachDroppable from '@/components/chatWithMyself/ChatTreeAttachDroppable';
+import QuizTreeSourceDroppable from '@/components/quiz/QuizTreeSourceDroppable';
 import { isChatTreeAttachDroppableId } from '@/utils/chatWithMyself';
+import { isQuizTreeSourceDroppableId } from '@/utils/quiz/quizTreeSourceDrop';
 import {
   findNodeByPath,
   isRecordingCompanionFileKey,
@@ -247,6 +249,9 @@ export type SidebarProps = {
   chatWithMyselfActive?: boolean;
   chatAttachDropHost?: HTMLElement | null;
   onDropToChatAttach?: (items: TreeMoveItem[]) => void;
+  quizSourceDropActive?: boolean;
+  quizSourceDropHost?: HTMLElement | null;
+  onDropToQuizSource?: (items: TreeMoveItem[]) => void;
   onBrandClick?: () => void;
   onStorageModeChange?: (mode: string) => void;
   sessionWorkspaces?: SessionWorkspace[];
@@ -478,6 +483,9 @@ export default function Sidebar({
   chatWithMyselfActive = false,
   chatAttachDropHost = null,
   onDropToChatAttach,
+  quizSourceDropActive = false,
+  quizSourceDropHost = null,
+  onDropToQuizSource,
   onBrandClick,
   onStorageModeChange,
   sessionWorkspaces = [],
@@ -718,6 +726,11 @@ export default function Sidebar({
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
       }
+      if (isQuizTreeSourceDroppableId(over.id)) {
+        clearHoverExpandTimer();
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
       const parsed = parseDroppableId(String(over.id));
       if (!parsed) {
         clearHoverExpandTimer();
@@ -769,6 +782,12 @@ export default function Sidebar({
         return;
       }
 
+      if (isQuizTreeSourceDroppableId(over.id)) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        onDropToQuizSource?.(items);
+        return;
+      }
+
       const parsed = parseDroppableId(String(over.id));
       if (!parsed) {
         onDropOnFolder?.(null, null, 'dragLeave');
@@ -789,6 +808,7 @@ export default function Sidebar({
       isCopyDragRef,
       onDropOnFolder,
       onDropToChatAttach,
+      onDropToQuizSource,
       resolveDropTargetNode,
     ],
   );
@@ -2176,6 +2196,12 @@ export default function Sidebar({
         <ChatTreeAttachDroppable
           host={chatAttachDropHost}
           enabled={Boolean(chatAttachDropHost)}
+        />
+      ) : null}
+      {quizSourceDropActive && activeDragItems?.length ? (
+        <QuizTreeSourceDroppable
+          host={quizSourceDropHost}
+          enabled={Boolean(quizSourceDropHost)}
         />
       ) : null}
       </DndContext>

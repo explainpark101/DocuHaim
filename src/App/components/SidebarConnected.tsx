@@ -30,6 +30,9 @@ export type ChromeProps = Pick<
   chatSurfaceActive?: boolean;
   chatAttachDropHost?: SidebarProps['chatAttachDropHost'];
   onDropToChatAttach?: SidebarProps['onDropToChatAttach'];
+  quizSourceDropActive?: SidebarProps['quizSourceDropActive'];
+  quizSourceDropHost?: SidebarProps['quizSourceDropHost'];
+  onDropToQuizSource?: SidebarProps['onDropToQuizSource'];
   onCloseSessionWorkspace?: SidebarProps['onCloseSessionWorkspace'];
 };
 

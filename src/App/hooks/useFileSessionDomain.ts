@@ -61,6 +61,7 @@ import {
   parseOpenNotePathFromAppPathname,
   isExportPdfAppPathname,
   exportPdfPathnameForStoragePath,
+  openNotePathnameForStoragePath,
 } from '@/utils/appHref';
 import {
   SESSION_STORAGE_TYPE,
@@ -153,6 +154,7 @@ export function useFileSessionDomain() {
     hasUnsavedEditorChangesRef,
     closeCurrentFileRef,
     maybeAutoSaveOnFocusChangeRef,
+    quizFlushBeforeSaveRef,
     requestEncMdPasswordRef,
   } = useFileSessionOwned();
 
@@ -283,7 +285,9 @@ export function useFileSessionDomain() {
     const skipNavigate = options.skipNavigate === true;
     const background = options.background === true;
     const goToViewPath = () => {
-      if (!skipNavigate) navigate(`/view/${node.path}`);
+      if (!skipNavigate) {
+        navigate(openNotePathnameForStoragePath(node.path));
+      }
     };
 
     // Already-open file: activate that tab first, then sync from server/disk.
@@ -878,6 +882,8 @@ export function useFileSessionDomain() {
       const viewer = cur.viewer || 'markdown';
       if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
 
+      quizFlushBeforeSaveRef.current?.();
+
       if (cur.type === SESSION_STORAGE_TYPE) {
         flushSessionEditorToWorkspaceRef.current?.();
         return;
@@ -942,7 +948,7 @@ export function useFileSessionDomain() {
       if (node?.type === 'file') {
         selectFileRef.current?.(type, node);
       } else {
-        navigate(`/view/${path}`);
+        navigate(openNotePathnameForStoragePath(path));
       }
     },
     [
@@ -973,6 +979,8 @@ export function useFileSessionDomain() {
     const viewer = fileToSave.viewer || 'markdown';
     const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
     if (!editableViewers.includes(viewer)) return;
+
+    quizFlushBeforeSaveRef.current?.();
 
     const textToSave =
       contentOverride != null ? String(contentOverride) : editorContentRef.current;
@@ -1563,7 +1571,11 @@ export function useFileSessionDomain() {
     try {
       const onExport = isExportPdfAppPathname(location.pathname);
       navigate(
-        onExport ? exportPdfPathnameForStoragePath(nextPath) : `/view/${nextPath}`,
+        onExport
+          ? exportPdfPathnameForStoragePath(nextPath)
+          : openNotePathnameForStoragePath(nextPath, {
+              currentPathname: location.pathname,
+            }),
         { replace: true },
       );
     } finally {

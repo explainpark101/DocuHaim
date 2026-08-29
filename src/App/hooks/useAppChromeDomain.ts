@@ -28,7 +28,7 @@ export function useAppChromeDomain() {
   const { isUnlocked, s3Creds } = useAuth();
   const { isMobile, setSidebarOpen, setSidebarCollapsed } = useChromeOwned();
   const { getBackendForType, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspaces, storageMode, webdavConfig, webdavTree } = useVault();
-  const { closeCurrentFileRef, currentFileRef, editedFileNameRef, editorContentRef, flushSessionEditorToWorkspaceRef, maybeAutoSaveOnFocusChangeRef, navGuardRef, saveFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
+  const { closeCurrentFileRef, currentFileRef, editedFileNameRef, editorContentRef, flushSessionEditorToWorkspaceRef, maybeAutoSaveOnFocusChangeRef, navGuardRef, quizFlushBeforeSaveRef, saveFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { pendingCloseTabId, setPendingCloseTabId, setShowCloseFileConfirmModal } = useModalsOwned();
   const { closeWorkspaceTabById, setState: setWorkspaceTabs, workspaceTabsRef, hasRestoredPersistedWorkspaceTabsRef, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
@@ -48,6 +48,7 @@ export function useAppChromeDomain() {
   });
 
   const handleBrandClick = async () => {
+    quizFlushBeforeSaveRef.current?.();
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
       editorContent: editorContentRef.current ?? '',
       currentFile: currentFileRef.current,

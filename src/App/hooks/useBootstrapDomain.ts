@@ -48,7 +48,7 @@ export function useBootstrapDomain() {
   const { showAlert } = useAlertModal();
   const { isUnlocked, masterPassword, proceedWithoutStoredCreds, s3Creds, setMasterPassword, setS3Creds, setShowSetPasswordModal, unlock } = useAuth();
   const { loadS3Files, setWebdavConfig, webdavConfig } = useVault();
-  const { clearLastOpenedFileRef, clearOpenFileStateRef, currentFile, currentFileRef, editedFileName, editedFileNameRef, editorContentRef, hasUnsavedEditorChangesRef, navGuardRef, revokeOpenFileObjectUrlRef, setCurrentFile, setEditedFileName, setEditorContent, suppressUnsavedNavGuardRef } = useFileSessionOwned();
+  const { clearLastOpenedFileRef, clearOpenFileStateRef, currentFile, currentFileRef, editedFileName, editedFileNameRef, editorContentRef, hasUnsavedEditorChangesRef, navGuardRef, quizHasUnsavedProgressRef, revokeOpenFileObjectUrlRef, setCurrentFile, setEditedFileName, setEditorContent, suppressUnsavedNavGuardRef } = useFileSessionOwned();
   const { renameCurrentFileFullName, saveFile } = useFileSession();
   const { importFileContent, pendingPasswordSave, pendingWebAuthnSave, setImportFileContent, setPendingPasswordSave, setPendingWebAuthnSave, setSaveMethodModalCreds, setShowExportPasswordModal, setShowImportPasswordModal, setShowOverwriteCredsConfirmModal, setShowSaveMethodModal, setShowSuffixChangeConfirmModal, setShowUnsavedConfirmModal, suffixConfirmAction, webauthnPRFSupported } = useModalsOwned();
   const { closeWorkspaceTabById, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
@@ -529,6 +529,7 @@ export function useBootstrapDomain() {
 
   const hasUnsavedEditorChanges = useCallback(() => {
     if (suppressUnsavedNavGuardRef.current) return false;
+    if (quizHasUnsavedProgressRef.current?.()) return true;
     // Flush mirrors into a copy for accurate dirty check across tabs.
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
       editorContent: editorContentRef.current ?? '',

@@ -31,7 +31,11 @@ import {
 } from '@/utils/workspaceTabs/legacyMode';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 import { clearEncMdPassword, isEncMdPath } from '@/utils/encMd';
-import { contentSearchPathname, isSettingsAppPathname } from '@/utils/appHref';
+import {
+  contentSearchPathname,
+  isSettingsAppPathname,
+  openNotePathnameForStoragePath,
+} from '@/utils/appHref';
 import { useAuth } from '@/contexts/AuthContext';
 import { findFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
@@ -192,7 +196,11 @@ export function useWorkspaceTabsDomain({
         if (navigateUrl) {
           const viewPath =
             (typeof file?.id === 'string' && file.id) || active.path;
-          navigate(`/view/${viewPath}`);
+          navigate(
+            openNotePathnameForStoragePath(viewPath, {
+              currentPathname: location.pathname,
+            }),
+          );
         }
       } else if (isChatTab(active)) {
         setCurrentFile(null);
@@ -220,6 +228,7 @@ export function useWorkspaceTabsDomain({
       setCurrentFile,
       setEditorContent,
       setEditedFileName,
+      location.pathname,
     ],
   );
 
@@ -458,7 +467,11 @@ export function useWorkspaceTabsDomain({
         setEditorContent(active.editorContent);
         editorContentRef.current = active.editorContent;
         setEditedFileName(active.editedFileName || String(file?.name || ''));
-        navigate(`/view/${(typeof file?.id === 'string' && file.id) || active.path}`);
+        navigate(
+          openNotePathnameForStoragePath(
+            (typeof file?.id === 'string' && file.id) || active.path,
+          ),
+        );
       } else if (isChatTab(active)) {
         setCurrentFile(null);
         currentFileRef.current = null;

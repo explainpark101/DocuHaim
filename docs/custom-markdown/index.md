@@ -26,6 +26,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [plan-frontmatter.md](./plan-frontmatter.md) | `---` YAML plan (`name` / `todos` / …) | 에디터 / 미리보기 / 인쇄 |
 | [footnotes.md](./footnotes.md) | `[^1]` + `<!-- footnotes {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [document-settings.md](./document-settings.md) | `<!-- document-settings {json} -->` | 에디터 / 미리보기 / 인쇄 |
+| [quiz-md.md](./quiz-md.md) | `.quiz.md` + `<!-- quiz-config … -->` | 퀴즈 모드 / AI 출제·채점 |
 | [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
 | [mermaid-fence-size.md](./mermaid-fence-size.md) | ` ```mermaid width=… height=…` (legacy) | 에디터 / 미리보기 / 인쇄 |
 | [mermaid-size.md](./mermaid-size.md) | `<!-- mermaid-size … -->` + mermaid fence | 에디터 / 미리보기 / 인쇄 |

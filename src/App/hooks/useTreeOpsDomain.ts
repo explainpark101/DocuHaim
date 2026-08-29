@@ -65,6 +65,10 @@ import {
   retargetFileTabsByPathPrefix,
 } from '@/utils/workspaceTabs/appBridge';
 import { resolveCreateItemPath } from '@/utils/createItemPath';
+import { isQuizMdPath } from '@/utils/quiz/quizPath';
+import { serializeQuizDocument } from '@/utils/quiz/serializeQuizDocument';
+import { QUIZ_CONFIG_DEFAULT } from '@/utils/quiz/quizFileConfig';
+import { openNotePathnameForStoragePath } from '@/utils/appHref';
 import {
   encryptEncMdContent,
   isEncMdPath,
@@ -1148,7 +1152,11 @@ export function useTreeOpsDomain() {
     const expandParent = parentDirPath || parentPath || '';
 
     const seedContent =
-      typeof options.initialContent === 'string' ? options.initialContent : '';
+      typeof options.initialContent === 'string'
+        ? options.initialContent
+        : type !== 'folder' && isQuizMdPath(newPath)
+          ? serializeQuizDocument(QUIZ_CONFIG_DEFAULT, [])
+          : '';
 
     let initialBody = seedContent;
     let openContent = seedContent;
@@ -1173,7 +1181,7 @@ export function useTreeOpsDomain() {
       const content =
         typeof file.content === 'string' ? file.content : openContent;
       if (commitOpenFile({ ...file, ...(isEncMdPath(newPath) ? { encMd: true } : {}) }, content)) {
-        navigate(`/view/${file.id}`);
+        navigate(openNotePathnameForStoragePath(file.id));
       }
     };
 

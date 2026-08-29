@@ -85,6 +85,11 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     sections: [{ id: 'settings-chat', label: '나와의 채팅' }],
   },
   {
+    id: 'quiz',
+    title: '퀴즈',
+    sections: [{ id: 'settings-quiz', label: '퀴즈 (quiz.md)' }],
+  },
+  {
     id: 'app',
     title: '앱',
     sections: [
