@@ -69,7 +69,6 @@ import {
   sessionFileKey,
   getSessionFileLocalAbsPath,
 } from '@/utils/sessionWorkspace';
-import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
