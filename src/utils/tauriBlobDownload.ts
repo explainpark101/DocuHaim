@@ -42,7 +42,15 @@ export function notifyTauriDownloadComplete(fileName: string): void {
   });
 }
 
-async function writeBlobWithTauriSaveDialog(blob: Blob, fileName: string): Promise<boolean> {
+export type AppBlobDownloadResult = {
+  ok: boolean;
+  savedPath?: string;
+};
+
+async function writeBlobWithTauriSaveDialog(
+  blob: Blob,
+  fileName: string,
+): Promise<AppBlobDownloadResult> {
   const normalizedName = normalizeUnicodeNfc(String(fileName || 'download'));
   const { save } = await import('@tauri-apps/plugin-dialog');
   const extension = extensionFromFileName(normalizedName);
@@ -60,19 +68,65 @@ async function writeBlobWithTauriSaveDialog(blob: Blob, fileName: string): Promi
         }
       : {}),
   });
-  if (!selectedPath || Array.isArray(selectedPath)) return false;
+  if (!selectedPath || Array.isArray(selectedPath)) return { ok: false };
 
+  const savedPath = normalizeUnicodeNfc(String(selectedPath));
   const { writeFile } = await import('@tauri-apps/plugin-fs');
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  await writeFile(String(selectedPath), bytes);
-  return true;
+  await writeFile(savedPath, bytes);
+  return { ok: true, savedPath };
 }
 
-async function writeBlobWithTauriFastDownload(blob: Blob, fileName: string): Promise<boolean> {
+async function writeBlobWithTauriFastDownload(
+  blob: Blob,
+  fileName: string,
+): Promise<AppBlobDownloadResult> {
   const result = await writeBlobToTauriFastDirectory(blob, fileName);
-  if (!result.ok) return false;
+  if (!result.ok || !result.savedPath) return { ok: false };
   notifyTauriDownloadComplete(result.savedName);
-  return true;
+  return { ok: true, savedPath: result.savedPath };
+}
+
+async function downloadAppBlob(blob: Blob, fileName: string): Promise<AppBlobDownloadResult> {
+  const normalizedName = normalizeUnicodeNfc(String(fileName || 'download'));
+
+  if (isTauriDesktopPlatform() && loadTauriDownloadSaveDialogEnabled()) {
+    try {
+      const result = await writeBlobWithTauriSaveDialog(blob, normalizedName);
+      if (!result.ok) return result;
+      notifyTauriDownloadComplete(normalizedName);
+      return result;
+    } catch (error) {
+      console.error('Tauri save download failed:', error);
+      throw error;
+    }
+  }
+
+  if (canUseTauriFastDownload()) {
+    try {
+      const result = await writeBlobWithTauriFastDownload(blob, normalizedName);
+      if (result.ok) return result;
+    } catch (error) {
+      console.error('Tauri fast download failed, falling back to anchor download:', error);
+    }
+  }
+
+  triggerAnchorBlobDownload(blob, normalizedName);
+  notifyTauriDownloadComplete(normalizedName);
+  return { ok: true };
+}
+
+/** Open a saved local file with the OS default application (Tauri desktop only). */
+export async function openTauriPathWithDefaultApp(filePath: string): Promise<void> {
+  if (!isTauriDesktopPlatform()) return;
+  const normalized = normalizeUnicodeNfc(String(filePath || '').trim());
+  if (!normalized) return;
+  try {
+    const { open } = await import('@tauri-apps/plugin-shell');
+    await open(normalized);
+  } catch (error) {
+    console.warn('Failed to open downloaded file:', normalized, error);
+  }
 }
 
 /**
@@ -84,29 +138,17 @@ async function writeBlobWithTauriFastDownload(blob: Blob, fileName: string): Pro
  * @returns false when the user cancels the save dialog; true on success.
  */
 export async function triggerAppBlobDownload(blob: Blob, fileName: string): Promise<boolean> {
-  const normalizedName = normalizeUnicodeNfc(String(fileName || 'download'));
+  const result = await downloadAppBlob(blob, fileName);
+  return result.ok;
+}
 
-  if (isTauriDesktopPlatform() && loadTauriDownloadSaveDialogEnabled()) {
-    try {
-      const saved = await writeBlobWithTauriSaveDialog(blob, normalizedName);
-      if (!saved) return false;
-      notifyTauriDownloadComplete(normalizedName);
-      return true;
-    } catch (error) {
-      console.error('Tauri save download failed:', error);
-      throw error;
-    }
+/**
+ * Tauri desktop: download a blob, then open it with the default app when a local path is known.
+ */
+export async function triggerAppBlobDownloadAndOpen(blob: Blob, fileName: string): Promise<boolean> {
+  const result = await downloadAppBlob(blob, fileName);
+  if (result.ok && result.savedPath) {
+    await openTauriPathWithDefaultApp(result.savedPath);
   }
-
-  if (canUseTauriFastDownload()) {
-    try {
-      return await writeBlobWithTauriFastDownload(blob, normalizedName);
-    } catch (error) {
-      console.error('Tauri fast download failed, falling back to anchor download:', error);
-    }
-  }
-
-  triggerAnchorBlobDownload(blob, normalizedName);
-  notifyTauriDownloadComplete(normalizedName);
-  return true;
+  return result.ok;
 }

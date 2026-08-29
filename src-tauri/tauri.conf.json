@@ -65,5 +65,9 @@
       }
     }
   },
-  "plugins": {}
+  "plugins": {
+    "shell": {
+      "open": "(^https?://.+)|(^mailto:.+)|(^tel:.+)|(^/.*)|(^[A-Za-z]:[\\\\/].+)"
+    }
+  }
 }
