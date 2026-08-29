@@ -18,6 +18,9 @@ export type AppChromeValue = {
   setChatAttachDropHost: (...args: any[]) => any;
   handleDropToChatAttach: (...args: any[]) => any;
   handleRegisterChatAttachDrop: (...args: any[]) => any;
+  quizSourceDropActive: boolean;
+  quizSourceDropHost: HTMLElement | null;
+  handleDropToQuizSource: (...args: any[]) => any;
   fileTabContextMenuRef: { current: any };
   expandPathsRef: { current: any };
   showHiddenFolders: boolean;

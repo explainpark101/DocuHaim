@@ -92,6 +92,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     setChatAttachDropHost,
     handleDropToChatAttach,
     handleRegisterChatAttachDrop,
+    quizSourceDropActive,
+    quizSourceDropHost,
+    handleDropToQuizSource,
     fileTabContextMenuRef,
     expandPathsRef,
     showHiddenFolders,
@@ -549,6 +552,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               chatSurfaceActive={chatSurfaceActive}
               chatAttachDropHost={chatAttachDropHost}
               onDropToChatAttach={handleDropToChatAttach}
+              quizSourceDropActive={quizSourceDropActive}
+              quizSourceDropHost={quizSourceDropHost}
+              onDropToQuizSource={handleDropToQuizSource}
               onCloseSessionWorkspace={closeSessionWorkspace}
             />
           </ResizableSidebarPanel>
@@ -762,7 +768,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                       setSuffixConfirmAction('renameOnly');
                       setShowSuffixChangeConfirmModal(true);
                     },
-                    onRequestClose: handleRequestCloseEditor,
+                    onRequestClose: workspaceTabsEnabled ? undefined : handleRequestCloseEditor,
                     onRequestMove: handleRequestMove,
                     onViewUnsupportedAsText: handleViewUnsupportedAsText,
                     onRequestDownload: handleRequestDownload,

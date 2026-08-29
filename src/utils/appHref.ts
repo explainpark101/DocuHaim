@@ -54,6 +54,63 @@ export function parseExportPdfPathFromAppPathname(pathname: string): string | nu
   return null;
 }
 
+/** Storage path from `/quiz/<path>` (same encoding as `/view/<path>`). */
+export function parseQuizPathFromAppPathname(pathname: string): string | null {
+  const normalized = stripAppBase(pathname);
+  const idx = normalized.indexOf('/quiz/');
+  if (idx >= 0) {
+    const rest = normalized.slice(idx + '/quiz/'.length);
+    return rest ? decodePath(rest) : null;
+  }
+  return null;
+}
+
+export function isQuizAppPathname(pathname: string): boolean {
+  const normalized = stripAppBase(pathname);
+  return normalized === '/quiz' || normalized.startsWith('/quiz/');
+}
+
+/** App pathname for quiz mode of a storage note (`/quiz/...`). */
+export function quizPathnameForStoragePath(storagePath: string | null | undefined): string {
+  const p = String(storagePath || '').replace(/^\/+/, '');
+  return p ? `/quiz/${p}` : '/quiz';
+}
+
+/** App pathname for editor view of a storage note (`/view/...`). */
+export function viewPathnameForStoragePath(storagePath: string | null | undefined): string {
+  const p = String(storagePath || '').replace(/^\/+/, '');
+  return p ? `/view/${p}` : '/view';
+}
+
+/**
+ * Default open pathname for a vault note.
+ * `*.quiz.md` → `/quiz/...` unless `preferView` or current route is already `/view/`.
+ */
+export function openNotePathnameForStoragePath(
+  storagePath: string | null | undefined,
+  options: {
+    preferView?: boolean;
+    /** When renaming / retargeting, keep quiz vs view mode from the current URL. */
+    currentPathname?: string | null;
+  } = {},
+): string {
+  const p = String(storagePath || '').replace(/^\/+/, '');
+  if (!p) return '/view';
+  const lower = p.toLowerCase();
+  const isQuizFile = lower.endsWith('.quiz.md');
+  if (!isQuizFile) return viewPathnameForStoragePath(p);
+  if (options.preferView) return viewPathnameForStoragePath(p);
+  if (options.currentPathname) {
+    if (isQuizAppPathname(options.currentPathname)) {
+      return quizPathnameForStoragePath(p);
+    }
+    if (parseViewPathFromAppPathname(options.currentPathname) != null) {
+      return viewPathnameForStoragePath(p);
+    }
+  }
+  return quizPathnameForStoragePath(p);
+}
+
 export function isExportPdfAppPathname(pathname: string): boolean {
   const normalized = stripAppBase(pathname);
   return normalized === '/export-pdf' || normalized.startsWith('/export-pdf/');
@@ -65,10 +122,12 @@ export function exportPdfPathnameForStoragePath(storagePath: string | null | und
   return p ? `/export-pdf/${p}` : '/export-pdf';
 }
 
-/** Open-note path from either `/view/...` or `/export-pdf/...`. */
+/** Open-note path from `/view/...`, `/export-pdf/...`, or `/quiz/...`. */
 export function parseOpenNotePathFromAppPathname(pathname: string): string | null {
   return (
-    parseExportPdfPathFromAppPathname(pathname) ?? parseViewPathFromAppPathname(pathname)
+    parseQuizPathFromAppPathname(pathname) ??
+    parseExportPdfPathFromAppPathname(pathname) ??
+    parseViewPathFromAppPathname(pathname)
   );
 }
 

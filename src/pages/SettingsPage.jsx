@@ -8,6 +8,7 @@ import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
+import QuizSettingsSection from '@/components/settings/QuizSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
 import SettingsPageTocDock from '@/components/settings/SettingsPageTocDock';
 import {
@@ -1824,6 +1825,17 @@ export default function SettingsPage({
             </span>
           </label>
         </div>
+            </SettingsPageGroup>
+
+            <SettingsPageGroup
+              id="quiz"
+              title="퀴즈"
+              open={groupOpen.quiz !== false}
+              onOpenChange={(open) => setGroupOpenById('quiz', open)}
+            >
+              <QuizSettingsSection
+                llmProviderProfiles={resolveLlmProviderProfiles(formCreds)}
+              />
             </SettingsPageGroup>
 
             <SettingsPageGroup

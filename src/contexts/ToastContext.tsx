@@ -15,11 +15,15 @@ import { bindTauriDownloadToast } from '@/utils/tauriBlobDownload';
 
 export type ToastIcon = 'check' | 'copy' | 'link' | 'loading';
 
+export type ToastPlacement = 'top' | 'bottom-right';
+
 export type ToastOptions = {
   message: string;
   icon?: ToastIcon;
   /** Auto-dismiss ms (default 1800). Use 0 to keep visible until dismissToast(). */
   durationMs?: number;
+  /** Default `top` (center). Use `bottom-right` for long-running status (e.g. quiz generation). */
+  placement?: ToastPlacement;
 };
 
 type ToastContextValue = {
@@ -31,6 +35,7 @@ type ToastItem = {
   id: number;
   message: string;
   icon: ToastIcon;
+  placement: ToastPlacement;
 };
 
 const TOAST_TRANSITION = { type: 'spring' as const, stiffness: 480, damping: 34 };
@@ -52,7 +57,8 @@ function ToastGlyph({ icon }: { icon: ToastIcon }) {
 }
 
 /**
- * App-wide top toast. Use `useToast().showToast(...)`.
+ * App-wide toast. Use `useToast().showToast(...)`.
+ * Default placement is top-center; pass `placement: 'bottom-right'` for status toasts.
  * Also listens for native `copy` events and shows "복사됨".
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -83,18 +89,34 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         typeof options === 'string'
           ? DEFAULT_DURATION_MS
           : (options.durationMs ?? DEFAULT_DURATION_MS);
+      const placement: ToastPlacement =
+        typeof options === 'string' ? 'top' : (options.placement ?? 'top');
 
       // Programmatic clipboard writes do not fire `copy`; still suppress briefly
       // in case a caller also dispatches a synthetic copy event.
       suppressNativeCopyToastUntilRef.current = Date.now() + 400;
 
-      idRef.current += 1;
-      const id = idRef.current;
       clearHideTimer();
-      setToast({ id, message, icon });
+      // Sticky loading toasts: update message in place (no remount / flicker).
+      let nextId = 0;
+      setToast((prev) => {
+        if (
+          durationMs === 0 &&
+          icon === 'loading' &&
+          prev &&
+          prev.icon === 'loading' &&
+          prev.placement === placement
+        ) {
+          nextId = prev.id;
+          return { ...prev, message };
+        }
+        idRef.current += 1;
+        nextId = idRef.current;
+        return { id: nextId, message, icon, placement };
+      });
       if (durationMs > 0) {
         hideTimerRef.current = setTimeout(() => {
-          setToast((prev) => (prev?.id === id ? null : prev));
+          setToast((prev) => (prev?.id === nextId ? null : prev));
           hideTimerRef.current = null;
         }, durationMs);
       }
@@ -144,12 +166,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [showToast]);
 
   const value = useMemo(() => ({ showToast, dismissToast }), [showToast, dismissToast]);
+  const bottomRight = toast?.placement === 'bottom-right';
 
   return (
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-0 top-0 z-100050 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))]"
+        className={
+          bottomRight
+            ? 'pointer-events-none fixed right-0 bottom-0 z-100050 flex justify-end px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'
+            : 'pointer-events-none fixed inset-x-0 top-0 z-100050 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))]'
+        }
         aria-live="polite"
         aria-atomic="true"
       >
@@ -159,9 +186,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={toast.id}
               role="status"
               className="pointer-events-none flex max-w-[min(92vw,22rem)] items-center gap-2 rounded-full border border-gray-200/90 bg-white/95 px-3.5 py-2 text-sm font-medium text-gray-800 shadow-lg backdrop-blur-sm dark:border-odp-borderStrong dark:bg-odp-surface/95 dark:text-odp-fgStrong"
-              initial={{ opacity: 0, y: -28, scale: 0.96 }}
+              initial={{
+                opacity: 0,
+                y: bottomRight ? 28 : -28,
+                scale: 0.96,
+              }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -16, scale: 0.98 }}
+              exit={{
+                opacity: 0,
+                y: bottomRight ? 16 : -16,
+                scale: 0.98,
+              }}
               transition={TOAST_TRANSITION}
             >
               <span

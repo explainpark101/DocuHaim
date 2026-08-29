@@ -44,3 +44,4 @@ src-tauri/gen/schemas/
 /private/
 src/components/llm/__jsImportProbe.jsx
 temp
+/temp

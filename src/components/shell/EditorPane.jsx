@@ -20,7 +20,9 @@ import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
-import { ArrowLeftRight, ClipboardCopy, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, X } from 'lucide-react';
+import { Tooltip } from 'radix-ui';
+import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -53,11 +55,18 @@ import {
   emptyHomeItemVariants,
   emptyHomeMenuContainerVariants,
 } from '@/components/emptyHomeMotion';
+import { isQuizMdPath } from '@/utils/quiz/quizPath';
+import {
+  isQuizAppPathname,
+  quizPathnameForStoragePath,
+  viewPathnameForStoragePath,
+} from '@/utils/appHref';
 
 const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
 const NovelMarkdownEditor = lazy(() => import('@/components/NovelMarkdownEditor'));
 const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
+const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
 
 function EditorPaneSuspenseFallback() {
   return (
@@ -66,6 +75,9 @@ function EditorPaneSuspenseFallback() {
     </div>
   );
 }
+
+const QUIZ_MODE_TOGGLE_BTN_CLASS =
+  '!bg-amber-500 !text-white hover:!bg-amber-600 focus-visible:!ring-amber-500 dark:!bg-amber-600 dark:hover:!bg-amber-500';
 
 export default function EditorPane({
   currentFile,
@@ -144,7 +156,27 @@ export default function EditorPane({
   const [imgbbCopyUploading, setImgbbCopyUploading] = useState(false);
   const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
   const [documentSettingsOpen, setDocumentSettingsOpen] = useState(false);
+  const [quizToolbarNode, setQuizToolbarNode] = useState(null);
   const { showAlert } = useAlertModal();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isQuizFile = isQuizMdPath(currentFile?.id || currentFile?.name);
+  const quizMode = isQuizFile && isQuizAppPathname(location.pathname);
+
+  const toggleQuizEditMode = useCallback(() => {
+    const path = currentFile?.id;
+    if (!path || !isQuizFile) return;
+    if (quizMode) {
+      navigate(viewPathnameForStoragePath(path));
+    } else {
+      navigate(quizPathnameForStoragePath(path));
+    }
+  }, [currentFile?.id, isQuizFile, quizMode, navigate]);
+
+  useEffect(() => {
+    if (!quizMode) setQuizToolbarNode(null);
+  }, [quizMode, currentFile?.id]);
 
   const documentSettings = useMemo(() => {
     const { meta } = parseDocumentSettingsMeta(editorContent ?? '');
@@ -688,7 +720,10 @@ export default function EditorPane({
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 overflow-visible touch-manipulation">
-          {typeof onToggleRecording === 'function' && (
+          {quizMode && quizToolbarNode ? (
+            quizToolbarNode
+          ) : (
+            typeof onToggleRecording === 'function' && (
             <RecordingDropdownButton
               isRecording={isRecording}
               audioLevel={audioLevel}
@@ -698,6 +733,7 @@ export default function EditorPane({
               onStopRecording={onToggleRecording}
               onShowToolbar={() => setShowRecordingToolbar(true)}
             />
+            )
           )}
           {viewer === 'pdf' && (
             <Button
@@ -883,6 +919,37 @@ export default function EditorPane({
             )}
           </div>
           )}
+          {isQuizFile && !previewOnly ? (
+            <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={toggleQuizEditMode}
+                    aria-label={quizMode ? '마크다운 편집' : '퀴즈 모드'}
+                    className={`shrink-0 ${QUIZ_MODE_TOGGLE_BTN_CLASS}`}
+                  >
+                    {quizMode ? <PenLine size={14} /> : <ClipboardList size={14} />}
+                    <span className="hidden md:inline">
+                      {quizMode ? '편집' : '퀴즈'}
+                    </span>
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="bottom"
+                    sideOffset={6}
+                    className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+                  >
+                    {quizMode ? '마크다운 편집' : '퀴즈 모드'}
+                    <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+          ) : null}
           <Button
             type="button"
             variant="primary"
@@ -904,12 +971,12 @@ export default function EditorPane({
               {isSaving ? '저장 중...' : '저장'}
             </span>
           </Button>
-          {!previewOnly && (
+          {!previewOnly && typeof onRequestClose === 'function' && (
             <Button
               type="button"
               variant="tertiary"
               size="sm"
-              onClick={() => onRequestClose?.()}
+              onClick={() => onRequestClose()}
               title="닫기"
               aria-label="파일 닫기"
             >
@@ -1007,6 +1074,18 @@ export default function EditorPane({
             <div className="text-sm text-gray-500 dark:text-odp-muted">파일 불러오는 중…</div>
           </div>
         ) : viewer === 'markdown' ? (
+          quizMode ? (
+            <Suspense fallback={<EditorPaneSuspenseFallback />}>
+              <QuizPane
+                content={editorContent}
+                onChange={onChangeEditor}
+                currentFile={currentFile}
+                llmProviderProfiles={llmProviderProfiles}
+                isActiveFile={isActiveFile}
+                registerToolbar={setQuizToolbarNode}
+              />
+            </Suspense>
+          ) : (
           <>
             <div className="flex-1 min-h-0">
               {recordingViewMode && recordingAudioUrl ? (
@@ -1073,6 +1152,7 @@ export default function EditorPane({
               )}
             </div>
           </>
+          )
         ) : viewer === 'image' && currentFile.objectUrl ? (
           <div className="flex-1 flex items-center justify-center overflow-auto p-4">
             <img

@@ -25,6 +25,12 @@ export const CREATE_FILE_FORMATS: CreateFileFormat[] = [
     default: true,
   },
   {
+    id: 'quiz.md',
+    extension: '.quiz.md',
+    label: '.quiz.md',
+    description: '퀴즈 / 문제 풀이 노트',
+  },
+  {
     id: 'enc.md',
     extension: '.enc.md',
     label: '.enc.md',

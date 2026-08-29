@@ -58,6 +58,12 @@ export type ChromeOwnedApi = {
   chatAttachDropHandlerRef: MutableRefObject<any>;
   handleDropToChatAttach: (items: any) => void;
   handleRegisterChatAttachDrop: (handler: any) => void;
+  quizSourceDropActive: boolean;
+  setQuizSourceDropActive: (v: boolean) => void;
+  quizSourceDropHost: HTMLElement | null;
+  setQuizSourceDropHost: (v: HTMLElement | null) => void;
+  handleDropToQuizSource: (items: any) => void;
+  handleRegisterQuizSourceDrop: (handler: any) => void;
   shareGroupSend: any;
   setShareGroupSend: (v: any) => void;
   authWanted: boolean;
@@ -121,6 +127,9 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
   const fileTabContextMenuRef = useRef<any>(null);
   const [chatAttachDropHost, setChatAttachDropHost] = useState<any>(null);
   const chatAttachDropHandlerRef = useRef<any>(null);
+  const [quizSourceDropActive, setQuizSourceDropActive] = useState(false);
+  const [quizSourceDropHost, setQuizSourceDropHost] = useState<HTMLElement | null>(null);
+  const quizSourceDropHandlerRef = useRef<any>(null);
   const [shareGroupSend, setShareGroupSend] = useState<any>(null);
   const [authWanted, setAuthWanted] = useState(false);
 
@@ -163,6 +172,15 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       typeof handler === 'function' ? handler : null;
   }, []);
 
+  const handleDropToQuizSource = useCallback((items: any) => {
+    quizSourceDropHandlerRef.current?.(items);
+  }, []);
+
+  const handleRegisterQuizSourceDrop = useCallback((handler: any) => {
+    quizSourceDropHandlerRef.current =
+      typeof handler === 'function' ? handler : null;
+  }, []);
+
   const value = useMemo(
     () => ({
       operationStatus,
@@ -195,6 +213,12 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       chatAttachDropHandlerRef,
       handleDropToChatAttach,
       handleRegisterChatAttachDrop,
+      quizSourceDropActive,
+      setQuizSourceDropActive,
+      quizSourceDropHost,
+      setQuizSourceDropHost,
+      handleDropToQuizSource,
+      handleRegisterQuizSourceDrop,
       shareGroupSend,
       setShareGroupSend,
       authWanted,
@@ -219,6 +243,10 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       chatAttachDropHost,
       handleDropToChatAttach,
       handleRegisterChatAttachDrop,
+      quizSourceDropActive,
+      quizSourceDropHost,
+      handleDropToQuizSource,
+      handleRegisterQuizSourceDrop,
       shareGroupSend,
       authWanted,
       isChatRoute,

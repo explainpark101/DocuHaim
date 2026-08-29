@@ -34,7 +34,7 @@ import {
 } from '@/utils/desktopOpenFiles';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isContentSearchAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isContentSearchAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath, openNotePathnameForStoragePath, parseQuizPathFromAppPathname } from '@/utils/appHref';
 
 /**
  * useFileOpenRoutingDomain: context-owned domain handlers.
@@ -200,15 +200,15 @@ export function useFileOpenRoutingDomain() {
 
       const url = new URL(window.location.href);
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-      const encodedView = String(path)
+      const openPath = openNotePathnameForStoragePath(path);
+      const encodedOpen = openPath
         .split('/')
-        .filter(Boolean)
-        .map((segment) => encodeURIComponent(segment))
+        .map((segment, i) => (i === 0 || !segment ? segment : encodeURIComponent(segment)))
         .join('/');
       if (isDesktopApp()) {
-        url.hash = `/view/${encodedView}`;
+        url.hash = encodedOpen;
       } else {
-        url.pathname = `${base && base !== '/' ? base : ''}/view/${encodedView}`;
+        url.pathname = `${base && base !== '/' ? base : ''}${encodedOpen}`;
       }
       url.searchParams.set('open', `${storageType}:${path}`);
       window.open(url.toString(), '_blank');
@@ -343,7 +343,8 @@ export function useFileOpenRoutingDomain() {
         : null;
     const routeExportPath = parseExportPdfPathFromAppPathname(location.pathname);
     const routeViewPath = parseViewPathFromAppPathname(location.pathname);
-    const routeNotePath = routeExportPath || routeViewPath;
+    const routeQuizPath = parseQuizPathFromAppPathname(location.pathname);
+    const routeNotePath = routeExportPath || routeQuizPath || routeViewPath;
 
     let type = null;
     let path = null;
@@ -504,7 +505,9 @@ export function useFileOpenRoutingDomain() {
         const nextSearch = params.toString();
         const nextPathname = routeExportPath
           ? exportPdfPathnameForStoragePath(path)
-          : `/view/${path}`;
+          : openNotePathnameForStoragePath(path, {
+              currentPathname: location.pathname,
+            });
         navigate(
           {
             pathname: nextPathname,

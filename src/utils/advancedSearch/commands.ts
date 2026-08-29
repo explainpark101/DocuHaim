@@ -75,6 +75,7 @@ export type AppCommandId =
   | 'settings-navigation'
   | 'settings-display'
   | 'settings-chat'
+  | 'settings-quiz'
   | 'settings-og'
   | 'settings-advanced-search'
   | 'settings-inverted-index'
@@ -375,6 +376,23 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '채팅 입력창 helper text 표시',
     path: '/settings#settings-chat',
     keywords: ['채팅 설정', 'helper', '단축키 안내'],
+  },
+  {
+    id: 'settings-quiz',
+    title: '설정 · 퀴즈',
+    description: 'quiz.md 출제·채점·RAG 기본값',
+    path: '/settings#settings-quiz',
+    keywords: [
+      '퀴즈',
+      'quiz',
+      '문제',
+      '출제',
+      '채점',
+      'rag',
+      '근거',
+      '객관식',
+      '주관식',
+    ],
   },
   {
     id: 'settings-og',

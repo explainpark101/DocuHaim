@@ -61,6 +61,7 @@ import {
   parseOpenNotePathFromAppPathname,
   isExportPdfAppPathname,
   exportPdfPathnameForStoragePath,
+  openNotePathnameForStoragePath,
 } from '@/utils/appHref';
 import {
   SESSION_STORAGE_TYPE,
@@ -283,7 +284,9 @@ export function useFileSessionDomain() {
     const skipNavigate = options.skipNavigate === true;
     const background = options.background === true;
     const goToViewPath = () => {
-      if (!skipNavigate) navigate(`/view/${node.path}`);
+      if (!skipNavigate) {
+        navigate(openNotePathnameForStoragePath(node.path));
+      }
     };
 
     // Already-open file: activate that tab first, then sync from server/disk.
@@ -942,7 +945,7 @@ export function useFileSessionDomain() {
       if (node?.type === 'file') {
         selectFileRef.current?.(type, node);
       } else {
-        navigate(`/view/${path}`);
+        navigate(openNotePathnameForStoragePath(path));
       }
     },
     [
@@ -1563,7 +1566,11 @@ export function useFileSessionDomain() {
     try {
       const onExport = isExportPdfAppPathname(location.pathname);
       navigate(
-        onExport ? exportPdfPathnameForStoragePath(nextPath) : `/view/${nextPath}`,
+        onExport
+          ? exportPdfPathnameForStoragePath(nextPath)
+          : openNotePathnameForStoragePath(nextPath, {
+              currentPathname: location.pathname,
+            }),
         { replace: true },
       );
     } finally {

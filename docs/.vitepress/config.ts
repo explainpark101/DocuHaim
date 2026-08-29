@@ -76,6 +76,7 @@ export default defineConfig({
             { text: 'Plan frontmatter', link: '/custom-markdown/plan-frontmatter' },
             { text: 'Footnotes / Sources', link: '/custom-markdown/footnotes' },
             { text: 'Document settings', link: '/custom-markdown/document-settings' },
+            { text: 'Quiz markdown (.quiz.md)', link: '/custom-markdown/quiz-md' },
             { text: 'Preview hard break', link: '/custom-markdown/preview-hard-break' },
             { text: 'Mermaid fence size', link: '/custom-markdown/mermaid-fence-size' },
             { text: 'Mermaid size comment', link: '/custom-markdown/mermaid-size' },
