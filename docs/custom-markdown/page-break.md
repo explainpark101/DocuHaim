@@ -47,11 +47,11 @@ Do not leave the literal `<pgbr/>` in HTML output after transform (XSS / printer
 ### 4. Preview vs print (host)
 
 | Context | Expected presentation |
-|---------|----------------------|
+|--------|----------------------|
 | Preview (editor) | Visible rule (CSS on `.md-pgbr`) |
-| Print / PDF Export | Host packs fixed page boxes; `<pgbr/>` forces a **new page** in the packer (`printPagePack.ts`). Markers are not printed as a visual rule. |
+| Print / PDF Export | [Paged.js](https://pagedjs.org/) CSS fragmentation; `.md-pgbr { break-before: page }` forces a **new page**. Markers are not printed as a visual rule. |
 
-CSS `break-after` on `.md-pgbr` may still apply in legacy continuous print hosts; Export PDF uses overflow packing into `.export-pdf-page` nodes instead.
+Export PDF renders markdown (Mermaid, code blocks, wiki images) in a staging `MdPreview`, then runs `Previewer.preview()` into `.pagedjs_page` nodes shared by on-screen preview and `window.print()`.
 
 ### 5. Non-goals
 
@@ -64,6 +64,6 @@ CSS `break-after` on `.md-pgbr` may still apply in legacy continuous print hosts
 | 역할 | 경로 |
 |------|------|
 | markdown-it | `src/utils/pageBreakMarkdownIt.js` |
-| 인쇄 패킹 | `printPagePack.ts`, `usePrintPackedPages.ts` |
+| paged.js preview | `src/pages/exportPdf/hooks/usePagedJsPreview.ts`, `exportPdfPagedStyles.ts` |
 | XSS whitelist | `src/config/mdEditorConfig.js` |
 | AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx` |
