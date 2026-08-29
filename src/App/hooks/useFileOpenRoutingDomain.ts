@@ -24,7 +24,7 @@ import { hasStoredLocalRootHandle, loadLastLocalFolderName } from '@/utils/local
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { loadLocalVaultFsPath } from '@/utils/localVaultPathStore';
-import { readTauriLocalDirectoryTree, loadTauriLocalTreeInitial } from '@/utils/storage/tauriLocalBackend';
+import { loadTauriLocalTreeInitial } from '@/utils/storage/tauriLocalBackend';
 import { loadExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import { ensureAndroidDefaultLocalVaultRoot } from '@/utils/storage/androidLocalVault';
 import {
