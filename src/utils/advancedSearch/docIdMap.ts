@@ -1,5 +1,7 @@
 /** Map string doc ids (file:/chat:) ↔ Lucivy numeric _node_id. */
 
+import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
+
 export type DocIdMapState = {
   stringToNumeric: Map<string, number>;
   numericToString: Map<number, string>;
@@ -99,7 +101,7 @@ export async function hydrateDocIdMapFromDocsAsync(
     if (n > maxId) maxId = n;
     i += 1;
     if (i % yieldEvery === 0) {
-      await new Promise<void>((r) => setTimeout(r, 0));
+      await yieldToMain();
     }
   }
   map.nextNumericId = Math.max(map.nextNumericId, maxId + 1);

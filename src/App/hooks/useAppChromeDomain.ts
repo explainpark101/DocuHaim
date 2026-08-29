@@ -17,7 +17,7 @@ import {
 import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
-import { whenIdle, waitForWorkspaceTabsRestore } from '@/utils/advancedSearch/yieldToMain';
+import { whenIdle, waitForWorkspaceTabsRestore, yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 
@@ -178,7 +178,9 @@ export function useAppChromeDomain() {
           () => hasRestoredPersistedWorkspaceTabsRef.current,
         );
         if (cancelled) return;
-        // Defer index load until after first paint so Tauri startup stays responsive.
+        // Let keep-alive tab commits paint before Lucivy/docs hydrate (post-restore spike).
+        await yieldToMain();
+        await yieldToMain();
         await advancedSearchEngine.ensureLoaded();
         if (cancelled) return;
         await advancedSearchEngine.refreshCheckpointStatus();

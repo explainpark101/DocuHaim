@@ -20,7 +20,7 @@ import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
-import { ArrowLeftRight, ClipboardCopy, ImagePlus, ListTree, Loader2, PenLine, Settings, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, X } from 'lucide-react';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -579,6 +579,27 @@ export default function EditorPane({
     hasStandardMarkdownImages(editorContent);
 
   const currentName = currentFile.name || '';
+
+  // Keep-alive inactive tabs: defer heavy viewers until the tab is active.
+  // Background tab restore used to mount every CodeMirror/Monaco at once when loads finished.
+  if (!isActiveFile && viewer !== 'loading') {
+    const label = (editedFileName ?? '').trim() || currentName || currentFile.id || '';
+    return (
+      <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-white dark:bg-odp-surface">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+          <FileText size={20} className="text-gray-400 dark:text-odp-muted" aria-hidden />
+          {label ? (
+            <p className="max-w-full truncate text-sm font-medium text-gray-700 dark:text-odp-fg">
+              {label}
+            </p>
+          ) : null}
+          <p className="text-xs text-gray-500 dark:text-odp-muted">
+            탭을 선택하면 편집기가 열립니다
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleFileNameBlur = () => {
     if (!currentFile || typeof setEditedFileName !== 'function') return;
