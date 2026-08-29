@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { loadQuizSourceTexts } from '@/utils/quiz/quizVaultSourceLoader';
 
 describe('quizVaultSourceLoader', () => {

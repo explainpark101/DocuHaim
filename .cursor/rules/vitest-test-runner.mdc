@@ -1,0 +1,42 @@
+---
+description: Use Vitest for unit tests — never bun:test
+globs: tests/**/*.{test,spec}.{ts,tsx}
+alwaysApply: false
+---
+
+# Vitest test runner
+
+Unit tests run with **Vitest** (`vitest run --config vitest.config.ts` via `bun run test` / pre-push). Bun is the package manager/runtime here — **not** the test runner.
+
+## Imports
+
+Import test APIs from **`vitest`** only:
+
+| Need | Import from `vitest` |
+|------|----------------------|
+| Suites / cases | `describe`, `it` (preferred) or `test` |
+| Assertions | `expect` |
+| Mocks / spies | `vi` |
+| Hooks | `beforeEach`, `afterEach`, `beforeAll`, `afterAll` |
+
+Do **not** import from `bun:test` — Vitest cannot resolve it and the suite fails with 0 tests.
+
+```typescript
+// ❌ BAD
+import { describe, expect, test } from 'bun:test';
+
+// ✅ GOOD
+import { describe, expect, it } from 'vitest';
+
+// ✅ GOOD — mocks
+import { afterEach, describe, expect, it, vi } from 'vitest';
+```
+
+## Checklist for new or edited test files
+
+1. First import line uses `vitest`, never `bun:test`.
+2. Prefer `it` for cases (matches most files under `tests/`); `test` is OK when editing a file that already uses it.
+3. Use `vi` for mocks/spies — not Bun-specific mock helpers.
+4. Run `bun run vitest run <file>` (or `bun run test`) before push.
+
+Prefer **English** in new code comments if Korean Unicode might corrupt.

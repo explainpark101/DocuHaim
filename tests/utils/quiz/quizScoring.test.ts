@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { computeQuizScoreBoard, getQuizQuestionGradeStatus } from '@/utils/quiz/quizScoring';
 import type { QuizQuestion } from '@/utils/quiz/quizTypes';
 
