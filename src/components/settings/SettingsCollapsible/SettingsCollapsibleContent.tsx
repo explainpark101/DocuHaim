@@ -1,29 +1,29 @@
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import type { ReactNode } from 'react';
-
-const COLLAPSE_EASE = [0.4, 0, 0.2, 1] as const;
-
-export const SETTINGS_COLLAPSE_TRANSITION = {
-  duration: 0.24,
-  ease: COLLAPSE_EASE,
-} as const;
+import { SETTINGS_COLLAPSE_TRANSITION } from '@/components/settings/SettingsCollapsible/constants';
+import { useSettingsCollapsibleOptional } from '@/components/settings/SettingsCollapsible/context';
 
 type SettingsCollapsibleContentProps = {
-  open: boolean;
   children: ReactNode;
   className?: string;
+  open?: boolean;
   contentKey?: string;
 };
 
 /**
  * Height + opacity expand/collapse for Settings page disclosure panels.
+ * Inherits open/contentKey from SettingsCollapsibleContainer when omitted.
  */
 export default function SettingsCollapsibleContent({
-  open,
+  open: openProp,
+  contentKey: contentKeyProp,
   children,
   className = '',
-  contentKey = 'settings-collapse',
 }: SettingsCollapsibleContentProps) {
+  const ctx = useSettingsCollapsibleOptional();
+  const open = openProp ?? ctx?.open ?? false;
+  const contentKey = contentKeyProp ?? ctx?.contentKey ?? 'settings-collapse';
+
   return (
     <AnimatePresence initial={false}>
       {open ? (

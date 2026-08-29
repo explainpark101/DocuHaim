@@ -1,6 +1,10 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Square } from 'lucide-react';
-import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
+import {
+  SettingsCollapsibleContainer,
+  SettingsCollapsibleContent,
+  SettingsCollapsibleHeading,
+} from '@/components/settings/SettingsCollapsible';
 import {
   analyzeStorageTree,
   formatStorageBytes,
@@ -321,21 +325,23 @@ function AnalysisSection({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-gray-200 bg-white dark:border-odp-borderStrong dark:bg-odp-bgSoft">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
+    <SettingsCollapsibleContainer
+      contentKey={title}
+      open={open}
+      onOpenChange={(next) => {
+        if (next !== open) onToggle();
+      }}
+      className="rounded-md border border-gray-200 bg-white dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+    >
+      <SettingsCollapsibleHeading
+        titleAs="span"
+        chevronSize={14}
         className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:text-odp-fgStrong dark:hover:bg-odp-focusBg/40"
+        titleClassName=""
       >
-        {open ? (
-          <ChevronDown size={14} className="shrink-0 text-gray-500" />
-        ) : (
-          <ChevronRight size={14} className="shrink-0 text-gray-500" />
-        )}
-        <span>{title}</span>
-      </button>
-      <SettingsCollapsibleContent open={open} contentKey={title}>
+        {title}
+      </SettingsCollapsibleHeading>
+      <SettingsCollapsibleContent>
         <div className="grid grid-cols-1 gap-3 border-t border-gray-200 p-3 dark:border-odp-borderStrong md:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)] md:items-stretch">
           <div className="min-w-0">
             <GraphPlaceholder />
@@ -343,7 +349,7 @@ function AnalysisSection({
           <div className="min-w-0">{children}</div>
         </div>
       </SettingsCollapsibleContent>
-    </div>
+    </SettingsCollapsibleContainer>
   );
 }
 

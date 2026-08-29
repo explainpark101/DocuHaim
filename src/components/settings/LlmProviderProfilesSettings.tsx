@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { RadioGroup } from 'radix-ui';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
+import {
+  SettingsCollapsibleContainer,
+  SettingsCollapsibleContent,
+  SettingsCollapsibleHeading,
+} from '@/components/settings/SettingsCollapsible';
 import {
   LLM_PROVIDER_GEMINI,
   LLM_PROVIDER_MLX_VLM,
@@ -19,7 +24,6 @@ import {
 import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/openaiCompatibleSettings';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
-import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 
 type Draft = {
   id: string;
@@ -160,27 +164,16 @@ export default function LlmProviderProfilesSettings({
   };
 
   return (
-    <div
+    <SettingsCollapsibleContainer
       id="settings-llm-providers"
+      contentKey="settings-llm-providers"
+      open={open}
+      onOpenChange={setOpen}
       tabIndex={-1}
       className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
     >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 text-left"
-        aria-expanded={open}
-      >
-        {open ? (
-          <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-        ) : (
-          <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-        )}
-        <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-          AI 도우미 제공자
-        </h3>
-      </button>
-      <SettingsCollapsibleContent open={open} contentKey="settings-llm-providers">
+      <SettingsCollapsibleHeading>AI 도우미 제공자</SettingsCollapsibleHeading>
+      <SettingsCollapsibleContent>
         <>
           <p className="text-xs text-gray-600 dark:text-odp-muted">
             Gemini와 OpenAI 호환 endpoint를 여러 개 저장할 수 있습니다. 실제 사용할 제공자는
@@ -451,6 +444,6 @@ export default function LlmProviderProfilesSettings({
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
       />
-    </div>
+    </SettingsCollapsibleContainer>
   );
 }

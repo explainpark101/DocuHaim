@@ -18,6 +18,10 @@ import { decodeSyncData } from '@/utils/syncProto';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { createWebdavBackend, createStorageBackend } from '@/utils/storage';
 import { tryRestoreLocalRootHandle } from '@/utils/localFolderStore';
+import {
+  rewriteDuplicateImageReferencesInVault,
+  type UnusedImageDeleteOptions,
+} from '@/utils/unusedImageCleanup';
 
 /**
  * useRecordingVaultEffectsDomain: context-owned domain handlers.
@@ -284,10 +288,38 @@ export function useRecordingVaultEffectsDomain() {
   );
 
   const handleDeleteUnusedImagePaths = useCallback(
-    async (paths: any, mode: any) => {
+    async (paths: any, mode: any, options?: UnusedImageDeleteOptions) => {
       const list = (Array.isArray(paths) ? paths : []).filter(Boolean);
       if (!list.length) return;
       const backend = getActiveStorageBackend();
+      const pathRemap = options?.pathRemap ?? {};
+      const hasRemap = Object.keys(pathRemap).length > 0;
+
+      if (hasRemap) {
+        const activeTree =
+          storageMode === STORAGE_MODE_LOCAL
+            ? localTree
+            : storageMode === STORAGE_MODE_WEBDAV
+              ? webdavTree
+              : s3Tree;
+        const updatedPaths = await rewriteDuplicateImageReferencesInVault({
+          tree: activeTree,
+          pathRemap,
+          readText: async (path) => {
+            const { text } = await backend.readText(path);
+            return text;
+          },
+          writeText: async (path, text) => {
+            await backend.writeText(path, text, 'text/markdown; charset=utf-8');
+          },
+        });
+        const openId = currentFileRef.current?.id;
+        if (openId && updatedPaths.includes(openId)) {
+          const { text } = await backend.readText(openId);
+          setEditorContent(text);
+        }
+      }
+
       for (const path of list) {
         try {
           if (mode === 'hard') {
@@ -306,7 +338,18 @@ export function useRecordingVaultEffectsDomain() {
     },
     // refreshLocalTree is a stable-enough function declaration in this component body
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshLocalTree recreated each render
-    [getActiveStorageBackend, storageMode, refreshWebdavTree, loadS3Files, localRootHandle],
+    [
+      getActiveStorageBackend,
+      storageMode,
+      localTree,
+      webdavTree,
+      s3Tree,
+      currentFileRef,
+      setEditorContent,
+      refreshWebdavTree,
+      loadS3Files,
+      localRootHandle,
+    ],
   );
 
   useEffect(() => {

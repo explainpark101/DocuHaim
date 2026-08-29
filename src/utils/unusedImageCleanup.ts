@@ -8,7 +8,11 @@ import {
   type StorageTreeNode,
 } from '@/utils/storageUsageAnalysis';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
-import { parseWikiImageInner, WIKI_IMAGE_RE } from '@/utils/wikiImageSyntax';
+import {
+  parseWikiImageInner,
+  WIKI_IMAGE_RE,
+  wikiImageMarkupFromAttrs,
+} from '@/utils/wikiImageSyntax';
 
 export { formatStorageBytes };
 
@@ -17,6 +21,11 @@ export const CHAT_IMAGES_PREFIX = '.chat-with-myself/images/';
 
 export type UnusedImageScope = 'notes' | 'notes+chat';
 export type UnusedImageDeleteMode = 'trash' | 'hard';
+
+export type UnusedImageDeleteOptions = {
+  /** Deleted path -> kept path (duplicate cleanup rewrites ![[…]] before delete). */
+  pathRemap?: Record<string, string>;
+};
 
 export type ImageFileEntry = {
   path: string;
@@ -122,6 +131,87 @@ export function collectMarkdownPaths(tree: StorageTreeNode[] | null | undefined)
 /** Normalize wiki image path for Set membership (strip leading slash). */
 export function normalizeWikiImagePath(path: string): string {
   return normalizeStoragePath(path);
+}
+
+function buildNormalizedPathRemap(
+  pathRemap: ReadonlyMap<string, string> | Record<string, string>,
+): Map<string, string> {
+  const entries =
+    pathRemap instanceof Map ? [...pathRemap.entries()] : Object.entries(pathRemap);
+  const out = new Map<string, string>();
+  for (const [from, to] of entries) {
+    const oldPath = normalizeWikiImagePath(from);
+    const newPath = normalizeWikiImagePath(to);
+    if (!oldPath || !newPath || oldPath === newPath) continue;
+    out.set(oldPath, newPath);
+  }
+  return out;
+}
+
+/**
+ * Replace wiki image paths in markdown when duplicate files are removed.
+ * Preserves size/background options on each token.
+ */
+export function rewriteWikiImagePathsInMarkdown(
+  markdown: string,
+  pathRemap: ReadonlyMap<string, string> | Record<string, string>,
+): { markdown: string; updated: boolean } {
+  const remap = buildNormalizedPathRemap(pathRemap);
+  if (!remap.size) return { markdown, updated: false };
+
+  const source = String(markdown ?? '');
+  let updated = false;
+  const re = new RegExp(WIKI_IMAGE_RE.source, 'g');
+  const next = source.replace(re, (full, rawInner: string) => {
+    const parsed = parseWikiImageInner(rawInner);
+    if (!parsed?.path) return full;
+    const nextPath = remap.get(normalizeWikiImagePath(parsed.path));
+    if (!nextPath) return full;
+    updated = true;
+    return wikiImageMarkupFromAttrs({
+      path: nextPath,
+      width: parsed.width,
+      height: parsed.height,
+      background: parsed.background,
+    });
+  });
+  return { markdown: next, updated };
+}
+
+/**
+ * Scan vault markdown and rewrite references to paths being deleted.
+ * @returns paths of files that were written.
+ */
+export async function rewriteDuplicateImageReferencesInVault(params: {
+  tree: StorageTreeNode[] | null | undefined;
+  pathRemap: Record<string, string>;
+  readText: (path: string) => Promise<string>;
+  writeText: (path: string, text: string) => Promise<void>;
+  signal?: AbortSignal;
+}): Promise<string[]> {
+  const remap = buildNormalizedPathRemap(params.pathRemap);
+  if (!remap.size) return [];
+
+  const mdPaths = collectMarkdownPaths(params.tree);
+  const updatedPaths: string[] = [];
+  await mapPool(
+    mdPaths,
+    6,
+    async (mdPath) => {
+      if (params.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      try {
+        const text = await params.readText(mdPath);
+        const { markdown, updated } = rewriteWikiImagePathsInMarkdown(text, remap);
+        if (!updated) return;
+        await params.writeText(mdPath, markdown);
+        updatedPaths.push(mdPath);
+      } catch {
+        // skip unreadable
+      }
+    },
+    { signal: params.signal },
+  );
+  return updatedPaths;
 }
 
 export function extractWikiImagePaths(markdown: string): string[] {

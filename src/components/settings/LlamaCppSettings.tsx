@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLocation } from 'react-router';
+import {
+  SettingsCollapsibleContainer,
+  SettingsCollapsibleContent,
+  SettingsCollapsibleHeading,
+} from '@/components/settings/SettingsCollapsible';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
   loadLlamaCppSettings,
@@ -33,7 +37,6 @@ import LlamaCppServerLogPanel from '@/components/settings/LlamaCppServerLogPanel
 import LlamaCppSettingsOverview, {
   LlamaCppSettingsPanelTitle,
 } from '@/components/settings/LlamaCppSettingsOverview';
-import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 
 export default function LlamaCppSettings() {
   const location = useLocation();
@@ -144,26 +147,22 @@ export default function LlamaCppSettings() {
   };
 
   return (
-    <div
+    <SettingsCollapsibleContainer
       id="settings-llama-cpp"
+      contentKey="settings-llama-cpp-panel"
+      open={panelOpen}
+      onOpenChange={setPanelOpen}
       tabIndex={-1}
       className="scroll-mt-4 rounded-lg border border-sky-200 bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/25"
     >
-      <button
-        type="button"
-        onClick={() => setPanelOpen((v) => !v)}
-        aria-expanded={panelOpen}
+      <SettingsCollapsibleHeading
+        unstyled
         className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-sky-100/50 dark:hover:bg-sky-950/30"
       >
-        {panelOpen ? (
-          <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-        ) : (
-          <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-        )}
         <LlamaCppSettingsPanelTitle />
-      </button>
+      </SettingsCollapsibleHeading>
 
-      <SettingsCollapsibleContent open={panelOpen} contentKey="settings-llama-cpp-panel">
+      <SettingsCollapsibleContent>
         <div className="space-y-3 border-t border-sky-200/80 px-4 pb-4 pt-3 dark:border-sky-900/40">
           <LlamaCppSettingsOverview
             toolkit={toolkit}
@@ -234,6 +233,6 @@ export default function LlamaCppSettings() {
           </LlamaCppCollapsibleSection>
         </div>
       </SettingsCollapsibleContent>
-    </div>
+    </SettingsCollapsibleContainer>
   );
 }

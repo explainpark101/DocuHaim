@@ -24,6 +24,7 @@ import {
   type DuplicateImageGroup,
   type ImageFileEntry,
   type UnusedImageDeleteMode,
+  type UnusedImageDeleteOptions,
   type UnusedImageScope,
 } from '@/utils/unusedImageCleanup';
 import type { StorageTreeNode } from '@/utils/storageUsageAnalysis';
@@ -37,6 +38,7 @@ type Props = {
   onDeletePaths?: (
     paths: string[],
     mode: UnusedImageDeleteMode,
+    options?: UnusedImageDeleteOptions,
   ) => Promise<void>;
 };
 
@@ -84,6 +86,7 @@ export default function UnusedImageCleanup({
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmPaths, setConfirmPaths] = useState<string[]>([]);
+  const [confirmPathRemap, setConfirmPathRemap] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -216,9 +219,24 @@ export default function UnusedImageCleanup({
     });
   };
 
-  const openConfirm = (paths: string[]) => {
+  const buildDupePathRemap = (): Record<string, string> => {
+    const remap: Record<string, string> = {};
+    for (const g of dupeGroups) {
+      const keep = keepByHash[g.hash];
+      if (!keep) continue;
+      for (const f of g.files) {
+        if (f.path !== keep && selectedDupes.has(f.path)) {
+          remap[f.path] = keep;
+        }
+      }
+    }
+    return remap;
+  };
+
+  const openConfirm = (paths: string[], pathRemap?: Record<string, string>) => {
     if (!paths.length || !onDeletePaths) return;
     setConfirmPaths(paths);
+    setConfirmPathRemap(pathRemap ?? {});
     setConfirmOpen(true);
   };
 
@@ -227,7 +245,8 @@ export default function UnusedImageCleanup({
     setDeleting(true);
     setError('');
     try {
-      await onDeletePaths(confirmPaths, deleteMode);
+      const remap = Object.keys(confirmPathRemap).length ? confirmPathRemap : undefined;
+      await onDeletePaths(confirmPaths, deleteMode, remap ? { pathRemap: remap } : undefined);
       const removed = new Set(confirmPaths);
       setUnused((prev) => prev.filter((f) => !removed.has(f.path)));
       setSelectedUnused((prev) => {
@@ -250,6 +269,7 @@ export default function UnusedImageCleanup({
       });
       setConfirmOpen(false);
       setConfirmPaths([]);
+      setConfirmPathRemap({});
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -460,7 +480,7 @@ export default function UnusedImageCleanup({
               type="button"
               variant="danger"
               disabled={dupeSelectedCount === 0 || busy}
-              onClick={() => openConfirm([...selectedDupes])}
+              onClick={() => openConfirm([...selectedDupes], buildDupePathRemap())}
             >
               <Trash2 size={14} />
               선택 삭제 ({dupeSelectedCount})
@@ -519,8 +539,16 @@ export default function UnusedImageCleanup({
         title={hard ? '이미지를 영구 삭제할까요?' : '이미지를 휴지통으로 보낼까요?'}
         message={
           hard
-            ? `${confirmPaths.length}개 파일을 복구할 수 없이 삭제합니다.`
-            : `${confirmPaths.length}개 파일을 .trash/ 로 이동합니다.`
+            ? `${confirmPaths.length}개 파일을 복구할 수 없이 삭제합니다.${
+                Object.keys(confirmPathRemap).length
+                  ? ' 삭제 대상을 참조하는 문서 링크는 유지 이미지로 바뀝니다.'
+                  : ''
+              }`
+            : `${confirmPaths.length}개 파일을 .trash/ 로 이동합니다.${
+                Object.keys(confirmPathRemap).length
+                  ? ' 삭제 대상을 참조하는 문서 링크는 유지 이미지로 바뀝니다.'
+                  : ''
+              }`
         }
         variant="danger"
         confirmLabel={hard ? '영구 삭제' : '휴지통으로 이동'}
@@ -531,6 +559,7 @@ export default function UnusedImageCleanup({
           if (deleting) return;
           setConfirmOpen(false);
           setConfirmPaths([]);
+          setConfirmPathRemap({});
         }}
       />
     </div>

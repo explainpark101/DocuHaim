@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLocation } from 'react-router';
+import {
+  SettingsCollapsibleContainer,
+  SettingsCollapsibleContent,
+  SettingsCollapsibleHeading,
+} from '@/components/settings/SettingsCollapsible';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import {
   loadMlxVlmSettings,
@@ -32,7 +36,6 @@ import MlxVlmServerLogPanel from '@/components/settings/MlxVlmServerLogPanel';
 import MlxVlmSettingsOverview, {
   MlxVlmSettingsPanelTitle,
 } from '@/components/settings/MlxVlmSettingsOverview';
-import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
 
 export default function MlxVlmSettings() {
   const location = useLocation();
@@ -149,26 +152,22 @@ export default function MlxVlmSettings() {
   };
 
   return (
-    <div
+    <SettingsCollapsibleContainer
       id="settings-mlx-vlm"
+      contentKey="settings-mlx-vlm-panel"
+      open={panelOpen}
+      onOpenChange={setPanelOpen}
       tabIndex={-1}
       className="scroll-mt-4 rounded-lg border border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/25"
     >
-      <button
-        type="button"
-        onClick={() => setPanelOpen((v) => !v)}
-        aria-expanded={panelOpen}
+      <SettingsCollapsibleHeading
+        unstyled
         className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-emerald-100/50 dark:hover:bg-emerald-950/30"
       >
-        {panelOpen ? (
-          <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-        ) : (
-          <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-        )}
         <MlxVlmSettingsPanelTitle />
-      </button>
+      </SettingsCollapsibleHeading>
 
-      <SettingsCollapsibleContent open={panelOpen} contentKey="settings-mlx-vlm-panel">
+      <SettingsCollapsibleContent>
         <div className="space-y-3 border-t border-emerald-200/80 px-4 pb-4 pt-3 dark:border-emerald-900/40">
           <MlxVlmSettingsOverview
             toolkit={toolkit}
@@ -246,6 +245,6 @@ export default function MlxVlmSettings() {
           </MlxVlmCollapsibleSection>
         </div>
       </SettingsCollapsibleContent>
-    </div>
+    </SettingsCollapsibleContainer>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { VList, type VListHandle } from 'virtua';
-import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
+import { SettingsCollapsibleContent } from '@/components/settings/SettingsCollapsible';
 import type { MlxVlmLogLine } from '@/utils/llm/mlxVlmRawLogBuffer';
 
 const LOG_LIST_HEIGHT_PX = 256;

@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
+import {
+  SettingsCollapsibleContainer,
+  SettingsCollapsibleContent,
+  SettingsCollapsibleHeading,
+} from '@/components/settings/SettingsCollapsible';
 
 type MlxVlmCollapsibleSectionProps = {
   title: string;
@@ -22,7 +25,10 @@ export default function MlxVlmCollapsibleSection({
   contentClassName = 'space-y-3 p-3 pt-0',
 }: MlxVlmCollapsibleSectionProps) {
   return (
-    <div
+    <SettingsCollapsibleContainer
+      contentKey={title}
+      open={open}
+      onOpenChange={onOpenChange}
       className={[
         'rounded-md border border-emerald-200/80 bg-white/60 dark:border-emerald-900/40 dark:bg-odp-bgSoft/40',
         className,
@@ -30,31 +36,19 @@ export default function MlxVlmCollapsibleSection({
         .filter(Boolean)
         .join(' ')}
     >
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        aria-expanded={open}
+      <SettingsCollapsibleHeading
+        subtitle={subtitle}
+        align="start"
+        chevronSize={14}
+        titleAs="span"
         className="flex w-full items-start gap-2 px-3 py-2.5 text-left transition hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20"
+        titleClassName="text-xs font-semibold text-gray-800 dark:text-odp-fgStrong"
       >
-        {open ? (
-          <ChevronDown size={14} className="mt-0.5 shrink-0 text-gray-500 dark:text-odp-muted" />
-        ) : (
-          <ChevronRight size={14} className="mt-0.5 shrink-0 text-gray-500 dark:text-odp-muted" />
-        )}
-        <span className="min-w-0">
-          <span className="block text-xs font-semibold text-gray-800 dark:text-odp-fgStrong">
-            {title}
-          </span>
-          {subtitle ? (
-            <span className="mt-0.5 block text-[10px] leading-snug text-gray-500 dark:text-odp-muted">
-              {subtitle}
-            </span>
-          ) : null}
-        </span>
-      </button>
-      <SettingsCollapsibleContent open={open} contentKey={title}>
+        {title}
+      </SettingsCollapsibleHeading>
+      <SettingsCollapsibleContent>
         <div className={contentClassName}>{children}</div>
       </SettingsCollapsibleContent>
-    </div>
+    </SettingsCollapsibleContainer>
   );
 }

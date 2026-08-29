@@ -10,8 +10,12 @@ import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
 import SettingsPageTocDock from '@/components/settings/SettingsPageTocDock';
-import SettingsCollapsibleContent from '@/components/settings/SettingsCollapsibleContent';
-import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import {
+  SettingsCollapsibleContainer,
+  SettingsCollapsibleContent,
+  SettingsCollapsibleHeading,
+} from '@/components/settings/SettingsCollapsible';
+import { X } from 'lucide-react';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
   loadWikiImageCacheMode,
@@ -458,8 +462,12 @@ export default function SettingsPage({
 
 
         {/* S3 Form */}
-        <form
+        <SettingsCollapsibleContainer
+          as="form"
           id="settings-s3"
+          contentKey="settings-s3-conn"
+          open={s3ConnOpen}
+          onOpenChange={setS3ConnOpen}
           tabIndex={-1}
           onSubmit={(e) => {
             e.preventDefault();
@@ -467,22 +475,8 @@ export default function SettingsPage({
           }}
           className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          <button
-            type="button"
-            onClick={() => setS3ConnOpen((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-            aria-expanded={s3ConnOpen}
-          >
-            {s3ConnOpen ? (
-              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            ) : (
-              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            )}
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-              S3 연결 정보
-            </h3>
-          </button>
-          <SettingsCollapsibleContent open={s3ConnOpen} contentKey="settings-s3-conn">
+          <SettingsCollapsibleHeading>S3 연결 정보</SettingsCollapsibleHeading>
+          <SettingsCollapsibleContent>
             <>
               <div className="space-y-3">
                 <div>
@@ -566,11 +560,15 @@ export default function SettingsPage({
               </div>
             </>
           </SettingsCollapsibleContent>
-        </form>
+        </SettingsCollapsibleContainer>
 
 
-        <form
+        <SettingsCollapsibleContainer
+          as="form"
           id="settings-webdav"
+          contentKey="settings-webdav-conn"
+          open={webdavConnOpen}
+          onOpenChange={setWebdavConnOpen}
           tabIndex={-1}
           onSubmit={(e) => {
             e.preventDefault();
@@ -578,27 +576,18 @@ export default function SettingsPage({
           }}
           className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          <button
-            type="button"
-            onClick={() => setWebdavConnOpen((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-            aria-expanded={webdavConnOpen}
+          <SettingsCollapsibleHeading
+            trailing={
+              !webdavConnOpen ? (
+                <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
+                  접힘
+                </span>
+              ) : null
+            }
           >
-            {webdavConnOpen ? (
-              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            ) : (
-              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            )}
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-              WebDAV 연결 정보
-            </h3>
-            {!webdavConnOpen ? (
-              <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
-                접힘
-              </span>
-            ) : null}
-          </button>
-          <SettingsCollapsibleContent open={webdavConnOpen} contentKey="settings-webdav-conn">
+            WebDAV 연결 정보
+          </SettingsCollapsibleHeading>
+          <SettingsCollapsibleContent>
             <>
               <div className="space-y-3">
                 <div>
@@ -684,36 +673,30 @@ export default function SettingsPage({
               </div>
             </>
           </SettingsCollapsibleContent>
-        </form>
+        </SettingsCollapsibleContainer>
 
 
         {/* Local folder connection */}
-        <div
+        <SettingsCollapsibleContainer
           id="settings-local"
+          contentKey="settings-local-conn"
+          open={localConnOpen}
+          onOpenChange={setLocalConnOpen}
           tabIndex={-1}
           className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          <button
-            type="button"
-            onClick={() => setLocalConnOpen((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-            aria-expanded={localConnOpen}
+          <SettingsCollapsibleHeading
+            trailing={
+              !localConnOpen ? (
+                <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
+                  접힘
+                </span>
+              ) : null
+            }
           >
-            {localConnOpen ? (
-              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            ) : (
-              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            )}
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-              Local 연결 정보
-            </h3>
-            {!localConnOpen ? (
-              <span className="ml-auto text-[11px] font-normal text-gray-400 dark:text-odp-muted">
-                접힘
-              </span>
-            ) : null}
-          </button>
-          <SettingsCollapsibleContent open={localConnOpen} contentKey="settings-local-conn">
+            Local 연결 정보
+          </SettingsCollapsibleHeading>
+          <SettingsCollapsibleContent>
             <>
               <p className="text-xs text-gray-600 dark:text-odp-muted">
                 {desktopApp
@@ -759,7 +742,7 @@ export default function SettingsPage({
               </div>
             </>
           </SettingsCollapsibleContent>
-        </div>
+        </SettingsCollapsibleContainer>
 
 
         {/* Import / Export Section */}
@@ -891,8 +874,12 @@ export default function SettingsPage({
           onReadBytes={onReadUnusedImageBytes}
           onDeletePaths={onDeleteUnusedImagePaths}
         />
-        <form
+        <SettingsCollapsibleContainer
+          as="form"
           id="settings-imgbb"
+          contentKey="settings-imgbb-conn"
+          open={imgbbConnOpen}
+          onOpenChange={setImgbbConnOpen}
           tabIndex={-1}
           onSubmit={(e) => {
             e.preventDefault();
@@ -905,22 +892,8 @@ export default function SettingsPage({
           }}
           className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
         >
-          <button
-            type="button"
-            onClick={() => setImgbbConnOpen((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-            aria-expanded={imgbbConnOpen}
-          >
-            {imgbbConnOpen ? (
-              <ChevronDown size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            ) : (
-              <ChevronRight size={16} className="shrink-0 text-gray-500 dark:text-odp-muted" />
-            )}
-            <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
-              ImgBB
-            </h3>
-          </button>
-          <SettingsCollapsibleContent open={imgbbConnOpen} contentKey="settings-imgbb-conn">
+          <SettingsCollapsibleHeading>ImgBB</SettingsCollapsibleHeading>
+          <SettingsCollapsibleContent>
             <>
               <p className="text-xs text-gray-600 dark:text-odp-muted">
                 ImgBB API 키는 연결 정보와 함께 암호화되어 저장됩니다. 저장된 키는 이 화면에서 다시
@@ -960,7 +933,7 @@ export default function SettingsPage({
               </div>
             </>
           </SettingsCollapsibleContent>
-        </form>
+        </SettingsCollapsibleContainer>
 
         <OgWorkerSettings />
             </SettingsPageGroup>
